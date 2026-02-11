@@ -1,0 +1,81 @@
+{
+  "name": "relampo-yaml-editor",
+  "productName": "Relampo YAML Editor",
+  "version": "1.0.0",
+  "description": "Performance Testing YAML Configuration Tool",
+  "main": "electron/main.js",
+  "author": "Relampo Team",
+  "license": "MIT",
+  "scripts": {
+    "electron:dev": "electron .",
+    "electron:build": "electron-builder"
+  },
+  "dependencies": {
+    "electron": "^28.0.0"
+  },
+  "devDependencies": {
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "com.relampo.yaml-editor",
+    "productName": "Relampo YAML Editor",
+    "directories": {
+      "output": "release",
+      "buildResources": "electron"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["x64", "arm64"]
+        },
+        {
+          "target": "zip",
+          "arch": ["x64", "arm64"]
+        }
+      ],
+      "icon": "electron/icon.icns",
+      "darkModeSupport": true
+    },
+    "linux": {
+      "category": "Development",
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": ["x64"]
+        },
+        {
+          "target": "tar.gz",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "electron/icon.png"
+    },
+    "dmg": {
+      "title": "Relampo YAML Editor",
+      "icon": "electron/icon.icns",
+      "background": "electron/dmg-background.png",
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    },
+    "appImage": {
+      "license": "LICENSE"
+    }
+  }
+}

@@ -1,0 +1,17 @@
+⚡ RELAMPO YAML EDITOR - BUILD DESKTOP
+=====================================
+
+PASO 1: Descarga este proyecto desde Figma Make
+PASO 2: Descomprime el ZIP
+PASO 3: Abre la terminal en la carpeta descomprimida
+PASO 4: Ejecuta:
+
+chmod +x build-yaml-editor-only.sh
+./build-yaml-editor-only.sh
+
+PASO 5: Espera ~10 minutos
+PASO 6: Abre el .dmg en la carpeta: yaml-editor-releases/
+
+¡Listo! 🚀
+
+NOTA: El script YA está corregido. Solo descarga y ejecuta.

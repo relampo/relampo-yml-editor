@@ -1,0 +1,558 @@
+import type { YAMLNode } from '../types/yaml';
+import * as jsyaml from 'js-yaml';
+
+// Parser: YAML string → Tree
+export function parseYAMLToTree(yamlString: string): YAMLNode {
+  try {
+    const parsed = jsyaml.load(yamlString);
+    return convertToTree(parsed);
+  } catch (error) {
+    throw new Error(`Error parsing YAML: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+// Generator: Tree → YAML string
+export function treeToYAML(tree: YAMLNode): string {
+  try {
+    const obj = treeToObject(tree);
+    return jsyaml.dump(obj, { indent: 2, lineWidth: -1, noRefs: true });
+  } catch (error) {
+    throw new Error(`Error generating YAML: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+// Convert parsed object to tree structure
+function convertToTree(obj: any, path: string[] = []): YAMLNode {
+  const rootId = 'root';
+  
+  const root: YAMLNode = {
+    id: rootId,
+    type: 'test',
+    name: obj.test?.name || 'Relampo Test',
+    children: [],
+    expanded: true,
+    path: [],
+    data: obj.test || { name: 'Relampo Test', description: '', version: '1.0' },
+  };
+
+  // Variables
+  if (obj.variables) {
+    root.children!.push({
+      id: `${rootId}_variables`,
+      type: 'variables',
+      name: `Variables (${Object.keys(obj.variables).length})`,
+      data: obj.variables,
+      path: ['variables'],
+    });
+  }
+
+  // Data Source
+  if (obj.data_source) {
+    root.children!.push({
+      id: `${rootId}_data_source`,
+      type: 'data_source',
+      name: `Data Source (${obj.data_source.type})`,
+      data: obj.data_source,
+      path: ['data_source'],
+    });
+  }
+
+  // HTTP Defaults
+  if (obj.http_defaults) {
+    root.children!.push({
+      id: `${rootId}_http_defaults`,
+      type: 'http_defaults',
+      name: 'HTTP Defaults',
+      data: obj.http_defaults,
+      path: ['http_defaults'],
+    });
+  }
+
+  // Scenarios
+  if (obj.scenarios && Array.isArray(obj.scenarios)) {
+    const scenariosNode: YAMLNode = {
+      id: `${rootId}_scenarios`,
+      type: 'scenarios',
+      name: `Scenarios (${obj.scenarios.length})`,
+      children: [],
+      expanded: true,
+      path: ['scenarios'],
+    };
+
+    obj.scenarios.forEach((scenario: any, index: number) => {
+      const scenarioNode = convertScenarioToNode(scenario, index, ['scenarios', index]);
+      scenariosNode.children!.push(scenarioNode);
+    });
+
+    root.children!.push(scenariosNode);
+  }
+
+  // Metrics
+  if (obj.metrics) {
+    root.children!.push({
+      id: `${rootId}_metrics`,
+      type: 'metrics',
+      name: 'Metrics',
+      data: obj.metrics,
+      path: ['metrics'],
+    });
+  }
+
+  return root;
+}
+
+function convertScenarioToNode(scenario: any, index: number, path: any[]): YAMLNode {
+  const scenarioId = `scenario_${index}`;
+  const scenarioNode: YAMLNode = {
+    id: scenarioId,
+    type: 'scenario',
+    name: scenario.name || `Scenario ${index + 1}`,
+    children: [],
+    expanded: true,
+    data: scenario,
+    path,
+  };
+
+  // Load
+  if (scenario.load) {
+    scenarioNode.children!.push({
+      id: `${scenarioId}_load`,
+      type: 'load',
+      name: `Load: ${scenario.load.type || 'constant'}`,
+      data: scenario.load,
+      path: [...path, 'load'],
+    });
+  }
+
+  // Cookies
+  if (scenario.cookies) {
+    scenarioNode.children!.push({
+      id: `${scenarioId}_cookies`,
+      type: 'cookies',
+      name: 'Cookie Manager',
+      data: scenario.cookies,
+      path: [...path, 'cookies'],
+    });
+  }
+
+  // Cache Manager
+  if (scenario.cache_manager) {
+    scenarioNode.children!.push({
+      id: `${scenarioId}_cache`,
+      type: 'cache_manager',
+      name: 'Cache Manager',
+      data: scenario.cache_manager,
+      path: [...path, 'cache_manager'],
+    });
+  }
+
+  // Error Policy
+  if (scenario.error_policy) {
+    scenarioNode.children!.push({
+      id: `${scenarioId}_error`,
+      type: 'error_policy',
+      name: 'Error Policy',
+      data: scenario.error_policy,
+      path: [...path, 'error_policy'],
+    });
+  }
+
+  // Steps
+  if (scenario.steps && Array.isArray(scenario.steps)) {
+    const stepsNode: YAMLNode = {
+      id: `${scenarioId}_steps`,
+      type: 'steps',
+      name: `Steps (${scenario.steps.length})`,
+      children: [],
+      expanded: true,
+      path: [...path, 'steps'],
+    };
+
+    scenario.steps.forEach((step: any, stepIndex: number) => {
+      const stepNode = convertStepToNode(step, scenarioId, stepIndex, [...path, 'steps', stepIndex]);
+      stepsNode.children!.push(stepNode);
+    });
+
+    scenarioNode.children!.push(stepsNode);
+  }
+
+  return scenarioNode;
+}
+
+function convertStepToNode(step: any, parentId: string, index: number, path: any[]): YAMLNode {
+  const stepId = `${parentId}_step_${index}`;
+
+  // HTTP methods (short form)
+  const httpMethods = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
+  for (const method of httpMethods) {
+    if (step[method] !== undefined) {
+      return {
+        id: stepId,
+        type: method as any,
+        name: `${method.toUpperCase()}: ${step[method]}`,
+        data: { url: step[method], ...step },
+        path,
+      };
+    }
+  }
+
+  // Request (long form)
+  if (step.request) {
+    const req = step.request;
+    const requestNode: YAMLNode = {
+      id: stepId,
+      type: 'request',
+      name: req.name || `${req.method || 'GET'}: ${req.url || '/'}`,
+      data: req,
+      path,
+      children: [],
+    };
+
+    // 🔥 SPARK SCRIPTS (Pulse format)
+    if (req.spark && Array.isArray(req.spark)) {
+      req.spark.forEach((sparkItem: any, idx: number) => {
+        const when = sparkItem.when || 'before';
+        requestNode.children!.push({
+          id: `${stepId}_spark_${idx}`,
+          type: when === 'after' ? 'spark_after' : 'spark_before',
+          name: `Spark (${when})`,
+          data: sparkItem,
+          path: [...path, 'spark', idx],
+        });
+      });
+    }
+
+    // EXTRACTORS as array (Pulse format: extractors[])
+    if (req.extractors && Array.isArray(req.extractors)) {
+      req.extractors.forEach((extractor: any, idx: number) => {
+        requestNode.children!.push({
+          id: `${stepId}_extractor_${idx}`,
+          type: 'extractor',
+          name: `Extract: ${extractor.var || extractor.variable || 'unknown'}`,
+          data: extractor,
+          path: [...path, 'extractors', idx],
+        });
+      });
+    }
+
+    // EXTRACT as object (legacy format)
+    if (req.extract && typeof req.extract === 'object' && !Array.isArray(req.extract)) {
+      Object.entries(req.extract).forEach(([key, value], idx) => {
+        requestNode.children!.push({
+          id: `${stepId}_extract_${idx}`,
+          type: 'extract',
+          name: `Extract: ${key}`,
+          data: { variable: key, expression: value },
+          path: [...path, 'extract', idx],
+        });
+      });
+    }
+
+    // ASSERTIONS as array (Pulse format: assertions[])
+    if (req.assertions && Array.isArray(req.assertions)) {
+      req.assertions.forEach((assertion: any, idx: number) => {
+        const label = assertion.type || 'check';
+        const detail = assertion.value || assertion.pattern || assertion.name || '';
+        requestNode.children!.push({
+          id: `${stepId}_assertion_${idx}`,
+          type: 'assertion',
+          name: `Assert: ${label}${detail ? ' = ' + String(detail).substring(0, 20) : ''}`,
+          data: assertion,
+          path: [...path, 'assertions', idx],
+        });
+      });
+    }
+
+    // ASSERT as object (legacy format)
+    if (req.assert && typeof req.assert === 'object' && !Array.isArray(req.assert)) {
+      Object.entries(req.assert).forEach(([key, value], idx) => {
+        requestNode.children!.push({
+          id: `${stepId}_assert_${idx}`,
+          type: 'assert',
+          name: `Assert: ${key} = ${value}`,
+          data: { assertion: key, value },
+          path: [...path, 'assert', idx],
+        });
+      });
+    }
+
+    // THINK_TIME inline (dentro del request)
+    if (req.think_time) {
+      requestNode.children!.push({
+        id: `${stepId}_think_time`,
+        type: 'think_time',
+        name: `Think Time: ${req.think_time}`,
+        data: { duration: req.think_time },
+        path: [...path, 'think_time'],
+      });
+    }
+
+    return requestNode;
+  }
+
+  // Think time (standalone - can be between requests)
+  if (step.think_time !== undefined) {
+    const duration = typeof step.think_time === 'string' ? step.think_time : 
+                     step.think_time.min ? `${step.think_time.min}-${step.think_time.max}` : '?';
+    return {
+      id: stepId,
+      type: 'think_time',
+      name: `Think Time: ${duration}`,
+      data: typeof step.think_time === 'string' ? { duration: step.think_time } : step.think_time,
+      path,
+    };
+  }
+
+  // Group (Simple controller for organization)
+  if (step.group) {
+    const groupNode: YAMLNode = {
+      id: stepId,
+      type: step.group.simple ? 'simple' : 'group',
+      name: step.group.name || 'Group',
+      children: [],
+      expanded: true,
+      data: step.group,
+      path,
+    };
+
+    if (step.group.steps && Array.isArray(step.group.steps)) {
+      step.group.steps.forEach((childStep: any, childIndex: number) => {
+        const childNode = convertStepToNode(childStep, stepId, childIndex, [...path, 'steps', childIndex]);
+        groupNode.children!.push(childNode);
+      });
+    }
+
+    return groupNode;
+  }
+
+  // If
+  if (step.if !== undefined) {
+    const ifNode: YAMLNode = {
+      id: stepId,
+      type: 'if',
+      name: `If: ${step.if}`,
+      children: [],
+      expanded: true,
+      data: { condition: step.if },
+      path,
+    };
+
+    if (step.steps && Array.isArray(step.steps)) {
+      step.steps.forEach((childStep: any, childIndex: number) => {
+        const childNode = convertStepToNode(childStep, stepId, childIndex, [...path, 'steps', childIndex]);
+        ifNode.children!.push(childNode);
+      });
+    }
+
+    return ifNode;
+  }
+
+  // Loop
+  if (step.loop !== undefined) {
+    const loopCount = typeof step.loop === 'number' ? step.loop : step.loop.count;
+    const loopNode: YAMLNode = {
+      id: stepId,
+      type: 'loop',
+      name: `Loop (${loopCount}x)`,
+      children: [],
+      expanded: true,
+      data: typeof step.loop === 'number' ? { count: step.loop } : step.loop,
+      path,
+    };
+
+    if (step.steps && Array.isArray(step.steps)) {
+      step.steps.forEach((childStep: any, childIndex: number) => {
+        const childNode = convertStepToNode(childStep, stepId, childIndex, [...path, 'steps', childIndex]);
+        loopNode.children!.push(childNode);
+      });
+    }
+
+    return loopNode;
+  }
+
+  // Retry
+  if (step.retry) {
+    const retryNode: YAMLNode = {
+      id: stepId,
+      type: 'retry',
+      name: `Retry (${step.retry.attempts}x)`,
+      children: [],
+      expanded: true,
+      data: step.retry,
+      path,
+    };
+
+    if (step.steps && Array.isArray(step.steps)) {
+      step.steps.forEach((childStep: any, childIndex: number) => {
+        const childNode = convertStepToNode(childStep, stepId, childIndex, [...path, 'steps', childIndex]);
+        retryNode.children!.push(childNode);
+      });
+    }
+
+    return retryNode;
+  }
+
+  // Default
+  return {
+    id: stepId,
+    type: 'step',
+    name: 'Unknown Step',
+    data: step,
+    path,
+  };
+}
+
+// Convert tree back to object
+function treeToObject(tree: YAMLNode): any {
+  const obj: any = {};
+
+  if (!tree.children) return obj;
+
+  for (const child of tree.children) {
+    if (child.type === 'test') {
+      obj.test = child.data;
+    } else if (child.type === 'variables') {
+      obj.variables = child.data;
+    } else if (child.type === 'data_source') {
+      obj.data_source = child.data;
+    } else if (child.type === 'http_defaults') {
+      obj.http_defaults = child.data;
+    } else if (child.type === 'scenarios') {
+      obj.scenarios = child.children?.map(scenarioNode => scenarioNodeToObject(scenarioNode)) || [];
+    } else if (child.type === 'metrics') {
+      obj.metrics = child.data;
+    }
+  }
+
+  return obj;
+}
+
+function scenarioNodeToObject(node: YAMLNode): any {
+  const scenario: any = {
+    name: node.data?.name || node.name,
+  };
+
+  if (!node.children) return scenario;
+
+  for (const child of node.children) {
+    if (child.type === 'load') {
+      scenario.load = child.data;
+    } else if (child.type === 'cookies') {
+      scenario.cookies = child.data;
+    } else if (child.type === 'cache_manager') {
+      scenario.cache_manager = child.data;
+    } else if (child.type === 'error_policy') {
+      scenario.error_policy = child.data;
+    } else if (child.type === 'steps') {
+      scenario.steps = child.children?.map(stepNode => stepNodeToObject(stepNode)) || [];
+    }
+  }
+
+  return scenario;
+}
+
+function stepNodeToObject(node: YAMLNode): any {
+  const httpMethods = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
+  
+  if (httpMethods.includes(node.type)) {
+    return { [node.type]: node.data?.url || '/' };
+  }
+
+  if (node.type === 'request') {
+    const request: any = { request: { ...node.data } };
+    
+    // Clean up children data from request.data (will be rebuilt)
+    delete request.request.spark;
+    delete request.request.extractors;
+    delete request.request.assertions;
+    delete request.request.extract;
+    delete request.request.assert;
+    
+    if (node.children) {
+      // 🔥 SPARK SCRIPTS
+      const sparkNodes = node.children.filter(child => 
+        child.type === 'spark_before' || child.type === 'spark_after'
+      );
+      if (sparkNodes.length > 0) {
+        request.request.spark = sparkNodes.map(spark => spark.data);
+      }
+
+      // EXTRACTORS (Pulse format: extractors[])
+      const extractorNodes = node.children.filter(child => child.type === 'extractor');
+      if (extractorNodes.length > 0) {
+        request.request.extractors = extractorNodes.map(ext => ext.data);
+      }
+
+      // EXTRACT (legacy format: extract {})
+      const extractNodes = node.children.filter(child => child.type === 'extract');
+      if (extractNodes.length > 0) {
+        request.request.extract = {};
+        extractNodes.forEach(extractor => {
+          request.request.extract[extractor.data.variable] = extractor.data.expression;
+        });
+      }
+
+      // ASSERTIONS (Pulse format: assertions[])
+      const assertionNodes = node.children.filter(child => child.type === 'assertion');
+      if (assertionNodes.length > 0) {
+        request.request.assertions = assertionNodes.map(assertion => assertion.data);
+      }
+
+      // ASSERT (legacy format: assert {})
+      const assertNodes = node.children.filter(child => child.type === 'assert');
+      if (assertNodes.length > 0) {
+        request.request.assert = {};
+        assertNodes.forEach(assertion => {
+          request.request.assert[assertion.data.assertion] = assertion.data.value;
+        });
+      }
+
+      // THINK_TIME inline
+      const thinkTimeNode = node.children.find(child => child.type === 'think_time');
+      if (thinkTimeNode) {
+        request.request.think_time = thinkTimeNode.data?.duration || thinkTimeNode.data;
+      }
+    }
+
+    return request;
+  }
+
+  if (node.type === 'group') {
+    return {
+      group: {
+        name: node.data?.name || node.name,
+        steps: node.children?.map(stepNodeToObject) || [],
+      },
+    };
+  }
+
+  if (node.type === 'if') {
+    return {
+      if: node.data?.condition || 'true',
+      steps: node.children?.map(stepNodeToObject) || [],
+    };
+  }
+
+  if (node.type === 'loop') {
+    const loopData = node.data?.count ? node.data.count : node.data;
+    return {
+      loop: loopData,
+      steps: node.children?.map(stepNodeToObject) || [],
+    };
+  }
+
+  if (node.type === 'retry') {
+    return {
+      retry: node.data,
+      steps: node.children?.map(stepNodeToObject) || [],
+    };
+  }
+
+  if (node.type === 'think_time') {
+    return {
+      think_time: node.data?.duration || node.data,
+    };
+  }
+
+  return node.data || {};
+}

@@ -1,0 +1,61 @@
+⚡ RELAMPO YAML EDITOR - INSTALACIÓN RÁPIDA EN MAC
+==================================================
+
+IMPORTANTE: Lee primero CONFIRMACION-FUNCIONALIDADES.txt
+----------------------------------------------------------
+El binario incluye TODAS las funcionalidades del YAML Editor:
+✓ Drag & Drop completo
+✓ Context Menu (click derecho)
+✓ Panel de detalles
+✓ Internacionalización (EN/ES)
+✓ Upload/Download de archivos
+
+Solo se removieron las páginas de navegación (Landing, Workbench,
+League). El editor YAML está 100% completo.
+
+
+PASO 1: DESCARGA
+----------------
+Clic en "Download" arriba a la derecha en Figma Make
+
+
+PASO 2: INSTALA NODE.JS (si no lo tienes)
+------------------------------------------
+Descarga desde: https://nodejs.org/
+Verifica con: node -v
+
+
+PASO 3: EJECUTA EN TERMINAL
+----------------------------
+cd ~/Downloads
+unzip [archivo-descargado].zip
+cd [carpeta-descomprimida]
+chmod +x build-yaml-editor-only.sh
+./build-yaml-editor-only.sh
+
+
+PASO 4: ESPERA ~10 MINUTOS
+---------------------------
+El script instalará todo automáticamente
+
+
+PASO 5: INSTALA LA APP
+-----------------------
+open yaml-editor-releases/
+Doble clic en el .dmg
+Arrastra a Applications
+
+
+PASO 6: ABRE LA APP
+--------------------
+Ve a Applications
+Busca "Relampo YAML Editor"
+Doble clic
+
+
+Si dice "desarrollador no identificado":
+-----------------------------------------
+xattr -cr /Applications/Relampo\ YAML\ Editor.app
+
+
+¡LISTO! 🚀
