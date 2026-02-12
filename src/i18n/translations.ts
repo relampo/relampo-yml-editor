@@ -400,6 +400,43 @@ export const translations = {
       noNodeSelected: "Select a node to view details",
       selectNode: "Select a node from the tree",
       viewDetails: "to view its details",
+      
+      // Common labels
+      common: {
+        name: "Name",
+        description: "Description",
+        value: "Value",
+        add: "Add",
+        remove: "Remove",
+        delete: "Delete",
+        enable: "Enable",
+        disable: "Disable",
+        browse: "Browse",
+        configuration: "Configuration",
+        properties: "Properties",
+        comments: "Comments",
+        noProperties: "No additional properties",
+      },
+      
+      // Context menu
+      contextMenu: {
+        addHeader: "Add Header",
+        addHeaders: "Add Headers",
+        addFile: "Add File",
+        addRequest: "Add Request",
+        addGroup: "Add Group",
+        addAssertion: "Add Assertion",
+        addExtractor: "Add Extractor",
+        addSpark: "Add Spark",
+        addThinkTime: "Add Think Time",
+      },
+      
+      // Spark editor
+      spark: {
+        quickReference: "Quick Reference:",
+        checkSyntax: "Check Syntax",
+        checking: "Checking...",
+      },
     },
   },
   
@@ -802,6 +839,43 @@ export const translations = {
       noNodeSelected: "Selecciona un nodo para ver detalles",
       selectNode: "Selecciona un nodo del árbol",
       viewDetails: "para ver sus detalles",
+      
+      // Common labels
+      common: {
+        name: "Nombre",
+        description: "Descripción",
+        value: "Valor",
+        add: "Agregar",
+        remove: "Eliminar",
+        delete: "Eliminar",
+        enable: "Habilitar",
+        disable: "Deshabilitar",
+        browse: "Buscar",
+        configuration: "Configuración",
+        properties: "Propiedades",
+        comments: "Comentarios",
+        noProperties: "Sin propiedades adicionales",
+      },
+      
+      // Context menu
+      contextMenu: {
+        addHeader: "Agregar Header",
+        addHeaders: "Agregar Headers",
+        addFile: "Agregar Archivo",
+        addRequest: "Agregar Request",
+        addGroup: "Agregar Grupo",
+        addAssertion: "Agregar Assertion",
+        addExtractor: "Agregar Extractor",
+        addSpark: "Agregar Spark",
+        addThinkTime: "Agregar Think Time",
+      },
+      
+      // Spark editor
+      spark: {
+        quickReference: "Referencia Rápida:",
+        checkSyntax: "Verificar Sintaxis",
+        checking: "Verificando...",
+      },
     },
   },
 };

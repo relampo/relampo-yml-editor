@@ -47,6 +47,7 @@ function EditableField({ label, value, field, onChange, type = 'text' }: Editabl
 
 // Componente especial para campo File con botón Browse
 function FileField({ label, value, field, onChange }: EditableFieldProps) {
+  const { t } = useLanguage();
   const [localValue, setLocalValue] = useState(String(value || ''));
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -92,7 +93,7 @@ function FileField({ label, value, field, onChange }: EditableFieldProps) {
             <polyline points="17 8 12 3 7 8"></polyline>
             <line x1="12" y1="3" x2="12" y2="15"></line>
           </svg>
-          Browse
+          {t('yamlEditor.common.browse')}
         </button>
         <input
           ref={fileInputRef}
@@ -221,7 +222,7 @@ export function YAMLNodeDetails({ node, onNodeUpdate }: YAMLNodeDetailsProps) {
         {/* Node Name - Editable */}
         <div className="mb-6">
           <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-            Name
+            {t('yamlEditor.common.name')}
           </label>
           <Input
             value={nodeName}

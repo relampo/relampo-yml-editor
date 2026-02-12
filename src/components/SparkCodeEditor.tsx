@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import MonacoEditor, { Monaco } from '@monaco-editor/react';
 import { Play, CheckCircle2, AlertCircle } from 'lucide-react';
 import type { editor } from 'monaco-editor';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface SparkCodeEditorProps {
   value: string;
@@ -28,6 +29,7 @@ export function SparkCodeEditor({
   onChange,
   minHeight = '250px',
 }: SparkCodeEditorProps) {
+  const { t } = useLanguage();
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [isValidating, setIsValidating] = useState(false);
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
@@ -124,7 +126,7 @@ export function SparkCodeEditor({
             }`}
           >
             <Play className="w-3 h-3" />
-            {isValidating ? 'Checking...' : 'Check Syntax'}
+            {isValidating ? t('yamlEditor.spark.checking') : t('yamlEditor.spark.checkSyntax')}
           </button>
         </div>
 
@@ -179,7 +181,7 @@ export function SparkCodeEditor({
 
       {/* Quick Reference */}
       <div className="mt-3 p-3 bg-zinc-900/50 rounded-lg border border-white/5">
-        <div className="text-xs text-zinc-400 mb-2 font-semibold">Quick Reference:</div>
+        <div className="text-xs text-zinc-400 mb-2 font-semibold">{t('yamlEditor.spark.quickReference')}</div>
         <div className="grid grid-cols-2 gap-2 text-xs">
           <div>
             <code className="text-cyan-400">vars</code>

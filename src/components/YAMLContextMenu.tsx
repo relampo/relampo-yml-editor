@@ -30,6 +30,7 @@ import {
   List,
 } from 'lucide-react';
 import type { YAMLNode, YAMLNodeType } from '../types/yaml';
+import { useLanguage } from '../contexts/LanguageContext';
 
 export type YAMLAddableNodeType =
   | 'scenario'
@@ -75,6 +76,7 @@ export function YAMLContextMenu({
   onRemove,
   onToggleEnabled,
 }: YAMLContextMenuProps) {
+  const { t } = useLanguage();
   const menuRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({ x, y });
 
@@ -141,7 +143,7 @@ export function YAMLContextMenu({
           <div className="px-3 py-1.5 sticky top-0 bg-[#111111] z-10">
             <div className="flex items-center gap-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider">
               <Plus className="w-3 h-3" />
-              Agregar
+              {t('yamlEditor.common.add')}
             </div>
           </div>
 
@@ -180,12 +182,12 @@ export function YAMLContextMenu({
           {node.data?.enabled === false ? (
             <>
               <Eye className="w-4 h-4" />
-              <span className="text-sm">Enable</span>
+              <span className="text-sm">{t('yamlEditor.common.enable')}</span>
             </>
           ) : (
             <>
               <EyeOff className="w-4 h-4" />
-              <span className="text-sm">Disable</span>
+              <span className="text-sm">{t('yamlEditor.common.disable')}</span>
             </>
           )}
         </button>
@@ -199,7 +201,7 @@ export function YAMLContextMenu({
             className="w-full px-3 py-2 flex items-center gap-3 hover:bg-red-500/10 text-left transition-colors text-red-400"
           >
             <Trash2 className="w-4 h-4" />
-            <span className="text-sm">Eliminar</span>
+            <span className="text-sm">{t('yamlEditor.common.delete')}</span>
           </button>
         </>
       )}
