@@ -196,7 +196,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
         data: { url: step[method], ...step, enabled: isEnabled },
         path,
         children: [],
-        expanded: true,
+        expanded: false,
       };
     }
   }
@@ -211,8 +211,22 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       data: { ...req, enabled: isEnabled },
       path,
       children: [],
-      expanded: true,
+      expanded: false,
     };
+
+    // HEADERS (object format: {header_name: value}) - PRIMERO
+    if (req.headers && typeof req.headers === 'object' && !Array.isArray(req.headers)) {
+      const headerEntries = Object.entries(req.headers);
+      if (headerEntries.length > 0) {
+        requestNode.children!.push({
+          id: `${stepId}_headers`,
+          type: 'headers',
+          name: 'Headers',
+          data: req.headers,
+          path: [...path, 'headers'],
+        });
+      }
+    }
 
     // 🔥 SPARK SCRIPTS (Pulse format)
     if (req.spark && Array.isArray(req.spark)) {
@@ -667,6 +681,7 @@ function stepNodeToObject(node: YAMLNode): any {
     delete request.request.extract;
     delete request.request.assert;
     delete request.request.files;
+    delete request.request.headers;
     
     if (node.children) {
       // 🔥 SPARK SCRIPTS
@@ -735,6 +750,12 @@ function stepNodeToObject(node: YAMLNode): any {
       const fileNodes = node.children.filter(child => child.type === 'file');
       if (fileNodes.length > 0) {
         request.request.files = fileNodes.map(file => file.data);
+      }
+
+      // HEADERS - desde el nodo headers (data contiene el objeto headers)
+      const headersNode = node.children.find(child => child.type === 'headers');
+      if (headersNode && headersNode.data) {
+        request.request.headers = headersNode.data;
       }
     }
 

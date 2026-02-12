@@ -490,6 +490,25 @@ function createNodeByType(type: YAMLAddableNodeType): YAMLNode {
           mime_type: 'application/octet-stream'
         },
       };
+    case 'header':
+      return {
+        id,
+        type: 'header',
+        name: 'Header',
+        data: { 
+          name: 'Authorization',
+          value: ''
+        },
+      };
+    case 'headers':
+      return {
+        id,
+        type: 'headers',
+        name: 'Headers',
+        data: {
+          'Content-Type': 'application/json'
+        },
+      };
 
     // Scenario
     case 'scenario':

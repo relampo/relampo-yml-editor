@@ -26,6 +26,8 @@ import {
   CodeXml,
   AlertTriangle,
   Paperclip,
+  Tag,
+  List,
 } from 'lucide-react';
 import type { YAMLNode, YAMLNodeType } from '../types/yaml';
 
@@ -43,6 +45,8 @@ export type YAMLAddableNodeType =
   | 'spark_before'
   | 'spark_after'
   | 'file'
+  | 'header'
+  | 'headers'
   | 'variables'
   | 'data_source'
   | 'http_defaults'
@@ -333,6 +337,13 @@ function getAddableItems(parentType: string): AddableItem[] {
         description: 'Adjuntar archivo',
         icon: <Paperclip className={iconClass} />,
         color: 'text-amber-400',
+      },
+      {
+        type: 'headers',
+        label: 'Headers',
+        description: 'Gestor de cabeceras HTTP',
+        icon: <Tag className={iconClass} />,
+        color: 'text-lime-500',
       },
       {
         type: 'think_time',

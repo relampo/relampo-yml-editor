@@ -35,7 +35,9 @@ export type YAMLNodeType =
   | 'spark_before'
   | 'spark_after'
   | 'on_error'
-  | 'file';
+  | 'file'
+  | 'header'
+  | 'headers';
 
 export interface YAMLNode {
   id: string;

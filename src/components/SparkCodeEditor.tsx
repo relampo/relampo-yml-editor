@@ -179,31 +179,31 @@ export function SparkCodeEditor({
 
       {/* Quick Reference */}
       <div className="mt-3 p-3 bg-zinc-900/50 rounded-lg border border-white/5">
-        <div className="text-xs text-zinc-500 mb-2 font-semibold">Quick Reference:</div>
+        <div className="text-xs text-zinc-400 mb-2 font-semibold">Quick Reference:</div>
         <div className="grid grid-cols-2 gap-2 text-xs">
           <div>
             <code className="text-cyan-400">vars</code>
-            <span className="text-zinc-500"> - Read/write variables</span>
+            <span className="text-zinc-400"> - Read/write variables</span>
           </div>
           <div>
             <code className="text-cyan-400">response</code>
-            <span className="text-zinc-500"> - Response object (after)</span>
+            <span className="text-zinc-400"> - Response object (after)</span>
           </div>
           <div>
             <code className="text-pink-400">vars.myVar</code>
-            <span className="text-zinc-500"> - Access variable</span>
+            <span className="text-zinc-400"> - Access variable</span>
           </div>
           <div>
             <code className="text-pink-400">response.status</code>
-            <span className="text-zinc-500"> - HTTP status code</span>
+            <span className="text-zinc-400"> - HTTP status code</span>
           </div>
           <div>
             <code className="text-pink-400">response.body</code>
-            <span className="text-zinc-500"> - Response body</span>
+            <span className="text-zinc-400"> - Response body</span>
           </div>
           <div>
             <code className="text-yellow-300">console.log()</code>
-            <span className="text-zinc-500"> - Print to console</span>
+            <span className="text-zinc-400"> - Print to console</span>
           </div>
         </div>
       </div>

@@ -27,6 +27,8 @@ import {
   AlertTriangle,
   CodeXml,
   Paperclip,
+  Tag,
+  List,
 } from 'lucide-react';
 import type { YAMLNode, YAMLNodeType } from '../types/yaml';
 import { canDrop, canContain } from '../utils/yamlDragDropRules';
@@ -318,6 +320,8 @@ function getNodeIcon(type: YAMLNodeType): any {
     'spark_before': CodeXml,
     'spark_after': CodeXml,
     'file': Paperclip,
+    'header': Tag,
+    'headers': Tag,
   };
   return iconMap[type] || FileText;
 }
@@ -394,6 +398,10 @@ function getNodeColor(type: YAMLNodeType, node?: YAMLNode): string {
       return 'text-violet-500';
     case 'file':
       return 'text-amber-400';
+    case 'header':
+      return 'text-lime-400';
+    case 'headers':
+      return 'text-lime-500';
     default:
       return 'text-zinc-400';
   }
@@ -487,6 +495,25 @@ function getNodeBadge(node: YAMLNode): JSX.Element | null {
     return (
       <span className="text-xs px-1.5 py-0.5 rounded bg-amber-400/15 text-amber-400 font-mono font-medium border border-amber-400/30">
         {displayText}
+      </span>
+    );
+  }
+
+  // Header badge - mostrar nombre del header
+  if (node.type === 'header' && node.data?.name) {
+    return (
+      <span className="text-xs px-1.5 py-0.5 rounded bg-lime-400/15 text-lime-400 font-mono font-medium border border-lime-400/30">
+        {node.data.name}
+      </span>
+    );
+  }
+
+  // Headers container badge - mostrar cantidad de headers
+  if (node.type === 'headers' && node.data) {
+    const count = Object.keys(node.data).length;
+    return (
+      <span className="text-xs px-1.5 py-0.5 rounded bg-lime-500/15 text-lime-500 font-mono font-medium border border-lime-500/30">
+        {count}
       </span>
     );
   }

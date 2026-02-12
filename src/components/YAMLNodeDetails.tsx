@@ -195,6 +195,10 @@ export function YAMLNodeDetails({ node, onNodeUpdate }: YAMLNodeDetailsProps) {
         return renderExtractorDetails(node, onNodeUpdate);
       case 'file':
         return renderFileDetails(node, onNodeUpdate);
+      case 'header':
+        return renderHeaderDetails(node, onNodeUpdate);
+      case 'headers':
+        return renderHeadersDetails(node, onNodeUpdate);
       default:
         return renderGenericDetails(node);
     }
@@ -423,26 +427,6 @@ function renderScenariosContainerDetails(node: YAMLNode, onNodeUpdate?: (nodeId:
   
   return (
     <div className="space-y-6">
-      {/* Scenario Count */}
-      <div className="p-4 bg-purple-500/10 border border-purple-500/30 rounded-lg">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-xs font-semibold text-purple-400 uppercase tracking-wider mb-1">
-              Total Scenarios
-            </div>
-            <div className="text-3xl font-bold text-purple-300">
-              {scenarioCount}
-            </div>
-          </div>
-          <div className="text-purple-400/50">
-            <svg className="w-12 h-12" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
-              <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" />
-            </svg>
-          </div>
-        </div>
-      </div>
-      
       {/* Comments/Description */}
       <div>
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
@@ -1431,6 +1415,103 @@ function renderExtractorDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
           placeholder="NOT_FOUND"
           className="bg-white/5 border-white/10 text-zinc-300 text-sm font-mono"
         />
+      </div>
+    </>
+  );
+}
+
+// HEADER DETAILS
+function renderHeaderDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): JSX.Element {
+  const data = node.data || {};
+  
+  const handleChange = (field: string, value: any) => {
+    if (onNodeUpdate) {
+      onNodeUpdate(node.id, { ...data, [field]: value });
+    }
+  };
+  
+  // Sugerencias de headers comunes
+  const commonHeaders = [
+    'Authorization',
+    'Content-Type',
+    'Accept',
+    'User-Agent',
+    'Accept-Language',
+    'Accept-Encoding',
+    'Cache-Control',
+    'X-Api-Key',
+    'X-Requested-With',
+  ];
+  
+  return (
+    <>
+      <div className="mb-4">
+        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+          Header Name
+        </label>
+        <Input
+          value={data.name || ''}
+          onChange={(e) => handleChange('name', e.target.value)}
+          placeholder="Content-Type"
+          list="header-names-list"
+          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+        />
+        <datalist id="header-names-list">
+          {commonHeaders.map(header => (
+            <option key={header} value={header} />
+          ))}
+        </datalist>
+      </div>
+      
+      <div className="mb-4">
+        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+          Header Value
+        </label>
+        <Textarea
+          value={data.value || ''}
+          onChange={(e) => handleChange('value', e.target.value)}
+          placeholder="application/json"
+          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono min-h-[80px]"
+        />
+        <div className="mt-1 text-xs text-zinc-500">
+          Use variables: ${'{'}token${'}'}
+        </div>
+      </div>
+      
+      {/* Info box */}
+      <div className="p-3 bg-slate-400/5 border border-slate-400/20 rounded text-xs text-zinc-400">
+        🏷️ This header will be sent with the HTTP request
+      </div>
+    </>
+  );
+}
+
+// HEADERS CONTAINER DETAILS
+function renderHeadersDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): JSX.Element {
+  const data = node.data || {};
+  
+  const handleUpdate = (items: Record<string, string>) => {
+    if (!onNodeUpdate) return;
+    onNodeUpdate(node.id, items);
+  };
+  
+  return (
+    <>
+      <EditableList
+        title="HTTP Headers"
+        items={data}
+        onUpdate={handleUpdate}
+        keyPlaceholder="Header-Name"
+        valuePlaceholder="Header value"
+        keyLabel="Header Name"
+        valueLabel="Value"
+        enableCheckboxes={false}
+        enableBulkActions={false}
+      />
+      
+      {/* Info box */}
+      <div className="mt-4 p-3 bg-lime-400/5 border border-lime-400/20 rounded text-xs text-zinc-400">
+        🏷️ These headers will be sent with the HTTP request
       </div>
     </>
   );
