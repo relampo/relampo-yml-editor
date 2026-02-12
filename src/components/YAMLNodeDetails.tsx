@@ -154,9 +154,8 @@ export function YAMLNodeDetails({ node, onNodeUpdate }: YAMLNodeDetailsProps) {
             value={node.name}
             onChange={(e) => {
               if (onNodeUpdate) {
-                // Actualizar el nombre del nodo
-                const updatedNode = { ...node, name: e.target.value };
-                onNodeUpdate(node.id, node.data || {});
+                // Actualizar el nombre del nodo - include name in data
+                onNodeUpdate(node.id, { ...node.data, __name: e.target.value });
               }
             }}
             className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-semibold"

@@ -78,7 +78,13 @@ export function YAMLEditor() {
     
     const updateNodeInTree = (node: YAMLNode): YAMLNode => {
       if (node.id === nodeId) {
-        const updated = { ...node, data: updatedData };
+        // Extract __name if present and apply it to node.name
+        const { __name, ...cleanData } = updatedData || {};
+        const updated = { 
+          ...node, 
+          name: __name !== undefined ? __name : node.name,
+          data: cleanData 
+        };
         if (selectedNode?.id === nodeId) {
           updatedSelectedNode = updated;
         }

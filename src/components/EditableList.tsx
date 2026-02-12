@@ -48,7 +48,7 @@ export function EditableList({
       checked: selectedKeys.has(key),
     }));
     setLocalItems(newItems);
-  }, [items]);
+  }, [items, selectedKeys]);
 
   const handleAdd = () => {
     const newKey = `new_item_${Date.now()}`;

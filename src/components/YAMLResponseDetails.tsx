@@ -8,14 +8,13 @@ interface YAMLResponseDetailsProps {
   response: any;
   onResponseUpdate: (updatedResponse: any) => void;
   searchText?: string;
-  currentMatchIndex?: number;
+  currentMatchIndex?: number; // Kept for API compatibility
 }
 
 export function YAMLResponseDetails({ 
   response, 
   onResponseUpdate,
   searchText = '',
-  currentMatchIndex = 0,
 }: YAMLResponseDetailsProps) {
   const [formData, setFormData] = useState(response || {});
 
@@ -27,35 +26,6 @@ export function YAMLResponseDetails({
     const newData = { ...formData, [field]: value };
     setFormData(newData);
     onResponseUpdate(newData);
-  };
-
-  let matchCounter = 0;
-
-  const highlightText = (text: string, search: string): JSX.Element | string => {
-    if (!search || !text) return text;
-    
-    const parts = text.split(new RegExp(`(${escapeRegex(search)})`, 'gi'));
-    
-    return (
-      <>
-        {parts.map((part, i) => {
-          if (part.toLowerCase() === search.toLowerCase()) {
-            const thisMatchIndex = matchCounter++;
-            const isActive = thisMatchIndex === currentMatchIndex;
-            return (
-              <mark 
-                key={i} 
-                data-match-index={thisMatchIndex}
-                className={`${isActive ? 'bg-yellow-400/50 ring-2 ring-yellow-400' : 'bg-yellow-400/30'} text-yellow-200 transition-all`}
-              >
-                {part}
-              </mark>
-            );
-          }
-          return part;
-        })}
-      </>
-    );
   };
 
   if (!response) {
@@ -84,9 +54,16 @@ export function YAMLResponseDetails({
     <div className="space-y-4">
       {/* Status Code */}
       <div>
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-          Status Code
-        </label>
+        <div className="flex items-center gap-2 mb-2">
+          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+            Status Code
+          </label>
+          {searchText && formData.status && String(formData.status).includes(searchText) && (
+            <span className="text-xs text-yellow-400 flex items-center gap-1">
+              <span>✓</span> Match
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-3">
           <Input
             type="number"
@@ -109,9 +86,16 @@ export function YAMLResponseDetails({
 
       {/* Response Time */}
       <div>
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-          Response Time (ms)
-        </label>
+        <div className="flex items-center gap-2 mb-2">
+          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+            Response Time (ms)
+          </label>
+          {searchText && formData.time_ms && String(formData.time_ms).includes(searchText) && (
+            <span className="text-xs text-yellow-400 flex items-center gap-1">
+              <span>✓</span> Match
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-3">
           <Input
             type="number"
@@ -131,9 +115,22 @@ export function YAMLResponseDetails({
 
       {/* Response Headers */}
       <div>
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
-          Response Headers
-        </label>
+        <div className="flex items-center gap-2 mb-3">
+          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+            Response Headers
+          </label>
+          {searchText && formData.headers && Object.entries(formData.headers).some(([k, v]) => 
+            k.toLowerCase().includes(searchText.toLowerCase()) || 
+            String(v).toLowerCase().includes(searchText.toLowerCase())
+          ) && (
+            <span className="text-xs text-yellow-400 flex items-center gap-1">
+              <span>✓</span> {Object.entries(formData.headers).filter(([k, v]) => 
+                k.toLowerCase().includes(searchText.toLowerCase()) || 
+                String(v).toLowerCase().includes(searchText.toLowerCase())
+              ).length} match(es)
+            </span>
+          )}
+        </div>
         <EditableList
           title=""
           items={formData.headers || {}}
@@ -149,9 +146,20 @@ export function YAMLResponseDetails({
 
       {/* Response Body */}
       <div>
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-          Response Body
-        </label>
+        <div className="flex items-center gap-2 mb-2">
+          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+            Response Body
+          </label>
+          {searchText && formData.body && (() => {
+            const bodyStr = typeof formData.body === 'string' ? formData.body : JSON.stringify(formData.body, null, 2);
+            const matchCount = bodyStr.toLowerCase().split(searchText.toLowerCase()).length - 1;
+            return matchCount > 0 ? (
+              <span className="text-xs text-yellow-400 flex items-center gap-1">
+                <span>✓</span> {matchCount} match(es)
+              </span>
+            ) : null;
+          })()}
+        </div>
         <div className="space-y-2">
           {/* Body Type Indicator */}
           <div className="flex items-center gap-2">
@@ -233,8 +241,4 @@ export function YAMLResponseDetails({
       </div>
     </div>
   );
-}
-
-function escapeRegex(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
