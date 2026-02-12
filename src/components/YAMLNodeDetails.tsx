@@ -193,6 +193,8 @@ export function YAMLNodeDetails({ node, onNodeUpdate }: YAMLNodeDetailsProps) {
         return renderAssertionDetails(node, onNodeUpdate);
       case 'extractor':
         return renderExtractorDetails(node, onNodeUpdate);
+      case 'file':
+        return renderFileDetails(node, onNodeUpdate);
       default:
         return renderGenericDetails(node);
     }
@@ -1429,6 +1431,78 @@ function renderExtractorDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
           placeholder="NOT_FOUND"
           className="bg-white/5 border-white/10 text-zinc-300 text-sm font-mono"
         />
+      </div>
+    </>
+  );
+}
+
+// FILE UPLOAD DETAILS
+function renderFileDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): JSX.Element {
+  const data = node.data || {};
+  
+  const handleChange = (field: string, value: any) => {
+    if (onNodeUpdate) {
+      onNodeUpdate(node.id, { ...data, [field]: value });
+    }
+  };
+  
+  // MIME types comunes
+  const commonMimeTypes = [
+    'application/pdf',
+    'application/json',
+    'application/xml',
+    'application/zip',
+    'text/plain',
+    'text/csv',
+    'text/html',
+    'image/jpeg',
+    'image/png',
+    'image/gif',
+    'image/svg+xml',
+    'video/mp4',
+    'audio/mpeg',
+  ];
+  
+  return (
+    <>
+      <EditableField 
+        label="Field Name" 
+        value={data.field || ''} 
+        field="field" 
+        onChange={handleChange} 
+      />
+      
+      <FileField 
+        label="File Path" 
+        value={data.path || ''} 
+        field="path" 
+        onChange={handleChange} 
+      />
+      
+      <div className="mb-4">
+        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+          MIME Type
+        </label>
+        <Input
+          value={data.mime_type || ''}
+          onChange={(e) => handleChange('mime_type', e.target.value)}
+          placeholder="application/octet-stream"
+          list="mime-types-list"
+          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+        />
+        <datalist id="mime-types-list">
+          {commonMimeTypes.map(mime => (
+            <option key={mime} value={mime} />
+          ))}
+        </datalist>
+        <div className="mt-1 text-xs text-zinc-500">
+          Common: application/pdf, image/jpeg, text/csv
+        </div>
+      </div>
+      
+      {/* Info box */}
+      <div className="p-3 bg-amber-400/5 border border-amber-400/20 rounded text-xs text-zinc-400">
+        📎 This file will be uploaded as multipart/form-data
       </div>
     </>
   );

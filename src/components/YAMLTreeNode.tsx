@@ -26,6 +26,7 @@ import {
   Braces,
   AlertTriangle,
   CodeXml,
+  Paperclip,
 } from 'lucide-react';
 import type { YAMLNode, YAMLNodeType } from '../types/yaml';
 import { canDrop, canContain } from '../utils/yamlDragDropRules';
@@ -316,6 +317,7 @@ function getNodeIcon(type: YAMLNodeType): any {
     'spark': CodeXml,
     'spark_before': CodeXml,
     'spark_after': CodeXml,
+    'file': Paperclip,
   };
   return iconMap[type] || FileText;
 }
@@ -390,6 +392,8 @@ function getNodeColor(type: YAMLNodeType, node?: YAMLNode): string {
       return 'text-purple-500';
     case 'spark_after':
       return 'text-violet-500';
+    case 'file':
+      return 'text-amber-400';
     default:
       return 'text-zinc-400';
   }
@@ -470,6 +474,19 @@ function getNodeBadge(node: YAMLNode): JSX.Element | null {
     return (
       <span className="text-xs px-1.5 py-0.5 rounded bg-blue-400/15 text-blue-400 font-mono font-medium border border-blue-400/30">
         {node.data.type}
+      </span>
+    );
+  }
+
+  // File badge - mostrar extensión del archivo o mime_type
+  if (node.type === 'file') {
+    const path = node.data?.path || '';
+    const extension = path.split('.').pop()?.toUpperCase();
+    const displayText = extension || node.data?.mime_type?.split('/').pop()?.toUpperCase() || 'FILE';
+    
+    return (
+      <span className="text-xs px-1.5 py-0.5 rounded bg-amber-400/15 text-amber-400 font-mono font-medium border border-amber-400/30">
+        {displayText}
       </span>
     );
   }

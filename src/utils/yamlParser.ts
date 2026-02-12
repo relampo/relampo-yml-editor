@@ -331,6 +331,21 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       });
     }
 
+    // FILES (array format: files[])
+    if (req.files && Array.isArray(req.files)) {
+      req.files.forEach((file: any, idx: number) => {
+        const fieldName = file.field || 'file';
+        const fileName = file.path ? file.path.split('/').pop() : 'unknown';
+        requestNode.children!.push({
+          id: `${stepId}_file_${idx}`,
+          type: 'file',
+          name: `${fieldName}: ${fileName}`,
+          data: file,
+          path: [...path, 'files', idx],
+        });
+      });
+    }
+
     return requestNode;
   }
 
@@ -589,7 +604,10 @@ function treeToObject(tree: YAMLNode): any {
     } else if (child.type === 'variables') {
       obj.variables = child.data;
     } else if (child.type === 'data_source') {
-      obj.data_source = child.data;
+      obj.data_source = { ...child.data };
+      if (child.name && child.name !== child.data?.name) {
+        obj.data_source.name = child.name;
+      }
     } else if (child.type === 'http_defaults') {
       obj.http_defaults = child.data;
     } else if (child.type === 'scenarios') {
@@ -603,8 +621,9 @@ function treeToObject(tree: YAMLNode): any {
 }
 
 function scenarioNodeToObject(node: YAMLNode): any {
+  // Priorizar node.name si fue editado, sino usar data.name
   const scenario: any = {
-    name: node.data?.name || node.name,
+    name: node.name || node.data?.name || 'Scenario',
   };
 
   if (!node.children) return scenario;
@@ -647,6 +666,7 @@ function stepNodeToObject(node: YAMLNode): any {
     delete request.request.assertions;
     delete request.request.extract;
     delete request.request.assert;
+    delete request.request.files;
     
     if (node.children) {
       // 🔥 SPARK SCRIPTS
@@ -710,6 +730,12 @@ function stepNodeToObject(node: YAMLNode): any {
       if (onErrorNode) {
         request.request.on_error = onErrorNode.data?.action || onErrorNode.data;
       }
+
+      // FILES
+      const fileNodes = node.children.filter(child => child.type === 'file');
+      if (fileNodes.length > 0) {
+        request.request.files = fileNodes.map(file => file.data);
+      }
     }
 
     return request;
@@ -725,7 +751,7 @@ function stepNodeToObject(node: YAMLNode): any {
     
     return {
       group: {
-        name: node.data?.name || node.name,
+        name: node.name || node.data?.name || 'Group',
         steps: node.children?.map(stepNodeToObject) || [],
       },
     };

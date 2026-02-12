@@ -479,6 +479,17 @@ function createNodeByType(type: YAMLAddableNodeType): YAMLNode {
           variable: 'extracted_id'
         },
       };
+    case 'file':
+      return {
+        id,
+        type: 'file',
+        name: 'File Upload',
+        data: { 
+          field: 'file',
+          path: '',
+          mime_type: 'application/octet-stream'
+        },
+      };
 
     // Scenario
     case 'scenario':

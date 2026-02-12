@@ -25,6 +25,7 @@ import {
   EyeOff,
   CodeXml,
   AlertTriangle,
+  Paperclip,
 } from 'lucide-react';
 import type { YAMLNode, YAMLNodeType } from '../types/yaml';
 
@@ -41,6 +42,7 @@ export type YAMLAddableNodeType =
   | 'extractor'
   | 'spark_before'
   | 'spark_after'
+  | 'file'
   | 'variables'
   | 'data_source'
   | 'http_defaults'
@@ -324,6 +326,13 @@ function getAddableItems(parentType: string): AddableItem[] {
         description: 'Extracción de datos',
         icon: <Filter className={iconClass} />,
         color: 'text-blue-400',
+      },
+      {
+        type: 'file',
+        label: 'File Upload',
+        description: 'Adjuntar archivo',
+        icon: <Paperclip className={iconClass} />,
+        color: 'text-amber-400',
       },
       {
         type: 'think_time',
