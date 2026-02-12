@@ -345,7 +345,7 @@ function getAddableItems(parentType: string): AddableItem[] {
         label: 'Headers',
         description: 'Gestor de cabeceras HTTP',
         icon: <Tag className={iconClass} />,
-        color: 'text-lime-500',
+        color: 'text-red-500',
       },
       {
         type: 'think_time',

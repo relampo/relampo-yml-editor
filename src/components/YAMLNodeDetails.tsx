@@ -1511,7 +1511,7 @@ function renderHeadersDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, da
       />
       
       {/* Info box */}
-      <div className="mt-4 p-3 bg-lime-400/5 border border-lime-400/20 rounded text-xs text-zinc-400">
+      <div className="mt-4 p-3 bg-red-400/5 border border-red-400/20 rounded text-xs text-zinc-400">
         🏷️ These headers will be sent with the HTTP request
       </div>
     </>
