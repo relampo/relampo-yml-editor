@@ -45,6 +45,67 @@ function EditableField({ label, value, field, onChange, type = 'text' }: Editabl
   );
 }
 
+// Componente especial para campo File con botón Browse
+function FileField({ label, value, field, onChange }: EditableFieldProps) {
+  const [localValue, setLocalValue] = useState(String(value || ''));
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  useEffect(() => {
+    setLocalValue(String(value || ''));
+  }, [value]);
+  
+  const handleBlur = () => {
+    onChange(field, localValue);
+  };
+  
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setLocalValue(file.name);
+      onChange(field, file.name);
+    }
+  };
+  
+  return (
+    <div className="mb-4">
+      <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+        {label}
+      </label>
+      <div className="flex gap-2">
+        <Input
+          value={localValue}
+          onChange={(e) => setLocalValue(e.target.value)}
+          onBlur={handleBlur}
+          placeholder="path/to/file.csv"
+          className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+        />
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            fileInputRef.current?.click();
+          }}
+          className="px-3 py-2 bg-yellow-400/10 border border-yellow-400/30 rounded text-yellow-400 hover:bg-yellow-400/20 text-sm font-medium transition-colors flex items-center gap-2 flex-shrink-0"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="17 8 12 3 7 8"></polyline>
+            <line x1="12" y1="3" x2="12" y2="15"></line>
+          </svg>
+          Browse
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".csv,.txt,.json"
+          onChange={handleFileSelect}
+          className="hidden"
+        />
+      </div>
+    </div>
+  );
+}
+
 interface YAMLNodeDetailsProps {
   node: YAMLNode | null;
   onNodeUpdate?: (nodeId: string, updatedData: any) => void;
@@ -240,63 +301,46 @@ function renderVariablesDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
 
 function renderDataSourceDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): JSX.Element {
   const data = node.data || {};
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const bind = data.bind || {};
   
   const handleChange = (field: string, value: any) => {
     if (onNodeUpdate) onNodeUpdate(node.id, { ...data, [field]: value });
   };
   
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      handleChange('file', file.name);
+  const handleBindUpdate = (updatedBind: Record<string, string>) => {
+    if (onNodeUpdate) {
+      onNodeUpdate(node.id, { ...data, bind: updatedBind });
     }
   };
   
   return (
     <>
       <EditableField label="Type" value={data.type || ''} field="type" onChange={handleChange} />
-      
-      {/* File field con botón de selección */}
-      <div className="mb-4">
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-          File
-        </label>
-        <div className="flex gap-2">
-          <Input
-            value={data.file || ''}
-            onChange={(e) => handleChange('file', e.target.value)}
-            placeholder="path/to/file.csv"
-            className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
-          />
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              fileInputRef.current?.click();
-            }}
-            className="px-3 py-2 bg-yellow-400/10 border border-yellow-400/30 rounded text-yellow-400 hover:bg-yellow-400/20 text-sm font-medium transition-colors flex items-center gap-2"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-              <polyline points="17 8 12 3 7 8"></polyline>
-              <line x1="12" y1="3" x2="12" y2="15"></line>
-            </svg>
-            Browse
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".csv,.txt,.json"
-            onChange={handleFileSelect}
-            className="hidden"
-          />
-        </div>
-      </div>
-      
+      <FileField label="File" value={data.file || ''} field="file" onChange={handleChange} />
       <EditableField label="Mode" value={data.mode || ''} field="mode" onChange={handleChange} />
       <EditableField label="Strategy" value={data.strategy || ''} field="strategy" onChange={handleChange} />
       <EditableField label="On Exhausted" value={data.on_exhausted || ''} field="on_exhausted" onChange={handleChange} />
+      
+      {/* Bind mappings */}
+      {Object.keys(bind).length > 0 && (
+        <>
+          <div className="h-px bg-white/10 my-4" />
+          <div className="mb-4">
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
+              Column Bindings
+            </label>
+            <EditableList
+              title="Bind"
+              items={bind}
+              onUpdate={handleBindUpdate}
+              keyPlaceholder="csv_column"
+              valuePlaceholder="variable_name"
+              enableCheckboxes={false}
+              enableBulkActions={false}
+            />
+          </div>
+        </>
+      )}
     </>
   );
 }
