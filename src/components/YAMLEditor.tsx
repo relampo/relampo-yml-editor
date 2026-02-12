@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from './ui/button';
-import { Upload, Download, Code2, GitBranch } from 'lucide-react';
+import { Upload, Download, Save, Code2, GitBranch } from 'lucide-react';
 import { YAMLCodeEditor } from './YAMLCodeEditor';
 import { YAMLTreeView } from './YAMLTreeView';
 import { YAMLNodeDetails } from './YAMLNodeDetails';
@@ -12,7 +12,7 @@ import { useYAML } from '../contexts/YAMLContext';
 type ViewMode = 'code' | 'tree';
 
 export function YAMLEditor() {
-  const { t } = useLanguage();
+  const { language, setLanguage, t } = useLanguage();
   const { yamlContent, setYamlContent } = useYAML();
   const [yamlCode, setYamlCode] = useState<string>('');
   const [yamlTree, setYamlTree] = useState<YAMLNode | null>(null);
@@ -22,7 +22,7 @@ export function YAMLEditor() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Inicializar árbol al montar
+  // Initialize tree on mount
   useEffect(() => {
     if (!isInitialized) {
       const defaultYaml = yamlContent || getDefaultYAML();
@@ -34,7 +34,7 @@ export function YAMLEditor() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Sincronizar código a árbol
+  // Synchronize code to tree
   const syncCodeToTree = (code: string) => {
     try {
       const tree = parseYAMLToTree(code);
@@ -48,7 +48,7 @@ export function YAMLEditor() {
     }
   };
 
-  // Sincronizar árbol a código
+  // Synchronize tree to code
   const syncTreeToCode = (tree: YAMLNode) => {
     try {
       const code = treeToYAML(tree);
@@ -62,7 +62,7 @@ export function YAMLEditor() {
 
   const handleCodeChange = (newCode: string) => {
     setYamlCode(newCode);
-    setYamlContent(newCode); // Actualizar contexto
+    setYamlContent(newCode); // Update context
     syncCodeToTree(newCode);
   };
 
@@ -78,7 +78,13 @@ export function YAMLEditor() {
     
     const updateNodeInTree = (node: YAMLNode): YAMLNode => {
       if (node.id === nodeId) {
-        const updated = { ...node, data: updatedData };
+        // Extract __name if present and apply it to node.name
+        const { __name, ...cleanData } = updatedData || {};
+        const updated = { 
+          ...node, 
+          name: __name !== undefined ? __name : node.name,
+          data: cleanData 
+        };
         if (selectedNode?.id === nodeId) {
           updatedSelectedNode = updated;
         }
@@ -96,7 +102,7 @@ export function YAMLEditor() {
     const updatedTree = updateNodeInTree(yamlTree);
     setYamlTree(updatedTree);
     
-    // Actualizar selectedNode si es el nodo que se modificó
+    // Update selectedNode if it's the node that was modified
     if (updatedSelectedNode) {
       setSelectedNode(updatedSelectedNode);
     }
@@ -115,11 +121,17 @@ export function YAMLEditor() {
       reader.onload = (event) => {
         const content = event.target?.result as string;
         setYamlCode(content);
-        setYamlContent(content); // Actualizar contexto
+        setYamlContent(content); // Update context
         syncCodeToTree(content);
       };
       reader.readAsText(file);
     }
+  };
+
+  const handleSave = () => {
+    localStorage.setItem('relampo-yaml-draft', yamlCode);
+    localStorage.setItem('relampo-yaml-draft-timestamp', new Date().toISOString());
+    alert(language === 'es' ? '✓ Cambios guardados' : '✓ Changes saved');
   };
 
   const handleDownload = () => {
@@ -136,54 +148,114 @@ export function YAMLEditor() {
 
   return (
     <div className="flex flex-col h-full bg-[#0a0a0a] w-full overflow-hidden">
-      {/* Header con Logo de Relampo */}
-      <div className="bg-[#111111] border-b border-white/5 px-6 py-4 flex-shrink-0">
-        <div className="flex items-center justify-between">
+      {/* Header - Exact Converter Style */}
+      <div className="bg-[#1a1a1a] border-b border-white/10 px-6 py-4 flex-shrink-0">
+        <div className="flex items-center justify-between gap-4">
+          {/* Left: Brand */}
           <div className="flex items-center gap-3">
-            {/* Relampo Logo */}
-            <div className="relative w-10 h-10 bg-gradient-to-br from-yellow-300 via-yellow-400 to-yellow-500 rounded-xl flex items-center justify-center shadow-xl shadow-yellow-400/40">
-              <svg width="18" height="22" viewBox="0 0 18 22" fill="none">
-                <path d="M10.5 0L0 12.5H7.5L6 22L18 9H10.5V0Z" fill="white" className="drop-shadow-lg"/>
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#fde047] via-[#facc15] to-[#eab308] flex items-center justify-center" style={{ boxShadow: '0 14px 35px rgba(250, 204, 21, 0.40)' }}>
+              <svg width="18" height="22" viewBox="0 0 18 22" fill="none" style={{ filter: 'drop-shadow(0 2px 6px rgba(0, 0, 0, 0.25))' }}>
+                <path d="M10.5 0L0 12.5H7.5L6 22L18 9H10.5V0Z" fill="white"/>
               </svg>
             </div>
             <div>
-              <h1 className="text-xl font-black text-zinc-100 tracking-tight">
+              <h1 className="text-[20px] font-black text-white tracking-tight m-0">
                 RELAMPO
               </h1>
-              <p className="text-xs text-zinc-500">YAML Editor</p>
+              <p className="text-xs text-[#71717a] m-0">{language === 'es' ? 'Editor de YAML' : 'YAML Editor'}</p>
             </div>
           </div>
           
-          <div className="flex items-center gap-2">
-            <Button
-              onClick={handleUpload}
-              variant="outline"
-              size="sm"
-              className="border-white/10 bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-zinc-100"
-            >
-              <Upload className="w-4 h-4 mr-2" />
-              {t('yamlEditor.uploadYaml')}
-            </Button>
+          {/* Right: Buttons + Language Toggle (Exact Converter Style) */}
+          <div className="flex items-center gap-4">
+            {/* Action Buttons */}
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={handleUpload}
+                variant="outline"
+                size="sm"
+                className="border-white/10 bg-white/5 hover:bg-white/10 text-zinc-300"
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                {t('yamlEditor.uploadYaml')}
+              </Button>
 
-            <Button
-              onClick={handleDownload}
-              variant="outline"
-              size="sm"
-              className="border-yellow-400/20 bg-yellow-400/5 hover:bg-yellow-400/10 text-yellow-400 hover:text-yellow-300"
-            >
-              <Download className="w-4 h-4 mr-2" />
-              {t('yamlEditor.downloadYaml')}
-            </Button>
+              <Button
+                onClick={handleSave}
+                variant="outline"
+                size="sm"
+                className="border-white/10 bg-white/5 hover:bg-white/10 text-zinc-300"
+              >
+                <Save className="w-4 h-4 mr-2" />
+                {language === 'es' ? 'Guardar' : 'Save'}
+              </Button>
+
+              <Button
+                onClick={handleDownload}
+                variant="outline"
+                size="sm"
+                className="border-yellow-400/20 bg-yellow-400/5 hover:bg-yellow-400/10 text-yellow-400"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                {t('yamlEditor.downloadYaml')}
+              </Button>
+            </div>
+
+            {/* Language Toggle - EXACT COPY from Converter */}
+            <div className="lang-toggle" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span className="lang-label" style={{ fontSize: '12px', fontWeight: '600', color: language === 'en' ? '#facc15' : '#a3a3a3', transition: 'color 0.3s ease' }}>EN</span>
+              <label className="toggle-switch" style={{ position: 'relative', display: 'inline-block', width: '44px', height: '24px', cursor: 'pointer' }}>
+                <input 
+                  type="checkbox" 
+                  id="langToggle"
+                  checked={language === 'es'}
+                  onChange={() => setLanguage(language === 'en' ? 'es' : 'en')}
+                  style={{ opacity: 0, width: 0, height: 0 }}
+                />
+                <span className="toggle-slider" style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  backgroundColor: '#1a1a1a',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: '24px',
+                  transition: 'all 0.3s ease'
+                }}></span>
+              </label>
+              <span className="lang-label" style={{ fontSize: '12px', fontWeight: '600', color: language === 'es' ? '#facc15' : '#a3a3a3', transition: 'color 0.3s ease' }}>ES</span>
+              <style>{`
+                .toggle-slider:before {
+                  position: absolute;
+                  content: "";
+                  height: 18px;
+                  width: 18px;
+                  left: 3px;
+                  bottom: 2px;
+                  background: linear-gradient(135deg, #fde047 0%, #facc15 45%, #eab308 100%);
+                  border-radius: 50%;
+                  transition: all 0.3s ease;
+                  box-shadow: 0 2px 8px rgba(250, 204, 21, 0.4);
+                }
+                input:checked + .toggle-slider:before {
+                  transform: translateX(20px);
+                }
+                .toggle-switch:hover .toggle-slider {
+                  border-color: #facc15;
+                }
+              `}</style>
+            </div>
           </div>
-
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".yaml,.yml"
-            onChange={handleFileChange}
-            className="hidden"
-          />
         </div>
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".yaml,.yml"
+          onChange={handleFileChange}
+          className="hidden"
+        />
       </div>
 
       {/* Error message */}
@@ -193,9 +265,9 @@ export function YAMLEditor() {
         </div>
       )}
 
-      {/* Panel dividido: Editor/Árbol + Detalles */}
+      {/* Split panel: Editor/Tree + Details */}
       <div className="flex flex-1 overflow-hidden min-h-0 min-w-0">
-        {/* Panel Izquierdo: Código o Árbol */}
+        {/* Left Panel: Code or Tree */}
         <div className="w-1/2 min-w-0 border-r border-white/5 flex flex-col">
           {/* Toggle Code/Tree */}
           <div className="flex items-center border-b border-white/5 bg-[#111111] flex-shrink-0">
@@ -241,7 +313,7 @@ export function YAMLEditor() {
           </div>
         </div>
 
-        {/* Panel Derecho: Detalles */}
+        {/* Right Panel: Details */}
         <div className="w-1/2 min-w-0 overflow-hidden">
           <YAMLNodeDetails
             node={selectedNode}
@@ -256,7 +328,7 @@ export function YAMLEditor() {
 function getDefaultYAML(): string {
   return `test:
   name: "Pulse Performance Test"
-  description: "Test de rendimiento con Spark Scripts"
+  description: "Performance test with Spark Scripts"
   version: "1.0"
 
 variables:

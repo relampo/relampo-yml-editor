@@ -192,6 +192,8 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
         name: `${method.toUpperCase()}: ${step[method]}`,
         data: { url: step[method], ...step },
         path,
+        children: [],
+        expanded: true,
       };
     }
   }
@@ -206,6 +208,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       data: req,
       path,
       children: [],
+      expanded: true,
     };
 
     // 🔥 SPARK SCRIPTS (Pulse format)
@@ -235,15 +238,28 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       });
     }
 
-    // EXTRACT as object (legacy format)
-    if (req.extract && typeof req.extract === 'object' && !Array.isArray(req.extract)) {
+    // EXTRACT as array (JMX converter format: [{name, var, expression}])
+    if (req.extract && Array.isArray(req.extract)) {
+      req.extract.forEach((extractor: any, idx: number) => {
+        const varName = extractor.var || extractor.variable || 'unknown';
+        requestNode.children!.push({
+          id: `${stepId}_extract_${idx}`,
+          type: 'extract',
+          name: `Extract: ${varName}`,
+          data: extractor,
+          path: [...path, 'request', 'extract', idx],
+        });
+      });
+    }
+    // EXTRACT as object (spec format: {var: expression})
+    else if (req.extract && typeof req.extract === 'object' && !Array.isArray(req.extract)) {
       Object.entries(req.extract).forEach(([key, value], idx) => {
         requestNode.children!.push({
           id: `${stepId}_extract_${idx}`,
           type: 'extract',
           name: `Extract: ${key}`,
           data: { variable: key, expression: value },
-          path: [...path, 'extract', idx],
+          path: [...path, 'request', 'extract', key],
         });
       });
     }
@@ -263,20 +279,34 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       });
     }
 
-    // ASSERT as object (legacy format)
-    if (req.assert && typeof req.assert === 'object' && !Array.isArray(req.assert)) {
+    // ASSERT as array (JMX converter format: [{name, type, value}])
+    if (req.assert && Array.isArray(req.assert)) {
+      req.assert.forEach((assertion: any, idx: number) => {
+        const label = assertion.type || assertion.name || 'check';
+        const detail = assertion.value || '';
+        requestNode.children!.push({
+          id: `${stepId}_assert_${idx}`,
+          type: 'assert',
+          name: `Assert: ${label}${detail ? ' = ' + String(detail).substring(0, 20) : ''}`,
+          data: assertion,
+          path: [...path, 'request', 'assert', idx],
+        });
+      });
+    }
+    // ASSERT as object (spec format: {status: 200, ...})
+    else if (req.assert && typeof req.assert === 'object' && !Array.isArray(req.assert)) {
       Object.entries(req.assert).forEach(([key, value], idx) => {
         requestNode.children!.push({
           id: `${stepId}_assert_${idx}`,
           type: 'assert',
           name: `Assert: ${key} = ${value}`,
           data: { assertion: key, value },
-          path: [...path, 'assert', idx],
+          path: [...path, 'request', 'assert', key],
         });
       });
     }
 
-    // THINK_TIME inline (dentro del request)
+    // THINK_TIME inline (inside the request)
     if (req.think_time) {
       requestNode.children!.push({
         id: `${stepId}_think_time`,
@@ -287,18 +317,47 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       });
     }
 
+    // ON_ERROR inline (inside the request)
+    if (req.on_error) {
+      requestNode.children!.push({
+        id: `${stepId}_on_error`,
+        type: 'on_error',
+        name: `On Error: ${req.on_error}`,
+        data: { action: req.on_error },
+        path: [...path, 'on_error'],
+      });
+    }
+
     return requestNode;
   }
 
   // Think time (standalone - can be between requests)
   if (step.think_time !== undefined) {
-    const duration = typeof step.think_time === 'string' ? step.think_time : 
-                     step.think_time.min ? `${step.think_time.min}-${step.think_time.max}` : '?';
+    let duration: string;
+    let data: any;
+    
+    if (typeof step.think_time === 'string') {
+      // Simple format: "2s"
+      duration = step.think_time;
+      data = { duration: step.think_time };
+    } else if (step.think_time.duration) {
+      // Converter format: {name: "...", duration: "1s"}
+      duration = step.think_time.duration;
+      data = step.think_time;
+    } else if (step.think_time.min) {
+      // Variable format: {min: "1s", max: "3s"}
+      duration = `${step.think_time.min}-${step.think_time.max}`;
+      data = step.think_time;
+    } else {
+      duration = '?';
+      data = step.think_time;
+    }
+    
     return {
       id: stepId,
       type: 'think_time',
       name: `Think Time: ${duration}`,
-      data: typeof step.think_time === 'string' ? { duration: step.think_time } : step.think_time,
+      data,
       path,
     };
   }
@@ -372,10 +431,11 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
 
   // Retry
   if (step.retry) {
+    const attempts = step.retry.attempts || step.retry.max_attempts || 3;
     const retryNode: YAMLNode = {
       id: stepId,
       type: 'retry',
-      name: `Retry (${step.retry.attempts}x)`,
+      name: `Retry (${attempts}x)`,
       children: [],
       expanded: true,
       data: step.retry,
@@ -390,6 +450,28 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
     }
 
     return retryNode;
+  }
+
+  // On Error (standalone)
+  if (step.on_error !== undefined) {
+    const onErrorNode: YAMLNode = {
+      id: stepId,
+      type: 'on_error',
+      name: `On Error: ${step.on_error.action || step.on_error}`,
+      children: [],
+      expanded: true,
+      data: typeof step.on_error === 'string' ? { action: step.on_error } : step.on_error,
+      path,
+    };
+
+    if (step.steps && Array.isArray(step.steps)) {
+      step.steps.forEach((childStep: any, childIndex: number) => {
+        const childNode = convertStepToNode(childStep, stepId, childIndex, [...path, 'steps', childIndex]);
+        onErrorNode.children!.push(childNode);
+      });
+    }
+
+    return onErrorNode;
   }
 
   // Default
@@ -483,13 +565,19 @@ function stepNodeToObject(node: YAMLNode): any {
         request.request.extractors = extractorNodes.map(ext => ext.data);
       }
 
-      // EXTRACT (legacy format: extract {})
+      // EXTRACT (detect format from data)
       const extractNodes = node.children.filter(child => child.type === 'extract');
       if (extractNodes.length > 0) {
-        request.request.extract = {};
-        extractNodes.forEach(extractor => {
-          request.request.extract[extractor.data.variable] = extractor.data.expression;
-        });
+        // If it has 'var' or 'name' in data, it's array format
+        if (extractNodes[0].data?.var || extractNodes[0].data?.name) {
+          request.request.extract = extractNodes.map(ext => ext.data);
+        } else {
+          // Spec object format {variable: expression}
+          request.request.extract = {};
+          extractNodes.forEach(extractor => {
+            request.request.extract[extractor.data.variable] = extractor.data.expression;
+          });
+        }
       }
 
       // ASSERTIONS (Pulse format: assertions[])
@@ -498,19 +586,31 @@ function stepNodeToObject(node: YAMLNode): any {
         request.request.assertions = assertionNodes.map(assertion => assertion.data);
       }
 
-      // ASSERT (legacy format: assert {})
+      // ASSERT (detect format from data)
       const assertNodes = node.children.filter(child => child.type === 'assert');
       if (assertNodes.length > 0) {
-        request.request.assert = {};
-        assertNodes.forEach(assertion => {
-          request.request.assert[assertion.data.assertion] = assertion.data.value;
-        });
+        // If it has 'type' or 'name' in data, it's array format
+        if (assertNodes[0].data?.type || assertNodes[0].data?.name) {
+          request.request.assert = assertNodes.map(assertion => assertion.data);
+        } else {
+          // Spec object format {assertion: value}
+          request.request.assert = {};
+          assertNodes.forEach(assertion => {
+            request.request.assert[assertion.data.assertion] = assertion.data.value;
+          });
+        }
       }
 
       // THINK_TIME inline
       const thinkTimeNode = node.children.find(child => child.type === 'think_time');
       if (thinkTimeNode) {
         request.request.think_time = thinkTimeNode.data?.duration || thinkTimeNode.data;
+      }
+
+      // ON_ERROR inline
+      const onErrorNode = node.children.find(child => child.type === 'on_error');
+      if (onErrorNode) {
+        request.request.on_error = onErrorNode.data?.action || onErrorNode.data;
       }
     }
 
@@ -544,6 +644,13 @@ function stepNodeToObject(node: YAMLNode): any {
   if (node.type === 'retry') {
     return {
       retry: node.data,
+      steps: node.children?.map(stepNodeToObject) || [],
+    };
+  }
+
+  if (node.type === 'on_error') {
+    return {
+      on_error: node.data?.action ? node.data : (node.data || 'continue'),
       steps: node.children?.map(stepNodeToObject) || [],
     };
   }

@@ -1,0 +1,148 @@
+test:
+  name: "Complete Relampo Test"
+  description: "Test with all elements of the v1 specification"
+  version: "1.0"
+
+variables:
+  base_url: "https://api.example.com"
+  api_key: "test-key-123"
+  timeout: "30s"
+
+data_source:
+  type: csv
+  file: "data/users.csv"
+  mode: per_vu
+  strategy: sequential
+  bind:
+    username: username
+    password: password
+  on_exhausted: recycle
+
+http_defaults:
+  base_url: "https://api.example.com"
+  timeout: "30s"
+  headers:
+    Accept: "application/json"
+    User-Agent: "Relampo/1.0"
+
+scenarios:
+  - name: "User Flow Test"
+    load:
+      type: constant
+      users: 10
+      duration: "5m"
+      ramp_up: "30s"
+    
+    cookies:
+      mode: auto
+      persist_across_iterations: true
+    
+    cache_manager:
+      enabled: true
+      max_size_mb: 50
+    
+    error_policy:
+      on_4xx: continue
+      on_5xx: retry
+      on_timeout: stop
+    
+    steps:
+      # Basic request
+      - get: /health
+      
+      # Request with extract and assert
+      - request:
+          method: POST
+          url: /api/login
+          headers:
+            Content-Type: "application/json"
+          body:
+            username: "{{username}}"
+            password: "{{password}}"
+          extract:
+            token: $.data.token
+            user_id: $.data.user.id
+          assert:
+            status: 200
+            response_time_ms_max: 1000
+            body_contains: "success"
+          on_error: stop
+      
+      # Think time
+      - think_time: 2s
+      
+      # Request with spark before/after
+      - request:
+          method: GET
+          url: /api/profile
+          headers:
+            Authorization: "Bearer {{token}}"
+          spark:
+            - when: before
+              script: |
+                vars.request_id = Date.now();
+                console.log("Request ID: " + vars.request_id);
+            - when: after
+              script: |
+                const data = JSON.parse(response.body);
+                vars.profile_loaded = true;
+                console.log("Profile loaded for user: " + data.name);
+      
+      # Group with multiple requests
+      - group:
+          name: "Product Operations"
+          steps:
+            - get: /api/products
+            
+            - post: /api/products
+              body:
+                name: "Test Product"
+                price: 99.99
+            
+            - think_time: 1s
+      
+      # If controller
+      - if: "{{token}} != null"
+        steps:
+          - get: /api/dashboard
+            headers:
+              Authorization: "Bearer {{token}}"
+      
+      # Loop controller
+      - loop: 3
+        steps:
+          - get: /api/items?page={{loop_index}}
+          - think_time: 500ms
+      
+      # Retry controller
+      - retry:
+          attempts: 3
+          on: [500, 502, 503]
+          backoff: exponential
+          initial_delay: 1s
+          max_delay: 10s
+        steps:
+          - post: /api/payment
+            headers:
+              Authorization: "Bearer {{token}}"
+            body:
+              amount: 100
+      
+      # On Error controller
+      - on_error:
+          action: continue
+        steps:
+          - delete: /api/cleanup
+            headers:
+              Authorization: "Bearer {{token}}"
+
+metrics:
+  percentiles: [50, 90, 95, 99]
+  error_policy: continue
+  check_status: true
+  custom_metrics:
+    - name: login_success_rate
+      type: counter
+  thresholds:
+    response_time_p95: 1000
+    error_rate: 0.01

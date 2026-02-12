@@ -52,103 +52,40 @@ export function TopBar({
 
   return (
     <header className="h-14 flex items-center justify-between px-6 bg-[#0a0a0a] border-b border-white/5 shadow-2xl">
-      <div className="flex items-center gap-6">
-        {/* Project Selector */}
-        <div className="relative" ref={projectRef}>
-          <button
-            onClick={() => setShowProjectMenu(!showProjectMenu)}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-white/5 transition-colors"
-          >
-            <span className="text-sm font-medium text-zinc-100">{selectedProject}</span>
-            <ChevronDown className="w-4 h-4 text-zinc-500" />
-          </button>
-          {showProjectMenu && (
-            <div className="absolute top-full mt-1 left-0 w-64 bg-[#111111] border border-white/10 rounded-lg shadow-2xl py-1 z-50">
-              {projects.map((project) => (
-                <button
-                  key={project}
-                  onClick={() => {
-                    onProjectChange(project);
-                    setShowProjectMenu(false);
-                  }}
-                  className={`w-full text-left px-3 py-2 text-sm transition-colors ${
-                    project === selectedProject 
-                      ? 'bg-yellow-500/10 text-yellow-400'
-                      : 'text-zinc-300 hover:bg-white/5'
-                  }`}
-                >
-                  {project}
-                </button>
-              ))}
-            </div>
-          )}
+      {/* Left: Brand */}
+      <div className="flex items-center gap-3">
+        {/* Relampo Logo */}
+        <div className="relative w-8 h-8 bg-gradient-to-br from-yellow-300 via-yellow-400 to-yellow-500 rounded-lg flex items-center justify-center shadow-lg shadow-yellow-400/30">
+          <svg width="14" height="18" viewBox="0 0 18 22" fill="none">
+            <path d="M10.5 0L0 12.5H7.5L6 22L18 9H10.5V0Z" fill="white" className="drop-shadow-lg"/>
+          </svg>
         </div>
-
-        {/* Language Selector */}
-        <div className="relative" ref={langRef}>
-          <button
-            onClick={() => setShowLangMenu(!showLangMenu)}
-            className="flex items-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg transition-colors"
-          >
-            <Languages className="w-4 h-4 text-zinc-400" />
-            <span className="text-sm text-zinc-100">{currentLanguage?.flag} {currentLanguage?.label}</span>
-            <ChevronDown className="w-4 h-4 text-zinc-500" />
-          </button>
-          {showLangMenu && (
-            <div className="absolute top-full mt-1 left-0 w-44 bg-[#111111] border border-white/10 rounded-lg shadow-2xl py-1 z-50">
-              {languages.map((lang) => (
-                <button
-                  key={lang.code}
-                  onClick={() => {
-                    setLanguage(lang.code);
-                    setShowLangMenu(false);
-                  }}
-                  className={`w-full text-left px-3 py-2 text-sm transition-colors ${
-                    lang.code === language 
-                      ? 'bg-yellow-500/10 text-yellow-400'
-                      : 'text-zinc-300 hover:bg-white/5'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <span>{lang.flag}</span>
-                    <span>{lang.label}</span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
+        <div>
+          <h1 className="text-base font-black text-zinc-100 tracking-tight">
+            RELAMPO
+          </h1>
+          <p className="text-[10px] text-zinc-500 -mt-0.5">{language === 'es' ? 'Editor de YAML' : 'YAML Editor'}</p>
         </div>
       </div>
 
-      <div className="flex items-center gap-4">
-        {/* Notifications */}
-        <button className="relative p-2 rounded-lg hover:bg-white/5 transition-colors group">
-          <Bell className="w-4 h-4 text-zinc-400 group-hover:text-zinc-200 transition-colors" />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-yellow-400 rounded-full shadow-sm" />
+      {/* Right: Language Toggle */}
+      <div className="flex items-center gap-2">
+        <span className={`text-sm font-medium transition-colors ${
+          language === 'en' ? 'text-yellow-400' : 'text-zinc-500'
+        }`}>EN</span>
+        <button
+          onClick={() => setLanguage(language === 'en' ? 'es' : 'en')}
+          className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 focus:ring-offset-[#0a0a0a] bg-zinc-700 hover:bg-zinc-600"
+        >
+          <span
+            className={`inline-block h-4 w-4 transform rounded-full bg-yellow-400 transition-transform ${
+              language === 'es' ? 'translate-x-6' : 'translate-x-1'
+            }`}
+          />
         </button>
-
-        {/* User Menu */}
-        <div className="relative" ref={userRef}>
-          <button
-            onClick={() => setShowUserMenu(!showUserMenu)}
-            className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-white/5 transition-colors"
-          >
-            <div className="w-7 h-7 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center shadow-lg shadow-yellow-400/30">
-              <User className="w-4 h-4 text-black" />
-            </div>
-          </button>
-          {showUserMenu && (
-            <div className="absolute top-full mt-1 right-0 w-48 bg-[#111111] border border-white/10 rounded-lg shadow-2xl py-1 z-50">
-              <div className="px-3 py-2 border-b border-white/10">
-                <p className="text-sm text-zinc-100">{t('topBar.user')}</p>
-                <p className="text-xs text-zinc-500">{t('topBar.team')}</p>
-              </div>
-              <button className="w-full text-left px-3 py-2 text-sm text-zinc-300 hover:bg-white/5 transition-colors">
-                {t('topBar.logout')}
-              </button>
-            </div>
-          )}
-        </div>
+        <span className={`text-sm font-medium transition-colors ${
+          language === 'es' ? 'text-yellow-400' : 'text-zinc-500'
+        }`}>ES</span>
       </div>
     </header>
   );

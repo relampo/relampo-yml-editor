@@ -33,7 +33,8 @@ export type YAMLNodeType =
   | 'error_policy'
   | 'spark'
   | 'spark_before'
-  | 'spark_after';
+  | 'spark_after'
+  | 'on_error';
 
 export interface YAMLNode {
   id: string;
@@ -160,6 +161,11 @@ export interface LoopStep {
 export interface IfStep {
   condition: string;
   steps: any[];
+}
+
+export interface OnErrorStep {
+  action: 'continue' | 'stop' | 'fail_iteration';
+  steps?: any[];
 }
 
 export interface Metrics {

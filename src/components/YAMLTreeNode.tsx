@@ -24,6 +24,8 @@ import {
   HardDrive,
   Zap,
   Braces,
+  AlertTriangle,
+  CodeXml,
 } from 'lucide-react';
 import type { YAMLNode, YAMLNodeType } from '../types/yaml';
 import { canDrop, canContain } from '../utils/yamlDragDropRules';
@@ -188,8 +190,13 @@ export function YAMLTreeNode({
   };
 
   const icon = getNodeIcon(node.type);
-  const color = getNodeColor(node.type);
+  const color = getNodeColor(node.type, node);
   const IconComponent = icon;
+  
+  // Debug: log tipos de nodos especiales
+  if (['extract', 'extractor', 'assert', 'assertion', 'spark_before', 'spark_after', 'think_time'].includes(node.type)) {
+    console.log(`Node type: ${node.type}, Color: ${color}`);
+  }
 
   return (
     <div className="select-none">
@@ -236,7 +243,9 @@ export function YAMLTreeNode({
         </div>
 
         {/* Name */}
-        <span className="text-sm text-zinc-300 truncate flex-1">
+        <span className={`text-sm truncate flex-1 ${
+          node.data?.enabled === false ? 'text-zinc-400' : 'text-zinc-300'
+        }`}>
           {node.name}
         </span>
 
@@ -292,6 +301,7 @@ function getNodeIcon(type: YAMLNodeType): any {
     'if': Folder,
     'loop': Folder,
     'retry': Folder,
+    'on_error': AlertTriangle,
     'think_time': Clock,
     'extract': Filter,
     'extractor': Filter,
@@ -300,56 +310,99 @@ function getNodeIcon(type: YAMLNodeType): any {
     'cookies': Cookie,
     'cache_manager': HardDrive,
     'error_policy': FileCode,
-    'spark': Code,
-    'spark_before': Code,
-    'spark_after': Code,
+    'spark': CodeXml,
+    'spark_before': CodeXml,
+    'spark_after': CodeXml,
   };
   return iconMap[type] || FileText;
 }
 
-function getNodeColor(type: YAMLNodeType): string {
-  const colorMap: Record<string, string> = {
-    'root': 'text-orange-400',
-    'test': 'text-orange-400',
-    'variables': 'text-pink-400',
-    'data_source': 'text-cyan-400',
-    'http_defaults': 'text-sky-400',
-    'scenarios': 'text-violet-400',
-    'scenario': 'text-yellow-400',
-    'metrics': 'text-indigo-400',
-    'load': 'text-red-500',
-    'steps': 'text-amber-400',
-    'step': 'text-amber-400',
-    'request': 'text-emerald-400',
-    'get': 'text-emerald-400',
-    'post': 'text-emerald-400',
-    'put': 'text-emerald-400',
-    'delete': 'text-emerald-400',
-    'patch': 'text-emerald-400',
-    'head': 'text-emerald-400',
-    'options': 'text-emerald-400',
-    'group': 'text-blue-400',
-    'simple': 'text-blue-400',
-    'if': 'text-pink-500',
-    'loop': 'text-purple-400',
-    'retry': 'text-red-400',
-    'think_time': 'text-sky-400',
-    'extract': 'text-cyan-400',
-    'extractor': 'text-cyan-400',
-    'assert': 'text-yellow-400',
-    'assertion': 'text-yellow-400',
-    'cookies': 'text-pink-500',
-    'cache_manager': 'text-slate-400',
-    'error_policy': 'text-orange-400',
-    'spark': 'text-yellow-500',
-    'spark_before': 'text-yellow-500',
-    'spark_after': 'text-amber-500',
-  };
-  return colorMap[type] || 'text-zinc-400';
+function getNodeColor(type: YAMLNodeType, node?: YAMLNode): string {
+  // Check if node is disabled (enabled: false)
+  const isDisabled = node?.data?.enabled === false;
+  
+  if (isDisabled) {
+    // Gris más claro para CUALQUIER elemento deshabilitado
+    return 'text-zinc-400';
+  }
+  
+  // Use explicit switch to ensure Tailwind detects all classes
+  switch (type) {
+    case 'root':
+    case 'test':
+      return 'text-orange-400';
+    case 'variables':
+      return 'text-pink-400';
+    case 'data_source':
+      return 'text-cyan-400';
+    case 'http_defaults':
+      return 'text-sky-400';
+    case 'scenarios':
+      return 'text-violet-400';
+    case 'scenario':
+      return 'text-yellow-400';
+    case 'metrics':
+      return 'text-indigo-400';
+    case 'load':
+      return 'text-red-500';
+    case 'steps':
+    case 'step':
+      return 'text-amber-400';
+    case 'request':
+    case 'get':
+    case 'post':
+    case 'put':
+    case 'delete':
+    case 'patch':
+    case 'head':
+    case 'options':
+      return 'text-emerald-400';
+    case 'group':
+    case 'simple':
+      return 'text-blue-400';
+    case 'if':
+      return 'text-pink-500';
+    case 'loop':
+      return 'text-purple-400';
+    case 'retry':
+      return 'text-red-400';
+    case 'on_error':
+    case 'error_policy':
+      return 'text-orange-500';
+    case 'think_time':
+      return 'text-orange-400';
+    case 'extract':
+    case 'extractor':
+      return 'text-blue-400';
+    case 'assert':
+    case 'assertion':
+      return 'text-green-400';
+    case 'cookies':
+      return 'text-pink-400';
+    case 'cache_manager':
+      return 'text-slate-400';
+    case 'spark':
+      return 'text-purple-500';
+    case 'spark_before':
+      return 'text-purple-500';
+    case 'spark_after':
+      return 'text-violet-500';
+    default:
+      return 'text-zinc-400';
+  }
 }
 
 function getNodeBadge(node: YAMLNode): JSX.Element | null {
   const httpMethods = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
+  
+  // Badge DISABLED para requests deshabilitados
+  if (node.data?.enabled === false && (httpMethods.includes(node.type) || node.type === 'request')) {
+    return (
+      <span className="text-xs px-1.5 py-0.5 rounded bg-zinc-700/50 text-zinc-400 font-mono uppercase">
+        disabled
+      </span>
+    );
+  }
   
   if (httpMethods.includes(node.type)) {
     return (
@@ -377,16 +430,16 @@ function getNodeBadge(node: YAMLNode): JSX.Element | null {
 
   if (node.type === 'think_time' && node.data?.duration) {
     return (
-      <span className="text-xs px-1.5 py-0.5 rounded bg-cyan-400/10 text-cyan-400 font-mono">
+      <span className="text-xs px-1.5 py-0.5 rounded bg-amber-400/20 text-amber-300 font-mono">
         {node.data.duration}
       </span>
     );
   }
 
-  // Spark badges
+  // Spark badges con gradientes
   if (node.type === 'spark_before') {
     return (
-      <span className="text-xs px-1.5 py-0.5 rounded bg-orange-400/10 text-orange-400 font-mono">
+      <span className="text-xs px-1.5 py-0.5 rounded bg-gradient-to-r from-purple-400/20 via-pink-400/20 to-red-400/20 text-fuchsia-300 font-mono border border-fuchsia-400/30">
         before
       </span>
     );
@@ -394,7 +447,7 @@ function getNodeBadge(node: YAMLNode): JSX.Element | null {
 
   if (node.type === 'spark_after') {
     return (
-      <span className="text-xs px-1.5 py-0.5 rounded bg-amber-400/10 text-amber-400 font-mono">
+      <span className="text-xs px-1.5 py-0.5 rounded bg-gradient-to-r from-cyan-400/20 via-blue-400/20 to-purple-500/20 text-cyan-300 font-mono border border-cyan-400/30">
         after
       </span>
     );
@@ -403,7 +456,7 @@ function getNodeBadge(node: YAMLNode): JSX.Element | null {
   // Assertion badge
   if (node.type === 'assertion' && node.data?.type) {
     return (
-      <span className="text-xs px-1.5 py-0.5 rounded bg-yellow-400/10 text-yellow-400 font-mono">
+      <span className="text-xs px-1.5 py-0.5 rounded bg-lime-400/20 text-lime-300 font-mono">
         {node.data.type}
       </span>
     );
@@ -412,7 +465,7 @@ function getNodeBadge(node: YAMLNode): JSX.Element | null {
   // Extractor badge
   if (node.type === 'extractor' && node.data?.type) {
     return (
-      <span className="text-xs px-1.5 py-0.5 rounded bg-blue-400/10 text-blue-400 font-mono">
+      <span className="text-xs px-1.5 py-0.5 rounded bg-teal-400/20 text-teal-300 font-mono">
         {node.data.type}
       </span>
     );

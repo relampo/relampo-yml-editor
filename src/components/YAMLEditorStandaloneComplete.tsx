@@ -6,10 +6,12 @@ import { YAMLTreeView } from './YAMLTreeView';
 import { YAMLNodeDetails } from './YAMLNodeDetails';
 import { parseYAMLToTree, treeToYAML } from '../utils/yamlParser';
 import type { YAMLNode } from '../types/yaml';
+import { useLanguage } from '../contexts/LanguageContext';
 
 type ViewMode = 'code' | 'tree';
 
 export function YAMLEditorStandaloneComplete() {
+  const { language, setLanguage } = useLanguage();
   const [yamlCode, setYamlCode] = useState<string>('');
   const [yamlTree, setYamlTree] = useState<YAMLNode | null>(null);
   const [selectedNode, setSelectedNode] = useState<YAMLNode | null>(null);
@@ -18,7 +20,7 @@ export function YAMLEditorStandaloneComplete() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Inicializar árbol al montar
+  // Initialize tree on mount
   useEffect(() => {
     if (!isInitialized) {
       const defaultYaml = getDefaultYAML();
@@ -28,7 +30,7 @@ export function YAMLEditorStandaloneComplete() {
     }
   }, [isInitialized]);
 
-  // Sincronizar código a árbol
+  // Synchronize code to tree
   const syncCodeToTree = (code: string) => {
     try {
       const tree = parseYAMLToTree(code);
@@ -41,7 +43,7 @@ export function YAMLEditorStandaloneComplete() {
     }
   };
 
-  // Sincronizar árbol a código
+  // Synchronize tree to code
   const syncTreeToCode = (tree: YAMLNode) => {
     try {
       const code = treeToYAML(tree);
@@ -114,7 +116,7 @@ export function YAMLEditorStandaloneComplete() {
 
   return (
     <div className="flex flex-col h-screen bg-[#0a0a0a] w-full overflow-hidden">
-      {/* Header con Logo de Relampo */}
+      {/* Header with Relampo Logo */}
       <div className="bg-[#111111] border-b border-white/5 px-6 py-4 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -128,8 +130,28 @@ export function YAMLEditorStandaloneComplete() {
               <h1 className="text-xl font-black text-zinc-100 tracking-tight">
                 RELAMPO
               </h1>
-              <p className="text-xs text-zinc-500">YAML Editor</p>
+              <p className="text-xs text-zinc-500">{language === 'es' ? 'Editor de YAML' : 'YAML Editor'}</p>
             </div>
+          </div>
+          
+          {/* Language Toggle */}
+          <div className="flex items-center gap-2">
+            <span className={`text-sm font-medium transition-colors ${
+              language === 'en' ? 'text-yellow-400' : 'text-zinc-500'
+            }`}>EN</span>
+            <button
+              onClick={() => setLanguage(language === 'en' ? 'es' : 'en')}
+              className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 focus:ring-offset-[#111111] bg-zinc-700 hover:bg-zinc-600"
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-yellow-400 transition-transform ${
+                  language === 'es' ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+            <span className={`text-sm font-medium transition-colors ${
+              language === 'es' ? 'text-yellow-400' : 'text-zinc-500'
+            }`}>ES</span>
           </div>
           
           <div className="flex items-center gap-2">
@@ -171,9 +193,9 @@ export function YAMLEditorStandaloneComplete() {
         </div>
       )}
 
-      {/* Panel dividido: Editor/Árbol + Detalles */}
+      {/* Split panel: Editor/Tree + Details */}
       <div className="flex flex-1 overflow-hidden min-h-0 min-w-0">
-        {/* Panel Izquierdo: Código o Árbol */}
+        {/* Left Panel: Code or Tree */}
         <div className="w-1/2 min-w-0 border-r border-white/5 flex flex-col">
           {/* Toggle Code/Tree */}
           <div className="flex items-center border-b border-white/5 bg-[#111111] flex-shrink-0">
@@ -233,12 +255,12 @@ export function YAMLEditorStandaloneComplete() {
 
 function getDefaultYAML(): string {
   return `# ============================================================================
-# RELAMPO YAML - GENERADO AUTOMÁTICAMENTE DESDE GRABACIÓN
+# RELAMPO YAML - AUTOMATICALLY GENERATED FROM RECORDING
 # ============================================================================
-# Grabado: 2024-01-24 10:35:22 UTC
-# Duración de grabación: 15 segundos
-# Total de requests capturados: 4
-# Configuración: capture_response = true
+# Recorded: 2024-01-24 10:35:22 UTC
+# Recording duration: 15 seconds
+# Total requests captured: 4
+# Configuration: capture_response = true
 # ============================================================================
 
 test:
@@ -267,7 +289,7 @@ scenarios:
       mode: auto
     steps:
       # =====================================================
-      # Request 1: POST - Login (genera token)
+      # Request 1: POST - Login (generates token)
       # =====================================================
       - request:
           method: POST
@@ -298,7 +320,7 @@ scenarios:
             time_ms: 189
 
       # =====================================================
-      # Request 2: GET - Obtener perfil (usa token, retorna accountKey)
+      # Request 2: GET - Get profile (uses token, returns accountKey)
       # =====================================================
       - request:
           method: GET
@@ -329,7 +351,7 @@ scenarios:
             time_ms: 67
 
       # =====================================================
-      # Request 3: GET - Obtener configuración de cuenta (usa accountKey en path, retorna regionId)
+      # Request 3: GET - Get account configuration (uses accountKey in path, returns regionId)
       # =====================================================
       - request:
           method: GET
@@ -366,7 +388,7 @@ scenarios:
             time_ms: 112
 
       # =====================================================
-      # Request 4: POST - Crear recurso en región (usa regionId en body)
+      # Request 4: POST - Create resource in region (uses regionId in body)
       # =====================================================
       - request:
           method: POST

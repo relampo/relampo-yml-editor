@@ -1,0 +1,28 @@
+test:
+  name: "Test with disabled requests"
+
+scenarios:
+  - name: "Test Scenario"
+    load:
+      type: constant
+      users: 1
+      duration: "1m"
+    
+    steps:
+      - request:
+          method: GET
+          url: /api/enabled
+          enabled: true
+      
+      - request:
+          method: GET
+          url: /api/disabled
+          enabled: false
+      
+      - request:
+          method: POST
+          url: /api/login
+          enabled: false
+          body:
+            username: test
+            password: test

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Download, Upload, FileText, Play, Save, X } from 'lucide-react';
+import { Download, Upload, FileText, Play, Save } from 'lucide-react';
 import { Button } from './ui/button';
 import JSZip from 'jszip';
 import html2canvas from 'html2canvas';
@@ -183,6 +183,38 @@ scenarios:
 
   const [downloadMessage, setDownloadMessage] = useState<string | null>(null);
   const [fileName, setFileName] = useState('relampo-test.yaml');
+  const [language, setLanguage] = useState<'en' | 'es'>('en');
+
+  const translations = {
+    en: {
+      title: 'RELAMPO',
+      subtitle: 'YAML Editor',
+      file: 'File',
+      lines: 'lines',
+      tagline: 'Performance testing made simple',
+      upload: 'Upload YAML',
+      save: 'Save YAML',
+      run: 'Run Test',
+      download: 'Download Package',
+      ready: 'Ready',
+      characters: 'characters'
+    },
+    es: {
+      title: 'RELAMPO',
+      subtitle: 'Editor de YAML',
+      file: 'Archivo',
+      lines: 'líneas',
+      tagline: 'Testing de rendimiento simplificado',
+      upload: 'Cargar YAML',
+      save: 'Guardar YAML',
+      run: 'Ejecutar Test',
+      download: 'Descargar Paquete',
+      ready: 'Listo',
+      characters: 'caracteres'
+    }
+  };
+
+  const t = translations[language];
 
   const handleUpload = () => {
     const input = document.createElement('input');
@@ -389,38 +421,46 @@ https://relampo.dev/docs/examples
 
   return (
     <div id="yaml-editor-capture" className="h-full w-full bg-[#0a0a0a] flex flex-col overflow-hidden">
-      {/* Header with Relampo Logo */}
+      {/* Header with Relampo Logo - Converter Style */}
       <div className="bg-[#111111] border-b border-white/5 px-8 py-4 flex-shrink-0">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+          {/* Left: Brand */}
+          <div className="flex items-center gap-3">
             {/* Relampo Logo */}
-            <div className="flex items-center gap-3">
-              <div className="relative w-10 h-10 bg-gradient-to-br from-yellow-300 via-yellow-400 to-yellow-500 rounded-xl flex items-center justify-center shadow-xl shadow-yellow-400/40">
-                <svg width="18" height="22" viewBox="0 0 18 22" fill="none">
-                  <path d="M10.5 0L0 12.5H7.5L6 22L18 9H10.5V0Z" fill="white" className="drop-shadow-lg"/>
-                </svg>
-              </div>
-              <div>
-                <h1 className="text-xl font-black text-zinc-100 tracking-tight">
-                  RELAMPO
-                </h1>
-                <p className="text-xs text-zinc-500">YAML Editor</p>
-              </div>
+            <div className="relative w-10 h-10 bg-gradient-to-br from-yellow-300 via-yellow-400 to-yellow-500 rounded-xl flex items-center justify-center shadow-xl shadow-yellow-400/40">
+              <svg width="18" height="22" viewBox="0 0 18 22" fill="none">
+                <path d="M10.5 0L0 12.5H7.5L6 22L18 9H10.5V0Z" fill="white" className="drop-shadow-lg"/>
+              </svg>
             </div>
-            
-            <div className="h-8 w-px bg-white/10 mx-2" />
-            
             <div>
-              <p className="text-sm text-zinc-400">
-                <FileText className="w-4 h-4 inline mr-1.5" />
-                {fileName}
-              </p>
-              <p className="text-xs text-zinc-600 mt-0.5">
-                {lineCount} lines • Performance testing made simple
-              </p>
+              <h1 className="text-xl font-black text-zinc-100 tracking-tight">
+                {t.title}
+              </h1>
+              <p className="text-xs text-zinc-500">{t.subtitle}</p>
             </div>
           </div>
-          
+
+          {/* Center: Language Toggle */}
+          <div className="flex items-center gap-2">
+            <span className={`text-sm font-medium transition-colors ${
+              language === 'en' ? 'text-yellow-400' : 'text-zinc-500'
+            }`}>EN</span>
+            <button
+              onClick={() => setLanguage(language === 'en' ? 'es' : 'en')}
+              className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 focus:ring-offset-[#111111] bg-zinc-700 hover:bg-zinc-600"
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-yellow-400 transition-transform ${
+                  language === 'es' ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+            <span className={`text-sm font-medium transition-colors ${
+              language === 'es' ? 'text-yellow-400' : 'text-zinc-500'
+            }`}>ES</span>
+          </div>
+
+          {/* Right: Action Buttons */}
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
@@ -429,7 +469,7 @@ https://relampo.dev/docs/examples
               onClick={handleUpload}
             >
               <Upload className="w-4 h-4 mr-2" />
-              Upload YAML
+              {t.upload}
             </Button>
             <Button
               variant="outline"
@@ -438,16 +478,7 @@ https://relampo.dev/docs/examples
               onClick={handleDownloadYAML}
             >
               <Save className="w-4 h-4 mr-2" />
-              Save YAML
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="border-green-400/20 bg-green-400/5 hover:bg-green-400/10 text-green-400"
-              onClick={handleRun}
-            >
-              <Play className="w-4 h-4 mr-2" />
-              Run Test
+              {t.save}
             </Button>
             <Button
               variant="outline"
@@ -456,7 +487,34 @@ https://relampo.dev/docs/examples
               onClick={handleDownloadPackage}
             >
               <Download className="w-4 h-4 mr-2" />
-              Download Package
+              {t.download}
+            </Button>
+          </div>
+        </div>
+
+        {/* Secondary toolbar with file info and run button */}
+        <div className="flex items-center justify-between mt-4">
+          <div className="flex items-center gap-4">
+            <div>
+              <p className="text-sm text-zinc-400">
+                <FileText className="w-4 h-4 inline mr-1.5" />
+                {fileName}
+              </p>
+              <p className="text-xs text-zinc-600 mt-0.5">
+                {lineCount} {t.lines} • {t.tagline}
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-green-400/20 bg-green-400/5 hover:bg-green-400/10 text-green-400"
+              onClick={handleRun}
+            >
+              <Play className="w-4 h-4 mr-2" />
+              {t.run}
             </Button>
           </div>
         </div>
@@ -506,11 +564,11 @@ https://relampo.dev/docs/examples
             <span>LF</span>
           </div>
           <div className="flex items-center gap-4">
-            <span>{lineCount} lines</span>
-            <span>{yamlContent.length} characters</span>
+            <span>{lineCount} {t.lines}</span>
+            <span>{yamlContent.length} {t.characters}</span>
             <span className="flex items-center gap-1.5">
               <div className="w-2 h-2 bg-green-400 rounded-full" />
-              Ready
+              {t.ready}
             </span>
           </div>
         </div>
