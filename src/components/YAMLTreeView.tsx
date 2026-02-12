@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Search, X } from 'lucide-react';
 import type { YAMLNode } from '../types/yaml';
 import { YAMLTreeNode } from './YAMLTreeNode';
 import { YAMLContextMenu, type YAMLAddableNodeType } from './YAMLContextMenu';
@@ -21,6 +22,7 @@ export function YAMLTreeView({
     y: number;
     node: YAMLNode;
   } | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const handleContextMenu = (e: React.MouseEvent, node: YAMLNode) => {
     e.preventDefault();
@@ -73,6 +75,8 @@ export function YAMLTreeView({
     onTreeChange(updatedTree);
   };
 
+  // No filtrar, solo pasar el searchQuery para highlight
+
   if (!tree) {
     return (
       <div className="h-full w-full bg-[#0a0a0a] flex items-center justify-center">
@@ -90,17 +94,55 @@ export function YAMLTreeView({
   }
 
   return (
-    <div className="h-full w-full bg-[#0a0a0a] overflow-y-auto p-3">
-      <YAMLTreeNode
-        node={tree}
-        depth={0}
-        isSelected={selectedNode?.id === tree.id}
-        selectedNodeId={selectedNode?.id}
-        onNodeSelect={onNodeSelect}
-        onNodeToggle={handleNodeToggle}
-        onContextMenu={handleContextMenu}
-        onNodeMove={handleNodeMove}
-      />
+    <div className="h-full w-full bg-[#0a0a0a] flex flex-col">
+      {/* Search Bar - Estilo exacto del converter */}
+      <div className="flex-shrink-0 px-3 pt-3 pb-2">
+        <div className="flex items-center gap-2 p-3 bg-[#111111] border border-white/10 rounded-lg">
+          {/* Input container */}
+          <div className="flex-1 flex items-center gap-2 bg-[#0a0a0a] border border-white/10 rounded px-3 py-1.5">
+            <Search className="w-4 h-4 text-zinc-500 flex-shrink-0" />
+            <input
+              type="text"
+              placeholder="Search nodes..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="flex-1 bg-transparent border-none text-sm text-zinc-300 placeholder-zinc-500 outline-none"
+            />
+          </div>
+          
+          {/* Close button */}
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="p-1.5 bg-[#0a0a0a] border border-white/10 rounded text-zinc-500 hover:border-yellow-400 hover:text-yellow-400 transition-all flex items-center justify-center"
+              title="Close search"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Tree */}
+      <div className="flex-1 overflow-y-auto px-3 pb-3">
+        {tree ? (
+          <YAMLTreeNode
+            node={tree}
+            depth={0}
+            isSelected={selectedNode?.id === tree.id}
+            selectedNodeId={selectedNode?.id}
+            onNodeSelect={onNodeSelect}
+            onNodeToggle={handleNodeToggle}
+            onContextMenu={handleContextMenu}
+            onNodeMove={handleNodeMove}
+            searchQuery={searchQuery}
+          />
+        ) : (
+          <div className="flex items-center justify-center h-32">
+            <p className="text-sm text-zinc-500">No YAML loaded</p>
+          </div>
+        )}
+      </div>
 
       {/* Context Menu */}
       {contextMenu && (

@@ -1,4 +1,5 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { Search, X, ChevronUp, ChevronDown } from 'lucide-react';
 
 interface YAMLCodeEditorProps {
   value: string;
@@ -8,12 +9,44 @@ interface YAMLCodeEditorProps {
 export function YAMLCodeEditor({ value, onChange }: YAMLCodeEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const highlightRef = useRef<HTMLDivElement>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
+  const [totalMatches, setTotalMatches] = useState(0);
 
   useEffect(() => {
     if (highlightRef.current) {
-      highlightRef.current.innerHTML = highlightYAML(value);
+      const { html, matches } = highlightYAML(value, searchQuery, currentMatchIndex);
+      highlightRef.current.innerHTML = html;
+      setTotalMatches(matches);
+      
+      // Resetear índice si no hay matches
+      if (matches === 0 && currentMatchIndex !== 0) {
+        setCurrentMatchIndex(0);
+      }
+      
+      // Auto-scroll al match actual
+      if (matches > 0 && searchQuery.trim()) {
+        setTimeout(() => {
+          const currentMark = highlightRef.current?.querySelector('mark[data-current="true"]');
+          if (currentMark) {
+            currentMark.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 10);
+      }
     }
-  }, [value]);
+  }, [value, searchQuery, currentMatchIndex]);
+
+  const handleNextMatch = () => {
+    if (totalMatches > 0) {
+      setCurrentMatchIndex((prev) => (prev + 1) % totalMatches);
+    }
+  };
+
+  const handlePrevMatch = () => {
+    if (totalMatches > 0) {
+      setCurrentMatchIndex((prev) => (prev - 1 + totalMatches) % totalMatches);
+    }
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     onChange(e.target.value);
@@ -48,7 +81,62 @@ export function YAMLCodeEditor({ value, onChange }: YAMLCodeEditorProps) {
   const lineNumbers = value.split('\n').map((_, i) => i + 1).join('\n');
 
   return (
-    <div className="relative h-full w-full bg-[#0a0a0a] overflow-hidden font-mono text-sm">
+    <div className="relative h-full w-full bg-[#0a0a0a] flex flex-col font-mono text-sm">
+      {/* Search Bar - Estilo exacto del converter */}
+      <div className="flex-shrink-0 px-3 pt-3 pb-2 bg-[#0a0a0a]">
+        <div className="flex items-center gap-2 p-3 bg-[#111111] border border-white/10 rounded-lg">
+          {/* Input container */}
+          <div className="flex-1 flex items-center gap-2 bg-[#0a0a0a] border border-white/10 rounded px-3 py-1.5">
+            <Search className="w-4 h-4 text-zinc-500 flex-shrink-0" />
+            <input
+              type="text"
+              placeholder="Search in YAML..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentMatchIndex(0);
+              }}
+              className="flex-1 bg-transparent border-none text-sm text-zinc-300 placeholder-zinc-500 outline-none font-sans"
+            />
+            <span className="text-xs text-zinc-500 font-semibold flex-shrink-0 font-mono">
+              {totalMatches > 0 ? `${currentMatchIndex + 1}/${totalMatches}` : '0/0'}
+            </span>
+          </div>
+          
+          {/* Navigation buttons */}
+          <div className="flex gap-1">
+            <button
+              onClick={handlePrevMatch}
+              disabled={totalMatches === 0}
+              className="p-1.5 bg-[#0a0a0a] border border-white/10 rounded text-zinc-500 hover:border-yellow-400 hover:text-yellow-400 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center"
+              title="Previous"
+            >
+              <ChevronUp className="w-4 h-4" />
+            </button>
+            <button
+              onClick={handleNextMatch}
+              disabled={totalMatches === 0}
+              className="p-1.5 bg-[#0a0a0a] border border-white/10 rounded text-zinc-500 hover:border-yellow-400 hover:text-yellow-400 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center"
+              title="Next"
+            >
+              <ChevronDown className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => {
+                setSearchQuery('');
+                setCurrentMatchIndex(0);
+              }}
+              className="p-1.5 bg-[#0a0a0a] border border-white/10 rounded text-zinc-500 hover:border-yellow-400 hover:text-yellow-400 transition-all flex items-center justify-center"
+              title="Close search"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Editor */}
+      <div className="relative flex-1 overflow-hidden">
       <div className="absolute inset-0 flex min-w-0">
         {/* Line numbers */}
         <div className="w-12 flex-shrink-0 bg-[#0a0a0a] border-r border-white/5 overflow-hidden">
@@ -82,14 +170,15 @@ export function YAMLCodeEditor({ value, onChange }: YAMLCodeEditorProps) {
           />
         </div>
       </div>
+      </div>
     </div>
   );
 }
 
-function highlightYAML(code: string): string {
-  const lines = code.split('\n');
+function highlightYAML(code: string, searchQuery: string = '', currentMatchIndex: number = 0): { html: string; matches: number } {
+  let lines = code.split('\n');
   
-  return lines.map(line => {
+  lines = lines.map(line => {
     if (line.trim() === '') {
       return ' ';
     }
@@ -137,7 +226,36 @@ function highlightYAML(code: string): string {
 
     // Default
     return `<span style="color: #e4e4e7">${escapeHtml(line)}</span>`;
-  }).join('\n');
+  });
+  
+  // Count matches and highlight search results
+  let matchCount = 0;
+  if (searchQuery.trim() !== '') {
+    const regex = new RegExp(escapeRegex(searchQuery), 'gi');
+    
+    // Count total matches
+    const allText = lines.join('\n');
+    const matches = allText.match(regex);
+    const totalMatches = matches ? matches.length : 0;
+    
+    // Apply highlighting with current match different
+    let currentMatch = 0;
+    lines = lines.map(line => {
+      return line.replace(new RegExp(`(${escapeRegex(searchQuery)})`, 'gi'), (match) => {
+        const isCurrentMatch = currentMatch === currentMatchIndex;
+        currentMatch++;
+        
+        if (isCurrentMatch) {
+          return `<mark data-current="true" style="background-color: #facc15; color: #000; padding: 0 2px; border-radius: 2px; outline: 2px solid #f59e0b;">${match}</mark>`;
+        }
+        return `<mark style="background-color: #facc15; color: #000; padding: 0 2px; border-radius: 2px; opacity: 0.6;">${match}</mark>`;
+      });
+    });
+    
+    return { html: lines.join('\n'), matches: totalMatches };
+  }
+  
+  return { html: lines.join('\n'), matches: 0 };
 }
 
 function escapeHtml(text: string): string {
@@ -147,4 +265,8 @@ function escapeHtml(text: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
+}
+
+function escapeRegex(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }

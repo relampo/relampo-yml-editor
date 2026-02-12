@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { FileText, Plus, Trash2 } from 'lucide-react';
 import type { YAMLNode } from '../types/yaml';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -52,6 +52,12 @@ interface YAMLNodeDetailsProps {
 
 export function YAMLNodeDetails({ node, onNodeUpdate }: YAMLNodeDetailsProps) {
   const { t } = useLanguage();
+  const [nodeName, setNodeName] = useState(node?.name || '');
+  
+  // Sincronizar cuando cambia el nodo seleccionado
+  useEffect(() => {
+    setNodeName(node?.name || '');
+  }, [node?.id, node?.name]);
 
   if (!node) {
     return (
@@ -151,12 +157,13 @@ export function YAMLNodeDetails({ node, onNodeUpdate }: YAMLNodeDetailsProps) {
             Name
           </label>
           <Input
-            value={node.name}
-            onChange={(e) => {
-              if (onNodeUpdate) {
-                // Actualizar el nombre del nodo
-                const updatedNode = { ...node, name: e.target.value };
-                onNodeUpdate(node.id, node.data || {});
+            value={nodeName}
+            onChange={(e) => setNodeName(e.target.value)}
+            onBlur={() => {
+              if (onNodeUpdate && nodeName !== node.name) {
+                // Actualizar TANTO el nombre como los datos del nodo
+                const updatedData = { ...node.data, __name: nodeName };
+                onNodeUpdate(node.id, updatedData);
               }
             }}
             className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-semibold"
@@ -233,13 +240,60 @@ function renderVariablesDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
 
 function renderDataSourceDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): JSX.Element {
   const data = node.data || {};
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
   const handleChange = (field: string, value: any) => {
     if (onNodeUpdate) onNodeUpdate(node.id, { ...data, [field]: value });
   };
+  
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleChange('file', file.name);
+    }
+  };
+  
   return (
     <>
       <EditableField label="Type" value={data.type || ''} field="type" onChange={handleChange} />
-      <EditableField label="File" value={data.file || ''} field="file" onChange={handleChange} />
+      
+      {/* File field con botón de selección */}
+      <div className="mb-4">
+        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+          File
+        </label>
+        <div className="flex gap-2">
+          <Input
+            value={data.file || ''}
+            onChange={(e) => handleChange('file', e.target.value)}
+            placeholder="path/to/file.csv"
+            className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+          />
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              fileInputRef.current?.click();
+            }}
+            className="px-3 py-2 bg-yellow-400/10 border border-yellow-400/30 rounded text-yellow-400 hover:bg-yellow-400/20 text-sm font-medium transition-colors flex items-center gap-2"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            Browse
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv,.txt,.json"
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+        </div>
+      </div>
+      
       <EditableField label="Mode" value={data.mode || ''} field="mode" onChange={handleChange} />
       <EditableField label="Strategy" value={data.strategy || ''} field="strategy" onChange={handleChange} />
       <EditableField label="On Exhausted" value={data.on_exhausted || ''} field="on_exhausted" onChange={handleChange} />
