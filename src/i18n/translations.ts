@@ -416,12 +416,6 @@ export const translations = {
         properties: "Properties",
         comments: "Comments",
         noProperties: "No additional properties",
-        type: "Type",
-        duration: "Duration",
-        timeout: "Timeout",
-        method: "Method",
-        url: "URL",
-        version: "Version",
       },
       
       // Context menu
@@ -861,12 +855,6 @@ export const translations = {
         properties: "Propiedades",
         comments: "Comentarios",
         noProperties: "Sin propiedades adicionales",
-        type: "Tipo",
-        duration: "Duración",
-        timeout: "Tiempo de espera",
-        method: "Método",
-        url: "URL",
-        version: "Versión",
       },
       
       // Context menu
