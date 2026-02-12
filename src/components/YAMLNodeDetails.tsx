@@ -17,7 +17,7 @@ interface EditableFieldProps {
 }
 
 // Component with local state to prevent focus loss
-functiofunction EditableField({ label, value, field, onChange, type = 'text' }: EditableFieldProps) {
+function EditableField({ label, value, field, onChange, type = 'text' }: EditableFieldProps) {
   const [localValue, setLocalValue] = useState(String(value || ''));
   
   // Synchronize when external value changes (e.g., when selecting another node)
