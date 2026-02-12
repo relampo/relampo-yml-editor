@@ -223,7 +223,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
           type: 'headers',
           name: 'Headers',
           data: req.headers,
-          path: [...path, 'headers'],
+          path: [...path, 'request', 'headers'],
         });
       }
     }
