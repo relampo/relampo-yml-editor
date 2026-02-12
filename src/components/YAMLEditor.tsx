@@ -22,7 +22,7 @@ export function YAMLEditor() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Inicializar árbol al montar
+  // Initialize tree on mount
   useEffect(() => {
     if (!isInitialized) {
       const defaultYaml = yamlContent || getDefaultYAML();
@@ -34,7 +34,7 @@ export function YAMLEditor() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Sincronizar código a árbol
+  // Synchronize code to tree
   const syncCodeToTree = (code: string) => {
     try {
       const tree = parseYAMLToTree(code);
@@ -48,7 +48,7 @@ export function YAMLEditor() {
     }
   };
 
-  // Sincronizar árbol a código
+  // Synchronize tree to code
   const syncTreeToCode = (tree: YAMLNode) => {
     try {
       const code = treeToYAML(tree);
@@ -62,7 +62,7 @@ export function YAMLEditor() {
 
   const handleCodeChange = (newCode: string) => {
     setYamlCode(newCode);
-    setYamlContent(newCode); // Actualizar contexto
+    setYamlContent(newCode); // Update context
     syncCodeToTree(newCode);
   };
 
@@ -78,7 +78,13 @@ export function YAMLEditor() {
     
     const updateNodeInTree = (node: YAMLNode): YAMLNode => {
       if (node.id === nodeId) {
-        const updated = { ...node, data: updatedData };
+        // Extract __name if present and apply it to node.name
+        const { __name, ...cleanData } = updatedData || {};
+        const updated = { 
+          ...node, 
+          name: __name !== undefined ? __name : node.name,
+          data: cleanData 
+        };
         if (selectedNode?.id === nodeId) {
           updatedSelectedNode = updated;
         }
@@ -96,7 +102,7 @@ export function YAMLEditor() {
     const updatedTree = updateNodeInTree(yamlTree);
     setYamlTree(updatedTree);
     
-    // Actualizar selectedNode si es el nodo que se modificó
+    // Update selectedNode if it's the node that was modified
     if (updatedSelectedNode) {
       setSelectedNode(updatedSelectedNode);
     }
@@ -115,7 +121,7 @@ export function YAMLEditor() {
       reader.onload = (event) => {
         const content = event.target?.result as string;
         setYamlCode(content);
-        setYamlContent(content); // Actualizar contexto
+        setYamlContent(content); // Update context
         syncCodeToTree(content);
       };
       reader.readAsText(file);
@@ -259,9 +265,9 @@ export function YAMLEditor() {
         </div>
       )}
 
-      {/* Panel dividido: Editor/Árbol + Detalles */}
+      {/* Split panel: Editor/Tree + Details */}
       <div className="flex flex-1 overflow-hidden min-h-0 min-w-0">
-        {/* Panel Izquierdo: Código o Árbol */}
+        {/* Left Panel: Code or Tree */}
         <div className="w-1/2 min-w-0 border-r border-white/5 flex flex-col">
           {/* Toggle Code/Tree */}
           <div className="flex items-center border-b border-white/5 bg-[#111111] flex-shrink-0">
@@ -307,7 +313,7 @@ export function YAMLEditor() {
           </div>
         </div>
 
-        {/* Panel Derecho: Detalles */}
+        {/* Right Panel: Details */}
         <div className="w-1/2 min-w-0 overflow-hidden">
           <YAMLNodeDetails
             node={selectedNode}
@@ -322,7 +328,7 @@ export function YAMLEditor() {
 function getDefaultYAML(): string {
   return `test:
   name: "Pulse Performance Test"
-  description: "Test de rendimiento con Spark Scripts"
+  description: "Performance test with Spark Scripts"
   version: "1.0"
 
 variables:

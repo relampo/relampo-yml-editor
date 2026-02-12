@@ -1,6 +1,6 @@
 test:
   name: "Complete Relampo Test"
-  description: "Test con todos los elementos de la especificación v1"
+  description: "Test with all elements of the v1 specification"
   version: "1.0"
 
 variables:
@@ -47,10 +47,10 @@ scenarios:
       on_timeout: stop
     
     steps:
-      # Request básico
+      # Basic request
       - get: /health
       
-      # Request con extract y assert
+      # Request with extract and assert
       - request:
           method: POST
           url: /api/login
@@ -71,7 +71,7 @@ scenarios:
       # Think time
       - think_time: 2s
       
-      # Request con spark before/after
+      # Request with spark before/after
       - request:
           method: GET
           url: /api/profile
@@ -88,7 +88,7 @@ scenarios:
                 vars.profile_loaded = true;
                 console.log("Profile loaded for user: " + data.name);
       
-      # Group con múltiples requests
+      # Group with multiple requests
       - group:
           name: "Product Operations"
           steps:

@@ -1,5 +1,5 @@
 test:
-  name: "Test con requests deshabilitados"
+  name: "Test with disabled requests"
 
 scenarios:
   - name: "Test Scenario"
