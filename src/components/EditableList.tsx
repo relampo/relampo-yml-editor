@@ -3,8 +3,8 @@ import { Plus, Trash2, Edit2, Check, X, CheckCircle2, Circle } from 'lucide-reac
 import { Input } from './ui/input';
 
 interface EditableListItem {
-  originalKey: string;  // La key original que no cambia
-  key: string;          // La key que se edita
+  originalKey: string;  // The original key that doesn't change
+  key: string;          // The key being edited
   value: string;
   checked?: boolean;
 }
@@ -39,7 +39,7 @@ export function EditableList({
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState<{ key: string; value: string } | null>(null);
 
-  // Sincronizar items externos con estado local
+  // Synchronize external items with local state
   useEffect(() => {
     const newItems = Object.entries(items).map(([key, value]) => ({
       originalKey: key,
@@ -55,7 +55,7 @@ export function EditableList({
     const updatedItems = { ...items, [newKey]: '' };
     onUpdate(updatedItems);
     
-    // Auto-editar el nuevo item
+    // Auto-edit the new item
     setTimeout(() => {
       setEditingValue({ key: newKey, value: '' });
     }, 50);
@@ -66,7 +66,7 @@ export function EditableList({
     delete updatedItems[key];
     onUpdate(updatedItems);
     
-    // Remover de seleccionados
+    // Remove from selected
     const newSelected = new Set(selectedKeys);
     newSelected.delete(key);
     setSelectedKeys(newSelected);
@@ -89,7 +89,7 @@ export function EditableList({
   const handleKeyChange = (originalKey: string, newKey: string) => {
     if (!newKey.trim()) {
       setEditingKey(null);
-      // Restaurar valor original
+      // Restore original value
       const newItems = localItems.map(i =>
         i.originalKey === originalKey ? { ...i, key: originalKey } : i
       );
@@ -203,7 +203,7 @@ export function EditableList({
 
               {/* Content */}
               <div className="flex-1 space-y-2">
-                {/* Key (nombre) - en una línea con el valor */}
+                {/* Key (name) - inline with the value */}
                 <div className="flex items-center gap-2">
                   {editingKey === item.originalKey ? (
                     <>

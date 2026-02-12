@@ -16,11 +16,11 @@ interface EditableFieldProps {
   type?: 'text' | 'number';
 }
 
-// Componente con estado local para evitar pérdida de foco
-function EditableField({ label, value, field, onChange, type = 'text' }: EditableFieldProps) {
+// Component with local state to prevent focus loss
+functiofunction EditableField({ label, value, field, onChange, type = 'text' }: EditableFieldProps) {
   const [localValue, setLocalValue] = useState(String(value || ''));
   
-  // Sincronizar cuando el valor externo cambia (por ejemplo, al seleccionar otro nodo)
+  // Synchronize when external value changes (e.g., when selecting another node)
   useEffect(() => {
     setLocalValue(String(value || ''));
   }, [value]);
@@ -154,7 +154,7 @@ export function YAMLNodeDetails({ node, onNodeUpdate }: YAMLNodeDetailsProps) {
             value={node.name}
             onChange={(e) => {
               if (onNodeUpdate) {
-                // Actualizar el nombre del nodo - include name in data
+                // Update node name - include name in data
                 onNodeUpdate(node.id, { ...node.data, __name: e.target.value });
               }
             }}

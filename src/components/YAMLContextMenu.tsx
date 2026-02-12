@@ -83,11 +83,11 @@ export function YAMLContextMenu({
 
     return () => {
       document.removeEventListener('click', handleClick);
-      document.removeEventListener('keydown', handleEscape);
+    document.removeEventListener('keydown', handleEscape);
     };
   }, [onClose]);
 
-  // Ajustar posición para que no se corte
+  // Adjust position to prevent clipping
   useEffect(() => {
     if (menuRef.current) {
       const rect = menuRef.current.getBoundingClientRect();
@@ -97,17 +97,17 @@ export function YAMLContextMenu({
       let newX = x;
       let newY = y;
       
-      // Ajustar si se sale por la derecha
+      // Adjust if it goes off the right edge
       if (x + rect.width > viewportWidth - 10) {
         newX = viewportWidth - rect.width - 10;
       }
       
-      // Ajustar si se sale por abajo
+      // Adjust if it goes off the bottom
       if (y + rect.height > viewportHeight - 10) {
         newY = viewportHeight - rect.height - 10;
       }
       
-      // Asegurar que no sea negativo
+      // Ensure it's not negative
       newX = Math.max(10, newX);
       newY = Math.max(10, newY);
       
@@ -135,7 +135,7 @@ export function YAMLContextMenu({
           <div className="px-3 py-1.5 sticky top-0 bg-[#111111] z-10">
             <div className="flex items-center gap-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider">
               <Plus className="w-3 h-3" />
-              Agregar
+              Add
             </div>
           </div>
 
@@ -193,7 +193,7 @@ export function YAMLContextMenu({
             className="w-full px-3 py-2 flex items-center gap-3 hover:bg-red-500/10 text-left transition-colors text-red-400"
           >
             <Trash2 className="w-4 h-4" />
-            <span className="text-sm">Eliminar</span>
+            <span className="text-sm">Delete</span>
           </button>
         </>
       )}
@@ -218,28 +218,28 @@ function getAddableItems(parentType: string): AddableItem[] {
       {
         type: 'variables',
         label: 'Variables',
-        description: 'Variables globales',
+        description: 'Global variables',
         icon: <Braces className={iconClass} />,
         color: 'text-pink-400',
       },
       {
         type: 'data_source',
         label: 'Data Source',
-        description: 'Fuente de datos CSV',
+        description: 'CSV data source',
         icon: <Database className={iconClass} />,
         color: 'text-cyan-400',
       },
       {
         type: 'http_defaults',
         label: 'HTTP Defaults',
-        description: 'Configuración HTTP base',
+        description: 'Base HTTP configuration',
         icon: <Settings className={iconClass} />,
         color: 'text-sky-400',
       },
       {
         type: 'metrics',
         label: 'Metrics',
-        description: 'Configuración de métricas',
+        description: 'Metrics configuration',
         icon: <BarChart3 className={iconClass} />,
         color: 'text-indigo-400',
       },
@@ -252,7 +252,7 @@ function getAddableItems(parentType: string): AddableItem[] {
       {
         type: 'scenario',
         label: 'Scenario',
-        description: 'Nuevo escenario de carga',
+        description: 'New load scenario',
         icon: <Zap className={iconClass} />,
         color: 'text-yellow-400',
       },
@@ -265,28 +265,28 @@ function getAddableItems(parentType: string): AddableItem[] {
       {
         type: 'load',
         label: 'Load Config',
-        description: 'Configuración de carga',
+        description: 'Load configuration',
         icon: <Gauge className={iconClass} />,
         color: 'text-red-500',
       },
       {
         type: 'cookies',
         label: 'Cookies',
-        description: 'Gestor de cookies',
+        description: 'Cookie manager',
         icon: <Cookie className={iconClass} />,
         color: 'text-pink-400',
       },
       {
         type: 'cache_manager',
         label: 'Cache Manager',
-        description: 'Gestor de caché',
+        description: 'Cache manager',
         icon: <HardDrive className={iconClass} />,
         color: 'text-slate-400',
       },
       {
         type: 'error_policy',
         label: 'Error Policy',
-        description: 'Política de errores',
+        description: 'Error policy',
         icon: <FileCode className={iconClass} />,
         color: 'text-orange-500',
       },
@@ -300,35 +300,35 @@ function getAddableItems(parentType: string): AddableItem[] {
       {
         type: 'spark_before',
         label: 'Spark Before',
-        description: 'Script antes del request',
+        description: 'Script before request',
         icon: <CodeXml className={iconClass} />,
         color: 'text-purple-500',
       },
       {
         type: 'spark_after',
         label: 'Spark After',
-        description: 'Script después del request',
+        description: 'Script after request',
         icon: <CodeXml className={iconClass} />,
         color: 'text-violet-500',
       },
       {
         type: 'assertion',
         label: 'Assertion',
-        description: 'Validación de respuesta',
+        description: 'Response validation',
         icon: <CheckCircle className={iconClass} />,
         color: 'text-green-400',
       },
       {
         type: 'extractor',
         label: 'Extractor',
-        description: 'Extracción de datos',
+        description: 'Data extraction',
         icon: <Filter className={iconClass} />,
         color: 'text-blue-400',
       },
       {
         type: 'think_time',
         label: 'Think Time',
-        description: 'Pausa después del request',
+        description: 'Pause after request',
         icon: <Clock className={iconClass} />,
         color: 'text-orange-400',
       },
@@ -349,42 +349,42 @@ function getAddableItems(parentType: string): AddableItem[] {
       {
         type: 'group',
         label: 'Group',
-        description: 'Agrupar steps',
+        description: 'Group steps',
         icon: <Folder className={iconClass} />,
         color: 'text-blue-400',
       },
       {
         type: 'if',
         label: 'If Controller',
-        description: 'Ejecución condicional',
+        description: 'Conditional execution',
         icon: <Folder className={iconClass} />,
         color: 'text-pink-500',
       },
       {
         type: 'loop',
         label: 'Loop Controller',
-        description: 'Repetir steps',
+        description: 'Repeat steps',
         icon: <Folder className={iconClass} />,
         color: 'text-purple-400',
       },
       {
         type: 'retry',
         label: 'Retry Controller',
-        description: 'Reintentar con backoff',
+        description: 'Retry with backoff',
         icon: <Folder className={iconClass} />,
         color: 'text-red-400',
       },
       {
         type: 'on_error',
         label: 'On Error',
-        description: 'Manejo de errores',
+        description: 'Error handling',
         icon: <AlertTriangle className={iconClass} />,
         color: 'text-orange-500',
       },
       {
         type: 'think_time',
         label: 'Think Time',
-        description: 'Pausa entre requests',
+        description: 'Pause between requests',
         icon: <Clock className={iconClass} />,
         color: 'text-orange-400',
       },

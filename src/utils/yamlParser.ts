@@ -238,7 +238,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       });
     }
 
-    // EXTRACT as array (convertidor JMX format: [{name, var, expression}])
+    // EXTRACT as array (JMX converter format: [{name, var, expression}])
     if (req.extract && Array.isArray(req.extract)) {
       req.extract.forEach((extractor: any, idx: number) => {
         const varName = extractor.var || extractor.variable || 'unknown';
@@ -279,7 +279,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       });
     }
 
-    // ASSERT as array (convertidor JMX format: [{name, type, value}])
+    // ASSERT as array (JMX converter format: [{name, type, value}])
     if (req.assert && Array.isArray(req.assert)) {
       req.assert.forEach((assertion: any, idx: number) => {
         const label = assertion.type || assertion.name || 'check';
@@ -306,7 +306,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       });
     }
 
-    // THINK_TIME inline (dentro del request)
+    // THINK_TIME inline (inside the request)
     if (req.think_time) {
       requestNode.children!.push({
         id: `${stepId}_think_time`,
@@ -317,7 +317,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       });
     }
 
-    // ON_ERROR inline (dentro del request)
+    // ON_ERROR inline (inside the request)
     if (req.on_error) {
       requestNode.children!.push({
         id: `${stepId}_on_error`,
@@ -337,15 +337,15 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
     let data: any;
     
     if (typeof step.think_time === 'string') {
-      // Formato simple: "2s"
+      // Simple format: "2s"
       duration = step.think_time;
       data = { duration: step.think_time };
     } else if (step.think_time.duration) {
-      // Formato convertidor: {name: "...", duration: "1s"}
+      // Converter format: {name: "...", duration: "1s"}
       duration = step.think_time.duration;
       data = step.think_time;
     } else if (step.think_time.min) {
-      // Formato variable: {min: "1s", max: "3s"}
+      // Variable format: {min: "1s", max: "3s"}
       duration = `${step.think_time.min}-${step.think_time.max}`;
       data = step.think_time;
     } else {
@@ -565,14 +565,14 @@ function stepNodeToObject(node: YAMLNode): any {
         request.request.extractors = extractorNodes.map(ext => ext.data);
       }
 
-      // EXTRACT (detectar formato por datos)
+      // EXTRACT (detect format from data)
       const extractNodes = node.children.filter(child => child.type === 'extract');
       if (extractNodes.length > 0) {
-        // Si tiene 'var' o 'name' en data, es formato array
+        // If it has 'var' or 'name' in data, it's array format
         if (extractNodes[0].data?.var || extractNodes[0].data?.name) {
           request.request.extract = extractNodes.map(ext => ext.data);
         } else {
-          // Formato objeto spec {variable: expression}
+          // Spec object format {variable: expression}
           request.request.extract = {};
           extractNodes.forEach(extractor => {
             request.request.extract[extractor.data.variable] = extractor.data.expression;
@@ -586,14 +586,14 @@ function stepNodeToObject(node: YAMLNode): any {
         request.request.assertions = assertionNodes.map(assertion => assertion.data);
       }
 
-      // ASSERT (detectar formato por datos)
+      // ASSERT (detect format from data)
       const assertNodes = node.children.filter(child => child.type === 'assert');
       if (assertNodes.length > 0) {
-        // Si tiene 'type' o 'name' en data, es formato array
+        // If it has 'type' or 'name' in data, it's array format
         if (assertNodes[0].data?.type || assertNodes[0].data?.name) {
           request.request.assert = assertNodes.map(assertion => assertion.data);
         } else {
-          // Formato objeto spec {assertion: value}
+          // Spec object format {assertion: value}
           request.request.assert = {};
           assertNodes.forEach(assertion => {
             request.request.assert[assertion.data.assertion] = assertion.data.value;

@@ -20,7 +20,7 @@ export function YAMLEditorStandaloneComplete() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Inicializar árbol al montar
+  // Initialize tree on mount
   useEffect(() => {
     if (!isInitialized) {
       const defaultYaml = getDefaultYAML();
@@ -30,7 +30,7 @@ export function YAMLEditorStandaloneComplete() {
     }
   }, [isInitialized]);
 
-  // Sincronizar código a árbol
+  // Synchronize code to tree
   const syncCodeToTree = (code: string) => {
     try {
       const tree = parseYAMLToTree(code);
@@ -43,7 +43,7 @@ export function YAMLEditorStandaloneComplete() {
     }
   };
 
-  // Sincronizar árbol a código
+  // Synchronize tree to code
   const syncTreeToCode = (tree: YAMLNode) => {
     try {
       const code = treeToYAML(tree);
@@ -116,7 +116,7 @@ export function YAMLEditorStandaloneComplete() {
 
   return (
     <div className="flex flex-col h-screen bg-[#0a0a0a] w-full overflow-hidden">
-      {/* Header con Logo de Relampo */}
+      {/* Header with Relampo Logo */}
       <div className="bg-[#111111] border-b border-white/5 px-6 py-4 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -193,9 +193,9 @@ export function YAMLEditorStandaloneComplete() {
         </div>
       )}
 
-      {/* Panel dividido: Editor/Árbol + Detalles */}
+      {/* Split panel: Editor/Tree + Details */}
       <div className="flex flex-1 overflow-hidden min-h-0 min-w-0">
-        {/* Panel Izquierdo: Código o Árbol */}
+        {/* Left Panel: Code or Tree */}
         <div className="w-1/2 min-w-0 border-r border-white/5 flex flex-col">
           {/* Toggle Code/Tree */}
           <div className="flex items-center border-b border-white/5 bg-[#111111] flex-shrink-0">
@@ -255,12 +255,12 @@ export function YAMLEditorStandaloneComplete() {
 
 function getDefaultYAML(): string {
   return `# ============================================================================
-# RELAMPO YAML - GENERADO AUTOMÁTICAMENTE DESDE GRABACIÓN
+# RELAMPO YAML - AUTOMATICALLY GENERATED FROM RECORDING
 # ============================================================================
-# Grabado: 2024-01-24 10:35:22 UTC
-# Duración de grabación: 15 segundos
-# Total de requests capturados: 4
-# Configuración: capture_response = true
+# Recorded: 2024-01-24 10:35:22 UTC
+# Recording duration: 15 seconds
+# Total requests captured: 4
+# Configuration: capture_response = true
 # ============================================================================
 
 test:
@@ -289,7 +289,7 @@ scenarios:
       mode: auto
     steps:
       # =====================================================
-      # Request 1: POST - Login (genera token)
+      # Request 1: POST - Login (generates token)
       # =====================================================
       - request:
           method: POST
@@ -320,7 +320,7 @@ scenarios:
             time_ms: 189
 
       # =====================================================
-      # Request 2: GET - Obtener perfil (usa token, retorna accountKey)
+      # Request 2: GET - Get profile (uses token, returns accountKey)
       # =====================================================
       - request:
           method: GET
@@ -351,7 +351,7 @@ scenarios:
             time_ms: 67
 
       # =====================================================
-      # Request 3: GET - Obtener configuración de cuenta (usa accountKey en path, retorna regionId)
+      # Request 3: GET - Get account configuration (uses accountKey in path, returns regionId)
       # =====================================================
       - request:
           method: GET
@@ -388,7 +388,7 @@ scenarios:
             time_ms: 112
 
       # =====================================================
-      # Request 4: POST - Crear recurso en región (usa regionId en body)
+      # Request 4: POST - Create resource in region (uses regionId in body)
       # =====================================================
       - request:
           method: POST
