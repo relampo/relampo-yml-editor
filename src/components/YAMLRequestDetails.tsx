@@ -3,6 +3,12 @@ import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import { Search, ChevronUp, ChevronDown } from 'lucide-react';
 import type { YAMLNode } from '../types/yaml';
+import { MethodDropdown } from './fields/MethodDropdown';
+import { QueryParamsEditor } from './fields/QueryParamsEditor';
+import { BodyTypeSelector } from './fields/BodyTypeSelector';
+import { HeaderCommonDropdown } from './fields/HeaderCommonDropdown';
+import { EditableList } from './EditableList';
+import { YAMLResponseDetails } from './YAMLResponseDetails';
 
 interface YAMLRequestDetailsProps {
   node: YAMLNode;
@@ -132,8 +138,9 @@ export function YAMLRequestDetails({ node, onNodeUpdate }: YAMLRequestDetailsPro
             currentMatchIndex={currentMatchIndex}
           />
         ) : (
-          <ResponseContent 
+          <YAMLResponseDetails
             response={formData.response}
+            onResponseUpdate={(updatedResponse) => handleFieldChange('response', updatedResponse)}
             searchText={searchText}
             currentMatchIndex={currentMatchIndex}
           />
@@ -339,80 +346,82 @@ function RequestContent({
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
           Method
         </label>
-        <select
+        <MethodDropdown
           value={formData.method || 'GET'}
-          onChange={(e) => onFieldChange('method', e.target.value)}
-          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
-        >
-          <option value="GET">GET</option>
-          <option value="POST">POST</option>
-          <option value="PUT">PUT</option>
-          <option value="DELETE">DELETE</option>
-          <option value="PATCH">PATCH</option>
-          <option value="HEAD">HEAD</option>
-          <option value="OPTIONS">OPTIONS</option>
-        </select>
+          onChange={(method) => onFieldChange('method', method)}
+          className="w-full"
+        />
+        {searchText && formData.method && formData.method.toLowerCase().includes(searchText.toLowerCase()) && (
+          <div className="mt-1 text-xs text-yellow-400 flex items-center gap-1">
+            <span>✓</span> Match found
+          </div>
+        )}
       </div>
 
-      {/* URL */}
+      {/* URL with Query Parameters */}
+      <QueryParamsEditor
+        url={formData.url || ''}
+        onUrlChange={(url) => onFieldChange('url', url)}
+      />
+
+      {/* Headers */}
       <div>
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-          URL
-        </label>
-        <Input
-          value={formData.url || ''}
-          onChange={(e) => onFieldChange('url', e.target.value)}
-          className="px-3 py-2 bg-white/5 border border-white/10 rounded text-sm font-mono text-zinc-300"
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+              HTTP Headers
+            </label>
+            {searchText && formData.headers && Object.entries(formData.headers).some(([k, v]) => 
+              k.toLowerCase().includes(searchText.toLowerCase()) || 
+              String(v).toLowerCase().includes(searchText.toLowerCase())
+            ) && (
+              <span className="text-xs text-yellow-400 flex items-center gap-1">
+                <span>✓</span> {Object.entries(formData.headers).filter(([k, v]) => 
+                  k.toLowerCase().includes(searchText.toLowerCase()) || 
+                  String(v).toLowerCase().includes(searchText.toLowerCase())
+                ).length} match(es)
+              </span>
+            )}
+          </div>
+          <HeaderCommonDropdown
+            onAddHeader={(key, value) => {
+              const newHeaders = { ...formData.headers, [key]: value };
+              onFieldChange('headers', newHeaders);
+            }}
+          />
+        </div>
+        <EditableList
+          title=""
+          items={formData.headers || {}}
+          onUpdate={(headers) => onFieldChange('headers', headers)}
+          keyPlaceholder="Header-Name"
+          valuePlaceholder="value"
+          keyLabel="Header"
+          valueLabel="Value"
+          enableCheckboxes={false}
+          enableBulkActions={false}
         />
       </div>
 
-      {/* Headers */}
-      {formData.headers && Object.keys(formData.headers).length > 0 && (
-        <div>
-          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-            Headers
-          </label>
-          <div className="space-y-2">
-            {Object.entries(formData.headers).map(([key, value]) => (
-              <div key={key} className="grid grid-cols-2 gap-2">
-                <Input
-                  value={key}
-                  onChange={(e) => onHeaderChange(key, e.target.value, String(value))}
-                  className="px-3 py-2 bg-white/5 border border-white/10 rounded text-xs font-mono text-indigo-400"
-                />
-                <Input
-                  value={String(value)}
-                  onChange={(e) => onHeaderChange(key, key, e.target.value)}
-                  className="px-3 py-2 bg-white/5 border border-white/10 rounded text-xs font-mono text-zinc-300"
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Body */}
-      {formData.body && (
-        <div>
-          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-            Body
-          </label>
-          <Textarea
-            value={typeof formData.body === 'string' 
-              ? formData.body 
-              : JSON.stringify(formData.body, null, 2)}
-            onChange={(e) => onBodyChange(e.target.value)}
-            className="p-3 bg-white/5 border border-white/10 rounded max-h-[300px] overflow-auto text-xs font-mono text-zinc-300 whitespace-pre-wrap break-words min-h-[200px]"
-          />
-        </div>
-      )}
+      <BodyTypeSelector
+        body={formData.body}
+        onBodyChange={(body, type) => onFieldChange('body', body)}
+      />
 
       {/* Recorded At */}
       {formData.recorded_at && (
         <div>
-          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-            Recorded At
-          </label>
+          <div className="flex items-center gap-2 mb-2">
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+              Recorded At
+            </label>
+            {searchText && formData.recorded_at.toLowerCase().includes(searchText.toLowerCase()) && (
+              <span className="text-xs text-yellow-400 flex items-center gap-1">
+                <span>✓</span> Match
+              </span>
+            )}
+          </div>
           <Input
             value={formData.recorded_at}
             onChange={(e) => onFieldChange('recorded_at', e.target.value)}
@@ -424,9 +433,18 @@ function RequestContent({
       {/* 🔥 SPARK SCRIPTS */}
       {formData.spark && Array.isArray(formData.spark) && formData.spark.length > 0 && (
         <div>
-          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-            Spark Scripts ({formData.spark.length})
-          </label>
+          <div className="flex items-center gap-2 mb-2">
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+              Spark Scripts ({formData.spark.length})
+            </label>
+            {searchText && formData.spark.some((s: any) => 
+              s.script?.toLowerCase().includes(searchText.toLowerCase())
+            ) && (
+              <span className="text-xs text-yellow-400 flex items-center gap-1">
+                <span>✓</span> Match in scripts
+              </span>
+            )}
+          </div>
           <div className="space-y-2">
             {formData.spark.map((spark: any, idx: number) => (
               <div key={idx} className={`p-3 rounded border ${
@@ -440,7 +458,10 @@ function RequestContent({
                   {spark.when === 'after' ? '⏵ After Request' : '⏵ Before Request'}
                 </div>
                 <pre className="text-xs font-mono text-zinc-400 whitespace-pre-wrap max-h-[150px] overflow-y-auto">
-                  {spark.script?.substring(0, 300)}{spark.script?.length > 300 ? '...' : ''}
+                  {highlightText(
+                    spark.script?.substring(0, 300) + (spark.script?.length > 300 ? '...' : ''),
+                    searchText
+                  )}
                 </pre>
               </div>
             ))}
@@ -451,23 +472,34 @@ function RequestContent({
       {/* EXTRACTORS (Pulse format) */}
       {formData.extractors && Array.isArray(formData.extractors) && formData.extractors.length > 0 && (
         <div>
-          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-            🔍 Extractors ({formData.extractors.length})
-          </label>
+          <div className="flex items-center gap-2 mb-2">
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+              🔍 Extractors ({formData.extractors.length})
+            </label>
+            {searchText && formData.extractors.some((e: any) => 
+              e.var?.toLowerCase().includes(searchText.toLowerCase()) ||
+              e.variable?.toLowerCase().includes(searchText.toLowerCase()) ||
+              e.pattern?.toLowerCase().includes(searchText.toLowerCase())
+            ) && (
+              <span className="text-xs text-yellow-400 flex items-center gap-1">
+                <span>✓</span> Match in extractors
+              </span>
+            )}
+          </div>
           <div className="space-y-2">
             {formData.extractors.map((ext: any, idx: number) => (
               <div key={idx} className="p-3 bg-blue-400/5 border border-blue-400/20 rounded">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-xs px-1.5 py-0.5 bg-blue-400/20 text-blue-400 rounded font-mono">
-                    {ext.type || 'regex'}
+                    {highlightText(ext.type || 'regex', searchText)}
                   </span>
                   <span className="text-sm font-mono text-purple-400">
-                    ${'{'}${ext.var || ext.variable}${'}'}
+                    ${'{'}${highlightText(ext.var || ext.variable, searchText)}${'}'}
                   </span>
                 </div>
                 {ext.pattern && (
                   <div className="text-xs font-mono text-zinc-500 truncate">
-                    {ext.pattern}
+                    {highlightText(ext.pattern, searchText)}
                   </div>
                 )}
               </div>
@@ -485,9 +517,9 @@ function RequestContent({
           <div className="space-y-2">
             {Object.entries(formData.extract).map(([key, value]) => (
               <div key={key} className="p-2 bg-blue-400/5 border border-blue-400/20 rounded text-sm">
-                <span className="font-mono text-purple-400">${'{'}${key}${'}'}</span>
+                <span className="font-mono text-purple-400">${'{'}${highlightText(key, searchText)}${'}'}</span>
                 <span className="text-zinc-500 mx-2">←</span>
-                <span className="font-mono text-zinc-300 text-xs">{String(value)}</span>
+                <span className="font-mono text-zinc-300 text-xs">{highlightText(String(value), searchText)}</span>
               </div>
             ))}
           </div>
@@ -497,17 +529,31 @@ function RequestContent({
       {/* ASSERTIONS (Pulse format) */}
       {formData.assertions && Array.isArray(formData.assertions) && formData.assertions.length > 0 && (
         <div>
-          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-            ✅ Assertions ({formData.assertions.length})
-          </label>
+          <div className="flex items-center gap-2 mb-2">
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+              ✅ Assertions ({formData.assertions.length})
+            </label>
+            {searchText && formData.assertions.some((a: any) => 
+              a.type?.toLowerCase().includes(searchText.toLowerCase()) ||
+              String(a.value || '').toLowerCase().includes(searchText.toLowerCase()) ||
+              a.pattern?.toLowerCase().includes(searchText.toLowerCase())
+            ) && (
+              <span className="text-xs text-yellow-400 flex items-center gap-1">
+                <span>✓</span> Match in assertions
+              </span>
+            )}
+          </div>
           <div className="space-y-2">
             {formData.assertions.map((assertion: any, idx: number) => (
               <div key={idx} className="p-2 bg-green-400/5 border border-green-400/20 rounded flex items-center gap-2">
                 <span className="text-xs px-1.5 py-0.5 bg-green-400/20 text-green-400 rounded font-mono">
-                  {assertion.type}
+                  {highlightText(assertion.type, searchText)}
                 </span>
                 <span className="text-sm font-mono text-zinc-300">
-                  {assertion.value !== undefined ? String(assertion.value) : assertion.pattern || assertion.name || ''}
+                  {highlightText(
+                    assertion.value !== undefined ? String(assertion.value) : assertion.pattern || assertion.name || '',
+                    searchText
+                  )}
                 </span>
               </div>
             ))}
@@ -525,9 +571,9 @@ function RequestContent({
             {Object.entries(formData.assert).map(([key, value]) => (
               <div key={key} className="p-2 bg-green-400/5 border border-green-400/20 rounded flex items-center gap-2">
                 <span className="text-xs px-1.5 py-0.5 bg-green-400/20 text-green-400 rounded font-mono">
-                  {key}
+                  {highlightText(key, searchText)}
                 </span>
-                <span className="text-sm font-mono text-zinc-300">{String(value)}</span>
+                <span className="text-sm font-mono text-zinc-300">{highlightText(String(value), searchText)}</span>
               </div>
             ))}
           </div>
@@ -537,11 +583,18 @@ function RequestContent({
       {/* THINK TIME inline */}
       {formData.think_time && (
         <div>
-          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-            ⏱ Think Time
-          </label>
+          <div className="flex items-center gap-2 mb-2">
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+              ⏱ Think Time
+            </label>
+            {searchText && String(formData.think_time).toLowerCase().includes(searchText.toLowerCase()) && (
+              <span className="text-xs text-yellow-400 flex items-center gap-1">
+                <span>✓</span> Match
+              </span>
+            )}
+          </div>
           <div className="px-3 py-2 bg-cyan-400/5 border border-cyan-400/20 rounded text-sm font-mono text-cyan-400">
-            {formData.think_time}
+            {highlightText(String(formData.think_time), searchText)}
           </div>
         </div>
       )}
@@ -549,120 +602,6 @@ function RequestContent({
   );
 }
 
-interface ResponseContentProps {
-  response: any;
-  searchText: string;
-  currentMatchIndex: number;
-}
-
-function ResponseContent({ response, searchText, currentMatchIndex }: ResponseContentProps) {
-  if (!response) {
-    return (
-      <div className="text-sm text-zinc-500 italic">
-        No response data recorded
-      </div>
-    );
-  }
-
-  let matchCounter = 0;
-
-  const highlightText = (text: string, search: string): JSX.Element | string => {
-    if (!search || !text) return text;
-    
-    const parts = text.split(new RegExp(`(${escapeRegex(search)})`, 'gi'));
-    
-    return (
-      <>
-        {parts.map((part, i) => {
-          if (part.toLowerCase() === search.toLowerCase()) {
-            const thisMatchIndex = matchCounter++;
-            const isActive = thisMatchIndex === currentMatchIndex;
-            return (
-              <mark 
-                key={i} 
-                data-match-index={thisMatchIndex}
-                className={`${isActive ? 'bg-yellow-400/50 ring-2 ring-yellow-400' : 'bg-yellow-400/30'} text-yellow-200 transition-all`}
-              >
-                {part}
-              </mark>
-            );
-          }
-          return part;
-        })}
-      </>
-    );
-  };
-
-  return (
-    <div className="space-y-4">
-      {/* Status */}
-      <div>
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-          Status
-        </label>
-        <div className="px-3 py-2 bg-white/5 border border-white/10 rounded text-sm">
-          <span className="font-mono text-green-400">
-            {highlightText(String(response.status), searchText)}
-          </span>
-        </div>
-      </div>
-
-      {/* Time */}
-      {response.time_ms && (
-        <div>
-          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-            Response Time
-          </label>
-          <div className="px-3 py-2 bg-white/5 border border-white/10 rounded text-sm">
-            <span className="font-mono text-cyan-400">
-              {highlightText(String(response.time_ms), searchText)}ms
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* Response Headers */}
-      {response.headers && (
-        <div>
-          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-            Response Headers
-          </label>
-          <div className="space-y-1">
-            {Object.entries(response.headers).map(([key, value]) => (
-              <div key={key} className="p-2 bg-white/5 border border-white/10 rounded text-sm font-mono">
-                <div className="text-indigo-400 text-xs">
-                  {highlightText(key, searchText)}
-                </div>
-                <div className="text-zinc-300 mt-0.5">
-                  {highlightText(String(value), searchText)}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Response Body */}
-      {response.body && (
-        <div>
-          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-            Response Body
-          </label>
-          <div className="p-3 bg-white/5 border border-white/10 rounded">
-            <pre className="text-xs font-mono text-zinc-300 overflow-x-auto max-h-[400px] overflow-y-auto whitespace-pre-wrap break-words">
-              {highlightText(
-                typeof response.body === 'string' 
-                  ? response.body 
-                  : JSON.stringify(response.body, null, 2),
-                searchText
-              )}
-            </pre>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

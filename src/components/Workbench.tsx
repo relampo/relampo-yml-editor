@@ -4,7 +4,7 @@ import { HTML5Backend } from 'react-dnd-html5-backend';
 import { ScriptTree } from './ScriptTree';
 import { DetailPanel } from './DetailPanel';
 import { RenameDialog } from './RenameDialog';
-import { Circle, FileText, Sparkles, Bug, Zap, Activity } from 'lucide-react';
+import { Circle, FileText, Sparkles, Bug, Zap, Activity, Languages } from 'lucide-react';
 import type { ScriptNode } from '../types/script';
 import { mockScriptTree } from '../data/mockScriptTree';
 import type { AddableNodeType } from './ContextMenu';
@@ -13,7 +13,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 type WorkbenchTab = 'recording' | 'scripting' | 'correlation' | 'debugging' | 'generation' | 'monitoring';
 
 export function Workbench() {
-  const { t } = useLanguage();
+  const { language, setLanguage, t } = useLanguage();
   const [activeTab, setActiveTab] = useState<WorkbenchTab>('scripting');
   const [selectedNode, setSelectedNode] = useState<ScriptNode | null>(null);
   const [scriptTree, setScriptTree] = useState<ScriptNode>(mockScriptTree);
@@ -317,8 +317,9 @@ export function Workbench() {
     <div className="h-full w-full bg-[#0a0a0a] flex flex-col overflow-hidden">
       {/* Workbench Tabs */}
       <div className="bg-[#111111] border-b border-white/5 flex-shrink-0">
-        <div className="flex items-center px-8 gap-2">
-          {tabs.map((tab) => (
+        <div className="flex items-center justify-between px-8">
+          <div className="flex items-center gap-2">
+            {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
@@ -343,7 +344,28 @@ export function Workbench() {
                 <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-500 rounded-t-full shadow-lg shadow-yellow-400/30" />
               )}
             </button>
-          ))}
+            ))}
+          </div>
+          
+          {/* Language Toggle */}
+          <div className="flex items-center gap-2 py-2">
+            <span className={`text-xs font-medium transition-colors ${
+              language === 'en' ? 'text-yellow-400' : 'text-zinc-500'
+            }`}>EN</span>
+            <button
+              onClick={() => setLanguage(language === 'en' ? 'es' : 'en')}
+              className="relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 focus:ring-offset-[#111111] bg-zinc-700 hover:bg-zinc-600"
+            >
+              <span
+                className={`inline-block h-3 w-3 transform rounded-full bg-yellow-400 transition-transform ${
+                  language === 'es' ? 'translate-x-5' : 'translate-x-1'
+                }`}
+              />
+            </button>
+            <span className={`text-xs font-medium transition-colors ${
+              language === 'es' ? 'text-yellow-400' : 'text-zinc-500'
+            }`}>ES</span>
+          </div>
         </div>
       </div>
 

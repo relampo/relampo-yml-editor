@@ -7,6 +7,7 @@ import {
   GitBranch,
   Repeat,
   RefreshCw,
+  FolderOpen,
   Clock,
   Zap,
   CheckCircle,
@@ -20,6 +21,10 @@ import {
   FileCode,
   BarChart3,
   Gauge,
+  Eye,
+  EyeOff,
+  CodeXml,
+  AlertTriangle,
 } from 'lucide-react';
 import type { YAMLNode, YAMLNodeType } from '../types/yaml';
 
@@ -30,6 +35,7 @@ export type YAMLAddableNodeType =
   | 'if'
   | 'loop'
   | 'retry'
+  | 'on_error'
   | 'think_time'
   | 'assertion'
   | 'extractor'
@@ -51,6 +57,7 @@ interface YAMLContextMenuProps {
   onClose: () => void;
   onAddNode: (nodeType: YAMLAddableNodeType) => void;
   onRemove: () => void;
+  onToggleEnabled?: (nodeId: string, enabled: boolean) => void;
 }
 
 export function YAMLContextMenu({
@@ -60,6 +67,7 @@ export function YAMLContextMenu({
   onClose,
   onAddNode,
   onRemove,
+  onToggleEnabled,
 }: YAMLContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({ x, y });
@@ -153,14 +161,41 @@ export function YAMLContextMenu({
         </>
       )}
 
-      {node.type !== 'root' && node.type !== 'test' && node.type !== 'scenarios' && node.type !== 'steps' && (
+      {/* Enable/Disable option */}
+      {node.type !== 'root' && node.type !== 'test' && node.type !== 'scenarios' && node.type !== 'steps' && onToggleEnabled && (
         <button
-          onClick={onRemove}
-          className="w-full px-3 py-2 flex items-center gap-3 hover:bg-red-500/10 text-left transition-colors text-red-400"
+          onClick={() => {
+            const isCurrentlyEnabled = node.data?.enabled !== false;
+            onToggleEnabled(node.id, !isCurrentlyEnabled);
+            onClose();
+          }}
+          className="w-full px-3 py-2 flex items-center gap-3 hover:bg-white/5 text-left transition-colors text-zinc-300"
         >
-          <Trash2 className="w-4 h-4" />
-          <span className="text-sm">Eliminar</span>
+          {node.data?.enabled === false ? (
+            <>
+              <Eye className="w-4 h-4" />
+              <span className="text-sm">Enable</span>
+            </>
+          ) : (
+            <>
+              <EyeOff className="w-4 h-4" />
+              <span className="text-sm">Disable</span>
+            </>
+          )}
         </button>
+      )}
+      
+      {node.type !== 'root' && node.type !== 'test' && node.type !== 'scenarios' && node.type !== 'steps' && (
+        <>
+          <div className="h-px bg-white/5 my-1" />
+          <button
+            onClick={onRemove}
+            className="w-full px-3 py-2 flex items-center gap-3 hover:bg-red-500/10 text-left transition-colors text-red-400"
+          >
+            <Trash2 className="w-4 h-4" />
+            <span className="text-sm">Eliminar</span>
+          </button>
+        </>
       )}
     </div>
   );
@@ -239,7 +274,7 @@ function getAddableItems(parentType: string): AddableItem[] {
         label: 'Cookies',
         description: 'Gestor de cookies',
         icon: <Cookie className={iconClass} />,
-        color: 'text-pink-500',
+        color: 'text-pink-400',
       },
       {
         type: 'cache_manager',
@@ -253,7 +288,7 @@ function getAddableItems(parentType: string): AddableItem[] {
         label: 'Error Policy',
         description: 'Política de errores',
         icon: <FileCode className={iconClass} />,
-        color: 'text-orange-400',
+        color: 'text-orange-500',
       },
     ];
   }
@@ -266,42 +301,42 @@ function getAddableItems(parentType: string): AddableItem[] {
         type: 'spark_before',
         label: 'Spark Before',
         description: 'Script antes del request',
-        icon: <Code className={iconClass} />,
-        color: 'text-yellow-500',
+        icon: <CodeXml className={iconClass} />,
+        color: 'text-purple-500',
       },
       {
         type: 'spark_after',
         label: 'Spark After',
         description: 'Script después del request',
-        icon: <Code className={iconClass} />,
-        color: 'text-amber-500',
+        icon: <CodeXml className={iconClass} />,
+        color: 'text-violet-500',
       },
       {
         type: 'assertion',
         label: 'Assertion',
         description: 'Validación de respuesta',
         icon: <CheckCircle className={iconClass} />,
-        color: 'text-yellow-400',
+        color: 'text-green-400',
       },
       {
         type: 'extractor',
         label: 'Extractor',
         description: 'Extracción de datos',
         icon: <Filter className={iconClass} />,
-        color: 'text-cyan-400',
+        color: 'text-blue-400',
       },
       {
         type: 'think_time',
         label: 'Think Time',
         description: 'Pausa después del request',
         icon: <Clock className={iconClass} />,
-        color: 'text-sky-400',
+        color: 'text-orange-400',
       },
     ];
   }
 
-  // LOGIC CONTROLLERS (group, if, loop, retry, simple) y STEPS
-  const controllers = ['group', 'simple', 'if', 'loop', 'retry', 'steps'];
+  // LOGIC CONTROLLERS (group, if, loop, retry, on_error, simple) y STEPS
+  const controllers = ['group', 'simple', 'if', 'loop', 'retry', 'on_error', 'steps'];
   if (controllers.includes(parentType)) {
     return [
       {
@@ -322,29 +357,36 @@ function getAddableItems(parentType: string): AddableItem[] {
         type: 'if',
         label: 'If Controller',
         description: 'Ejecución condicional',
-        icon: <GitBranch className={iconClass} />,
+        icon: <Folder className={iconClass} />,
         color: 'text-pink-500',
       },
       {
         type: 'loop',
         label: 'Loop Controller',
         description: 'Repetir steps',
-        icon: <Repeat className={iconClass} />,
+        icon: <Folder className={iconClass} />,
         color: 'text-purple-400',
       },
       {
         type: 'retry',
         label: 'Retry Controller',
         description: 'Reintentar con backoff',
-        icon: <RefreshCw className={iconClass} />,
+        icon: <Folder className={iconClass} />,
         color: 'text-red-400',
+      },
+      {
+        type: 'on_error',
+        label: 'On Error',
+        description: 'Manejo de errores',
+        icon: <AlertTriangle className={iconClass} />,
+        color: 'text-orange-500',
       },
       {
         type: 'think_time',
         label: 'Think Time',
         description: 'Pausa entre requests',
         icon: <Clock className={iconClass} />,
-        color: 'text-sky-400',
+        color: 'text-orange-400',
       },
     ];
   }

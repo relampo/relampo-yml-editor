@@ -1,0 +1,20 @@
+test:
+  name: "Simple Test"
+
+scenarios:
+  - name: "Test Scenario"
+    load:
+      type: constant
+      users: 1
+      duration: "1m"
+    
+    steps:
+      - request:
+          method: POST
+          url: /api/login
+          extract:
+            token: $.data.token
+            user_id: $.user.id
+          assert:
+            status: 200
+            response_time_ms_max: 500

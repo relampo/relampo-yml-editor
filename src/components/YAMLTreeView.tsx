@@ -66,6 +66,13 @@ export function YAMLTreeView({
     onTreeChange(updatedTree);
   };
 
+  const handleToggleEnabled = (nodeId: string, enabled: boolean) => {
+    if (!tree) return;
+
+    const updatedTree = updateNodeEnabled(tree, nodeId, enabled);
+    onTreeChange(updatedTree);
+  };
+
   if (!tree) {
     return (
       <div className="h-full w-full bg-[#0a0a0a] flex items-center justify-center">
@@ -104,6 +111,7 @@ export function YAMLTreeView({
           onClose={handleCloseContextMenu}
           onAddNode={handleAddNode}
           onRemove={handleRemoveNode}
+          onToggleEnabled={handleToggleEnabled}
         />
       )}
     </div>
@@ -152,6 +160,24 @@ function removeNodeFromTree(tree: YAMLNode, nodeId: string): YAMLNode {
       children: tree.children
         .filter(child => child.id !== nodeId)
         .map(child => removeNodeFromTree(child, nodeId)),
+    };
+  }
+
+  return tree;
+}
+
+function updateNodeEnabled(tree: YAMLNode, nodeId: string, enabled: boolean): YAMLNode {
+  if (tree.id === nodeId) {
+    return {
+      ...tree,
+      data: { ...tree.data, enabled },
+    };
+  }
+
+  if (tree.children) {
+    return {
+      ...tree,
+      children: tree.children.map(child => updateNodeEnabled(child, nodeId, enabled)),
     };
   }
 
@@ -300,6 +326,22 @@ function createNodeByType(type: YAMLAddableNodeType): YAMLNode {
         data: { url: '/api/endpoint', body: '{}' },
         children: [],
       };
+    case 'head':
+      return {
+        id,
+        type: 'head',
+        name: 'HEAD: /api/endpoint',
+        data: { url: '/api/endpoint' },
+        children: [],
+      };
+    case 'options':
+      return {
+        id,
+        type: 'options',
+        name: 'OPTIONS: /api/endpoint',
+        data: { url: '/api/endpoint' },
+        children: [],
+      };
 
     // Logic Controllers
     case 'group':
@@ -336,6 +378,15 @@ function createNodeByType(type: YAMLAddableNodeType): YAMLNode {
         name: 'Retry Controller',
         children: [],
         data: { attempts: 3, backoff: 'exponential' },
+        expanded: true,
+      };
+    case 'on_error':
+      return {
+        id,
+        type: 'on_error',
+        name: 'On Error',
+        children: [],
+        data: { action: 'continue' },
         expanded: true,
       };
 

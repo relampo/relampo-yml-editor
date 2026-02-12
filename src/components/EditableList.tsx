@@ -304,8 +304,8 @@ export function EditableList({
                         </div>
                       ) : (
                         <div className="flex-1 flex items-center justify-between group">
-                          <div className="flex-1 px-3 py-1.5 bg-white/5 border border-white/10 rounded">
-                            <span className="text-sm font-mono text-zinc-200">
+                          <div className="flex-1 px-3 py-1.5 bg-white/5 border border-white/10 rounded overflow-hidden">
+                            <span className="text-sm font-mono text-zinc-200 break-all overflow-wrap-anywhere block">
                               {item.value || <span className="text-zinc-600 italic">empty</span>}
                             </span>
                           </div>
