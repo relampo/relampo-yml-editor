@@ -7,6 +7,8 @@ import { SparkCodeEditor } from './SparkCodeEditor';
 import { EditableList } from './EditableList';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
+let nodeDetailsLanguage: 'en' | 'es' = 'en';
+const tr = (en: string, es: string) => (nodeDetailsLanguage === 'es' ? es : en);
 
 interface EditableFieldProps {
   label: string;
@@ -113,7 +115,8 @@ interface YAMLNodeDetailsProps {
 }
 
 export function YAMLNodeDetails({ node, onNodeUpdate }: YAMLNodeDetailsProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  nodeDetailsLanguage = language;
   const [nodeName, setNodeName] = useState(node?.name || '');
   
   // Sincronizar cuando cambia el nodo seleccionado
@@ -235,7 +238,7 @@ export function YAMLNodeDetails({ node, onNodeUpdate }: YAMLNodeDetailsProps) {
               }
             }}
             className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-semibold"
-            placeholder="Node name"
+            placeholder={tr('Node name', 'Nombre del nodo')}
           />
         </div>
 
@@ -258,19 +261,19 @@ function renderTestDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data:
     <>
       <div className="mb-4">
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-          Description
+          {tr('Description', 'Descripción')}
         </label>
         <Textarea
           value={data.description || ''}
           onChange={(e) => handleChange('description', e.target.value)}
-          placeholder="Test description..."
+          placeholder={tr('Test description...', 'Descripción del test...')}
           className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 min-h-[80px]"
         />
       </div>
       
       <div className="mb-4">
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-          Version
+          {tr('Version', 'Versión')}
         </label>
         <Input
           value={data.version || ''}
@@ -293,13 +296,13 @@ function renderVariablesDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
   
   return (
     <EditableList
-      title="Variables"
+      title={tr('Variables', 'Variables')}
       items={data}
       onUpdate={handleUpdate}
       keyPlaceholder="variable_name"
       valuePlaceholder="value"
-      keyLabel="Variable Name"
-      valueLabel="Value"
+      keyLabel={tr('Variable Name', 'Nombre de variable')}
+      valueLabel={tr('Value', 'Valor')}
       enableCheckboxes={false}
       enableBulkActions={false}
     />
@@ -322,11 +325,11 @@ function renderDataSourceDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string,
   
   return (
     <>
-      <EditableField label="Type" value={data.type || ''} field="type" onChange={handleChange} />
-      <FileField label="File" value={data.file || ''} field="file" onChange={handleChange} />
-      <EditableField label="Mode" value={data.mode || ''} field="mode" onChange={handleChange} />
-      <EditableField label="Strategy" value={data.strategy || ''} field="strategy" onChange={handleChange} />
-      <EditableField label="On Exhausted" value={data.on_exhausted || ''} field="on_exhausted" onChange={handleChange} />
+      <EditableField label={tr('Type', 'Tipo')} value={data.type || ''} field="type" onChange={handleChange} />
+      <FileField label={tr('File', 'Archivo')} value={data.file || ''} field="file" onChange={handleChange} />
+      <EditableField label={tr('Mode', 'Modo')} value={data.mode || ''} field="mode" onChange={handleChange} />
+      <EditableField label={tr('Strategy', 'Estrategia')} value={data.strategy || ''} field="strategy" onChange={handleChange} />
+      <EditableField label={tr('On Exhausted', 'Al agotarse')} value={data.on_exhausted || ''} field="on_exhausted" onChange={handleChange} />
       
       {/* Bind mappings */}
       {Object.keys(bind).length > 0 && (
@@ -334,10 +337,10 @@ function renderDataSourceDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string,
           <div className="h-px bg-white/10 my-4" />
           <div className="mb-4">
             <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
-              Column Bindings
+              {tr('Column Bindings', 'Mapeo de columnas')}
             </label>
             <EditableList
-              title="Bind"
+              title={tr('Bind', 'Mapeo')}
               items={bind}
               onUpdate={handleBindUpdate}
               keyPlaceholder="csv_column"
@@ -382,10 +385,10 @@ function renderHttpDefaultsDetails(node: YAMLNode, onNodeUpdate?: (nodeId: strin
       {/* Main Configuration Fields */}
       <div>
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
-          Configuration
+          {tr('Configuration', 'Configuración')}
         </label>
         <EditableList
-          title="Fields"
+          title={tr('Fields', 'Campos')}
           items={mainFields}
           onUpdate={handleMainFieldsUpdate}
           keyPlaceholder="field_name"
@@ -401,10 +404,10 @@ function renderHttpDefaultsDetails(node: YAMLNode, onNodeUpdate?: (nodeId: strin
       {/* Headers Section */}
       <div>
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
-          Headers
+          {tr('Headers', 'Headers')}
         </label>
         <EditableList
-          title="HTTP Headers"
+          title={tr('HTTP Headers', 'Headers HTTP')}
           items={headers}
           onUpdate={handleHeadersUpdate}
           keyPlaceholder="Header-Name"
@@ -431,12 +434,12 @@ function renderScenariosContainerDetails(node: YAMLNode, onNodeUpdate?: (nodeId:
       {/* Comments/Description */}
       <div>
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-          Description / Comments
+          {tr('Description / Comments', 'Descripción / Comentarios')}
         </label>
         <Textarea
           value={data.description || ''}
           onChange={(e) => handleChange('description', e.target.value)}
-          placeholder="Add notes or description about your scenarios..."
+          placeholder={tr('Add notes or description about your scenarios...', 'Agrega notas o descripción sobre tus escenarios...')}
           className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 min-h-[100px]"
         />
       </div>
@@ -447,11 +450,11 @@ function renderScenariosContainerDetails(node: YAMLNode, onNodeUpdate?: (nodeId:
       {/* Scenarios List */}
       <div>
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
-          Scenarios in this test
+          {tr('Scenarios in this test', 'Escenarios en este test')}
         </label>
         {scenarioCount === 0 ? (
           <div className="p-6 text-center text-zinc-500 text-sm border border-dashed border-white/10 rounded">
-            No scenarios defined. Right-click on "scenarios" in the tree to add one.
+            {tr('No scenarios defined. Right-click on "scenarios" in the tree to add one.', 'No hay escenarios definidos. Haz clic derecho en "scenarios" en el árbol para agregar uno.')}
           </div>
         ) : (
           <div className="space-y-2">
@@ -491,17 +494,17 @@ function renderScenarioDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, d
   };
   return (
     <>
-      <EditableField label="Scenario Name" value={data.name || ''} field="name" onChange={handleChange} />
+      <EditableField label={tr('Scenario Name', 'Nombre del escenario')} value={data.name || ''} field="name" onChange={handleChange} />
       
       {/* Comments/Description */}
       <div className="mb-4">
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-          Comments / Description
+          {tr('Comments / Description', 'Comentarios / Descripción')}
         </label>
         <Textarea
           value={data.comments || ''}
           onChange={(e) => handleChange('comments', e.target.value)}
-          placeholder="Add notes or comments about this scenario..."
+          placeholder={tr('Add notes or comments about this scenario...', 'Agrega notas o comentarios sobre este escenario...')}
           className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 min-h-[80px]"
         />
       </div>
@@ -517,7 +520,7 @@ function renderLoadDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data:
   return (
     <>
       <div className="mb-4">
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Type</label>
+        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{tr('Type', 'Tipo')}</label>
         <select
           value={data.type || 'constant'}
           onChange={(e) => handleChange('type', e.target.value)}
@@ -529,12 +532,12 @@ function renderLoadDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data:
           <option value="step">step</option>
         </select>
       </div>
-      <EditableField label="Users" value={data.users || ''} field="users" onChange={handleChange} type="number" />
-      <EditableField label="Start Users" value={data.start_users || ''} field="start_users" onChange={handleChange} type="number" />
-      <EditableField label="End Users" value={data.end_users || ''} field="end_users" onChange={handleChange} type="number" />
-      <EditableField label="Duration" value={data.duration || ''} field="duration" onChange={handleChange} />
-      <EditableField label="Ramp Up" value={data.ramp_up || ''} field="ramp_up" onChange={handleChange} />
-      <EditableField label="Iterations" value={data.iterations || ''} field="iterations" onChange={handleChange} type="number" />
+      <EditableField label={tr('Users', 'Usuarios')} value={data.users || ''} field="users" onChange={handleChange} type="number" />
+      <EditableField label={tr('Start Users', 'Usuarios iniciales')} value={data.start_users || ''} field="start_users" onChange={handleChange} type="number" />
+      <EditableField label={tr('End Users', 'Usuarios finales')} value={data.end_users || ''} field="end_users" onChange={handleChange} type="number" />
+      <EditableField label={tr('Duration', 'Duración')} value={data.duration || ''} field="duration" onChange={handleChange} />
+      <EditableField label={tr('Ramp Up', 'Ramp Up')} value={data.ramp_up || ''} field="ramp_up" onChange={handleChange} />
+      <EditableField label={tr('Iterations', 'Iteraciones')} value={data.iterations || ''} field="iterations" onChange={handleChange} type="number" />
     </>
   );
 }
@@ -546,8 +549,8 @@ function renderGroupDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data
   };
   return (
     <>
-      <EditableField label="Group Name" value={data.name || ''} field="name" onChange={handleChange} />
-      <DetailField label="Steps Count" value={node.children?.length || 0} mono />
+      <EditableField label={tr('Group Name', 'Nombre del grupo')} value={data.name || ''} field="name" onChange={handleChange} />
+      <DetailField label={tr('Steps Count', 'Cantidad de steps')} value={node.children?.length || 0} mono />
     </>
   );
 }
@@ -563,7 +566,7 @@ function renderIfDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: a
       {/* Condition */}
       <div className="mb-4">
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-          Condition Expression
+          {tr('Condition Expression', 'Expresión de condición')}
         </label>
         <Textarea
           value={data.condition || ''}
@@ -572,14 +575,14 @@ function renderIfDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: a
           className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono min-h-[100px]"
         />
         <div className="mt-1 text-xs text-zinc-500">
-          Steps will only execute if this condition evaluates to true
+          {tr('Steps will only execute if this condition evaluates to true', 'Los steps solo se ejecutarán si esta condición es verdadera')}
         </div>
       </div>
 
       {/* Steps Count */}
       <div className="p-3 bg-pink-400/10 border border-pink-400/20 rounded">
         <div className="text-xs font-semibold text-pink-400 uppercase tracking-wider mb-1">
-          Conditional Steps
+          {tr('Conditional Steps', 'Steps condicionales')}
         </div>
         <div className="text-2xl font-bold text-pink-300 font-mono">
           {node.children?.length || 0}
@@ -604,7 +607,7 @@ function renderLoopDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data:
       {/* Loop Count */}
       <div className="mb-4">
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-          Loop Count
+          {tr('Loop Count', 'Cantidad de loops')}
         </label>
         <Input
           type="number"
@@ -614,14 +617,14 @@ function renderLoopDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data:
           className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
         />
         <div className="mt-1 text-xs text-zinc-500">
-          Number of times to repeat the steps, or use variable ${'{'}loops${'}'}
+          {tr('Number of times to repeat the steps, or use variable ${loops}', 'Número de veces para repetir los steps, o usar la variable ${loops}')}
         </div>
       </div>
 
       {/* Break Condition */}
       <div className="mb-4">
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-          Break Condition (optional)
+          {tr('Break Condition (optional)', 'Condición de salida (opcional)')}
         </label>
         <Input
           value={data.break_on || ''}
@@ -630,7 +633,7 @@ function renderLoopDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data:
           className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
         />
         <div className="mt-1 text-xs text-zinc-500">
-          Exit loop early if condition is true
+          {tr('Exit loop early if condition is true', 'Salir del loop antes si la condición es verdadera')}
         </div>
       </div>
 
@@ -638,7 +641,7 @@ function renderLoopDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data:
       <div className="grid grid-cols-2 gap-3">
         <div className="p-3 bg-purple-400/10 border border-purple-400/20 rounded">
           <div className="text-xs font-semibold text-purple-400 uppercase tracking-wider mb-1">
-            Steps Inside
+            {tr('Steps Inside', 'Steps dentro')}
           </div>
           <div className="text-2xl font-bold text-purple-300 font-mono">
             {stepsCount}
@@ -646,7 +649,7 @@ function renderLoopDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data:
         </div>
         <div className="p-3 bg-purple-400/10 border border-purple-400/20 rounded">
           <div className="text-xs font-semibold text-purple-400 uppercase tracking-wider mb-1">
-            Total Iterations
+            {tr('Total Iterations', 'Iteraciones totales')}
           </div>
           <div className="text-2xl font-bold text-purple-300 font-mono">
             {totalIterations}
@@ -670,7 +673,7 @@ function renderRetryDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data
       {/* Attempts - Common to all */}
       <div className="mb-4">
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-          Max Attempts
+          {tr('Max Attempts', 'Intentos máximos')}
         </label>
         <Input
           type="number"
@@ -684,16 +687,16 @@ function renderRetryDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data
       {/* Backoff Type Selector */}
       <div className="mb-4">
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-          Backoff Strategy
+          {tr('Backoff Strategy', 'Estrategia de backoff')}
         </label>
         <select
           value={backoffType}
           onChange={(e) => handleChange('backoff', e.target.value)}
           className="w-full px-3 py-2 bg-red-400/10 text-red-400 border border-red-400/20 rounded text-sm font-mono cursor-pointer"
         >
-          <option value="constant" className="bg-zinc-900">constant (same delay)</option>
-          <option value="linear" className="bg-zinc-900">linear (incremental)</option>
-          <option value="exponential" className="bg-zinc-900">exponential (2x each time)</option>
+          <option value="constant" className="bg-zinc-900">{tr('constant (same delay)', 'constant (misma espera)')}</option>
+          <option value="linear" className="bg-zinc-900">{tr('linear (incremental)', 'linear (incremental)')}</option>
+          <option value="exponential" className="bg-zinc-900">{tr('exponential (2x each time)', 'exponential (2x cada vez)')}</option>
         </select>
       </div>
 
@@ -701,7 +704,7 @@ function renderRetryDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data
       {backoffType === 'constant' && (
         <div className="mb-4">
           <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-            Delay
+            {tr('Delay', 'Espera')}
           </label>
           <Input
             value={data.initial_delay || data.delay || ''}
@@ -710,7 +713,7 @@ function renderRetryDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data
             className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
           />
           <div className="mt-1 text-xs text-zinc-500">
-            Same delay between all retry attempts
+            {tr('Same delay between all retry attempts', 'La misma espera entre todos los reintentos')}
           </div>
         </div>
       )}
@@ -719,7 +722,7 @@ function renderRetryDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data
         <>
           <div className="mb-4">
             <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              Initial Delay
+              {tr('Initial Delay', 'Espera inicial')}
             </label>
             <Input
               value={data.initial_delay || ''}
@@ -730,7 +733,7 @@ function renderRetryDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data
           </div>
           <div className="mb-4">
             <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              Increment
+              {tr('Increment', 'Incremento')}
             </label>
             <Input
               value={data.increment || ''}
@@ -739,7 +742,7 @@ function renderRetryDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data
               className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
             />
             <div className="mt-1 text-xs text-zinc-500">
-              Delay increases by this amount each retry (1s, 2s, 3s...)
+              {tr('Delay increases by this amount each retry (1s, 2s, 3s...)', 'La espera aumenta por esta cantidad en cada reintento (1s, 2s, 3s...)')}
             </div>
           </div>
         </>
@@ -749,7 +752,7 @@ function renderRetryDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data
         <>
           <div className="mb-4">
             <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              Initial Delay
+              {tr('Initial Delay', 'Espera inicial')}
             </label>
             <Input
               value={data.initial_delay || ''}
@@ -760,7 +763,7 @@ function renderRetryDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data
           </div>
           <div className="mb-4">
             <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              Multiplier
+              {tr('Multiplier', 'Multiplicador')}
             </label>
             <Input
               type="number"
@@ -770,12 +773,12 @@ function renderRetryDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data
               className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
             />
             <div className="mt-1 text-xs text-zinc-500">
-              Delay multiplied each retry (1s, 2s, 4s, 8s...)
+              {tr('Delay multiplied each retry (1s, 2s, 4s, 8s...)', 'La espera se multiplica en cada reintento (1s, 2s, 4s, 8s...)')}
             </div>
           </div>
           <div className="mb-4">
             <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              Max Delay (optional)
+              {tr('Max Delay (optional)', 'Espera máxima (opcional)')}
             </label>
             <Input
               value={data.max_delay || ''}
@@ -784,7 +787,7 @@ function renderRetryDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data
               className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
             />
             <div className="mt-1 text-xs text-zinc-500">
-              Cap maximum delay to prevent very long waits
+              {tr('Cap maximum delay to prevent very long waits', 'Limita la espera máxima para evitar esperas muy largas')}
             </div>
           </div>
         </>
@@ -793,7 +796,7 @@ function renderRetryDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data
       {/* Steps Count */}
       <div className="mt-4 p-3 bg-white/5 border border-white/10 rounded">
         <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1">
-          Steps to Retry
+          {tr('Steps to Retry', 'Steps a reintentar')}
         </div>
         <div className="text-2xl font-bold text-zinc-300 font-mono">
           {node.children?.length || 0}
@@ -839,7 +842,7 @@ function renderThinkTimeDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
       {/* Mode Selector */}
       <div className="mb-4">
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
-          Think Time Mode
+          {tr('Think Time Mode', 'Modo de Think Time')}
         </label>
         <div className="flex gap-2">
           <button
@@ -850,7 +853,7 @@ function renderThinkTimeDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
                 : 'bg-white/5 text-zinc-400 border border-white/10 hover:text-zinc-300 hover:bg-white/10'
             }`}
           >
-            Fixed
+            {tr('Fixed', 'Fijo')}
           </button>
           <button
             onClick={() => handleModeChange('variable')}
@@ -860,7 +863,7 @@ function renderThinkTimeDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
                 : 'bg-white/5 text-zinc-400 border border-white/10 hover:text-zinc-300 hover:bg-white/10'
             }`}
           >
-            Variable (Random)
+            {tr('Variable (Random)', 'Variable (Aleatorio)')}
           </button>
         </div>
       </div>
@@ -869,7 +872,7 @@ function renderThinkTimeDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
       {mode === 'fixed' ? (
         <div className="mb-4">
           <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-            Duration
+            {tr('Duration', 'Duración')}
           </label>
           <Input
             value={data.duration || ''}
@@ -878,14 +881,14 @@ function renderThinkTimeDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
             className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
           />
           <div className="mt-1 text-xs text-zinc-500">
-            Examples: 1s, 500ms, 2m (seconds, milliseconds, minutes)
+            {tr('Examples: 1s, 500ms, 2m (seconds, milliseconds, minutes)', 'Ejemplos: 1s, 500ms, 2m (segundos, milisegundos, minutos)')}
           </div>
         </div>
       ) : (
         <>
           <div className="mb-4">
             <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              Minimum Duration
+              {tr('Minimum Duration', 'Duración mínima')}
             </label>
             <Input
               value={data.min || ''}
@@ -896,7 +899,7 @@ function renderThinkTimeDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
           </div>
           <div className="mb-4">
             <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              Maximum Duration
+              {tr('Maximum Duration', 'Duración máxima')}
             </label>
             <Input
               value={data.max || ''}
@@ -906,7 +909,7 @@ function renderThinkTimeDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
             />
           </div>
           <div className="p-3 bg-blue-400/5 border border-blue-400/20 rounded text-xs text-zinc-400">
-            ℹ️ Random delay will be chosen between min and max on each execution
+            {tr('ℹ️ Random delay will be chosen between min and max on each execution', 'ℹ️ Se elegirá una espera aleatoria entre min y max en cada ejecución')}
           </div>
         </>
       )}
@@ -921,10 +924,10 @@ function renderCookiesDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, da
   };
   return (
     <>
-      <EditableField label="Mode" value={data.mode || ''} field="mode" onChange={handleChange} />
-      <EditableField label="Jar Scope" value={data.jar_scope || ''} field="jar_scope" onChange={handleChange} />
+      <EditableField label={tr('Mode', 'Modo')} value={data.mode || ''} field="mode" onChange={handleChange} />
+      <EditableField label={tr('Jar Scope', 'Alcance del jar')} value={data.jar_scope || ''} field="jar_scope" onChange={handleChange} />
       <div className="mb-4">
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Persist Across Iterations</label>
+        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{tr('Persist Across Iterations', 'Persistir entre iteraciones')}</label>
         <select
           value={data.persist_across_iterations ? 'true' : 'false'}
           onChange={(e) => handleChange('persist_across_iterations', e.target.value === 'true')}
@@ -946,7 +949,7 @@ function renderCacheManagerDetails(node: YAMLNode, onNodeUpdate?: (nodeId: strin
   return (
     <>
       <div className="mb-4">
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Enabled</label>
+        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{tr('Enabled', 'Habilitado')}</label>
         <select
           value={data.enabled ? 'true' : 'false'}
           onChange={(e) => handleChange('enabled', e.target.value === 'true')}
@@ -956,9 +959,9 @@ function renderCacheManagerDetails(node: YAMLNode, onNodeUpdate?: (nodeId: strin
           <option value="false">false</option>
         </select>
       </div>
-      <EditableField label="Scope" value={data.scope || ''} field="scope" onChange={handleChange} />
-      <EditableField label="Max Size (MB)" value={data.max_size_mb || ''} field="max_size_mb" onChange={handleChange} type="number" />
-      <EditableField label="Eviction Policy" value={data.eviction_policy || ''} field="eviction_policy" onChange={handleChange} />
+      <EditableField label={tr('Scope', 'Alcance')} value={data.scope || ''} field="scope" onChange={handleChange} />
+      <EditableField label={tr('Max Size (MB)', 'Tamaño máximo (MB)')} value={data.max_size_mb || ''} field="max_size_mb" onChange={handleChange} type="number" />
+      <EditableField label={tr('Eviction Policy', 'Política de expulsión')} value={data.eviction_policy || ''} field="eviction_policy" onChange={handleChange} />
     </>
   );
 }
@@ -970,9 +973,9 @@ function renderErrorPolicyDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string
   };
   return (
     <>
-      <EditableField label="On 4xx" value={data.on_4xx || ''} field="on_4xx" onChange={handleChange} />
-      <EditableField label="On 5xx" value={data.on_5xx || ''} field="on_5xx" onChange={handleChange} />
-      <EditableField label="On Timeout" value={data.on_timeout || ''} field="on_timeout" onChange={handleChange} />
+      <EditableField label={tr('On 4xx', 'En 4xx')} value={data.on_4xx || ''} field="on_4xx" onChange={handleChange} />
+      <EditableField label={tr('On 5xx', 'En 5xx')} value={data.on_5xx || ''} field="on_5xx" onChange={handleChange} />
+      <EditableField label={tr('On Timeout', 'En timeout')} value={data.on_timeout || ''} field="on_timeout" onChange={handleChange} />
     </>
   );
 }
@@ -995,7 +998,7 @@ function renderMetricsDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, da
           <option value="false">false</option>
         </select>
       </div>
-      <EditableField label="Collect Interval" value={data.collect_interval || ''} field="collect_interval" onChange={handleChange} />
+      <EditableField label={tr('Collect Interval', 'Intervalo de recolección')} value={data.collect_interval || ''} field="collect_interval" onChange={handleChange} />
     </>
   );
 }
@@ -1014,12 +1017,12 @@ function renderSparkDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data
     <>
       <div className="mb-4">
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-          {'</>'} Spark Script (JavaScript)
+          {'</>'} {tr('Spark Script (JavaScript)', 'Spark Script (JavaScript)')}
         </label>
         <SparkCodeEditor
           value={data.script || ''}
           onChange={handleScriptChange}
-          placeholder="// Write your JavaScript code here..."
+          placeholder={tr('// Write your JavaScript code here...', '// Escribe tu código JavaScript aquí...')}
           minHeight="280px"
         />
       </div>
@@ -1043,7 +1046,7 @@ function renderAssertionDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
       {/* Assertion Type Selector */}
       <div className="mb-4">
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-          Assertion Type
+          {tr('Assertion Type', 'Tipo de assertion')}
         </label>
         <select
           value={assertionType}
@@ -1066,7 +1069,7 @@ function renderAssertionDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
       {(assertionType === 'status' || assertionType === 'status_in') && (
         <div className="mb-4">
           <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-            {assertionType === 'status' ? 'Expected Status Code' : 'Expected Status Codes (comma separated)'}
+            {assertionType === 'status' ? tr('Expected Status Code', 'Código de estado esperado') : tr('Expected Status Codes (comma separated)', 'Códigos de estado esperados (separados por coma)')}
           </label>
           <Input
             value={data.value !== undefined ? String(data.value) : ''}
@@ -1081,12 +1084,12 @@ function renderAssertionDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
         <>
           <div className="mb-4">
             <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              Text to {assertionType === 'contains' ? 'Find' : 'Not Find'}
+              {assertionType === 'contains' ? tr('Text to Find', 'Texto a encontrar') : tr('Text to Not Find', 'Texto que no debe aparecer')}
             </label>
             <Input
               value={data.value !== undefined ? String(data.value) : ''}
               onChange={(e) => handleChange('value', e.target.value)}
-              placeholder="Expected text in response..."
+              placeholder={tr('Expected text in response...', 'Texto esperado en la respuesta...')}
               className="bg-white/5 border-white/10 text-zinc-300 text-sm font-mono"
             />
           </div>
@@ -1098,7 +1101,7 @@ function renderAssertionDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
                 onChange={(e) => handleChange('ignore_case', e.target.checked)}
                 className="w-4 h-4 rounded border-white/10 bg-white/5 text-green-500"
               />
-              <span className="text-sm text-zinc-300">Ignore case</span>
+              <span className="text-sm text-zinc-300">{tr('Ignore case', 'Ignorar mayúsculas/minúsculas')}</span>
             </label>
           </div>
         </>
@@ -1235,7 +1238,7 @@ function renderExtractorDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
       {/* Extractor Type Selector */}
       <div className="mb-4">
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-          Extractor Type
+          {tr('Extractor Type', 'Tipo de extractor')}
         </label>
         <select
           value={extractorType}
@@ -1252,7 +1255,7 @@ function renderExtractorDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
       {/* Variable Name - Common to all types */}
       <div className="mb-4">
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-          Variable Name *
+          {tr('Variable Name *', 'Nombre de variable *')}
         </label>
         <Input
           value={data.var || data.variable || ''}
