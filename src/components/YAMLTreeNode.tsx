@@ -198,10 +198,6 @@ export function YAMLTreeNode({
   const color = getNodeColor(node.type, node);
   const IconComponent = icon;
   
-  // Debug: log tipos de nodos especiales
-  if (['extract', 'extractor', 'assert', 'assertion', 'spark_before', 'spark_after', 'think_time'].includes(node.type)) {
-    console.log(`Node type: ${node.type}, Color: ${color}`);
-  }
 
   return (
     <div className="select-none">

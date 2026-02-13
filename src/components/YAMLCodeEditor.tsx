@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Search, X, ChevronUp, ChevronDown } from 'lucide-react';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface YAMLCodeEditorProps {
   value: string;
@@ -7,6 +8,7 @@ interface YAMLCodeEditorProps {
 }
 
 export function YAMLCodeEditor({ value, onChange }: YAMLCodeEditorProps) {
+  const { t } = useLanguage();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const highlightRef = useRef<HTMLDivElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -90,7 +92,7 @@ export function YAMLCodeEditor({ value, onChange }: YAMLCodeEditorProps) {
             <Search className="w-4 h-4 text-zinc-500 flex-shrink-0" />
             <input
               type="text"
-              placeholder="Search in YAML..."
+              placeholder={t('yamlEditor.search.searchInYaml')}
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
@@ -109,7 +111,7 @@ export function YAMLCodeEditor({ value, onChange }: YAMLCodeEditorProps) {
               onClick={handlePrevMatch}
               disabled={totalMatches === 0}
               className="p-1.5 bg-[#0a0a0a] border border-white/10 rounded text-zinc-500 hover:border-yellow-400 hover:text-yellow-400 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center"
-              title="Previous"
+              title={t('yamlEditor.search.previous')}
             >
               <ChevronUp className="w-4 h-4" />
             </button>
@@ -117,7 +119,7 @@ export function YAMLCodeEditor({ value, onChange }: YAMLCodeEditorProps) {
               onClick={handleNextMatch}
               disabled={totalMatches === 0}
               className="p-1.5 bg-[#0a0a0a] border border-white/10 rounded text-zinc-500 hover:border-yellow-400 hover:text-yellow-400 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center"
-              title="Next"
+              title={t('yamlEditor.search.next')}
             >
               <ChevronDown className="w-4 h-4" />
             </button>
@@ -127,7 +129,7 @@ export function YAMLCodeEditor({ value, onChange }: YAMLCodeEditorProps) {
                 setCurrentMatchIndex(0);
               }}
               className="p-1.5 bg-[#0a0a0a] border border-white/10 rounded text-zinc-500 hover:border-yellow-400 hover:text-yellow-400 transition-all flex items-center justify-center"
-              title="Close search"
+              title={t('yamlEditor.search.closeSearch')}
             >
               <X className="w-4 h-4" />
             </button>
@@ -229,7 +231,6 @@ function highlightYAML(code: string, searchQuery: string = '', currentMatchIndex
   });
   
   // Count matches and highlight search results
-  let matchCount = 0;
   if (searchQuery.trim() !== '') {
     const regex = new RegExp(escapeRegex(searchQuery), 'gi');
     

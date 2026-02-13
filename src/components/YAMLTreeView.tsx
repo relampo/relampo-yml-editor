@@ -3,6 +3,7 @@ import { Search, X } from 'lucide-react';
 import type { YAMLNode } from '../types/yaml';
 import { YAMLTreeNode } from './YAMLTreeNode';
 import { YAMLContextMenu, type YAMLAddableNodeType } from './YAMLContextMenu';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface YAMLTreeViewProps {
   tree: YAMLNode | null;
@@ -17,6 +18,7 @@ export function YAMLTreeView({
   onNodeSelect,
   onTreeChange,
 }: YAMLTreeViewProps) {
+  const { t } = useLanguage();
   const [contextMenu, setContextMenu] = useState<{
     x: number;
     y: number;
@@ -86,8 +88,8 @@ export function YAMLTreeView({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
           </div>
-          <p className="text-sm text-zinc-500">Write or upload valid YAML</p>
-          <p className="text-xs text-zinc-600 mt-1">to visualize the tree</p>
+          <p className="text-sm text-zinc-500">{t('yamlEditor.tree.writeOrUploadYaml')}</p>
+          <p className="text-xs text-zinc-600 mt-1">{t('yamlEditor.tree.toViewTree')}</p>
         </div>
       </div>
     );
@@ -103,7 +105,7 @@ export function YAMLTreeView({
             <Search className="w-4 h-4 text-zinc-500 flex-shrink-0" />
             <input
               type="text"
-              placeholder="Search nodes..."
+              placeholder={t('yamlEditor.search.searchNodes')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="flex-1 bg-transparent border-none text-sm text-zinc-300 placeholder-zinc-500 outline-none"
@@ -115,7 +117,7 @@ export function YAMLTreeView({
             <button
               onClick={() => setSearchQuery('')}
               className="p-1.5 bg-[#0a0a0a] border border-white/10 rounded text-zinc-500 hover:border-yellow-400 hover:text-yellow-400 transition-all flex items-center justify-center"
-              title="Close search"
+              title={t('yamlEditor.search.closeSearch')}
             >
               <X className="w-4 h-4" />
             </button>
@@ -139,7 +141,7 @@ export function YAMLTreeView({
           />
         ) : (
           <div className="flex items-center justify-center h-32">
-            <p className="text-sm text-zinc-500">No YAML loaded</p>
+            <p className="text-sm text-zinc-500">{t('yamlEditor.tree.noYamlLoaded')}</p>
           </div>
         )}
       </div>

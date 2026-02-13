@@ -437,6 +437,27 @@ export const translations = {
         checkSyntax: "Check Syntax",
         checking: "Checking...",
       },
+      // Search
+      search: {
+        searchInYaml: "Search in YAML...",
+        searchNodes: "Search nodes...",
+        closeSearch: "Close search",
+        previous: "Previous",
+        next: "Next",
+      },
+      // Editable List
+      editableList: {
+        deselectAll: "Deselect All",
+        selectAll: "Select All",
+        empty: "empty",
+        noItemsDefined: "No {title} defined. Click \"Add\" to create one.",
+      },
+      // Tree
+      tree: {
+        noYamlLoaded: "No YAML loaded",
+        writeOrUploadYaml: "Write or upload a valid YAML",
+        toViewTree: "to view the tree",
+      },
     },
   },
   
@@ -875,6 +896,27 @@ export const translations = {
         quickReference: "Referencia Rápida:",
         checkSyntax: "Verificar Sintaxis",
         checking: "Verificando...",
+      },
+      // Search
+      search: {
+        searchInYaml: "Buscar en YAML...",
+        searchNodes: "Buscar nodos...",
+        closeSearch: "Cerrar búsqueda",
+        previous: "Anterior",
+        next: "Siguiente",
+      },
+      // Editable List
+      editableList: {
+        deselectAll: "Deseleccionar Todo",
+        selectAll: "Seleccionar Todo",
+        empty: "vacío",
+        noItemsDefined: "No hay {title} definidos. Haz clic en \"Agregar\" para crear uno.",
+      },
+      // Tree
+      tree: {
+        noYamlLoaded: "No hay YAML cargado",
+        writeOrUploadYaml: "Escribe o sube un YAML válido",
+        toViewTree: "para visualizar el árbol",
       },
     },
   },
