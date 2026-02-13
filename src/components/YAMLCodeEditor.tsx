@@ -19,7 +19,7 @@ export function YAMLCodeEditor({ value, onChange }: YAMLCodeEditorProps) {
       highlightRef.current.innerHTML = html;
       setTotalMatches(matches);
       
-      // Resetear índice si no hay matches
+      // Reset index if no matches
       if (matches === 0 && currentMatchIndex !== 0) {
         setCurrentMatchIndex(0);
       }
@@ -82,7 +82,7 @@ export function YAMLCodeEditor({ value, onChange }: YAMLCodeEditorProps) {
 
   return (
     <div className="relative h-full w-full bg-[#0a0a0a] flex flex-col font-mono text-sm">
-      {/* Search Bar - Estilo exacto del converter */}
+      {/* Search Bar - Exact converter style */}
       <div className="flex-shrink-0 px-3 pt-3 pb-2 bg-[#0a0a0a]">
         <div className="flex items-center gap-2 p-3 bg-[#111111] border border-white/10 rounded-lg">
           {/* Input container */}
@@ -183,7 +183,7 @@ function highlightYAML(code: string, searchQuery: string = '', currentMatchIndex
       return ' ';
     }
 
-    // Comentarios
+    // Comments
     if (line.trim().startsWith('#')) {
       return `<span style="color: #71717a">${escapeHtml(line)}</span>`;
     }

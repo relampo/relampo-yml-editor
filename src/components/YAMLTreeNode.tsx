@@ -72,7 +72,7 @@ export function YAMLTreeNode({
   const isExpanded = node.expanded ?? true;
   const hoverTimerRef = useRef<number | null>(null);
 
-  // Limpiar timer al desmontar
+  // Clean up timer on unmount
   useEffect(() => {
     return () => {
       if (hoverTimerRef.current) {
@@ -159,7 +159,7 @@ export function YAMLTreeNode({
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
-    // Solo limpiar si realmente salimos del nodo (no de un child)
+    // Only clear if we really leave the node (not from a child)
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX;
     const y = e.clientY;

@@ -182,7 +182,7 @@ function convertScenarioToNode(scenario: any, index: number, path: any[]): YAMLN
 function convertStepToNode(step: any, parentId: string, index: number, path: any[]): YAMLNode {
   const stepId = `${parentId}_step_${index}`;
 
-  // Parsear enabled ANTES (común para todos los tipos)
+  // Parse enabled BEFORE (common for all types)
   const isEnabled = step.enabled !== undefined ? step.enabled : true;
 
   // HTTP methods (short form)
@@ -214,7 +214,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       expanded: false,
     };
 
-    // HEADERS (object format: {header_name: value}) - PRIMERO
+    // HEADERS (object format: {header_name: value}) - FIRST
     if (req.headers && typeof req.headers === 'object' && !Array.isArray(req.headers)) {
       const headerEntries = Object.entries(req.headers);
       if (headerEntries.length > 0) {

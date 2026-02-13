@@ -311,12 +311,12 @@ export function YAMLEditorStandaloneComplete() {
 
 function getDefaultYAML(): string {
   return `# ============================================================================
-# RELAMPO YAML - GENERADO AUTOMÁTICAMENTE DESDE GRABACIÓN
+# RELAMPO YAML - AUTO-GENERATED FROM RECORDING
 # ============================================================================
-# Grabado: 2024-01-24 10:35:22 UTC
-# Duración de grabación: 15 segundos
-# Total de requests capturados: 4
-# Configuración: capture_response = true
+# Recorded: 2024-01-24 10:35:22 UTC
+# Recording duration: 15 seconds
+# Total requests captured: 4
+# Configuration: capture_response = true
 # ============================================================================
 
 test:
@@ -345,7 +345,7 @@ scenarios:
       mode: auto
     steps:
       # =====================================================
-      # Request 1: POST - Login (genera token)
+      # Request 1: POST - Login (generates token)
       # =====================================================
       - request:
           method: POST
@@ -376,7 +376,7 @@ scenarios:
             time_ms: 189
 
       # =====================================================
-      # Request 2: GET - Obtener perfil (usa token, retorna accountKey)
+      # Request 2: GET - Get profile (uses token, returns accountKey)
       # =====================================================
       - request:
           method: GET
@@ -407,7 +407,7 @@ scenarios:
             time_ms: 67
 
       # =====================================================
-      # Request 3: GET - Obtener configuración de cuenta (usa accountKey en path, retorna regionId)
+      # Request 3: GET - Get account settings (uses accountKey in path, returns regionId)
       # =====================================================
       - request:
           method: GET
@@ -444,7 +444,7 @@ scenarios:
             time_ms: 112
 
       # =====================================================
-      # Request 4: POST - Crear recurso en región (usa regionId en body)
+      # Request 4: POST - Create resource in region (uses regionId in body)
       # =====================================================
       - request:
           method: POST

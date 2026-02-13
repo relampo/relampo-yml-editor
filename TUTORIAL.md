@@ -1,34 +1,34 @@
-# 🚀 Tutorial: Scripting con Relampo YAML Editor
+# 🚀 Tutorial: Scripting with Relampo YAML Editor
 
-Bienvenido al tutorial completo para crear pruebas de carga con el Relampo YAML Editor. Este editor visual te permite crear scripts de pruebas de carga de forma intuitiva, sin necesidad de escribir YAML manualmente.
+Welcome to the complete tutorial for creating load tests with the Relampo YAML Editor. This visual editor allows you to create load testing scripts intuitively, without needing to write YAML manually.
 
-## 📋 Tabla de Contenidos
+## 📋 Table of Contents
 
-1. [Introducción](#introducción)
-2. [Interfaz del Editor](#interfaz-del-editor)
-3. [Creando tu Primera Prueba](#creando-tu-primera-prueba)
-4. [Trabajando con Requests](#trabajando-con-requests)
-5. [Variables y Extracción de Datos](#variables-y-extracción-de-datos)
-6. [Validaciones con Assertions](#validaciones-con-assertions)
-7. [Controladores de Flujo](#controladores-de-flujo)
+1. [Introduction](#introduction)
+2. [Editor Interface](#editor-interface)
+3. [Creating Your First Test](#creating-your-first-test)
+4. [Working with Requests](#working-with-requests)
+5. [Variables and Data Extraction](#variables-and-data-extraction)
+6. [Validations with Assertions](#validations-with-assertions)
+7. [Flow Controllers](#flow-controllers)
 8. [Spark Scripts (JavaScript)](#spark-scripts-javascript)
-9. [Configuración de Carga](#configuración-de-carga)
-10. [Ejemplos Completos](#ejemplos-completos)
+9. [Load Configuration](#load-configuration)
+10. [Complete Examples](#complete-examples)
 
 ---
 
-## Introducción
+## Introduction
 
-El Relampo YAML Editor es una herramienta visual inspirada en JMeter que te permite crear pruebas de carga mediante una interfaz drag-and-drop. Los scripts creados se exportan como archivos YAML compatibles con frameworks de pruebas de carga.
+The Relampo YAML Editor is a visual tool inspired by JMeter that allows you to create load tests through a drag-and-drop interface. Created scripts are exported as YAML files compatible with load testing frameworks.
 
-### ¿Qué puedes hacer?
+### What can you do?
 
-✅ Crear requests HTTP con headers, body y query params  
-✅ Extraer datos de respuestas (tokens, IDs, etc.)  
-✅ Validar respuestas con assertions  
-✅ Controlar el flujo con loops, condiciones y reintentos  
-✅ Ejecutar código JavaScript personalizado con Spark  
-✅ Configurar carga de usuarios y duración  
+✅ Create HTTP requests with headers, body and query params  
+✅ Extract data from responses (tokens, IDs, etc.)  
+✅ Validate responses with assertions  
+✅ Control flow with loops, conditions and retries  
+✅ Execute custom JavaScript code with Spark  
+✅ Configure user load and duration
 
 ---
 
