@@ -26,6 +26,9 @@ import {
   Braces,
   AlertTriangle,
   CodeXml,
+  Paperclip,
+  Tag,
+  List,
 } from 'lucide-react';
 import type { YAMLNode, YAMLNodeType } from '../types/yaml';
 import { canDrop, canContain } from '../utils/yamlDragDropRules';
@@ -50,6 +53,7 @@ interface YAMLTreeNodeProps {
   onNodeToggle: (nodeId: string) => void;
   onContextMenu: (event: React.MouseEvent, node: YAMLNode) => void;
   onNodeMove: (draggedId: string, targetId: string, position: 'before' | 'after' | 'inside') => void;
+  searchQuery?: string;
 }
 
 export function YAMLTreeNode({
@@ -61,13 +65,14 @@ export function YAMLTreeNode({
   onNodeToggle,
   onContextMenu,
   onNodeMove,
+  searchQuery = '',
 }: YAMLTreeNodeProps) {
   const [dragOver, setDragOver] = useState<'before' | 'after' | 'inside' | null>(null);
   const hasChildren = node.children && node.children.length > 0;
   const isExpanded = node.expanded ?? true;
   const hoverTimerRef = useRef<number | null>(null);
 
-  // Limpiar timer al desmontar
+  // Clean up timer on unmount
   useEffect(() => {
     return () => {
       if (hoverTimerRef.current) {
@@ -154,7 +159,7 @@ export function YAMLTreeNode({
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
-    // Solo limpiar si realmente salimos del nodo (no de un child)
+    // Only clear if we really leave the node (not from a child)
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX;
     const y = e.clientY;
@@ -193,10 +198,6 @@ export function YAMLTreeNode({
   const color = getNodeColor(node.type, node);
   const IconComponent = icon;
   
-  // Debug: log tipos de nodos especiales
-  if (['extract', 'extractor', 'assert', 'assertion', 'spark_before', 'spark_after', 'think_time'].includes(node.type)) {
-    console.log(`Node type: ${node.type}, Color: ${color}`);
-  }
 
   return (
     <div className="select-none">
@@ -210,7 +211,7 @@ export function YAMLTreeNode({
         onClick={() => onNodeSelect(node)}
         onContextMenu={(e) => onContextMenu(e, node)}
         className={`
-          relative group flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer transition-colors
+          relative group flex items-center gap-2 px-2 py-1.5 pr-3 rounded cursor-pointer transition-colors
           ${isSelected ? 'bg-yellow-400/10 border border-yellow-400/20' : 'hover:bg-white/5 border border-transparent'}
           ${dragOver === 'before' ? 'border-t-2 border-t-yellow-400' : ''}
           ${dragOver === 'after' ? 'border-b-2 border-b-yellow-400' : ''}
@@ -242,11 +243,11 @@ export function YAMLTreeNode({
           <IconComponent className="w-4 h-4" />
         </div>
 
-        {/* Name */}
+        {/* Name con highlight si match */}
         <span className={`text-sm truncate flex-1 ${
           node.data?.enabled === false ? 'text-zinc-400' : 'text-zinc-300'
         }`}>
-          {node.name}
+          {highlightText(node.name, searchQuery)}
         </span>
 
         {/* Badge with extra info */}
@@ -267,6 +268,7 @@ export function YAMLTreeNode({
               onNodeToggle={onNodeToggle}
               onContextMenu={onContextMenu}
               onNodeMove={onNodeMove}
+              searchQuery={searchQuery}
             />
           ))}
         </div>
@@ -313,6 +315,9 @@ function getNodeIcon(type: YAMLNodeType): any {
     'spark': CodeXml,
     'spark_before': CodeXml,
     'spark_after': CodeXml,
+    'file': Paperclip,
+    'header': Tag,
+    'headers': Tag,
   };
   return iconMap[type] || FileText;
 }
@@ -387,6 +392,12 @@ function getNodeColor(type: YAMLNodeType, node?: YAMLNode): string {
       return 'text-purple-500';
     case 'spark_after':
       return 'text-violet-500';
+    case 'file':
+      return 'text-amber-400';
+    case 'header':
+      return 'text-red-400';
+    case 'headers':
+      return 'text-red-500';
     default:
       return 'text-zinc-400';
   }
@@ -398,7 +409,7 @@ function getNodeBadge(node: YAMLNode): JSX.Element | null {
   // Badge DISABLED para requests deshabilitados
   if (node.data?.enabled === false && (httpMethods.includes(node.type) || node.type === 'request')) {
     return (
-      <span className="text-xs px-1.5 py-0.5 rounded bg-zinc-700/50 text-zinc-400 font-mono uppercase">
+      <span className="text-xs px-1.5 py-0.5 rounded bg-zinc-700/30 text-zinc-400 font-mono font-medium border border-zinc-600/30 uppercase">
         disabled
       </span>
     );
@@ -406,7 +417,7 @@ function getNodeBadge(node: YAMLNode): JSX.Element | null {
   
   if (httpMethods.includes(node.type)) {
     return (
-      <span className="text-xs px-1.5 py-0.5 rounded bg-blue-400/10 text-blue-400 font-mono uppercase">
+      <span className="text-xs px-1.5 py-0.5 rounded bg-blue-400/15 text-blue-400 font-mono font-medium border border-blue-400/30 uppercase">
         {node.type}
       </span>
     );
@@ -414,7 +425,7 @@ function getNodeBadge(node: YAMLNode): JSX.Element | null {
 
   if (node.type === 'request' && node.data?.method) {
     return (
-      <span className="text-xs px-1.5 py-0.5 rounded bg-blue-400/10 text-blue-400 font-mono uppercase">
+      <span className="text-xs px-1.5 py-0.5 rounded bg-blue-400/15 text-blue-400 font-mono font-medium border border-blue-400/30 uppercase">
         {node.data.method}
       </span>
     );
@@ -422,7 +433,7 @@ function getNodeBadge(node: YAMLNode): JSX.Element | null {
 
   if (node.type === 'loop' && node.data?.count) {
     return (
-      <span className="text-xs px-1.5 py-0.5 rounded bg-blue-400/10 text-blue-400 font-mono">
+      <span className="text-xs px-1.5 py-0.5 rounded bg-purple-400/15 text-purple-400 font-mono font-medium border border-purple-400/30">
         ×{node.data.count}
       </span>
     );
@@ -430,16 +441,16 @@ function getNodeBadge(node: YAMLNode): JSX.Element | null {
 
   if (node.type === 'think_time' && node.data?.duration) {
     return (
-      <span className="text-xs px-1.5 py-0.5 rounded bg-amber-400/20 text-amber-300 font-mono">
+      <span className="text-xs px-1.5 py-0.5 rounded bg-orange-400/15 text-orange-400 font-mono font-medium border border-orange-400/30">
         {node.data.duration}
       </span>
     );
   }
 
-  // Spark badges con gradientes
+  // Spark badges - colores brillantes para verse contra el fondo oscuro
   if (node.type === 'spark_before') {
     return (
-      <span className="text-xs px-1.5 py-0.5 rounded bg-gradient-to-r from-purple-400/20 via-pink-400/20 to-red-400/20 text-fuchsia-300 font-mono border border-fuchsia-400/30">
+      <span className="text-xs px-1.5 py-0.5 rounded bg-purple-400/15 text-purple-400 font-mono font-medium border border-purple-400/30">
         before
       </span>
     );
@@ -447,7 +458,7 @@ function getNodeBadge(node: YAMLNode): JSX.Element | null {
 
   if (node.type === 'spark_after') {
     return (
-      <span className="text-xs px-1.5 py-0.5 rounded bg-gradient-to-r from-cyan-400/20 via-blue-400/20 to-purple-500/20 text-cyan-300 font-mono border border-cyan-400/30">
+      <span className="text-xs px-1.5 py-0.5 rounded bg-violet-400/15 text-violet-400 font-mono font-medium border border-violet-400/30">
         after
       </span>
     );
@@ -456,7 +467,7 @@ function getNodeBadge(node: YAMLNode): JSX.Element | null {
   // Assertion badge
   if (node.type === 'assertion' && node.data?.type) {
     return (
-      <span className="text-xs px-1.5 py-0.5 rounded bg-lime-400/20 text-lime-300 font-mono">
+      <span className="text-xs px-1.5 py-0.5 rounded bg-green-400/15 text-green-400 font-mono font-medium border border-green-400/30">
         {node.data.type}
       </span>
     );
@@ -465,11 +476,69 @@ function getNodeBadge(node: YAMLNode): JSX.Element | null {
   // Extractor badge
   if (node.type === 'extractor' && node.data?.type) {
     return (
-      <span className="text-xs px-1.5 py-0.5 rounded bg-teal-400/20 text-teal-300 font-mono">
+      <span className="text-xs px-1.5 py-0.5 rounded bg-blue-400/15 text-blue-400 font-mono font-medium border border-blue-400/30">
         {node.data.type}
       </span>
     );
   }
 
+  // File badge - mostrar extensión del archivo o mime_type
+  if (node.type === 'file') {
+    const path = node.data?.path || '';
+    const extension = path.split('.').pop()?.toUpperCase();
+    const displayText = extension || node.data?.mime_type?.split('/').pop()?.toUpperCase() || 'FILE';
+    
+    return (
+      <span className="text-xs px-1.5 py-0.5 rounded bg-amber-400/15 text-amber-400 font-mono font-medium border border-amber-400/30">
+        {displayText}
+      </span>
+    );
+  }
+
+  // Header badge - mostrar nombre del header
+  if (node.type === 'header' && node.data?.name) {
+    return (
+      <span className="text-xs px-1.5 py-0.5 rounded bg-red-400/15 text-red-400 font-mono font-medium border border-red-400/30">
+        {node.data.name}
+      </span>
+    );
+  }
+
+  // Headers container badge - mostrar cantidad de headers
+  if (node.type === 'headers' && node.data) {
+    const count = Object.keys(node.data).length;
+    return (
+      <span className="text-xs px-1.5 py-0.5 rounded bg-red-500/15 text-red-500 font-mono font-medium border border-red-500/30">
+        {count}
+      </span>
+    );
+  }
+
   return null;
+}
+
+function highlightText(text: string, searchQuery: string): React.ReactNode {
+  if (!searchQuery.trim()) {
+    return text;
+  }
+  
+  const parts = text.split(new RegExp(`(${escapeRegex(searchQuery)})`, 'gi'));
+  
+  return (
+    <>
+      {parts.map((part, index) => 
+        part.toLowerCase() === searchQuery.toLowerCase() ? (
+          <mark key={index} className="bg-yellow-400 text-black px-0.5 rounded">
+            {part}
+          </mark>
+        ) : (
+          part
+        )
+      )}
+    </>
+  );
+}
+
+function escapeRegex(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }

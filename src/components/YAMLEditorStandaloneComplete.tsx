@@ -19,8 +19,10 @@ export function YAMLEditorStandaloneComplete() {
   const [viewMode, setViewMode] = useState<ViewMode>('tree');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [leftPanelWidth, setLeftPanelWidth] = useState(50); // Porcentaje
+  const [isResizing, setIsResizing] = useState(false);
 
-  // Initialize tree on mount
+  // Inicializar árbol al montar
   useEffect(() => {
     if (!isInitialized) {
       const defaultYaml = getDefaultYAML();
@@ -30,7 +32,7 @@ export function YAMLEditorStandaloneComplete() {
     }
   }, [isInitialized]);
 
-  // Synchronize code to tree
+  // Sincronizar código a árbol
   const syncCodeToTree = (code: string) => {
     try {
       const tree = parseYAMLToTree(code);
@@ -43,7 +45,7 @@ export function YAMLEditorStandaloneComplete() {
     }
   };
 
-  // Synchronize tree to code
+  // Sincronizar árbol a código
   const syncTreeToCode = (tree: YAMLNode) => {
     try {
       const code = treeToYAML(tree);
@@ -69,7 +71,16 @@ export function YAMLEditorStandaloneComplete() {
     
     const updateNodeInTree = (node: YAMLNode): YAMLNode => {
       if (node.id === nodeId) {
-        return { ...node, data: updatedData };
+        // Extraer el nombre si viene en __name
+        const newName = updatedData.__name;
+        const cleanData = { ...updatedData };
+        delete cleanData.__name;
+        
+        return { 
+          ...node, 
+          name: newName !== undefined ? newName : node.name,
+          data: cleanData 
+        };
       }
       if (node.children) {
         return {
@@ -114,9 +125,48 @@ export function YAMLEditorStandaloneComplete() {
     URL.revokeObjectURL(url);
   };
 
+  const handleResizeStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  };
+
+  // Effect para manejar mouse move y mouse up global durante resize
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return;
+      
+      const containerWidth = window.innerWidth;
+      const newWidth = (e.clientX / containerWidth) * 100;
+      
+      // Limitar entre 20% y 80%
+      const clampedWidth = Math.min(Math.max(newWidth, 20), 80);
+      setLeftPanelWidth(clampedWidth);
+    };
+
+    const handleMouseUp = () => {
+      if (isResizing) {
+        setIsResizing(false);
+      }
+    };
+
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+      
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      };
+    }
+  }, [isResizing]);
+
   return (
     <div className="flex flex-col h-screen bg-[#0a0a0a] w-full overflow-hidden">
-      {/* Header with Relampo Logo */}
+      {/* Header con Logo de Relampo */}
       <div className="bg-[#111111] border-b border-white/5 px-6 py-4 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -193,10 +243,10 @@ export function YAMLEditorStandaloneComplete() {
         </div>
       )}
 
-      {/* Split panel: Editor/Tree + Details */}
+      {/* Panel dividido: Editor/Árbol + Detalles */}
       <div className="flex flex-1 overflow-hidden min-h-0 min-w-0">
-        {/* Left Panel: Code or Tree */}
-        <div className="w-1/2 min-w-0 border-r border-white/5 flex flex-col">
+        {/* Panel Izquierdo: Código o Árbol */}
+        <div className="min-w-0 flex flex-col" style={{ width: `${leftPanelWidth}%` }}>
           {/* Toggle Code/Tree */}
           <div className="flex items-center border-b border-white/5 bg-[#111111] flex-shrink-0">
             <button
@@ -241,8 +291,14 @@ export function YAMLEditorStandaloneComplete() {
           </div>
         </div>
 
+        {/* Resize Handle */}
+        <div
+          onMouseDown={handleResizeStart}
+          className="w-2 bg-white/5 hover:bg-yellow-400/30 cursor-col-resize flex-shrink-0 transition-colors relative active:bg-yellow-400/40"
+        />
+
         {/* Panel Derecho: Detalles */}
-        <div className="w-1/2 min-w-0 overflow-hidden">
+        <div className="flex-1 min-w-0 overflow-hidden">
           <YAMLNodeDetails
             node={selectedNode}
             onNodeUpdate={handleNodeUpdate}
@@ -255,7 +311,7 @@ export function YAMLEditorStandaloneComplete() {
 
 function getDefaultYAML(): string {
   return `# ============================================================================
-# RELAMPO YAML - AUTOMATICALLY GENERATED FROM RECORDING
+# RELAMPO YAML - AUTO-GENERATED FROM RECORDING
 # ============================================================================
 # Recorded: 2024-01-24 10:35:22 UTC
 # Recording duration: 15 seconds
@@ -351,7 +407,7 @@ scenarios:
             time_ms: 67
 
       # =====================================================
-      # Request 3: GET - Get account configuration (uses accountKey in path, returns regionId)
+      # Request 3: GET - Get account settings (uses accountKey in path, returns regionId)
       # =====================================================
       - request:
           method: GET

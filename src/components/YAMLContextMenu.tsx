@@ -25,8 +25,12 @@ import {
   EyeOff,
   CodeXml,
   AlertTriangle,
+  Paperclip,
+  Tag,
+  List,
 } from 'lucide-react';
 import type { YAMLNode, YAMLNodeType } from '../types/yaml';
+import { useLanguage } from '../contexts/LanguageContext';
 
 export type YAMLAddableNodeType =
   | 'scenario'
@@ -41,6 +45,9 @@ export type YAMLAddableNodeType =
   | 'extractor'
   | 'spark_before'
   | 'spark_after'
+  | 'file'
+  | 'header'
+  | 'headers'
   | 'variables'
   | 'data_source'
   | 'http_defaults'
@@ -69,6 +76,7 @@ export function YAMLContextMenu({
   onRemove,
   onToggleEnabled,
 }: YAMLContextMenuProps) {
+  const { t } = useLanguage();
   const menuRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({ x, y });
 
@@ -83,11 +91,11 @@ export function YAMLContextMenu({
 
     return () => {
       document.removeEventListener('click', handleClick);
-    document.removeEventListener('keydown', handleEscape);
+      document.removeEventListener('keydown', handleEscape);
     };
   }, [onClose]);
 
-  // Adjust position to prevent clipping
+  // Adjust position so it doesn't get cut off
   useEffect(() => {
     if (menuRef.current) {
       const rect = menuRef.current.getBoundingClientRect();
@@ -97,12 +105,12 @@ export function YAMLContextMenu({
       let newX = x;
       let newY = y;
       
-      // Adjust if it goes off the right edge
+      // Adjust if it goes out on the right
       if (x + rect.width > viewportWidth - 10) {
         newX = viewportWidth - rect.width - 10;
       }
       
-      // Adjust if it goes off the bottom
+      // Adjust if it goes out at the bottom
       if (y + rect.height > viewportHeight - 10) {
         newY = viewportHeight - rect.height - 10;
       }
@@ -135,7 +143,7 @@ export function YAMLContextMenu({
           <div className="px-3 py-1.5 sticky top-0 bg-[#111111] z-10">
             <div className="flex items-center gap-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider">
               <Plus className="w-3 h-3" />
-              Add
+              {t('yamlEditor.common.add')}
             </div>
           </div>
 
@@ -174,12 +182,12 @@ export function YAMLContextMenu({
           {node.data?.enabled === false ? (
             <>
               <Eye className="w-4 h-4" />
-              <span className="text-sm">Enable</span>
+              <span className="text-sm">{t('yamlEditor.common.enable')}</span>
             </>
           ) : (
             <>
               <EyeOff className="w-4 h-4" />
-              <span className="text-sm">Disable</span>
+              <span className="text-sm">{t('yamlEditor.common.disable')}</span>
             </>
           )}
         </button>
@@ -193,7 +201,7 @@ export function YAMLContextMenu({
             className="w-full px-3 py-2 flex items-center gap-3 hover:bg-red-500/10 text-left transition-colors text-red-400"
           >
             <Trash2 className="w-4 h-4" />
-            <span className="text-sm">Delete</span>
+            <span className="text-sm">{t('yamlEditor.common.delete')}</span>
           </button>
         </>
       )}
@@ -324,6 +332,20 @@ function getAddableItems(parentType: string): AddableItem[] {
         description: 'Data extraction',
         icon: <Filter className={iconClass} />,
         color: 'text-blue-400',
+      },
+      {
+        type: 'file',
+        label: 'File Upload',
+        description: 'Attach file',
+        icon: <Paperclip className={iconClass} />,
+        color: 'text-amber-400',
+      },
+      {
+        type: 'headers',
+        label: 'Headers',
+        description: 'HTTP headers manager',
+        icon: <Tag className={iconClass} />,
+        color: 'text-red-500',
       },
       {
         type: 'think_time',

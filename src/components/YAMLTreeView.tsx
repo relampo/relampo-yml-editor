@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import { Search, X } from 'lucide-react';
 import type { YAMLNode } from '../types/yaml';
 import { YAMLTreeNode } from './YAMLTreeNode';
 import { YAMLContextMenu, type YAMLAddableNodeType } from './YAMLContextMenu';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface YAMLTreeViewProps {
   tree: YAMLNode | null;
@@ -16,11 +18,13 @@ export function YAMLTreeView({
   onNodeSelect,
   onTreeChange,
 }: YAMLTreeViewProps) {
+  const { t } = useLanguage();
   const [contextMenu, setContextMenu] = useState<{
     x: number;
     y: number;
     node: YAMLNode;
   } | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const handleContextMenu = (e: React.MouseEvent, node: YAMLNode) => {
     e.preventDefault();
@@ -73,6 +77,8 @@ export function YAMLTreeView({
     onTreeChange(updatedTree);
   };
 
+  // No filtrar, solo pasar el searchQuery para highlight
+
   if (!tree) {
     return (
       <div className="h-full w-full bg-[#0a0a0a] flex items-center justify-center">
@@ -82,25 +88,63 @@ export function YAMLTreeView({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
           </div>
-          <p className="text-sm text-zinc-500">Escribe o sube un YAML válido</p>
-          <p className="text-xs text-zinc-600 mt-1">para visualizar el árbol</p>
+          <p className="text-sm text-zinc-500">{t('yamlEditor.tree.writeOrUploadYaml')}</p>
+          <p className="text-xs text-zinc-600 mt-1">{t('yamlEditor.tree.toViewTree')}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="h-full w-full bg-[#0a0a0a] overflow-y-auto p-3">
-      <YAMLTreeNode
-        node={tree}
-        depth={0}
-        isSelected={selectedNode?.id === tree.id}
-        selectedNodeId={selectedNode?.id}
-        onNodeSelect={onNodeSelect}
-        onNodeToggle={handleNodeToggle}
-        onContextMenu={handleContextMenu}
-        onNodeMove={handleNodeMove}
-      />
+    <div className="h-full w-full bg-[#0a0a0a] flex flex-col">
+      {/* Search Bar - Exact converter style */}
+      <div className="flex-shrink-0 px-3 pt-3 pb-2">
+        <div className="flex items-center gap-2 p-3 bg-[#111111] border border-white/10 rounded-lg">
+          {/* Input container */}
+          <div className="flex-1 flex items-center gap-2 bg-[#0a0a0a] border border-white/10 rounded px-3 py-1.5">
+            <Search className="w-4 h-4 text-zinc-500 flex-shrink-0" />
+            <input
+              type="text"
+              placeholder={t('yamlEditor.search.searchNodes')}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="flex-1 bg-transparent border-none text-sm text-zinc-300 placeholder-zinc-500 outline-none"
+            />
+          </div>
+          
+          {/* Close button */}
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="p-1.5 bg-[#0a0a0a] border border-white/10 rounded text-zinc-500 hover:border-yellow-400 hover:text-yellow-400 transition-all flex items-center justify-center"
+              title={t('yamlEditor.search.closeSearch')}
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Tree */}
+      <div className="flex-1 overflow-y-auto px-3 pb-3">
+        {tree ? (
+          <YAMLTreeNode
+            node={tree}
+            depth={0}
+            isSelected={selectedNode?.id === tree.id}
+            selectedNodeId={selectedNode?.id}
+            onNodeSelect={onNodeSelect}
+            onNodeToggle={handleNodeToggle}
+            onContextMenu={handleContextMenu}
+            onNodeMove={handleNodeMove}
+            searchQuery={searchQuery}
+          />
+        ) : (
+          <div className="flex items-center justify-center h-32">
+            <p className="text-sm text-zinc-500">{t('yamlEditor.tree.noYamlLoaded')}</p>
+          </div>
+        )}
+      </div>
 
       {/* Context Menu */}
       {contextMenu && (
@@ -435,6 +479,36 @@ function createNodeByType(type: YAMLAddableNodeType): YAMLNode {
           type: 'json',
           path: '$.data.id',
           variable: 'extracted_id'
+        },
+      };
+    case 'file':
+      return {
+        id,
+        type: 'file',
+        name: 'File Upload',
+        data: { 
+          field: 'file',
+          path: '',
+          mime_type: 'application/octet-stream'
+        },
+      };
+    case 'header':
+      return {
+        id,
+        type: 'header',
+        name: 'Header',
+        data: { 
+          name: 'Authorization',
+          value: ''
+        },
+      };
+    case 'headers':
+      return {
+        id,
+        type: 'headers',
+        name: 'Headers',
+        data: {
+          'Content-Type': 'application/json'
         },
       };
 

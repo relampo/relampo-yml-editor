@@ -182,6 +182,9 @@ function convertScenarioToNode(scenario: any, index: number, path: any[]): YAMLN
 function convertStepToNode(step: any, parentId: string, index: number, path: any[]): YAMLNode {
   const stepId = `${parentId}_step_${index}`;
 
+  // Parse enabled BEFORE (common for all types)
+  const isEnabled = step.enabled !== undefined ? step.enabled : true;
+
   // HTTP methods (short form)
   const httpMethods = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
   for (const method of httpMethods) {
@@ -190,10 +193,10 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
         id: stepId,
         type: method as any,
         name: `${method.toUpperCase()}: ${step[method]}`,
-        data: { url: step[method], ...step },
+        data: { url: step[method], ...step, enabled: isEnabled },
         path,
         children: [],
-        expanded: true,
+        expanded: false,
       };
     }
   }
@@ -205,11 +208,25 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       id: stepId,
       type: 'request',
       name: req.name || `${req.method || 'GET'}: ${req.url || '/'}`,
-      data: req,
+      data: { ...req, enabled: isEnabled },
       path,
       children: [],
-      expanded: true,
+      expanded: false,
     };
+
+    // HEADERS (object format: {header_name: value}) - FIRST
+    if (req.headers && typeof req.headers === 'object' && !Array.isArray(req.headers)) {
+      const headerEntries = Object.entries(req.headers);
+      if (headerEntries.length > 0) {
+        requestNode.children!.push({
+          id: `${stepId}_headers`,
+          type: 'headers',
+          name: 'Headers',
+          data: req.headers,
+          path: [...path, 'request', 'headers'],
+        });
+      }
+    }
 
     // 🔥 SPARK SCRIPTS (Pulse format)
     if (req.spark && Array.isArray(req.spark)) {
@@ -311,7 +328,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       requestNode.children!.push({
         id: `${stepId}_think_time`,
         type: 'think_time',
-        name: `Think Time: ${req.think_time}`,
+        name: 'Think Time',  // SOLO el nombre, duración va en el badge
         data: { duration: req.think_time },
         path: [...path, 'think_time'],
       });
@@ -325,6 +342,21 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
         name: `On Error: ${req.on_error}`,
         data: { action: req.on_error },
         path: [...path, 'on_error'],
+      });
+    }
+
+    // FILES (array format: files[])
+    if (req.files && Array.isArray(req.files)) {
+      req.files.forEach((file: any, idx: number) => {
+        const fieldName = file.field || 'file';
+        const fileName = file.path ? file.path.split('/').pop() : 'unknown';
+        requestNode.children!.push({
+          id: `${stepId}_file_${idx}`,
+          type: 'file',
+          name: `${fieldName}: ${fileName}`,
+          data: file,
+          path: [...path, 'files', idx],
+        });
       });
     }
 
@@ -356,8 +388,94 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
     return {
       id: stepId,
       type: 'think_time',
-      name: `Think Time: ${duration}`,
-      data,
+      name: 'Think Time',  // SOLO el nombre, duración va en el badge
+      data: { ...data, duration },  // Asegurar que duration esté en data para el badge
+      path,
+    };
+  }
+
+  // Assertions (standalone - array format from JMX converter)
+  if (step.assertions && Array.isArray(step.assertions)) {
+    // Si hay múltiples assertions, crear un grupo
+    if (step.assertions.length > 1) {
+      const groupNode: YAMLNode = {
+        id: stepId,
+        type: 'group',
+        name: `Assertions (${step.assertions.length})`,
+        children: [],
+        expanded: true,
+        data: { assertions: step.assertions },
+        path,
+      };
+      
+      step.assertions.forEach((assertion: any, idx: number) => {
+        const label = assertion.type || assertion.name || 'check';
+        const detail = assertion.value || assertion.pattern || '';
+        groupNode.children!.push({
+          id: `${stepId}_assertion_${idx}`,
+          type: 'assertion',
+          name: `Assert: ${label}${detail ? ' = ' + String(detail).substring(0, 20) : ''}`,
+          data: assertion,
+          path: [...path, 'assertions', idx],
+        });
+      });
+      
+      return groupNode;
+    }
+    // Si solo hay una assertion, retornarla directamente
+    else if (step.assertions.length === 1) {
+      const assertion = step.assertions[0];
+      const label = assertion.type || assertion.name || 'check';
+      const detail = assertion.value || assertion.pattern || '';
+      
+      return {
+        id: stepId,
+        type: 'assertion',
+        name: `Assert: ${label}${detail ? ' = ' + String(detail).substring(0, 20) : ''}`,
+        data: assertion,
+        path: [...path, 'assertions', 0],
+      };
+    }
+  }
+  
+  // Assertion (standalone - single object)
+  if (step.assertion || step.assert) {
+    const assertData = step.assertion || step.assert;
+    const label = assertData.type || assertData.name || 'check';
+    const detail = assertData.value || assertData.pattern || '';
+    
+    return {
+      id: stepId,
+      type: 'assertion',
+      name: `Assert: ${label}${detail ? ' = ' + String(detail).substring(0, 20) : ''}`,
+      data: assertData,
+      path,
+    };
+  }
+
+  // Extractor (standalone)
+  if (step.extractor || step.extract) {
+    const extractData = step.extractor || step.extract;
+    const varName = extractData.var || extractData.variable || extractData.name || 'unknown';
+    
+    return {
+      id: stepId,
+      type: 'extractor',
+      name: `Extract: ${varName}`,
+      data: extractData,
+      path,
+    };
+  }
+
+  // Spark (standalone)
+  if (step.spark) {
+    const when = step.spark.when || 'before';
+    
+    return {
+      id: stepId,
+      type: when === 'after' ? 'spark_after' : 'spark_before',
+      name: `Spark (${when})`,
+      data: step.spark,
       path,
     };
   }
@@ -492,11 +610,18 @@ function treeToObject(tree: YAMLNode): any {
 
   for (const child of tree.children) {
     if (child.type === 'test') {
-      obj.test = child.data;
+      // Sincronizar node.name a test.name si fue editado
+      obj.test = { ...child.data };
+      if (child.name && child.name !== child.data?.name) {
+        obj.test.name = child.name;
+      }
     } else if (child.type === 'variables') {
       obj.variables = child.data;
     } else if (child.type === 'data_source') {
-      obj.data_source = child.data;
+      obj.data_source = { ...child.data };
+      if (child.name && child.name !== child.data?.name) {
+        obj.data_source.name = child.name;
+      }
     } else if (child.type === 'http_defaults') {
       obj.http_defaults = child.data;
     } else if (child.type === 'scenarios') {
@@ -510,8 +635,9 @@ function treeToObject(tree: YAMLNode): any {
 }
 
 function scenarioNodeToObject(node: YAMLNode): any {
+  // Priorizar node.name si fue editado, sino usar data.name
   const scenario: any = {
-    name: node.data?.name || node.name,
+    name: node.name || node.data?.name || 'Scenario',
   };
 
   if (!node.children) return scenario;
@@ -543,12 +669,19 @@ function stepNodeToObject(node: YAMLNode): any {
   if (node.type === 'request') {
     const request: any = { request: { ...node.data } };
     
+    // Sincronizar node.name a request.name si fue editado
+    if (node.name && node.name !== node.data?.name) {
+      request.request.name = node.name;
+    }
+    
     // Clean up children data from request.data (will be rebuilt)
     delete request.request.spark;
     delete request.request.extractors;
     delete request.request.assertions;
     delete request.request.extract;
     delete request.request.assert;
+    delete request.request.files;
+    delete request.request.headers;
     
     if (node.children) {
       // 🔥 SPARK SCRIPTS
@@ -612,15 +745,34 @@ function stepNodeToObject(node: YAMLNode): any {
       if (onErrorNode) {
         request.request.on_error = onErrorNode.data?.action || onErrorNode.data;
       }
+
+      // FILES
+      const fileNodes = node.children.filter(child => child.type === 'file');
+      if (fileNodes.length > 0) {
+        request.request.files = fileNodes.map(file => file.data);
+      }
+
+      // HEADERS - desde el nodo headers (data contiene el objeto headers)
+      const headersNode = node.children.find(child => child.type === 'headers');
+      if (headersNode && headersNode.data) {
+        request.request.headers = headersNode.data;
+      }
     }
 
     return request;
   }
 
   if (node.type === 'group') {
+    // Detectar si es un grupo de assertions (creado por el parser de assertions standalone)
+    if (node.data?.assertions && Array.isArray(node.data.assertions)) {
+      return {
+        assertions: node.data.assertions,
+      };
+    }
+    
     return {
       group: {
-        name: node.data?.name || node.name,
+        name: node.name || node.data?.name || 'Group',
         steps: node.children?.map(stepNodeToObject) || [],
       },
     };
@@ -658,6 +810,20 @@ function stepNodeToObject(node: YAMLNode): any {
   if (node.type === 'think_time') {
     return {
       think_time: node.data?.duration || node.data,
+    };
+  }
+
+  // Assertion standalone (single assertion step)
+  if (node.type === 'assertion') {
+    return {
+      assertions: [node.data],
+    };
+  }
+
+  // Extractor standalone
+  if (node.type === 'extractor') {
+    return {
+      extractors: [node.data],
     };
   }
 

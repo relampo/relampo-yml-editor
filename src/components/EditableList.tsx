@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, Trash2, Edit2, Check, X, CheckCircle2, Circle } from 'lucide-react';
 import { Input } from './ui/input';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface EditableListItem {
   originalKey: string;  // The original key that doesn't change
@@ -34,6 +35,7 @@ export function EditableList({
   enableBulkActions = true,
   onBulkDelete,
 }: EditableListProps) {
+  const { t } = useLanguage();
   const [localItems, setLocalItems] = useState<EditableListItem[]>([]);
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
   const [editingKey, setEditingKey] = useState<string | null>(null);
@@ -148,7 +150,7 @@ export function EditableList({
               onClick={handleSelectAll}
               className="text-xs text-zinc-400 hover:text-zinc-300 transition-colors"
             >
-              {allSelected ? 'Deselect All' : 'Select All'}
+              {allSelected ? t('yamlEditor.editableList.deselectAll') : t('yamlEditor.editableList.selectAll')}
             </button>
           )}
         </div>
@@ -160,7 +162,7 @@ export function EditableList({
               className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-red-400 bg-red-400/10 hover:bg-red-400/20 border border-red-400/20 rounded transition-colors"
             >
               <Trash2 className="w-3 h-3" />
-              Delete ({selectedKeys.size})
+              {t('yamlEditor.common.delete')} ({selectedKeys.size})
             </button>
           )}
           
@@ -169,7 +171,7 @@ export function EditableList({
             className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-green-400 bg-green-400/10 hover:bg-green-400/20 border border-green-400/20 rounded transition-colors"
           >
             <Plus className="w-3 h-3" />
-            Add
+            {t('yamlEditor.common.add')}
           </button>
         </div>
       </div>
@@ -306,7 +308,7 @@ export function EditableList({
                         <div className="flex-1 flex items-center justify-between group">
                           <div className="flex-1 px-3 py-1.5 bg-white/5 border border-white/10 rounded overflow-hidden">
                             <span className="text-sm font-mono text-zinc-200 break-all overflow-wrap-anywhere block">
-                              {item.value || <span className="text-zinc-600 italic">empty</span>}
+                              {item.value || <span className="text-zinc-600 italic">{t('yamlEditor.editableList.empty')}</span>}
                             </span>
                           </div>
                           <div className="flex items-center gap-1 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -338,7 +340,7 @@ export function EditableList({
         {/* Empty state */}
         {Object.keys(items).length === 0 && (
           <div className="p-6 text-center text-zinc-500 text-sm border border-dashed border-white/10 rounded">
-            No {title.toLowerCase()} defined. Click "Add" to create one.
+            {t('yamlEditor.editableList.noItemsDefined').replace('{title}', title.toLowerCase())}
           </div>
         )}
       </div>

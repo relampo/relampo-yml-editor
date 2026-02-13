@@ -400,6 +400,64 @@ export const translations = {
       noNodeSelected: "Select a node to view details",
       selectNode: "Select a node from the tree",
       viewDetails: "to view its details",
+      
+      // Common labels
+      common: {
+        name: "Name",
+        description: "Description",
+        value: "Value",
+        add: "Add",
+        remove: "Remove",
+        delete: "Delete",
+        enable: "Enable",
+        disable: "Disable",
+        browse: "Browse",
+        configuration: "Configuration",
+        properties: "Properties",
+        comments: "Comments",
+        noProperties: "No additional properties",
+      },
+      
+      // Context menu
+      contextMenu: {
+        addHeader: "Add Header",
+        addHeaders: "Add Headers",
+        addFile: "Add File",
+        addRequest: "Add Request",
+        addGroup: "Add Group",
+        addAssertion: "Add Assertion",
+        addExtractor: "Add Extractor",
+        addSpark: "Add Spark",
+        addThinkTime: "Add Think Time",
+      },
+      
+      // Spark editor
+      spark: {
+        quickReference: "Quick Reference:",
+        checkSyntax: "Check Syntax",
+        checking: "Checking...",
+      },
+      // Search
+      search: {
+        searchInYaml: "Search in YAML...",
+        searchNodes: "Search nodes...",
+        closeSearch: "Close search",
+        previous: "Previous",
+        next: "Next",
+      },
+      // Editable List
+      editableList: {
+        deselectAll: "Deselect All",
+        selectAll: "Select All",
+        empty: "empty",
+        noItemsDefined: "No {title} defined. Click \"Add\" to create one.",
+      },
+      // Tree
+      tree: {
+        noYamlLoaded: "No YAML loaded",
+        writeOrUploadYaml: "Write or upload a valid YAML",
+        toViewTree: "to view the tree",
+      },
     },
   },
   
@@ -802,6 +860,64 @@ export const translations = {
       noNodeSelected: "Selecciona un nodo para ver detalles",
       selectNode: "Selecciona un nodo del árbol",
       viewDetails: "para ver sus detalles",
+      
+      // Common labels
+      common: {
+        name: "Nombre",
+        description: "Descripción",
+        value: "Valor",
+        add: "Agregar",
+        remove: "Eliminar",
+        delete: "Eliminar",
+        enable: "Habilitar",
+        disable: "Deshabilitar",
+        browse: "Buscar",
+        configuration: "Configuración",
+        properties: "Propiedades",
+        comments: "Comentarios",
+        noProperties: "Sin propiedades adicionales",
+      },
+      
+      // Context menu
+      contextMenu: {
+        addHeader: "Agregar Header",
+        addHeaders: "Agregar Headers",
+        addFile: "Agregar Archivo",
+        addRequest: "Agregar Request",
+        addGroup: "Agregar Grupo",
+        addAssertion: "Agregar Assertion",
+        addExtractor: "Agregar Extractor",
+        addSpark: "Agregar Spark",
+        addThinkTime: "Agregar Think Time",
+      },
+      
+      // Spark editor
+      spark: {
+        quickReference: "Referencia Rápida:",
+        checkSyntax: "Verificar Sintaxis",
+        checking: "Verificando...",
+      },
+      // Search
+      search: {
+        searchInYaml: "Buscar en YAML...",
+        searchNodes: "Buscar nodos...",
+        closeSearch: "Cerrar búsqueda",
+        previous: "Anterior",
+        next: "Siguiente",
+      },
+      // Editable List
+      editableList: {
+        deselectAll: "Deseleccionar Todo",
+        selectAll: "Seleccionar Todo",
+        empty: "vacío",
+        noItemsDefined: "No hay {title} definidos. Haz clic en \"Agregar\" para crear uno.",
+      },
+      // Tree
+      tree: {
+        noYamlLoaded: "No hay YAML cargado",
+        writeOrUploadYaml: "Escribe o sube un YAML válido",
+        toViewTree: "para visualizar el árbol",
+      },
     },
   },
 };

@@ -6,8 +6,6 @@ import type { YAMLNode } from '../types/yaml';
 import { MethodDropdown } from './fields/MethodDropdown';
 import { QueryParamsEditor } from './fields/QueryParamsEditor';
 import { BodyTypeSelector } from './fields/BodyTypeSelector';
-import { HeaderCommonDropdown } from './fields/HeaderCommonDropdown';
-import { EditableList } from './EditableList';
 import { YAMLResponseDetails } from './YAMLResponseDetails';
 
 interface YAMLRequestDetailsProps {
@@ -39,14 +37,6 @@ export function YAMLRequestDetails({ node, onNodeUpdate }: YAMLRequestDetailsPro
     }
   };
 
-  const handleHeaderChange = (oldKey: string, newKey: string, value: string) => {
-    const headers = { ...formData.headers };
-    if (oldKey !== newKey) {
-      delete headers[oldKey];
-    }
-    headers[newKey] = value;
-    handleFieldChange('headers', headers);
-  };
 
   const handleBodyChange = (value: string) => {
     try {
@@ -132,7 +122,6 @@ export function YAMLRequestDetails({ node, onNodeUpdate }: YAMLRequestDetailsPro
           <RequestContent 
             formData={formData} 
             onFieldChange={handleFieldChange}
-            onHeaderChange={handleHeaderChange}
             onBodyChange={handleBodyChange}
             searchText={searchText}
             currentMatchIndex={currentMatchIndex}
@@ -178,14 +167,6 @@ function SearchBar({ value, onChange, currentIndex, onNavigate, contentRef, acti
         count += urlMatches;
       }
       
-      // Count in headers
-      if (formData.headers) {
-        Object.entries(formData.headers).forEach(([key, val]) => {
-          const keyMatches = key.toLowerCase().split(searchLower).length - 1;
-          const valMatches = String(val).toLowerCase().split(searchLower).length - 1;
-          count += keyMatches + valMatches;
-        });
-      }
       
       // Count in body
       if (formData.body) {
@@ -296,7 +277,6 @@ function SearchBar({ value, onChange, currentIndex, onNavigate, contentRef, acti
 interface RequestContentProps {
   formData: any;
   onFieldChange: (field: string, value: any) => void;
-  onHeaderChange: (oldKey: string, newKey: string, value: string) => void;
   onBodyChange: (value: string) => void;
   searchText: string;
   currentMatchIndex: number;
@@ -305,7 +285,6 @@ interface RequestContentProps {
 function RequestContent({ 
   formData, 
   onFieldChange, 
-  onHeaderChange, 
   onBodyChange,
   searchText,
   currentMatchIndex,
@@ -363,45 +342,6 @@ function RequestContent({
         url={formData.url || ''}
         onUrlChange={(url) => onFieldChange('url', url)}
       />
-
-      {/* Headers */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-              HTTP Headers
-            </label>
-            {searchText && formData.headers && Object.entries(formData.headers).some(([k, v]) => 
-              k.toLowerCase().includes(searchText.toLowerCase()) || 
-              String(v).toLowerCase().includes(searchText.toLowerCase())
-            ) && (
-              <span className="text-xs text-yellow-400 flex items-center gap-1">
-                <span>✓</span> {Object.entries(formData.headers).filter(([k, v]) => 
-                  k.toLowerCase().includes(searchText.toLowerCase()) || 
-                  String(v).toLowerCase().includes(searchText.toLowerCase())
-                ).length} match(es)
-              </span>
-            )}
-          </div>
-          <HeaderCommonDropdown
-            onAddHeader={(key, value) => {
-              const newHeaders = { ...formData.headers, [key]: value };
-              onFieldChange('headers', newHeaders);
-            }}
-          />
-        </div>
-        <EditableList
-          title=""
-          items={formData.headers || {}}
-          onUpdate={(headers) => onFieldChange('headers', headers)}
-          keyPlaceholder="Header-Name"
-          valuePlaceholder="value"
-          keyLabel="Header"
-          valueLabel="Value"
-          enableCheckboxes={false}
-          enableBulkActions={false}
-        />
-      </div>
 
       {/* Body */}
       <BodyTypeSelector
