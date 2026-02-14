@@ -92,12 +92,6 @@ export interface Load {
   end_users?: number;
 }
 
-export interface FileUpload {
-  field: string;
-  path: string;
-  mime?: string;
-}
-
 export interface RequestStep {
   method?: string;
   url?: string;
@@ -110,7 +104,6 @@ export interface RequestStep {
   retry?: RetryConfig;
   on_error?: 'continue' | 'stop' | 'fail_iteration';
   data_source?: DataSource;
-  files?: FileUpload[];  // File uploads for multipart/form-data
 }
 
 export interface AssertConfig {

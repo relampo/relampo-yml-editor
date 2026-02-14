@@ -6,7 +6,6 @@ import type { YAMLNode } from '../types/yaml';
 import { MethodDropdown } from './fields/MethodDropdown';
 import { QueryParamsEditor } from './fields/QueryParamsEditor';
 import { BodyTypeSelector } from './fields/BodyTypeSelector';
-import { FilesEditor } from './fields/FilesEditor';
 import { YAMLResponseDetails } from './YAMLResponseDetails';
 
 interface YAMLRequestDetailsProps {
@@ -85,8 +84,8 @@ export function YAMLRequestDetails({ node, onNodeUpdate }: YAMLRequestDetailsPro
         <button
           onClick={() => setActiveTab('request')}
           className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${activeTab === 'request'
-              ? 'text-yellow-400 bg-yellow-400/10 border-b-2 border-yellow-400'
-              : 'text-zinc-400 hover:text-zinc-300 hover:bg-white/5'
+            ? 'text-yellow-400 bg-yellow-400/10 border-b-2 border-yellow-400'
+            : 'text-zinc-400 hover:text-zinc-300 hover:bg-white/5'
             }`}
         >
           Request
@@ -95,8 +94,8 @@ export function YAMLRequestDetails({ node, onNodeUpdate }: YAMLRequestDetailsPro
           <button
             onClick={() => setActiveTab('response')}
             className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${activeTab === 'response'
-                ? 'text-cyan-400 bg-cyan-400/10 border-b-2 border-cyan-400'
-                : 'text-zinc-400 hover:text-zinc-300 hover:bg-white/5'
+              ? 'text-cyan-400 bg-cyan-400/10 border-b-2 border-cyan-400'
+              : 'text-zinc-400 hover:text-zinc-300 hover:bg-white/5'
               }`}
           >
             Response
@@ -348,22 +347,6 @@ function RequestContent({
         onBodyChange={(body, type) => onFieldChange('body', body)}
       />
 
-      {/* Files */}
-      <div>
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-          📎 Files
-          {formData.files && formData.files.length > 0 && (
-            <span className="ml-2 px-1.5 py-0.5 bg-blue-400/20 text-blue-400 rounded text-xs font-mono">
-              {formData.files.length}
-            </span>
-          )}
-        </label>
-        <FilesEditor
-          files={formData.files || []}
-          onChange={(files) => onFieldChange('files', files.length > 0 ? files : undefined)}
-        />
-      </div>
-
       {/* Recorded At */}
       {formData.recorded_at && (
         <div>
@@ -403,8 +386,8 @@ function RequestContent({
           <div className="space-y-2">
             {formData.spark.map((spark: any, idx: number) => (
               <div key={idx} className={`p-3 rounded border ${spark.when === 'after'
-                  ? 'bg-amber-400/5 border-amber-400/20'
-                  : 'bg-orange-400/5 border-orange-400/20'
+                ? 'bg-amber-400/5 border-amber-400/20'
+                : 'bg-orange-400/5 border-orange-400/20'
                 }`}>
                 <div className={`text-xs font-semibold mb-2 ${spark.when === 'after' ? 'text-amber-400' : 'text-orange-400'
                   }`}>
