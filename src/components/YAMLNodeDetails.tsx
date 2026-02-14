@@ -19,16 +19,16 @@ interface EditableFieldProps {
 // Componente con estado local para evitar pérdida de foco
 function EditableField({ label, value, field, onChange, type = 'text' }: EditableFieldProps) {
   const [localValue, setLocalValue] = useState(String(value || ''));
-  
+
   // Sincronizar cuando el valor externo cambia (por ejemplo, al seleccionar otro nodo)
   useEffect(() => {
     setLocalValue(String(value || ''));
   }, [value]);
-  
+
   const handleBlur = () => {
     onChange(field, localValue);
   };
-  
+
   return (
     <div className="mb-4">
       <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
@@ -50,15 +50,15 @@ function FileField({ label, value, field, onChange }: EditableFieldProps) {
   const { t } = useLanguage();
   const [localValue, setLocalValue] = useState(String(value || ''));
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   useEffect(() => {
     setLocalValue(String(value || ''));
   }, [value]);
-  
+
   const handleBlur = () => {
     onChange(field, localValue);
   };
-  
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -66,7 +66,7 @@ function FileField({ label, value, field, onChange }: EditableFieldProps) {
       onChange(field, file.name);
     }
   };
-  
+
   return (
     <div className="mb-4">
       <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
@@ -115,7 +115,7 @@ interface YAMLNodeDetailsProps {
 export function YAMLNodeDetails({ node, onNodeUpdate }: YAMLNodeDetailsProps) {
   const { t } = useLanguage();
   const [nodeName, setNodeName] = useState(node?.name || '');
-  
+
   // Sincronizar cuando cambia el nodo seleccionado
   useEffect(() => {
     setNodeName(node?.name || '');
@@ -132,7 +132,7 @@ export function YAMLNodeDetails({ node, onNodeUpdate }: YAMLNodeDetailsProps) {
             </h3>
           </div>
         </div>
-        
+
         <div className="flex-1 flex items-center justify-center p-6">
           <div className="text-center">
             <FileText className="w-12 h-12 text-zinc-700 mx-auto mb-3" />
@@ -248,12 +248,12 @@ export function YAMLNodeDetails({ node, onNodeUpdate }: YAMLNodeDetailsProps) {
 
 function renderTestDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): JSX.Element {
   const data = node.data || {};
-  
+
   const handleChange = (field: string, value: string) => {
     if (!onNodeUpdate) return;
     onNodeUpdate(node.id, { ...data, [field]: value });
   };
-  
+
   return (
     <>
       <div className="mb-4">
@@ -267,7 +267,7 @@ function renderTestDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data:
           className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 min-h-[80px]"
         />
       </div>
-      
+
       <div className="mb-4">
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
           Version
@@ -285,12 +285,12 @@ function renderTestDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data:
 
 function renderVariablesDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): JSX.Element {
   const data = node.data || {};
-  
+
   const handleUpdate = (items: Record<string, string>) => {
     if (!onNodeUpdate) return;
     onNodeUpdate(node.id, items);
   };
-  
+
   return (
     <EditableList
       title="Variables"
@@ -309,17 +309,17 @@ function renderVariablesDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
 function renderDataSourceDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): JSX.Element {
   const data = node.data || {};
   const bind = data.bind || {};
-  
+
   const handleChange = (field: string, value: any) => {
     if (onNodeUpdate) onNodeUpdate(node.id, { ...data, [field]: value });
   };
-  
+
   const handleBindUpdate = (updatedBind: Record<string, string>) => {
     if (onNodeUpdate) {
       onNodeUpdate(node.id, { ...data, bind: updatedBind });
     }
   };
-  
+
   return (
     <>
       <EditableField label="Type" value={data.type || ''} field="type" onChange={handleChange} />
@@ -327,7 +327,7 @@ function renderDataSourceDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string,
       <EditableField label="Mode" value={data.mode || ''} field="mode" onChange={handleChange} />
       <EditableField label="Strategy" value={data.strategy || ''} field="strategy" onChange={handleChange} />
       <EditableField label="On Exhausted" value={data.on_exhausted || ''} field="on_exhausted" onChange={handleChange} />
-      
+
       {/* Bind mappings */}
       {Object.keys(bind).length > 0 && (
         <>
@@ -355,28 +355,28 @@ function renderDataSourceDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string,
 function renderHttpDefaultsDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): JSX.Element {
   const data = node.data || {};
   const headers = data.headers || {};
-  
+
   // Campos principales (excluyendo headers)
   const mainFields = { ...data };
   delete mainFields.headers;
-  
+
   const handleChange = (field: string, value: any) => {
     if (onNodeUpdate) onNodeUpdate(node.id, { ...data, [field]: value });
   };
-  
+
   const handleMainFieldsUpdate = (fields: Record<string, string>) => {
     if (onNodeUpdate) {
       onNodeUpdate(node.id, { ...fields, headers: data.headers || {} });
     }
   };
-  
+
   const handleHeadersUpdate = (updatedHeaders: Record<string, string>) => {
     if (onNodeUpdate) {
       const newData = { ...data, headers: updatedHeaders };
       onNodeUpdate(node.id, newData);
     }
   };
-  
+
   return (
     <div className="space-y-6">
       {/* Main Configuration Fields */}
@@ -394,10 +394,10 @@ function renderHttpDefaultsDetails(node: YAMLNode, onNodeUpdate?: (nodeId: strin
           enableBulkActions={false}
         />
       </div>
-      
+
       {/* Divider */}
       <div className="h-px bg-white/10" />
-      
+
       {/* Headers Section */}
       <div>
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
@@ -421,11 +421,11 @@ function renderScenariosContainerDetails(node: YAMLNode, onNodeUpdate?: (nodeId:
   const data = node.data || {};
   const scenarios = node.children || [];
   const scenarioCount = scenarios.length;
-  
+
   const handleChange = (field: string, value: any) => {
     if (onNodeUpdate) onNodeUpdate(node.id, { ...data, [field]: value });
   };
-  
+
   return (
     <div className="space-y-6">
       {/* Comments/Description */}
@@ -440,10 +440,10 @@ function renderScenariosContainerDetails(node: YAMLNode, onNodeUpdate?: (nodeId:
           className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 min-h-[100px]"
         />
       </div>
-      
+
       {/* Divider */}
       <div className="h-px bg-white/10" />
-      
+
       {/* Scenarios List */}
       <div>
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
@@ -492,7 +492,7 @@ function renderScenarioDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, d
   return (
     <>
       <EditableField label="Scenario Name" value={data.name || ''} field="name" onChange={handleChange} />
-      
+
       {/* Comments/Description */}
       <div className="mb-4">
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
@@ -511,32 +511,366 @@ function renderScenarioDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, d
 
 function renderLoadDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): JSX.Element {
   const data = node.data || {};
+  const loadType = data.type || 'constant';
+
   const handleChange = (field: string, value: any) => {
     if (onNodeUpdate) onNodeUpdate(node.id, { ...data, [field]: value });
   };
+
+  // Calculate visualization data
+  const getVisualizationPoints = () => {
+    const points: { time: number; users: number }[] = [];
+
+    if (loadType === 'constant') {
+      const users = parseInt(data.users) || 10;
+      const rampUp = parseTimeToSeconds(data.ramp_up || '0s');
+      const duration = parseTimeToSeconds(data.duration || '60s');
+
+      if (rampUp > 0) {
+        points.push({ time: 0, users: 0 });
+        points.push({ time: rampUp, users: users });
+        points.push({ time: duration, users: users });
+      } else {
+        points.push({ time: 0, users: users });
+        points.push({ time: duration, users: users });
+      }
+    } else if (loadType === 'ramp') {
+      const startUsers = parseInt(data.start_users) || 1;
+      const endUsers = parseInt(data.end_users) || 100;
+      const duration = parseTimeToSeconds(data.duration || '60s');
+
+      points.push({ time: 0, users: startUsers });
+      points.push({ time: duration, users: endUsers });
+    }
+
+    return points;
+  };
+
+  const visualizationPoints = getVisualizationPoints();
+  const maxUsers = Math.max(...visualizationPoints.map(p => p.users), 10);
+  const maxTime = Math.max(...visualizationPoints.map(p => p.time), 60);
+
   return (
-    <>
-      <div className="mb-4">
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Type</label>
-        <select
-          value={data.type || 'constant'}
-          onChange={(e) => handleChange('type', e.target.value)}
-          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
-        >
-          <option value="constant">constant</option>
-          <option value="ramp">ramp</option>
-          <option value="spike">spike</option>
-          <option value="step">step</option>
-        </select>
+    <div className="space-y-6">
+      {/* Load Type Selector */}
+      <div>
+        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
+          Load Pattern
+        </label>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={() => handleChange('type', 'constant')}
+            className={`px-4 py-3 text-sm font-medium rounded-lg transition-all ${loadType === 'constant'
+                ? 'bg-blue-500/20 text-blue-400 border-2 border-blue-400/40 shadow-lg shadow-blue-500/20'
+                : 'bg-white/5 text-zinc-400 border-2 border-white/10 hover:border-white/20 hover:bg-white/10'
+              }`}
+          >
+            <div className="font-bold">Constant</div>
+            <div className="text-xs opacity-70 mt-1">Fixed users</div>
+          </button>
+          <button
+            onClick={() => handleChange('type', 'ramp')}
+            className={`px-4 py-3 text-sm font-medium rounded-lg transition-all ${loadType === 'ramp'
+                ? 'bg-purple-500/20 text-purple-400 border-2 border-purple-400/40 shadow-lg shadow-purple-500/20'
+                : 'bg-white/5 text-zinc-400 border-2 border-white/10 hover:border-white/20 hover:bg-white/10'
+              }`}
+          >
+            <div className="font-bold">Ramp</div>
+            <div className="text-xs opacity-70 mt-1">Gradual increase</div>
+          </button>
+        </div>
       </div>
-      <EditableField label="Users" value={data.users || ''} field="users" onChange={handleChange} type="number" />
-      <EditableField label="Start Users" value={data.start_users || ''} field="start_users" onChange={handleChange} type="number" />
-      <EditableField label="End Users" value={data.end_users || ''} field="end_users" onChange={handleChange} type="number" />
-      <EditableField label="Duration" value={data.duration || ''} field="duration" onChange={handleChange} />
-      <EditableField label="Ramp Up" value={data.ramp_up || ''} field="ramp_up" onChange={handleChange} />
-      <EditableField label="Iterations" value={data.iterations || ''} field="iterations" onChange={handleChange} type="number" />
-    </>
+
+      {/* Divider */}
+      <div className="h-px bg-white/10" />
+
+      {/* Dynamic Fields based on Load Type */}
+      {loadType === 'constant' ? (
+        <>
+          <div>
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+              Virtual Users
+            </label>
+            <Input
+              type="number"
+              value={data.users || ''}
+              onChange={(e) => handleChange('users', e.target.value)}
+              placeholder="10"
+              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+            />
+            <div className="mt-1 text-xs text-zinc-500">
+              Number of concurrent virtual users
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+              Duration
+            </label>
+            <Input
+              value={data.duration || ''}
+              onChange={(e) => handleChange('duration', e.target.value)}
+              placeholder="5m"
+              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+            />
+            <div className="mt-1 text-xs text-zinc-500">
+              Examples: 30s, 5m, 1h
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+              Ramp Up <span className="text-zinc-600">(optional)</span>
+            </label>
+            <Input
+              value={data.ramp_up || ''}
+              onChange={(e) => handleChange('ramp_up', e.target.value)}
+              placeholder="0s"
+              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+            />
+            <div className="mt-1 text-xs text-zinc-500">
+              Time to gradually spawn all users
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+              Iterations <span className="text-zinc-600">(optional)</span>
+            </label>
+            <Input
+              type="number"
+              value={data.iterations || ''}
+              onChange={(e) => handleChange('iterations', e.target.value)}
+              placeholder="0 (unlimited)"
+              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+            />
+            <div className="mt-1 text-xs text-zinc-500">
+              Number of times to run scenario (0 = continuous)
+            </div>
+          </div>
+        </>
+      ) : (
+        <>
+          <div>
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+              Start Users
+            </label>
+            <Input
+              type="number"
+              value={data.start_users || ''}
+              onChange={(e) => handleChange('start_users', e.target.value)}
+              placeholder="1"
+              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+            />
+            <div className="mt-1 text-xs text-zinc-500">
+              Initial number of users
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+              End Users
+            </label>
+            <Input
+              type="number"
+              value={data.end_users || ''}
+              onChange={(e) => handleChange('end_users', e.target.value)}
+              placeholder="100"
+              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+            />
+            <div className="mt-1 text-xs text-zinc-500">
+              Target number of users at the end
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+              Duration
+            </label>
+            <Input
+              value={data.duration || ''}
+              onChange={(e) => handleChange('duration', e.target.value)}
+              placeholder="10m"
+              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+            />
+            <div className="mt-1 text-xs text-zinc-500">
+              Time to ramp from start to end users
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+              Iterations <span className="text-zinc-600">(optional)</span>
+            </label>
+            <Input
+              type="number"
+              value={data.iterations || ''}
+              onChange={(e) => handleChange('iterations', e.target.value)}
+              placeholder="0 (unlimited)"
+              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+            />
+          </div>
+        </>
+      )}
+
+      {/* Divider */}
+      <div className="h-px bg-white/10" />
+
+      {/* Visualization */}
+      <div>
+        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
+          Load Pattern Visualization
+        </label>
+        <div className="bg-zinc-900/50 border border-white/10 rounded-lg p-4">
+          <svg viewBox="0 0 400 200" className="w-full h-48">
+            {/* Grid lines */}
+            <line x1="40" y1="10" x2="40" y2="170" stroke="#3f3f46" strokeWidth="2" />
+            <line x1="40" y1="170" x2="380" y2="170" stroke="#3f3f46" strokeWidth="2" />
+
+            {/* Grid background */}
+            {[0, 1, 2, 3, 4].map(i => (
+              <line
+                key={`h-${i}`}
+                x1="40"
+                y1={10 + (i * 40)}
+                x2="380"
+                y2={10 + (i * 40)}
+                stroke="#27272a"
+                strokeWidth="1"
+                strokeDasharray="4 4"
+              />
+            ))}
+
+            {/* Y-axis labels (users) */}
+            {[0, 1, 2, 3, 4].map(i => {
+              const users = Math.round((maxUsers / 4) * (4 - i));
+              return (
+                <text
+                  key={`y-${i}`}
+                  x="35"
+                  y={14 + (i * 40)}
+                  fill="#71717a"
+                  fontSize="10"
+                  textAnchor="end"
+                  fontFamily="monospace"
+                >
+                  {users}
+                </text>
+              );
+            })}
+
+            {/* X-axis labels (time) */}
+            {[0, 1, 2, 3, 4].map(i => {
+              const time = Math.round((maxTime / 4) * i);
+              const timeStr = time >= 60 ? `${Math.round(time / 60)}m` : `${time}s`;
+              return (
+                <text
+                  key={`x-${i}`}
+                  x={40 + (i * 85)}
+                  y="185"
+                  fill="#71717a"
+                  fontSize="10"
+                  textAnchor="middle"
+                  fontFamily="monospace"
+                >
+                  {timeStr}
+                </text>
+              );
+            })}
+
+            {/* Load pattern line */}
+            {visualizationPoints.length > 1 && (
+              <>
+                <polyline
+                  points={visualizationPoints
+                    .map(p => {
+                      const x = 40 + ((p.time / maxTime) * 340);
+                      const y = 170 - ((p.users / maxUsers) * 160);
+                      return `${x},${y}`;
+                    })
+                    .join(' ')}
+                  fill="none"
+                  stroke={loadType === 'constant' ? '#60a5fa' : '#a78bfa'}
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+
+                {/* Fill area under the line */}
+                <polygon
+                  points={[
+                    '40,170',
+                    ...visualizationPoints.map(p => {
+                      const x = 40 + ((p.time / maxTime) * 340);
+                      const y = 170 - ((p.users / maxUsers) * 160);
+                      return `${x},${y}`;
+                    }),
+                    `${40 + ((visualizationPoints[visualizationPoints.length - 1].time / maxTime) * 340)},170`
+                  ].join(' ')}
+                  fill={loadType === 'constant' ? '#3b82f620' : '#a78bfa20'}
+                />
+
+                {/* Points */}
+                {visualizationPoints.map((p, i) => {
+                  const x = 40 + ((p.time / maxTime) * 340);
+                  const y = 170 - ((p.users / maxUsers) * 160);
+                  return (
+                    <circle
+                      key={i}
+                      cx={x}
+                      cy={y}
+                      r="4"
+                      fill={loadType === 'constant' ? '#60a5fa' : '#a78bfa'}
+                      stroke="#18181b"
+                      strokeWidth="2"
+                    />
+                  );
+                })}
+              </>
+            )}
+
+            {/* Axis labels */}
+            <text
+              x="200"
+              y="198"
+              fill="#a1a1aa"
+              fontSize="11"
+              textAnchor="middle"
+              fontWeight="600"
+            >
+              Time
+            </text>
+            <text
+              x="15"
+              y="100"
+              fill="#a1a1aa"
+              fontSize="11"
+              textAnchor="middle"
+              fontWeight="600"
+              transform="rotate(-90 15 100)"
+            >
+              Users
+            </text>
+          </svg>
+        </div>
+      </div>
+    </div>
   );
+}
+
+// Helper function to parse time strings to seconds
+function parseTimeToSeconds(timeStr: string): number {
+  if (!timeStr) return 0;
+  const match = timeStr.match(/^(\d+)(s|m|h)$/);
+  if (!match) return 60;
+  const [, value, unit] = match;
+  const num = parseInt(value);
+  switch (unit) {
+    case 's': return num;
+    case 'm': return num * 60;
+    case 'h': return num * 3600;
+    default: return 60;
+  }
 }
 
 function renderGroupDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): JSX.Element {
@@ -557,7 +891,7 @@ function renderIfDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: a
   const handleChange = (field: string, value: any) => {
     if (onNodeUpdate) onNodeUpdate(node.id, { ...data, [field]: value });
   };
-  
+
   return (
     <>
       {/* Condition */}
@@ -594,11 +928,11 @@ function renderLoopDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data:
   const handleChange = (field: string, value: any) => {
     if (onNodeUpdate) onNodeUpdate(node.id, { ...data, [field]: value });
   };
-  
+
   const loopCount = data.count || 1;
   const stepsCount = node.children?.length || 0;
   const totalIterations = loopCount * stepsCount;
-  
+
   return (
     <>
       {/* Loop Count */}
@@ -660,11 +994,11 @@ function renderLoopDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data:
 function renderRetryDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): JSX.Element {
   const data = node.data || {};
   const backoffType = data.backoff || 'constant';
-  
+
   const handleChange = (field: string, value: any) => {
     if (onNodeUpdate) onNodeUpdate(node.id, { ...data, [field]: value });
   };
-  
+
   return (
     <>
       {/* Attempts - Common to all */}
@@ -805,15 +1139,15 @@ function renderRetryDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data
 
 function renderThinkTimeDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): JSX.Element {
   const data = node.data || {};
-  
+
   // Determine mode: if min/max exist, it's variable; otherwise fixed
   const isVariable = data.min !== undefined || data.max !== undefined;
   const mode = isVariable ? 'variable' : 'fixed';
-  
+
   const handleChange = (field: string, value: any) => {
     if (onNodeUpdate) onNodeUpdate(node.id, { ...data, [field]: value });
   };
-  
+
   const handleModeChange = (newMode: string) => {
     if (newMode === 'fixed') {
       // Switch to fixed: remove min/max, keep/add duration
@@ -833,7 +1167,7 @@ function renderThinkTimeDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
       if (onNodeUpdate) onNodeUpdate(node.id, newData);
     }
   };
-  
+
   return (
     <>
       {/* Mode Selector */}
@@ -844,21 +1178,19 @@ function renderThinkTimeDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
         <div className="flex gap-2">
           <button
             onClick={() => handleModeChange('fixed')}
-            className={`flex-1 px-4 py-2 text-sm font-medium rounded transition-colors ${
-              mode === 'fixed'
+            className={`flex-1 px-4 py-2 text-sm font-medium rounded transition-colors ${mode === 'fixed'
                 ? 'bg-orange-400/20 text-orange-400 border border-orange-400/30'
                 : 'bg-white/5 text-zinc-400 border border-white/10 hover:text-zinc-300 hover:bg-white/10'
-            }`}
+              }`}
           >
             Fixed
           </button>
           <button
             onClick={() => handleModeChange('variable')}
-            className={`flex-1 px-4 py-2 text-sm font-medium rounded transition-colors ${
-              mode === 'variable'
+            className={`flex-1 px-4 py-2 text-sm font-medium rounded transition-colors ${mode === 'variable'
                 ? 'bg-orange-400/20 text-orange-400 border border-orange-400/30'
                 : 'bg-white/5 text-zinc-400 border border-white/10 hover:text-zinc-300 hover:bg-white/10'
-            }`}
+              }`}
           >
             Variable (Random)
           </button>
@@ -1003,13 +1335,13 @@ function renderMetricsDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, da
 // 🔥 SPARK SCRIPT DETAILS (Editable with Syntax Highlighting)
 function renderSparkDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): JSX.Element {
   const data = node.data || {};
-  
+
   const handleScriptChange = (newScript: string) => {
     if (onNodeUpdate) {
       onNodeUpdate(node.id, { ...data, script: newScript });
     }
   };
-  
+
   return (
     <>
       <div className="mb-4">
@@ -1031,13 +1363,13 @@ function renderSparkDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data
 function renderAssertionDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): JSX.Element {
   const data = node.data || {};
   const assertionType = data.type || 'status';
-  
+
   const handleChange = (field: string, value: any) => {
     if (onNodeUpdate) {
       onNodeUpdate(node.id, { ...data, [field]: value });
     }
   };
-  
+
   return (
     <>
       {/* Assertion Type Selector */}
@@ -1223,13 +1555,13 @@ function renderAssertionDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
 function renderExtractorDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): JSX.Element {
   const data = node.data || {};
   const extractorType = data.type || 'regex';
-  
+
   const handleChange = (field: string, value: any) => {
     if (onNodeUpdate) {
       onNodeUpdate(node.id, { ...data, [field]: value });
     }
   };
-  
+
   return (
     <>
       {/* Extractor Type Selector */}
@@ -1289,7 +1621,7 @@ function renderExtractorDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
             <Input
               value={data.template || ''}
               onChange={(e) => handleChange('template', e.target.value)}
-              placeholder="$1$" 
+              placeholder="$1$"
               className="bg-white/5 border-white/10 text-zinc-300 text-sm font-mono"
             />
             <div className="mt-1 text-xs text-zinc-500">
@@ -1424,13 +1756,13 @@ function renderExtractorDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
 // HEADER DETAILS
 function renderHeaderDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): JSX.Element {
   const data = node.data || {};
-  
+
   const handleChange = (field: string, value: any) => {
     if (onNodeUpdate) {
       onNodeUpdate(node.id, { ...data, [field]: value });
     }
   };
-  
+
   // Sugerencias de headers comunes
   const commonHeaders = [
     'Authorization',
@@ -1443,7 +1775,7 @@ function renderHeaderDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, dat
     'X-Api-Key',
     'X-Requested-With',
   ];
-  
+
   return (
     <>
       <div className="mb-4">
@@ -1463,7 +1795,7 @@ function renderHeaderDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, dat
           ))}
         </datalist>
       </div>
-      
+
       <div className="mb-4">
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
           Header Value
@@ -1478,7 +1810,7 @@ function renderHeaderDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, dat
           Use variables: ${'{'}token${'}'}
         </div>
       </div>
-      
+
       {/* Info box */}
       <div className="p-3 bg-slate-400/5 border border-slate-400/20 rounded text-xs text-zinc-400">
         🏷️ This header will be sent with the HTTP request
@@ -1490,12 +1822,12 @@ function renderHeaderDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, dat
 // HEADERS CONTAINER DETAILS
 function renderHeadersDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): JSX.Element {
   const data = node.data || {};
-  
+
   const handleUpdate = (items: Record<string, string>) => {
     if (!onNodeUpdate) return;
     onNodeUpdate(node.id, items);
   };
-  
+
   return (
     <>
       <EditableList
@@ -1509,7 +1841,7 @@ function renderHeadersDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, da
         enableCheckboxes={false}
         enableBulkActions={false}
       />
-      
+
       {/* Info box */}
       <div className="mt-4 p-3 bg-red-400/5 border border-red-400/20 rounded text-xs text-zinc-400">
         🏷️ These headers will be sent with the HTTP request
@@ -1521,13 +1853,13 @@ function renderHeadersDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, da
 // FILE UPLOAD DETAILS
 function renderFileDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): JSX.Element {
   const data = node.data || {};
-  
+
   const handleChange = (field: string, value: any) => {
     if (onNodeUpdate) {
       onNodeUpdate(node.id, { ...data, [field]: value });
     }
   };
-  
+
   // MIME types comunes
   const commonMimeTypes = [
     'application/pdf',
@@ -1544,23 +1876,23 @@ function renderFileDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data:
     'video/mp4',
     'audio/mpeg',
   ];
-  
+
   return (
     <>
-      <EditableField 
-        label="Field Name" 
-        value={data.field || ''} 
-        field="field" 
-        onChange={handleChange} 
+      <EditableField
+        label="Field Name"
+        value={data.field || ''}
+        field="field"
+        onChange={handleChange}
       />
-      
-      <FileField 
-        label="File Path" 
-        value={data.path || ''} 
-        field="path" 
-        onChange={handleChange} 
+
+      <FileField
+        label="File Path"
+        value={data.path || ''}
+        field="path"
+        onChange={handleChange}
       />
-      
+
       <div className="mb-4">
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
           MIME Type
@@ -1581,7 +1913,7 @@ function renderFileDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data:
           Common: application/pdf, image/jpeg, text/csv
         </div>
       </div>
-      
+
       {/* Info box */}
       <div className="p-3 bg-amber-400/5 border border-amber-400/20 rounded text-xs text-zinc-400">
         📎 This file will be uploaded as multipart/form-data

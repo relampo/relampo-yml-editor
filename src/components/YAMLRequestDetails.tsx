@@ -6,6 +6,7 @@ import type { YAMLNode } from '../types/yaml';
 import { MethodDropdown } from './fields/MethodDropdown';
 import { QueryParamsEditor } from './fields/QueryParamsEditor';
 import { BodyTypeSelector } from './fields/BodyTypeSelector';
+import { FilesEditor } from './fields/FilesEditor';
 import { YAMLResponseDetails } from './YAMLResponseDetails';
 
 interface YAMLRequestDetailsProps {
@@ -70,7 +71,7 @@ export function YAMLRequestDetails({ node, onNodeUpdate }: YAMLRequestDetailsPro
       const currentMark = Array.from(marks).find(
         (mark) => mark.getAttribute('data-match-index') === String(currentMatchIndex)
       );
-      
+
       if (currentMark) {
         currentMark.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
@@ -83,22 +84,20 @@ export function YAMLRequestDetails({ node, onNodeUpdate }: YAMLRequestDetailsPro
       <div className="flex items-center border-b border-white/5 bg-[#111111] flex-shrink-0">
         <button
           onClick={() => setActiveTab('request')}
-          className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${
-            activeTab === 'request'
+          className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${activeTab === 'request'
               ? 'text-yellow-400 bg-yellow-400/10 border-b-2 border-yellow-400'
               : 'text-zinc-400 hover:text-zinc-300 hover:bg-white/5'
-          }`}
+            }`}
         >
           Request
         </button>
         {formData.response && (
           <button
             onClick={() => setActiveTab('response')}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${
-              activeTab === 'response'
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${activeTab === 'response'
                 ? 'text-cyan-400 bg-cyan-400/10 border-b-2 border-cyan-400'
                 : 'text-zinc-400 hover:text-zinc-300 hover:bg-white/5'
-            }`}
+              }`}
           >
             Response
           </button>
@@ -119,8 +118,8 @@ export function YAMLRequestDetails({ node, onNodeUpdate }: YAMLRequestDetailsPro
       {/* Content */}
       <div ref={contentRef} className="flex-1 overflow-y-auto p-6">
         {activeTab === 'request' ? (
-          <RequestContent 
-            formData={formData} 
+          <RequestContent
+            formData={formData}
             onFieldChange={handleFieldChange}
             onBodyChange={handleBodyChange}
             searchText={searchText}
@@ -153,30 +152,30 @@ function SearchBar({ value, onChange, currentIndex, onNavigate, contentRef, acti
   // Count total matches
   const totalMatches = useMemo(() => {
     if (!value) return 0;
-    
+
     let count = 0;
     const searchLower = value.toLowerCase();
-    
+
     if (activeTab === 'request') {
       // Count in method
       if (formData.method && formData.method.toLowerCase().includes(searchLower)) count++;
-      
+
       // Count in URL
       if (formData.url) {
         const urlMatches = formData.url.toLowerCase().split(searchLower).length - 1;
         count += urlMatches;
       }
-      
-      
+
+
       // Count in body
       if (formData.body) {
-        const bodyStr = typeof formData.body === 'string' 
-          ? formData.body 
+        const bodyStr = typeof formData.body === 'string'
+          ? formData.body
           : JSON.stringify(formData.body, null, 2);
         const bodyMatches = bodyStr.toLowerCase().split(searchLower).length - 1;
         count += bodyMatches;
       }
-      
+
       // Count in recorded_at
       if (formData.recorded_at) {
         const recordedMatches = formData.recorded_at.toLowerCase().split(searchLower).length - 1;
@@ -186,19 +185,19 @@ function SearchBar({ value, onChange, currentIndex, onNavigate, contentRef, acti
       // Response tab
       const response = formData.response;
       if (!response) return 0;
-      
+
       // Count in status
       if (response.status) {
         const statusMatches = String(response.status).toLowerCase().split(searchLower).length - 1;
         count += statusMatches;
       }
-      
+
       // Count in time_ms
       if (response.time_ms) {
         const timeMatches = String(response.time_ms).toLowerCase().split(searchLower).length - 1;
         count += timeMatches;
       }
-      
+
       // Count in headers
       if (response.headers) {
         Object.entries(response.headers).forEach(([key, val]) => {
@@ -207,17 +206,17 @@ function SearchBar({ value, onChange, currentIndex, onNavigate, contentRef, acti
           count += keyMatches + valMatches;
         });
       }
-      
+
       // Count in body
       if (response.body) {
-        const bodyStr = typeof response.body === 'string' 
-          ? response.body 
+        const bodyStr = typeof response.body === 'string'
+          ? response.body
           : JSON.stringify(response.body, null, 2);
         const bodyMatches = bodyStr.toLowerCase().split(searchLower).length - 1;
         count += bodyMatches;
       }
     }
-    
+
     return count;
   }, [value, activeTab, formData]);
 
@@ -245,7 +244,7 @@ function SearchBar({ value, onChange, currentIndex, onNavigate, contentRef, acti
             className="pl-9 pr-3 bg-white/5 border-white/10 text-zinc-300 text-sm"
           />
         </div>
-        
+
         {value && (
           <div className="flex items-center gap-1">
             <span className="text-xs text-zinc-400 px-2 min-w-[60px] text-center font-mono">
@@ -282,9 +281,9 @@ interface RequestContentProps {
   currentMatchIndex: number;
 }
 
-function RequestContent({ 
-  formData, 
-  onFieldChange, 
+function RequestContent({
+  formData,
+  onFieldChange,
   onBodyChange,
   searchText,
   currentMatchIndex,
@@ -293,9 +292,9 @@ function RequestContent({
 
   const highlightText = (text: string, search: string): JSX.Element | string => {
     if (!search || !text) return text;
-    
+
     const parts = text.split(new RegExp(`(${escapeRegex(search)})`, 'gi'));
-    
+
     return (
       <>
         {parts.map((part, i) => {
@@ -303,8 +302,8 @@ function RequestContent({
             const thisMatchIndex = matchCounter++;
             const isActive = thisMatchIndex === currentMatchIndex;
             return (
-              <mark 
-                key={i} 
+              <mark
+                key={i}
                 data-match-index={thisMatchIndex}
                 className={`${isActive ? 'bg-yellow-400/50 ring-2 ring-yellow-400' : 'bg-yellow-400/30'} text-yellow-200 transition-all`}
               >
@@ -349,6 +348,22 @@ function RequestContent({
         onBodyChange={(body, type) => onFieldChange('body', body)}
       />
 
+      {/* Files */}
+      <div>
+        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+          📎 Files
+          {formData.files && formData.files.length > 0 && (
+            <span className="ml-2 px-1.5 py-0.5 bg-blue-400/20 text-blue-400 rounded text-xs font-mono">
+              {formData.files.length}
+            </span>
+          )}
+        </label>
+        <FilesEditor
+          files={formData.files || []}
+          onChange={(files) => onFieldChange('files', files.length > 0 ? files : undefined)}
+        />
+      </div>
+
       {/* Recorded At */}
       {formData.recorded_at && (
         <div>
@@ -377,24 +392,22 @@ function RequestContent({
             <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
               Spark Scripts ({formData.spark.length})
             </label>
-            {searchText && formData.spark.some((s: any) => 
+            {searchText && formData.spark.some((s: any) =>
               s.script?.toLowerCase().includes(searchText.toLowerCase())
             ) && (
-              <span className="text-xs text-yellow-400 flex items-center gap-1">
-                <span>✓</span> Match in scripts
-              </span>
-            )}
+                <span className="text-xs text-yellow-400 flex items-center gap-1">
+                  <span>✓</span> Match in scripts
+                </span>
+              )}
           </div>
           <div className="space-y-2">
             {formData.spark.map((spark: any, idx: number) => (
-              <div key={idx} className={`p-3 rounded border ${
-                spark.when === 'after' 
-                  ? 'bg-amber-400/5 border-amber-400/20' 
+              <div key={idx} className={`p-3 rounded border ${spark.when === 'after'
+                  ? 'bg-amber-400/5 border-amber-400/20'
                   : 'bg-orange-400/5 border-orange-400/20'
-              }`}>
-                <div className={`text-xs font-semibold mb-2 ${
-                  spark.when === 'after' ? 'text-amber-400' : 'text-orange-400'
                 }`}>
+                <div className={`text-xs font-semibold mb-2 ${spark.when === 'after' ? 'text-amber-400' : 'text-orange-400'
+                  }`}>
                   {spark.when === 'after' ? '⏵ After Request' : '⏵ Before Request'}
                 </div>
                 <pre className="text-xs font-mono text-zinc-400 whitespace-pre-wrap max-h-[150px] overflow-y-auto">
@@ -416,15 +429,15 @@ function RequestContent({
             <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
               🔍 Extractors ({formData.extractors.length})
             </label>
-            {searchText && formData.extractors.some((e: any) => 
+            {searchText && formData.extractors.some((e: any) =>
               e.var?.toLowerCase().includes(searchText.toLowerCase()) ||
               e.variable?.toLowerCase().includes(searchText.toLowerCase()) ||
               e.pattern?.toLowerCase().includes(searchText.toLowerCase())
             ) && (
-              <span className="text-xs text-yellow-400 flex items-center gap-1">
-                <span>✓</span> Match in extractors
-              </span>
-            )}
+                <span className="text-xs text-yellow-400 flex items-center gap-1">
+                  <span>✓</span> Match in extractors
+                </span>
+              )}
           </div>
           <div className="space-y-2">
             {formData.extractors.map((ext: any, idx: number) => (
@@ -473,15 +486,15 @@ function RequestContent({
             <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
               ✅ Assertions ({formData.assertions.length})
             </label>
-            {searchText && formData.assertions.some((a: any) => 
+            {searchText && formData.assertions.some((a: any) =>
               a.type?.toLowerCase().includes(searchText.toLowerCase()) ||
               String(a.value || '').toLowerCase().includes(searchText.toLowerCase()) ||
               a.pattern?.toLowerCase().includes(searchText.toLowerCase())
             ) && (
-              <span className="text-xs text-yellow-400 flex items-center gap-1">
-                <span>✓</span> Match in assertions
-              </span>
-            )}
+                <span className="text-xs text-yellow-400 flex items-center gap-1">
+                  <span>✓</span> Match in assertions
+                </span>
+              )}
           </div>
           <div className="space-y-2">
             {formData.assertions.map((assertion: any, idx: number) => (

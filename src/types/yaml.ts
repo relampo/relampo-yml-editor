@@ -83,20 +83,19 @@ export interface HttpDefaults {
 }
 
 export interface Load {
-  type: 'constant' | 'ramp' | 'spike' | 'step';
+  type: 'constant' | 'ramp';  // Only types supported by Pulse v1.1
   users?: number;
   duration?: string;
   ramp_up?: string;
   iterations?: number;
   start_users?: number;
   end_users?: number;
-  spike_users?: number;
-  spike_duration?: string;
-  spike_at?: string;
-  steps?: Array<{
-    users: number;
-    duration: string;
-  }>;
+}
+
+export interface FileUpload {
+  field: string;
+  path: string;
+  mime?: string;
 }
 
 export interface RequestStep {
@@ -111,6 +110,7 @@ export interface RequestStep {
   retry?: RetryConfig;
   on_error?: 'continue' | 'stop' | 'fail_iteration';
   data_source?: DataSource;
+  files?: FileUpload[];  // File uploads for multipart/form-data
 }
 
 export interface AssertConfig {

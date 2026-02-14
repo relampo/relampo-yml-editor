@@ -2,6 +2,28 @@
 
 Este documento describe el soporte del YAML Editor para el formato de **Pulse** - la herramienta de load testing con Spark Scripts.
 
+## Versión y Compatibilidad
+
+**Versión de Relampo**: v1.1  
+**Compatible con**: Pulse CLI (todas las versiones actuales)
+
+### ✅ Features Soportadas
+
+- ✅ **Load type `constant`**: Carga constante con usuarios fijos
+- ✅ **Load type `ramp`**: Incremento gradual de usuarios
+- ✅ **Spark Scripts**: JavaScript antes/después de requests
+- ✅ **Assertions**: Validaciones de respuestas
+- ✅ **Extractors**: Captura de valores (regex, jsonpath, xpath)
+- ✅ **Data sources**: CSV, JSON, inline
+- ✅ **Controllers**: group, if, loop, retry
+- ✅ **Variables e interpolación**: `{{variable}}`
+
+### ❌ Limitaciones Conocidas
+
+- ❌ **Load type `stages`**: No soportado en Pulse v1.1. Use `constant` o `ramp` en su lugar.
+
+---
+
 ## Tabla de Contenidos
 - [Estructura General](#estructura-general)
 - [Spark Scripts](#spark-scripts)
