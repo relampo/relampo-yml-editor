@@ -5,15 +5,17 @@ import { DebuggingView } from './details/DebuggingView';
 import { GenerationView } from './details/GenerationView';
 import { MonitoringView } from './details/MonitoringView';
 import { FileText } from 'lucide-react';
+import { DataSourceDetail } from './details/DataSourceDetail';
 
 type WorkbenchTab = 'recording' | 'scripting' | 'correlation' | 'debugging' | 'generation' | 'monitoring';
 
 interface DetailPanelProps {
   selectedNode: ScriptNode | null;
   activeTab: WorkbenchTab;
+  onNodeUpdate?: (nodeId: string, updatedData: any) => void;
 }
 
-export function DetailPanel({ selectedNode, activeTab }: DetailPanelProps) {
+export function DetailPanel({ selectedNode, activeTab, onNodeUpdate }: DetailPanelProps) {
   // Show tab-specific views for certain tabs
   if (activeTab === 'recording') {
     return <RecordingView />;
@@ -66,6 +68,8 @@ export function DetailPanel({ selectedNode, activeTab }: DetailPanelProps) {
     switch (selectedNode.type) {
       case 'http-request':
         return <HttpRequestDetail node={selectedNode} />;
+      case 'data-source':
+        return <DataSourceDetail node={selectedNode} onNodeUpdate={onNodeUpdate} />;
       default:
         return (
           <div className="flex items-center justify-center h-full">

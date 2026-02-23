@@ -35,7 +35,7 @@ export function ExtractorDetail({ node }: ExtractorDetailProps) {
               type="text"
               value={data.variableName}
               readOnly
-              className="w-full px-3 py-2 border border-white/10 rounded-lg bg-[#111111] text-sm font-mono text-zinc-100"
+              className="w-[70px] shrink-0 px-3 py-2 border border-white/10 rounded-lg bg-[#111111] text-sm font-mono text-zinc-100"
               placeholder="e.g., user_id"
             />
             <p className="text-xs text-zinc-500 mt-1">

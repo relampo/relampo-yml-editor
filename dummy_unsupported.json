@@ -1,0 +1,59 @@
+{
+    "info": {
+        "name": "Unsupported Features Test",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "auth": {
+        "type": "basic",
+        "basic": [
+            {
+                "key": "password",
+                "value": "secret",
+                "type": "string"
+            },
+            {
+                "key": "username",
+                "value": "user",
+                "type": "string"
+            }
+        ]
+    },
+    "item": [
+        {
+            "name": "Request with Pre-script",
+            "event": [
+                {
+                    "listen": "prerequest",
+                    "script": {
+                        "exec": [
+                            "console.log('This is a pre-request script');"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "https://example.com/api",
+                    "protocol": "https",
+                    "host": [
+                        "example",
+                        "com"
+                    ],
+                    "path": [
+                        "api"
+                    ]
+                }
+            },
+            "response": []
+        }
+    ],
+    "variable": [
+        {
+            "key": "myVar",
+            "value": "123"
+        }
+    ]
+}

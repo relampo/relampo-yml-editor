@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import { FileText, Plus, Trash2 } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { FileText, Plus, Trash2, Users, TrendingUp, Mountain, Gauge, Target, Cookie, Cpu, Hand, AlertTriangle, ServerCrash, Clock3, CheckCircle2, Tag, Search, SearchX, TextSearch, Braces, Brackets, BetweenHorizontalStart, Binary } from 'lucide-react';
 import type { YAMLNode } from '../types/yaml';
 import { useLanguage } from '../contexts/LanguageContext';
 import { YAMLRequestDetails } from './YAMLRequestDetails';
@@ -14,13 +14,13 @@ interface EditableFieldProps {
   field: string;
   onChange: (field: string, value: string) => void;
   type?: 'text' | 'number';
+  maxLength?: number;
 }
 
-// Componente con estado local para evitar pérdida de foco
-function EditableField({ label, value, field, onChange, type = 'text' }: EditableFieldProps) {
+// Componente con estado local para evitar pérdida de foco - NUEVO ESTILO PREMIUM
+function EditableField({ label, value, field, onChange, type = 'text', maxLength }: EditableFieldProps) {
   const [localValue, setLocalValue] = useState(String(value || ''));
 
-  // Sincronizar cuando el valor externo cambia (por ejemplo, al seleccionar otro nodo)
   useEffect(() => {
     setLocalValue(String(value || ''));
   }, [value]);
@@ -29,8 +29,10 @@ function EditableField({ label, value, field, onChange, type = 'text' }: Editabl
     onChange(field, localValue);
   };
 
+  const isNameField = label.toLowerCase().includes('name');
+
   return (
-    <div className="mb-4">
+    <div className="mb-5">
       <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
         {label}
       </label>
@@ -39,56 +41,101 @@ function EditableField({ label, value, field, onChange, type = 'text' }: Editabl
         value={localValue}
         onChange={(e) => setLocalValue(e.target.value)}
         onBlur={handleBlur}
-        className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+        maxLength={maxLength}
+        className={`${isNameField ? 'w-[70px] shrink-0' : 'w-full'} h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono focus:border-white/30 transition-all`}
       />
     </div>
   );
 }
 
+interface SelectFieldProps {
+  label: string;
+  value: string;
+  field: string;
+  options: { label: string; value: string }[];
+  onChange: (field: string, value: string) => void;
+  disabled?: boolean;
+}
+
+function SelectField({ label, value, field, options, onChange, noMargin = false, disabled = false }: SelectFieldProps & { noMargin?: boolean }) {
+  return (
+    <div className={noMargin ? "" : "mb-5"}>
+      <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+        {label}
+      </label>
+      <select
+        value={value}
+        disabled={disabled}
+        onChange={(e) => onChange(field, e.target.value)}
+        className={`w-full px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono focus:border-white/30 transition-all outline-none appearance-none h-[38px] ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
+      >
+        {options.map((opt) => (
+          <option key={opt.value} value={opt.value} className="bg-[#1a1a1a]">
+            {opt.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
 // Componente especial para campo File con botón Browse
-function FileField({ label, value, field, onChange }: EditableFieldProps) {
+function FileField({ label, value, field, onChange, noMargin = false }: EditableFieldProps & { noMargin?: boolean }) {
   const { t } = useLanguage();
-  const [localValue, setLocalValue] = useState(String(value || ''));
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    setLocalValue(String(value || ''));
-  }, [value]);
+  const handleBrowseClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
 
-  const handleBlur = () => {
-    onChange(field, localValue);
+    // Try Electron native dialog first if available
+    if ((window as any).electron?.selectFile) {
+      try {
+        let path = await (window as any).electron.selectFile();
+        // ipc handler returns a string or null; be defensive if an array is returned
+        if (Array.isArray(path)) path = path[0];
+        if (path) {
+          onChange(field, path);
+        }
+        return;
+      } catch (err) {
+        console.error('Electron file selection failed:', err);
+      }
+    }
+
+    // Fallback for browser
+    fileInputRef.current?.click();
   };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setLocalValue(file.name);
-      onChange(field, file.name);
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      // In Electron/Desktop, `file.path` is the absolute path. In browsers this is not available.
+      // Prefer full path when present, otherwise fall back to filename.
+      const path = (file as any).path || file.name;
+      onChange(field, path);
     }
   };
 
   return (
-    <div className="mb-4">
+    <div className={noMargin ? "" : "mb-5"}>
       <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
         {label}
       </label>
       <div className="flex gap-2">
         <Input
-          value={localValue}
-          onChange={(e) => setLocalValue(e.target.value)}
-          onBlur={handleBlur}
+          value={String(value || '')}
+          onChange={(e) => onChange(field, e.target.value)}
           placeholder="path/to/file.csv"
-          className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+          className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono h-[38px]"
+          title={String(value || '')}
         />
         <button
           type="button"
-          onClick={(e) => {
-            e.preventDefault();
-            fileInputRef.current?.click();
-          }}
-          className="px-3 py-2 bg-yellow-400/10 border border-yellow-400/30 rounded text-yellow-400 hover:bg-yellow-400/20 text-sm font-medium transition-colors flex items-center gap-2 flex-shrink-0"
+          onClick={handleBrowseClick}
+          className="px-3 py-2 bg-yellow-400/10 border border-yellow-400/30 rounded text-yellow-400 hover:bg-yellow-400/20 text-sm font-medium transition-colors flex items-center gap-2 flex-shrink-0 h-[38px]"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
             <polyline points="17 8 12 3 7 8"></polyline>
             <line x1="12" y1="3" x2="12" y2="15"></line>
@@ -98,8 +145,8 @@ function FileField({ label, value, field, onChange }: EditableFieldProps) {
         <input
           ref={fileInputRef}
           type="file"
-          accept=".csv,.txt,.json"
-          onChange={handleFileSelect}
+          accept=".csv,.txt"
+          onChange={handleFileChange}
           className="hidden"
         />
       </div>
@@ -144,22 +191,22 @@ export function YAMLNodeDetails({ node, onNodeUpdate }: YAMLNodeDetailsProps) {
     );
   }
 
-  const renderTypeSpecificDetails = (node: YAMLNode): JSX.Element | null => {
+  const renderTypeSpecificDetails = (node: YAMLNode): React.JSX.Element | null => {
     switch (node.type) {
       case 'test':
-        return renderTestDetails(node, onNodeUpdate);
+        return renderTestDetails(node, onNodeUpdate, nodeName, setNodeName);
       case 'variables':
         return renderVariablesDetails(node, onNodeUpdate);
       case 'data_source':
-        return renderDataSourceDetails(node, onNodeUpdate);
+        return renderDataSourceDetails(node, onNodeUpdate, nodeName, setNodeName);
       case 'http_defaults':
         return renderHttpDefaultsDetails(node, onNodeUpdate);
       case 'scenarios':
         return renderScenariosContainerDetails(node, onNodeUpdate);
       case 'scenario':
-        return renderScenarioDetails(node, onNodeUpdate);
+        return renderScenarioDetails(node, onNodeUpdate, nodeName, setNodeName);
       case 'load':
-        return renderLoadDetails(node, onNodeUpdate);
+        return <LoadDetails node={node} onNodeUpdate={onNodeUpdate} />;
       case 'request':
       case 'get':
       case 'post':
@@ -170,7 +217,7 @@ export function YAMLNodeDetails({ node, onNodeUpdate }: YAMLNodeDetailsProps) {
       case 'options':
         return <YAMLRequestDetails node={node} onNodeUpdate={onNodeUpdate} />;
       case 'group':
-        return renderGroupDetails(node, onNodeUpdate);
+        return renderGroupDetails(node, onNodeUpdate, nodeName, setNodeName);
       case 'if':
         return renderIfDetails(node, onNodeUpdate);
       case 'loop':
@@ -219,34 +266,44 @@ export function YAMLNodeDetails({ node, onNodeUpdate }: YAMLNodeDetailsProps) {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-6">
-        {/* Node Name - Editable */}
-        <div className="mb-6">
-          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-            {t('yamlEditor.common.name')}
-          </label>
-          <Input
-            value={nodeName}
-            onChange={(e) => setNodeName(e.target.value)}
-            onBlur={() => {
-              if (onNodeUpdate && nodeName !== node.name) {
-                // Actualizar TANTO el nombre como los datos del nodo
-                const updatedData = { ...node.data, __name: nodeName };
-                onNodeUpdate(node.id, updatedData);
-              }
-            }}
-            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-semibold"
-            placeholder="Node name"
-          />
-        </div>
+        {/* Node Name - Editable (Hide for data_source as it handles its own name field in the row) */}
+        {node.type !== 'test' && node.type !== 'data_source' && (
+          <div className="mb-6">
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+              {t('yamlEditor.common.name')}
+            </label>
+            <Input
+              value={nodeName}
+              onChange={(e) => setNodeName(e.target.value)}
+              maxLength={50}
+              onBlur={() => {
+                if (onNodeUpdate && nodeName !== node.name) {
+                  const updatedData = { ...node.data, __name: nodeName };
+                  onNodeUpdate(node.id, updatedData);
+                }
+              }}
+              className="w-[70px] shrink-0 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-semibold"
+              placeholder="Node name"
+            />
+          </div>
+        )}
 
         {/* Type-specific details */}
-        {renderTypeSpecificDetails(node)}
+        {node.type === 'data_source'
+          ? renderDataSourceDetails(node, onNodeUpdate, nodeName, setNodeName)
+          : renderTypeSpecificDetails(node)
+        }
       </div>
     </div>
   );
 }
 
-function renderTestDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): JSX.Element {
+function renderTestDetails(
+  node: YAMLNode,
+  onNodeUpdate?: (nodeId: string, data: any) => void,
+  nodeName?: string,
+  setNodeName?: (name: string) => void
+): React.JSX.Element {
   const data = node.data || {};
 
   const handleChange = (field: string, value: string) => {
@@ -255,46 +312,75 @@ function renderTestDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data:
   };
 
   return (
-    <>
-      <div className="mb-4">
+    <div className="space-y-6">
+      {/* Name and Version on the same line */}
+      <div className="flex gap-4">
+        <div className="flex-1 min-w-0">
+          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+            Name
+          </label>
+          <Input
+            value={data.name || node.name || ''}
+            maxLength={50}
+            onChange={(e) => handleChange('name', e.target.value.slice(0, 50))}
+            placeholder="Test Plan Name"
+            className="w-[70px] shrink-0 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-semibold"
+          />
+        </div>
+        <div className="w-24 shrink-0">
+          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+            Version
+          </label>
+          <Input
+            value={data.version || ''}
+            maxLength={5}
+            onChange={(e) => handleChange('version', e.target.value.slice(0, 5))}
+            placeholder="1.0"
+            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono text-center"
+          />
+        </div>
+      </div>
+
+      {/* Description below, full width */}
+      <div>
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
           Description
         </label>
         <Textarea
           value={data.description || ''}
-          onChange={(e) => handleChange('description', e.target.value)}
+          maxLength={250}
+          onChange={(e) => handleChange('description', e.target.value.slice(0, 250))}
           placeholder="Test description..."
-          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 min-h-[80px]"
+          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 min-h-[100px] resize-none"
         />
       </div>
-
-      <div className="mb-4">
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-          Version
-        </label>
-        <Input
-          value={data.version || ''}
-          onChange={(e) => handleChange('version', e.target.value)}
-          placeholder="1.0"
-          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
-        />
-      </div>
-    </>
+    </div>
   );
 }
 
-function renderVariablesDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): JSX.Element {
+function renderVariablesDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): React.JSX.Element {
   const data = node.data || {};
 
-  const handleUpdate = (items: Record<string, string>) => {
+  // Handle case where data is { variables: [{name, value}, ...] }
+  const items = Array.isArray(data.variables)
+    ? data.variables.reduce((acc: any, curr: any) => ({ ...acc, [curr.name]: curr.value }), {})
+    : data;
+
+  const handleUpdate = (updatedItems: Record<string, string>) => {
     if (!onNodeUpdate) return;
-    onNodeUpdate(node.id, items);
+
+    if (Array.isArray(data.variables)) {
+      const updatedArray = Object.entries(updatedItems).map(([name, value]) => ({ name, value }));
+      onNodeUpdate(node.id, { ...data, variables: updatedArray });
+    } else {
+      onNodeUpdate(node.id, updatedItems);
+    }
   };
 
   return (
     <EditableList
       title="Variables"
-      items={data}
+      items={items}
       onUpdate={handleUpdate}
       keyPlaceholder="variable_name"
       valuePlaceholder="value"
@@ -302,16 +388,33 @@ function renderVariablesDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
       valueLabel="Value"
       enableCheckboxes={false}
       enableBulkActions={false}
+      variant="minimal"
     />
   );
 }
 
-function renderDataSourceDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): JSX.Element {
+function renderDataSourceDetails(
+  node: YAMLNode,
+  onNodeUpdate?: (nodeId: string, data: any) => void,
+  nodeName?: string,
+  setNodeName?: (name: string) => void
+): React.JSX.Element {
   const data = node.data || {};
   const bind = data.bind || {};
+  const showDiagnosis = false; // Set to true for debugging data mismatches
 
   const handleChange = (field: string, value: any) => {
-    if (onNodeUpdate) onNodeUpdate(node.id, { ...data, [field]: value });
+    if (onNodeUpdate) {
+      const updatedData = { ...data, [field]: value };
+      // If we are updating 'file', preserve the full path under 'path' (canonical) and
+      // remove legacy 'file' key to avoid duplicates. This ensures serializers that
+      // expect 'path' will receive the full path.
+      if (field === 'file') {
+        updatedData.path = value;
+        delete updatedData.file;
+      }
+      onNodeUpdate(node.id, updatedData);
+    }
   };
 
   const handleBindUpdate = (updatedBind: Record<string, string>) => {
@@ -321,15 +424,105 @@ function renderDataSourceDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string,
   };
 
   return (
-    <>
-      <EditableField label="Type" value={data.type || ''} field="type" onChange={handleChange} />
-      <FileField label="File" value={data.file || ''} field="file" onChange={handleChange} />
-      <EditableField label="Mode" value={data.mode || ''} field="mode" onChange={handleChange} />
-      <EditableField label="Strategy" value={data.strategy || ''} field="strategy" onChange={handleChange} />
-      <EditableField label="On Exhausted" value={data.on_exhausted || ''} field="on_exhausted" onChange={handleChange} />
+    <div className="space-y-6">
+      {/* Row 1: Name, Type, File */}
+      <div className="flex items-end gap-4">
+        <div className="flex-shrink-0">
+          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+            Name
+          </label>
+          <Input
+            value={nodeName || ''}
+            onChange={(e) => setNodeName?.(e.target.value)}
+            maxLength={50}
+            onBlur={() => {
+              if (onNodeUpdate && nodeName !== node.name) {
+                const updatedData = { ...node.data, __name: nodeName };
+                onNodeUpdate(node.id, updatedData);
+              }
+            }}
+            className="w-[100px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-semibold h-[38px]"
+            placeholder="Name"
+          />
+        </div>
 
-      {/* Bind mappings */}
-      {Object.keys(bind).length > 0 && (
+        <div className="w-[100px] flex-shrink-0">
+          <SelectField
+            label="Type"
+            value={data.type || 'csv'}
+            field="type"
+            options={[
+              { label: 'CSV', value: 'csv' },
+              { label: 'TXT', value: 'txt' }
+            ]}
+            onChange={handleChange}
+            noMargin={true}
+          />
+        </div>
+
+        <div className="flex-1">
+          <FileField label="File" value={data.file || data.path || ''} field="file" onChange={handleChange} noMargin={true} />
+        </div>
+      </div>
+
+      {/* Row 2: Variable Names */}
+      <div className="w-full">
+        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+          Variable Names (comma-separated)
+        </label>
+        <Input
+          value={data.variable_names || ''}
+          onChange={(e) => handleChange('variable_names', e.target.value)}
+          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono focus:border-white/30 transition-all h-[38px]"
+          placeholder="var1, var2, var3"
+        />
+        <p className="text-[10px] text-zinc-500 mt-1 italic">
+          Define variable names separated by commas manually.
+        </p>
+      </div>
+
+      {/* Row 3: Mode and On Exhausted (conditional) */}
+      <div className="flex gap-4">
+        <div className="w-[120px] flex-shrink-0">
+          <SelectField
+            label="Mode"
+            value={data.mode || 'per_vu'}
+            field="mode"
+            options={[
+              { label: 'Per VU', value: 'per_vu' },
+              { label: 'Shared', value: 'shared' },
+              { label: 'Per Worker', value: 'per_worker' }
+            ]}
+            onChange={handleChange}
+            noMargin={true}
+          />
+          {/* Mode tip - visible help text */}
+          <p className="text-[10px] text-zinc-400 mt-1 italic">
+            {data.mode === 'shared' && 'Un cursor global; filas consumidas una sola vez.'}
+            {data.mode === 'per_worker' && 'Mapeo fijo 1:1: VU i → fila (i-1) % total. Misma fila, sin avance.'}
+            {(!data.mode || data.mode === 'per_vu') && 'Cada VU cicla sobre la lista desde el inicio.'}
+          </p>
+        </div>
+
+        <div className="w-[120px] flex-shrink-0">
+          {data.mode !== 'per_worker' && (
+            <SelectField
+              label="On Exhausted"
+              value={data.on_exhausted || 'recycle'}
+              field="on_exhausted"
+              options={[
+                { label: 'Recycle', value: 'recycle' },
+                { label: 'Stop', value: 'stop' }
+              ]}
+              onChange={handleChange}
+              noMargin={true}
+            />
+          )}
+        </div>
+      </div>
+
+      {/* Bind mappings - Solo para CSV */}
+      {data.type !== 'txt' && Object.keys(bind).length > 0 && (
         <>
           <div className="h-px bg-white/10 my-4" />
           <div className="mb-4">
@@ -344,15 +537,27 @@ function renderDataSourceDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string,
               valuePlaceholder="variable_name"
               enableCheckboxes={false}
               enableBulkActions={false}
+              variant="minimal"
             />
           </div>
         </>
       )}
-    </>
+
+      {showDiagnosis && (
+        <div className="mt-8 pt-4 border-t border-white/5">
+          <label className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest block mb-1">
+            Debug: Node Data (Type: {node.type})
+          </label>
+          <pre className="p-3 bg-black/40 rounded border border-white/5 text-[10px] font-mono text-zinc-500 overflow-auto max-h-[150px]">
+            {JSON.stringify(data, null, 2)}
+          </pre>
+        </div>
+      )}
+    </div>
   );
 }
 
-function renderHttpDefaultsDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): JSX.Element {
+function renderHttpDefaultsDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): React.JSX.Element {
   const data = node.data || {};
   const headers = data.headers || {};
 
@@ -363,6 +568,8 @@ function renderHttpDefaultsDetails(node: YAMLNode, onNodeUpdate?: (nodeId: strin
   const handleChange = (field: string, value: any) => {
     if (onNodeUpdate) onNodeUpdate(node.id, { ...data, [field]: value });
   };
+  const compactInputClass = 'w-[10ch] max-w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono';
+  const limited = (value: string) => value.slice(0, 5);
 
   const handleMainFieldsUpdate = (fields: Record<string, string>) => {
     if (onNodeUpdate) {
@@ -392,6 +599,8 @@ function renderHttpDefaultsDetails(node: YAMLNode, onNodeUpdate?: (nodeId: strin
           valuePlaceholder="value"
           enableCheckboxes={false}
           enableBulkActions={false}
+          variant="minimal"
+          addButtonVariant="pill"
         />
       </div>
 
@@ -400,9 +609,6 @@ function renderHttpDefaultsDetails(node: YAMLNode, onNodeUpdate?: (nodeId: strin
 
       {/* Headers Section */}
       <div>
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
-          Headers
-        </label>
         <EditableList
           title="HTTP Headers"
           items={headers}
@@ -411,13 +617,15 @@ function renderHttpDefaultsDetails(node: YAMLNode, onNodeUpdate?: (nodeId: strin
           valuePlaceholder="value"
           enableCheckboxes={false}
           enableBulkActions={false}
+          variant="minimal"
+          addButtonVariant="pill"
         />
       </div>
     </div>
   );
 }
 
-function renderScenariosContainerDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): JSX.Element {
+function renderScenariosContainerDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): React.JSX.Element {
   const data = node.data || {};
   const scenarios = node.children || [];
   const scenarioCount = scenarios.length;
@@ -427,7 +635,7 @@ function renderScenariosContainerDetails(node: YAMLNode, onNodeUpdate?: (nodeId:
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Comments/Description */}
       <div>
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
@@ -484,15 +692,18 @@ function renderScenariosContainerDetails(node: YAMLNode, onNodeUpdate?: (nodeId:
   );
 }
 
-function renderScenarioDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): JSX.Element {
+function renderScenarioDetails(
+  node: YAMLNode,
+  onNodeUpdate?: (nodeId: string, data: any) => void,
+  nodeName?: string,
+  setNodeName?: (name: string) => void
+): React.JSX.Element {
   const data = node.data || {};
   const handleChange = (field: string, value: any) => {
     if (onNodeUpdate) onNodeUpdate(node.id, { ...data, [field]: value });
   };
   return (
     <>
-      <EditableField label="Scenario Name" value={data.name || ''} field="name" onChange={handleChange} />
-
       {/* Comments/Description */}
       <div className="mb-4">
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
@@ -500,7 +711,8 @@ function renderScenarioDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, d
         </label>
         <Textarea
           value={data.comments || ''}
-          onChange={(e) => handleChange('comments', e.target.value)}
+          onChange={(e) => handleChange('comments', e.target.value.slice(0, 250))}
+          maxLength={250}
           placeholder="Add notes or comments about this scenario..."
           className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 min-h-[80px]"
         />
@@ -509,13 +721,124 @@ function renderScenarioDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, d
   );
 }
 
-function renderLoadDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): JSX.Element {
+function LoadDetails({ node, onNodeUpdate }: { node: YAMLNode; onNodeUpdate?: (nodeId: string, data: any) => void }): React.JSX.Element {
   const data = node.data || {};
-  const loadType = data.type || 'constant';
+  const rawLoadType = String(data.type || 'constant').toLowerCase().trim();
+  const loadType = (
+    rawLoadType === 'rampupdown' ||
+    rawLoadType === 'ramp_updown' ||
+    rawLoadType === 'rampup_down' ||
+    rawLoadType === 'ramp-up-down' ||
+    rawLoadType === 'ramp_up_down'
+  ) ? 'ramp_up_down' : (rawLoadType === 'ramp' ? 'ramp' : (rawLoadType === 'throughput' ? 'throughput' : (rawLoadType === 'intent' ? 'intent' : 'constant')));
+
+  const loadTypeDefaults: Record<string, Record<string, any>> = {
+    constant: {
+      users: '10',
+      duration: '5m',
+      iterations: '0',
+      ramp_up: '0s',
+    },
+    ramp: {
+      start_users: '1',
+      end_users: '100',
+      duration: '10m',
+      iterations: '0',
+    },
+    ramp_up_down: {
+      users: '50',
+      duration: '10m',
+      iterations: '0',
+      ramp_up: '1m',
+      ramp_down: '1m',
+    },
+    throughput: {
+      target_rps: '20',
+      duration: '10m',
+      iterations: '0',
+      ramp_up: '1m',
+      ramp_down: '1m',
+    },
+    intent: {
+      target_unit: 'rps',
+      target_value: '3',
+      duration: '10m',
+      warmup: '30s',
+      ramp_up: '30s',
+      ramp_down: '30s',
+      p95_max_ms: '800',
+      error_rate_max_pct: '1',
+      aggressiveness: 'medium',
+      min_vus: '1',
+      max_vus: '80',
+    },
+  };
+  const loadTypeAllowedKeys: Record<string, string[]> = {
+    constant: ['type', 'users', 'duration', 'iterations', 'ramp_up'],
+    ramp: ['type', 'start_users', 'end_users', 'duration', 'iterations'],
+    ramp_up_down: ['type', 'users', 'duration', 'iterations', 'ramp_up', 'ramp_down'],
+    throughput: ['type', 'target_rps', 'duration', 'iterations', 'ramp_up', 'ramp_down'],
+    intent: ['type', 'target_unit', 'target_value', 'duration', 'warmup', 'ramp_up', 'ramp_down', 'p95_max_ms', 'error_rate_max_pct', 'aggressiveness', 'min_vus', 'max_vus'],
+  };
 
   const handleChange = (field: string, value: any) => {
-    if (onNodeUpdate) onNodeUpdate(node.id, { ...data, [field]: value });
+    if (!onNodeUpdate) return;
+    if (field === 'type') {
+      const selectedType = String(value || 'constant').toLowerCase().trim();
+      const defaults = loadTypeDefaults[selectedType] || {};
+      const allowed = new Set(loadTypeAllowedKeys[selectedType] || ['type']);
+      const normalized: Record<string, any> = { type: selectedType };
+      for (const k of allowed) {
+        if (k === 'type') continue;
+        if (data[k] !== undefined && data[k] !== '') {
+          normalized[k] = data[k];
+        }
+      }
+      for (const [k, v] of Object.entries(defaults)) {
+        if (!allowed.has(k)) continue;
+        if (normalized[k] === undefined || normalized[k] === '') {
+          normalized[k] = v;
+        }
+      }
+      onNodeUpdate(node.id, normalized);
+      return;
+    }
+    onNodeUpdate(node.id, { ...data, [field]: value });
   };
+  const compactInputClass = 'w-[10ch] max-w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono';
+  const limited = (value: string) => value.slice(0, 5);
+  const selectedLoadButtonStyle = {
+    constant: {
+      backgroundColor: 'rgba(59, 130, 246, 0.22)',
+      color: '#93c5fd',
+      borderColor: 'rgba(147, 197, 253, 0.55)',
+      boxShadow: '0 10px 22px rgba(59, 130, 246, 0.22)',
+    },
+    ramp: {
+      backgroundColor: 'rgba(168, 85, 247, 0.22)',
+      color: '#d8b4fe',
+      borderColor: 'rgba(216, 180, 254, 0.55)',
+      boxShadow: '0 10px 22px rgba(168, 85, 247, 0.22)',
+    },
+    ramp_up_down: {
+      backgroundColor: 'rgba(245, 158, 11, 0.22)',
+      color: '#fcd34d',
+      borderColor: 'rgba(252, 211, 77, 0.55)',
+      boxShadow: '0 10px 22px rgba(245, 158, 11, 0.22)',
+    },
+    throughput: {
+      backgroundColor: 'rgba(16, 185, 129, 0.22)',
+      color: '#6ee7b7',
+      borderColor: 'rgba(110, 231, 183, 0.55)',
+      boxShadow: '0 10px 22px rgba(16, 185, 129, 0.22)',
+    },
+    intent: {
+      backgroundColor: 'rgba(244, 63, 94, 0.20)',
+      color: '#fda4af',
+      borderColor: 'rgba(253, 164, 175, 0.55)',
+      boxShadow: '0 10px 22px rgba(244, 63, 94, 0.20)',
+    },
+  } as const;
 
   // Calculate visualization data
   const getVisualizationPoints = () => {
@@ -541,14 +864,322 @@ function renderLoadDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data:
 
       points.push({ time: 0, users: startUsers });
       points.push({ time: duration, users: endUsers });
+    } else if (loadType === 'ramp_up_down') {
+      const users = parseInt(data.users) || 10;
+      const duration = parseTimeToSeconds(data.duration || '60s');
+      const rampUp = parseTimeToSeconds(data.ramp_up || '10s');
+      const rampDown = parseTimeToSeconds(data.ramp_down || '10s');
+      const holdStart = Math.min(rampUp, duration);
+      const holdEnd = Math.max(holdStart, duration - rampDown);
+
+      points.push({ time: 0, users: 0 });
+      points.push({ time: holdStart, users: users });
+      points.push({ time: holdEnd, users: users });
+      points.push({ time: duration, users: 0 });
+    } else if (loadType === 'throughput') {
+      const targetRps = parseFloat(String(data.target_rps || '0')) || 10;
+      const duration = parseTimeToSeconds(data.duration || '60s');
+      const rampUp = parseTimeToSeconds(data.ramp_up || '0s');
+      const rampDown = parseTimeToSeconds(data.ramp_down || '0s');
+      const holdStart = Math.min(rampUp, duration);
+      const holdEnd = Math.max(holdStart, duration - rampDown);
+
+      points.push({ time: 0, users: 0 });
+      points.push({ time: holdStart, users: targetRps });
+      points.push({ time: holdEnd, users: targetRps });
+      points.push({ time: duration, users: 0 });
+    } else if (loadType === 'intent') {
+      const targetUnit = String(data.target_unit || 'rps').toLowerCase();
+      const targetValue = parseFloat(String(data.target_value || '0')) || 3;
+      const duration = parseTimeToSeconds(data.duration || '60s');
+      const rampUp = parseTimeToSeconds(data.ramp_up || '0s');
+      const rampDown = parseTimeToSeconds(data.ramp_down || '0s');
+      const holdStart = Math.min(rampUp, duration);
+      const holdEnd = Math.max(holdStart, duration - rampDown);
+      const y = targetUnit === 'vus' ? targetValue : targetValue;
+
+      points.push({ time: 0, users: 0 });
+      points.push({ time: holdStart, users: y });
+      points.push({ time: holdEnd, users: y });
+      points.push({ time: duration, users: 0 });
     }
 
     return points;
   };
 
   const visualizationPoints = getVisualizationPoints();
-  const maxUsers = Math.max(...visualizationPoints.map(p => p.users), 10);
+  const intentTargetUnit = String(data.target_unit || 'rps').toLowerCase();
+  const intentTargetValue = Math.max(0, parseFloat(String(data.target_value || '0')) || 0);
+  const isIntent = loadType === 'intent';
+  const isIntentVus = isIntent && intentTargetUnit === 'vus';
+  const isIntentRps = isIntent && intentTargetUnit === 'rps';
+  const intentMinVus = Math.max(0, parseFloat(String(data.min_vus || '0')) || 0);
+  const intentMaxVus = Math.max(intentMinVus, parseFloat(String(data.max_vus || '0')) || intentMinVus);
+  const showIntentVuBand = isIntentVus && intentMaxVus > intentMinVus;
+  const intentRpsBandHalf = isIntentRps ? Math.max(0.3, intentTargetValue * 0.12) : 0;
+  const intentRpsBandMin = Math.max(0, intentTargetValue - intentRpsBandHalf);
+  const intentRpsBandMax = intentTargetValue + intentRpsBandHalf;
+  const maxUsers = Math.max(
+    ...visualizationPoints.map(p => p.users),
+    showIntentVuBand ? intentMaxVus : 0,
+    isIntentRps ? intentRpsBandMax : 0,
+    10
+  );
   const maxTime = Math.max(...visualizationPoints.map(p => p.time), 60);
+  const throughputPerMinute = (parseFloat(String(data.target_rps || '0')) || 0) * 60;
+  const intentTargetPerMinute = (parseFloat(String(data.target_value || '0')) || 0) * 60;
+  const chartHeightPx = 184;
+  const yAxisLabel = loadType === 'throughput' || (loadType === 'intent' && intentTargetUnit === 'rps') ? 'RPS' : 'Users';
+  const loadColors = {
+    constant: { stroke: '#60a5fa', fill: '#3b82f620' },
+    ramp: { stroke: '#a78bfa', fill: '#a78bfa20' },
+    ramp_up_down: { stroke: '#f59e0b', fill: '#f59e0b20' },
+    throughput: { stroke: '#10b981', fill: '#10b98120' },
+    intent: { stroke: '#fb7185', fill: '#fb718520' },
+  } as const;
+  const vizColor = loadColors[loadType];
+  const dragRef = useRef<{ pointIdx: number | null }>({ pointIdx: null });
+  const [draggingPointIdx, setDraggingPointIdx] = useState<number | null>(null);
+  const chartPoints = visualizationPoints.map((p) => {
+    const x = 40 + ((p.time / maxTime) * 340);
+    const y = 170 - ((p.users / maxUsers) * 160);
+    return { ...p, x, y };
+  });
+  const linePoints = chartPoints.map((p) => `${p.x},${p.y}`).join(' ');
+  const areaPoints = [
+    '40,170',
+    ...chartPoints.map((p) => `${p.x},${p.y}`),
+    `${chartPoints[chartPoints.length - 1]?.x || 40},170`,
+  ].join(' ');
+  const intentBandY = {
+    min: 170 - ((intentMinVus / maxUsers) * 160),
+    max: 170 - ((intentMaxVus / maxUsers) * 160),
+  };
+  const intentBandHeight = Math.max(0, intentBandY.min - intentBandY.max);
+  const intentTargetY = 170 - ((intentTargetValue / maxUsers) * 160);
+  const intentRpsBandY = {
+    min: 170 - ((intentRpsBandMin / maxUsers) * 160),
+    max: 170 - ((intentRpsBandMax / maxUsers) * 160),
+  };
+  const intentRpsBandHeight = Math.max(0, intentRpsBandY.min - intentRpsBandY.max);
+  const intentWarmupSec = Math.max(0, parseTimeToSeconds(String(data.warmup || '0s')));
+  const intentWarmupX = 40 + (340 * Math.min(intentWarmupSec, maxTime) / maxTime);
+  const intentMinY = 170 - ((intentMinVus / maxUsers) * 160);
+  const intentWarmupIdleLine = showIntentVuBand && intentWarmupSec > 0 ? `40,${intentMinY} ${intentWarmupX},${intentMinY}` : '';
+  const intentVuVariationLine = (() => {
+    if (!showIntentVuBand) return '';
+    const startX = intentWarmupSec > 0 ? Math.min(intentWarmupX, 380) : 40;
+    const width = Math.max(0, 380 - startX);
+    if (width <= 0) return '';
+    const segments = 12;
+    const amplitude = Math.max(0.8, Math.min((intentMaxVus - intentMinVus) / 2, 12) * 0.7);
+    const center = intentTargetValue || (intentMinVus + intentMaxVus) / 2;
+    return Array.from({ length: segments + 1 }).map((_, i) => {
+      const ratio = i / segments;
+      const x = startX + (width * ratio);
+      const wave = Math.sin(ratio * Math.PI * 4);
+      const rawValue = center + (wave * amplitude);
+      const bounded = Math.max(intentMinVus, Math.min(intentMaxVus, rawValue));
+      const y = 170 - ((bounded / maxUsers) * 160);
+      return `${x},${y}`;
+    }).join(' ');
+  })();
+  const intentRpsWarmupLine = isIntentRps && intentWarmupSec > 0 ? `40,${intentTargetY} ${intentWarmupX},${intentTargetY}` : '';
+  const intentRpsVariationLine = (() => {
+    if (!isIntentRps) return '';
+    const startX = intentWarmupSec > 0 ? Math.min(intentWarmupX, 380) : 40;
+    const width = Math.max(0, 380 - startX);
+    if (width <= 0) return '';
+    const segments = 12;
+    const amplitude = Math.max(0.2, intentRpsBandHalf * 0.75);
+    return Array.from({ length: segments + 1 }).map((_, i) => {
+      const ratio = i / segments;
+      const x = startX + (width * ratio);
+      const wave = Math.sin(ratio * Math.PI * 4);
+      const rawValue = intentTargetValue + (wave * amplitude);
+      const bounded = Math.max(intentRpsBandMin, Math.min(intentRpsBandMax, rawValue));
+      const y = 170 - ((bounded / maxUsers) * 160);
+      return `${x},${y}`;
+    }).join(' ');
+  })();
+  const intentWarmupRatio = maxTime > 0 ? Math.max(0, Math.min(1, intentWarmupSec / maxTime)) : 0;
+  const intentWarmupPct = intentWarmupRatio * 100;
+  const intentControlPct = Math.max(0, 100 - intentWarmupPct);
+  const intentBehaviorHint = isIntentVus
+    ? `After warmup, VUs are adjusted around target=${intentTargetValue.toFixed(0)} within ${intentMinVus.toFixed(0)}..${intentMaxVus.toFixed(0)} to keep SLOs.`
+    : `After warmup, RPS is adjusted around target=${intentTargetValue.toFixed(2)} while respecting SLOs and VU guardrails ${intentMinVus.toFixed(0)}..${intentMaxVus.toFixed(0)}.`;
+
+  const toDurationString = (seconds: number): string => {
+    const s = Math.max(1, Math.round(seconds));
+    if (s % 3600 === 0) return `${Math.round(s / 3600)}h`;
+    if (s % 60 === 0) return `${Math.round(s / 60)}m`;
+    return `${s}s`;
+  };
+
+  const extraHandles = (() => {
+    if (chartPoints.length < 2) return [] as Array<{ pointIdx: number; x: number; y: number; time: number; users: number; kind: string }>;
+    if (loadType === 'ramp_up_down' || loadType === 'throughput' || loadType === 'intent') {
+      const left = chartPoints[1];
+      const right = chartPoints[2] || chartPoints[1];
+      return [{
+        pointIdx: 11,
+        x: (left.x + right.x) / 2,
+        y: (left.y + right.y) / 2,
+        time: (left.time + right.time) / 2,
+        users: (left.users + right.users) / 2,
+        kind: 'plateau',
+      }];
+    }
+    const first = chartPoints[0];
+    const last = chartPoints[chartPoints.length - 1];
+    return [{
+      pointIdx: 11,
+      x: (first.x + last.x) / 2,
+      y: (first.y + last.y) / 2,
+      time: (first.time + last.time) / 2,
+      users: (first.users + last.users) / 2,
+      kind: 'mid',
+    }];
+  })();
+  const allHandles = [
+    ...chartPoints.map((p, idx) => ({ ...p, pointIdx: idx, kind: 'base' })),
+    ...extraHandles,
+  ];
+
+  const updateLoadFromDraggedPoint = (pointIdx: number, timeSec: number, valueY: number) => {
+    const updates: Record<string, any> = {};
+    const currentDuration = Math.max(1, parseTimeToSeconds(String(data.duration || '60s')));
+
+    if (pointIdx === 11) {
+      if (loadType === 'constant') {
+        updates.users = String(Math.max(1, Math.round(valueY)));
+      } else if (loadType === 'ramp') {
+        updates.duration = toDurationString(Math.max(1, Math.round(timeSec)));
+        updates.end_users = String(Math.max(0, Math.round(valueY)));
+      } else if (loadType === 'ramp_up_down') {
+        const duration = currentDuration;
+        const currentRampUp = Math.max(0, parseTimeToSeconds(String(data.ramp_up || '10s')));
+        const currentRampDown = Math.max(0, parseTimeToSeconds(String(data.ramp_down || '10s')));
+        const holdEnd = Math.max(currentRampUp, duration - currentRampDown);
+        const width = Math.max(0, holdEnd - currentRampUp);
+        const desiredCenter = Math.max(0, Math.min(Math.round(timeSec), duration));
+        const newRampUp = Math.max(0, Math.min(Math.round(desiredCenter - width / 2), Math.max(0, duration - width)));
+        const newHoldEnd = Math.max(newRampUp, Math.min(duration, newRampUp + width));
+        updates.ramp_up = toDurationString(newRampUp);
+        updates.ramp_down = toDurationString(Math.max(0, duration - newHoldEnd));
+        updates.users = String(Math.max(1, Math.round(valueY)));
+      } else if (loadType === 'throughput') {
+        const duration = currentDuration;
+        const currentRampUp = Math.max(0, parseTimeToSeconds(String(data.ramp_up || '0s')));
+        const currentRampDown = Math.max(0, parseTimeToSeconds(String(data.ramp_down || '0s')));
+        const holdEnd = Math.max(currentRampUp, duration - currentRampDown);
+        const width = Math.max(0, holdEnd - currentRampUp);
+        const desiredCenter = Math.max(0, Math.min(Math.round(timeSec), duration));
+        const newRampUp = Math.max(0, Math.min(Math.round(desiredCenter - width / 2), Math.max(0, duration - width)));
+        const newHoldEnd = Math.max(newRampUp, Math.min(duration, newRampUp + width));
+        updates.ramp_up = toDurationString(newRampUp);
+        updates.ramp_down = toDurationString(Math.max(0, duration - newHoldEnd));
+        updates.target_rps = String(Math.max(0.1, Math.round(valueY * 10) / 10));
+      } else if (loadType === 'intent') {
+        updates.target_value = String(Math.max(0.1, Math.round(valueY * 10) / 10));
+      }
+    } else if (loadType === 'constant') {
+      if (visualizationPoints.length === 3) {
+        if (pointIdx === 1) {
+          const nextRamp = Math.max(0, Math.min(Math.round(timeSec), currentDuration));
+          updates.ramp_up = toDurationString(nextRamp);
+          updates.users = String(Math.max(1, Math.round(valueY)));
+        } else if (pointIdx === 2) {
+          const nextDuration = Math.max(1, Math.round(timeSec));
+          updates.duration = toDurationString(nextDuration);
+          updates.users = String(Math.max(1, Math.round(valueY)));
+        }
+      } else if (pointIdx === 1) {
+        updates.duration = toDurationString(Math.max(1, Math.round(timeSec)));
+        updates.users = String(Math.max(1, Math.round(valueY)));
+      }
+    } else if (loadType === 'ramp') {
+      if (pointIdx === 0) {
+        updates.start_users = String(Math.max(0, Math.round(valueY)));
+      } else if (pointIdx === 1) {
+        updates.duration = toDurationString(Math.max(1, Math.round(timeSec)));
+        updates.end_users = String(Math.max(0, Math.round(valueY)));
+      }
+    } else if (loadType === 'ramp_up_down') {
+      const duration = pointIdx === 3 ? Math.max(1, Math.round(timeSec)) : currentDuration;
+      const currentRampUp = Math.max(0, parseTimeToSeconds(String(data.ramp_up || '10s')));
+      const currentRampDown = Math.max(0, parseTimeToSeconds(String(data.ramp_down || '10s')));
+      let rampUp = currentRampUp;
+      let holdEnd = Math.max(0, duration - currentRampDown);
+      if (pointIdx === 1) rampUp = Math.max(0, Math.min(Math.round(timeSec), duration));
+      if (pointIdx === 2) holdEnd = Math.max(rampUp, Math.min(Math.round(timeSec), duration));
+      if (pointIdx === 3) holdEnd = Math.max(rampUp, Math.min(holdEnd, duration));
+      const rampDown = Math.max(0, duration - holdEnd);
+      updates.duration = toDurationString(duration);
+      updates.ramp_up = toDurationString(rampUp);
+      updates.ramp_down = toDurationString(rampDown);
+      if (pointIdx === 1 || pointIdx === 2) {
+        updates.users = String(Math.max(1, Math.round(valueY)));
+      }
+    } else if (loadType === 'throughput') {
+      const duration = pointIdx === 3 ? Math.max(1, Math.round(timeSec)) : currentDuration;
+      const currentRampUp = Math.max(0, parseTimeToSeconds(String(data.ramp_up || '0s')));
+      const currentRampDown = Math.max(0, parseTimeToSeconds(String(data.ramp_down || '0s')));
+      let rampUp = currentRampUp;
+      let holdEnd = Math.max(0, duration - currentRampDown);
+      if (pointIdx === 1) rampUp = Math.max(0, Math.min(Math.round(timeSec), duration));
+      if (pointIdx === 2) holdEnd = Math.max(rampUp, Math.min(Math.round(timeSec), duration));
+      if (pointIdx === 3) holdEnd = Math.max(rampUp, Math.min(holdEnd, duration));
+      const rampDown = Math.max(0, duration - holdEnd);
+      updates.duration = toDurationString(duration);
+      updates.ramp_up = toDurationString(rampUp);
+      updates.ramp_down = toDurationString(rampDown);
+      if (pointIdx === 1 || pointIdx === 2) {
+        updates.target_rps = String(Math.max(0.1, Math.round(valueY * 10) / 10));
+      }
+    } else if (loadType === 'intent') {
+      const duration = pointIdx === 3 ? Math.max(1, Math.round(timeSec)) : currentDuration;
+      updates.duration = toDurationString(duration);
+      if (pointIdx === 1 || pointIdx === 2) {
+        const normalizedValue = Math.max(0.1, Math.round(valueY * 10) / 10);
+        updates.target_value = String(normalizedValue);
+      }
+    }
+
+    if (Object.keys(updates).length > 0) {
+      if (onNodeUpdate) onNodeUpdate(node.id, { ...data, ...updates });
+    }
+  };
+
+  const handlePointDragStart = (pointIdx: number) => (e: React.MouseEvent<SVGCircleElement>) => {
+    const draggable = [...Array(visualizationPoints.length).keys(), 11];
+    if (!draggable.includes(pointIdx)) return;
+    e.preventDefault();
+    dragRef.current.pointIdx = pointIdx;
+    setDraggingPointIdx(pointIdx);
+
+    const handleMove = (moveEvent: MouseEvent) => {
+      if (dragRef.current.pointIdx === null) return;
+      const svg = (e.currentTarget.ownerSVGElement || null);
+      if (!svg) return;
+      const rect = svg.getBoundingClientRect();
+      const relativeX = Math.min(Math.max(moveEvent.clientX - rect.left, 40), 380);
+      const relativeY = Math.min(Math.max(moveEvent.clientY - rect.top, 10), 170);
+      const timeSec = ((relativeX - 40) / 340) * maxTime;
+      const valueY = ((170 - relativeY) / 160) * maxUsers;
+      updateLoadFromDraggedPoint(dragRef.current.pointIdx, timeSec, valueY);
+    };
+
+    const handleUp = () => {
+      dragRef.current.pointIdx = null;
+      setDraggingPointIdx(null);
+      window.removeEventListener('mousemove', handleMove);
+      window.removeEventListener('mouseup', handleUp);
+    };
+
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleUp);
+  };
 
   return (
     <div className="space-y-6">
@@ -557,26 +1188,61 @@ function renderLoadDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data:
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
           Load Pattern
         </label>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="flex flex-wrap items-center gap-1">
           <button
             onClick={() => handleChange('type', 'constant')}
-            className={`px-4 py-3 text-sm font-medium rounded-lg transition-all ${loadType === 'constant'
-                ? 'bg-blue-500/20 text-blue-400 border-2 border-blue-400/40 shadow-lg shadow-blue-500/20'
-                : 'bg-white/5 text-zinc-400 border-2 border-white/10 hover:border-white/20 hover:bg-white/10'
+            className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 flex items-center gap-1.5 ${loadType === 'constant'
+              ? 'border-current text-white'
+              : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/[0.06]'
               }`}
+            style={loadType === 'constant' ? selectedLoadButtonStyle.constant : undefined}
           >
-            <div className="font-bold">Constant</div>
-            <div className="text-xs opacity-70 mt-1">Fixed users</div>
+            <Users className="h-3.5 w-3.5" />
+            <span>Constant</span>
           </button>
           <button
             onClick={() => handleChange('type', 'ramp')}
-            className={`px-4 py-3 text-sm font-medium rounded-lg transition-all ${loadType === 'ramp'
-                ? 'bg-purple-500/20 text-purple-400 border-2 border-purple-400/40 shadow-lg shadow-purple-500/20'
-                : 'bg-white/5 text-zinc-400 border-2 border-white/10 hover:border-white/20 hover:bg-white/10'
+            className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 flex items-center gap-1.5 ${loadType === 'ramp'
+              ? 'border-current text-white'
+              : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/[0.06]'
               }`}
+            style={loadType === 'ramp' ? selectedLoadButtonStyle.ramp : undefined}
           >
-            <div className="font-bold">Ramp</div>
-            <div className="text-xs opacity-70 mt-1">Gradual increase</div>
+            <TrendingUp className="h-3.5 w-3.5" />
+            <span>Randon</span>
+          </button>
+          <button
+            onClick={() => handleChange('type', 'ramp_up_down')}
+            className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 flex items-center gap-1.5 ${loadType === 'ramp_up_down'
+              ? 'border-current text-white'
+              : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/[0.06]'
+              }`}
+            style={loadType === 'ramp_up_down' ? selectedLoadButtonStyle.ramp_up_down : undefined}
+          >
+            <Mountain className="h-3.5 w-3.5" />
+            <span>Ramp Up/Down</span>
+          </button>
+          <button
+            onClick={() => handleChange('type', 'throughput')}
+            className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 flex items-center gap-1.5 ${loadType === 'throughput'
+              ? 'border-current text-white'
+              : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/[0.06]'
+              }`}
+            style={loadType === 'throughput' ? selectedLoadButtonStyle.throughput : undefined}
+          >
+            <Gauge className="h-3.5 w-3.5" />
+            <span>Throughput</span>
+          </button>
+          <button
+            onClick={() => handleChange('type', 'intent')}
+            className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 flex items-center gap-1.5 ${loadType === 'intent'
+              ? 'border-current text-white'
+              : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/[0.06]'
+              }`}
+            style={loadType === 'intent' ? selectedLoadButtonStyle.intent : undefined}
+          >
+            <Target className="h-3.5 w-3.5" />
+            <span>Intent</span>
           </button>
         </div>
       </div>
@@ -586,131 +1252,377 @@ function renderLoadDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data:
 
       {/* Dynamic Fields based on Load Type */}
       {loadType === 'constant' ? (
-        <>
-          <div>
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              Virtual Users
-            </label>
-            <Input
-              type="number"
-              value={data.users || ''}
-              onChange={(e) => handleChange('users', e.target.value)}
-              placeholder="10"
-              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
-            />
-            <div className="mt-1 text-xs text-zinc-500">
-              Number of concurrent virtual users
+        <div className="space-y-3">
+          <div className="grid grid-cols-3 gap-2.5">
+            <div>
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Virtual Users</label>
+              <Input
+                type="number"
+                maxLength={5}
+                value={data.users || ''}
+                onChange={(e) => handleChange('users', limited(e.target.value))}
+                placeholder="10"
+                className={compactInputClass}
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Duration</label>
+              <Input
+                maxLength={5}
+                value={data.duration || ''}
+                onChange={(e) => handleChange('duration', limited(e.target.value))}
+                placeholder="5m"
+                className={compactInputClass}
+              />
+              <div className="mt-1 text-xs text-zinc-500">Format: 500ms, 5s, 5m</div>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Iterations</label>
+              <Input
+                type="number"
+                maxLength={5}
+                value={data.iterations || ''}
+                onChange={(e) => handleChange('iterations', limited(e.target.value))}
+                placeholder="0"
+                className={compactInputClass}
+              />
             </div>
           </div>
 
-          <div>
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              Duration
-            </label>
-            <Input
-              value={data.duration || ''}
-              onChange={(e) => handleChange('duration', e.target.value)}
-              placeholder="5m"
-              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
-            />
-            <div className="mt-1 text-xs text-zinc-500">
-              Examples: 30s, 5m, 1h
+          <div className="grid grid-cols-3 gap-2.5">
+            <div>
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Ramp Up</label>
+              <Input
+                maxLength={5}
+                value={data.ramp_up || ''}
+                onChange={(e) => handleChange('ramp_up', limited(e.target.value))}
+                placeholder="0s"
+                className={compactInputClass}
+              />
+              <div className="mt-1 text-xs text-zinc-500">Format: 500ms, 5s, 5m</div>
+            </div>
+            <div />
+          </div>
+        </div>
+      ) : loadType === 'ramp' ? (
+        <div className="space-y-3">
+          <div className="grid grid-cols-3 gap-2.5">
+            <div>
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Start Users</label>
+              <Input
+                type="number"
+                maxLength={5}
+                value={data.start_users || ''}
+                onChange={(e) => handleChange('start_users', limited(e.target.value))}
+                placeholder="1"
+                className={compactInputClass}
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">End Users</label>
+              <Input
+                type="number"
+                maxLength={5}
+                value={data.end_users || ''}
+                onChange={(e) => handleChange('end_users', limited(e.target.value))}
+                placeholder="100"
+                className={compactInputClass}
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Duration</label>
+              <Input
+                maxLength={5}
+                value={data.duration || ''}
+                onChange={(e) => handleChange('duration', limited(e.target.value))}
+                placeholder="10m"
+                className={compactInputClass}
+              />
+              <div className="mt-1 text-xs text-zinc-500">Format: 500ms, 5s, 5m</div>
             </div>
           </div>
 
-          <div>
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              Ramp Up <span className="text-zinc-600">(optional)</span>
-            </label>
-            <Input
-              value={data.ramp_up || ''}
-              onChange={(e) => handleChange('ramp_up', e.target.value)}
-              placeholder="0s"
-              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
-            />
-            <div className="mt-1 text-xs text-zinc-500">
-              Time to gradually spawn all users
+          <div className="grid grid-cols-3 gap-2.5">
+            <div>
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Iterations</label>
+              <Input
+                type="number"
+                maxLength={5}
+                value={data.iterations || ''}
+                onChange={(e) => handleChange('iterations', limited(e.target.value))}
+                placeholder="0"
+                className={compactInputClass}
+              />
+            </div>
+            <div />
+            <div />
+          </div>
+        </div>
+      ) : loadType === 'ramp_up_down' ? (
+        <div className="space-y-3">
+          <div className="grid grid-cols-3 gap-2.5">
+            <div>
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Virtual Users</label>
+              <Input
+                type="number"
+                maxLength={5}
+                value={data.users || ''}
+                onChange={(e) => handleChange('users', limited(e.target.value))}
+                placeholder="50"
+                className={compactInputClass}
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Duration</label>
+              <Input
+                maxLength={5}
+                value={data.duration || ''}
+                onChange={(e) => handleChange('duration', limited(e.target.value))}
+                placeholder="10m"
+                className={compactInputClass}
+              />
+              <div className="mt-1 text-xs text-zinc-500">Format: 500ms, 5s, 5m</div>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Iterations</label>
+              <Input
+                type="number"
+                maxLength={5}
+                value={data.iterations || ''}
+                onChange={(e) => handleChange('iterations', limited(e.target.value))}
+                placeholder="0"
+                className={compactInputClass}
+              />
             </div>
           </div>
 
-          <div>
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              Iterations <span className="text-zinc-600">(optional)</span>
-            </label>
-            <Input
-              type="number"
-              value={data.iterations || ''}
-              onChange={(e) => handleChange('iterations', e.target.value)}
-              placeholder="0 (unlimited)"
-              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
-            />
-            <div className="mt-1 text-xs text-zinc-500">
-              Number of times to run scenario (0 = continuous)
+          <div className="grid grid-cols-3 gap-2.5">
+            <div>
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Ramp Up</label>
+              <Input
+                maxLength={5}
+                value={data.ramp_up || ''}
+                onChange={(e) => handleChange('ramp_up', limited(e.target.value))}
+                placeholder="1m"
+                className={compactInputClass}
+              />
+              <div className="mt-1 text-xs text-zinc-500">Format: 500ms, 5s, 5m</div>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Ramp Down</label>
+              <Input
+                maxLength={5}
+                value={data.ramp_down || ''}
+                onChange={(e) => handleChange('ramp_down', limited(e.target.value))}
+                placeholder="1m"
+                className={compactInputClass}
+              />
+              <div className="mt-1 text-xs text-zinc-500">Format: 500ms, 5s, 5m</div>
+            </div>
+            <div />
+          </div>
+        </div>
+      ) : loadType === 'intent' ? (
+        <div className="space-y-3">
+          <div className="grid grid-cols-4 gap-2.5">
+            <div>
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Target Unit</label>
+              <select
+                value={data.target_unit || 'rps'}
+                onChange={(e) => handleChange('target_unit', e.target.value)}
+                className="w-[10ch] max-w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+              >
+                <option value="rps">RPS</option>
+                <option value="vus">VU</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Target Value</label>
+              <Input
+                type="number"
+                maxLength={5}
+                value={data.target_value || ''}
+                onChange={(e) => handleChange('target_value', limited(e.target.value))}
+                placeholder="3"
+                className={compactInputClass}
+              />
+              {intentTargetUnit === 'rps' && (
+                <div className="mt-1 text-xs text-zinc-500">{intentTargetPerMinute.toFixed(0)} req/min</div>
+              )}
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Duration</label>
+              <Input
+                maxLength={5}
+                value={data.duration || ''}
+                onChange={(e) => handleChange('duration', limited(e.target.value))}
+                placeholder="10m"
+                className={compactInputClass}
+              />
+              <div className="mt-1 text-xs text-zinc-500">Format: 500ms, 5s, 5m</div>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Warmup</label>
+              <Input
+                maxLength={5}
+                value={data.warmup || ''}
+                onChange={(e) => handleChange('warmup', limited(e.target.value))}
+                placeholder="30s"
+                className={compactInputClass}
+              />
+              <div className="mt-1 text-xs text-zinc-500">Format: 500ms, 5s, 5m</div>
             </div>
           </div>
-        </>
+
+          <div className="grid grid-cols-4 gap-2.5">
+            <div>
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Ramp Up</label>
+              <Input
+                maxLength={5}
+                value={data.ramp_up || ''}
+                onChange={(e) => handleChange('ramp_up', limited(e.target.value))}
+                placeholder="30s"
+                className={compactInputClass}
+              />
+              <div className="mt-1 text-xs text-zinc-500">Format: 500ms, 5s, 5m</div>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Ramp Down</label>
+              <Input
+                maxLength={5}
+                value={data.ramp_down || ''}
+                onChange={(e) => handleChange('ramp_down', limited(e.target.value))}
+                placeholder="30s"
+                className={compactInputClass}
+              />
+              <div className="mt-1 text-xs text-zinc-500">Format: 500ms, 5s, 5m</div>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">P95 Max (ms)</label>
+              <Input
+                type="number"
+                maxLength={5}
+                value={data.p95_max_ms || ''}
+                onChange={(e) => handleChange('p95_max_ms', limited(e.target.value))}
+                placeholder="800"
+                className={compactInputClass}
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Error Max (%)</label>
+              <Input
+                type="number"
+                maxLength={5}
+                value={data.error_rate_max_pct || ''}
+                onChange={(e) => handleChange('error_rate_max_pct', limited(e.target.value))}
+                placeholder="1"
+                className={compactInputClass}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2.5">
+            <div>
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Aggressiveness</label>
+              <select
+                value={data.aggressiveness || 'medium'}
+                onChange={(e) => handleChange('aggressiveness', e.target.value)}
+                className="w-[10ch] max-w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+              >
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Min VUs</label>
+              <Input
+                type="number"
+                maxLength={5}
+                value={data.min_vus || ''}
+                onChange={(e) => handleChange('min_vus', limited(e.target.value))}
+                placeholder="1"
+                className={compactInputClass}
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Max VUs</label>
+              <Input
+                type="number"
+                maxLength={5}
+                value={data.max_vus || ''}
+                onChange={(e) => handleChange('max_vus', limited(e.target.value))}
+                placeholder="80"
+                className={compactInputClass}
+              />
+            </div>
+          </div>
+        </div>
       ) : (
-        <>
-          <div>
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              Start Users
-            </label>
-            <Input
-              type="number"
-              value={data.start_users || ''}
-              onChange={(e) => handleChange('start_users', e.target.value)}
-              placeholder="1"
-              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
-            />
-            <div className="mt-1 text-xs text-zinc-500">
-              Initial number of users
+        <div className="space-y-3">
+          <div className="grid grid-cols-3 gap-2.5">
+            <div>
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Target RPS</label>
+              <Input
+                type="number"
+                maxLength={5}
+                value={data.target_rps || ''}
+                onChange={(e) => handleChange('target_rps', limited(e.target.value))}
+                placeholder="20"
+                className={compactInputClass}
+              />
+              <div className="mt-1 text-xs text-zinc-500">{throughputPerMinute.toFixed(0)} req/min</div>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Duration</label>
+              <Input
+                maxLength={5}
+                value={data.duration || ''}
+                onChange={(e) => handleChange('duration', limited(e.target.value))}
+                placeholder="10m"
+                className={compactInputClass}
+              />
+              <div className="mt-1 text-xs text-zinc-500">Format: 500ms, 5s, 5m</div>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Iterations</label>
+              <Input
+                type="number"
+                maxLength={5}
+                value={data.iterations || ''}
+                onChange={(e) => handleChange('iterations', limited(e.target.value))}
+                placeholder="0"
+                className={compactInputClass}
+              />
             </div>
           </div>
 
-          <div>
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              End Users
-            </label>
-            <Input
-              type="number"
-              value={data.end_users || ''}
-              onChange={(e) => handleChange('end_users', e.target.value)}
-              placeholder="100"
-              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
-            />
-            <div className="mt-1 text-xs text-zinc-500">
-              Target number of users at the end
+          <div className="grid grid-cols-3 gap-2.5">
+            <div>
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Ramp Up</label>
+              <Input
+                maxLength={5}
+                value={data.ramp_up || ''}
+                onChange={(e) => handleChange('ramp_up', limited(e.target.value))}
+                placeholder="1m"
+                className={compactInputClass}
+              />
+              <div className="mt-1 text-xs text-zinc-500">Format: 500ms, 5s, 5m</div>
             </div>
-          </div>
-
-          <div>
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              Duration
-            </label>
-            <Input
-              value={data.duration || ''}
-              onChange={(e) => handleChange('duration', e.target.value)}
-              placeholder="10m"
-              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
-            />
-            <div className="mt-1 text-xs text-zinc-500">
-              Time to ramp from start to end users
+            <div>
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Ramp Down</label>
+              <Input
+                maxLength={5}
+                value={data.ramp_down || ''}
+                onChange={(e) => handleChange('ramp_down', limited(e.target.value))}
+                placeholder="1m"
+                className={compactInputClass}
+              />
+              <div className="mt-1 text-xs text-zinc-500">Format: 500ms, 5s, 5m</div>
             </div>
+            <div />
           </div>
-
-          <div>
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              Iterations <span className="text-zinc-600">(optional)</span>
-            </label>
-            <Input
-              type="number"
-              value={data.iterations || ''}
-              onChange={(e) => handleChange('iterations', e.target.value)}
-              placeholder="0 (unlimited)"
-              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
-            />
-          </div>
-        </>
+        </div>
       )}
 
       {/* Divider */}
@@ -721,8 +1633,79 @@ function renderLoadDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data:
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
           Load Pattern Visualization
         </label>
-        <div className="bg-zinc-900/50 border border-white/10 rounded-lg p-4">
-          <svg viewBox="0 0 400 200" className="w-full h-48">
+        <div className="bg-zinc-900/50 border border-white/10 rounded-lg p-3">
+          <div className="mb-2 flex items-center justify-between text-[11px] text-zinc-500">
+            <span>Interactive preview</span>
+            <span className="font-mono">
+              Peak {yAxisLabel}: {maxUsers.toFixed(0)} | Total: {maxTime >= 60 ? `${Math.round(maxTime / 60)}m` : `${maxTime}s`}
+            </span>
+          </div>
+          <div className="mb-2 text-[11px] text-zinc-400">
+            Drag any colored handle to update fields in real time.
+          </div>
+          {showIntentVuBand && (
+            <div className="mb-2 text-[11px] text-amber-300/90">
+              Intent control band: warmup is prep-only (cyan). Ajustes comienzan en el marcador amarillo, justo al terminar warmup.
+            </div>
+          )}
+          {isIntentRps && (
+            <div className="mb-2 text-[11px] text-emerald-300/90">
+              Intent RPS band: warmup is prep-only, then controlled RPS variability. VU guardrails: {intentMinVus.toFixed(0)}..{intentMaxVus.toFixed(0)}.
+            </div>
+          )}
+          {isIntent && (
+            <div className="mb-3 rounded-lg border border-white/10 bg-white/[0.03] p-2.5">
+              <div className="mb-2 flex items-center justify-between text-[10px] uppercase tracking-wider text-zinc-400">
+                <span>Execution Phases</span>
+                <span className="font-mono text-[10px] normal-case">{intentBehaviorHint}</span>
+              </div>
+              <div className="mb-2 flex flex-wrap items-center gap-1.5 text-[10px]">
+                <span className="inline-flex items-center gap-1 rounded-full border border-cyan-300/40 bg-cyan-400/15 px-2 py-0.5 text-cyan-200">
+                  <span className="h-1.5 w-1.5 rounded-full bg-cyan-300" />
+                  warmup
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-full border border-rose-300/40 bg-rose-400/15 px-2 py-0.5 text-rose-200">
+                  <span className="h-1.5 w-1.5 rounded-full bg-rose-300" />
+                  violating
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-full border border-amber-300/40 bg-amber-400/15 px-2 py-0.5 text-amber-200">
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-300" />
+                  recovering
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300/40 bg-emerald-400/15 px-2 py-0.5 text-emerald-200">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
+                  stable
+                </span>
+              </div>
+              <div className="relative h-2.5 rounded-full bg-zinc-800/80 overflow-hidden">
+                <div
+                  className="absolute inset-y-0 left-0 bg-cyan-400/70"
+                  style={{ width: `${intentWarmupPct}%` }}
+                />
+                <div
+                  className={`absolute inset-y-0 ${isIntentVus ? 'bg-amber-400/70' : 'bg-emerald-400/70'}`}
+                  style={{ left: `${intentWarmupPct}%`, width: `${intentControlPct}%` }}
+                />
+                <div
+                  className="absolute top-[-2px] h-[14px] w-[2px] bg-cyan-200/90"
+                  style={{ left: `calc(${intentWarmupPct}% - 1px)` }}
+                />
+              </div>
+              <div className="mt-2 grid grid-cols-3 text-[10px] text-zinc-400">
+                <div className="text-left">0s</div>
+                <div className="text-center font-mono">warmup {Math.round(intentWarmupSec)}s</div>
+                <div className="text-right font-mono">duration {Math.round(maxTime)}s</div>
+              </div>
+            </div>
+          )}
+          <svg viewBox="0 0 400 200" className="w-full cursor-crosshair" style={{ height: `${chartHeightPx}px` }}>
+            <defs>
+              <linearGradient id="loadAreaGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={vizColor.stroke} stopOpacity="0.32" />
+                <stop offset="100%" stopColor={vizColor.stroke} stopOpacity="0.04" />
+              </linearGradient>
+            </defs>
+
             {/* Grid lines */}
             <line x1="40" y1="10" x2="40" y2="170" stroke="#3f3f46" strokeWidth="2" />
             <line x1="40" y1="170" x2="380" y2="170" stroke="#3f3f46" strokeWidth="2" />
@@ -737,7 +1720,7 @@ function renderLoadDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data:
                 y2={10 + (i * 40)}
                 stroke="#27272a"
                 strokeWidth="1"
-                strokeDasharray="4 4"
+                strokeDasharray={i === 4 ? '0' : '3 5'}
               />
             ))}
 
@@ -778,52 +1761,248 @@ function renderLoadDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data:
               );
             })}
 
+            {/* Intent VU control band */}
+            {showIntentVuBand && (
+              <>
+                <rect
+                  x="40"
+                  y={intentBandY.max}
+                  width="340"
+                  height={intentBandHeight}
+                  fill="#fbbf2420"
+                  stroke="#fbbf24"
+                  strokeOpacity="0.25"
+                  strokeDasharray="4 4"
+                />
+                {intentWarmupSec > 0 && (
+                  <>
+                    <rect
+                      x="40"
+                      y={intentBandY.max}
+                      width={Math.max(0, intentWarmupX - 40)}
+                      height={intentBandHeight}
+                      fill="#38bdf81c"
+                      stroke="#38bdf8"
+                      strokeOpacity="0.18"
+                      strokeDasharray="3 3"
+                    />
+                    <line
+                      x1={intentWarmupX}
+                      y1={intentBandY.max - 8}
+                      x2={intentWarmupX}
+                      y2={intentBandY.min + 8}
+                      stroke="#38bdf8"
+                      strokeWidth="1.4"
+                      strokeDasharray="3 3"
+                    />
+                    {intentWarmupIdleLine && (
+                      <polyline
+                        points={intentWarmupIdleLine}
+                        fill="none"
+                        stroke="#7dd3fc"
+                        strokeWidth="1.8"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeDasharray="4 3"
+                      />
+                    )}
+                    <text
+                      x={Math.max(48, intentWarmupX - 6)}
+                      y={Math.max(12, intentBandY.max - 10)}
+                      fill="#7dd3fc"
+                      fontSize="9"
+                      textAnchor="end"
+                      fontFamily="monospace"
+                    >
+                      warmup
+                    </text>
+                    <text
+                      x={Math.min(378, intentWarmupX + 6)}
+                      y={Math.max(12, intentBandY.max - 10)}
+                      fill="#fde68a"
+                      fontSize="9"
+                      textAnchor="start"
+                      fontFamily="monospace"
+                    >
+                      start adjust
+                    </text>
+                    <circle
+                      cx={intentWarmupX}
+                      cy={intentTargetY}
+                      r="2.5"
+                      fill="#fde68a"
+                      stroke="#18181b"
+                      strokeWidth="1"
+                    />
+                  </>
+                )}
+                <line x1="40" y1={intentBandY.max} x2="380" y2={intentBandY.max} stroke="#f59e0b" strokeWidth="1.5" strokeDasharray="6 4" />
+                <line x1="40" y1={intentBandY.min} x2="380" y2={intentBandY.min} stroke="#f59e0b" strokeWidth="1.5" strokeDasharray="6 4" />
+                <line x1="40" y1={intentTargetY} x2="380" y2={intentTargetY} stroke="#fb7185" strokeWidth="1.2" strokeDasharray="3 3" />
+                <polyline
+                  points={intentVuVariationLine}
+                  fill="none"
+                  stroke="#fde68a"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeOpacity="0.95"
+                />
+              </>
+            )}
+            {isIntentRps && (
+              <>
+                <rect
+                  x="40"
+                  y={intentRpsBandY.max}
+                  width="340"
+                  height={intentRpsBandHeight}
+                  fill="#34d3991c"
+                  stroke="#34d399"
+                  strokeOpacity="0.25"
+                  strokeDasharray="4 4"
+                />
+                {intentWarmupSec > 0 && (
+                  <>
+                    <rect
+                      x="40"
+                      y={intentRpsBandY.max}
+                      width={Math.max(0, intentWarmupX - 40)}
+                      height={intentRpsBandHeight}
+                      fill="#38bdf81c"
+                      stroke="#38bdf8"
+                      strokeOpacity="0.18"
+                      strokeDasharray="3 3"
+                    />
+                    <line
+                      x1={intentWarmupX}
+                      y1={intentRpsBandY.max - 8}
+                      x2={intentWarmupX}
+                      y2={intentRpsBandY.min + 8}
+                      stroke="#38bdf8"
+                      strokeWidth="1.4"
+                      strokeDasharray="3 3"
+                    />
+                    {intentRpsWarmupLine && (
+                      <polyline
+                        points={intentRpsWarmupLine}
+                        fill="none"
+                        stroke="#7dd3fc"
+                        strokeWidth="1.8"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeDasharray="4 3"
+                      />
+                    )}
+                    <text
+                      x={Math.max(48, intentWarmupX - 6)}
+                      y={Math.max(12, intentRpsBandY.max - 10)}
+                      fill="#7dd3fc"
+                      fontSize="9"
+                      textAnchor="end"
+                      fontFamily="monospace"
+                    >
+                      warmup
+                    </text>
+                  </>
+                )}
+                <line x1="40" y1={intentRpsBandY.max} x2="380" y2={intentRpsBandY.max} stroke="#10b981" strokeWidth="1.5" strokeDasharray="6 4" />
+                <line x1="40" y1={intentRpsBandY.min} x2="380" y2={intentRpsBandY.min} stroke="#10b981" strokeWidth="1.5" strokeDasharray="6 4" />
+                <line x1="40" y1={intentTargetY} x2="380" y2={intentTargetY} stroke="#fb7185" strokeWidth="1.2" strokeDasharray="3 3" />
+                <polyline
+                  points={intentRpsVariationLine}
+                  fill="none"
+                  stroke="#fde68a"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeOpacity="0.95"
+                />
+              </>
+            )}
+
             {/* Load pattern line */}
             {visualizationPoints.length > 1 && (
               <>
+                {/* Fill area under the line */}
+                <polygon
+                  points={areaPoints}
+                  fill="url(#loadAreaGradient)"
+                />
+
                 <polyline
-                  points={visualizationPoints
-                    .map(p => {
-                      const x = 40 + ((p.time / maxTime) * 340);
-                      const y = 170 - ((p.users / maxUsers) * 160);
-                      return `${x},${y}`;
-                    })
-                    .join(' ')}
+                  points={linePoints}
                   fill="none"
-                  stroke={loadType === 'constant' ? '#60a5fa' : '#a78bfa'}
-                  strokeWidth="3"
+                  stroke={vizColor.stroke}
+                  strokeWidth="2.5"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />
 
-                {/* Fill area under the line */}
-                <polygon
-                  points={[
-                    '40,170',
-                    ...visualizationPoints.map(p => {
-                      const x = 40 + ((p.time / maxTime) * 340);
-                      const y = 170 - ((p.users / maxUsers) * 160);
-                      return `${x},${y}`;
-                    }),
-                    `${40 + ((visualizationPoints[visualizationPoints.length - 1].time / maxTime) * 340)},170`
-                  ].join(' ')}
-                  fill={loadType === 'constant' ? '#3b82f620' : '#a78bfa20'}
-                />
-
                 {/* Points */}
-                {visualizationPoints.map((p, i) => {
-                  const x = 40 + ((p.time / maxTime) * 340);
-                  const y = 170 - ((p.users / maxUsers) * 160);
+                {allHandles.map((p, i) => {
+                  const draggable = [...Array(visualizationPoints.length).keys(), 11].includes(p.pointIdx);
+                  const isExtra = p.kind !== 'base';
                   return (
-                    <circle
-                      key={i}
-                      cx={x}
-                      cy={y}
-                      r="4"
-                      fill={loadType === 'constant' ? '#60a5fa' : '#a78bfa'}
-                      stroke="#18181b"
-                      strokeWidth="2"
-                    />
+                    <g key={`${p.pointIdx}-${i}`} className="group">
+                      <title>{`t=${p.time >= 60 ? `${Math.round(p.time / 60)}m` : `${Math.round(p.time)}s`} • ${yAxisLabel}=${p.users.toFixed(1)}`}</title>
+                      {/* Invisible hit-area to make dragging easier */}
+                      {draggable && (
+                        <circle
+                          cx={p.x}
+                          cy={p.y}
+                          r={isExtra ? 13 : 12}
+                          fill="transparent"
+                          className="cursor-grab active:cursor-grabbing"
+                          onMouseDown={handlePointDragStart(p.pointIdx)}
+                        />
+                      )}
+                      {draggable && (
+                        <circle
+                          cx={p.x}
+                          cy={p.y}
+                          r={draggingPointIdx === p.pointIdx ? 8 : (isExtra ? 7 : 6)}
+                          fill="none"
+                          stroke={vizColor.stroke}
+                          strokeWidth="1.5"
+                          strokeOpacity={draggingPointIdx === p.pointIdx ? 0.9 : 0.55}
+                          strokeDasharray="2 2"
+                          className="pointer-events-none transition-all duration-150"
+                        />
+                      )}
+                      <circle
+                        cx={p.x}
+                        cy={p.y}
+                        r={draggingPointIdx === p.pointIdx ? 6 : (isExtra ? 5 : 4)}
+                        fill={vizColor.stroke}
+                        stroke="#18181b"
+                        strokeWidth="2"
+                        className={`transition-all duration-150 group-hover:r-[6] ${draggable ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                        onMouseDown={handlePointDragStart(p.pointIdx)}
+                      />
+                      <g className="opacity-0 transition-opacity duration-150 group-hover:opacity-100 pointer-events-none">
+                        <rect
+                          x={Math.max(42, p.x - 44)}
+                          y={Math.max(12, p.y - 28)}
+                          width="88"
+                          height="18"
+                          rx="4"
+                          fill="#09090b"
+                          stroke="#3f3f46"
+                          strokeWidth="1"
+                        />
+                        <text
+                          x={p.x}
+                          y={Math.max(24, p.y - 15)}
+                          fill="#e4e4e7"
+                          fontSize="9"
+                          textAnchor="middle"
+                          fontFamily="monospace"
+                        >
+                          {`${Math.round(p.time)}s • ${p.users.toFixed(1)}`}
+                        </text>
+                      </g>
+                    </g>
                   );
                 })}
               </>
@@ -849,7 +2028,7 @@ function renderLoadDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data:
               fontWeight="600"
               transform="rotate(-90 15 100)"
             >
-              Users
+              {yAxisLabel}
             </text>
           </svg>
         </div>
@@ -873,29 +2052,34 @@ function parseTimeToSeconds(timeStr: string): number {
   }
 }
 
-function renderGroupDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): JSX.Element {
+function renderGroupDetails(
+  node: YAMLNode,
+  onNodeUpdate?: (nodeId: string, data: any) => void,
+  nodeName?: string,
+  setNodeName?: (name: string) => void
+): React.JSX.Element {
   const data = node.data || {};
   const handleChange = (field: string, value: any) => {
     if (onNodeUpdate) onNodeUpdate(node.id, { ...data, [field]: value });
   };
   return (
-    <>
-      <EditableField label="Group Name" value={data.name || ''} field="name" onChange={handleChange} />
+    <div className="space-y-6">
+      <EditableField label="Group Name" value={data.name || ''} field="name" onChange={handleChange} maxLength={50} />
       <DetailField label="Steps Count" value={node.children?.length || 0} mono />
-    </>
+    </div>
   );
 }
 
-function renderIfDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): JSX.Element {
+function renderIfDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): React.JSX.Element {
   const data = node.data || {};
   const handleChange = (field: string, value: any) => {
     if (onNodeUpdate) onNodeUpdate(node.id, { ...data, [field]: value });
   };
 
   return (
-    <>
+    <div className="space-y-6">
       {/* Condition */}
-      <div className="mb-4">
+      <div>
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
           Condition Expression
         </label>
@@ -919,11 +2103,11 @@ function renderIfDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: a
           {node.children?.length || 0}
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
-function renderLoopDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): JSX.Element {
+function renderLoopDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): React.JSX.Element {
   const data = node.data || {};
   const handleChange = (field: string, value: any) => {
     if (onNodeUpdate) onNodeUpdate(node.id, { ...data, [field]: value });
@@ -933,10 +2117,11 @@ function renderLoopDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data:
   const stepsCount = node.children?.length || 0;
   const totalIterations = loopCount * stepsCount;
 
+
   return (
-    <>
+    <div className="space-y-6">
       {/* Loop Count */}
-      <div className="mb-4">
+      <div>
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
           Loop Count
         </label>
@@ -945,7 +2130,7 @@ function renderLoopDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data:
           value={data.count !== undefined ? data.count : 1}
           onChange={(e) => handleChange('count', parseInt(e.target.value) || 1)}
           placeholder="1"
-          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+          className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
         />
         <div className="mt-1 text-xs text-zinc-500">
           Number of times to repeat the steps, or use variable ${'{'}loops${'}'}
@@ -953,7 +2138,7 @@ function renderLoopDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data:
       </div>
 
       {/* Break Condition */}
-      <div className="mb-4">
+      <div>
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
           Break Condition (optional)
         </label>
@@ -961,7 +2146,7 @@ function renderLoopDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data:
           value={data.break_on || ''}
           onChange={(e) => handleChange('break_on', e.target.value)}
           placeholder="${'{'}error${'}'} || ${'{'}stop${'}'}"
-          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+          className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
         />
         <div className="mt-1 text-xs text-zinc-500">
           Exit loop early if condition is true
@@ -987,11 +2172,11 @@ function renderLoopDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data:
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
-function renderRetryDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): JSX.Element {
+function renderRetryDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): React.JSX.Element {
   const data = node.data || {};
   const backoffType = data.backoff || 'constant';
 
@@ -1000,9 +2185,9 @@ function renderRetryDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data
   };
 
   return (
-    <>
+    <div className="space-y-6">
       {/* Attempts - Common to all */}
-      <div className="mb-4">
+      <div>
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
           Max Attempts
         </label>
@@ -1011,19 +2196,19 @@ function renderRetryDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data
           value={data.attempts !== undefined ? data.attempts : 3}
           onChange={(e) => handleChange('attempts', parseInt(e.target.value) || 3)}
           placeholder="3"
-          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+          className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
         />
       </div>
 
       {/* Backoff Type Selector */}
-      <div className="mb-4">
+      <div>
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
           Backoff Strategy
         </label>
         <select
           value={backoffType}
           onChange={(e) => handleChange('backoff', e.target.value)}
-          className="w-full px-3 py-2 bg-red-400/10 text-red-400 border border-red-400/20 rounded text-sm font-mono cursor-pointer"
+          className="w-full h-[38px] px-3 py-2 bg-red-400/10 text-red-400 border border-red-400/20 rounded text-sm font-mono cursor-pointer"
         >
           <option value="constant" className="bg-zinc-900">constant (same delay)</option>
           <option value="linear" className="bg-zinc-900">linear (incremental)</option>
@@ -1033,7 +2218,7 @@ function renderRetryDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data
 
       {/* Conditional Fields Based on Backoff Type */}
       {backoffType === 'constant' && (
-        <div className="mb-4">
+        <div>
           <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
             Delay
           </label>
@@ -1041,7 +2226,7 @@ function renderRetryDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data
             value={data.initial_delay || data.delay || ''}
             onChange={(e) => handleChange('initial_delay', e.target.value)}
             placeholder="1s"
-            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+            className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
           />
           <div className="mt-1 text-xs text-zinc-500">
             Same delay between all retry attempts
@@ -1059,7 +2244,7 @@ function renderRetryDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data
               value={data.initial_delay || ''}
               onChange={(e) => handleChange('initial_delay', e.target.value)}
               placeholder="1s"
-              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+              className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
             />
           </div>
           <div className="mb-4">
@@ -1070,7 +2255,7 @@ function renderRetryDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data
               value={data.increment || ''}
               onChange={(e) => handleChange('increment', e.target.value)}
               placeholder="1s"
-              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+              className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
             />
             <div className="mt-1 text-xs text-zinc-500">
               Delay increases by this amount each retry (1s, 2s, 3s...)
@@ -1089,7 +2274,7 @@ function renderRetryDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data
               value={data.initial_delay || ''}
               onChange={(e) => handleChange('initial_delay', e.target.value)}
               placeholder="1s"
-              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+              className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
             />
           </div>
           <div className="mb-4">
@@ -1101,7 +2286,7 @@ function renderRetryDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data
               value={data.multiplier !== undefined ? data.multiplier : 2}
               onChange={(e) => handleChange('multiplier', parseFloat(e.target.value) || 2)}
               placeholder="2"
-              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+              className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
             />
             <div className="mt-1 text-xs text-zinc-500">
               Delay multiplied each retry (1s, 2s, 4s, 8s...)
@@ -1115,7 +2300,7 @@ function renderRetryDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data
               value={data.max_delay || ''}
               onChange={(e) => handleChange('max_delay', e.target.value)}
               placeholder="30s"
-              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+              className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
             />
             <div className="mt-1 text-xs text-zinc-500">
               Cap maximum delay to prevent very long waits
@@ -1125,7 +2310,7 @@ function renderRetryDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data
       )}
 
       {/* Steps Count */}
-      <div className="mt-4 p-3 bg-white/5 border border-white/10 rounded">
+      <div className="p-3 bg-white/5 border border-white/10 rounded">
         <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1">
           Steps to Retry
         </div>
@@ -1133,207 +2318,821 @@ function renderRetryDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data
           {node.children?.length || 0}
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
-function renderThinkTimeDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): JSX.Element {
+function renderThinkTimeDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): React.JSX.Element {
   const data = node.data || {};
-
-  // Determine mode: if min/max exist, it's variable; otherwise fixed
-  const isVariable = data.min !== undefined || data.max !== undefined;
-  const mode = isVariable ? 'variable' : 'fixed';
+  const hasFixed = data.duration !== undefined && String(data.duration).trim() !== '';
+  const hasDistributionHints = data.mean !== undefined || data.std_dev !== undefined || String(data.distribution || '').toLowerCase() === 'normal';
+  const mode: 'fixed' | 'range' | 'distribution' = hasFixed
+    ? 'fixed'
+    : hasDistributionHints
+      ? 'distribution'
+      : 'range';
+  const fixedDuration = String(data.duration || '');
+  const variableMin = String(data.min || '');
+  const variableMax = String(data.max || '');
+  const thinkTimeModes = [
+    { value: 'fixed', label: 'Fixed', icon: Clock3 },
+    { value: 'range', label: 'Range', icon: BetweenHorizontalStart },
+    { value: 'distribution', label: 'Distribution', icon: Binary },
+  ] as const;
+  const thinkTimeModeButtonStyle: Record<'fixed' | 'range' | 'distribution', React.CSSProperties> = {
+    fixed: {
+      backgroundColor: 'rgba(249, 115, 22, 0.20)',
+      color: '#fdba74',
+      borderColor: 'rgba(253, 186, 116, 0.50)',
+      boxShadow: '0 10px 22px rgba(249, 115, 22, 0.20)',
+    },
+    range: {
+      backgroundColor: 'rgba(6, 182, 212, 0.20)',
+      color: '#67e8f9',
+      borderColor: 'rgba(103, 232, 249, 0.50)',
+      boxShadow: '0 10px 22px rgba(6, 182, 212, 0.20)',
+    },
+    distribution: {
+      backgroundColor: 'rgba(168, 85, 247, 0.20)',
+      color: '#d8b4fe',
+      borderColor: 'rgba(216, 180, 254, 0.50)',
+      boxShadow: '0 10px 22px rgba(168, 85, 247, 0.20)',
+    },
+  };
 
   const handleChange = (field: string, value: any) => {
     if (onNodeUpdate) onNodeUpdate(node.id, { ...data, [field]: value });
   };
 
-  const handleModeChange = (newMode: string) => {
+  const handleModeChange = (newMode: 'fixed' | 'range' | 'distribution') => {
     if (newMode === 'fixed') {
-      // Switch to fixed: remove min/max, keep/add duration
       const newData = { ...data };
       delete newData.min;
       delete newData.max;
+      delete newData.mean;
+      delete newData.std_dev;
+      delete newData.distribution;
       if (!newData.duration) {
         newData.duration = '1s';
       }
       if (onNodeUpdate) onNodeUpdate(node.id, newData);
-    } else {
-      // Switch to variable: remove duration, add min/max
+      return;
+    }
+
+    if (newMode === 'range') {
       const newData = { ...data };
       delete newData.duration;
+      delete newData.mean;
+      delete newData.std_dev;
       if (!newData.min) newData.min = '1s';
       if (!newData.max) newData.max = '3s';
+      newData.distribution = 'uniform';
       if (onNodeUpdate) onNodeUpdate(node.id, newData);
+      return;
     }
+
+    // distribution
+    const newData = { ...data };
+    delete newData.duration;
+    if (!newData.mean) newData.mean = '2s';
+    if (!newData.std_dev) newData.std_dev = '500ms';
+    // Keep guardrails to ensure runtime still has deterministic wait range today.
+    if (!newData.min) newData.min = '1s';
+    if (!newData.max) newData.max = '3s';
+    if (!newData.distribution) newData.distribution = 'normal';
+    if (onNodeUpdate) onNodeUpdate(node.id, newData);
   };
 
   return (
-    <>
+    <div className="space-y-6">
       {/* Mode Selector */}
-      <div className="mb-4">
+      <div>
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
           Think Time Mode
         </label>
-        <div className="flex gap-2">
-          <button
-            onClick={() => handleModeChange('fixed')}
-            className={`flex-1 px-4 py-2 text-sm font-medium rounded transition-colors ${mode === 'fixed'
-                ? 'bg-orange-400/20 text-orange-400 border border-orange-400/30'
-                : 'bg-white/5 text-zinc-400 border border-white/10 hover:text-zinc-300 hover:bg-white/10'
-              }`}
-          >
-            Fixed
-          </button>
-          <button
-            onClick={() => handleModeChange('variable')}
-            className={`flex-1 px-4 py-2 text-sm font-medium rounded transition-colors ${mode === 'variable'
-                ? 'bg-orange-400/20 text-orange-400 border border-orange-400/30'
-                : 'bg-white/5 text-zinc-400 border border-white/10 hover:text-zinc-300 hover:bg-white/10'
-              }`}
-          >
-            Variable (Random)
-          </button>
+        <div className="flex flex-wrap items-center gap-1">
+          {thinkTimeModes.map((m) => {
+            const active = mode === m.value;
+            const Icon = m.icon;
+            return (
+              <button
+                key={m.value}
+                type="button"
+                onClick={() => handleModeChange(m.value)}
+                aria-pressed={active}
+                className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${active
+                  ? 'border-current text-white'
+                  : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/[0.06]'
+                  }`}
+                style={active ? thinkTimeModeButtonStyle[m.value] : undefined}
+              >
+                <span className="inline-flex items-center gap-1.5">
+                  <Icon className="h-3.5 w-3.5" />
+                  <span>{m.label}</span>
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
       {/* Conditional Fields */}
       {mode === 'fixed' ? (
-        <div className="mb-4">
-          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-            Duration
-          </label>
-          <Input
-            value={data.duration || ''}
-            onChange={(e) => handleChange('duration', e.target.value)}
-            placeholder="2s"
-            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
-          />
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+                Duration
+              </label>
+              <Input
+                value={fixedDuration}
+                onChange={(e) => handleChange('duration', e.target.value)}
+                placeholder="2s"
+                className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+              />
+            </div>
+          </div>
           <div className="mt-1 text-xs text-zinc-500">
             Examples: 1s, 500ms, 2m (seconds, milliseconds, minutes)
           </div>
+        </>
+      ) : mode === 'range' ? (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+                Minimum Duration
+              </label>
+              <Input
+                value={variableMin}
+                onChange={(e) => handleChange('min', e.target.value)}
+                placeholder="1s"
+                className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+                Maximum Duration
+              </label>
+              <Input
+                value={variableMax}
+                onChange={(e) => handleChange('max', e.target.value)}
+                placeholder="3s"
+                className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+              />
+            </div>
+          </div>
+          <div className="p-3 bg-blue-400/5 border border-blue-400/20 rounded text-xs text-zinc-400">
+            ℹ️ Random delay is chosen between min and max on each execution.
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+                Mean
+              </label>
+              <Input
+                value={String(data.mean || '')}
+                onChange={(e) => handleChange('mean', e.target.value)}
+                placeholder="2s"
+                className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+                Std Dev
+              </label>
+              <Input
+                value={String(data.std_dev || '')}
+                onChange={(e) => handleChange('std_dev', e.target.value)}
+                placeholder="500ms"
+                className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+                Minimum Duration
+              </label>
+              <Input
+                value={variableMin}
+                onChange={(e) => handleChange('min', e.target.value)}
+                placeholder="1s"
+                className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+                Maximum Duration
+              </label>
+              <Input
+                value={variableMax}
+                onChange={(e) => handleChange('max', e.target.value)}
+                placeholder="3s"
+                className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+                Distribution
+              </label>
+              <select
+                value={String(data.distribution || 'normal')}
+                onChange={(e) => handleChange('distribution', e.target.value)}
+                className="w-full h-[38px] px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono outline-none"
+              >
+                <option value="normal" className="bg-[#1a1a1a]">normal</option>
+                <option value="uniform" className="bg-[#1a1a1a]">uniform</option>
+              </select>
+            </div>
+          </div>
+          <div className="p-3 bg-blue-400/5 border border-blue-400/20 rounded text-xs text-zinc-400">
+            ℹ️ Distribution mode applies normal(mean/std_dev) in runtime, bounded by min/max guardrails.
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function renderCookiesDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): React.JSX.Element {
+  const data = node.data || {};
+  const mode = String(data.mode || 'auto').toLowerCase();
+  const normalizedMode = mode === 'manual' ? 'manual' : 'auto';
+  const policy = String(data.policy || 'standard').toLowerCase();
+  const persistAcrossIterations = data.persist_across_iterations !== false;
+  const clearEachIteration = data.clear_each_iteration === true;
+  const seedCookies = Array.isArray(data.cookies) ? data.cookies : [];
+
+  const updateData = (nextData: any) => {
+    if (onNodeUpdate) onNodeUpdate(node.id, nextData);
+  };
+
+  const handleChange = (field: string, value: any) => {
+    updateData({ ...data, [field]: value });
+  };
+
+  const handleModeChange = (nextMode: 'auto' | 'manual') => {
+    if (nextMode === 'auto') {
+      updateData({
+        ...data,
+        mode: 'auto',
+        policy: 'standard',
+        jar_scope: 'vu',
+      });
+      return;
+    }
+    updateData({
+      ...data,
+      mode: 'manual',
+      policy: policy || 'standard',
+      jar_scope: data.jar_scope || 'vu',
+      persist_across_iterations: data.persist_across_iterations ?? true,
+      clear_each_iteration: data.clear_each_iteration ?? false,
+      cookies: seedCookies,
+    });
+  };
+
+  const handlePolicyChange = (nextPolicy: string) => {
+    if (nextPolicy === 'ignore_cookies') {
+      updateData({
+        ...data,
+        policy: 'ignore_cookies',
+      });
+      return;
+    }
+    updateData({
+      ...data,
+      policy: 'standard',
+    });
+  };
+
+  const updateSeedCookie = (index: number, field: string, value: string) => {
+    const next = [...seedCookies];
+    next[index] = { ...(next[index] || {}), [field]: value };
+    handleChange('cookies', next);
+  };
+
+  const addSeedCookie = () => {
+    handleChange('cookies', [
+      ...seedCookies,
+      { name: '', value: '', domain: '', path: '/' },
+    ]);
+  };
+
+  const removeSeedCookie = (index: number) => {
+    handleChange(
+      'cookies',
+      seedCookies.filter((_: any, i: number) => i !== index)
+    );
+  };
+
+  const effectiveClearEachIteration = persistAcrossIterations ? false : clearEachIteration;
+  const isIgnorePolicy = policy === 'ignore_cookies';
+  const invalidSeedRows = seedCookies
+    .map((cookie: any, index: number) => ({ cookie, index }))
+    .filter(({ cookie }) => !String(cookie?.name || '').trim() || !String(cookie?.domain || '').trim())
+    .map(({ index }) => index);
+  const summaryLine = normalizedMode === 'auto'
+    ? 'Auto + Standard + VU scope'
+    : `Manual + ${isIgnorePolicy ? 'Ignore Cookies' : 'Standard'} + ${String(data.jar_scope || 'vu').toUpperCase()} scope + Persist ${persistAcrossIterations ? 'ON' : 'OFF'}`;
+  const cookieSelectorStyle = {
+    auto: {
+      backgroundColor: 'rgba(236, 72, 153, 0.20)',
+      color: '#f9a8d4',
+      borderColor: 'rgba(249, 168, 212, 0.50)',
+      boxShadow: '0 10px 22px rgba(236, 72, 153, 0.20)',
+    },
+    manual: {
+      backgroundColor: 'rgba(168, 85, 247, 0.20)',
+      color: '#d8b4fe',
+      borderColor: 'rgba(216, 180, 254, 0.50)',
+      boxShadow: '0 10px 22px rgba(168, 85, 247, 0.20)',
+    },
+    standard: {
+      backgroundColor: 'rgba(59, 130, 246, 0.20)',
+      color: '#93c5fd',
+      borderColor: 'rgba(147, 197, 253, 0.50)',
+      boxShadow: '0 10px 22px rgba(59, 130, 246, 0.20)',
+    },
+    ignore_cookies: {
+      backgroundColor: 'rgba(239, 68, 68, 0.20)',
+      color: '#fca5a5',
+      borderColor: 'rgba(252, 165, 165, 0.50)',
+      boxShadow: '0 10px 22px rgba(239, 68, 68, 0.20)',
+    },
+  } as const;
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">Mode</label>
+        <div className="flex flex-wrap items-center gap-1">
+          <button
+            onClick={() => handleModeChange('auto')}
+            className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${normalizedMode === 'auto'
+              ? 'border-current text-white'
+              : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/[0.06]'
+              }`}
+            style={normalizedMode === 'auto' ? cookieSelectorStyle.auto : undefined}
+          >
+            <span className="inline-flex items-center gap-1.5">
+              <Cookie className="h-3.5 w-3.5" />
+              <Cpu className="h-3.5 w-3.5" />
+              <span>Auto (Recommended)</span>
+            </span>
+          </button>
+          <button
+            onClick={() => handleModeChange('manual')}
+            className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${normalizedMode === 'manual'
+              ? 'border-current text-white'
+              : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/[0.06]'
+              }`}
+            style={normalizedMode === 'manual' ? cookieSelectorStyle.manual : undefined}
+          >
+            <span className="inline-flex items-center gap-1.5">
+              <Cookie className="h-3.5 w-3.5" />
+              <Hand className="h-3.5 w-3.5" />
+              <span>Manual</span>
+            </span>
+          </button>
+        </div>
+      </div>
+      <div className="h-px bg-white/10" />
+
+      {normalizedMode === 'auto' ? (
+        <div className="rounded border border-blue-400/20 bg-blue-400/5 px-3 py-2 text-xs text-zinc-300">
+          Auto applies the recommended cookie behavior automatically.
         </div>
       ) : (
         <>
           <div className="mb-4">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              Minimum Duration
-            </label>
-            <Input
-              value={data.min || ''}
-              onChange={(e) => handleChange('min', e.target.value)}
-              placeholder="1s"
-              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Policy</label>
+            <div className="flex flex-wrap items-center gap-1">
+              <button
+                onClick={() => handlePolicyChange('standard')}
+                className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${!isIgnorePolicy
+                  ? 'border-current text-white'
+                  : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/[0.06]'
+                  }`}
+                style={!isIgnorePolicy ? cookieSelectorStyle.standard : undefined}
+              >
+                Standard
+              </button>
+              <button
+                onClick={() => handlePolicyChange('ignore_cookies')}
+                className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${isIgnorePolicy
+                  ? 'border-current text-white'
+                  : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/[0.06]'
+                  }`}
+                style={isIgnorePolicy ? cookieSelectorStyle.ignore_cookies : undefined}
+              >
+                Ignore Cookies
+              </button>
+            </div>
+          </div>
+
+          <div className="mb-2">
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Quick Presets</label>
+            <div className="flex flex-wrap items-center gap-1">
+              <button
+                onClick={() => updateData({ ...data, mode: 'manual', policy: 'standard', jar_scope: 'vu', persist_across_iterations: true, clear_each_iteration: false })}
+                className="px-3 py-1.5 text-sm font-medium rounded-full border border-transparent text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.06] transition-all duration-200"
+              >
+                Default
+              </button>
+              <button
+                onClick={() => updateData({ ...data, mode: 'manual', policy: 'ignore_cookies' })}
+                className="px-3 py-1.5 text-sm font-medium rounded-full border border-transparent text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.06] transition-all duration-200"
+              >
+                Stateless
+              </button>
+              <button
+                onClick={() => updateData({ ...data, mode: 'manual', policy: 'standard', jar_scope: 'vu', persist_across_iterations: false, clear_each_iteration: true })}
+                className="px-3 py-1.5 text-sm font-medium rounded-full border border-transparent text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.06] transition-all duration-200"
+              >
+                Clean Iteration
+              </button>
+            </div>
+          </div>
+
+          {isIgnorePolicy && (
+            <div className="rounded border border-blue-400/20 bg-blue-400/5 px-3 py-2 text-xs text-zinc-300">
+              Ignore Cookies is active: persistence, jar scope and seed cookies are disabled.
+            </div>
+          )}
+
+          <div className={`grid grid-cols-3 gap-4 ${isIgnorePolicy ? 'opacity-50' : ''}`}>
+            <SelectField
+              label="Persist Across Iterations"
+              value={persistAcrossIterations ? 'true' : 'false'}
+              field="persist_across_iterations"
+              onChange={(_, value) => handleChange('persist_across_iterations', value === 'true')}
+              options={[
+                { label: 'true', value: 'true' },
+                { label: 'false', value: 'false' },
+              ]}
+              disabled={isIgnorePolicy}
+              noMargin
+            />
+            <SelectField
+              label="Clear Each Iteration"
+              value={effectiveClearEachIteration ? 'true' : 'false'}
+              field="clear_each_iteration"
+              onChange={(_, value) => handleChange('clear_each_iteration', value === 'true')}
+              options={[
+                { label: 'false', value: 'false' },
+                { label: 'true', value: 'true' },
+              ]}
+              disabled={isIgnorePolicy}
+              noMargin
+            />
+            <SelectField
+              label="Jar Scope"
+              value={data.jar_scope || 'vu'}
+              field="jar_scope"
+              onChange={handleChange}
+              options={[
+                { label: 'vu', value: 'vu' },
+                { label: 'scenario', value: 'scenario' },
+              ]}
+              disabled={isIgnorePolicy}
+              noMargin
             />
           </div>
-          <div className="mb-4">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              Maximum Duration
-            </label>
-            <Input
-              value={data.max || ''}
-              onChange={(e) => handleChange('max', e.target.value)}
-              placeholder="3s"
-              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
-            />
-          </div>
-          <div className="p-3 bg-blue-400/5 border border-blue-400/20 rounded text-xs text-zinc-400">
-            ℹ️ Random delay will be chosen between min and max on each execution
+
+          <div className={`rounded border border-white/10 bg-white/5 p-3 ${isIgnorePolicy ? 'opacity-50' : ''}`}>
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Seed Cookies</span>
+              <button
+                onClick={addSeedCookie}
+                disabled={isIgnorePolicy}
+                className="flex items-center gap-1 rounded-full border border-current px-3 py-1.5 text-sm font-medium text-white transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50"
+                style={!isIgnorePolicy ? {
+                  backgroundColor: 'rgba(16, 185, 129, 0.22)',
+                  color: '#6ee7b7',
+                  borderColor: 'rgba(110, 231, 183, 0.55)',
+                  boxShadow: '0 10px 22px rgba(16, 185, 129, 0.22)',
+                } : undefined}
+              >
+                <Plus className="w-3 h-3" />
+                Add
+              </button>
+            </div>
+
+            {seedCookies.length === 0 ? (
+              <div className="text-xs text-zinc-500">No seed cookies configured.</div>
+            ) : (
+              <div className="space-y-2">
+                {seedCookies.map((cookie: any, index: number) => (
+                  <div key={`${index}-${cookie?.name || 'cookie'}`} className="grid grid-cols-12 gap-2">
+                    <Input
+                      value={cookie?.name || ''}
+                      disabled={isIgnorePolicy}
+                      onChange={(e) => updateSeedCookie(index, 'name', e.target.value)}
+                      placeholder="name"
+                      className="col-span-3 h-[34px] bg-[#1a1a1a] border-white/10 text-zinc-300 text-xs font-mono"
+                    />
+                    <Input
+                      value={cookie?.value || ''}
+                      disabled={isIgnorePolicy}
+                      onChange={(e) => updateSeedCookie(index, 'value', e.target.value)}
+                      placeholder="value"
+                      className="col-span-3 h-[34px] bg-[#1a1a1a] border-white/10 text-zinc-300 text-xs font-mono"
+                    />
+                    <Input
+                      value={cookie?.domain || ''}
+                      disabled={isIgnorePolicy}
+                      onChange={(e) => updateSeedCookie(index, 'domain', e.target.value)}
+                      placeholder="domain"
+                      className="col-span-3 h-[34px] bg-[#1a1a1a] border-white/10 text-zinc-300 text-xs font-mono"
+                    />
+                    <Input
+                      value={cookie?.path || '/'}
+                      disabled={isIgnorePolicy}
+                      onChange={(e) => updateSeedCookie(index, 'path', e.target.value)}
+                      placeholder="/"
+                      className="col-span-2 h-[34px] bg-[#1a1a1a] border-white/10 text-zinc-300 text-xs font-mono"
+                    />
+                    <button
+                      onClick={() => removeSeedCookie(index)}
+                      disabled={isIgnorePolicy}
+                      className="col-span-1 rounded border border-red-400/30 bg-red-400/10 text-xs font-medium text-red-300 transition-colors hover:bg-red-400/20 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {invalidSeedRows.length > 0 && (
+              <div className="mt-2 rounded border border-amber-400/30 bg-amber-400/10 px-2 py-1.5 text-xs text-amber-200">
+                Seed cookie validation: rows {invalidSeedRows.map((i) => i + 1).join(', ')} require both name and domain.
+              </div>
+            )}
           </div>
         </>
       )}
-    </>
-  );
-}
-
-function renderCookiesDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): JSX.Element {
-  const data = node.data || {};
-  const handleChange = (field: string, value: any) => {
-    if (onNodeUpdate) onNodeUpdate(node.id, { ...data, [field]: value });
-  };
-  return (
-    <>
-      <EditableField label="Mode" value={data.mode || ''} field="mode" onChange={handleChange} />
-      <EditableField label="Jar Scope" value={data.jar_scope || ''} field="jar_scope" onChange={handleChange} />
-      <div className="mb-4">
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Persist Across Iterations</label>
-        <select
-          value={data.persist_across_iterations ? 'true' : 'false'}
-          onChange={(e) => handleChange('persist_across_iterations', e.target.value === 'true')}
-          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
-        >
-          <option value="true">true</option>
-          <option value="false">false</option>
-        </select>
+      <div className="rounded border border-white/10 bg-black/20 px-3 py-2 text-xs text-zinc-300">
+        {summaryLine}
       </div>
-    </>
+    </div>
   );
 }
 
-function renderCacheManagerDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): JSX.Element {
+function renderCacheManagerDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): React.JSX.Element {
+  const data = node.data || {};
+  const handleChange = (field: string, value: any) => {
+    if (onNodeUpdate) onNodeUpdate(node.id, { ...data, [field]: value });
+  };
+  const enabled = data.enabled !== false;
+  const clearEachIteration = data.clear_each_iteration !== false;
+  const maxElements = String(
+    data.max_elements ??
+    (data.max_size_mb ? parseInt(String(data.max_size_mb), 10) : 1000)
+  );
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">Cache</label>
+        <div className="flex flex-wrap items-center gap-1">
+          <button
+            onClick={() => handleChange('enabled', true)}
+            className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${enabled
+              ? 'border-current text-white'
+              : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/[0.06]'
+              }`}
+            style={enabled ? {
+              backgroundColor: 'rgba(16, 185, 129, 0.22)',
+              color: '#6ee7b7',
+              borderColor: 'rgba(110, 231, 183, 0.55)',
+              boxShadow: '0 10px 22px rgba(16, 185, 129, 0.22)',
+            } : undefined}
+          >
+            Enabled
+          </button>
+          <button
+            onClick={() => handleChange('enabled', false)}
+            className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${!enabled
+              ? 'border-current text-white'
+              : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/[0.06]'
+              }`}
+            style={!enabled ? {
+              backgroundColor: 'rgba(244, 63, 94, 0.20)',
+              color: '#fda4af',
+              borderColor: 'rgba(253, 164, 175, 0.55)',
+              boxShadow: '0 10px 22px rgba(244, 63, 94, 0.20)',
+            } : undefined}
+          >
+            Disabled
+          </button>
+        </div>
+      </div>
+      <div className="h-px bg-white/10" />
+
+      <div className={`${!enabled ? 'opacity-60' : ''}`}>
+        <div className="grid grid-cols-2 gap-4 mb-5">
+          <SelectField
+            label="Clear Each Iteration"
+            value={clearEachIteration ? 'true' : 'false'}
+            field="clear_each_iteration"
+            options={[
+              { label: 'true', value: 'true' },
+              { label: 'false', value: 'false' },
+            ]}
+            disabled={!enabled}
+            onChange={(_, value) => handleChange('clear_each_iteration', value === 'true')}
+            noMargin
+          />
+
+          <div>
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+              Max Elements
+            </label>
+            <Input
+              type="number"
+              value={maxElements}
+              disabled={!enabled}
+              onChange={(e) => {
+                const parsed = Math.max(1, parseInt(e.target.value || '1', 10) || 1);
+                handleChange('max_elements', parsed);
+              }}
+              className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono focus:border-white/30 transition-all"
+            />
+          </div>
+        </div>
+
+        <div className="rounded border border-white/10 bg-black/20 px-3 py-2 text-xs text-zinc-300">
+          {`Cache ${enabled ? 'ON' : 'OFF'} + ClearEachIteration ${clearEachIteration ? 'ON' : 'OFF'} + MaxElements ${maxElements}`}
+        </div>
+      </div>
+
+    </div>
+  );
+}
+
+function renderErrorPolicyDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): React.JSX.Element {
+  return <ErrorPolicyDetails node={node} onNodeUpdate={onNodeUpdate} />;
+}
+
+function ErrorPolicyDetails({ node, onNodeUpdate }: { node: YAMLNode; onNodeUpdate?: (nodeId: string, data: any) => void }): React.JSX.Element {
+  const data = node.data || {};
+  const activeRules = Array.isArray(data.active_rules)
+    ? (data.active_rules.filter((r: string) => ['on_4xx', 'on_5xx', 'on_timeout'].includes(r)) as Array<'on_4xx' | 'on_5xx' | 'on_timeout'>)
+    : [];
+
+  const handleChange = (field: string, value: any) => {
+    if (onNodeUpdate) onNodeUpdate(node.id, { ...data, [field]: value });
+  };
+
+  const on4xx = String(data.on_4xx || 'continue');
+  const on5xx = String(data.on_5xx || 'stop');
+  const onTimeout = String(data.on_timeout || 'stop');
+  const currentValueForRule = (rule: 'on_4xx' | 'on_5xx' | 'on_timeout') =>
+    String(data[rule] || (rule === 'on_4xx' ? 'continue' : 'stop'));
+
+  const updateData = (nextData: any) => {
+    if (onNodeUpdate) onNodeUpdate(node.id, nextData);
+  };
+
+  const handleRuleClick = (rule: 'on_4xx' | 'on_5xx' | 'on_timeout') => {
+    const nextActiveRules = activeRules.includes(rule)
+      ? activeRules.filter((r) => r !== rule)
+      : [...activeRules, rule];
+    updateData({ ...data, active_rules: nextActiveRules });
+  };
+
+  const tabStyle = {
+    on_4xx: {
+      backgroundColor: 'rgba(245, 158, 11, 0.20)',
+      color: '#fcd34d',
+      borderColor: 'rgba(252, 211, 77, 0.50)',
+      boxShadow: '0 10px 22px rgba(245, 158, 11, 0.20)',
+    },
+    on_5xx: {
+      backgroundColor: 'rgba(244, 63, 94, 0.20)',
+      color: '#fda4af',
+      borderColor: 'rgba(253, 164, 175, 0.55)',
+      boxShadow: '0 10px 22px rgba(244, 63, 94, 0.20)',
+    },
+    on_timeout: {
+      backgroundColor: 'rgba(56, 189, 248, 0.20)',
+      color: '#7dd3fc',
+      borderColor: 'rgba(125, 211, 252, 0.55)',
+      boxShadow: '0 10px 22px rgba(56, 189, 248, 0.20)',
+    },
+  } as const;
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">Rules</label>
+        <div className="flex flex-wrap items-center gap-1">
+          <button
+            onClick={() => handleRuleClick('on_4xx')}
+            className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${activeRules.includes('on_4xx')
+              ? 'border-current text-white ring-1 ring-white/30'
+              : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/[0.06]'
+              }`}
+            style={activeRules.includes('on_4xx') ? tabStyle.on_4xx : undefined}
+          >
+            <span className="inline-flex items-center gap-1.5">
+              <AlertTriangle className="h-3.5 w-3.5" />
+              <span>On 4xx</span>
+            </span>
+          </button>
+          <button
+            onClick={() => handleRuleClick('on_5xx')}
+            className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${activeRules.includes('on_5xx')
+              ? 'border-current text-white ring-1 ring-white/30'
+              : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/[0.06]'
+              }`}
+            style={activeRules.includes('on_5xx') ? tabStyle.on_5xx : undefined}
+          >
+            <span className="inline-flex items-center gap-1.5">
+              <ServerCrash className="h-3.5 w-3.5" />
+              <span>On 5xx</span>
+            </span>
+          </button>
+          <button
+            onClick={() => handleRuleClick('on_timeout')}
+            className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${activeRules.includes('on_timeout')
+              ? 'border-current text-white ring-1 ring-white/30'
+              : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/[0.06]'
+              }`}
+            style={activeRules.includes('on_timeout') ? tabStyle.on_timeout : undefined}
+          >
+            <span className="inline-flex items-center gap-1.5">
+              <Clock3 className="h-3.5 w-3.5" />
+              <span>On Timeout</span>
+            </span>
+          </button>
+        </div>
+      </div>
+      <div className="h-px bg-white/10" />
+
+      <div className="grid grid-cols-3 gap-4">
+        {(['on_4xx', 'on_5xx', 'on_timeout'] as const).map((rule) => {
+          const isActive = activeRules.includes(rule);
+          const label = rule === 'on_4xx'
+            ? 'On 4xx Action'
+            : rule === 'on_5xx'
+              ? 'On 5xx Action'
+              : 'On Timeout Action';
+
+          return (
+            <div key={rule} className={isActive ? '' : 'opacity-50'}>
+              <SelectField
+                label={label}
+                value={currentValueForRule(rule)}
+                field={rule}
+                onChange={(_, value) => updateData({ ...data, [rule]: value })}
+                options={[
+                  { label: 'continue', value: 'continue' },
+                  { label: 'stop', value: 'stop' },
+                ]}
+                disabled={!isActive}
+                noMargin
+              />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function renderMetricsDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): React.JSX.Element {
   const data = node.data || {};
   const handleChange = (field: string, value: any) => {
     if (onNodeUpdate) onNodeUpdate(node.id, { ...data, [field]: value });
   };
   return (
-    <>
-      <div className="mb-4">
+    <div className="space-y-6">
+      <div>
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Enabled</label>
         <select
           value={data.enabled ? 'true' : 'false'}
           onChange={(e) => handleChange('enabled', e.target.value === 'true')}
-          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
-        >
-          <option value="true">true</option>
-          <option value="false">false</option>
-        </select>
-      </div>
-      <EditableField label="Scope" value={data.scope || ''} field="scope" onChange={handleChange} />
-      <EditableField label="Max Size (MB)" value={data.max_size_mb || ''} field="max_size_mb" onChange={handleChange} type="number" />
-      <EditableField label="Eviction Policy" value={data.eviction_policy || ''} field="eviction_policy" onChange={handleChange} />
-    </>
-  );
-}
-
-function renderErrorPolicyDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): JSX.Element {
-  const data = node.data || {};
-  const handleChange = (field: string, value: any) => {
-    if (onNodeUpdate) onNodeUpdate(node.id, { ...data, [field]: value });
-  };
-  return (
-    <>
-      <EditableField label="On 4xx" value={data.on_4xx || ''} field="on_4xx" onChange={handleChange} />
-      <EditableField label="On 5xx" value={data.on_5xx || ''} field="on_5xx" onChange={handleChange} />
-      <EditableField label="On Timeout" value={data.on_timeout || ''} field="on_timeout" onChange={handleChange} />
-    </>
-  );
-}
-
-function renderMetricsDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): JSX.Element {
-  const data = node.data || {};
-  const handleChange = (field: string, value: any) => {
-    if (onNodeUpdate) onNodeUpdate(node.id, { ...data, [field]: value });
-  };
-  return (
-    <>
-      <div className="mb-4">
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Enabled</label>
-        <select
-          value={data.enabled ? 'true' : 'false'}
-          onChange={(e) => handleChange('enabled', e.target.value === 'true')}
-          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+          className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
         >
           <option value="true">true</option>
           <option value="false">false</option>
         </select>
       </div>
       <EditableField label="Collect Interval" value={data.collect_interval || ''} field="collect_interval" onChange={handleChange} />
-    </>
+    </div>
   );
 }
 
 // 🔥 SPARK SCRIPT DETAILS (Editable with Syntax Highlighting)
-function renderSparkDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): JSX.Element {
+function renderSparkDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): React.JSX.Element {
   const data = node.data || {};
 
   const handleScriptChange = (newScript: string) => {
@@ -1360,9 +3159,76 @@ function renderSparkDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data
 }
 
 // ASSERTION DETAILS (Pulse format - Editable with Conditional Fields)
-function renderAssertionDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): JSX.Element {
+function renderAssertionDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): React.JSX.Element {
   const data = node.data || {};
   const assertionType = data.type || 'status';
+  const assertionTypes = [
+    { value: 'status', label: 'Status', icon: CheckCircle2 },
+    { value: 'status_in', label: 'Status in', icon: CheckCircle2 },
+    { value: 'contains', label: 'Contains', icon: Search },
+    { value: 'not_contains', label: 'Not contains', icon: SearchX },
+    { value: 'regex', label: 'Regex', icon: TextSearch },
+    { value: 'response_time', label: 'Response time', icon: Clock3 },
+    { value: 'response_size', label: 'Response size', icon: Binary },
+    { value: 'header', label: 'Header', icon: Tag },
+    { value: 'json', label: 'Jsonpath', icon: Braces },
+  ] as const;
+  const assertionTypeButtonStyle: Record<string, React.CSSProperties> = {
+    status: {
+      backgroundColor: 'rgba(34, 197, 94, 0.20)',
+      color: '#86efac',
+      borderColor: 'rgba(134, 239, 172, 0.50)',
+      boxShadow: '0 10px 22px rgba(34, 197, 94, 0.20)',
+    },
+    status_in: {
+      backgroundColor: 'rgba(34, 197, 94, 0.20)',
+      color: '#86efac',
+      borderColor: 'rgba(134, 239, 172, 0.50)',
+      boxShadow: '0 10px 22px rgba(34, 197, 94, 0.20)',
+    },
+    contains: {
+      backgroundColor: 'rgba(56, 189, 248, 0.20)',
+      color: '#7dd3fc',
+      borderColor: 'rgba(125, 211, 252, 0.50)',
+      boxShadow: '0 10px 22px rgba(56, 189, 248, 0.20)',
+    },
+    not_contains: {
+      backgroundColor: 'rgba(245, 158, 11, 0.20)',
+      color: '#fcd34d',
+      borderColor: 'rgba(252, 211, 77, 0.50)',
+      boxShadow: '0 10px 22px rgba(245, 158, 11, 0.20)',
+    },
+    regex: {
+      backgroundColor: 'rgba(168, 85, 247, 0.20)',
+      color: '#d8b4fe',
+      borderColor: 'rgba(216, 180, 254, 0.50)',
+      boxShadow: '0 10px 22px rgba(168, 85, 247, 0.20)',
+    },
+    response_time: {
+      backgroundColor: 'rgba(249, 115, 22, 0.20)',
+      color: '#fdba74',
+      borderColor: 'rgba(253, 186, 116, 0.50)',
+      boxShadow: '0 10px 22px rgba(249, 115, 22, 0.20)',
+    },
+    response_size: {
+      backgroundColor: 'rgba(99, 102, 241, 0.20)',
+      color: '#a5b4fc',
+      borderColor: 'rgba(165, 180, 252, 0.50)',
+      boxShadow: '0 10px 22px rgba(99, 102, 241, 0.20)',
+    },
+    header: {
+      backgroundColor: 'rgba(236, 72, 153, 0.20)',
+      color: '#f9a8d4',
+      borderColor: 'rgba(249, 168, 212, 0.50)',
+      boxShadow: '0 10px 22px rgba(236, 72, 153, 0.20)',
+    },
+    json: {
+      backgroundColor: 'rgba(6, 182, 212, 0.20)',
+      color: '#67e8f9',
+      borderColor: 'rgba(103, 232, 249, 0.50)',
+      boxShadow: '0 10px 22px rgba(6, 182, 212, 0.20)',
+    },
+  };
 
   const handleChange = (field: string, value: any) => {
     if (onNodeUpdate) {
@@ -1372,31 +3238,40 @@ function renderAssertionDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
 
   return (
     <>
-      {/* Assertion Type Selector */}
+      {/* Assertion Type Selector (single-select pills) */}
       <div className="mb-4">
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
           Assertion Type
         </label>
-        <select
-          value={assertionType}
-          onChange={(e) => handleChange('type', e.target.value)}
-          className="w-full px-3 py-2 bg-green-400/10 text-green-400 border border-green-400/20 rounded text-sm font-mono cursor-pointer"
-        >
-          <option value="status" className="bg-zinc-900">status</option>
-          <option value="status_in" className="bg-zinc-900">status_in (multiple codes)</option>
-          <option value="contains" className="bg-zinc-900">contains</option>
-          <option value="not_contains" className="bg-zinc-900">not_contains</option>
-          <option value="regex" className="bg-zinc-900">regex</option>
-          <option value="response_time" className="bg-zinc-900">response_time</option>
-          <option value="response_size" className="bg-zinc-900">response_size</option>
-          <option value="header" className="bg-zinc-900">header</option>
-          <option value="json" className="bg-zinc-900">json (jsonpath)</option>
-        </select>
+        <div className="flex flex-wrap items-center gap-1">
+          {assertionTypes.map((type) => {
+            const active = assertionType === type.value;
+            const Icon = type.icon;
+            return (
+              <button
+                key={type.value}
+                type="button"
+                onClick={() => handleChange('type', type.value)}
+                aria-pressed={active}
+                className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${active
+                  ? 'border-current text-white'
+                  : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/[0.06]'
+                  }`}
+                style={active ? assertionTypeButtonStyle[type.value] : undefined}
+              >
+                <span className="inline-flex items-center gap-1.5">
+                  <Icon className="h-3.5 w-3.5" />
+                  <span>{type.label}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Conditional Fields Based on Type */}
       {(assertionType === 'status' || assertionType === 'status_in') && (
-        <div className="mb-4">
+        <div className="mb-4 grid grid-cols-1 gap-3 items-end">
           <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
             {assertionType === 'status' ? 'Expected Status Code' : 'Expected Status Codes (comma separated)'}
           </label>
@@ -1404,14 +3279,14 @@ function renderAssertionDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
             value={data.value !== undefined ? String(data.value) : ''}
             onChange={(e) => handleChange('value', e.target.value)}
             placeholder={assertionType === 'status' ? '200' : '200, 201, 204'}
-            className="bg-white/5 border-white/10 text-zinc-300 text-sm font-mono"
+            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono focus:border-white/30 transition-all"
           />
         </div>
       )}
 
       {(assertionType === 'contains' || assertionType === 'not_contains') && (
-        <>
-          <div className="mb-4">
+        <div className="mb-4 grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_auto] gap-3 items-end">
+          <div>
             <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
               Text to {assertionType === 'contains' ? 'Find' : 'Not Find'}
             </label>
@@ -1419,11 +3294,11 @@ function renderAssertionDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
               value={data.value !== undefined ? String(data.value) : ''}
               onChange={(e) => handleChange('value', e.target.value)}
               placeholder="Expected text in response..."
-              className="bg-white/5 border-white/10 text-zinc-300 text-sm font-mono"
+              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono focus:border-white/30 transition-all"
             />
           </div>
-          <div className="mb-4">
-            <label className="flex items-center gap-2 cursor-pointer">
+          <div className="h-[38px] flex items-center">
+            <label className="flex items-center gap-2 cursor-pointer whitespace-nowrap">
               <input
                 type="checkbox"
                 checked={data.ignore_case || false}
@@ -1433,23 +3308,23 @@ function renderAssertionDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
               <span className="text-sm text-zinc-300">Ignore case</span>
             </label>
           </div>
-        </>
+        </div>
       )}
 
       {assertionType === 'regex' && (
-        <>
-          <div className="mb-4">
+        <div className="mb-4 flex items-end gap-3">
+          <div className="flex-1 min-w-0">
             <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
               Regular Expression Pattern
             </label>
-            <Textarea
+            <Input
               value={data.pattern || ''}
               onChange={(e) => handleChange('pattern', e.target.value)}
               placeholder="token=([a-f0-9]+)"
-              className="bg-white/5 border-white/10 text-zinc-300 text-sm font-mono min-h-[80px]"
+              className="bg-white/5 border-white/10 text-zinc-300 text-sm font-mono"
             />
           </div>
-          <div className="mb-4">
+          <div className="w-[150px] shrink-0">
             <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
               Match Number
             </label>
@@ -1461,7 +3336,7 @@ function renderAssertionDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
               className="bg-white/5 border-white/10 text-zinc-300 text-sm font-mono"
             />
           </div>
-        </>
+        </div>
       )}
 
       {assertionType === 'response_time' && (
@@ -1495,8 +3370,8 @@ function renderAssertionDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
       )}
 
       {assertionType === 'header' && (
-        <>
-          <div className="mb-4">
+        <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-3 items-end">
+          <div>
             <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
               Header Name
             </label>
@@ -1507,7 +3382,7 @@ function renderAssertionDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
               className="bg-white/5 border-white/10 text-zinc-300 text-sm font-mono"
             />
           </div>
-          <div className="mb-4">
+          <div>
             <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
               Expected Header Value
             </label>
@@ -1518,12 +3393,12 @@ function renderAssertionDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
               className="bg-white/5 border-white/10 text-zinc-300 text-sm font-mono"
             />
           </div>
-        </>
+        </div>
       )}
 
       {assertionType === 'json' && (
-        <>
-          <div className="mb-4">
+        <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-3 items-end">
+          <div>
             <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
               JSONPath Expression
             </label>
@@ -1534,7 +3409,7 @@ function renderAssertionDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
               className="bg-white/5 border-white/10 text-zinc-300 text-sm font-mono"
             />
           </div>
-          <div className="mb-4">
+          <div>
             <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
               Expected Value
             </label>
@@ -1545,122 +3420,280 @@ function renderAssertionDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
               className="bg-white/5 border-white/10 text-zinc-300 text-sm font-mono"
             />
           </div>
-        </>
+        </div>
       )}
     </>
   );
 }
 
 // EXTRACTOR DETAILS (Pulse format - Editable with Conditional Fields)
-function renderExtractorDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): JSX.Element {
+function renderExtractorDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): React.JSX.Element {
   const data = node.data || {};
   const extractorType = data.type || 'regex';
+  const extractorTypes = [
+    { value: 'regex', label: 'Regex', icon: TextSearch },
+    { value: 'jsonpath', label: 'Jsonpath', icon: Braces },
+    { value: 'xpath', label: 'Xpath', icon: Brackets },
+    { value: 'boundary', label: 'Boundary', icon: BetweenHorizontalStart },
+  ] as const;
+  const extractorTypeButtonStyle: Record<string, React.CSSProperties> = {
+    regex: {
+      backgroundColor: 'rgba(168, 85, 247, 0.20)',
+      color: '#d8b4fe',
+      borderColor: 'rgba(216, 180, 254, 0.50)',
+      boxShadow: '0 10px 22px rgba(168, 85, 247, 0.20)',
+    },
+    jsonpath: {
+      backgroundColor: 'rgba(6, 182, 212, 0.20)',
+      color: '#67e8f9',
+      borderColor: 'rgba(103, 232, 249, 0.50)',
+      boxShadow: '0 10px 22px rgba(6, 182, 212, 0.20)',
+    },
+    xpath: {
+      backgroundColor: 'rgba(236, 72, 153, 0.20)',
+      color: '#f9a8d4',
+      borderColor: 'rgba(249, 168, 212, 0.50)',
+      boxShadow: '0 10px 22px rgba(236, 72, 153, 0.20)',
+    },
+    boundary: {
+      backgroundColor: 'rgba(249, 115, 22, 0.20)',
+      color: '#fdba74',
+      borderColor: 'rgba(253, 186, 116, 0.50)',
+      boxShadow: '0 10px 22px rgba(249, 115, 22, 0.20)',
+    },
+  };
+  const extractorVariableName = data.var ?? data.variable ?? '';
+  const extractorSource = data.from || 'body';
+
+  const getExtractorDefaults = (type: string) => {
+    if (type === 'regex') {
+      return {
+        type: 'regex',
+        from: 'body',
+        pattern: data.pattern || '',
+        capture_mode: data.capture_mode || 'first',
+        capture_index: data.capture_index || '2',
+        group: data.group ?? 1,
+        default: data.default || '',
+      };
+    }
+    if (type === 'jsonpath') {
+      return {
+        type: 'jsonpath',
+        from: data.from || 'body',
+        expression: data.expression || data.pattern || '$.data.id',
+        default: data.default || '',
+      };
+    }
+    if (type === 'xpath') {
+      return {
+        type: 'xpath',
+        from: data.from || 'body',
+        expression: data.expression || data.pattern || '//title/text()',
+        namespace: data.namespace || '',
+        default: data.default || '',
+      };
+    }
+    return {
+      type: 'boundary',
+      from: data.from || 'body',
+      left_boundary: data.left_boundary || '<title>',
+      right_boundary: data.right_boundary || '</title>',
+      default: data.default || '',
+    };
+  };
 
   const handleChange = (field: string, value: any) => {
     if (onNodeUpdate) {
+      if (field === 'var') {
+        // Keep legacy `variable` in sync so clearing the field does not restore old fallback values.
+        onNodeUpdate(node.id, { ...data, var: value, variable: value });
+        return;
+      }
+      if (field === 'type') {
+        onNodeUpdate(node.id, { ...data, ...getExtractorDefaults(value), var: extractorVariableName, variable: extractorVariableName });
+        return;
+      }
       onNodeUpdate(node.id, { ...data, [field]: value });
     }
   };
 
   return (
     <>
-      {/* Extractor Type Selector */}
+      {/* Extractor Type */}
       <div className="mb-4">
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
           Extractor Type
         </label>
-        <select
-          value={extractorType}
-          onChange={(e) => handleChange('type', e.target.value)}
-          className="w-full px-3 py-2 bg-blue-400/10 text-blue-400 border border-blue-400/20 rounded text-sm font-mono cursor-pointer"
-        >
-          <option value="regex" className="bg-zinc-900">regex</option>
-          <option value="jsonpath" className="bg-zinc-900">jsonpath</option>
-          <option value="xpath" className="bg-zinc-900">xpath</option>
-          <option value="boundary" className="bg-zinc-900">boundary</option>
-        </select>
+        <div className="flex flex-wrap items-center gap-1">
+          {extractorTypes.map((type) => {
+            const active = extractorType === type.value;
+            const Icon = type.icon;
+            return (
+              <button
+                key={type.value}
+                type="button"
+                onClick={() => handleChange('type', type.value)}
+                aria-pressed={active}
+                className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${active
+                  ? 'border-current text-white'
+                  : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/[0.06]'
+                  }`}
+                style={active ? extractorTypeButtonStyle[type.value] : undefined}
+              >
+                <span className="inline-flex items-center gap-1.5">
+                  <Icon className="h-3.5 w-3.5" />
+                  <span>{type.label}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Variable Name - Common to all types */}
+      {/* Variable Name - common to all types */}
       <div className="mb-4">
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
           Variable Name *
         </label>
         <Input
-          value={data.var || data.variable || ''}
+          value={extractorVariableName}
           onChange={(e) => handleChange('var', e.target.value)}
-          placeholder="MY_VARIABLE"
-          className="bg-purple-400/10 border-purple-400/20 text-purple-400 text-sm font-mono"
+          placeholder="extracted_value"
+          maxLength={50}
+          className="w-full max-w-[360px] px-3 py-2 bg-purple-400/5 border border-purple-400/20 text-purple-400 text-sm font-mono font-bold focus:border-purple-400/40"
         />
-        <div className="mt-1 text-xs text-zinc-500">
-          Variable will be stored as ${'${'}{data.var || data.variable || 'VAR'}${'}'}
-        </div>
       </div>
 
       {/* Conditional Fields Based on Type */}
       {extractorType === 'regex' && (
         <>
-          <div className="mb-4">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              Regular Expression Pattern *
-            </label>
-            <Textarea
-              value={data.pattern || ''}
-              onChange={(e) => handleChange('pattern', e.target.value)}
-              placeholder="token=([a-f0-9]+)\nid&quot;:(\d+)\n&lt;title&gt;(.+?)&lt;/title&gt;"
-              className="bg-white/5 border-white/10 text-zinc-300 text-sm font-mono min-h-[100px]"
-            />
-            <div className="mt-1 text-xs text-zinc-500">
-              Use capture groups () to extract values
+          <div className="mb-4 flex items-end gap-3">
+            <div className="w-[220px] shrink-0">
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+                Extractor From
+              </label>
+              <select
+                value={extractorSource}
+                onChange={(e) => handleChange('from', e.target.value)}
+                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+              >
+                <option value="body" className="bg-zinc-900">body</option>
+                <option value="headers" className="bg-zinc-900">headers</option>
+                <option value="status_line" className="bg-zinc-900">status_line</option>
+              </select>
+            </div>
+            <div className="min-w-0 flex-1">
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+                Regular Expression Pattern *
+              </label>
+              <Input
+                value={data.pattern || ''}
+                onChange={(e) => handleChange('pattern', e.target.value)}
+                placeholder="token=([a-zA-Z0-9_-]+)"
+                className="w-full bg-white/5 border-white/10 text-zinc-300 text-sm font-mono"
+              />
             </div>
           </div>
-          <div className="mb-4">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              Template (optional)
-            </label>
-            <Input
-              value={data.template || ''}
-              onChange={(e) => handleChange('template', e.target.value)}
-              placeholder="$1$"
-              className="bg-white/5 border-white/10 text-zinc-300 text-sm font-mono"
-            />
-            <div className="mt-1 text-xs text-zinc-500">
-              Use $1$, $2$, etc. to reference capture groups
+          <div className="mb-4 mt-[-4px]">
+            <div className="text-xs text-zinc-500">
+              Variable: {'{{'}{extractorVariableName || 'VAR'}{'}'} | Use capture groups () in pattern
             </div>
           </div>
+          <div className="mb-4 grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+            <div>
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+                Capture Mode
+              </label>
+              <select
+                value={data.capture_mode || 'first'}
+                onChange={(e) => handleChange('capture_mode', e.target.value)}
+                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+              >
+                <option value="first" className="bg-zinc-900">first match</option>
+                <option value="all" className="bg-zinc-900">all matches</option>
+                <option value="index" className="bg-zinc-900">specific match index</option>
+                <option value="random" className="bg-zinc-900">random match</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+                Capture Group
+              </label>
+              <Input
+                type="number"
+                min={1}
+                value={data.group !== undefined ? data.group : 1}
+                onChange={(e) => handleChange('group', parseInt(e.target.value, 10) || 1)}
+                placeholder="1"
+                className="bg-white/5 border-white/10 text-zinc-300 text-sm font-mono"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+                Default Value (if not found)
+              </label>
+              <Input
+                value={data.default || ''}
+                onChange={(e) => handleChange('default', e.target.value)}
+                placeholder="NOT_FOUND"
+                className="bg-white/5 border-white/10 text-zinc-300 text-sm font-mono"
+              />
+            </div>
+          </div>
+          {String(data.capture_mode || 'first') === 'index' && (
+            <div className="mb-4">
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+                Match Index
+              </label>
+              <Input
+                type="number"
+                min={1}
+                value={data.capture_index !== undefined ? data.capture_index : '2'}
+                onChange={(e) => handleChange('capture_index', e.target.value)}
+                placeholder="2"
+                className="bg-white/5 border-white/10 text-zinc-300 text-sm font-mono"
+              />
+            </div>
+          )}
           <div className="mb-4">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              Match Number
-            </label>
-            <select
-              value={data.match_no !== undefined ? String(data.match_no) : '1'}
-              onChange={(e) => handleChange('match_no', parseInt(e.target.value))}
-              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
-            >
-              <option value="-1">Random</option>
-              <option value="0">All matches</option>
-              <option value="1">1st match</option>
-              <option value="2">2nd match</option>
-              <option value="3">3rd match</option>
-              <option value="4">4th match</option>
-              <option value="5">5th match</option>
-            </select>
+            <div className="mt-1 text-xs text-zinc-500">
+              Group 1 = first (...) in your regex
+            </div>
           </div>
         </>
       )}
 
       {extractorType === 'jsonpath' && (
         <>
-          <div className="mb-4">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              JSONPath Expression *
-            </label>
-            <Input
-              value={data.expression || data.pattern || ''}
-              onChange={(e) => handleChange('expression', e.target.value)}
-              placeholder="$.data.id"
-              className="bg-white/5 border-white/10 text-zinc-300 text-sm font-mono"
-            />
+          <div className="mb-4 flex items-end gap-3">
+            <div className="w-[220px] shrink-0">
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+                Extractor From
+              </label>
+              <select
+                value={extractorSource}
+                onChange={(e) => handleChange('from', e.target.value)}
+                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+              >
+                <option value="body" className="bg-zinc-900">body</option>
+                <option value="headers" className="bg-zinc-900">headers</option>
+                <option value="status_line" className="bg-zinc-900">status_line</option>
+              </select>
+            </div>
+            <div className="min-w-0 flex-1">
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+                JSONPath Expression *
+              </label>
+              <Input
+                value={data.expression || data.pattern || ''}
+                onChange={(e) => handleChange('expression', e.target.value)}
+                placeholder="$.data.id"
+                className="w-full bg-white/5 border-white/10 text-zinc-300 text-sm font-mono"
+              />
+            </div>
+          </div>
+          <div className="mb-4 mt-[-4px]">
             <div className="mt-1 text-xs text-zinc-500">
               Examples: $.users[0].name, $.data[*].id, $..price
             </div>
@@ -1670,91 +3703,128 @@ function renderExtractorDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
 
       {extractorType === 'xpath' && (
         <>
-          <div className="mb-4">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              XPath Expression *
-            </label>
-            <Textarea
-              value={data.expression || data.pattern || ''}
-              onChange={(e) => handleChange('expression', e.target.value)}
-              placeholder="//div[@class='title']/text()"
-              className="bg-white/5 border-white/10 text-zinc-300 text-sm font-mono min-h-[80px]"
-            />
+          <div className="mb-4 flex items-end gap-3">
+            <div className="w-[220px] shrink-0">
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+                Extractor From
+              </label>
+              <select
+                value={extractorSource}
+                onChange={(e) => handleChange('from', e.target.value)}
+                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+              >
+                <option value="body" className="bg-zinc-900">body</option>
+                <option value="headers" className="bg-zinc-900">headers</option>
+                <option value="status_line" className="bg-zinc-900">status_line</option>
+              </select>
+            </div>
+            <div className="min-w-0 flex-1">
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+                XPath Expression *
+              </label>
+              <Input
+                value={data.expression || data.pattern || ''}
+                onChange={(e) => handleChange('expression', e.target.value)}
+                placeholder="//div[@class='title']/text()"
+                className="w-full bg-white/5 border-white/10 text-zinc-300 text-sm font-mono"
+              />
+            </div>
+          </div>
+          <div className="mb-4 mt-[-4px]">
             <div className="mt-1 text-xs text-zinc-500">
               Extract data from XML/HTML using XPath
             </div>
           </div>
-          <div className="mb-4">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              Namespace (optional)
-            </label>
-            <Input
-              value={data.namespace || ''}
-              onChange={(e) => handleChange('namespace', e.target.value)}
-              placeholder="xmlns:ns=http://example.com"
-              className="bg-white/5 border-white/10 text-zinc-300 text-sm font-mono"
-            />
+          <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-3 items-end">
+            <div>
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+                Namespace (optional)
+              </label>
+              <Input
+                value={data.namespace || ''}
+                onChange={(e) => handleChange('namespace', e.target.value)}
+                placeholder="xmlns:ns=http://example.com"
+                className="bg-white/5 border-white/10 text-zinc-300 text-sm font-mono"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+                Default Value (if not found)
+              </label>
+              <Input
+                value={data.default || ''}
+                onChange={(e) => handleChange('default', e.target.value)}
+                placeholder="NOT_FOUND"
+                className="bg-white/5 border-white/10 text-zinc-300 text-sm font-mono"
+              />
+            </div>
           </div>
         </>
       )}
 
       {extractorType === 'boundary' && (
         <>
-          <div className="mb-4">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              Left Boundary *
-            </label>
-            <Input
-              value={data.left_boundary || ''}
-              onChange={(e) => handleChange('left_boundary', e.target.value)}
-              placeholder="&lt;title&gt;"
-              className="bg-white/5 border-white/10 text-zinc-300 text-sm font-mono"
-            />
-          </div>
-          <div className="mb-4">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              Right Boundary *
-            </label>
-            <Input
-              value={data.right_boundary || ''}
-              onChange={(e) => handleChange('right_boundary', e.target.value)}
-              placeholder="&lt;/title&gt;"
-              className="bg-white/5 border-white/10 text-zinc-300 text-sm font-mono"
-            />
-          </div>
-          <div className="mb-4">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              Match Number
-            </label>
-            <Input
-              type="number"
-              value={data.match_no !== undefined ? data.match_no : 1}
-              onChange={(e) => handleChange('match_no', parseInt(e.target.value) || 1)}
-              placeholder="1"
-              className="bg-white/5 border-white/10 text-zinc-300 text-sm font-mono"
-            />
+          <div className="mb-4 flex items-end gap-3">
+            <div className="w-[220px] shrink-0">
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+                Extractor From
+              </label>
+              <select
+                value={extractorSource}
+                onChange={(e) => handleChange('from', e.target.value)}
+                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+              >
+                <option value="body" className="bg-zinc-900">body</option>
+                <option value="headers" className="bg-zinc-900">headers</option>
+                <option value="status_line" className="bg-zinc-900">status_line</option>
+              </select>
+            </div>
+            <div className="min-w-0 flex-1">
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+                Left Boundary *
+              </label>
+              <Input
+                value={data.left_boundary || ''}
+                onChange={(e) => handleChange('left_boundary', e.target.value)}
+                placeholder="&lt;title&gt;"
+                className="bg-white/5 border-white/10 text-zinc-300 text-sm font-mono"
+              />
+            </div>
+            <div className="min-w-0 flex-1">
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+                Right Boundary *
+              </label>
+              <Input
+                value={data.right_boundary || ''}
+                onChange={(e) => handleChange('right_boundary', e.target.value)}
+                placeholder="&lt;/title&gt;"
+                className="bg-white/5 border-white/10 text-zinc-300 text-sm font-mono"
+              />
+            </div>
           </div>
         </>
       )}
 
-      {/* Default Value - Common to all types */}
-      <div className="mb-4">
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-          Default Value (if not found)
-        </label>
-        <Input
-          value={data.default || ''}
-          onChange={(e) => handleChange('default', e.target.value)}
-          placeholder="NOT_FOUND"
-          className="bg-white/5 border-white/10 text-zinc-300 text-sm font-mono"
-        />
-      </div>
+      {/* Default Value - Common to all non-regex/xpath types */}
+      {extractorType !== 'regex' && extractorType !== 'xpath' && (
+        <div className="mb-4">
+          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+            Default Value (if not found)
+          </label>
+          <Input
+            value={data.default || ''}
+            onChange={(e) => handleChange('default', e.target.value)}
+            placeholder="NOT_FOUND"
+            className="bg-white/5 border-white/10 text-zinc-300 text-sm font-mono"
+          />
+        </div>
+      )}
     </>
   );
 }
 
 // HEADER DETAILS
-function renderHeaderDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): JSX.Element {
+function renderHeaderDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): React.JSX.Element {
   const data = node.data || {};
 
   const handleChange = (field: string, value: any) => {
@@ -1777,18 +3847,28 @@ function renderHeaderDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, dat
   ];
 
   return (
-    <>
-      <div className="mb-4">
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-          Header Name
-        </label>
-        <Input
-          value={data.name || ''}
-          onChange={(e) => handleChange('name', e.target.value)}
-          placeholder="Content-Type"
-          list="header-names-list"
-          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
-        />
+    <div className="space-y-4">
+      <div className="py-3 px-1 border-b border-white/5 flex items-center gap-3 w-full min-w-0 hover:bg-white/[0.02] transition-colors group">
+        <div className="flex-1 flex items-center gap-3 min-w-0">
+          <div className="flex items-center gap-2 shrink-0 w-[70px]">
+            <Input
+              value={data.name || ''}
+              onChange={(e) => handleChange('name', e.target.value)}
+              placeholder="Content-Type"
+              list="header-names-list"
+              className="flex-1 px-2 py-1 text-xs font-mono text-purple-400 font-bold bg-purple-400/5 border-purple-400/20 focus:border-purple-400/40"
+            />
+            <span className="text-zinc-500 font-bold shrink-0">=</span>
+          </div>
+          <div className="w-0 flex-1 min-w-0">
+            <Input
+              value={data.value || ''}
+              onChange={(e) => handleChange('value', e.target.value)}
+              placeholder="application/json"
+              className="w-full px-2 py-1 text-sm font-mono text-zinc-300 bg-white/5 border-white/10 focus:border-white/30"
+            />
+          </div>
+        </div>
         <datalist id="header-names-list">
           {commonHeaders.map(header => (
             <option key={header} value={header} />
@@ -1796,31 +3876,16 @@ function renderHeaderDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, dat
         </datalist>
       </div>
 
-      <div className="mb-4">
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-          Header Value
-        </label>
-        <Textarea
-          value={data.value || ''}
-          onChange={(e) => handleChange('value', e.target.value)}
-          placeholder="application/json"
-          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono min-h-[80px]"
-        />
-        <div className="mt-1 text-xs text-zinc-500">
-          Use variables: ${'{'}token${'}'}
-        </div>
-      </div>
-
       {/* Info box */}
       <div className="p-3 bg-slate-400/5 border border-slate-400/20 rounded text-xs text-zinc-400">
         🏷️ This header will be sent with the HTTP request
       </div>
-    </>
+    </div>
   );
 }
 
 // HEADERS CONTAINER DETAILS
-function renderHeadersDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): JSX.Element {
+function renderHeadersDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): React.JSX.Element {
   const data = node.data || {};
 
   const handleUpdate = (items: Record<string, string>) => {
@@ -1840,6 +3905,7 @@ function renderHeadersDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, da
         valueLabel="Value"
         enableCheckboxes={false}
         enableBulkActions={false}
+        variant="minimal"
       />
 
       {/* Info box */}
@@ -1851,13 +3917,32 @@ function renderHeadersDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, da
 }
 
 // FILE UPLOAD DETAILS
-function renderFileDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): JSX.Element {
+function renderFileDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): React.JSX.Element {
   const data = node.data || {};
+  const pathValue = String(data.path || '').trim();
+  const mimeValue = String(data.mime || data.mime_type || '').trim();
 
   const handleChange = (field: string, value: any) => {
-    if (onNodeUpdate) {
-      onNodeUpdate(node.id, { ...data, [field]: value });
+    if (!onNodeUpdate) return;
+    const raw = String(value ?? '');
+
+    if (field === 'path') {
+      const nextData: Record<string, any> = { ...data, path: raw };
+      // Backend requires files[].field; use a safe fallback for better UX.
+      if (!String(nextData.field || '').trim() && raw.trim()) {
+        nextData.field = 'file';
+      }
+      onNodeUpdate(node.id, nextData);
+      return;
     }
+
+    if (field === 'mime' || field === 'mime_type') {
+      const { mime_type: _legacyMimeType, ...rest } = data;
+      onNodeUpdate(node.id, { ...rest, mime: raw });
+      return;
+    }
+
+    onNodeUpdate(node.id, { ...data, [field]: raw });
   };
 
   // MIME types comunes
@@ -1879,40 +3964,49 @@ function renderFileDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data:
 
   return (
     <>
-      <EditableField
-        label="Field Name"
-        value={data.field || ''}
-        field="field"
-        onChange={handleChange}
-      />
-
-      <FileField
-        label="File Path"
-        value={data.path || ''}
-        field="path"
-        onChange={handleChange}
-      />
-
-      <div className="mb-4">
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-          MIME Type
-        </label>
-        <Input
-          value={data.mime_type || ''}
-          onChange={(e) => handleChange('mime_type', e.target.value)}
-          placeholder="application/octet-stream"
-          list="mime-types-list"
-          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        <div className="min-w-0">
+        <FileField
+          label="File Path"
+          value={data.path || ''}
+          field="path"
+          onChange={handleChange}
+          noMargin
         />
-        <datalist id="mime-types-list">
-          {commonMimeTypes.map(mime => (
-            <option key={mime} value={mime} />
-          ))}
-        </datalist>
-        <div className="mt-1 text-xs text-zinc-500">
-          Common: application/pdf, image/jpeg, text/csv
+        </div>
+
+        <div className="min-w-0">
+          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+            MIME Type
+          </label>
+          <select
+            value={mimeValue}
+            onChange={(e) => handleChange('mime', e.target.value)}
+            className="w-full px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono h-[38px] outline-none"
+          >
+            <option value="" className="bg-[#1a1a1a]">application/octet-stream</option>
+            {commonMimeTypes.map((mime) => (
+              <option key={mime} value={mime} className="bg-[#1a1a1a]">
+                {mime}
+              </option>
+            ))}
+            {mimeValue && !commonMimeTypes.includes(mimeValue) && (
+              <option value={mimeValue} className="bg-[#1a1a1a]">
+                {mimeValue}
+              </option>
+            )}
+          </select>
+          <div className="mt-1 text-xs text-zinc-500">
+            Common: application/pdf, image/jpeg, text/csv
+          </div>
         </div>
       </div>
+
+      {!pathValue && (
+        <div className="mb-4 p-3 bg-red-400/8 border border-red-400/25 rounded text-xs text-red-300">
+          Required: path
+        </div>
+      )}
 
       {/* Info box */}
       <div className="p-3 bg-amber-400/5 border border-amber-400/20 rounded text-xs text-zinc-400">
@@ -1922,7 +4016,7 @@ function renderFileDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data:
   );
 }
 
-function renderGenericDetails(node: YAMLNode): JSX.Element {
+function renderGenericDetails(node: YAMLNode): React.JSX.Element {
   if (!node.data || Object.keys(node.data).length === 0) {
     return (
       <div className="text-sm text-zinc-500 italic">

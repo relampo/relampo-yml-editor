@@ -5,16 +5,16 @@ import { Input } from '../ui/input';
 interface QueryParam {
   key: string;
   value: string;
-  enabled: boolean;
 }
 
 interface QueryParamsEditorProps {
   url: string;
   onUrlChange: (url: string) => void;
   className?: string;
+  showBaseUrl?: boolean;
 }
 
-export function QueryParamsEditor({ url, onUrlChange, className = '' }: QueryParamsEditorProps) {
+export function QueryParamsEditor({ url, onUrlChange, className = '', showBaseUrl = true }: QueryParamsEditorProps) {
   const [params, setParams] = useState<QueryParam[]>([]);
   const [baseUrl, setBaseUrl] = useState('');
   const [urlHint, setUrlHint] = useState<{ type: 'error' | 'warning' | 'info' | null; message: string }>({ type: null, message: '' });
@@ -29,28 +29,28 @@ export function QueryParamsEditor({ url, onUrlChange, className = '' }: QueryPar
       }
 
       const urlObj = new URL(url.startsWith('http') ? url : `http://placeholder${url}`);
-      const base = url.startsWith('http') 
+      const base = url.startsWith('http')
         ? `${urlObj.protocol}//${urlObj.host}${urlObj.pathname}`
         : urlObj.pathname;
-      
+
       setBaseUrl(base);
 
       const parsedParams: QueryParam[] = [];
       urlObj.searchParams.forEach((value, key) => {
-        parsedParams.push({ key, value, enabled: true });
+        parsedParams.push({ key, value });
       });
-      setParams(parsedParams.length > 0 ? parsedParams : [{ key: '', value: '', enabled: true }]);
+      setParams(parsedParams.length > 0 ? parsedParams : [{ key: '', value: '' }]);
     } catch {
       // If URL is invalid, just set it as base
       setBaseUrl(url);
-      setParams([{ key: '', value: '', enabled: true }]);
+      setParams([{ key: '', value: '' }]);
     }
   }, [url]);
 
   // Build URL from base and params
   const buildUrl = (newBase: string, newParams: QueryParam[]) => {
-    const enabledParams = newParams.filter(p => p.enabled && p.key.trim());
-    
+    const enabledParams = newParams.filter(p => p.key.trim());
+
     if (enabledParams.length === 0) {
       return newBase;
     }
@@ -58,7 +58,7 @@ export function QueryParamsEditor({ url, onUrlChange, className = '' }: QueryPar
     const queryString = enabledParams
       .map(p => `${encodeURIComponent(p.key)}=${encodeURIComponent(p.value)}`)
       .join('&');
-    
+
     return `${newBase}${newBase.includes('?') ? '&' : '?'}${queryString}`;
   };
 
@@ -101,7 +101,7 @@ export function QueryParamsEditor({ url, onUrlChange, className = '' }: QueryPar
     }
   };
 
-  const handleParamChange = (index: number, field: 'key' | 'value' | 'enabled', value: string | boolean) => {
+  const handleParamChange = (index: number, field: 'key' | 'value', value: string) => {
     const newParams = [...params];
     newParams[index] = { ...newParams[index], [field]: value };
     setParams(newParams);
@@ -109,48 +109,48 @@ export function QueryParamsEditor({ url, onUrlChange, className = '' }: QueryPar
   };
 
   const handleAddParam = () => {
-    setParams([...params, { key: '', value: '', enabled: true }]);
+    setParams([...params, { key: '', value: '' }]);
   };
 
   const handleRemoveParam = (index: number) => {
     const newParams = params.filter((_, i) => i !== index);
-    setParams(newParams.length > 0 ? newParams : [{ key: '', value: '', enabled: true }]);
+    setParams(newParams.length > 0 ? newParams : [{ key: '', value: '' }]);
     onUrlChange(buildUrl(baseUrl, newParams.length > 0 ? newParams : []));
   };
 
   return (
     <div className={className}>
       {/* Base URL */}
-      <div className="mb-4">
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-          Base URL
-        </label>
-        <Input
-          value={baseUrl}
-          onChange={(e) => handleBaseUrlChange(e.target.value)}
-          placeholder="https://api.example.com/endpoint"
-          className={`w-full bg-white/5 text-zinc-300 text-sm font-mono ${
-            urlHint.type === 'error' ? 'border-red-400/40' :
-            urlHint.type === 'warning' ? 'border-yellow-400/40' :
-            urlHint.type === 'info' ? 'border-blue-400/40' :
-            'border-white/10'
-          }`}
-        />
-        {urlHint.type && (
-          <div className={`flex items-start gap-1.5 mt-1.5 text-xs ${
-            urlHint.type === 'error' ? 'text-red-400' :
-            urlHint.type === 'warning' ? 'text-yellow-400' :
-            'text-blue-400'
-          }`}>
-            {urlHint.type === 'error' ? (
-              <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-            ) : (
-              <Info className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-            )}
-            <span>{urlHint.message}</span>
-          </div>
-        )}
-      </div>
+      {showBaseUrl && (
+        <div className="mb-4">
+          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+            Base URL
+          </label>
+          <Input
+            value={baseUrl}
+            onChange={(e) => handleBaseUrlChange(e.target.value)}
+            placeholder="https://api.example.com/endpoint"
+            className={`w-full bg-white/5 text-zinc-300 text-sm font-mono ${urlHint.type === 'error' ? 'border-red-400/40' :
+              urlHint.type === 'warning' ? 'border-yellow-400/40' :
+                urlHint.type === 'info' ? 'border-blue-400/40' :
+                  'border-white/10'
+              }`}
+          />
+          {urlHint.type && (
+            <div className={`flex items-start gap-1.5 mt-1.5 text-xs ${urlHint.type === 'error' ? 'text-red-400' :
+              urlHint.type === 'warning' ? 'text-yellow-400' :
+                'text-blue-400'
+              }`}>
+              {urlHint.type === 'error' ? (
+                <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+              ) : (
+                <Info className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+              )}
+              <span>{urlHint.message}</span>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Query Parameters */}
       <div>
@@ -167,33 +167,34 @@ export function QueryParamsEditor({ url, onUrlChange, className = '' }: QueryPar
           </button>
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-0 border-t border-white/5">
           {params.map((param, index) => (
-            <div key={index} className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={param.enabled}
-                onChange={(e) => handleParamChange(index, 'enabled', e.target.checked)}
-                className="w-4 h-4 rounded border-white/10 bg-white/5 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-0"
-              />
-              <Input
-                value={param.key}
-                onChange={(e) => handleParamChange(index, 'key', e.target.value)}
-                placeholder="param_name"
-                className="flex-1 bg-white/5 border-white/10 text-zinc-300 text-sm font-mono"
-              />
-              <span className="text-zinc-600">=</span>
-              <Input
-                value={param.value}
-                onChange={(e) => handleParamChange(index, 'value', e.target.value)}
-                placeholder="value"
-                className="flex-1 bg-white/5 border-white/10 text-zinc-300 text-sm font-mono"
-              />
+            <div key={index} className="py-2 px-1 border-b border-white/5 flex items-center gap-3 w-full min-w-0 hover:bg-white/[0.02] transition-colors group">
+              <div className="flex-1 flex items-center gap-3 min-w-0">
+                <div className="flex items-center gap-2 shrink-0 w-[70px]">
+                  <Input
+                    value={param.key}
+                    onChange={(e) => handleParamChange(index, 'key', e.target.value)}
+                    placeholder="name"
+                    className="flex-1 px-2 py-1 text-xs font-mono text-purple-400 bg-purple-400/5 border-purple-400/20"
+                  />
+                  <span className="text-zinc-500 font-bold shrink-0">=</span>
+                </div>
+                <div className="w-0 flex-1 min-w-0 overflow-x-auto scrollbar-none">
+                  <Input
+                    value={param.value}
+                    onChange={(e) => handleParamChange(index, 'value', e.target.value)}
+                    placeholder="value"
+                    className="w-full px-2 py-1 text-sm font-mono text-zinc-300 bg-white/5 border-white/10"
+                  />
+                </div>
+              </div>
               <button
                 onClick={() => handleRemoveParam(index)}
-                className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded transition-colors"
+                className="p-1 text-zinc-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0"
+                title="Remove parameter"
               >
-                <Trash2 className="w-4 h-4" />
+                <Trash2 className="w-3.5 h-3.5" />
               </button>
             </div>
           ))}

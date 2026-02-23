@@ -1,10 +1,111 @@
 import type { YAMLNode } from '../types/yaml';
 import * as jsyaml from 'js-yaml';
 
+function parseGroupFromTemplate(template: any): number | undefined {
+  if (typeof template !== 'string') return undefined;
+  const match = template.match(/\$(\d+)\$/);
+  if (!match) return undefined;
+  const num = parseInt(match[1], 10);
+  return Number.isFinite(num) ? num : undefined;
+}
+
+function normalizeExtractorForEditor(extractor: any): any {
+  const next = { ...(extractor || {}) };
+  if (next.type === 'json') next.type = 'jsonpath';
+  if (!next.type) next.type = 'regex';
+  if (!next.from) next.from = 'body';
+  if (next.var === undefined && next.variable !== undefined) next.var = next.variable;
+  if (next.variable === undefined && next.var !== undefined) next.variable = next.var;
+
+  if (!next.capture_mode) {
+    const matchNo = next.match_no;
+    if (matchNo === 0) next.capture_mode = 'all';
+    else if (matchNo === -1) next.capture_mode = 'random';
+    else if (typeof matchNo === 'number' && matchNo > 1) {
+      next.capture_mode = 'index';
+      next.capture_index = String(matchNo);
+    } else {
+      next.capture_mode = 'first';
+    }
+  }
+
+  if ((next.group === undefined || next.group === null || next.group === '') && next.template) {
+    const parsedGroup = parseGroupFromTemplate(next.template);
+    if (parsedGroup !== undefined) next.group = parsedGroup;
+  }
+  if (next.group === undefined || next.group === null || next.group === '') {
+    next.group = 1;
+  }
+
+  if (next.type === 'regex' && !next.pattern && next.expression) {
+    next.pattern = next.expression;
+  }
+  if ((next.type === 'jsonpath' || next.type === 'xpath') && !next.expression && next.pattern) {
+    next.expression = next.pattern;
+  }
+
+  return next;
+}
+
+function normalizeExtractorForEngine(extractor: any): any {
+  const next = { ...(extractor || {}) };
+  if (!next.type) next.type = 'regex';
+  if (next.var === undefined && next.variable !== undefined) next.var = next.variable;
+  if (next.variable === undefined && next.var !== undefined) next.variable = next.var;
+
+  if (next.type === 'regex') {
+    const mode = String(next.capture_mode || '').toLowerCase();
+    if (mode === 'all') next.match_no = 0;
+    else if (mode === 'random') next.match_no = -1;
+    else if (mode === 'index') next.match_no = Math.max(1, parseInt(String(next.capture_index || '1'), 10) || 1);
+    else next.match_no = 1; // first
+
+    const group = Math.max(1, parseInt(String(next.group || '1'), 10) || 1);
+    next.template = `$${group}$`;
+    if (!next.pattern && next.expression) next.pattern = next.expression;
+  } else if (next.type === 'jsonpath' || next.type === 'xpath') {
+    if (!next.expression && next.pattern) next.expression = next.pattern;
+  }
+
+  return next;
+}
+
+function normalizeRequestForEditor(request: any): any {
+  const req = { ...(request || {}) };
+
+  const normalizeOverride = (value: any): 'inherit' | 'enabled' | 'disabled' => {
+    if (value === 'enabled' || value === 'disabled' || value === 'inherit') return value;
+    return 'inherit';
+  };
+
+  const normalizeThroughput = (value: any) => {
+    if (!value || typeof value !== 'object') return { enabled: false };
+    const enabled = value.enabled === true;
+    return enabled
+      ? { enabled: true, target_rps: Number(value.target_rps) > 0 ? Number(value.target_rps) : 1 }
+      : { enabled: false };
+  };
+
+  return {
+    ...req,
+    timeout: typeof req.timeout === 'string' && req.timeout.trim().length > 0 ? req.timeout : '30s',
+    cookie_override: normalizeOverride(req.cookie_override),
+    cache_override: normalizeOverride(req.cache_override),
+    throughput: normalizeThroughput(req.throughput),
+    retrieve_embedded_resources: req.retrieve_embedded_resources === true,
+    redirect_automatically: req.redirect_automatically === true,
+    follow_redirects: req.follow_redirects !== false,
+  };
+}
+
 // Parser: YAML string → Tree
-export function parseYAMLToTree(yamlString: string): YAMLNode {
+export function parseYAMLToTree(yamlString: string): YAMLNode | null {
+  if (!yamlString || yamlString.trim() === "") {
+    return null;
+  }
   try {
     const parsed = jsyaml.load(yamlString);
+    if (!parsed) return null;
     return convertToTree(parsed);
   } catch (error) {
     throw new Error(`Error parsing YAML: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -24,7 +125,7 @@ export function treeToYAML(tree: YAMLNode): string {
 // Convert parsed object to tree structure
 function convertToTree(obj: any, path: string[] = []): YAMLNode {
   const rootId = 'root';
-  
+
   const root: YAMLNode = {
     id: rootId,
     type: 'test',
@@ -40,7 +141,7 @@ function convertToTree(obj: any, path: string[] = []): YAMLNode {
     root.children!.push({
       id: `${rootId}_variables`,
       type: 'variables',
-      name: `Variables (${Object.keys(obj.variables).length})`,
+      name: 'Variables',
       data: obj.variables,
       path: ['variables'],
     });
@@ -51,9 +152,20 @@ function convertToTree(obj: any, path: string[] = []): YAMLNode {
     root.children!.push({
       id: `${rootId}_data_source`,
       type: 'data_source',
-      name: `Data Source (${obj.data_source.type})`,
+      name: 'Data Source',
       data: obj.data_source,
       path: ['data_source'],
+    });
+  }
+
+  // Root Error Policy
+  if (obj.error_policy) {
+    root.children!.push({
+      id: `${rootId}_error_policy`,
+      type: 'error_policy',
+      name: 'Error Policy',
+      data: obj.error_policy,
+      path: ['error_policy'],
     });
   }
 
@@ -73,7 +185,7 @@ function convertToTree(obj: any, path: string[] = []): YAMLNode {
     const scenariosNode: YAMLNode = {
       id: `${rootId}_scenarios`,
       type: 'scenarios',
-      name: `Scenarios (${obj.scenarios.length})`,
+      name: 'Scenarios',
       children: [],
       expanded: true,
       path: ['scenarios'],
@@ -162,7 +274,7 @@ function convertScenarioToNode(scenario: any, index: number, path: any[]): YAMLN
     const stepsNode: YAMLNode = {
       id: `${scenarioId}_steps`,
       type: 'steps',
-      name: `Steps (${scenario.steps.length})`,
+      name: 'Steps',
       children: [],
       expanded: true,
       path: [...path, 'steps'],
@@ -203,7 +315,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
 
   // Request (long form)
   if (step.request) {
-    const req = step.request;
+    const req = normalizeRequestForEditor(step.request);
     const requestNode: YAMLNode = {
       id: stepId,
       type: 'request',
@@ -245,11 +357,12 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
     // EXTRACTORS as array (Pulse format: extractors[])
     if (req.extractors && Array.isArray(req.extractors)) {
       req.extractors.forEach((extractor: any, idx: number) => {
+        const normalizedExtractor = normalizeExtractorForEditor(extractor);
         requestNode.children!.push({
           id: `${stepId}_extractor_${idx}`,
           type: 'extractor',
-          name: `Extract: ${extractor.var || extractor.variable || 'unknown'}`,
-          data: extractor,
+          name: `Extract: ${normalizedExtractor.var || normalizedExtractor.variable || 'unknown'}`,
+          data: normalizedExtractor,
           path: [...path, 'extractors', idx],
         });
       });
@@ -334,14 +447,15 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       });
     }
 
-    // ON_ERROR inline (inside the request)
-    if (req.on_error) {
+    // ERROR_POLICY inline (inside the request), keep on_error as legacy fallback
+    if (req.error_policy || req.on_error) {
+      const policy = req.error_policy || { on_error: req.on_error };
       requestNode.children!.push({
-        id: `${stepId}_on_error`,
-        type: 'on_error',
-        name: `On Error: ${req.on_error}`,
-        data: { action: req.on_error },
-        path: [...path, 'on_error'],
+        id: `${stepId}_error_policy`,
+        type: 'error_policy',
+        name: 'Error Policy',
+        data: policy,
+        path: [...path, 'error_policy'],
       });
     }
 
@@ -367,7 +481,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
   if (step.think_time !== undefined) {
     let duration: string;
     let data: any;
-    
+
     if (typeof step.think_time === 'string') {
       // Simple format: "2s"
       duration = step.think_time;
@@ -384,7 +498,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       duration = '?';
       data = step.think_time;
     }
-    
+
     return {
       id: stepId,
       type: 'think_time',
@@ -401,13 +515,13 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       const groupNode: YAMLNode = {
         id: stepId,
         type: 'group',
-        name: `Assertions (${step.assertions.length})`,
+        name: 'Assertions',
         children: [],
         expanded: true,
         data: { assertions: step.assertions },
         path,
       };
-      
+
       step.assertions.forEach((assertion: any, idx: number) => {
         const label = assertion.type || assertion.name || 'check';
         const detail = assertion.value || assertion.pattern || '';
@@ -419,7 +533,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
           path: [...path, 'assertions', idx],
         });
       });
-      
+
       return groupNode;
     }
     // Si solo hay una assertion, retornarla directamente
@@ -427,7 +541,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       const assertion = step.assertions[0];
       const label = assertion.type || assertion.name || 'check';
       const detail = assertion.value || assertion.pattern || '';
-      
+
       return {
         id: stepId,
         type: 'assertion',
@@ -437,13 +551,13 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       };
     }
   }
-  
+
   // Assertion (standalone - single object)
   if (step.assertion || step.assert) {
     const assertData = step.assertion || step.assert;
     const label = assertData.type || assertData.name || 'check';
     const detail = assertData.value || assertData.pattern || '';
-    
+
     return {
       id: stepId,
       type: 'assertion',
@@ -455,9 +569,9 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
 
   // Extractor (standalone)
   if (step.extractor || step.extract) {
-    const extractData = step.extractor || step.extract;
+    const extractData = normalizeExtractorForEditor(step.extractor || step.extract);
     const varName = extractData.var || extractData.variable || extractData.name || 'unknown';
-    
+
     return {
       id: stepId,
       type: 'extractor',
@@ -470,7 +584,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
   // Spark (standalone)
   if (step.spark) {
     const when = step.spark.when || 'before';
-    
+
     return {
       id: stepId,
       type: when === 'after' ? 'spark_after' : 'spark_before',
@@ -530,7 +644,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
     const loopNode: YAMLNode = {
       id: stepId,
       type: 'loop',
-      name: `Loop (${loopCount}x)`,
+      name: 'Loop',
       children: [],
       expanded: true,
       data: typeof step.loop === 'number' ? { count: step.loop } : step.loop,
@@ -553,7 +667,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
     const retryNode: YAMLNode = {
       id: stepId,
       type: 'retry',
-      name: `Retry (${attempts}x)`,
+      name: 'Retry',
       children: [],
       expanded: true,
       data: step.retry,
@@ -628,6 +742,11 @@ function treeToObject(tree: YAMLNode): any {
       obj.scenarios = child.children?.map(scenarioNode => scenarioNodeToObject(scenarioNode)) || [];
     } else if (child.type === 'metrics') {
       obj.metrics = child.data;
+    } else if (child.type === 'error_policy') {
+      obj.error_policy = child.data;
+    } else if (child.type === 'on_error') {
+      // Legacy compatibility
+      obj.on_error = child.data?.action || child.data || 'continue';
     }
   }
 
@@ -661,19 +780,31 @@ function scenarioNodeToObject(node: YAMLNode): any {
 
 function stepNodeToObject(node: YAMLNode): any {
   const httpMethods = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
-  
+
   if (httpMethods.includes(node.type)) {
-    return { [node.type]: node.data?.url || '/' };
+    const isEnabled = node.data?.enabled !== false;
+    if (isEnabled) {
+      return { [node.type]: node.data?.url || '/' };
+    } else {
+      // For disabled shorthand, we MUST expand to mapping so the 'enabled' sibling works
+      return {
+        [node.type]: {
+          url: node.data?.url || '/',
+          enabled: false
+        }
+      };
+    }
   }
 
   if (node.type === 'request') {
-    const request: any = { request: { ...node.data } };
-    
+    const normalizedRequest = normalizeRequestForEditor(node.data);
+    const request: any = { request: { ...normalizedRequest } };
+
     // Sincronizar node.name a request.name si fue editado
     if (node.name && node.name !== node.data?.name) {
       request.request.name = node.name;
     }
-    
+
     // Clean up children data from request.data (will be rebuilt)
     delete request.request.spark;
     delete request.request.extractors;
@@ -682,10 +813,15 @@ function stepNodeToObject(node: YAMLNode): any {
     delete request.request.assert;
     delete request.request.files;
     delete request.request.headers;
-    
+
+    // Preserve enabled state inside request block
+    if (node.data?.enabled === false) {
+      request.request.enabled = false;
+    }
+
     if (node.children) {
       // 🔥 SPARK SCRIPTS
-      const sparkNodes = node.children.filter(child => 
+      const sparkNodes = node.children.filter(child =>
         child.type === 'spark_before' || child.type === 'spark_after'
       );
       if (sparkNodes.length > 0) {
@@ -695,7 +831,7 @@ function stepNodeToObject(node: YAMLNode): any {
       // EXTRACTORS (Pulse format: extractors[])
       const extractorNodes = node.children.filter(child => child.type === 'extractor');
       if (extractorNodes.length > 0) {
-        request.request.extractors = extractorNodes.map(ext => ext.data);
+        request.request.extractors = extractorNodes.map(ext => normalizeExtractorForEngine(ext.data));
       }
 
       // EXTRACT (detect format from data)
@@ -740,10 +876,15 @@ function stepNodeToObject(node: YAMLNode): any {
         request.request.think_time = thinkTimeNode.data?.duration || thinkTimeNode.data;
       }
 
-      // ON_ERROR inline
-      const onErrorNode = node.children.find(child => child.type === 'on_error');
-      if (onErrorNode) {
-        request.request.on_error = onErrorNode.data?.action || onErrorNode.data;
+      // ERROR_POLICY inline (with legacy fallback)
+      const errorPolicyNode = node.children.find(child => child.type === 'error_policy');
+      if (errorPolicyNode) {
+        request.request.error_policy = errorPolicyNode.data;
+      } else {
+        const onErrorNode = node.children.find(child => child.type === 'on_error');
+        if (onErrorNode) {
+          request.request.on_error = onErrorNode.data?.action || onErrorNode.data;
+        }
       }
 
       // FILES
@@ -757,6 +898,12 @@ function stepNodeToObject(node: YAMLNode): any {
       if (headersNode && headersNode.data) {
         request.request.headers = headersNode.data;
       }
+
+      // DATA_SOURCE local
+      const dataSourceNode = node.children.find(child => child.type === 'data_source');
+      if (dataSourceNode) {
+        request.request.data_source = dataSourceNode.data;
+      }
     }
 
     return request;
@@ -769,62 +916,111 @@ function stepNodeToObject(node: YAMLNode): any {
         assertions: node.data.assertions,
       };
     }
-    
-    return {
+
+    const res: any = {
       group: {
         name: node.name || node.data?.name || 'Group',
         steps: node.children?.map(stepNodeToObject) || [],
       },
     };
+
+    if (node.data?.enabled === false) {
+      res.enabled = false;
+    }
+    return res;
   }
 
   if (node.type === 'if') {
-    return {
+    const res: any = {
       if: node.data?.condition || 'true',
       steps: node.children?.map(stepNodeToObject) || [],
     };
+
+    if (node.data?.enabled === false) {
+      res.enabled = false;
+    }
+    return res;
   }
 
   if (node.type === 'loop') {
     const loopData = node.data?.count ? node.data.count : node.data;
-    return {
+    const res: any = {
       loop: loopData,
       steps: node.children?.map(stepNodeToObject) || [],
     };
+
+    if (node.data?.enabled === false) {
+      res.enabled = false;
+    }
+    return res;
   }
 
   if (node.type === 'retry') {
-    return {
+    const res: any = {
       retry: node.data,
       steps: node.children?.map(stepNodeToObject) || [],
     };
+
+    if (node.data?.enabled === false) {
+      res.enabled = false;
+    }
+    return res;
   }
 
   if (node.type === 'on_error') {
-    return {
-      on_error: node.data?.action ? node.data : (node.data || 'continue'),
+    const res: any = {
+      on_error: node.data?.action || node.data || 'continue',
       steps: node.children?.map(stepNodeToObject) || [],
     };
+
+    if (node.data?.enabled === false) {
+      res.enabled = false;
+    }
+    return res;
   }
 
   if (node.type === 'think_time') {
-    return {
-      think_time: node.data?.duration || node.data,
-    };
+    const res: any = { think_time: node.data?.duration || node.data };
+    if (node.data?.enabled === false) {
+      res.enabled = false;
+    }
+    return res;
+  }
+
+  // Spark standalone
+  if (node.type === 'spark_before' || node.type === 'spark_after' || node.type === 'spark') {
+    const res: any = { spark: node.data };
+    if (node.data?.enabled === false) {
+      res.enabled = false;
+    }
+    return res;
   }
 
   // Assertion standalone (single assertion step)
-  if (node.type === 'assertion') {
-    return {
-      assertions: [node.data],
-    };
+  if (node.type === 'assertion' || node.type === 'assert') {
+    const res: any = { assertion: node.data };
+    if (node.data?.enabled === false) {
+      res.enabled = false;
+    }
+    return res;
   }
 
   // Extractor standalone
-  if (node.type === 'extractor') {
-    return {
-      extractors: [node.data],
-    };
+  if (node.type === 'extractor' || node.type === 'extract') {
+    const res: any = { extractor: normalizeExtractorForEngine(node.data) };
+    if (node.data?.enabled === false) {
+      res.enabled = false;
+    }
+    return res;
+  }
+
+  // Data Source standalone (as a step)
+  if (node.type === 'data_source') {
+    const res: any = { data_source: node.data };
+    if (node.data?.enabled === false) {
+      res.enabled = false;
+    }
+    return res;
   }
 
   return node.data || {};

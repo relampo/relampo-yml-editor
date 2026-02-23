@@ -1,7 +1,24 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 
 let mainWindow;
+
+// Manejador para selección de archivos nativo
+ipcMain.handle('select-file', async (event, options) => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openFile'],
+    filters: [
+      { name: 'Data Files', extensions: ['csv', 'txt'] },
+      { name: 'All Files', extensions: ['*'] }
+    ],
+    ...options
+  });
+
+  if (result.canceled) {
+    return null;
+  }
+  return result.filePaths[0];
+});
 
 function createWindow() {
   mainWindow = new BrowserWindow({

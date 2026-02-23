@@ -10,7 +10,7 @@ export const translations = {
       team: "Team",
       contact: "Contact",
     },
-    
+
     // Hero Section
     hero: {
       tagline: "Performance testing made simple.",
@@ -19,7 +19,7 @@ export const translations = {
       goToWorkbench: "Go to Workbench",
       availableNow: "AVAILABLE NOW AND FOREVER",
     },
-    
+
     // Quick Start
     quickStart: {
       title: "Quick start",
@@ -36,7 +36,7 @@ export const translations = {
         command: "relampo run script.yaml --cloud",
       },
     },
-    
+
     // How It Works
     howItWorks: {
       title: "How it works",
@@ -66,7 +66,7 @@ export const translations = {
       fromRecordingToResults: "From recording to results",
       inSimpleSteps: "in 4 simple steps",
     },
-    
+
     // Readable Scripts Section
     readableScripts: {
       badge: "Readable Scripts",
@@ -101,7 +101,7 @@ export const translations = {
       validYaml: "✓ Valid YAML with advanced features",
       invalidYaml: "✗ Invalid YAML - common pitfall",
     },
-    
+
     // Free Cloud Section
     freeCloud: {
       badge: "Free Cloud Sandbox",
@@ -140,12 +140,12 @@ export const translations = {
         "Results Export & Analysis",
       ],
     },
-    
+
     // Final CTA Section
     finalCta: {
       description: "Write readable scripts. Run tests on cloud infrastructure. Get results faster. All for free.",
     },
-    
+
     // Roadmap
     roadmap: {
       title: "What we're building",
@@ -188,7 +188,7 @@ export const translations = {
         },
       },
     },
-    
+
     // League
     league: {
       title: "Relampo League",
@@ -254,7 +254,7 @@ export const translations = {
         tier: "Tier",
       },
     },
-    
+
     // CTA
     cta: {
       title: "Ready to make performance testing simple?",
@@ -271,7 +271,7 @@ export const translations = {
       errorMessage: "Oops, something went wrong",
       questionsEmail: "Questions? Email us at",
     },
-    
+
     // Team
     team: {
       title: "Meet the crew",
@@ -298,7 +298,7 @@ export const translations = {
         },
       },
     },
-    
+
     // Footer
     footer: {
       copyright: "© 2026 Relampo · Performance testing made simple.",
@@ -309,7 +309,7 @@ export const translations = {
         privacy: "Privacy",
       },
     },
-    
+
     // Sidebar
     sidebar: {
       dashboard: "Dashboard",
@@ -400,7 +400,7 @@ export const translations = {
       noNodeSelected: "Select a node to view details",
       selectNode: "Select a node from the tree",
       viewDetails: "to view its details",
-      
+
       // Common labels
       common: {
         name: "Name",
@@ -411,13 +411,15 @@ export const translations = {
         delete: "Delete",
         enable: "Enable",
         disable: "Disable",
+        duplicate: "Duplicate",
+        copy: "Copy",
         browse: "Browse",
         configuration: "Configuration",
         properties: "Properties",
         comments: "Comments",
         noProperties: "No additional properties",
       },
-      
+
       // Context menu
       contextMenu: {
         addHeader: "Add Header",
@@ -430,16 +432,22 @@ export const translations = {
         addSpark: "Add Spark",
         addThinkTime: "Add Think Time",
       },
-      
+
       // Spark editor
       spark: {
         quickReference: "Quick Reference:",
         checkSyntax: "Check Syntax",
         checking: "Checking...",
       },
+
+      // Empty state
+      emptyState: {
+        description: "Create a performance test plan from scratch or upload an existing file.",
+        addBtn: "Add a performance test plan"
+      },
     },
   },
-  
+
   es: {
     // Navegación
     nav: {
@@ -449,7 +457,7 @@ export const translations = {
       team: "Equipo",
       contact: "Contacto",
     },
-    
+
     // Sección Hero
     hero: {
       tagline: "Pruebas de rendimiento simplificadas.",
@@ -458,7 +466,7 @@ export const translations = {
       goToWorkbench: "Ir al Workbench",
       availableNow: "DISPONIBLE AHORA Y PARA SIEMPRE",
     },
-    
+
     // Inicio Rápido
     quickStart: {
       title: "Inicio rápido",
@@ -475,7 +483,7 @@ export const translations = {
         command: "relampo run script.yaml --cloud",
       },
     },
-    
+
     // Cómo Funciona
     howItWorks: {
       title: "Cómo funciona",
@@ -505,7 +513,7 @@ export const translations = {
       fromRecordingToResults: "Desde grabación a resultados",
       inSimpleSteps: "en 4 pasos simples",
     },
-    
+
     // Sección de Scripts Legibles
     readableScripts: {
       badge: "Scripts Legibles",
@@ -540,7 +548,7 @@ export const translations = {
       validYaml: "✓ YAML válido con características avanzadas",
       invalidYaml: "✗ YAML inválido - trampa común",
     },
-    
+
     // Sección de Nube Gratuita
     freeCloud: {
       badge: "Sandbox de Nube Gratuito",
@@ -579,12 +587,12 @@ export const translations = {
         "Exportación & Análisis de Resultados",
       ],
     },
-    
+
     // Sección CTA Final
     finalCta: {
       description: "Escribe scripts legibles. Ejecuta pruebas en infraestructura en nube. Obtén resultados más rápido. Todo gratis.",
     },
-    
+
     // Hoja de Ruta
     roadmap: {
       title: "Lo que estamos construyendo",
@@ -627,7 +635,7 @@ export const translations = {
         },
       },
     },
-    
+
     // Liga
     league: {
       title: "Relampo League",
@@ -693,7 +701,7 @@ export const translations = {
         tier: "Nivel",
       },
     },
-    
+
     // CTA
     cta: {
       title: "¿Listo para simplificar las pruebas de rendimiento?",
@@ -710,7 +718,7 @@ export const translations = {
       errorMessage: "Ups, algo salió mal",
       questionsEmail: "¿Preguntas? Escríbenos a",
     },
-    
+
     // Equipo
     team: {
       title: "Conoce al equipo",
@@ -737,7 +745,7 @@ export const translations = {
         },
       },
     },
-    
+
     // Footer
     footer: {
       copyright: "© 2026 Relampo · Pruebas de rendimiento simplificadas.",
@@ -748,7 +756,7 @@ export const translations = {
         privacy: "Privacidad",
       },
     },
-    
+
     // Sidebar
     sidebar: {
       dashboard: "Tablero",
@@ -839,7 +847,7 @@ export const translations = {
       noNodeSelected: "Selecciona un nodo para ver detalles",
       selectNode: "Selecciona un nodo del árbol",
       viewDetails: "para ver sus detalles",
-      
+
       // Common labels
       common: {
         name: "Nombre",
@@ -850,13 +858,15 @@ export const translations = {
         delete: "Eliminar",
         enable: "Habilitar",
         disable: "Deshabilitar",
+        duplicate: "Duplicar",
+        copy: "Copia",
         browse: "Buscar",
         configuration: "Configuración",
         properties: "Propiedades",
         comments: "Comentarios",
         noProperties: "Sin propiedades adicionales",
       },
-      
+
       // Context menu
       contextMenu: {
         addHeader: "Agregar Header",
@@ -869,12 +879,18 @@ export const translations = {
         addSpark: "Agregar Spark",
         addThinkTime: "Agregar Think Time",
       },
-      
+
       // Spark editor
       spark: {
         quickReference: "Referencia Rápida:",
         checkSyntax: "Verificar Sintaxis",
         checking: "Verificando...",
+      },
+
+      // Estado vacío
+      emptyState: {
+        description: "Crea un plan de pruebas desde cero o carga un archivo existente.",
+        addBtn: "Añadir un plan de prueba de performance"
       },
     },
   },

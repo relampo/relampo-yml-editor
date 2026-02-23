@@ -18,7 +18,6 @@ import {
   Settings,
   Cookie,
   HardDrive,
-  FileCode,
   BarChart3,
   Gauge,
   Eye,
@@ -28,18 +27,19 @@ import {
   Paperclip,
   Tag,
   List,
+  Copy,
 } from 'lucide-react';
 import type { YAMLNode, YAMLNodeType } from '../types/yaml';
 import { useLanguage } from '../contexts/LanguageContext';
 
 export type YAMLAddableNodeType =
+  | 'scenarios'
   | 'scenario'
   | 'request'
   | 'group'
   | 'if'
   | 'loop'
   | 'retry'
-  | 'on_error'
   | 'think_time'
   | 'assertion'
   | 'extractor'
@@ -55,7 +55,14 @@ export type YAMLAddableNodeType =
   | 'cache_manager'
   | 'error_policy'
   | 'metrics'
-  | 'load';
+  | 'load'
+  | 'get'
+  | 'post'
+  | 'put'
+  | 'delete'
+  | 'patch'
+  | 'head'
+  | 'options';
 
 interface YAMLContextMenuProps {
   x: number;
@@ -64,6 +71,7 @@ interface YAMLContextMenuProps {
   onClose: () => void;
   onAddNode: (nodeType: YAMLAddableNodeType) => void;
   onRemove: () => void;
+  onDuplicate?: (nodeId: string) => void;
   onToggleEnabled?: (nodeId: string, enabled: boolean) => void;
 }
 
@@ -74,6 +82,7 @@ export function YAMLContextMenu({
   onClose,
   onAddNode,
   onRemove,
+  onDuplicate,
   onToggleEnabled,
 }: YAMLContextMenuProps) {
   const { t } = useLanguage();
@@ -101,24 +110,24 @@ export function YAMLContextMenu({
       const rect = menuRef.current.getBoundingClientRect();
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
-      
+
       let newX = x;
       let newY = y;
-      
+
       // Ajustar si se sale por la derecha
       if (x + rect.width > viewportWidth - 10) {
         newX = viewportWidth - rect.width - 10;
       }
-      
+
       // Ajustar si se sale por abajo
       if (y + rect.height > viewportHeight - 10) {
         newY = viewportHeight - rect.height - 10;
       }
-      
+
       // Asegurar que no sea negativo
       newX = Math.max(10, newX);
       newY = Math.max(10, newY);
-      
+
       if (newX !== x || newY !== y) {
         setPosition({ x: newX, y: newY });
       }
@@ -192,10 +201,24 @@ export function YAMLContextMenu({
           )}
         </button>
       )}
-      
+
       {node.type !== 'root' && node.type !== 'test' && node.type !== 'scenarios' && node.type !== 'steps' && (
         <>
           <div className="h-px bg-white/5 my-1" />
+
+          {onDuplicate && (
+            <button
+              onClick={() => {
+                onDuplicate(node.id);
+                onClose();
+              }}
+              className="w-full px-3 py-2 flex items-center gap-3 hover:bg-white/5 text-left transition-colors text-zinc-300"
+            >
+              <Copy className="w-4 h-4" />
+              <span className="text-sm">{t('yamlEditor.common.duplicate') || 'Duplicate'}</span>
+            </button>
+          )}
+
           <button
             onClick={onRemove}
             className="w-full px-3 py-2 flex items-center gap-3 hover:bg-red-500/10 text-left transition-colors text-red-400"
@@ -213,7 +236,7 @@ interface AddableItem {
   type: YAMLAddableNodeType;
   label: string;
   description?: string;
-  icon: JSX.Element;
+  icon: React.ReactNode;
   color: string;
 }
 
@@ -250,6 +273,13 @@ function getAddableItems(parentType: string): AddableItem[] {
         description: 'Configuración de métricas',
         icon: <BarChart3 className={iconClass} />,
         color: 'text-indigo-400',
+      },
+      {
+        type: 'error_policy',
+        label: 'Error Policy',
+        description: 'Política de errores global',
+        icon: <AlertTriangle className={iconClass} />,
+        color: 'text-orange-500',
       },
     ];
   }
@@ -295,7 +325,7 @@ function getAddableItems(parentType: string): AddableItem[] {
         type: 'error_policy',
         label: 'Error Policy',
         description: 'Política de errores',
-        icon: <FileCode className={iconClass} />,
+        icon: <AlertTriangle className={iconClass} />,
         color: 'text-orange-500',
       },
     ];
@@ -354,11 +384,25 @@ function getAddableItems(parentType: string): AddableItem[] {
         icon: <Clock className={iconClass} />,
         color: 'text-orange-400',
       },
+      {
+        type: 'error_policy',
+        label: 'Error Policy',
+        description: 'Política de errores para este request',
+        icon: <AlertTriangle className={iconClass} />,
+        color: 'text-orange-500',
+      },
+      {
+        type: 'data_source',
+        label: 'Data Source',
+        description: 'Fuente de datos local',
+        icon: <Database className={iconClass} />,
+        color: 'text-cyan-400',
+      },
     ];
   }
 
-  // LOGIC CONTROLLERS (group, if, loop, retry, on_error, simple) y STEPS
-  const controllers = ['group', 'simple', 'if', 'loop', 'retry', 'on_error', 'steps'];
+  // LOGIC CONTROLLERS (group, if, loop, retry, simple) y STEPS
+  const controllers = ['group', 'simple', 'if', 'loop', 'retry', 'steps'];
   if (controllers.includes(parentType)) {
     return [
       {
@@ -397,18 +441,18 @@ function getAddableItems(parentType: string): AddableItem[] {
         color: 'text-red-400',
       },
       {
-        type: 'on_error',
-        label: 'On Error',
-        description: 'Manejo de errores',
-        icon: <AlertTriangle className={iconClass} />,
-        color: 'text-orange-500',
-      },
-      {
         type: 'think_time',
         label: 'Think Time',
         description: 'Pausa entre requests',
         icon: <Clock className={iconClass} />,
         color: 'text-orange-400',
+      },
+      {
+        type: 'data_source',
+        label: 'Data Source',
+        description: 'Fuente de datos local',
+        icon: <Database className={iconClass} />,
+        color: 'text-cyan-400',
       },
     ];
   }

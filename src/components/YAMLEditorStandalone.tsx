@@ -5,181 +5,7 @@ import JSZip from 'jszip';
 import html2canvas from 'html2canvas';
 
 export function YAMLEditorStandalone() {
-  const [yamlContent, setYamlContent] = useState(`# Relampo Test Configuration
-# Performance testing made simple
-
-name: "API Load Test Example"
-version: "1.0"
-description: "Example load test for REST API"
-
-# Global variables
-variables:
-  base_url: "https://api.example.com"
-  api_key: "\${API_KEY}"
-  user_id: "12345"
-
-# Data sources
-data_sources:
-  - name: users_csv
-    type: csv
-    path: "./data/users.csv"
-    delimiter: ","
-    
-  - name: tokens_json
-    type: json
-    path: "./data/tokens.json"
-
-# HTTP defaults applied to all requests
-http_defaults:
-  headers:
-    Content-Type: "application/json"
-    Accept: "application/json"
-    User-Agent: "Relampo/1.0"
-  timeout: 30s
-  follow_redirects: true
-
-# Test scenarios
-scenarios:
-  - name: "Ramp Up Load Test"
-    load:
-      type: ramp
-      start_users: 10
-      end_users: 100
-      duration: 5m
-      ramp_time: 2m
-    
-    steps:
-      - type: request
-        name: "Get User Profile"
-        method: GET
-        url: "\${base_url}/users/\${user_id}"
-        headers:
-          Authorization: "Bearer \${api_key}"
-        extract:
-          - name: username
-            type: json_path
-            expression: "$.data.username"
-          - name: email
-            type: json_path
-            expression: "$.data.email"
-        assertions:
-          - type: status_code
-            expected: 200
-          - type: response_time
-            operator: less_than
-            value: 500ms
-      
-      - type: think_time
-        duration: 2s
-      
-      - type: request
-        name: "Update User Settings"
-        method: PUT
-        url: "\${base_url}/users/\${user_id}/settings"
-        headers:
-          Authorization: "Bearer \${api_key}"
-        body: |
-          {
-            "theme": "dark",
-            "notifications": true,
-            "language": "en"
-          }
-        assertions:
-          - type: status_code
-            expected: 200
-      
-      - type: group
-        name: "Dashboard Operations"
-        steps:
-          - type: request
-            name: "Get Dashboard"
-            method: GET
-            url: "\${base_url}/dashboard"
-            headers:
-              Authorization: "Bearer \${api_key}"
-          
-          - type: request
-            name: "Get Recent Activity"
-            method: GET
-            url: "\${base_url}/activity/recent"
-            headers:
-              Authorization: "Bearer \${api_key}"
-      
-      - type: if
-        condition: "\${username} == 'admin'"
-        then:
-          - type: request
-            name: "Get Admin Panel"
-            method: GET
-            url: "\${base_url}/admin"
-            headers:
-              Authorization: "Bearer \${api_key}"
-        else:
-          - type: request
-            name: "Get User Panel"
-            method: GET
-            url: "\${base_url}/user"
-            headers:
-              Authorization: "Bearer \${api_key}"
-      
-      - type: loop
-        iterations: 3
-        steps:
-          - type: request
-            name: "Poll Status"
-            method: GET
-            url: "\${base_url}/status"
-          - type: think_time
-            duration: 1s
-      
-      - type: retry
-        max_attempts: 3
-        backoff: exponential
-        steps:
-          - type: request
-            name: "Critical Operation"
-            method: POST
-            url: "\${base_url}/critical"
-            headers:
-              Authorization: "Bearer \${api_key}"
-            body: |
-              {
-                "action": "process",
-                "priority": "high"
-              }
-
-  - name: "Constant Load Test"
-    load:
-      type: constant
-      users: 50
-      duration: 10m
-    
-    steps:
-      - type: request
-        name: "Health Check"
-        method: GET
-        url: "\${base_url}/health"
-        assertions:
-          - type: status_code
-            expected: 200
-          - type: response_time
-            operator: less_than
-            value: 100ms
-
-  - name: "Spike Test"
-    load:
-      type: spike
-      base_users: 10
-      spike_users: 200
-      spike_duration: 30s
-      total_duration: 5m
-    
-    steps:
-      - type: request
-        name: "API Endpoint"
-        method: GET
-        url: "\${base_url}/api/v1/data"
-`);
+  const [yamlContent, setYamlContent] = useState("");
 
   const [downloadMessage, setDownloadMessage] = useState<string | null>(null);
   const [fileName, setFileName] = useState('relampo-test.yaml');
@@ -249,13 +75,13 @@ scenarios:
 
   const handleDownloadPackage = async () => {
     setDownloadMessage('Preparing YAML Editor package...');
-    
+
     try {
       const zip = new JSZip();
-      
+
       // Add YAML file
       zip.file(fileName, yamlContent);
-      
+
       // Add README
       const readme = `# Relampo YAML Editor Package
 
@@ -299,9 +125,9 @@ Visit https://relampo.dev/docs for complete documentation.
 - Docs: https://relampo.dev
 - Community: https://discord.gg/relampo
 `;
-      
+
       zip.file('README.md', readme);
-      
+
       // Add getting started guide
       const gettingStarted = `# Getting Started with Relampo
 
@@ -361,13 +187,13 @@ https://relampo.dev/docs/examples
 3. Configure load patterns
 4. Run and analyze results
 `;
-      
+
       zip.file('getting-started.md', gettingStarted);
-      
+
       // Capture screenshot of the editor
       setDownloadMessage('Capturing editor screenshot...');
       const editorElement = document.getElementById('yaml-editor-capture');
-      
+
       if (editorElement) {
         try {
           const canvas = await html2canvas(editorElement, {
@@ -375,21 +201,21 @@ https://relampo.dev/docs/examples
             scale: 2,
             logging: false,
           });
-          
+
           const blob = await new Promise<Blob>((resolve) => {
             canvas.toBlob((blob) => resolve(blob!), 'image/png');
           });
-          
+
           zip.file('editor-screenshot.png', blob);
         } catch (error) {
           console.error('Error capturing screenshot:', error);
         }
       }
-      
+
       // Generate ZIP
       setDownloadMessage('Creating ZIP file...');
       const zipBlob = await zip.generateAsync({ type: 'blob' });
-      
+
       // Download
       const url = URL.createObjectURL(zipBlob);
       const link = document.createElement('a');
@@ -399,7 +225,7 @@ https://relampo.dev/docs/examples
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      
+
       setDownloadMessage('✓ Package downloaded successfully!');
       setTimeout(() => setDownloadMessage(null), 3000);
     } catch (error) {
@@ -429,7 +255,7 @@ https://relampo.dev/docs/examples
             {/* Relampo Logo */}
             <div className="relative w-10 h-10 bg-gradient-to-br from-yellow-300 via-yellow-400 to-yellow-500 rounded-xl flex items-center justify-center shadow-xl shadow-yellow-400/40">
               <svg width="18" height="22" viewBox="0 0 18 22" fill="none">
-                <path d="M10.5 0L0 12.5H7.5L6 22L18 9H10.5V0Z" fill="white" className="drop-shadow-lg"/>
+                <path d="M10.5 0L0 12.5H7.5L6 22L18 9H10.5V0Z" fill="white" className="drop-shadow-lg" />
               </svg>
             </div>
             <div>
@@ -442,22 +268,19 @@ https://relampo.dev/docs/examples
 
           {/* Center: Language Toggle */}
           <div className="flex items-center gap-2">
-            <span className={`text-sm font-medium transition-colors ${
-              language === 'en' ? 'text-yellow-400' : 'text-zinc-500'
-            }`}>EN</span>
+            <span className={`text-sm font-medium transition-colors ${language === 'en' ? 'text-yellow-400' : 'text-zinc-500'
+              }`}>EN</span>
             <button
               onClick={() => setLanguage(language === 'en' ? 'es' : 'en')}
               className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 focus:ring-offset-[#111111] bg-zinc-700 hover:bg-zinc-600"
             >
               <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-yellow-400 transition-transform ${
-                  language === 'es' ? 'translate-x-6' : 'translate-x-1'
-                }`}
+                className={`inline-block h-4 w-4 transform rounded-full bg-yellow-400 transition-transform ${language === 'es' ? 'translate-x-6' : 'translate-x-1'
+                  }`}
               />
             </button>
-            <span className={`text-sm font-medium transition-colors ${
-              language === 'es' ? 'text-yellow-400' : 'text-zinc-500'
-            }`}>ES</span>
+            <span className={`text-sm font-medium transition-colors ${language === 'es' ? 'text-yellow-400' : 'text-zinc-500'
+              }`}>ES</span>
           </div>
 
           {/* Right: Action Buttons */}
@@ -505,7 +328,7 @@ https://relampo.dev/docs/examples
               </p>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
@@ -518,7 +341,7 @@ https://relampo.dev/docs/examples
             </Button>
           </div>
         </div>
-        
+
         {downloadMessage && (
           <div className="mt-3 text-sm text-yellow-400 flex items-center gap-2">
             <div className="w-1 h-4 bg-yellow-400 rounded-full animate-pulse" />
@@ -544,10 +367,10 @@ https://relampo.dev/docs/examples
         <div className="flex-1 overflow-auto bg-[#0a0a0a]">
           <textarea
             value={yamlContent}
-            onChange={(e) => setYamlContent(e.target.value)}
+            readOnly={true}
             className="w-full h-full px-6 py-6 bg-transparent text-zinc-300 font-mono text-sm leading-6 resize-none outline-none"
             style={{
-              caretColor: '#facc15',
+              caretColor: 'transparent',
               tabSize: 2,
             }}
             spellCheck={false}
