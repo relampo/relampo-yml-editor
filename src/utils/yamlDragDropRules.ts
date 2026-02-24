@@ -40,7 +40,7 @@ import type { YAMLNodeType } from '../types/yaml';
 
 /** Root level elements - can only exist at test plan level */
 const ROOT_LEVEL_ELEMENTS: YAMLNodeType[] = [
-  'test', 'variables', 'data_source', 'http_defaults', 'scenarios', 'metrics'
+  'test', 'variables', 'data_source', 'http_defaults', 'scenarios', 'metrics', 'error_policy'
 ];
 
 /** Scenario configuration elements */
@@ -83,6 +83,7 @@ const STEP_ELEMENTS: YAMLNodeType[] = [
   ...HTTP_SAMPLERS,
   ...LOGIC_CONTROLLERS,
   ...TIMERS,
+  'data_source',
   'step'
 ];
 
@@ -91,7 +92,9 @@ const SAMPLER_CHILDREN: YAMLNodeType[] = [
   ...PRE_PROCESSORS,
   ...POST_PROCESSORS,
   ...ASSERTIONS,
-  ...TIMERS
+  ...TIMERS,
+  'error_policy',
+  'data_source'
 ];
 
 // ============================================================================
@@ -105,29 +108,29 @@ const SAMPLER_CHILDREN: YAMLNodeType[] = [
 const containmentRules: Partial<Record<YAMLNodeType, YAMLNodeType[]>> = {
   // ROOT - Test Plan level
   'root': ROOT_LEVEL_ELEMENTS,
-  
+
   // Config elements (leaf nodes - no children)
   'test': [],
   'variables': [],
   'data_source': [],
   'http_defaults': [],
   'metrics': [],
-  
+
   // Scenarios container
   'scenarios': ['scenario'],
-  
+
   // Single scenario (Thread Group)
   'scenario': ['load', 'cookies', 'cache_manager', 'error_policy', 'steps'],
-  
+
   // Scenario config (leaf nodes)
   'load': [],
   'cookies': [],
   'cache_manager': [],
   'error_policy': [],
-  
+
   // Steps container
   'steps': STEP_ELEMENTS,
-  
+
   // HTTP Samplers - can contain pre/post processors, assertions, timers
   'request': SAMPLER_CHILDREN,
   'get': SAMPLER_CHILDREN,
@@ -137,14 +140,14 @@ const containmentRules: Partial<Record<YAMLNodeType, YAMLNodeType[]>> = {
   'patch': SAMPLER_CHILDREN,
   'head': SAMPLER_CHILDREN,
   'options': SAMPLER_CHILDREN,
-  
+
   // Logic Controllers - can contain steps and other controllers
   'group': STEP_ELEMENTS,
   'simple': STEP_ELEMENTS,
   'if': STEP_ELEMENTS,
   'loop': STEP_ELEMENTS,
   'retry': STEP_ELEMENTS,
-  
+
   // Leaf nodes (no children)
   'step': [],
   'think_time': [],
@@ -168,16 +171,16 @@ const containmentRules: Partial<Record<YAMLNodeType, YAMLNodeType[]>> = {
 const siblingGroups: YAMLNodeType[][] = [
   // Root level siblings
   ROOT_LEVEL_ELEMENTS,
-  
+
   // Scenarios are siblings of each other
   ['scenario'],
-  
+
   // Scenario config siblings
   SCENARIO_CONFIG_ELEMENTS,
-  
+
   // Step-level siblings (can be reordered among themselves)
   STEP_ELEMENTS,
-  
+
   // Sampler children siblings
   SAMPLER_CHILDREN,
 ];
@@ -186,7 +189,7 @@ const siblingGroups: YAMLNodeType[][] = [
  * Check if two types can be siblings
  */
 function canBeSiblings(type1: YAMLNodeType, type2: YAMLNodeType): boolean {
-  return siblingGroups.some(group => 
+  return siblingGroups.some(group =>
     group.includes(type1) && group.includes(type2)
   );
 }
@@ -203,8 +206,8 @@ export function canDrop(
   targetType: YAMLNodeType,
   position: 'before' | 'after' | 'inside'
 ): boolean {
-  // Cannot move root or test
-  if (draggedType === 'root' || draggedType === 'test') {
+  // Cannot move root
+  if (draggedType === 'root') {
     return false;
   }
 
@@ -233,7 +236,7 @@ export function canContain(containerType: YAMLNodeType, childType: YAMLNodeType)
  * Validates if a node can be moved (not all nodes are movable)
  */
 export function canMove(nodeType: YAMLNodeType): boolean {
-  const immovableTypes: YAMLNodeType[] = ['root', 'test', 'scenarios', 'steps'];
+  const immovableTypes: YAMLNodeType[] = ['root', 'steps'];
   return !immovableTypes.includes(nodeType);
 }
 
@@ -353,14 +356,14 @@ export function validateTreeStructure(node: { type: YAMLNodeType; children?: any
     if (!n.children) return;
 
     const allowedChildren = containmentRules[n.type] || [];
-    
+
     for (const child of n.children) {
       const childPath = path ? `${path} > ${child.type}` : child.type;
-      
+
       if (!allowedChildren.includes(child.type)) {
         errors.push(`Invalid: "${child.type}" inside "${n.type}" at ${childPath}`);
       }
-      
+
       validate(child, childPath);
     }
   }

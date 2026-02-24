@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import { Search, ChevronUp, ChevronDown } from 'lucide-react';
@@ -14,6 +14,7 @@ interface YAMLRequestDetailsProps {
 }
 
 type Tab = 'request' | 'response';
+type SearchMode = 'text' | 'regex';
 
 export function YAMLRequestDetails({ node, onNodeUpdate }: YAMLRequestDetailsProps) {
   const data = node.data || {};
@@ -21,6 +22,10 @@ export function YAMLRequestDetails({ node, onNodeUpdate }: YAMLRequestDetailsPro
   const [activeTab, setActiveTab] = useState<Tab>('request');
   const [requestSearch, setRequestSearch] = useState('');
   const [responseSearch, setResponseSearch] = useState('');
+  const [requestSearchMode, setRequestSearchMode] = useState<SearchMode>('text');
+  const [responseSearchMode, setResponseSearchMode] = useState<SearchMode>('text');
+  const [requestReplace, setRequestReplace] = useState('');
+  const [responseReplace, setResponseReplace] = useState('');
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -48,6 +53,8 @@ export function YAMLRequestDetails({ node, onNodeUpdate }: YAMLRequestDetailsPro
   };
 
   const searchText = activeTab === 'request' ? requestSearch : responseSearch;
+  const searchMode = activeTab === 'request' ? requestSearchMode : responseSearchMode;
+  const replaceValue = activeTab === 'request' ? requestReplace : responseReplace;
 
   // Reset match index when search changes or tab changes
   const handleSearchChange = (value: string) => {
@@ -58,24 +65,19 @@ export function YAMLRequestDetails({ node, onNodeUpdate }: YAMLRequestDetailsPro
     }
     setCurrentMatchIndex(0);
   };
+  const handleSearchModeChange = (mode: SearchMode) => {
+    if (activeTab === 'request') setRequestSearchMode(mode);
+    else setResponseSearchMode(mode);
+    setCurrentMatchIndex(0);
+  };
+  const handleReplaceChange = (value: string) => {
+    if (activeTab === 'request') setRequestReplace(value);
+    else setResponseReplace(value);
+  };
 
   useEffect(() => {
     setCurrentMatchIndex(0);
   }, [activeTab]);
-
-  // Scroll to current match
-  useEffect(() => {
-    if (searchText && contentRef.current) {
-      const marks = contentRef.current.querySelectorAll('mark[data-match-index]');
-      const currentMark = Array.from(marks).find(
-        (mark) => mark.getAttribute('data-match-index') === String(currentMatchIndex)
-      );
-      
-      if (currentMark) {
-        currentMark.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    }
-  }, [currentMatchIndex, searchText]);
 
   return (
     <div className="flex flex-col h-full">
@@ -83,191 +85,55 @@ export function YAMLRequestDetails({ node, onNodeUpdate }: YAMLRequestDetailsPro
       <div className="flex items-center border-b border-white/5 bg-[#111111] flex-shrink-0">
         <button
           onClick={() => setActiveTab('request')}
-          className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${
-            activeTab === 'request'
-              ? 'text-yellow-400 bg-yellow-400/10 border-b-2 border-yellow-400'
-              : 'text-zinc-400 hover:text-zinc-300 hover:bg-white/5'
-          }`}
+          className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${activeTab === 'request'
+            ? 'text-yellow-400 bg-yellow-400/10 border-b-2 border-yellow-400'
+            : 'text-zinc-400 hover:text-zinc-300 hover:bg-white/5'
+            }`}
         >
           Request
         </button>
         {formData.response && (
           <button
             onClick={() => setActiveTab('response')}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${
-              activeTab === 'response'
-                ? 'text-cyan-400 bg-cyan-400/10 border-b-2 border-cyan-400'
-                : 'text-zinc-400 hover:text-zinc-300 hover:bg-white/5'
-            }`}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${activeTab === 'response'
+              ? 'text-cyan-400 bg-cyan-400/10 border-b-2 border-cyan-400'
+              : 'text-zinc-400 hover:text-zinc-300 hover:bg-white/5'
+              }`}
           >
             Response
           </button>
         )}
       </div>
 
-      {/* Search Bar */}
-      <SearchBar
-        value={searchText}
-        onChange={handleSearchChange}
-        currentIndex={currentMatchIndex}
-        onNavigate={setCurrentMatchIndex}
-        contentRef={contentRef}
-        activeTab={activeTab}
-        formData={formData}
-      />
-
       {/* Content */}
       <div ref={contentRef} className="flex-1 overflow-y-auto p-6">
         {activeTab === 'request' ? (
-          <RequestContent 
-            formData={formData} 
+          <RequestContent
+            formData={formData}
             onFieldChange={handleFieldChange}
             onBodyChange={handleBodyChange}
             searchText={searchText}
+            searchMode={searchMode}
+            replaceValue={replaceValue}
             currentMatchIndex={currentMatchIndex}
+            onSearchChange={handleSearchChange}
+            onSearchModeChange={handleSearchModeChange}
+            onReplaceValueChange={handleReplaceChange}
+            onNavigate={setCurrentMatchIndex}
           />
         ) : (
           <YAMLResponseDetails
             response={formData.response}
             onResponseUpdate={(updatedResponse) => handleFieldChange('response', updatedResponse)}
             searchText={searchText}
+            searchMode={searchMode}
+            replaceValue={replaceValue}
             currentMatchIndex={currentMatchIndex}
+            onSearchChange={handleSearchChange}
+            onSearchModeChange={handleSearchModeChange}
+            onReplaceValueChange={handleReplaceChange}
+            onNavigate={setCurrentMatchIndex}
           />
-        )}
-      </div>
-    </div>
-  );
-}
-
-interface SearchBarProps {
-  value: string;
-  onChange: (value: string) => void;
-  currentIndex: number;
-  onNavigate: (index: number) => void;
-  contentRef: React.RefObject<HTMLDivElement>;
-  activeTab: Tab;
-  formData: any;
-}
-
-function SearchBar({ value, onChange, currentIndex, onNavigate, contentRef, activeTab, formData }: SearchBarProps) {
-  // Count total matches
-  const totalMatches = useMemo(() => {
-    if (!value) return 0;
-    
-    let count = 0;
-    const searchLower = value.toLowerCase();
-    
-    if (activeTab === 'request') {
-      // Count in method
-      if (formData.method && formData.method.toLowerCase().includes(searchLower)) count++;
-      
-      // Count in URL
-      if (formData.url) {
-        const urlMatches = formData.url.toLowerCase().split(searchLower).length - 1;
-        count += urlMatches;
-      }
-      
-      
-      // Count in body
-      if (formData.body) {
-        const bodyStr = typeof formData.body === 'string' 
-          ? formData.body 
-          : JSON.stringify(formData.body, null, 2);
-        const bodyMatches = bodyStr.toLowerCase().split(searchLower).length - 1;
-        count += bodyMatches;
-      }
-      
-      // Count in recorded_at
-      if (formData.recorded_at) {
-        const recordedMatches = formData.recorded_at.toLowerCase().split(searchLower).length - 1;
-        count += recordedMatches;
-      }
-    } else {
-      // Response tab
-      const response = formData.response;
-      if (!response) return 0;
-      
-      // Count in status
-      if (response.status) {
-        const statusMatches = String(response.status).toLowerCase().split(searchLower).length - 1;
-        count += statusMatches;
-      }
-      
-      // Count in time_ms
-      if (response.time_ms) {
-        const timeMatches = String(response.time_ms).toLowerCase().split(searchLower).length - 1;
-        count += timeMatches;
-      }
-      
-      // Count in headers
-      if (response.headers) {
-        Object.entries(response.headers).forEach(([key, val]) => {
-          const keyMatches = key.toLowerCase().split(searchLower).length - 1;
-          const valMatches = String(val).toLowerCase().split(searchLower).length - 1;
-          count += keyMatches + valMatches;
-        });
-      }
-      
-      // Count in body
-      if (response.body) {
-        const bodyStr = typeof response.body === 'string' 
-          ? response.body 
-          : JSON.stringify(response.body, null, 2);
-        const bodyMatches = bodyStr.toLowerCase().split(searchLower).length - 1;
-        count += bodyMatches;
-      }
-    }
-    
-    return count;
-  }, [value, activeTab, formData]);
-
-  const handlePrevious = () => {
-    if (totalMatches === 0) return;
-    const newIndex = currentIndex === 0 ? totalMatches - 1 : currentIndex - 1;
-    onNavigate(newIndex);
-  };
-
-  const handleNext = () => {
-    if (totalMatches === 0) return;
-    const newIndex = currentIndex === totalMatches - 1 ? 0 : currentIndex + 1;
-    onNavigate(newIndex);
-  };
-
-  return (
-    <div className="p-3 border-b border-white/5 bg-[#0a0a0a] flex-shrink-0">
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-          <Input
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder="Search..."
-            className="pl-9 pr-3 bg-white/5 border-white/10 text-zinc-300 text-sm"
-          />
-        </div>
-        
-        {value && (
-          <div className="flex items-center gap-1">
-            <span className="text-xs text-zinc-400 px-2 min-w-[60px] text-center font-mono">
-              {totalMatches > 0 ? `${currentIndex + 1}/${totalMatches}` : '0/0'}
-            </span>
-            <button
-              onClick={handlePrevious}
-              disabled={totalMatches === 0}
-              className="p-1.5 hover:bg-white/10 rounded border border-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              title="Previous match"
-            >
-              <ChevronUp className="w-4 h-4 text-zinc-400" />
-            </button>
-            <button
-              onClick={handleNext}
-              disabled={totalMatches === 0}
-              className="p-1.5 hover:bg-white/10 rounded border border-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              title="Next match"
-            >
-              <ChevronDown className="w-4 h-4 text-zinc-400" />
-            </button>
-          </div>
         )}
       </div>
     </div>
@@ -279,74 +145,428 @@ interface RequestContentProps {
   onFieldChange: (field: string, value: any) => void;
   onBodyChange: (value: string) => void;
   searchText: string;
+  searchMode: SearchMode;
+  replaceValue: string;
   currentMatchIndex: number;
+  onSearchChange: (value: string) => void;
+  onSearchModeChange: (mode: SearchMode) => void;
+  onReplaceValueChange: (value: string) => void;
+  onNavigate: (index: number) => void;
 }
 
-function RequestContent({ 
-  formData, 
-  onFieldChange, 
+function RequestContent({
+  formData,
+  onFieldChange,
   onBodyChange,
   searchText,
+  searchMode,
+  replaceValue,
   currentMatchIndex,
+  onSearchChange,
+  onSearchModeChange,
+  onReplaceValueChange,
+  onNavigate,
 }: RequestContentProps) {
-  let matchCounter = 0;
+  const compactInputClass = 'w-[14ch] max-w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono';
 
-  const highlightText = (text: string, search: string): JSX.Element | string => {
-    if (!search || !text) return text;
-    
-    const parts = text.split(new RegExp(`(${escapeRegex(search)})`, 'gi'));
-    
-    return (
-      <>
-        {parts.map((part, i) => {
-          if (part.toLowerCase() === search.toLowerCase()) {
-            const thisMatchIndex = matchCounter++;
-            const isActive = thisMatchIndex === currentMatchIndex;
-            return (
-              <mark 
-                key={i} 
-                data-match-index={thisMatchIndex}
-                className={`${isActive ? 'bg-yellow-400/50 ring-2 ring-yellow-400' : 'bg-yellow-400/30'} text-yellow-200 transition-all`}
-              >
-                {part}
-              </mark>
-            );
-          }
-          return part;
-        })}
-      </>
-    );
+  const splitQuery = (fullUrl: string): { withoutQuery: string; query: string } => {
+    const idx = fullUrl.indexOf('?');
+    if (idx < 0) return { withoutQuery: fullUrl, query: '' };
+    return { withoutQuery: fullUrl.slice(0, idx), query: fullUrl.slice(idx) };
+  };
+
+  const parseUrlParts = (fullUrl: string): { protocol: 'http' | 'https'; baseUrl: string; path: string } => {
+    if (!fullUrl) return { protocol: 'https', baseUrl: '', path: '/' };
+    const { withoutQuery } = splitQuery(fullUrl);
+    const trimmed = withoutQuery.trim();
+
+    try {
+      if (/^https?:\/\//i.test(trimmed)) {
+        const u = new URL(trimmed);
+        return {
+          protocol: (u.protocol.replace(':', '').toLowerCase() as 'http' | 'https') || 'https',
+          baseUrl: u.host || '',
+          path: u.pathname || '/',
+        };
+      }
+    } catch {
+      // fallback to relative parsing below
+    }
+
+    return {
+      protocol: 'https',
+      baseUrl: '',
+      path: trimmed || '/',
+    };
+  };
+
+  const buildUrl = (
+    currentFullUrl: string,
+    next: { protocol?: string; baseUrl?: string; path?: string }
+  ): string => {
+    const current = parseUrlParts(currentFullUrl || '');
+    const { query } = splitQuery(currentFullUrl || '');
+
+    const protocol = (next.protocol ?? current.protocol ?? 'https').toLowerCase();
+    const baseUrl = (next.baseUrl ?? current.baseUrl ?? '').trim();
+    let path = (next.path ?? current.path ?? '/').trim();
+    if (!path.startsWith('/')) path = `/${path}`;
+
+    const base = baseUrl ? `${protocol}://${baseUrl}` : '';
+    return `${base}${path}${query}`;
+  };
+
+  const urlParts = parseUrlParts(formData.url || '');
+  const requestBodyText = formData.body
+    ? (typeof formData.body === 'string' ? formData.body : JSON.stringify(formData.body, null, 2))
+    : '';
+
+  const buildSearchRegex = () => {
+    if (!searchText || searchMode !== 'regex') return null;
+    try {
+      return new RegExp(searchText, 'gi');
+    } catch {
+      return null;
+    }
+  };
+  const collectMatches = (text: string) => {
+    if (!text || !searchText) return [] as Array<{ start: number; end: number }>;
+    const out: Array<{ start: number; end: number }> = [];
+    if (searchMode === 'text') {
+      const hay = text.toLowerCase();
+      const needle = searchText.toLowerCase();
+      let pos = 0;
+      while (pos <= hay.length - needle.length) {
+        const idx = hay.indexOf(needle, pos);
+        if (idx === -1) break;
+        out.push({ start: idx, end: idx + needle.length });
+        pos = idx + Math.max(needle.length, 1);
+      }
+      return out;
+    }
+    const re = buildSearchRegex();
+    if (!re) return out;
+    for (const m of text.matchAll(re)) {
+      const start = m.index ?? -1;
+      if (start < 0) continue;
+      const full = m[0] ?? '';
+      const g1 = m.length > 1 ? (m[1] ?? '') : '';
+      let s = start;
+      let e = start + full.length;
+      if (g1) {
+        const rel = full.indexOf(g1);
+        if (rel >= 0) {
+          s = start + rel;
+          e = s + g1.length;
+        }
+      }
+      out.push({ start: s, end: e });
+      if (full.length === 0) break;
+    }
+    return out;
+  };
+  const matches = collectMatches(requestBodyText);
+  const totalMatches = matches.length;
+  const regexInvalid = !!searchText && searchMode === 'regex' && !buildSearchRegex();
+
+  const applyBodyText = (nextText: string) => {
+    try {
+      onFieldChange('body', JSON.parse(nextText));
+    } catch {
+      onFieldChange('body', nextText);
+    }
+  };
+
+  const handleReplaceCurrent = () => {
+    if (!searchText || totalMatches === 0) return;
+    const target = matches[currentMatchIndex];
+    if (!target) return;
+    const next = requestBodyText.slice(0, target.start) + replaceValue + requestBodyText.slice(target.end);
+    applyBodyText(next);
+  };
+
+  const handleReplaceAll = () => {
+    if (!searchText || totalMatches === 0) return;
+    const ranges = collectMatches(requestBodyText);
+    if (ranges.length === 0) return;
+    let next = requestBodyText;
+    for (let i = ranges.length - 1; i >= 0; i -= 1) {
+      const r = ranges[i];
+      next = next.slice(0, r.start) + replaceValue + next.slice(r.end);
+    }
+    applyBodyText(next);
+  };
+  const handlePrevious = () => {
+    if (totalMatches === 0) return;
+    const newIndex = currentMatchIndex === 0 ? totalMatches - 1 : currentMatchIndex - 1;
+    onNavigate(newIndex);
+  };
+  const handleNext = () => {
+    if (totalMatches === 0) return;
+    const newIndex = currentMatchIndex === totalMatches - 1 ? 0 : currentMatchIndex + 1;
+    onNavigate(newIndex);
   };
 
   return (
     <div className="space-y-4">
-      {/* Method */}
+      {/* Method / Protocol / Base URL / Path */}
       <div>
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-          Method
-        </label>
-        <MethodDropdown
-          value={formData.method || 'GET'}
-          onChange={(method) => onFieldChange('method', method)}
-          className="w-full"
-        />
-        {searchText && formData.method && formData.method.toLowerCase().includes(searchText.toLowerCase()) && (
-          <div className="mt-1 text-xs text-yellow-400 flex items-center gap-1">
-            <span>✓</span> Match found
+        <div className="grid grid-cols-12 gap-3 items-end">
+          <div className="col-span-2">
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+              Method
+            </label>
+            <MethodDropdown
+              value={formData.method || 'GET'}
+              onChange={(method) => onFieldChange('method', method)}
+              className="w-full"
+            />
           </div>
-        )}
+          <div className="col-span-2">
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+              Protocol
+            </label>
+            <select
+              value={urlParts.protocol}
+              onChange={(e) => onFieldChange('url', buildUrl(formData.url || '', { protocol: e.target.value }))}
+              className={`${compactInputClass} w-full`}
+            >
+              <option value="https">https</option>
+              <option value="http">http</option>
+            </select>
+          </div>
+          <div className="col-span-4">
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+              Base URL
+            </label>
+            <Input
+              value={urlParts.baseUrl}
+              onChange={(e) => onFieldChange('url', buildUrl(formData.url || '', { baseUrl: e.target.value }))}
+              placeholder="api.example.com"
+              className="w-full h-[38px] bg-white/5 border border-white/10 text-zinc-300 text-sm font-mono"
+            />
+          </div>
+          <div className="col-span-4">
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+              Path
+            </label>
+            <Input
+              value={urlParts.path}
+              onChange={(e) => onFieldChange('url', buildUrl(formData.url || '', { path: e.target.value }))}
+              placeholder="/endpoint"
+              className="w-full h-[38px] bg-white/5 border border-white/10 text-zinc-300 text-sm font-mono"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Timeout / Cookie Override / Cache Override / Throughput (Request) */}
+      <div>
+        <div className="grid grid-cols-4 gap-3 items-end w-full">
+          <div className="min-w-0">
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+              Timeout
+            </label>
+            <Input
+              value={formData.timeout || ''}
+              onChange={(e) => onFieldChange('timeout', e.target.value)}
+              placeholder="30s"
+              className="w-full h-[38px] bg-white/5 border border-white/10 text-zinc-300 text-sm font-mono"
+            />
+          </div>
+          <div className="min-w-0">
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+              Cookie Override
+            </label>
+            <select
+              value={formData.cookie_override || 'inherit'}
+              onChange={(e) => onFieldChange('cookie_override', e.target.value)}
+              className="block w-full h-[38px] px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono"
+            >
+              <option value="inherit">inherit</option>
+              <option value="enabled">enabled</option>
+              <option value="disabled">disabled</option>
+            </select>
+          </div>
+          <div className="min-w-0">
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+              Cache Override
+            </label>
+            <select
+              value={formData.cache_override || 'inherit'}
+              onChange={(e) => onFieldChange('cache_override', e.target.value)}
+              className="block w-full h-[38px] px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono"
+            >
+              <option value="inherit">inherit</option>
+              <option value="enabled">enabled</option>
+              <option value="disabled">disabled</option>
+            </select>
+          </div>
+          <div className="min-w-0">
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+              Throughput (Request)
+            </label>
+            <select
+              value={formData.throughput?.enabled ? 'enabled' : 'disabled'}
+              onChange={(e) => {
+                if (e.target.value === 'enabled') {
+                  const next = {
+                    enabled: true,
+                    target_rps: formData.throughput?.target_rps || 1,
+                  };
+                  onFieldChange('throughput', next);
+                } else {
+                  onFieldChange('throughput', undefined);
+                }
+              }}
+              className="block w-full h-[38px] px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono"
+            >
+              <option value="enabled">enabled</option>
+              <option value="disabled">disabled</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Advanced toggles */}
+      <div>
+        <div className="flex items-center gap-6 flex-wrap">
+          <label className="inline-flex items-center gap-2 text-sm text-zinc-300 cursor-pointer">
+            <input
+              type="checkbox"
+              className="w-4 h-4 rounded border-white/10 bg-white/5 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-0"
+              checked={!!formData.retrieve_embedded_resources}
+              onChange={(e) => onFieldChange('retrieve_embedded_resources', e.target.checked)}
+            />
+            <span>Retrieve all Embedded Resources</span>
+          </label>
+          <label className="inline-flex items-center gap-2 text-sm text-zinc-300 cursor-pointer">
+            <input
+              type="checkbox"
+              className="w-4 h-4 rounded border-white/10 bg-white/5 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-0"
+              checked={!!formData.redirect_automatically}
+              onChange={(e) => onFieldChange('redirect_automatically', e.target.checked)}
+            />
+            <span>Redirect Automatically</span>
+          </label>
+          <label className="inline-flex items-center gap-2 text-sm text-zinc-300 cursor-pointer">
+            <input
+              type="checkbox"
+              className="w-4 h-4 rounded border-white/10 bg-white/5 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-0"
+              checked={formData.follow_redirects !== false}
+              onChange={(e) => onFieldChange('follow_redirects', e.target.checked)}
+            />
+            <span>Follow Redirects</span>
+          </label>
+        </div>
       </div>
 
       {/* URL with Query Parameters */}
       <QueryParamsEditor
         url={formData.url || ''}
         onUrlChange={(url) => onFieldChange('url', url)}
+        showBaseUrl={false}
       />
 
       {/* Body */}
+      <div>
+        <div className="flex items-center gap-2 mb-2">
+          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+            Request Body
+          </label>
+        </div>
+        <div className="p-3 border border-white/10 rounded bg-[#0a0a0a]">
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+            <Input
+              value={searchText}
+              onChange={(e) => onSearchChange(e.target.value)}
+              placeholder="Search in request body..."
+              className="pl-9 pr-3 bg-white/5 border-white/10 text-zinc-300 text-sm focus-visible:border-yellow-400/60 focus-visible:ring-yellow-400/30"
+            />
+          </div>
+          <div className="flex items-center rounded-md border border-white/10 bg-white/5 p-0.5">
+            <button
+              onClick={() => onSearchModeChange('text')}
+              className={`px-2 py-1 text-xs rounded transition-colors ${searchMode === 'text'
+                ? 'bg-yellow-400/20 text-yellow-400 border border-yellow-400/40'
+                : 'text-zinc-400 hover:text-zinc-200'
+                }`}
+            >
+              Text
+            </button>
+            <button
+              onClick={() => onSearchModeChange('regex')}
+              className={`px-2 py-1 text-xs rounded transition-colors ${searchMode === 'regex'
+                ? 'bg-yellow-400/20 text-yellow-400 border border-yellow-400/40'
+                : 'text-zinc-400 hover:text-zinc-200'
+                }`}
+            >
+              Regex
+            </button>
+          </div>
+          <Input
+            value={replaceValue}
+            onChange={(e) => onReplaceValueChange(e.target.value)}
+            placeholder="Replace"
+            className="w-[18ch] bg-white/5 border-white/10 text-zinc-300 text-sm"
+          />
+          <button
+            onClick={handleReplaceCurrent}
+            disabled={totalMatches === 0}
+            className="px-2 py-1.5 text-xs rounded border border-white/10 text-zinc-300 disabled:opacity-40"
+          >
+            Replace
+          </button>
+          <button
+            onClick={handleReplaceAll}
+            disabled={totalMatches === 0}
+            className="px-2 py-1.5 text-xs rounded border border-white/10 text-zinc-300 disabled:opacity-40"
+          >
+            Replace All
+          </button>
+          {searchText && (
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-zinc-400 px-2 min-w-[60px] text-center font-mono">
+                {totalMatches > 0 ? `${currentMatchIndex + 1}/${totalMatches}` : '0/0'}
+              </span>
+              <button
+                onClick={handlePrevious}
+                disabled={totalMatches === 0}
+                className="p-1.5 hover:bg-white/10 rounded border border-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                title="Previous match"
+              >
+                <ChevronUp className="w-4 h-4 text-zinc-400" />
+              </button>
+              <button
+                onClick={handleNext}
+                disabled={totalMatches === 0}
+                className="p-1.5 hover:bg-white/10 rounded border border-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                title="Next match"
+              >
+                <ChevronDown className="w-4 h-4 text-zinc-400" />
+              </button>
+            </div>
+          )}
+        </div>
+        {regexInvalid && (
+          <div className="mt-2 text-xs text-red-400">Invalid regex pattern</div>
+        )}
+        </div>
+      </div>
+      <div className="flex items-center gap-2 mb-2 mt-3">
+        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+          Format / Body Type
+        </label>
+      </div>
       <BodyTypeSelector
         body={formData.body}
         onBodyChange={(body, type) => onFieldChange('body', body)}
+        searchText={searchText}
+        searchMode={searchMode}
+        currentMatchIndex={currentMatchIndex}
+        hideTypeLabel
       />
 
       {/* Recorded At */}
@@ -356,169 +576,44 @@ function RequestContent({
             <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
               Recorded At
             </label>
-            {searchText && formData.recorded_at.toLowerCase().includes(searchText.toLowerCase()) && (
-              <span className="text-xs text-yellow-400 flex items-center gap-1">
-                <span>✓</span> Match
-              </span>
-            )}
           </div>
           <Input
             value={formData.recorded_at}
             onChange={(e) => onFieldChange('recorded_at', e.target.value)}
-            className="px-3 py-2 bg-white/5 border border-white/10 rounded text-sm font-mono text-zinc-300"
+            className="w-[26ch] max-w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm font-mono text-zinc-300"
           />
         </div>
       )}
 
-      {/* 🔥 SPARK SCRIPTS */}
-      {formData.spark && Array.isArray(formData.spark) && formData.spark.length > 0 && (
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-              Spark Scripts ({formData.spark.length})
-            </label>
-            {searchText && formData.spark.some((s: any) => 
-              s.script?.toLowerCase().includes(searchText.toLowerCase())
-            ) && (
-              <span className="text-xs text-yellow-400 flex items-center gap-1">
-                <span>✓</span> Match in scripts
-              </span>
-            )}
-          </div>
-          <div className="space-y-2">
-            {formData.spark.map((spark: any, idx: number) => (
-              <div key={idx} className={`p-3 rounded border ${
-                spark.when === 'after' 
-                  ? 'bg-amber-400/5 border-amber-400/20' 
-                  : 'bg-orange-400/5 border-orange-400/20'
-              }`}>
-                <div className={`text-xs font-semibold mb-2 ${
-                  spark.when === 'after' ? 'text-amber-400' : 'text-orange-400'
-                }`}>
-                  {spark.when === 'after' ? '⏵ After Request' : '⏵ Before Request'}
-                </div>
-                <pre className="text-xs font-mono text-zinc-400 whitespace-pre-wrap max-h-[150px] overflow-y-auto">
-                  {highlightText(
-                    spark.script?.substring(0, 300) + (spark.script?.length > 300 ? '...' : ''),
-                    searchText
-                  )}
-                </pre>
+      {/* REQUEST THROUGHPUT (optional) */}
+      <div>
+        {formData.throughput?.enabled && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-zinc-500 block mb-1">Target RPS</label>
+              <Input
+                type="number"
+                min="0.1"
+                step="0.1"
+                value={formData.throughput?.target_rps ?? ''}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  const next = raw === '' ? undefined : Number(raw);
+                  onFieldChange('throughput', {
+                    ...formData.throughput,
+                    enabled: true,
+                    target_rps: next,
+                  });
+                }}
+                className={compactInputClass}
+              />
+              <div className="mt-1 text-xs text-zinc-500">
+                Approx: {(((Number(formData.throughput?.target_rps) || 0) * 60)).toFixed(0)} req/min
               </div>
-            ))}
+            </div>
           </div>
-        </div>
-      )}
-
-      {/* EXTRACTORS (Pulse format) */}
-      {formData.extractors && Array.isArray(formData.extractors) && formData.extractors.length > 0 && (
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-              🔍 Extractors ({formData.extractors.length})
-            </label>
-            {searchText && formData.extractors.some((e: any) => 
-              e.var?.toLowerCase().includes(searchText.toLowerCase()) ||
-              e.variable?.toLowerCase().includes(searchText.toLowerCase()) ||
-              e.pattern?.toLowerCase().includes(searchText.toLowerCase())
-            ) && (
-              <span className="text-xs text-yellow-400 flex items-center gap-1">
-                <span>✓</span> Match in extractors
-              </span>
-            )}
-          </div>
-          <div className="space-y-2">
-            {formData.extractors.map((ext: any, idx: number) => (
-              <div key={idx} className="p-3 bg-blue-400/5 border border-blue-400/20 rounded">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs px-1.5 py-0.5 bg-blue-400/20 text-blue-400 rounded font-mono">
-                    {highlightText(ext.type || 'regex', searchText)}
-                  </span>
-                  <span className="text-sm font-mono text-purple-400">
-                    ${'{'}${highlightText(ext.var || ext.variable, searchText)}${'}'}
-                  </span>
-                </div>
-                {ext.pattern && (
-                  <div className="text-xs font-mono text-zinc-500 truncate">
-                    {highlightText(ext.pattern, searchText)}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* EXTRACT (legacy format) */}
-      {formData.extract && typeof formData.extract === 'object' && !Array.isArray(formData.extract) && Object.keys(formData.extract).length > 0 && (
-        <div>
-          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-            🔍 Extract
-          </label>
-          <div className="space-y-2">
-            {Object.entries(formData.extract).map(([key, value]) => (
-              <div key={key} className="p-2 bg-blue-400/5 border border-blue-400/20 rounded text-sm">
-                <span className="font-mono text-purple-400">${'{'}${highlightText(key, searchText)}${'}'}</span>
-                <span className="text-zinc-500 mx-2">←</span>
-                <span className="font-mono text-zinc-300 text-xs">{highlightText(String(value), searchText)}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ASSERTIONS (Pulse format) */}
-      {formData.assertions && Array.isArray(formData.assertions) && formData.assertions.length > 0 && (
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-              ✅ Assertions ({formData.assertions.length})
-            </label>
-            {searchText && formData.assertions.some((a: any) => 
-              a.type?.toLowerCase().includes(searchText.toLowerCase()) ||
-              String(a.value || '').toLowerCase().includes(searchText.toLowerCase()) ||
-              a.pattern?.toLowerCase().includes(searchText.toLowerCase())
-            ) && (
-              <span className="text-xs text-yellow-400 flex items-center gap-1">
-                <span>✓</span> Match in assertions
-              </span>
-            )}
-          </div>
-          <div className="space-y-2">
-            {formData.assertions.map((assertion: any, idx: number) => (
-              <div key={idx} className="p-2 bg-green-400/5 border border-green-400/20 rounded flex items-center gap-2">
-                <span className="text-xs px-1.5 py-0.5 bg-green-400/20 text-green-400 rounded font-mono">
-                  {highlightText(assertion.type, searchText)}
-                </span>
-                <span className="text-sm font-mono text-zinc-300">
-                  {highlightText(
-                    assertion.value !== undefined ? String(assertion.value) : assertion.pattern || assertion.name || '',
-                    searchText
-                  )}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ASSERT (legacy format) */}
-      {formData.assert && typeof formData.assert === 'object' && !Array.isArray(formData.assert) && Object.keys(formData.assert).length > 0 && (
-        <div>
-          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-            ✅ Assert
-          </label>
-          <div className="space-y-2">
-            {Object.entries(formData.assert).map(([key, value]) => (
-              <div key={key} className="p-2 bg-green-400/5 border border-green-400/20 rounded flex items-center gap-2">
-                <span className="text-xs px-1.5 py-0.5 bg-green-400/20 text-green-400 rounded font-mono">
-                  {highlightText(key, searchText)}
-                </span>
-                <span className="text-sm font-mono text-zinc-300">{highlightText(String(value), searchText)}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* THINK TIME inline */}
       {formData.think_time && (
@@ -527,22 +622,12 @@ function RequestContent({
             <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
               ⏱ Think Time
             </label>
-            {searchText && String(formData.think_time).toLowerCase().includes(searchText.toLowerCase()) && (
-              <span className="text-xs text-yellow-400 flex items-center gap-1">
-                <span>✓</span> Match
-              </span>
-            )}
           </div>
           <div className="px-3 py-2 bg-cyan-400/5 border border-cyan-400/20 rounded text-sm font-mono text-cyan-400">
-            {highlightText(String(formData.think_time), searchText)}
+            {String(formData.think_time)}
           </div>
         </div>
       )}
     </div>
   );
-}
-
-
-function escapeRegex(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }

@@ -7,7 +7,6 @@ import {
   GitBranch,
   Code,
   Cookie,
-  FileCode,
   Clock,
   CheckCircle,
   Filter,
@@ -72,7 +71,7 @@ export function YAMLTreeNode({
   const isExpanded = node.expanded ?? true;
   const hoverTimerRef = useRef<number | null>(null);
 
-  // Clean up timer on unmount
+  // Limpiar timer al desmontar
   useEffect(() => {
     return () => {
       if (hoverTimerRef.current) {
@@ -120,7 +119,7 @@ export function YAMLTreeNode({
     const percentage = (y / height) * 100;
 
     const canContainResult = canContain(node.type, draggedNodeType);
-    
+
     // AUTO-EXPAND: Si puede contener y NO está expandido, iniciar timer
     if (canContainResult && hasChildren && !isExpanded) {
       if (!hoverTimerRef.current) {
@@ -138,7 +137,7 @@ export function YAMLTreeNode({
 
     // Determinar posición basada en zonas
     let position: 'before' | 'after' | 'inside';
-    
+
     if (percentage < 25) {
       position = 'before';
     } else if (percentage > 75) {
@@ -148,7 +147,7 @@ export function YAMLTreeNode({
     }
 
     const canDropResult = canDrop(draggedNodeType, node.type, position);
-    
+
     if (canDropResult) {
       e.dataTransfer.dropEffect = 'move';
       setDragOver(position);
@@ -159,11 +158,11 @@ export function YAMLTreeNode({
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
-    // Only clear if we really leave the node (not from a child)
+    // Solo limpiar si realmente salimos del nodo (no de un child)
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX;
     const y = e.clientY;
-    
+
     if (
       x < rect.left ||
       x > rect.right ||
@@ -171,7 +170,7 @@ export function YAMLTreeNode({
       y > rect.bottom
     ) {
       setDragOver(null);
-      
+
       // Cancelar timer de auto-expand
       if (hoverTimerRef.current) {
         clearTimeout(hoverTimerRef.current);
@@ -185,7 +184,7 @@ export function YAMLTreeNode({
     e.stopPropagation();
 
     const dragged = getDraggedNode();
-    
+
     if (dragged && dragged.id !== node.id && dragOver) {
       onNodeMove(dragged.id, node.id, dragOver);
     }
@@ -197,12 +196,17 @@ export function YAMLTreeNode({
   const icon = getNodeIcon(node.type);
   const color = getNodeColor(node.type, node);
   const IconComponent = icon;
-  
+
+  // Debug: log tipos de nodos especiales
+  if (['extract', 'extractor', 'assert', 'assertion', 'spark_before', 'spark_after', 'think_time'].includes(node.type)) {
+    console.log(`Node type: ${node.type}, Color: ${color}`);
+  }
 
   return (
     <div className="select-none">
       <div
         draggable
+        data-node-id={node.id}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
         onDragOver={handleDragOver}
@@ -244,9 +248,8 @@ export function YAMLTreeNode({
         </div>
 
         {/* Name con highlight si match */}
-        <span className={`text-sm truncate flex-1 ${
-          node.data?.enabled === false ? 'text-zinc-400' : 'text-zinc-300'
-        }`}>
+        <span className={`text-sm truncate flex-1 ${node.data?.enabled === false ? 'text-zinc-400' : 'text-zinc-300'
+          }`}>
           {highlightText(node.name, searchQuery)}
         </span>
 
@@ -284,7 +287,7 @@ function getNodeIcon(type: YAMLNodeType): any {
     'variables': Braces,
     'data_source': Database,
     'http_defaults': Settings,
-    'scenarios': Folder,
+    'scenarios': List,
     'scenario': Zap,
     'metrics': BarChart3,
     'load': Gauge,
@@ -311,7 +314,7 @@ function getNodeIcon(type: YAMLNodeType): any {
     'assertion': CheckCircle,
     'cookies': Cookie,
     'cache_manager': HardDrive,
-    'error_policy': FileCode,
+    'error_policy': AlertTriangle,
     'spark': CodeXml,
     'spark_before': CodeXml,
     'spark_after': CodeXml,
@@ -325,12 +328,12 @@ function getNodeIcon(type: YAMLNodeType): any {
 function getNodeColor(type: YAMLNodeType, node?: YAMLNode): string {
   // Check if node is disabled (enabled: false)
   const isDisabled = node?.data?.enabled === false;
-  
+
   if (isDisabled) {
     // Gris más claro para CUALQUIER elemento deshabilitado
     return 'text-zinc-400';
   }
-  
+
   // Use explicit switch to ensure Tailwind detects all classes
   switch (type) {
     case 'root':
@@ -403,9 +406,9 @@ function getNodeColor(type: YAMLNodeType, node?: YAMLNode): string {
   }
 }
 
-function getNodeBadge(node: YAMLNode): JSX.Element | null {
+function getNodeBadge(node: YAMLNode): React.ReactNode {
   const httpMethods = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
-  
+
   // Badge DISABLED para requests deshabilitados
   if (node.data?.enabled === false && (httpMethods.includes(node.type) || node.type === 'request')) {
     return (
@@ -414,7 +417,7 @@ function getNodeBadge(node: YAMLNode): JSX.Element | null {
       </span>
     );
   }
-  
+
   if (httpMethods.includes(node.type)) {
     return (
       <span className="text-xs px-1.5 py-0.5 rounded bg-blue-400/15 text-blue-400 font-mono font-medium border border-blue-400/30 uppercase">
@@ -487,7 +490,7 @@ function getNodeBadge(node: YAMLNode): JSX.Element | null {
     const path = node.data?.path || '';
     const extension = path.split('.').pop()?.toUpperCase();
     const displayText = extension || node.data?.mime_type?.split('/').pop()?.toUpperCase() || 'FILE';
-    
+
     return (
       <span className="text-xs px-1.5 py-0.5 rounded bg-amber-400/15 text-amber-400 font-mono font-medium border border-amber-400/30">
         {displayText}
@@ -504,14 +507,9 @@ function getNodeBadge(node: YAMLNode): JSX.Element | null {
     );
   }
 
-  // Headers container badge - mostrar cantidad de headers
+  // Headers container badge - removed count as per user request
   if (node.type === 'headers' && node.data) {
-    const count = Object.keys(node.data).length;
-    return (
-      <span className="text-xs px-1.5 py-0.5 rounded bg-red-500/15 text-red-500 font-mono font-medium border border-red-500/30">
-        {count}
-      </span>
-    );
+    return null;
   }
 
   return null;
@@ -521,12 +519,12 @@ function highlightText(text: string, searchQuery: string): React.ReactNode {
   if (!searchQuery.trim()) {
     return text;
   }
-  
+
   const parts = text.split(new RegExp(`(${escapeRegex(searchQuery)})`, 'gi'));
-  
+
   return (
     <>
-      {parts.map((part, index) => 
+      {parts.map((part, index) =>
         part.toLowerCase() === searchQuery.toLowerCase() ? (
           <mark key={index} className="bg-yellow-400 text-black px-0.5 rounded">
             {part}

@@ -18,6 +18,8 @@ export function YAMLEditorStandaloneComplete() {
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('tree');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const parseDebounceRef = useRef<number | null>(null);
+  const serializeDebounceRef = useRef<number | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [leftPanelWidth, setLeftPanelWidth] = useState(50); // Porcentaje
   const [isResizing, setIsResizing] = useState(false);
@@ -32,11 +34,30 @@ export function YAMLEditorStandaloneComplete() {
     }
   }, [isInitialized]);
 
+  // Helper to find a node by ID in the tree
+  const findNodeById = (node: YAMLNode, id: string): YAMLNode | null => {
+    if (node.id === id) return node;
+    if (node.children) {
+      for (const child of node.children) {
+        const found = findNodeById(child, id);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+
   // Sincronizar código a árbol
   const syncCodeToTree = (code: string) => {
     try {
       const tree = parseYAMLToTree(code);
       setYamlTree(tree);
+
+      // Actualizar selectedNode si existe en el nuevo árbol para mantener la UI sincronizada
+      if (selectedNode && tree) {
+        const freshNode = findNodeById(tree, selectedNode.id);
+        setSelectedNode(freshNode ?? null);
+      }
+
       setError(null);
     } catch (err) {
       console.error('Parse error:', err);
@@ -58,7 +79,12 @@ export function YAMLEditorStandaloneComplete() {
 
   const handleCodeChange = (newCode: string) => {
     setYamlCode(newCode);
-    syncCodeToTree(newCode);
+    if (parseDebounceRef.current) {
+      window.clearTimeout(parseDebounceRef.current);
+    }
+    parseDebounceRef.current = window.setTimeout(() => {
+      syncCodeToTree(newCode);
+    }, 350);
   };
 
   const handleTreeChange = (newTree: YAMLNode) => {
@@ -68,19 +94,25 @@ export function YAMLEditorStandaloneComplete() {
 
   const handleNodeUpdate = (nodeId: string, updatedData: any) => {
     if (!yamlTree) return;
-    
+
+    let updatedSelectedNode: YAMLNode | null = null;
+
     const updateNodeInTree = (node: YAMLNode): YAMLNode => {
       if (node.id === nodeId) {
         // Extraer el nombre si viene en __name
         const newName = updatedData.__name;
         const cleanData = { ...updatedData };
         delete cleanData.__name;
-        
-        return { 
-          ...node, 
+
+        const updated = {
+          ...node,
           name: newName !== undefined ? newName : node.name,
-          data: cleanData 
+          data: cleanData
         };
+        if (selectedNode?.id === nodeId) {
+          updatedSelectedNode = updated;
+        }
+        return updated;
       }
       if (node.children) {
         return {
@@ -93,7 +125,17 @@ export function YAMLEditorStandaloneComplete() {
 
     const updatedTree = updateNodeInTree(yamlTree);
     setYamlTree(updatedTree);
-    syncTreeToCode(updatedTree);
+
+    if (updatedSelectedNode) {
+      setSelectedNode(updatedSelectedNode);
+    }
+
+    if (serializeDebounceRef.current) {
+      window.clearTimeout(serializeDebounceRef.current);
+    }
+    serializeDebounceRef.current = window.setTimeout(() => {
+      syncTreeToCode(updatedTree);
+    }, 220);
   };
 
   const handleUpload = () => {
@@ -103,11 +145,27 @@ export function YAMLEditorStandaloneComplete() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (parseDebounceRef.current) {
+        window.clearTimeout(parseDebounceRef.current);
+      }
+      if (serializeDebounceRef.current) {
+        window.clearTimeout(serializeDebounceRef.current);
+      }
+
+      // Limpiar estado anterior para evitar referencias stale al cambiar de script
+      setError(null);
+      setSelectedNode(null);
+      setYamlTree(null);
+
       const reader = new FileReader();
       reader.onload = (event) => {
         const content = event.target?.result as string;
         setYamlCode(content);
         syncCodeToTree(content);
+        e.target.value = '';
+      };
+      reader.onerror = () => {
+        setError('Error reading uploaded file');
       };
       reader.readAsText(file);
     }
@@ -134,10 +192,10 @@ export function YAMLEditorStandaloneComplete() {
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizing) return;
-      
+
       const containerWidth = window.innerWidth;
       const newWidth = (e.clientX / containerWidth) * 100;
-      
+
       // Limitar entre 20% y 80%
       const clampedWidth = Math.min(Math.max(newWidth, 20), 80);
       setLeftPanelWidth(clampedWidth);
@@ -154,7 +212,7 @@ export function YAMLEditorStandaloneComplete() {
       document.addEventListener('mouseup', handleMouseUp);
       document.body.style.cursor = 'col-resize';
       document.body.style.userSelect = 'none';
-      
+
       return () => {
         document.removeEventListener('mousemove', handleMouseMove);
         document.removeEventListener('mouseup', handleMouseUp);
@@ -163,6 +221,17 @@ export function YAMLEditorStandaloneComplete() {
       };
     }
   }, [isResizing]);
+
+  useEffect(() => {
+    return () => {
+      if (parseDebounceRef.current) {
+        window.clearTimeout(parseDebounceRef.current);
+      }
+      if (serializeDebounceRef.current) {
+        window.clearTimeout(serializeDebounceRef.current);
+      }
+    };
+  }, []);
 
   return (
     <div className="flex flex-col h-screen bg-[#0a0a0a] w-full overflow-hidden">
@@ -173,7 +242,7 @@ export function YAMLEditorStandaloneComplete() {
             {/* Relampo Logo */}
             <div className="relative w-10 h-10 bg-gradient-to-br from-yellow-300 via-yellow-400 to-yellow-500 rounded-xl flex items-center justify-center shadow-xl shadow-yellow-400/40">
               <svg width="18" height="22" viewBox="0 0 18 22" fill="none">
-                <path d="M10.5 0L0 12.5H7.5L6 22L18 9H10.5V0Z" fill="white" className="drop-shadow-lg"/>
+                <path d="M10.5 0L0 12.5H7.5L6 22L18 9H10.5V0Z" fill="white" className="drop-shadow-lg" />
               </svg>
             </div>
             <div>
@@ -183,27 +252,24 @@ export function YAMLEditorStandaloneComplete() {
               <p className="text-xs text-zinc-500">{language === 'es' ? 'Editor de YAML' : 'YAML Editor'}</p>
             </div>
           </div>
-          
+
           {/* Language Toggle */}
           <div className="flex items-center gap-2">
-            <span className={`text-sm font-medium transition-colors ${
-              language === 'en' ? 'text-yellow-400' : 'text-zinc-500'
-            }`}>EN</span>
+            <span className={`text-sm font-medium transition-colors ${language === 'en' ? 'text-yellow-400' : 'text-zinc-500'
+              }`}>EN</span>
             <button
               onClick={() => setLanguage(language === 'en' ? 'es' : 'en')}
               className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 focus:ring-offset-[#111111] bg-zinc-700 hover:bg-zinc-600"
             >
               <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-yellow-400 transition-transform ${
-                  language === 'es' ? 'translate-x-6' : 'translate-x-1'
-                }`}
+                className={`inline-block h-4 w-4 transform rounded-full bg-yellow-400 transition-transform ${language === 'es' ? 'translate-x-6' : 'translate-x-1'
+                  }`}
               />
             </button>
-            <span className={`text-sm font-medium transition-colors ${
-              language === 'es' ? 'text-yellow-400' : 'text-zinc-500'
-            }`}>ES</span>
+            <span className={`text-sm font-medium transition-colors ${language === 'es' ? 'text-yellow-400' : 'text-zinc-500'
+              }`}>ES</span>
           </div>
-          
+
           <div className="flex items-center gap-2">
             <Button
               onClick={handleUpload}
@@ -251,22 +317,20 @@ export function YAMLEditorStandaloneComplete() {
           <div className="flex items-center border-b border-white/5 bg-[#111111] flex-shrink-0">
             <button
               onClick={() => setViewMode('code')}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${
-                viewMode === 'code'
-                  ? 'text-yellow-400 bg-yellow-400/10 border-b-2 border-yellow-400'
-                  : 'text-zinc-400 hover:text-zinc-300 hover:bg-white/5'
-              }`}
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${viewMode === 'code'
+                ? 'text-yellow-400 bg-yellow-400/10 border-b-2 border-yellow-400'
+                : 'text-zinc-400 hover:text-zinc-300 hover:bg-white/5'
+                }`}
             >
               <Code2 className="w-4 h-4" />
               Code
             </button>
             <button
               onClick={() => setViewMode('tree')}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${
-                viewMode === 'tree'
-                  ? 'text-yellow-400 bg-yellow-400/10 border-b-2 border-yellow-400'
-                  : 'text-zinc-400 hover:text-zinc-300 hover:bg-white/5'
-              }`}
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${viewMode === 'tree'
+                ? 'text-yellow-400 bg-yellow-400/10 border-b-2 border-yellow-400'
+                : 'text-zinc-400 hover:text-zinc-300 hover:bg-white/5'
+                }`}
             >
               <GitBranch className="w-4 h-4" />
               Tree
@@ -279,6 +343,8 @@ export function YAMLEditorStandaloneComplete() {
               <YAMLCodeEditor
                 value={yamlCode}
                 onChange={handleCodeChange}
+                readOnly={true}
+                active={viewMode === 'code'}
               />
             ) : (
               <YAMLTreeView
@@ -310,175 +376,5 @@ export function YAMLEditorStandaloneComplete() {
 }
 
 function getDefaultYAML(): string {
-  return `# ============================================================================
-# RELAMPO YAML - AUTO-GENERATED FROM RECORDING
-# ============================================================================
-# Recorded: 2024-01-24 10:35:22 UTC
-# Recording duration: 15 seconds
-# Total requests captured: 4
-# Configuration: capture_response = true
-# ============================================================================
-
-test:
-  name: "Recording from shop.example.com - 2024-01-24 10:35:22"
-  description: ""
-  version: "1.0"
-  recorded_at: "2024-01-24T10:35:22Z"
-  recorded_from: "https://shop.example.com"
-
-http_defaults:
-  base_url: "https://shop.example.com"
-  follow_redirects: true
-  headers:
-    User-Agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    Accept-Language: "es-ES,es;q=0.9,en;q=0.8"
-
-scenarios:
-  - name: "Recorded Scenario"
-    load:
-      type: constant
-      users: 1
-      duration: 1m
-      ramp_up: 1s
-      iterations: 1
-    cookies:
-      mode: auto
-    steps:
-      # =====================================================
-      # Request 1: POST - Login (generates token)
-      # =====================================================
-      - request:
-          method: POST
-          url: /api/v1/auth/login
-          headers:
-            Accept: "application/json"
-            Content-Type: "application/json"
-            X-Requested-With: "XMLHttpRequest"
-          body:
-            email: "usuario@example.com"
-            password: "***MASKED***"
-            remember_me: true
-          recorded_at: "2024-01-24T10:35:22.145Z"
-          response:
-            status: 200
-            headers:
-              Content-Type: "application/json"
-              Set-Cookie: "session_id=abc123def456; Path=/; HttpOnly; Secure"
-              X-Response-Time: "189ms"
-            body:
-              success: true
-              token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
-              user:
-                id: 42
-                email: "usuario@example.com"
-                name: "Juan Pérez"
-              expires_in: 3600
-            time_ms: 189
-
-      # =====================================================
-      # Request 2: GET - Get profile (uses token, returns accountKey)
-      # =====================================================
-      - request:
-          method: GET
-          url: /api/v1/user/profile
-          headers:
-            Accept: "application/json"
-            Authorization: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
-            X-Requested-With: "XMLHttpRequest"
-          recorded_at: "2024-01-24T10:35:24.567Z"
-          response:
-            status: 200
-            headers:
-              Content-Type: "application/json"
-              Cache-Control: "private, no-cache"
-            body:
-              user:
-                id: 42
-                email: "usuario@example.com"
-                name: "Juan Pérez"
-                accountKey: "acc_9x8y7z6w5v4u"
-                avatar: "https://cdn.example.com/avatars/42.jpg"
-                joined_at: "2023-05-15T10:30:00Z"
-                tier: "premium"
-                preferences:
-                  language: "es"
-                  currency: "USD"
-                  notifications: true
-            time_ms: 67
-
-      # =====================================================
-      # Request 3: GET - Get account settings (uses accountKey in path, returns regionId)
-      # =====================================================
-      - request:
-          method: GET
-          url: /api/v1/accounts/acc_9x8y7z6w5v4u/settings
-          headers:
-            Accept: "application/json"
-            Authorization: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
-            X-Requested-With: "XMLHttpRequest"
-          recorded_at: "2024-01-24T10:35:26.890Z"
-          response:
-            status: 200
-            headers:
-              Content-Type: "application/json"
-              Cache-Control: "private, max-age=300"
-              ETag: "\\"settings-v42\\""
-            body:
-              accountKey: "acc_9x8y7z6w5v4u"
-              regionId: "us-east-1"
-              settings:
-                notifications:
-                  email: true
-                  push: true
-                  sms: false
-                privacy:
-                  profile_visible: true
-                  activity_tracking: false
-                billing:
-                  auto_renew: true
-                  payment_method: "credit_card"
-              features:
-                - "analytics"
-                - "advanced_search"
-                - "api_access"
-            time_ms: 112
-
-      # =====================================================
-      # Request 4: POST - Create resource in region (uses regionId in body)
-      # =====================================================
-      - request:
-          method: POST
-          url: /api/v1/resources
-          headers:
-            Accept: "application/json"
-            Content-Type: "application/json"
-            Authorization: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
-            X-Requested-With: "XMLHttpRequest"
-          body:
-            name: "My New Resource"
-            type: "storage"
-            regionId: "us-east-1"
-            capacity: 100
-            auto_scale: true
-          recorded_at: "2024-01-24T10:35:30.234Z"
-          response:
-            status: 201
-            headers:
-              Content-Type: "application/json"
-              Location: "/api/v1/resources/res_a1b2c3d4e5f6"
-              X-Response-Time: "456ms"
-            body:
-              success: true
-              resource:
-                id: "res_a1b2c3d4e5f6"
-                name: "My New Resource"
-                type: "storage"
-                regionId: "us-east-1"
-                capacity: 100
-                auto_scale: true
-                status: "provisioning"
-                created_at: "2024-01-24T10:35:30.234Z"
-                estimated_ready_at: "2024-01-24T10:37:30.234Z"
-            time_ms: 456
-`;
+  return "";
 }

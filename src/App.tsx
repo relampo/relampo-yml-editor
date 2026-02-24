@@ -9,16 +9,16 @@ import { DesignDoc } from './components/DesignDoc';
 import { LandingPage } from './components/LandingPage';
 import { CLI } from './components/CLI';
 import { BrandCampaign } from './components/BrandCampaign';
-import { YAMLEditorStandalone } from './components/YAMLEditorStandalone';
+import { YAMLEditorStandaloneComplete } from './components/YAMLEditorStandaloneComplete';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
-export type View = 
+export type View =
   | 'landing'
-  | 'dashboard' 
-  | 'workbench' 
-  | 'projects' 
+  | 'dashboard'
+  | 'workbench'
+  | 'projects'
   | 'cli'
-  | 'settings' 
+  | 'settings'
   | 'design-doc'
   | 'brand-campaign'
   | 'yaml-editor-standalone';
@@ -26,7 +26,7 @@ export type View =
 export default function App() {
   // Check if we're in standalone mode
   const isStandalone = window.location.hash === '#standalone-yaml-editor';
-  
+
   const [currentView, setCurrentView] = useState<View>('landing');
 
   // If standalone mode, render only the YAML Editor
@@ -34,7 +34,7 @@ export default function App() {
     return (
       <ErrorBoundary>
         <LanguageProvider>
-          <YAMLEditorStandalone />
+          <YAMLEditorStandaloneComplete />
         </LanguageProvider>
       </ErrorBoundary>
     );
@@ -59,7 +59,7 @@ export default function App() {
       case 'brand-campaign':
         return <BrandCampaign />;
       case 'yaml-editor-standalone':
-        return <YAMLEditorStandalone />;
+        return <YAMLEditorStandaloneComplete />;
       default:
         return <Workbench />;
     }

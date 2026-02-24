@@ -83,20 +83,23 @@ export interface HttpDefaults {
 }
 
 export interface Load {
-  type: 'constant' | 'ramp' | 'spike' | 'step';
+  type: 'constant' | 'ramp' | 'ramp_up_down' | 'throughput' | 'intent';
   users?: number;
   duration?: string;
   ramp_up?: string;
+  ramp_down?: string;
   iterations?: number;
   start_users?: number;
   end_users?: number;
-  spike_users?: number;
-  spike_duration?: string;
-  spike_at?: string;
-  steps?: Array<{
-    users: number;
-    duration: string;
-  }>;
+  target_rps?: number;
+  target_unit?: 'rps' | 'vus';
+  target_value?: number;
+  p95_max_ms?: number;
+  error_rate_max_pct?: number;
+  warmup?: string;
+  min_vus?: number;
+  max_vus?: number;
+  aggressiveness?: 'low' | 'medium' | 'high';
 }
 
 export interface RequestStep {
@@ -106,9 +109,21 @@ export interface RequestStep {
   query_params?: Record<string, string>;
   body?: any;
   timeout?: string;
+  cookie_override?: 'inherit' | 'enabled' | 'disabled';
+  cache_override?: 'inherit' | 'enabled' | 'disabled';
+  retrieve_embedded_resources?: boolean;
+  redirect_automatically?: boolean;
+  follow_redirects?: boolean;
   extract?: Record<string, string>;
   assert?: AssertConfig;
   retry?: RetryConfig;
+  error_policy?: {
+    on_error?: 'continue' | 'stop';
+  };
+  throughput?: {
+    enabled?: boolean;
+    target_rps?: number;
+  };
   on_error?: 'continue' | 'stop' | 'fail_iteration';
   data_source?: DataSource;
 }
@@ -164,11 +179,6 @@ export interface LoopStep {
 export interface IfStep {
   condition: string;
   steps: any[];
-}
-
-export interface OnErrorStep {
-  action: 'continue' | 'stop' | 'fail_iteration';
-  steps?: any[];
 }
 
 export interface Metrics {

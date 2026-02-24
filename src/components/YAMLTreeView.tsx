@@ -1,9 +1,9 @@
-import { useState } from 'react';
-import { Search, X } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Search, X, Plus } from 'lucide-react';
+import { useLanguage } from '../contexts/LanguageContext';
 import type { YAMLNode } from '../types/yaml';
 import { YAMLTreeNode } from './YAMLTreeNode';
 import { YAMLContextMenu, type YAMLAddableNodeType } from './YAMLContextMenu';
-import { useLanguage } from '../contexts/LanguageContext';
 
 interface YAMLTreeViewProps {
   tree: YAMLNode | null;
@@ -25,6 +25,60 @@ export function YAMLTreeView({
     node: YAMLNode;
   } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const treeContainerRef = useRef<HTMLDivElement | null>(null);
+
+  const visibleNodes = useMemo(() => {
+    if (!tree) return [] as YAMLNode[];
+    const out: YAMLNode[] = [];
+    const walk = (node: YAMLNode) => {
+      out.push(node);
+      const expanded = node.expanded ?? true;
+      if (node.children && node.children.length > 0 && expanded) {
+        node.children.forEach(walk);
+      }
+    };
+    walk(tree);
+    return out;
+  }, [tree]);
+
+  useEffect(() => {
+    if (!selectedNode?.id || !treeContainerRef.current) return;
+    const el = treeContainerRef.current.querySelector(
+      `[data-node-id="${selectedNode.id}"]`
+    ) as HTMLElement | null;
+    if (!el) return;
+    el.scrollIntoView({ block: 'nearest' });
+  }, [selectedNode?.id, visibleNodes.length]);
+
+  const handleTreeKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!visibleNodes.length) return;
+
+    const target = e.target as HTMLElement | null;
+    const tag = target?.tagName?.toLowerCase();
+    const isTypingContext =
+      tag === 'input' ||
+      tag === 'textarea' ||
+      target?.isContentEditable;
+    if (isTypingContext) return;
+
+    const currentIndex = selectedNode
+      ? visibleNodes.findIndex((n) => n.id === selectedNode.id)
+      : -1;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      const nextIndex = currentIndex < 0 ? 0 : Math.min(currentIndex + 1, visibleNodes.length - 1);
+      onNodeSelect(visibleNodes[nextIndex]);
+      return;
+    }
+
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      const prevIndex = currentIndex < 0 ? 0 : Math.max(currentIndex - 1, 0);
+      onNodeSelect(visibleNodes[prevIndex]);
+      return;
+    }
+  };
 
   const handleContextMenu = (e: React.MouseEvent, node: YAMLNode) => {
     e.preventDefault();
@@ -41,7 +95,7 @@ export function YAMLTreeView({
 
   const handleNodeToggle = (nodeId: string) => {
     if (!tree) return;
-    
+
     const updatedTree = toggleNodeInTree(tree, nodeId);
     onTreeChange(updatedTree);
   };
@@ -51,6 +105,15 @@ export function YAMLTreeView({
 
     const newNode = createNodeByType(nodeType);
     const updatedTree = addNodeToTree(tree, contextMenu.node.id, newNode);
+    onTreeChange(updatedTree);
+    handleCloseContextMenu();
+  };
+
+  const handleDuplicateNode = (nodeId: string) => {
+    if (!tree) return;
+
+    const copySuffix = t('yamlEditor.common.copy') || 'Copy';
+    const updatedTree = duplicateNodeInTree(tree, nodeId, copySuffix);
     onTreeChange(updatedTree);
     handleCloseContextMenu();
   };
@@ -83,13 +146,25 @@ export function YAMLTreeView({
     return (
       <div className="h-full w-full bg-[#0a0a0a] flex items-center justify-center">
         <div className="text-center px-6">
-          <div className="text-zinc-600 mb-2">
-            <svg className="w-16 h-16 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-          </div>
-          <p className="text-sm text-zinc-500">{t('yamlEditor.tree.writeOrUploadYaml')}</p>
-          <p className="text-xs text-zinc-600 mt-1">{t('yamlEditor.tree.toViewTree')}</p>
+          <p className="text-sm text-zinc-500 mb-8 max-w-[280px] mx-auto">
+            {t('yamlEditor.emptyState.description')}
+          </p>
+
+          <button
+            onClick={() => {
+              const rootPlan = createNodeByType('root_plan');
+              onTreeChange(rootPlan);
+            }}
+            className="group relative px-6 py-3 bg-yellow-400 hover:bg-yellow-300 text-black font-bold rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 flex items-center gap-3 mx-auto shadow-xl shadow-yellow-400/10"
+          >
+            <Plus className="w-5 h-5" />
+            <span>{t('yamlEditor.emptyState.addBtn')}</span>
+            <div className="absolute inset-0 rounded-xl bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+          </button>
+
+          <p className="mt-8 text-xs text-zinc-600">
+            Pulse Relampo v1.1 • Motor Enterprise
+          </p>
         </div>
       </div>
     );
@@ -97,7 +172,7 @@ export function YAMLTreeView({
 
   return (
     <div className="h-full w-full bg-[#0a0a0a] flex flex-col">
-      {/* Search Bar - Exact converter style */}
+      {/* Search Bar - Estilo exacto del converter */}
       <div className="flex-shrink-0 px-3 pt-3 pb-2">
         <div className="flex items-center gap-2 p-3 bg-[#111111] border border-white/10 rounded-lg">
           {/* Input container */}
@@ -105,19 +180,19 @@ export function YAMLTreeView({
             <Search className="w-4 h-4 text-zinc-500 flex-shrink-0" />
             <input
               type="text"
-              placeholder={t('yamlEditor.search.searchNodes')}
+              placeholder="Search nodes..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="flex-1 bg-transparent border-none text-sm text-zinc-300 placeholder-zinc-500 outline-none"
             />
           </div>
-          
+
           {/* Close button */}
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
               className="p-1.5 bg-[#0a0a0a] border border-white/10 rounded text-zinc-500 hover:border-yellow-400 hover:text-yellow-400 transition-all flex items-center justify-center"
-              title={t('yamlEditor.search.closeSearch')}
+              title="Close search"
             >
               <X className="w-4 h-4" />
             </button>
@@ -126,7 +201,13 @@ export function YAMLTreeView({
       </div>
 
       {/* Tree */}
-      <div className="flex-1 overflow-y-auto px-3 pb-3">
+      <div
+        ref={treeContainerRef}
+        className="flex-1 overflow-y-auto px-3 pb-3 outline-none"
+        tabIndex={0}
+        onKeyDown={handleTreeKeyDown}
+        onMouseDown={() => treeContainerRef.current?.focus()}
+      >
         {tree ? (
           <YAMLTreeNode
             node={tree}
@@ -141,7 +222,7 @@ export function YAMLTreeView({
           />
         ) : (
           <div className="flex items-center justify-center h-32">
-            <p className="text-sm text-zinc-500">{t('yamlEditor.tree.noYamlLoaded')}</p>
+            <p className="text-sm text-zinc-500">No YAML loaded</p>
           </div>
         )}
       </div>
@@ -155,6 +236,7 @@ export function YAMLTreeView({
           onClose={handleCloseContextMenu}
           onAddNode={handleAddNode}
           onRemove={handleRemoveNode}
+          onDuplicate={handleDuplicateNode}
           onToggleEnabled={handleToggleEnabled}
         />
       )}
@@ -210,12 +292,67 @@ function removeNodeFromTree(tree: YAMLNode, nodeId: string): YAMLNode {
   return tree;
 }
 
-function updateNodeEnabled(tree: YAMLNode, nodeId: string, enabled: boolean): YAMLNode {
-  if (tree.id === nodeId) {
+function duplicateNodeInTree(tree: YAMLNode, nodeId: string, copySuffix: string): YAMLNode {
+  let nodeToDuplicate: YAMLNode | null = null;
+
+  // Encontrar el nodo
+  const findNode = (node: YAMLNode) => {
+    if (node.id === nodeId) {
+      nodeToDuplicate = node;
+      return;
+    }
+    if (node.children) {
+      node.children.forEach(findNode);
+    }
+  };
+  findNode(tree);
+
+  if (!nodeToDuplicate) return tree;
+
+  // Clonar profundamente con nuevos IDs
+  const cloneWithNewIds = (node: YAMLNode): YAMLNode => {
+    const newId = `node_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     return {
-      ...tree,
-      data: { ...tree.data, enabled },
+      ...node,
+      id: newId,
+      name: `${node.name} (${copySuffix})`,
+      children: node.children ? node.children.map(cloneWithNewIds) : []
     };
+  };
+
+  const newNode = cloneWithNewIds(nodeToDuplicate);
+
+  // Insertar después del original
+  const insertAfterOriginal = (node: YAMLNode): YAMLNode => {
+    if (node.children) {
+      const index = node.children.findIndex(c => c.id === nodeId);
+      if (index !== -1) {
+        const newChildren = [...node.children];
+        newChildren.splice(index + 1, 0, newNode);
+        return { ...node, children: newChildren };
+      }
+      return {
+        ...node,
+        children: node.children.map(insertAfterOriginal)
+      };
+    }
+    return node;
+  };
+
+  return insertAfterOriginal(tree);
+}
+
+function updateNodeEnabled(tree: YAMLNode, nodeId: string, enabled: boolean): YAMLNode {
+  const setEnabledInSubtree = (node: YAMLNode, nextEnabled: boolean): YAMLNode => ({
+    ...node,
+    data: { ...node.data, enabled: nextEnabled },
+    children: node.children?.map((child) => setEnabledInSubtree(child, nextEnabled)),
+  });
+
+  if (tree.id === nodeId) {
+    // Keep parent/children state consistent in YAML code:
+    // toggling parent enabled/disabled propagates to all descendants.
+    return setEnabledInSubtree(tree, enabled);
   }
 
   if (tree.children) {
@@ -236,10 +373,10 @@ function moveNodeInTree(
 ): YAMLNode {
   // No mover si es el mismo nodo
   if (nodeId === targetId) return tree;
-  
+
   // Paso 1: Encontrar el nodo a mover (sin extraerlo aún)
   let nodeToMove: YAMLNode | null = null;
-  
+
   const findNode = (node: YAMLNode): void => {
     if (node.id === nodeId) {
       nodeToMove = { ...node };
@@ -250,13 +387,13 @@ function moveNodeInTree(
     }
   };
   findNode(tree);
-  
+
   if (!nodeToMove) return tree;
-  
+
   // Paso 2: Remover el nodo de su posición original
   const removeNode = (node: YAMLNode): YAMLNode => {
     if (!node.children) return node;
-    
+
     return {
       ...node,
       children: node.children
@@ -264,15 +401,15 @@ function moveNodeInTree(
         .map(removeNode),
     };
   };
-  
+
   let treeWithoutNode = removeNode(tree);
-  
+
   // Paso 3: Insertar el nodo en la nueva posición
   let inserted = false;
-  
+
   const insertNode = (node: YAMLNode): YAMLNode => {
     if (inserted) return node;
-    
+
     // Insertar dentro del target
     if (position === 'inside' && node.id === targetId) {
       inserted = true;
@@ -283,11 +420,11 @@ function moveNodeInTree(
         expanded: true,
       };
     }
-    
+
     // Buscar en los hijos para before/after
     if (node.children && node.children.length > 0) {
       const targetIndex = node.children.findIndex(c => c.id === targetId);
-      
+
       if (targetIndex !== -1 && (position === 'before' || position === 'after')) {
         inserted = true;
         const newChildren = [...node.children];
@@ -295,30 +432,77 @@ function moveNodeInTree(
         newChildren.splice(insertIndex, 0, nodeToMove!);
         return { ...node, children: newChildren };
       }
-      
+
       // Continuar buscando recursivamente
       return {
         ...node,
         children: node.children.map(insertNode),
       };
     }
-    
+
     return node;
   };
-  
+
   const result = insertNode(treeWithoutNode);
-  
+
   // Si no se insertó, devolver el árbol original
   if (!inserted) {
     console.warn('[moveNodeInTree] No se pudo insertar el nodo');
     return tree;
   }
-  
+
   return result;
 }
 
-function createNodeByType(type: YAMLAddableNodeType): YAMLNode {
-  const id = `node_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+function createNodeByType(type: string | 'root_plan'): YAMLNode {
+  const id = `node_${Math.random().toString(36).substr(2, 9)}`;
+
+  // Root Plan Initialization
+  if (type === 'root_plan') {
+    const scenarioId = `node_${Math.random().toString(36).substr(2, 9)}`;
+    return {
+      id: 'root',
+      type: 'root',
+      name: 'Test Plan',
+      expanded: true,
+      children: [
+        {
+          id: 'node_scenarios',
+          type: 'scenarios',
+          name: 'Scenarios',
+          expanded: true,
+          children: [
+            {
+              id: scenarioId,
+              type: 'scenario',
+              name: 'New Scenario',
+              expanded: true,
+              data: { name: 'New Scenario' },
+              children: [
+                {
+                  id: `${scenarioId}_load`,
+                  type: 'load',
+                  name: 'Load Config',
+                  data: {
+                    vusers: 1,
+                    duration: '1m',
+                    ramp_up: '10s'
+                  }
+                },
+                {
+                  id: `${scenarioId}_steps`,
+                  type: 'steps',
+                  name: 'Steps',
+                  expanded: true,
+                  children: []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    };
+  }
 
   switch (type) {
     // HTTP Requests
@@ -433,7 +617,6 @@ function createNodeByType(type: YAMLAddableNodeType): YAMLNode {
         data: { action: 'continue' },
         expanded: true,
       };
-
     // Timers
     case 'think_time':
       return {
@@ -465,7 +648,7 @@ function createNodeByType(type: YAMLAddableNodeType): YAMLNode {
         id,
         type: 'assertion',
         name: 'Assertion',
-        data: { 
+        data: {
           type: 'status',
           value: 200
         },
@@ -475,10 +658,15 @@ function createNodeByType(type: YAMLAddableNodeType): YAMLNode {
         id,
         type: 'extractor',
         name: 'Extractor',
-        data: { 
-          type: 'json',
-          path: '$.data.id',
-          variable: 'extracted_id'
+        data: {
+          type: 'regex',
+          from: 'body',
+          var: 'extracted_value',
+          variable: 'extracted_value',
+          pattern: 'token=([a-zA-Z0-9_-]+)',
+          capture_mode: 'first',
+          group: 1,
+          default: ''
         },
       };
     case 'file':
@@ -486,7 +674,7 @@ function createNodeByType(type: YAMLAddableNodeType): YAMLNode {
         id,
         type: 'file',
         name: 'File Upload',
-        data: { 
+        data: {
           field: 'file',
           path: '',
           mime_type: 'application/octet-stream'
@@ -497,7 +685,7 @@ function createNodeByType(type: YAMLAddableNodeType): YAMLNode {
         id,
         type: 'header',
         name: 'Header',
-        data: { 
+        data: {
           name: 'Authorization',
           value: ''
         },
@@ -512,6 +700,16 @@ function createNodeByType(type: YAMLAddableNodeType): YAMLNode {
         },
       };
 
+    // Scenarios block
+    case 'scenarios':
+      return {
+        id,
+        type: 'scenarios',
+        name: 'Scenarios',
+        expanded: true,
+        children: []
+      };
+
     // Scenario
     case 'scenario':
       return {
@@ -519,6 +717,16 @@ function createNodeByType(type: YAMLAddableNodeType): YAMLNode {
         type: 'scenario',
         name: 'New Scenario',
         children: [
+          {
+            id: `${id}_load`,
+            type: 'load',
+            name: 'Load Config',
+            data: {
+              vusers: 1,
+              duration: '1m',
+              ramp_up: '10s'
+            }
+          },
           {
             id: `${id}_steps`,
             type: 'steps',
@@ -544,7 +752,7 @@ function createNodeByType(type: YAMLAddableNodeType): YAMLNode {
         id,
         type: 'data_source',
         name: 'Data Source',
-        data: { 
+        data: {
           type: 'csv',
           file: 'data.csv',
           mode: 'sequential'
@@ -555,7 +763,7 @@ function createNodeByType(type: YAMLAddableNodeType): YAMLNode {
         id,
         type: 'http_defaults',
         name: 'HTTP Defaults',
-        data: { 
+        data: {
           base_url: 'https://api.example.com',
           timeout: '30s'
         },
@@ -574,7 +782,7 @@ function createNodeByType(type: YAMLAddableNodeType): YAMLNode {
         id,
         type: 'load',
         name: 'Load Config',
-        data: { 
+        data: {
           type: 'constant',
           users: 10,
           duration: '1m'
@@ -585,23 +793,35 @@ function createNodeByType(type: YAMLAddableNodeType): YAMLNode {
         id,
         type: 'cookies',
         name: 'Cookies',
-        data: { mode: 'shared' },
+        data: {
+          mode: 'auto',
+          policy: 'standard',
+          jar_scope: 'vu',
+          persist_across_iterations: true,
+          clear_each_iteration: false,
+          cookies: [],
+        },
       };
     case 'cache_manager':
       return {
         id,
         type: 'cache_manager',
         name: 'Cache Manager',
-        data: { enabled: true },
+        data: {
+          enabled: true,
+          clear_each_iteration: true,
+          max_elements: 1000,
+        },
       };
     case 'error_policy':
       return {
         id,
         type: 'error_policy',
         name: 'Error Policy',
-        data: { 
+        data: {
           on_4xx: 'continue',
-          on_5xx: 'stop'
+          on_5xx: 'stop',
+          on_timeout: 'stop'
         },
       };
 

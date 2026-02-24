@@ -59,13 +59,20 @@ scenarios:
           body:
             username: "{{username}}"
             password: "{{password}}"
-          extract:
-            token: $.data.token
-            user_id: $.data.user.id
-          assert:
-            status: 200
-            response_time_ms_max: 1000
-            body_contains: "success"
+          extractors:
+            - type: jsonpath
+              var: token
+              expression: $.data.token
+            - type: jsonpath
+              var: user_id
+              expression: $.data.user.id
+          assertions:
+            - type: status
+              value: 200
+            - type: response_time
+              max_ms: 1000
+            - type: contains
+              value: "success"
           on_error: stop
       
       # Think time

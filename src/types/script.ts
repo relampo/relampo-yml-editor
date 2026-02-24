@@ -97,8 +97,9 @@ export interface VariablesData {
 }
 
 export interface DataSourceData {
-  type: 'csv' | 'json' | 'xml';
-  path: string;
+  type: 'csv' | 'json' | 'xml' | 'txt';
+  file: string;
+  variable_names?: string;
   variables: Array<{
     name: string;
     value: string;

@@ -18,7 +18,6 @@ import {
   Settings,
   Cookie,
   HardDrive,
-  FileCode,
   BarChart3,
   Gauge,
   Eye,
@@ -28,18 +27,19 @@ import {
   Paperclip,
   Tag,
   List,
+  Copy,
 } from 'lucide-react';
 import type { YAMLNode, YAMLNodeType } from '../types/yaml';
 import { useLanguage } from '../contexts/LanguageContext';
 
 export type YAMLAddableNodeType =
+  | 'scenarios'
   | 'scenario'
   | 'request'
   | 'group'
   | 'if'
   | 'loop'
   | 'retry'
-  | 'on_error'
   | 'think_time'
   | 'assertion'
   | 'extractor'
@@ -55,7 +55,14 @@ export type YAMLAddableNodeType =
   | 'cache_manager'
   | 'error_policy'
   | 'metrics'
-  | 'load';
+  | 'load'
+  | 'get'
+  | 'post'
+  | 'put'
+  | 'delete'
+  | 'patch'
+  | 'head'
+  | 'options';
 
 interface YAMLContextMenuProps {
   x: number;
@@ -64,6 +71,7 @@ interface YAMLContextMenuProps {
   onClose: () => void;
   onAddNode: (nodeType: YAMLAddableNodeType) => void;
   onRemove: () => void;
+  onDuplicate?: (nodeId: string) => void;
   onToggleEnabled?: (nodeId: string, enabled: boolean) => void;
 }
 
@@ -74,6 +82,7 @@ export function YAMLContextMenu({
   onClose,
   onAddNode,
   onRemove,
+  onDuplicate,
   onToggleEnabled,
 }: YAMLContextMenuProps) {
   const { t } = useLanguage();
@@ -95,30 +104,30 @@ export function YAMLContextMenu({
     };
   }, [onClose]);
 
-  // Adjust position so it doesn't get cut off
+  // Ajustar posición para que no se corte
   useEffect(() => {
     if (menuRef.current) {
       const rect = menuRef.current.getBoundingClientRect();
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
-      
+
       let newX = x;
       let newY = y;
-      
-      // Adjust if it goes out on the right
+
+      // Ajustar si se sale por la derecha
       if (x + rect.width > viewportWidth - 10) {
         newX = viewportWidth - rect.width - 10;
       }
-      
-      // Adjust if it goes out at the bottom
+
+      // Ajustar si se sale por abajo
       if (y + rect.height > viewportHeight - 10) {
         newY = viewportHeight - rect.height - 10;
       }
-      
-      // Ensure it's not negative
+
+      // Asegurar que no sea negativo
       newX = Math.max(10, newX);
       newY = Math.max(10, newY);
-      
+
       if (newX !== x || newY !== y) {
         setPosition({ x: newX, y: newY });
       }
@@ -192,10 +201,24 @@ export function YAMLContextMenu({
           )}
         </button>
       )}
-      
+
       {node.type !== 'root' && node.type !== 'test' && node.type !== 'scenarios' && node.type !== 'steps' && (
         <>
           <div className="h-px bg-white/5 my-1" />
+
+          {onDuplicate && (
+            <button
+              onClick={() => {
+                onDuplicate(node.id);
+                onClose();
+              }}
+              className="w-full px-3 py-2 flex items-center gap-3 hover:bg-white/5 text-left transition-colors text-zinc-300"
+            >
+              <Copy className="w-4 h-4" />
+              <span className="text-sm">{t('yamlEditor.common.duplicate') || 'Duplicate'}</span>
+            </button>
+          )}
+
           <button
             onClick={onRemove}
             className="w-full px-3 py-2 flex items-center gap-3 hover:bg-red-500/10 text-left transition-colors text-red-400"
@@ -213,7 +236,7 @@ interface AddableItem {
   type: YAMLAddableNodeType;
   label: string;
   description?: string;
-  icon: JSX.Element;
+  icon: React.ReactNode;
   color: string;
 }
 
@@ -226,30 +249,37 @@ function getAddableItems(parentType: string): AddableItem[] {
       {
         type: 'variables',
         label: 'Variables',
-        description: 'Global variables',
+        description: 'Variables globales',
         icon: <Braces className={iconClass} />,
         color: 'text-pink-400',
       },
       {
         type: 'data_source',
         label: 'Data Source',
-        description: 'CSV data source',
+        description: 'Fuente de datos CSV',
         icon: <Database className={iconClass} />,
         color: 'text-cyan-400',
       },
       {
         type: 'http_defaults',
         label: 'HTTP Defaults',
-        description: 'Base HTTP configuration',
+        description: 'Configuración HTTP base',
         icon: <Settings className={iconClass} />,
         color: 'text-sky-400',
       },
       {
         type: 'metrics',
         label: 'Metrics',
-        description: 'Metrics configuration',
+        description: 'Configuración de métricas',
         icon: <BarChart3 className={iconClass} />,
         color: 'text-indigo-400',
+      },
+      {
+        type: 'error_policy',
+        label: 'Error Policy',
+        description: 'Política de errores global',
+        icon: <AlertTriangle className={iconClass} />,
+        color: 'text-orange-500',
       },
     ];
   }
@@ -260,7 +290,7 @@ function getAddableItems(parentType: string): AddableItem[] {
       {
         type: 'scenario',
         label: 'Scenario',
-        description: 'New load scenario',
+        description: 'Nuevo escenario de carga',
         icon: <Zap className={iconClass} />,
         color: 'text-yellow-400',
       },
@@ -273,29 +303,29 @@ function getAddableItems(parentType: string): AddableItem[] {
       {
         type: 'load',
         label: 'Load Config',
-        description: 'Load configuration',
+        description: 'Configuración de carga',
         icon: <Gauge className={iconClass} />,
         color: 'text-red-500',
       },
       {
         type: 'cookies',
         label: 'Cookies',
-        description: 'Cookie manager',
+        description: 'Gestor de cookies',
         icon: <Cookie className={iconClass} />,
         color: 'text-pink-400',
       },
       {
         type: 'cache_manager',
         label: 'Cache Manager',
-        description: 'Cache manager',
+        description: 'Gestor de caché',
         icon: <HardDrive className={iconClass} />,
         color: 'text-slate-400',
       },
       {
         type: 'error_policy',
         label: 'Error Policy',
-        description: 'Error policy',
-        icon: <FileCode className={iconClass} />,
+        description: 'Política de errores',
+        icon: <AlertTriangle className={iconClass} />,
         color: 'text-orange-500',
       },
     ];
@@ -308,57 +338,71 @@ function getAddableItems(parentType: string): AddableItem[] {
       {
         type: 'spark_before',
         label: 'Spark Before',
-        description: 'Script before request',
+        description: 'Script antes del request',
         icon: <CodeXml className={iconClass} />,
         color: 'text-purple-500',
       },
       {
         type: 'spark_after',
         label: 'Spark After',
-        description: 'Script after request',
+        description: 'Script después del request',
         icon: <CodeXml className={iconClass} />,
         color: 'text-violet-500',
       },
       {
         type: 'assertion',
         label: 'Assertion',
-        description: 'Response validation',
+        description: 'Validación de respuesta',
         icon: <CheckCircle className={iconClass} />,
         color: 'text-green-400',
       },
       {
         type: 'extractor',
         label: 'Extractor',
-        description: 'Data extraction',
+        description: 'Extracción de datos',
         icon: <Filter className={iconClass} />,
         color: 'text-blue-400',
       },
       {
         type: 'file',
         label: 'File Upload',
-        description: 'Attach file',
+        description: 'Adjuntar archivo',
         icon: <Paperclip className={iconClass} />,
         color: 'text-amber-400',
       },
       {
         type: 'headers',
         label: 'Headers',
-        description: 'HTTP headers manager',
+        description: 'Gestor de cabeceras HTTP',
         icon: <Tag className={iconClass} />,
         color: 'text-red-500',
       },
       {
         type: 'think_time',
         label: 'Think Time',
-        description: 'Pause after request',
+        description: 'Pausa después del request',
         icon: <Clock className={iconClass} />,
         color: 'text-orange-400',
+      },
+      {
+        type: 'error_policy',
+        label: 'Error Policy',
+        description: 'Política de errores para este request',
+        icon: <AlertTriangle className={iconClass} />,
+        color: 'text-orange-500',
+      },
+      {
+        type: 'data_source',
+        label: 'Data Source',
+        description: 'Fuente de datos local',
+        icon: <Database className={iconClass} />,
+        color: 'text-cyan-400',
       },
     ];
   }
 
-  // LOGIC CONTROLLERS (group, if, loop, retry, on_error, simple) y STEPS
-  const controllers = ['group', 'simple', 'if', 'loop', 'retry', 'on_error', 'steps'];
+  // LOGIC CONTROLLERS (group, if, loop, retry, simple) y STEPS
+  const controllers = ['group', 'simple', 'if', 'loop', 'retry', 'steps'];
   if (controllers.includes(parentType)) {
     return [
       {
@@ -371,44 +415,44 @@ function getAddableItems(parentType: string): AddableItem[] {
       {
         type: 'group',
         label: 'Group',
-        description: 'Group steps',
+        description: 'Agrupar steps',
         icon: <Folder className={iconClass} />,
         color: 'text-blue-400',
       },
       {
         type: 'if',
         label: 'If Controller',
-        description: 'Conditional execution',
+        description: 'Ejecución condicional',
         icon: <Folder className={iconClass} />,
         color: 'text-pink-500',
       },
       {
         type: 'loop',
         label: 'Loop Controller',
-        description: 'Repeat steps',
+        description: 'Repetir steps',
         icon: <Folder className={iconClass} />,
         color: 'text-purple-400',
       },
       {
         type: 'retry',
         label: 'Retry Controller',
-        description: 'Retry with backoff',
+        description: 'Reintentar con backoff',
         icon: <Folder className={iconClass} />,
         color: 'text-red-400',
       },
       {
-        type: 'on_error',
-        label: 'On Error',
-        description: 'Error handling',
-        icon: <AlertTriangle className={iconClass} />,
-        color: 'text-orange-500',
-      },
-      {
         type: 'think_time',
         label: 'Think Time',
-        description: 'Pause between requests',
+        description: 'Pausa entre requests',
         icon: <Clock className={iconClass} />,
         color: 'text-orange-400',
+      },
+      {
+        type: 'data_source',
+        label: 'Data Source',
+        description: 'Fuente de datos local',
+        icon: <Database className={iconClass} />,
+        color: 'text-cyan-400',
       },
     ];
   }
