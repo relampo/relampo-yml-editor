@@ -799,6 +799,9 @@ function stepNodeToObject(node: YAMLNode): any {
   if (node.type === 'request') {
     const normalizedRequest = normalizeRequestForEditor(node.data);
     const request: any = { request: { ...normalizedRequest } };
+    if (request.request.timeout === '') {
+      delete request.request.timeout;
+    }
 
     // Sincronizar node.name a request.name si fue editado
     if (node.name && node.name !== node.data?.name) {
