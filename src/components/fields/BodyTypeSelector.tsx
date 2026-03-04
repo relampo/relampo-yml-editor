@@ -247,6 +247,7 @@ export function BodyTypeSelector({
 
   useEffect(() => {
     if (!searchText) return;
+    if (bodyType !== 'json' && bodyType !== 'raw') return;
     const highlight = bodyType === 'json' ? jsonHighlightRef.current : bodyType === 'raw' ? rawHighlightRef.current : null;
     const textarea = bodyType === 'json' ? jsonTextareaRef.current : bodyType === 'raw' ? rawTextareaRef.current : null;
     if (!highlight) return;
@@ -256,12 +257,7 @@ export function BodyTypeSelector({
         `mark[data-match-index="${currentMatchIndex}"]`
       ) as HTMLElement | null;
       if (!activeMark) return;
-
-      const targetTop = Math.max(
-        0,
-        activeMark.offsetTop - highlight.clientHeight / 2 + activeMark.offsetHeight / 2
-      );
-      highlight.scrollTop = targetTop;
+      activeMark.scrollIntoView({ block: 'center', inline: 'nearest' });
 
       if (textarea) {
         textarea.scrollTop = highlight.scrollTop;
@@ -287,12 +283,6 @@ export function BodyTypeSelector({
       } catch {
         // ignore
       }
-      const before = text.slice(0, current.start);
-      const lineNumber = before.split('\n').length;
-      const lineHeight = parseFloat(getComputedStyle(textarea).lineHeight || '20') || 20;
-      const targetTop = Math.max(0, lineNumber * lineHeight - textarea.clientHeight / 2);
-      textarea.scrollTop = targetTop;
-      syncScroll(bodyType);
     });
 
     return () => cancelAnimationFrame(raf);
@@ -372,14 +362,12 @@ export function BodyTypeSelector({
               className="relative w-full h-[300px] rounded-md border border-white/10 bg-white/5 overflow-hidden"
               style={{ height: BODY_FIXED_HEIGHT, minHeight: BODY_FIXED_HEIGHT }}
             >
-              {!isEditingJson && (
-                <pre
-                  ref={jsonHighlightRef}
-                  className="absolute inset-0 m-0 p-3 text-sm font-mono text-zinc-300 whitespace-pre-wrap overflow-y-auto overflow-x-auto pointer-events-none"
-                >
-                  {renderHighlightedText(jsonValue)}
-                </pre>
-              )}
+              <pre
+                ref={jsonHighlightRef}
+                className="absolute inset-0 m-0 p-3 text-sm font-mono text-zinc-300 whitespace-pre-wrap overflow-y-auto overflow-x-auto pointer-events-none"
+              >
+                {renderHighlightedText(jsonValue)}
+              </pre>
               <textarea
                 ref={jsonTextareaRef}
                 value={jsonValue}
@@ -389,9 +377,7 @@ export function BodyTypeSelector({
                 onBlur={() => setIsEditingJson(false)}
                 placeholder='{\n  "key": "value"\n}'
                 style={{ height: '100%', minHeight: '100%' }}
-                className={`relative w-full h-full bg-transparent border-0 text-sm font-mono resize-none overflow-y-auto overflow-x-auto selection:bg-yellow-200/40 outline-none p-3 ${
-                  isEditingJson ? 'text-zinc-300 caret-zinc-200' : 'text-transparent caret-zinc-200'
-                }`}
+                className="relative w-full h-full bg-transparent border-0 text-transparent caret-zinc-200 text-sm font-mono resize-none overflow-y-auto overflow-x-auto selection:bg-yellow-200/40 outline-none p-3"
               />
             </div>
           ) : (
@@ -483,14 +469,12 @@ export function BodyTypeSelector({
               className="relative w-full h-[300px] rounded-md border border-white/10 bg-white/5 overflow-hidden"
               style={{ height: BODY_FIXED_HEIGHT, minHeight: BODY_FIXED_HEIGHT }}
             >
-              {!isEditingRaw && (
-                <pre
-                  ref={rawHighlightRef}
-                  className="absolute inset-0 m-0 p-3 text-sm font-mono text-zinc-300 whitespace-pre-wrap overflow-y-auto overflow-x-auto pointer-events-none"
-                >
-                  {renderHighlightedText(rawValue)}
-                </pre>
-              )}
+              <pre
+                ref={rawHighlightRef}
+                className="absolute inset-0 m-0 p-3 text-sm font-mono text-zinc-300 whitespace-pre-wrap overflow-y-auto overflow-x-auto pointer-events-none"
+              >
+                {renderHighlightedText(rawValue)}
+              </pre>
               <textarea
                 ref={rawTextareaRef}
                 value={rawValue}
@@ -500,9 +484,7 @@ export function BodyTypeSelector({
                 onBlur={() => setIsEditingRaw(false)}
                 placeholder="Enter raw text content..."
                 style={{ height: '100%', minHeight: '100%' }}
-                className={`relative w-full h-full bg-transparent border-0 text-sm font-mono resize-none overflow-y-auto overflow-x-auto selection:bg-yellow-200/40 outline-none p-3 ${
-                  isEditingRaw ? 'text-zinc-300 caret-zinc-200' : 'text-transparent caret-zinc-200'
-                }`}
+                className="relative w-full h-full bg-transparent border-0 text-transparent caret-zinc-200 text-sm font-mono resize-none overflow-y-auto overflow-x-auto selection:bg-yellow-200/40 outline-none p-3"
               />
             </div>
           ) : (

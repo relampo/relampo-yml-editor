@@ -1,13 +1,22 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Button } from './ui/button';
-import { Upload, Download, Save, Code2, GitBranch } from 'lucide-react';
+import { Upload, Download, Save, Code2, GitBranch, ChevronDown } from 'lucide-react';
+import yaml from 'js-yaml';
 import { YAMLCodeEditor } from './YAMLCodeEditor';
 import { YAMLTreeView } from './YAMLTreeView';
 import { YAMLNodeDetails } from './YAMLNodeDetails';
 import { parseYAMLToTree, treeToYAML } from '../utils/yamlParser';
-import type { YAMLNode } from '../types/yaml';
+import type { YAMLNode, RedirectSourceInfo, RedirectedRequestInfo } from '../types/yaml';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useYAML } from '../contexts/YAMLContext';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from './ui/dropdown-menu';
 
 type ViewMode = 'code' | 'tree';
 
@@ -20,6 +29,7 @@ export function YAMLEditor() {
   const [yamlCode, setYamlCode] = useState<string>('');
   const [yamlTree, setYamlTree] = useState<YAMLNode | null>(null);
   const [selectedNode, setSelectedNode] = useState<YAMLNode | null>(null);
+  const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'tree' | 'code'>('tree');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -30,6 +40,8 @@ export function YAMLEditor() {
   const [isDirty, setIsDirty] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string>('');
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [hasDocumentActivity, setHasDocumentActivity] = useState(false);
   const actionMessageTimeoutRef = useRef<number | null>(null);
 
   const showActionMessage = (message: string) => {
@@ -104,18 +116,60 @@ export function YAMLEditor() {
     return null;
   };
 
+  const redirectedRequestMap = useMemo<Record<string, RedirectedRequestInfo>>(() => {
+    if (!yamlTree) return {};
+    return detectRedirectFollowUps(yamlTree);
+  }, [yamlTree]);
+
+  const redirectSourceMap = useMemo<Record<string, RedirectSourceInfo>>(() => {
+    if (!yamlTree) return {};
+
+    const result: Record<string, RedirectSourceInfo> = {};
+
+    for (const [targetNodeId, info] of Object.entries(redirectedRequestMap)) {
+      const targetNode = findNodeById(yamlTree, targetNodeId);
+      result[info.sourceNodeId] = {
+        targetNodeId,
+        targetRequestLabel: targetNode?.name || '',
+        matchedLocation: info.matchedLocation,
+      };
+    }
+
+    return result;
+  }, [yamlTree, redirectedRequestMap]);
+
+  const syncSelectionWithTree = (tree: YAMLNode | null) => {
+    if (!tree) {
+      setSelectedNode(null);
+      setSelectedNodeIds([]);
+      return;
+    }
+
+    const survivingIds = selectedNodeIds.filter((id) => findNodeById(tree, id));
+    setSelectedNodeIds(survivingIds);
+
+    if (selectedNode && survivingIds.includes(selectedNode.id)) {
+      const freshNode = findNodeById(tree, selectedNode.id);
+      setSelectedNode(freshNode ?? null);
+      return;
+    }
+
+    if (survivingIds.length > 0) {
+      const nextPrimary = findNodeById(tree, survivingIds[survivingIds.length - 1]);
+      setSelectedNode(nextPrimary ?? null);
+      return;
+    }
+
+    setSelectedNode(null);
+  };
+
   // Synchronize code to tree
   const syncCodeToTree = (code: string) => {
     try {
       const tree = parseYAMLToTree(code);
       console.log('Parsed tree:', tree);
       setYamlTree(tree);
-
-      // Update selectedNode if it exists in the new tree to keep UI in sync
-      if (selectedNode && tree) {
-        const freshNode = findNodeById(tree, selectedNode.id);
-        setSelectedNode(freshNode ?? null);
-      }
+      syncSelectionWithTree(tree);
 
       setError(null);
     } catch (err) {
@@ -141,6 +195,7 @@ export function YAMLEditor() {
     setYamlCode(newCode);
     setYamlContent(newCode); // Update context
     if (isInitialized) {
+      setHasDocumentActivity(true);
       setIsDirty(true);
     }
     if (parseDebounceRef.current) {
@@ -167,8 +222,15 @@ export function YAMLEditor() {
 
   const handleTreeChange = (newTree: YAMLNode) => {
     setYamlTree(newTree);
+    syncSelectionWithTree(newTree);
     syncTreeToCode(newTree);
+    setHasDocumentActivity(true);
     setIsDirty(true);
+  };
+
+  const handleSelectionChange = (primaryNode: YAMLNode | null, nodeIds: string[]) => {
+    setSelectedNode(primaryNode);
+    setSelectedNodeIds(nodeIds);
   };
 
   const handleNodeUpdate = (nodeId: string, updatedData: any) => {
@@ -201,6 +263,7 @@ export function YAMLEditor() {
 
     const updatedTree = updateNodeInTree(yamlTree);
     setYamlTree(updatedTree);
+    setHasDocumentActivity(true);
     setIsDirty(true);
 
     // Update selectedNode if it's the node that was modified
@@ -220,38 +283,80 @@ export function YAMLEditor() {
     fileInputRef.current?.click();
   };
 
+  const loadYamlFile = (file: File, clearInput?: () => void) => {
+    if (parseDebounceRef.current) {
+      window.clearTimeout(parseDebounceRef.current);
+    }
+    if (serializeDebounceRef.current) {
+      window.clearTimeout(serializeDebounceRef.current);
+    }
+
+    // Reset current editor state to avoid stale node references from previous script
+    setError(null);
+    setSelectedNode(null);
+    setSelectedNodeIds([]);
+    setYamlTree(null);
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target?.result as string;
+      setYamlCode(content);
+      setYamlContent(content);
+      syncCodeToTree(content);
+      setCurrentFileName(normalizeYamlFileName(file.name));
+      setHasDocumentActivity(true);
+      setIsDirty(false);
+      showActionMessage(language === 'es' ? 'Archivo cargado' : 'File loaded');
+      clearInput?.();
+    };
+    reader.onerror = () => {
+      setError(language === 'es' ? 'Error al leer el archivo cargado' : 'Error reading uploaded file');
+    };
+    reader.readAsText(file);
+  };
+
+  const isYamlFile = (file: File) => /\.(ya?ml)$/i.test(file.name);
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (parseDebounceRef.current) {
-        window.clearTimeout(parseDebounceRef.current);
-      }
-      if (serializeDebounceRef.current) {
-        window.clearTimeout(serializeDebounceRef.current);
-      }
+    if (!file) return;
 
-      // Reset current editor state to avoid stale node references from previous script
-      setError(null);
-      setSelectedNode(null);
-      setYamlTree(null);
-
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const content = event.target?.result as string;
-        setYamlCode(content);
-        setYamlContent(content); // Update context
-        syncCodeToTree(content);
-        setCurrentFileName(normalizeYamlFileName(file.name));
-        setIsDirty(false);
-        showActionMessage(language === 'es' ? 'Archivo cargado' : 'File loaded');
-        // Allow uploading the same file again if needed
-        e.target.value = '';
-      };
-      reader.onerror = () => {
-        setError('Error reading uploaded file');
-      };
-      reader.readAsText(file);
+    if (!isYamlFile(file)) {
+      setError(language === 'es' ? 'Solo se permiten archivos .yaml o .yml' : 'Only .yaml or .yml files are supported');
+      e.target.value = '';
+      return;
     }
+
+    loadYamlFile(file, () => {
+      e.target.value = '';
+    });
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    if (!e.dataTransfer.types.includes('Files')) return;
+    e.dataTransfer.dropEffect = 'copy';
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragOver(false);
+
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+
+    if (!isYamlFile(file)) {
+      setError(language === 'es' ? 'Solo se permiten archivos .yaml o .yml' : 'Only .yaml or .yml files are supported');
+      return;
+    }
+
+    loadYamlFile(file);
   };
 
   const handleSave = () => {
@@ -259,13 +364,57 @@ export function YAMLEditor() {
     localStorage.setItem('relampo-yaml-draft', yamlCode);
     localStorage.setItem('relampo-yaml-draft-timestamp', now.toISOString());
     localStorage.setItem('relampo-yaml-draft-filename', currentFileName);
+    setHasDocumentActivity(true);
     setIsDirty(false);
     setLastSavedAt(now.toLocaleTimeString());
     showActionMessage(language === 'es' ? 'Cambios guardados' : 'Changes saved');
   };
 
-  const handleDownload = () => {
-    const blob = new Blob([yamlCode], { type: 'text/yaml' });
+  const stripResponsesFromObject = (value: any): any => {
+    if (Array.isArray(value)) {
+      return value.map(stripResponsesFromObject);
+    }
+
+    if (value && typeof value === 'object') {
+      const next: Record<string, any> = {};
+      for (const [key, nestedValue] of Object.entries(value)) {
+        if (key === 'response') continue;
+        next[key] = stripResponsesFromObject(nestedValue);
+      }
+      return next;
+    }
+
+    return value;
+  };
+
+  const buildDownloadContent = (includeResponses: boolean) => {
+    if (includeResponses) {
+      return yamlCode;
+    }
+
+    try {
+      const parsed = yaml.load(yamlCode);
+      const sanitized = stripResponsesFromObject(parsed);
+      return yaml.dump(sanitized, {
+        lineWidth: -1,
+        noRefs: true,
+        sortKeys: false,
+      });
+    } catch (err) {
+      setError(
+        language === 'es'
+          ? 'No se pudo generar el YAML sin respuestas. Verifica que el contenido sea válido.'
+          : 'Could not generate YAML without responses. Make sure the content is valid.'
+      );
+      return null;
+    }
+  };
+
+  const handleDownload = (includeResponses: boolean) => {
+    const content = buildDownloadContent(includeResponses);
+    if (content === null) return;
+
+    const blob = new Blob([content], { type: 'text/yaml' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -274,7 +423,11 @@ export function YAMLEditor() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    showActionMessage(language === 'es' ? 'YAML descargado' : 'YAML downloaded');
+    showActionMessage(
+      includeResponses
+        ? (language === 'es' ? 'YAML descargado con respuestas' : 'YAML downloaded with responses')
+        : (language === 'es' ? 'YAML descargado sin respuestas' : 'YAML downloaded without responses')
+    );
   };
 
   useEffect(() => {
@@ -282,7 +435,7 @@ export function YAMLEditor() {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
         e.preventDefault();
         if (e.shiftKey) {
-          handleDownload();
+          handleDownload(true);
           return;
         }
         handleSave();
@@ -293,7 +446,24 @@ export function YAMLEditor() {
   }, [yamlCode, currentFileName, language]);
 
   return (
-    <div className="flex flex-col h-full bg-[#0a0a0a] w-full overflow-hidden">
+    <div
+      className={`relative flex flex-col h-full bg-[#0a0a0a] w-full overflow-hidden ${isDragOver ? 'ring-2 ring-yellow-400/70 ring-inset' : ''}`}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {isDragOver && (
+        <div className="absolute inset-0 z-50 bg-[#0a0a0a]/88 backdrop-blur-sm flex items-center justify-center pointer-events-none">
+          <div className="px-8 py-6 rounded-2xl border border-yellow-400/40 bg-[#111111] shadow-2xl shadow-yellow-400/10 text-center">
+            <p className="text-base font-bold text-yellow-400">
+              {language === 'es' ? 'Suelta tu archivo YAML aquí' : 'Drop your YAML file here'}
+            </p>
+            <p className="mt-2 text-sm text-zinc-400">
+              {language === 'es' ? 'El árbol y el editor se actualizarán automáticamente' : 'The tree and code editor will update automatically'}
+            </p>
+          </div>
+        </div>
+      )}
       {/* Header - Exact Converter Style */}
       <div className="bg-[#1a1a1a] border-b border-white/10 px-6 py-4 flex-shrink-0">
         <div className="flex items-center justify-between gap-4">
@@ -317,20 +487,22 @@ export function YAMLEditor() {
           {/* Right: Buttons + Language Toggle (Exact Converter Style) */}
           <div className="flex items-center gap-4">
             <div className="hidden md:flex items-center gap-2">
-              <span
-                className={`text-[11px] px-2 py-1 rounded border ${
-                  isDirty
-                    ? 'text-amber-300 border-amber-400/30 bg-amber-400/10'
-                    : 'text-emerald-300 border-emerald-400/30 bg-emerald-400/10'
-                }`}
-              >
-                {isDirty
-                  ? (language === 'es' ? 'Sin guardar' : 'Unsaved')
-                  : (language === 'es' ? 'Guardado' : 'Saved')}
-              </span>
-              {lastSavedAt && !isDirty && (
+              {hasDocumentActivity && (
+                <span
+                  className={`text-[11px] px-2 py-1 rounded border ${
+                    isDirty
+                      ? 'text-amber-300 border-amber-400/30 bg-amber-400/10'
+                      : 'text-emerald-300 border-emerald-400/30 bg-emerald-400/10'
+                  }`}
+                >
+                  {isDirty
+                    ? (language === 'es' ? 'Sin guardar' : 'Unsaved')
+                    : (language === 'es' ? 'Guardado' : 'Saved')}
+                </span>
+              )}
+              {hasDocumentActivity && lastSavedAt && !isDirty && (
                 <span className="text-[11px] text-zinc-500">
-                  {language === 'es' ? 'Último save:' : 'Last save:'} {lastSavedAt}
+                  {language === 'es' ? 'Último guardado:' : 'Last save:'} {lastSavedAt}
                 </span>
               )}
               {actionMessage && (
@@ -360,15 +532,46 @@ export function YAMLEditor() {
                 {language === 'es' ? 'Guardar' : 'Save'}
               </Button>
 
-              <Button
-                onClick={handleDownload}
-                variant="outline"
-                size="sm"
-                className="border-yellow-400/20 bg-yellow-400/5 hover:bg-yellow-400/10 text-yellow-400"
-              >
-                <Download className="w-4 h-4 mr-2" />
-                {t('yamlEditor.downloadYaml')}
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  className="inline-flex h-8 items-center justify-center gap-2 rounded-md border border-yellow-400/20 bg-yellow-400/5 px-3 text-sm font-medium text-yellow-400 shadow-sm transition-all duration-200 hover:bg-yellow-400/10 hover:border-yellow-400/35 hover:shadow-yellow-400/10 focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
+                >
+                  <Download className="w-4 h-4" />
+                  {t('yamlEditor.downloadYaml')}
+                  <ChevronDown className="w-4 h-4" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="end"
+                  className="bg-[#111111] border border-white/10 text-zinc-200 min-w-[260px] p-1.5"
+                >
+                  <DropdownMenuLabel className="text-zinc-400 text-xs uppercase tracking-wide">
+                    {language === 'es' ? 'Opciones de descarga' : 'Download options'}
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator className="bg-white/10" />
+                  <DropdownMenuItem
+                    onClick={() => handleDownload(true)}
+                    className="rounded-md px-3 py-2 focus:bg-yellow-400/10 focus:text-white cursor-pointer data-[highlighted]:bg-yellow-400/10 data-[highlighted]:text-white"
+                  >
+                    <div className="flex flex-col">
+                      <span>{language === 'es' ? 'Descargar con respuestas' : 'Download with responses'}</span>
+                      <span className="text-xs text-zinc-500">
+                        {language === 'es' ? 'Útil para editar y correlacionar el script' : 'Best for editing and correlating the script'}
+                      </span>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => handleDownload(false)}
+                    className="rounded-md px-3 py-2 focus:bg-yellow-400/10 focus:text-white cursor-pointer data-[highlighted]:bg-yellow-400/10 data-[highlighted]:text-white"
+                  >
+                    <div className="flex flex-col">
+                      <span>{language === 'es' ? 'Descargar sin respuestas' : 'Download without responses'}</span>
+                      <span className="text-xs text-zinc-500">
+                        {language === 'es' ? 'Ideal para lanzar pruebas con el script' : 'Best for running tests with the script'}
+                      </span>
+                    </div>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
 
             {/* Language Toggle - EXACT COPY from Converter */}
@@ -472,7 +675,9 @@ export function YAMLEditor() {
               <YAMLTreeView
                 tree={yamlTree}
                 selectedNode={selectedNode}
-                onNodeSelect={setSelectedNode}
+                selectedNodeIds={selectedNodeIds}
+                redirectedRequestMap={redirectedRequestMap}
+                onSelectionChange={handleSelectionChange}
                 onTreeChange={handleTreeChange}
               />
             ) : (
@@ -508,6 +713,8 @@ export function YAMLEditor() {
           <div className="flex-1 overflow-hidden">
             <YAMLNodeDetails
               node={selectedNode}
+              redirectedInfo={selectedNode ? redirectedRequestMap[selectedNode.id] ?? null : null}
+              redirectSourceInfo={selectedNode ? redirectSourceMap[selectedNode.id] ?? null : null}
               onNodeUpdate={handleNodeUpdate}
             />
           </div>
@@ -519,4 +726,72 @@ export function YAMLEditor() {
 
 function getDefaultYAML(): string {
   return "";
+}
+
+function detectRedirectFollowUps(tree: YAMLNode): Record<string, RedirectedRequestInfo> {
+  const requestNodes: YAMLNode[] = [];
+  const requestTypes = new Set(['request', 'get', 'post', 'put', 'delete', 'patch', 'head', 'options']);
+
+  const walk = (node: YAMLNode) => {
+    if (requestTypes.has(node.type)) {
+      requestNodes.push(node);
+    }
+    node.children?.forEach(walk);
+  };
+
+  const getLocationHeader = (node: YAMLNode): string => {
+    const headers = node.data?.response?.headers;
+    if (!headers || typeof headers !== 'object') return '';
+    return String(headers.Location || headers.location || '').trim();
+  };
+
+  const getStatusCode = (node: YAMLNode): number => {
+    const rawStatus = node.data?.response?.status;
+    const status = Number(rawStatus);
+    return Number.isFinite(status) ? status : 0;
+  };
+
+  const normalizeUrlForCompare = (value: string): string => {
+    const trimmed = String(value || '').trim();
+    if (!trimmed) return '';
+
+    try {
+      const parsed = /^https?:\/\//i.test(trimmed)
+        ? new URL(trimmed)
+        : new URL(trimmed, 'http://relampo.local');
+      const normalized = `${parsed.pathname || '/'}${parsed.search || ''}`;
+      return normalized.replace(/\/+$/, '') || '/';
+    } catch {
+      const normalized = trimmed.replace(/^[a-z]+:\/\/[^/]+/i, '');
+      return (normalized || '/').replace(/\/+$/, '') || '/';
+    }
+  };
+
+  walk(tree);
+
+  const result: Record<string, RedirectedRequestInfo> = {};
+
+  for (let i = 0; i < requestNodes.length - 1; i += 1) {
+    const source = requestNodes[i];
+    const target = requestNodes[i + 1];
+    const status = getStatusCode(source);
+    const isRedirect = [301, 302, 303, 307, 308].includes(status);
+    if (!isRedirect) continue;
+
+    const location = getLocationHeader(source);
+    if (!location) continue;
+
+    const normalizedLocation = normalizeUrlForCompare(location);
+    const normalizedTarget = normalizeUrlForCompare(String(target.data?.url || ''));
+
+    if (!normalizedLocation || !normalizedTarget || normalizedLocation !== normalizedTarget) continue;
+
+    result[target.id] = {
+      sourceNodeId: source.id,
+      sourceRequestLabel: source.name,
+      matchedLocation: normalizedLocation,
+    };
+  }
+
+  return result;
 }

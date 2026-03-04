@@ -49,6 +49,18 @@ export interface YAMLNode {
   path?: string[]; // Path in the YAML tree for synchronization
 }
 
+export interface RedirectedRequestInfo {
+  sourceNodeId: string;
+  sourceRequestLabel: string;
+  matchedLocation: string;
+}
+
+export interface RedirectSourceInfo {
+  targetNodeId: string;
+  targetRequestLabel: string;
+  matchedLocation: string;
+}
+
 export interface TestMetadata {
   name: string;
   description?: string;

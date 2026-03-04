@@ -29,7 +29,7 @@ import {
   Tag,
   List,
 } from 'lucide-react';
-import type { YAMLNode, YAMLNodeType } from '../types/yaml';
+import type { YAMLNode, YAMLNodeType, RedirectedRequestInfo } from '../types/yaml';
 import { canDrop, canContain } from '../utils/yamlDragDropRules';
 
 // Estado global para drag & drop (dataTransfer.getData no funciona en dragOver)
@@ -47,8 +47,9 @@ interface YAMLTreeNodeProps {
   node: YAMLNode;
   depth: number;
   isSelected: boolean;
-  selectedNodeId: string | undefined;
-  onNodeSelect: (node: YAMLNode) => void;
+  selectedNodeIds: string[];
+  redirectedRequestMap: Record<string, RedirectedRequestInfo>;
+  onNodeSelect: (node: YAMLNode, event: React.MouseEvent) => void;
   onNodeToggle: (nodeId: string) => void;
   onContextMenu: (event: React.MouseEvent, node: YAMLNode) => void;
   onNodeMove: (draggedId: string, targetId: string, position: 'before' | 'after' | 'inside') => void;
@@ -59,7 +60,8 @@ export function YAMLTreeNode({
   node,
   depth,
   isSelected,
-  selectedNodeId,
+  selectedNodeIds,
+  redirectedRequestMap,
   onNodeSelect,
   onNodeToggle,
   onContextMenu,
@@ -70,6 +72,9 @@ export function YAMLTreeNode({
   const hasChildren = node.children && node.children.length > 0;
   const isExpanded = node.expanded ?? true;
   const hoverTimerRef = useRef<number | null>(null);
+  const redirectedInfo = redirectedRequestMap[node.id];
+  const isRedirectedFollowUp = Boolean(redirectedInfo);
+  const redirectedLabel = 'Redirected';
 
   // Limpiar timer al desmontar
   useEffect(() => {
@@ -194,8 +199,15 @@ export function YAMLTreeNode({
   };
 
   const icon = getNodeIcon(node.type);
-  const color = getNodeColor(node.type, node);
+  const color = getNodeColor(node.type, node, isRedirectedFollowUp);
   const IconComponent = icon;
+  const searchHitFlags = getNodeSearchHitFlags(node, searchQuery);
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
+  const hasDirectNameMatch = normalizedSearchQuery
+    ? node.name.toLowerCase().includes(normalizedSearchQuery)
+    : false;
+  const hasRequestHit = searchHitFlags.request || hasDirectNameMatch;
+  const hasResponseHit = searchHitFlags.response;
 
   // Debug: log tipos de nodos especiales
   if (['extract', 'extractor', 'assert', 'assertion', 'spark_before', 'spark_after', 'think_time'].includes(node.type)) {
@@ -212,17 +224,24 @@ export function YAMLTreeNode({
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        onClick={() => onNodeSelect(node)}
+        onClick={(e) => onNodeSelect(node, e)}
         onContextMenu={(e) => onContextMenu(e, node)}
         className={`
-          relative group flex items-center gap-2 px-2 py-1.5 pr-3 rounded cursor-pointer transition-colors
-          ${isSelected ? 'bg-yellow-400/10 border border-yellow-400/20' : 'hover:bg-white/5 border border-transparent'}
+          relative group flex items-center gap-2 px-2 py-1.5 pr-3 rounded cursor-pointer transition-colors overflow-visible
+          ${isSelected
+            ? 'bg-yellow-400/10 border border-yellow-400/20'
+            : isRedirectedFollowUp
+              ? 'bg-zinc-400/12 border border-zinc-300/30 hover:bg-zinc-400/16 ring-1 ring-zinc-300/15'
+              : 'hover:bg-white/5 border border-transparent'}
           ${dragOver === 'before' ? 'border-t-2 border-t-yellow-400' : ''}
           ${dragOver === 'after' ? 'border-b-2 border-b-yellow-400' : ''}
           ${dragOver === 'inside' ? 'bg-yellow-400/5 border-yellow-400/30' : ''}
         `}
         style={{ paddingLeft: `${depth * 16 + 8}px` }}
       >
+        {isRedirectedFollowUp && (
+          <div className="absolute left-0 top-1 bottom-1 w-1 rounded-full bg-zinc-300/80" />
+        )}
         {/* Expand/Collapse */}
         {hasChildren && (
           <button
@@ -247,14 +266,29 @@ export function YAMLTreeNode({
           <IconComponent className="w-4 h-4" />
         </div>
 
-        {/* Name con highlight si match */}
-        <span className={`text-sm truncate flex-1 ${node.data?.enabled === false ? 'text-zinc-400' : 'text-zinc-300'
+        {/* Name */}
+        <span className={`text-sm truncate flex-1 ${node.data?.enabled === false ? 'text-zinc-400' : isRedirectedFollowUp ? 'text-zinc-100' : 'text-zinc-300'
           }`}>
-          {highlightText(node.name, searchQuery)}
+          {node.name}
         </span>
 
         {/* Badge with extra info */}
-        {getNodeBadge(node)}
+        {isRedirectedFollowUp && (
+          <span className="inline-flex h-5 items-center flex-shrink-0 text-xs leading-none px-1.5 py-0.5 rounded bg-zinc-400/15 text-zinc-300 font-mono font-medium border border-zinc-400/30 uppercase">
+            {redirectedLabel}
+          </span>
+        )}
+        {getNodeBadge(node, { mutedMethod: isRedirectedFollowUp })}
+        {hasRequestHit && (
+          <span className="inline-flex h-5 items-center flex-shrink-0 text-xs leading-none px-1.5 py-0.5 rounded bg-yellow-400/15 text-yellow-400 font-mono font-medium border border-yellow-400/30 uppercase">
+            req
+          </span>
+        )}
+        {hasResponseHit && (
+          <span className="inline-flex h-5 items-center flex-shrink-0 text-xs leading-none px-1.5 py-0.5 rounded bg-yellow-400/15 text-yellow-400 font-mono font-medium border border-yellow-400/30 uppercase">
+            res
+          </span>
+        )}
       </div>
 
       {/* Children */}
@@ -265,8 +299,9 @@ export function YAMLTreeNode({
               key={child.id}
               node={child}
               depth={depth + 1}
-              isSelected={selectedNodeId === child.id}
-              selectedNodeId={selectedNodeId}
+              isSelected={selectedNodeIds.includes(child.id)}
+              selectedNodeIds={selectedNodeIds}
+              redirectedRequestMap={redirectedRequestMap}
               onNodeSelect={onNodeSelect}
               onNodeToggle={onNodeToggle}
               onContextMenu={onContextMenu}
@@ -325,11 +360,11 @@ function getNodeIcon(type: YAMLNodeType): any {
   return iconMap[type] || FileText;
 }
 
-function getNodeColor(type: YAMLNodeType, node?: YAMLNode): string {
+function getNodeColor(type: YAMLNodeType, node?: YAMLNode, isRedirectedFollowUp = false): string {
   // Check if node is disabled (enabled: false)
   const isDisabled = node?.data?.enabled === false;
 
-  if (isDisabled) {
+  if (isDisabled || isRedirectedFollowUp) {
     // Gris más claro para CUALQUIER elemento deshabilitado
     return 'text-zinc-400';
   }
@@ -406,7 +441,11 @@ function getNodeColor(type: YAMLNodeType, node?: YAMLNode): string {
   }
 }
 
-function getNodeBadge(node: YAMLNode): React.ReactNode {
+function getNodeBadge(
+  node: YAMLNode,
+  options: { mutedMethod?: boolean } = {}
+): React.ReactNode {
+  const { mutedMethod = false } = options;
   const httpMethods = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
 
   // Badge DISABLED para requests deshabilitados
@@ -420,7 +459,11 @@ function getNodeBadge(node: YAMLNode): React.ReactNode {
 
   if (httpMethods.includes(node.type)) {
     return (
-      <span className="text-xs px-1.5 py-0.5 rounded bg-blue-400/15 text-blue-400 font-mono font-medium border border-blue-400/30 uppercase">
+      <span className={`inline-flex h-5 items-center text-xs leading-none px-1.5 py-0.5 rounded font-mono font-medium border uppercase ${
+        mutedMethod
+          ? 'bg-zinc-400/15 text-zinc-300 border-zinc-400/30'
+          : 'bg-blue-400/15 text-blue-400 border-blue-400/30'
+      }`}>
         {node.type}
       </span>
     );
@@ -428,7 +471,11 @@ function getNodeBadge(node: YAMLNode): React.ReactNode {
 
   if (node.type === 'request' && node.data?.method) {
     return (
-      <span className="text-xs px-1.5 py-0.5 rounded bg-blue-400/15 text-blue-400 font-mono font-medium border border-blue-400/30 uppercase">
+      <span className={`inline-flex h-5 items-center text-xs leading-none px-1.5 py-0.5 rounded font-mono font-medium border uppercase ${
+        mutedMethod
+          ? 'bg-zinc-400/15 text-zinc-300 border-zinc-400/30'
+          : 'bg-blue-400/15 text-blue-400 border-blue-400/30'
+      }`}>
         {node.data.method}
       </span>
     );
@@ -515,28 +562,37 @@ function getNodeBadge(node: YAMLNode): React.ReactNode {
   return null;
 }
 
-function highlightText(text: string, searchQuery: string): React.ReactNode {
-  if (!searchQuery.trim()) {
-    return text;
+function getNodeSearchHitFlags(node: YAMLNode, searchQuery: string): { request: boolean; response: boolean } {
+  const query = searchQuery.trim().toLowerCase();
+  if (!query) {
+    return { request: false, response: false };
   }
 
-  const parts = text.split(new RegExp(`(${escapeRegex(searchQuery)})`, 'gi'));
+  const requestPayload = serializeSearchValue(stripResponseField(node.data));
+  const responsePayload = serializeSearchValue(node.data?.response);
 
-  return (
-    <>
-      {parts.map((part, index) =>
-        part.toLowerCase() === searchQuery.toLowerCase() ? (
-          <mark key={index} className="bg-yellow-400 text-black px-0.5 rounded">
-            {part}
-          </mark>
-        ) : (
-          part
-        )
-      )}
-    </>
-  );
+  return {
+    request: requestPayload.includes(query),
+    response: responsePayload.includes(query),
+  };
 }
 
-function escapeRegex(text: string): string {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+function stripResponseField(value: any): any {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return value;
+  }
+  const next = { ...value };
+  delete next.response;
+  return next;
+}
+
+function serializeSearchValue(value: any): string {
+  if (value == null) return '';
+  if (typeof value === 'string') return value.toLowerCase();
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value).toLowerCase();
+  try {
+    return JSON.stringify(value).toLowerCase();
+  } catch {
+    return '';
+  }
 }

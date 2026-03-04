@@ -15,6 +15,7 @@ export function YAMLEditorStandaloneComplete() {
   const [yamlCode, setYamlCode] = useState<string>('');
   const [yamlTree, setYamlTree] = useState<YAMLNode | null>(null);
   const [selectedNode, setSelectedNode] = useState<YAMLNode | null>(null);
+  const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('tree');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -46,17 +47,37 @@ export function YAMLEditorStandaloneComplete() {
     return null;
   };
 
+  const syncSelectionWithTree = (tree: YAMLNode | null) => {
+    if (!tree) {
+      setSelectedNode(null);
+      setSelectedNodeIds([]);
+      return;
+    }
+
+    const survivingIds = selectedNodeIds.filter((id) => findNodeById(tree, id));
+    setSelectedNodeIds(survivingIds);
+
+    if (selectedNode && survivingIds.includes(selectedNode.id)) {
+      const freshNode = findNodeById(tree, selectedNode.id);
+      setSelectedNode(freshNode ?? null);
+      return;
+    }
+
+    if (survivingIds.length > 0) {
+      const nextPrimary = findNodeById(tree, survivingIds[survivingIds.length - 1]);
+      setSelectedNode(nextPrimary ?? null);
+      return;
+    }
+
+    setSelectedNode(null);
+  };
+
   // Sincronizar código a árbol
   const syncCodeToTree = (code: string) => {
     try {
       const tree = parseYAMLToTree(code);
       setYamlTree(tree);
-
-      // Actualizar selectedNode si existe en el nuevo árbol para mantener la UI sincronizada
-      if (selectedNode && tree) {
-        const freshNode = findNodeById(tree, selectedNode.id);
-        setSelectedNode(freshNode ?? null);
-      }
+      syncSelectionWithTree(tree);
 
       setError(null);
     } catch (err) {
@@ -89,7 +110,13 @@ export function YAMLEditorStandaloneComplete() {
 
   const handleTreeChange = (newTree: YAMLNode) => {
     setYamlTree(newTree);
+    syncSelectionWithTree(newTree);
     syncTreeToCode(newTree);
+  };
+
+  const handleSelectionChange = (primaryNode: YAMLNode | null, nodeIds: string[]) => {
+    setSelectedNode(primaryNode);
+    setSelectedNodeIds(nodeIds);
   };
 
   const handleNodeUpdate = (nodeId: string, updatedData: any) => {
@@ -350,7 +377,8 @@ export function YAMLEditorStandaloneComplete() {
               <YAMLTreeView
                 tree={yamlTree}
                 selectedNode={selectedNode}
-                onNodeSelect={setSelectedNode}
+                selectedNodeIds={selectedNodeIds}
+                onSelectionChange={handleSelectionChange}
                 onTreeChange={handleTreeChange}
               />
             )}
