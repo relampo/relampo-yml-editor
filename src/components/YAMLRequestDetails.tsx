@@ -2,21 +2,24 @@ import { useState, useEffect, useRef } from 'react';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import { Search, ChevronUp, ChevronDown } from 'lucide-react';
-import type { YAMLNode } from '../types/yaml';
+import type { RedirectSourceInfo, YAMLNode } from '../types/yaml';
 import { MethodDropdown } from './fields/MethodDropdown';
 import { QueryParamsEditor } from './fields/QueryParamsEditor';
 import { BodyTypeSelector } from './fields/BodyTypeSelector';
 import { YAMLResponseDetails } from './YAMLResponseDetails';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface YAMLRequestDetailsProps {
   node: YAMLNode;
+  redirectSourceInfo?: RedirectSourceInfo | null;
   onNodeUpdate?: (nodeId: string, updatedData: any) => void;
 }
 
 type Tab = 'request' | 'response';
 type SearchMode = 'text' | 'regex';
 
-export function YAMLRequestDetails({ node, onNodeUpdate }: YAMLRequestDetailsProps) {
+export function YAMLRequestDetails({ node, redirectSourceInfo = null, onNodeUpdate }: YAMLRequestDetailsProps) {
+  const { language } = useLanguage();
   const data = node.data || {};
   const [formData, setFormData] = useState(data);
   const [activeTab, setActiveTab] = useState<Tab>('request');
@@ -28,6 +31,9 @@ export function YAMLRequestDetails({ node, onNodeUpdate }: YAMLRequestDetailsPro
   const [responseReplace, setResponseReplace] = useState('');
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
   const contentRef = useRef<HTMLDivElement>(null);
+  const hasRecordedRedirectFollowUp = Boolean(redirectSourceInfo);
+  const effectiveRedirectAutomatically = hasRecordedRedirectFollowUp ? false : !!formData.redirect_automatically;
+  const effectiveFollowRedirects = hasRecordedRedirectFollowUp ? true : formData.follow_redirects !== false;
 
   // Update formData when node changes
   useEffect(() => {
@@ -110,6 +116,9 @@ export function YAMLRequestDetails({ node, onNodeUpdate }: YAMLRequestDetailsPro
         {activeTab === 'request' ? (
           <RequestContent
             formData={formData}
+            hasRecordedRedirectFollowUp={hasRecordedRedirectFollowUp}
+            effectiveRedirectAutomatically={effectiveRedirectAutomatically}
+            effectiveFollowRedirects={effectiveFollowRedirects}
             onFieldChange={handleFieldChange}
             onBodyChange={handleBodyChange}
             searchText={searchText}
@@ -142,6 +151,9 @@ export function YAMLRequestDetails({ node, onNodeUpdate }: YAMLRequestDetailsPro
 
 interface RequestContentProps {
   formData: any;
+  hasRecordedRedirectFollowUp: boolean;
+  effectiveRedirectAutomatically: boolean;
+  effectiveFollowRedirects: boolean;
   onFieldChange: (field: string, value: any) => void;
   onBodyChange: (value: string) => void;
   searchText: string;
@@ -156,6 +168,9 @@ interface RequestContentProps {
 
 function RequestContent({
   formData,
+  hasRecordedRedirectFollowUp,
+  effectiveRedirectAutomatically,
+  effectiveFollowRedirects,
   onFieldChange,
   onBodyChange,
   searchText,
@@ -167,6 +182,7 @@ function RequestContent({
   onReplaceValueChange,
   onNavigate,
 }: RequestContentProps) {
+  const { language } = useLanguage();
   const compactInputClass = 'w-[14ch] max-w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono';
 
   const splitQuery = (fullUrl: string): { withoutQuery: string; query: string } => {
@@ -360,74 +376,6 @@ function RequestContent({
         </div>
       </div>
 
-      {/* Timeout / Cookie Override / Cache Override / Throughput (Request) */}
-      <div>
-        <div className="grid grid-cols-4 gap-3 items-end w-full">
-          <div className="min-w-0">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              Timeout
-            </label>
-            <Input
-              value={formData.timeout || ''}
-              onChange={(e) => onFieldChange('timeout', e.target.value)}
-              placeholder="30s"
-              className="w-full h-[38px] bg-white/5 border border-white/10 text-zinc-300 text-sm font-mono"
-            />
-          </div>
-          <div className="min-w-0">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              Cookie Override
-            </label>
-            <select
-              value={formData.cookie_override || 'inherit'}
-              onChange={(e) => onFieldChange('cookie_override', e.target.value)}
-              className="block w-full h-[38px] px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono"
-            >
-              <option value="inherit">inherit</option>
-              <option value="enabled">enabled</option>
-              <option value="disabled">disabled</option>
-            </select>
-          </div>
-          <div className="min-w-0">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              Cache Override
-            </label>
-            <select
-              value={formData.cache_override || 'inherit'}
-              onChange={(e) => onFieldChange('cache_override', e.target.value)}
-              className="block w-full h-[38px] px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono"
-            >
-              <option value="inherit">inherit</option>
-              <option value="enabled">enabled</option>
-              <option value="disabled">disabled</option>
-            </select>
-          </div>
-          <div className="min-w-0">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              Throughput (Request)
-            </label>
-            <select
-              value={formData.throughput?.enabled ? 'enabled' : 'disabled'}
-              onChange={(e) => {
-                if (e.target.value === 'enabled') {
-                  const next = {
-                    enabled: true,
-                    target_rps: formData.throughput?.target_rps || 1,
-                  };
-                  onFieldChange('throughput', next);
-                } else {
-                  onFieldChange('throughput', undefined);
-                }
-              }}
-              className="block w-full h-[38px] px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono"
-            >
-              <option value="enabled">enabled</option>
-              <option value="disabled">disabled</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
       {/* Advanced toggles */}
       <div>
         <div className="flex items-center gap-6 flex-wrap">
@@ -444,7 +392,8 @@ function RequestContent({
             <input
               type="checkbox"
               className="w-4 h-4 rounded border-white/10 bg-white/5 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-0"
-              checked={!!formData.redirect_automatically}
+              checked={effectiveRedirectAutomatically}
+              disabled={hasRecordedRedirectFollowUp}
               onChange={(e) => onFieldChange('redirect_automatically', e.target.checked)}
             />
             <span>Redirect Automatically</span>
@@ -453,12 +402,18 @@ function RequestContent({
             <input
               type="checkbox"
               className="w-4 h-4 rounded border-white/10 bg-white/5 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-0"
-              checked={formData.follow_redirects !== false}
+              checked={effectiveFollowRedirects}
+              disabled={hasRecordedRedirectFollowUp}
               onChange={(e) => onFieldChange('follow_redirects', e.target.checked)}
             />
             <span>Follow Redirects</span>
           </label>
         </div>
+        {hasRecordedRedirectFollowUp && (
+          <div className="mt-2 text-xs text-zinc-500">
+            This request leads to the next recorded step, so redirect behavior is derived from the recording.
+          </div>
+        )}
       </div>
 
       {/* URL with Query Parameters */}
@@ -569,52 +524,6 @@ function RequestContent({
         hideTypeLabel
       />
 
-      {/* Recorded At */}
-      {formData.recorded_at && (
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-              Recorded At
-            </label>
-          </div>
-          <Input
-            value={formData.recorded_at}
-            onChange={(e) => onFieldChange('recorded_at', e.target.value)}
-            className="w-[26ch] max-w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm font-mono text-zinc-300"
-          />
-        </div>
-      )}
-
-      {/* REQUEST THROUGHPUT (optional) */}
-      <div>
-        {formData.throughput?.enabled && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs text-zinc-500 block mb-1">Target RPS</label>
-              <Input
-                type="number"
-                min="0.1"
-                step="0.1"
-                value={formData.throughput?.target_rps ?? ''}
-                onChange={(e) => {
-                  const raw = e.target.value;
-                  const next = raw === '' ? undefined : Number(raw);
-                  onFieldChange('throughput', {
-                    ...formData.throughput,
-                    enabled: true,
-                    target_rps: next,
-                  });
-                }}
-                className={compactInputClass}
-              />
-              <div className="mt-1 text-xs text-zinc-500">
-                Approx: {(((Number(formData.throughput?.target_rps) || 0) * 60)).toFixed(0)} req/min
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
       {/* THINK TIME inline */}
       {formData.think_time && (
         <div>
@@ -628,6 +537,99 @@ function RequestContent({
           </div>
         </div>
       )}
+
+      {/* Request execution settings */}
+      <div>
+        <div className="grid grid-cols-5 gap-3 items-start w-full">
+          <div className="min-w-0">
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+              Timeout
+            </label>
+            <Input
+              value={formData.timeout === '30s' ? '' : (formData.timeout || '')}
+              onChange={(e) => onFieldChange('timeout', e.target.value)}
+              placeholder=""
+              className="w-full h-[38px] bg-white/5 border border-white/10 text-zinc-300 text-sm font-mono"
+            />
+          </div>
+          <div className="min-w-0">
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+              Cookie Override
+            </label>
+            <select
+              value={formData.cookie_override || 'inherit'}
+              onChange={(e) => onFieldChange('cookie_override', e.target.value)}
+              className="block w-full h-[38px] px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono"
+            >
+              <option value="inherit">inherit</option>
+              <option value="enabled">enabled</option>
+              <option value="disabled">disabled</option>
+            </select>
+          </div>
+          <div className="min-w-0">
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+              Cache Override
+            </label>
+            <select
+              value={formData.cache_override || 'inherit'}
+              onChange={(e) => onFieldChange('cache_override', e.target.value)}
+              className="block w-full h-[38px] px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono"
+            >
+              <option value="inherit">inherit</option>
+              <option value="enabled">enabled</option>
+              <option value="disabled">disabled</option>
+            </select>
+          </div>
+          <div className="min-w-0">
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+              Throughput (Request)
+            </label>
+            <select
+              value={formData.throughput?.enabled ? 'enabled' : 'disabled'}
+              onChange={(e) => {
+                if (e.target.value === 'enabled') {
+                  const next = {
+                    enabled: true,
+                    target_rps: formData.throughput?.target_rps || 1,
+                  };
+                  onFieldChange('throughput', next);
+                } else {
+                  onFieldChange('throughput', undefined);
+                }
+              }}
+              className="block w-full h-[38px] px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono"
+            >
+              <option value="enabled">enabled</option>
+              <option value="disabled">disabled</option>
+            </select>
+          </div>
+          <div className={`min-w-0 ${formData.throughput?.enabled ? '' : 'opacity-55'}`}>
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+              Target RPS
+            </label>
+            <Input
+              type="number"
+              min="0.1"
+              step="0.1"
+              value={formData.throughput?.target_rps ?? ''}
+              disabled={!formData.throughput?.enabled}
+              onChange={(e) => {
+                const raw = e.target.value;
+                const next = raw === '' ? undefined : Number(raw);
+                onFieldChange('throughput', {
+                  ...formData.throughput,
+                  enabled: true,
+                  target_rps: next,
+                });
+              }}
+              className="w-full h-[38px] bg-white/5 border border-white/10 text-zinc-300 text-sm font-mono"
+            />
+            <div className="mt-1 text-xs text-zinc-500">
+              Approx: {(((Number(formData.throughput?.target_rps) || 0) * 60)).toFixed(0)} req/min
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

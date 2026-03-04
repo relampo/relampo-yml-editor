@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FileText, Plus, Trash2, Users, TrendingUp, Mountain, Gauge, Target, Cookie, Cpu, Hand, AlertTriangle, ServerCrash, Clock3, CheckCircle2, Tag, Search, SearchX, TextSearch, Braces, Brackets, BetweenHorizontalStart, Binary } from 'lucide-react';
-import type { YAMLNode } from '../types/yaml';
+import { FileText, Plus, Trash2, Users, TrendingUp, Mountain, Gauge, Cookie, Cpu, Hand, AlertTriangle, ServerCrash, Clock3, CheckCircle2, Tag, Search, SearchX, TextSearch, Braces, Brackets, BetweenHorizontalStart, Binary } from 'lucide-react';
+import type { YAMLNode, RedirectSourceInfo, RedirectedRequestInfo } from '../types/yaml';
 import { useLanguage } from '../contexts/LanguageContext';
 import { YAMLRequestDetails } from './YAMLRequestDetails';
 import { SparkCodeEditor } from './SparkCodeEditor';
@@ -156,12 +156,15 @@ function FileField({ label, value, field, onChange, noMargin = false }: Editable
 
 interface YAMLNodeDetailsProps {
   node: YAMLNode | null;
+  redirectedInfo?: RedirectedRequestInfo | null;
+  redirectSourceInfo?: RedirectSourceInfo | null;
   onNodeUpdate?: (nodeId: string, updatedData: any) => void;
 }
 
-export function YAMLNodeDetails({ node, onNodeUpdate }: YAMLNodeDetailsProps) {
+export function YAMLNodeDetails({ node, redirectedInfo = null, redirectSourceInfo = null, onNodeUpdate }: YAMLNodeDetailsProps) {
   const { t } = useLanguage();
   const [nodeName, setNodeName] = useState(node?.name || '');
+  const isRequestNode = ['request', 'get', 'post', 'put', 'delete', 'patch', 'head', 'options'].includes(node?.type || '');
 
   // Sincronizar cuando cambia el nodo seleccionado
   useEffect(() => {
@@ -215,7 +218,7 @@ export function YAMLNodeDetails({ node, onNodeUpdate }: YAMLNodeDetailsProps) {
       case 'patch':
       case 'head':
       case 'options':
-        return <YAMLRequestDetails node={node} onNodeUpdate={onNodeUpdate} />;
+        return <YAMLRequestDetails node={node} redirectSourceInfo={redirectSourceInfo} onNodeUpdate={onNodeUpdate} />;
       case 'group':
         return renderGroupDetails(node, onNodeUpdate, nodeName, setNodeName);
       case 'if':
@@ -256,10 +259,10 @@ export function YAMLNodeDetails({ node, onNodeUpdate }: YAMLNodeDetailsProps) {
     <div className="h-full bg-[#0a0a0a] flex flex-col overflow-hidden">
       {/* Header */}
       <div className="px-6 py-3 border-b border-white/5 bg-[#111111] flex-shrink-0">
-        <div className="flex items-center gap-2">
-          <div className="w-1 h-4 bg-yellow-400 rounded-full" />
-          <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
-            {t('yamlEditor.details')}
+        <div className={`flex gap-2 ${isRequestNode ? 'items-start' : 'items-center'}`}>
+          <div className={`w-1 rounded-full bg-yellow-400 ${isRequestNode ? 'h-6 mt-0.5' : 'h-4'}`} />
+          <h3 className={`flex-1 ${isRequestNode ? 'text-base italic font-medium text-zinc-200 normal-case tracking-normal leading-snug whitespace-normal break-words' : 'text-xs font-semibold text-zinc-400 uppercase tracking-wider'}`}>
+            {isRequestNode ? node.name : t('yamlEditor.details')}
           </h3>
         </div>
       </div>
@@ -282,7 +285,8 @@ export function YAMLNodeDetails({ node, onNodeUpdate }: YAMLNodeDetailsProps) {
                   onNodeUpdate(node.id, updatedData);
                 }
               }}
-              className="w-[70px] shrink-0 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-semibold"
+              style={{ width: `${Math.min(Math.max((nodeName || '').length + 2, 12), 48)}ch` }}
+              className="max-w-full shrink-0 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-semibold"
               placeholder="Node name"
             />
           </div>
@@ -730,7 +734,7 @@ function LoadDetails({ node, onNodeUpdate }: { node: YAMLNode; onNodeUpdate?: (n
     rawLoadType === 'rampup_down' ||
     rawLoadType === 'ramp-up-down' ||
     rawLoadType === 'ramp_up_down'
-  ) ? 'ramp_up_down' : (rawLoadType === 'ramp' ? 'ramp' : (rawLoadType === 'throughput' ? 'throughput' : (rawLoadType === 'intent' ? 'intent' : 'constant')));
+  ) ? 'ramp_up_down' : (rawLoadType === 'ramp' ? 'ramp' : (rawLoadType === 'throughput' ? 'throughput' : 'constant'));
 
   const loadTypeDefaults: Record<string, Record<string, any>> = {
     constant: {
@@ -832,15 +836,7 @@ function LoadDetails({ node, onNodeUpdate }: { node: YAMLNode; onNodeUpdate?: (n
       borderColor: 'rgba(110, 231, 183, 0.55)',
       boxShadow: '0 10px 22px rgba(16, 185, 129, 0.22)',
     },
-    intent: {
-      backgroundColor: 'rgba(244, 63, 94, 0.20)',
-      color: '#fda4af',
-      borderColor: 'rgba(253, 164, 175, 0.55)',
-      boxShadow: '0 10px 22px rgba(244, 63, 94, 0.20)',
-    },
   } as const;
-
-  // Calculate visualization data
   const getVisualizationPoints = () => {
     const points: { time: number; users: number }[] = [];
 
@@ -888,20 +884,6 @@ function LoadDetails({ node, onNodeUpdate }: { node: YAMLNode; onNodeUpdate?: (n
       points.push({ time: holdStart, users: targetRps });
       points.push({ time: holdEnd, users: targetRps });
       points.push({ time: duration, users: 0 });
-    } else if (loadType === 'intent') {
-      const targetUnit = String(data.target_unit || 'rps').toLowerCase();
-      const targetValue = parseFloat(String(data.target_value || '0')) || 3;
-      const duration = parseTimeToSeconds(data.duration || '60s');
-      const rampUp = parseTimeToSeconds(data.ramp_up || '0s');
-      const rampDown = parseTimeToSeconds(data.ramp_down || '0s');
-      const holdStart = Math.min(rampUp, duration);
-      const holdEnd = Math.max(holdStart, duration - rampDown);
-      const y = targetUnit === 'vus' ? targetValue : targetValue;
-
-      points.push({ time: 0, users: 0 });
-      points.push({ time: holdStart, users: y });
-      points.push({ time: holdEnd, users: y });
-      points.push({ time: duration, users: 0 });
     }
 
     return points;
@@ -930,6 +912,68 @@ function LoadDetails({ node, onNodeUpdate }: { node: YAMLNode; onNodeUpdate?: (n
   const intentTargetPerMinute = (parseFloat(String(data.target_value || '0')) || 0) * 60;
   const chartHeightPx = 184;
   const yAxisLabel = loadType === 'throughput' || (loadType === 'intent' && intentTargetUnit === 'rps') ? 'RPS' : 'Users';
+  const formatTimeLabel = (seconds: number): string => {
+    const rounded = Math.max(0, Math.round(seconds));
+    if (rounded >= 60) {
+      return `${Math.round(rounded / 60)}m`;
+    }
+    return `${rounded}s`;
+  };
+  const timeAxisTicks = [0, 1, 2, 3, 4].map((i) => {
+    const time = Math.round((maxTime / 4) * i);
+    return {
+      x: 40 + (i * 85),
+      label: formatTimeLabel(time),
+    };
+  });
+  const timeRanges = (() => {
+    if (loadType === 'constant') {
+      const rampUp = Math.max(0, parseTimeToSeconds(String(data.ramp_up || '0s')));
+      return rampUp > 0
+        ? [
+            { label: 'Ramp Up', start: 0, end: Math.min(rampUp, maxTime) },
+            { label: 'Steady', start: Math.min(rampUp, maxTime), end: maxTime },
+          ]
+        : [{ label: 'Steady', start: 0, end: maxTime }];
+    }
+    if (loadType === 'ramp') {
+      return [{ label: 'Ramp', start: 0, end: maxTime }];
+    }
+    const rampUp = Math.max(0, parseTimeToSeconds(String(data.ramp_up || '0s')));
+    const rampDown = Math.max(0, parseTimeToSeconds(String(data.ramp_down || '0s')));
+    const steadyStart = Math.min(rampUp, maxTime);
+    const steadyEnd = Math.max(steadyStart, maxTime - rampDown);
+    return [
+      { label: 'Ramp Up', start: 0, end: steadyStart },
+        { label: loadType === 'throughput' ? 'Target' : 'Steady', start: steadyStart, end: steadyEnd },
+        { label: 'Ramp Down', start: steadyEnd, end: maxTime },
+      ].filter((range) => range.end > range.start);
+  })();
+  const transitionMarkers = (() => {
+    if (loadType === 'constant') {
+      const rampUp = Math.max(0, parseTimeToSeconds(String(data.ramp_up || '0s')));
+      return rampUp > 0 && rampUp < maxTime
+        ? [{ key: 'ramp-up', time: rampUp, label: formatTimeLabel(rampUp) }]
+        : [];
+    }
+    if (loadType === 'ramp') {
+      return [];
+    }
+    const rampUp = Math.max(0, parseTimeToSeconds(String(data.ramp_up || '0s')));
+    const rampDown = Math.max(0, parseTimeToSeconds(String(data.ramp_down || '0s')));
+    const steadyStart = Math.min(rampUp, maxTime);
+    const steadyEnd = Math.max(steadyStart, maxTime - rampDown);
+    return [
+      steadyStart > 0 && steadyStart < maxTime
+        ? { key: 'ramp-up', time: steadyStart, label: formatTimeLabel(steadyStart) }
+        : null,
+      steadyEnd > 0 && steadyEnd < maxTime
+        ? { key: 'ramp-down', time: steadyEnd, label: formatTimeLabel(steadyEnd) }
+        : null,
+    ].filter(Boolean) as Array<{ key: string; time: number; label: string }>;
+  })();
+  const horizontalRanges = timeRanges.filter((range) => range.label === 'Steady' || range.label === 'Target');
+  const verticalRanges = timeRanges.filter((range) => range.label !== 'Steady' && range.label !== 'Target');
   const loadColors = {
     constant: { stroke: '#60a5fa', fill: '#3b82f620' },
     ramp: { stroke: '#a78bfa', fill: '#a78bfa20' },
@@ -951,6 +995,49 @@ function LoadDetails({ node, onNodeUpdate }: { node: YAMLNode; onNodeUpdate?: (n
     ...chartPoints.map((p) => `${p.x},${p.y}`),
     `${chartPoints[chartPoints.length - 1]?.x || 40},170`,
   ].join(' ');
+  const horizontalRangeLabels = horizontalRanges.map((range) => {
+    const startX = 40 + ((range.start / maxTime) * 340);
+    const endX = 40 + ((range.end / maxTime) * 340);
+    const centerX = (startX + endX) / 2;
+    const plateauY = chartPoints[1]?.y ?? chartPoints[0]?.y ?? 90;
+    const labelWidth = Math.max(52, range.label.length * 6.4);
+    return {
+      ...range,
+      centerX,
+      y: Math.max(20, plateauY - 14),
+      width: labelWidth,
+    };
+  });
+  const angledRangeLabels = verticalRanges.map((range) => {
+    let from = chartPoints[0];
+    let to = chartPoints[1] || chartPoints[0];
+    if (range.label === 'Ramp Down' && chartPoints.length >= 4) {
+      from = chartPoints[2];
+      to = chartPoints[3];
+    } else if (range.label === 'Ramp Down' && chartPoints.length >= 2) {
+      from = chartPoints[chartPoints.length - 2];
+      to = chartPoints[chartPoints.length - 1];
+    } else if (range.label === 'Ramp' && chartPoints.length >= 2) {
+      from = chartPoints[0];
+      to = chartPoints[1];
+    }
+    const centerX = (from.x + to.x) / 2;
+    const centerY = (from.y + to.y) / 2;
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+    const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+    const isDescending = dy > 0;
+    const normalX = isDescending ? 10 : -10;
+    const normalY = -8;
+    const labelWidth = Math.max(58, range.label.length * 6.5);
+    return {
+      ...range,
+      x: centerX + normalX,
+      y: centerY + normalY,
+      angle,
+      width: labelWidth,
+    };
+  });
   const intentBandY = {
     min: 170 - ((intentMinVus / maxUsers) * 160),
     max: 170 - ((intentMaxVus / maxUsers) * 160),
@@ -1209,7 +1296,7 @@ function LoadDetails({ node, onNodeUpdate }: { node: YAMLNode; onNodeUpdate?: (n
             style={loadType === 'ramp' ? selectedLoadButtonStyle.ramp : undefined}
           >
             <TrendingUp className="h-3.5 w-3.5" />
-            <span>Randon</span>
+            <span>Lineal</span>
           </button>
           <button
             onClick={() => handleChange('type', 'ramp_up_down')}
@@ -1233,22 +1320,8 @@ function LoadDetails({ node, onNodeUpdate }: { node: YAMLNode; onNodeUpdate?: (n
             <Gauge className="h-3.5 w-3.5" />
             <span>Throughput</span>
           </button>
-          <button
-            onClick={() => handleChange('type', 'intent')}
-            className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 flex items-center gap-1.5 ${loadType === 'intent'
-              ? 'border-current text-white'
-              : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/[0.06]'
-              }`}
-            style={loadType === 'intent' ? selectedLoadButtonStyle.intent : undefined}
-          >
-            <Target className="h-3.5 w-3.5" />
-            <span>Intent</span>
-          </button>
         </div>
       </div>
-
-      {/* Divider */}
-      <div className="h-px bg-white/10" />
 
       {/* Dynamic Fields based on Load Type */}
       {loadType === 'constant' ? (
@@ -1635,13 +1708,13 @@ function LoadDetails({ node, onNodeUpdate }: { node: YAMLNode; onNodeUpdate?: (n
         </label>
         <div className="bg-zinc-900/50 border border-white/10 rounded-lg p-3">
           <div className="mb-2 flex items-center justify-between text-[11px] text-zinc-500">
-            <span>Interactive preview</span>
+            <span>Visual preview</span>
             <span className="font-mono">
               Peak {yAxisLabel}: {maxUsers.toFixed(0)} | Total: {maxTime >= 60 ? `${Math.round(maxTime / 60)}m` : `${maxTime}s`}
             </span>
           </div>
           <div className="mb-2 text-[11px] text-zinc-400">
-            Drag any colored handle to update fields in real time.
+            Time ranges are shown for reference based on the current load configuration.
           </div>
           {showIntentVuBand && (
             <div className="mb-2 text-[11px] text-amber-300/90">
@@ -1698,7 +1771,7 @@ function LoadDetails({ node, onNodeUpdate }: { node: YAMLNode; onNodeUpdate?: (n
               </div>
             </div>
           )}
-          <svg viewBox="0 0 400 200" className="w-full cursor-crosshair" style={{ height: `${chartHeightPx}px` }}>
+          <svg viewBox="0 0 400 200" className="w-full" style={{ height: `${chartHeightPx}px` }}>
             <defs>
               <linearGradient id="loadAreaGradient" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor={vizColor.stroke} stopOpacity="0.32" />
@@ -1706,11 +1779,9 @@ function LoadDetails({ node, onNodeUpdate }: { node: YAMLNode; onNodeUpdate?: (n
               </linearGradient>
             </defs>
 
-            {/* Grid lines */}
             <line x1="40" y1="10" x2="40" y2="170" stroke="#3f3f46" strokeWidth="2" />
             <line x1="40" y1="170" x2="380" y2="170" stroke="#3f3f46" strokeWidth="2" />
 
-            {/* Grid background */}
             {[0, 1, 2, 3, 4].map(i => (
               <line
                 key={`h-${i}`}
@@ -1724,7 +1795,6 @@ function LoadDetails({ node, onNodeUpdate }: { node: YAMLNode; onNodeUpdate?: (n
               />
             ))}
 
-            {/* Y-axis labels (users) */}
             {[0, 1, 2, 3, 4].map(i => {
               const users = Math.round((maxUsers / 4) * (4 - i));
               return (
@@ -1742,281 +1812,196 @@ function LoadDetails({ node, onNodeUpdate }: { node: YAMLNode; onNodeUpdate?: (n
               );
             })}
 
-            {/* X-axis labels (time) */}
-            {[0, 1, 2, 3, 4].map(i => {
-              const time = Math.round((maxTime / 4) * i);
-              const timeStr = time >= 60 ? `${Math.round(time / 60)}m` : `${time}s`;
+            {timeAxisTicks.map((tick, i) => (
+              <text
+                key={`x-${i}`}
+                x={tick.x}
+                y="185"
+                fill="#71717a"
+                fontSize="10"
+                textAnchor="middle"
+                fontFamily="monospace"
+              >
+                {tick.label}
+              </text>
+            ))}
+
+            {transitionMarkers.map((marker) => {
+              const x = 40 + ((marker.time / maxTime) * 340);
               return (
-                <text
-                  key={`x-${i}`}
-                  x={40 + (i * 85)}
-                  y="185"
-                  fill="#71717a"
-                  fontSize="10"
-                  textAnchor="middle"
-                  fontFamily="monospace"
-                >
-                  {timeStr}
-                </text>
+                <g key={marker.key}>
+                  <line
+                    x1={x}
+                    y1="18"
+                    x2={x}
+                    y2="170"
+                    stroke={vizColor.stroke}
+                    strokeOpacity="0.5"
+                    strokeWidth="1.4"
+                    strokeDasharray="4 4"
+                  />
+                  <text
+                    x={x}
+                    y="184"
+                    fill={vizColor.stroke}
+                    fontSize="9"
+                    textAnchor="middle"
+                    fontWeight="700"
+                    fontFamily="monospace"
+                    paintOrder="stroke"
+                    stroke="#09090b"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    {marker.label}
+                  </text>
+                </g>
               );
             })}
 
-            {/* Intent VU control band */}
+            {horizontalRangeLabels.map((range, idx) => {
+              return (
+                <g key={`range-${idx}`}>
+                  <text
+                    x={range.centerX}
+                    y={range.y}
+                    fill="#e4e4e7"
+                    fontSize="9"
+                    textAnchor="middle"
+                    fontWeight="700"
+                    paintOrder="stroke"
+                    stroke="#09090b"
+                    strokeWidth="4"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    {range.label}
+                  </text>
+                </g>
+              );
+            })}
+
+            {angledRangeLabels.map((range, idx) => {
+              return (
+                <g key={`vertical-range-${idx}`}>
+                  <text
+                    x={range.x}
+                    y={range.y}
+                    fill="#a1a1aa"
+                    fontSize="9"
+                    textAnchor="middle"
+                    fontWeight="600"
+                    paintOrder="stroke"
+                    stroke="#09090b"
+                    strokeWidth="4"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    transform={`rotate(${range.angle} ${range.x} ${range.y})`}
+                  >
+                    {range.label}
+                  </text>
+                </g>
+              );
+            })}
+
             {showIntentVuBand && (
-              <>
+              <g>
                 <rect
                   x="40"
                   y={intentBandY.max}
                   width="340"
                   height={intentBandHeight}
-                  fill="#fbbf2420"
-                  stroke="#fbbf24"
-                  strokeOpacity="0.25"
+                  fill="#f59e0b18"
+                  stroke="#f59e0b55"
                   strokeDasharray="4 4"
                 />
-                {intentWarmupSec > 0 && (
-                  <>
-                    <rect
-                      x="40"
-                      y={intentBandY.max}
-                      width={Math.max(0, intentWarmupX - 40)}
-                      height={intentBandHeight}
-                      fill="#38bdf81c"
-                      stroke="#38bdf8"
-                      strokeOpacity="0.18"
-                      strokeDasharray="3 3"
-                    />
-                    <line
-                      x1={intentWarmupX}
-                      y1={intentBandY.max - 8}
-                      x2={intentWarmupX}
-                      y2={intentBandY.min + 8}
-                      stroke="#38bdf8"
-                      strokeWidth="1.4"
-                      strokeDasharray="3 3"
-                    />
-                    {intentWarmupIdleLine && (
-                      <polyline
-                        points={intentWarmupIdleLine}
-                        fill="none"
-                        stroke="#7dd3fc"
-                        strokeWidth="1.8"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeDasharray="4 3"
-                      />
-                    )}
-                    <text
-                      x={Math.max(48, intentWarmupX - 6)}
-                      y={Math.max(12, intentBandY.max - 10)}
-                      fill="#7dd3fc"
-                      fontSize="9"
-                      textAnchor="end"
-                      fontFamily="monospace"
-                    >
-                      warmup
-                    </text>
-                    <text
-                      x={Math.min(378, intentWarmupX + 6)}
-                      y={Math.max(12, intentBandY.max - 10)}
-                      fill="#fde68a"
-                      fontSize="9"
-                      textAnchor="start"
-                      fontFamily="monospace"
-                    >
-                      start adjust
-                    </text>
-                    <circle
-                      cx={intentWarmupX}
-                      cy={intentTargetY}
-                      r="2.5"
-                      fill="#fde68a"
-                      stroke="#18181b"
-                      strokeWidth="1"
-                    />
-                  </>
-                )}
-                <line x1="40" y1={intentBandY.max} x2="380" y2={intentBandY.max} stroke="#f59e0b" strokeWidth="1.5" strokeDasharray="6 4" />
-                <line x1="40" y1={intentBandY.min} x2="380" y2={intentBandY.min} stroke="#f59e0b" strokeWidth="1.5" strokeDasharray="6 4" />
-                <line x1="40" y1={intentTargetY} x2="380" y2={intentTargetY} stroke="#fb7185" strokeWidth="1.2" strokeDasharray="3 3" />
-                <polyline
-                  points={intentVuVariationLine}
-                  fill="none"
-                  stroke="#fde68a"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeOpacity="0.95"
+                <line
+                  x1="40"
+                  y1={intentTargetY}
+                  x2="380"
+                  y2={intentTargetY}
+                  stroke="#fbbf24"
+                  strokeWidth="1.5"
+                  strokeDasharray="6 5"
                 />
-              </>
+                {intentWarmupIdleLine && (
+                  <polyline
+                    points={intentWarmupIdleLine}
+                    fill="none"
+                    stroke="#67e8f9"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
+                )}
+                {intentVuVariationLine && (
+                  <polyline
+                    points={intentVuVariationLine}
+                    fill="none"
+                    stroke="#f59e0b"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    opacity="0.95"
+                  />
+                )}
+              </g>
             )}
+
             {isIntentRps && (
-              <>
+              <g>
                 <rect
                   x="40"
                   y={intentRpsBandY.max}
                   width="340"
                   height={intentRpsBandHeight}
-                  fill="#34d3991c"
-                  stroke="#34d399"
-                  strokeOpacity="0.25"
+                  fill="#10b98118"
+                  stroke="#10b98150"
                   strokeDasharray="4 4"
                 />
-                {intentWarmupSec > 0 && (
-                  <>
-                    <rect
-                      x="40"
-                      y={intentRpsBandY.max}
-                      width={Math.max(0, intentWarmupX - 40)}
-                      height={intentRpsBandHeight}
-                      fill="#38bdf81c"
-                      stroke="#38bdf8"
-                      strokeOpacity="0.18"
-                      strokeDasharray="3 3"
-                    />
-                    <line
-                      x1={intentWarmupX}
-                      y1={intentRpsBandY.max - 8}
-                      x2={intentWarmupX}
-                      y2={intentRpsBandY.min + 8}
-                      stroke="#38bdf8"
-                      strokeWidth="1.4"
-                      strokeDasharray="3 3"
-                    />
-                    {intentRpsWarmupLine && (
-                      <polyline
-                        points={intentRpsWarmupLine}
-                        fill="none"
-                        stroke="#7dd3fc"
-                        strokeWidth="1.8"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeDasharray="4 3"
-                      />
-                    )}
-                    <text
-                      x={Math.max(48, intentWarmupX - 6)}
-                      y={Math.max(12, intentRpsBandY.max - 10)}
-                      fill="#7dd3fc"
-                      fontSize="9"
-                      textAnchor="end"
-                      fontFamily="monospace"
-                    >
-                      warmup
-                    </text>
-                  </>
+                <line
+                  x1="40"
+                  y1={intentTargetY}
+                  x2="380"
+                  y2={intentTargetY}
+                  stroke="#34d399"
+                  strokeWidth="1.5"
+                  strokeDasharray="6 5"
+                />
+                {intentRpsWarmupLine && (
+                  <polyline
+                    points={intentRpsWarmupLine}
+                    fill="none"
+                    stroke="#67e8f9"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
                 )}
-                <line x1="40" y1={intentRpsBandY.max} x2="380" y2={intentRpsBandY.max} stroke="#10b981" strokeWidth="1.5" strokeDasharray="6 4" />
-                <line x1="40" y1={intentRpsBandY.min} x2="380" y2={intentRpsBandY.min} stroke="#10b981" strokeWidth="1.5" strokeDasharray="6 4" />
-                <line x1="40" y1={intentTargetY} x2="380" y2={intentTargetY} stroke="#fb7185" strokeWidth="1.2" strokeDasharray="3 3" />
-                <polyline
-                  points={intentRpsVariationLine}
-                  fill="none"
-                  stroke="#fde68a"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeOpacity="0.95"
-                />
-              </>
+                {intentRpsVariationLine && (
+                  <polyline
+                    points={intentRpsVariationLine}
+                    fill="none"
+                    stroke="#10b981"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    opacity="0.95"
+                  />
+                )}
+              </g>
             )}
 
-            {/* Load pattern line */}
-            {visualizationPoints.length > 1 && (
-              <>
-                {/* Fill area under the line */}
-                <polygon
-                  points={areaPoints}
-                  fill="url(#loadAreaGradient)"
-                />
+            <polygon points={areaPoints} fill="url(#loadAreaGradient)" />
+            <polyline
+              points={linePoints}
+              fill="none"
+              stroke={vizColor.stroke}
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
 
-                <polyline
-                  points={linePoints}
-                  fill="none"
-                  stroke={vizColor.stroke}
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-
-                {/* Points */}
-                {allHandles.map((p, i) => {
-                  const draggable = [...Array(visualizationPoints.length).keys(), 11].includes(p.pointIdx);
-                  const isExtra = p.kind !== 'base';
-                  return (
-                    <g key={`${p.pointIdx}-${i}`} className="group">
-                      <title>{`t=${p.time >= 60 ? `${Math.round(p.time / 60)}m` : `${Math.round(p.time)}s`} • ${yAxisLabel}=${p.users.toFixed(1)}`}</title>
-                      {/* Invisible hit-area to make dragging easier */}
-                      {draggable && (
-                        <circle
-                          cx={p.x}
-                          cy={p.y}
-                          r={isExtra ? 13 : 12}
-                          fill="transparent"
-                          className="cursor-grab active:cursor-grabbing"
-                          onMouseDown={handlePointDragStart(p.pointIdx)}
-                        />
-                      )}
-                      {draggable && (
-                        <circle
-                          cx={p.x}
-                          cy={p.y}
-                          r={draggingPointIdx === p.pointIdx ? 8 : (isExtra ? 7 : 6)}
-                          fill="none"
-                          stroke={vizColor.stroke}
-                          strokeWidth="1.5"
-                          strokeOpacity={draggingPointIdx === p.pointIdx ? 0.9 : 0.55}
-                          strokeDasharray="2 2"
-                          className="pointer-events-none transition-all duration-150"
-                        />
-                      )}
-                      <circle
-                        cx={p.x}
-                        cy={p.y}
-                        r={draggingPointIdx === p.pointIdx ? 6 : (isExtra ? 5 : 4)}
-                        fill={vizColor.stroke}
-                        stroke="#18181b"
-                        strokeWidth="2"
-                        className={`transition-all duration-150 group-hover:r-[6] ${draggable ? 'cursor-grab active:cursor-grabbing' : ''}`}
-                        onMouseDown={handlePointDragStart(p.pointIdx)}
-                      />
-                      <g className="opacity-0 transition-opacity duration-150 group-hover:opacity-100 pointer-events-none">
-                        <rect
-                          x={Math.max(42, p.x - 44)}
-                          y={Math.max(12, p.y - 28)}
-                          width="88"
-                          height="18"
-                          rx="4"
-                          fill="#09090b"
-                          stroke="#3f3f46"
-                          strokeWidth="1"
-                        />
-                        <text
-                          x={p.x}
-                          y={Math.max(24, p.y - 15)}
-                          fill="#e4e4e7"
-                          fontSize="9"
-                          textAnchor="middle"
-                          fontFamily="monospace"
-                        >
-                          {`${Math.round(p.time)}s • ${p.users.toFixed(1)}`}
-                        </text>
-                      </g>
-                    </g>
-                  );
-                })}
-              </>
-            )}
-
-            {/* Axis labels */}
-            <text
-              x="200"
-              y="198"
-              fill="#a1a1aa"
-              fontSize="11"
-              textAnchor="middle"
-              fontWeight="600"
-            >
+            <text x="200" y="198" fill="#a1a1aa" fontSize="11" textAnchor="middle" fontWeight="600">
               Time
             </text>
             <text
@@ -2033,22 +2018,26 @@ function LoadDetails({ node, onNodeUpdate }: { node: YAMLNode; onNodeUpdate?: (n
           </svg>
         </div>
       </div>
+
     </div>
   );
 }
 
-// Helper function to parse time strings to seconds
 function parseTimeToSeconds(timeStr: string): number {
   if (!timeStr) return 0;
   const match = timeStr.match(/^(\d+)(s|m|h)$/);
   if (!match) return 60;
   const [, value, unit] = match;
-  const num = parseInt(value);
+  const num = parseInt(value, 10);
   switch (unit) {
-    case 's': return num;
-    case 'm': return num * 60;
-    case 'h': return num * 3600;
-    default: return 60;
+    case 's':
+      return num;
+    case 'm':
+      return num * 60;
+    case 'h':
+      return num * 3600;
+    default:
+      return 60;
   }
 }
 

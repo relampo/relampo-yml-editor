@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Input } from './ui/input';
-import { ChevronUp, ChevronDown } from 'lucide-react';
+import { ChevronUp, ChevronDown, Search } from 'lucide-react';
 import Editor from '@monaco-editor/react';
 import type { editor as MonacoEditorNS } from 'monaco-editor';
 
@@ -283,46 +283,70 @@ export function YAMLResponseDetails({
     );
   };
 
+  const syncBodyScroll = () => {
+    const textarea = responseBodyTextareaRef.current;
+    const highlight = responseBodyRef.current;
+    if (!textarea || !highlight) return;
+    highlight.scrollTop = textarea.scrollTop;
+    highlight.scrollLeft = textarea.scrollLeft;
+  };
+
   useEffect(() => {
     if (!searchText || totalMatches === 0 || useMonacoForResponse || !responseBodyRef.current) return;
-    const container = responseBodyRef.current;
+    const highlight = responseBodyRef.current;
+    const textarea = responseBodyTextareaRef.current;
     const raf = requestAnimationFrame(() => {
-      const activeMark = container.querySelector(
+      const activeMark = highlight.querySelector(
         `mark[data-match-index="${currentMatchIndex}"]`
       ) as HTMLElement | null;
       if (!activeMark) return;
-      const targetTop = Math.max(
-        0,
-        activeMark.offsetTop - container.clientHeight / 2 + activeMark.offsetHeight / 2
-      );
-      container.scrollTop = targetTop;
-      if (responseBodyTextareaRef.current) {
-        responseBodyTextareaRef.current.scrollTop = targetTop;
+      activeMark.scrollIntoView({ block: 'center', inline: 'nearest' });
+      if (textarea) {
+        textarea.scrollTop = highlight.scrollTop;
+        textarea.scrollLeft = highlight.scrollLeft;
       }
     });
     return () => cancelAnimationFrame(raf);
   }, [searchText, totalMatches, currentMatchIndex, formData.body, useMonacoForResponse]);
 
+  useEffect(() => {
+    if (!searchText || totalMatches === 0 || useMonacoForResponse) return;
+    const current = matches[currentMatchIndex];
+    const textarea = responseBodyTextareaRef.current;
+    if (!textarea || !current) return;
+
+    const raf = requestAnimationFrame(() => {
+      try {
+        textarea.setSelectionRange(current.start, current.end);
+      } catch {
+        // ignore readonly selection issues
+      }
+    });
+
+    return () => cancelAnimationFrame(raf);
+  }, [searchText, searchMode, currentMatchIndex, bodyText, totalMatches, useMonacoForResponse]);
+
   const responseSearchControls = (
     <div className="p-3 border border-white/10 rounded bg-[#0a0a0a] mt-3">
       <div className="flex items-center gap-2 flex-wrap">
         <div className="relative flex-1">
-          <Input
-            value={searchText}
-            onChange={(e) => onSearchChange?.(e.target.value)}
-            placeholder="Search in response body..."
-            className="pr-3 bg-white/5 border-white/10 text-zinc-300 text-sm focus-visible:border-yellow-400/60 focus-visible:ring-yellow-400/30"
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+            <Input
+              value={searchText}
+              onChange={(e) => onSearchChange?.(e.target.value)}
+              placeholder="Search in response body..."
+            className="pl-9 pr-3 bg-white/5 border-white/10 text-zinc-300 text-sm focus-visible:border-yellow-400/60 focus-visible:ring-yellow-400/30"
           />
         </div>
         <div className="flex items-center rounded-md border border-white/10 bg-white/5 p-0.5">
           <button
             onClick={() => onSearchModeChange?.('text')}
-            className={`px-2 py-1 text-xs rounded transition-colors ${searchMode === 'text'
+                    className={`px-2 py-1 text-xs rounded transition-colors ${searchMode === 'text'
               ? 'bg-yellow-400/20 text-yellow-400 border border-yellow-400/40'
               : 'text-zinc-400 hover:text-zinc-200'
               }`}
           >
-            Text
+              Text
           </button>
           <button
             onClick={() => onSearchModeChange?.('regex')}
@@ -343,7 +367,7 @@ export function YAMLResponseDetails({
               onClick={handlePrevious}
               disabled={totalMatches === 0}
               className="p-1.5 hover:bg-white/10 rounded border border-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              title="Previous match"
+                title="Previous match"
             >
               <ChevronUp className="w-4 h-4 text-zinc-400" />
             </button>
@@ -351,7 +375,7 @@ export function YAMLResponseDetails({
               onClick={handleNext}
               disabled={totalMatches === 0}
               className="p-1.5 hover:bg-white/10 rounded border border-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              title="Next match"
+                title="Next match"
             >
               <ChevronDown className="w-4 h-4 text-zinc-400" />
             </button>
@@ -359,9 +383,9 @@ export function YAMLResponseDetails({
         )}
       </div>
       {regexInvalid && (
-        <div className="mt-2 text-xs text-red-400">Invalid regex pattern</div>
-      )}
-    </div>
+          <div className="mt-2 text-xs text-red-400">Invalid regex pattern</div>
+        )}
+      </div>
   );
 
   return (
@@ -516,19 +540,6 @@ export function YAMLResponseDetails({
         </div>
         {responseSearchControls}
         <div className="space-y-2">
-          {/* Body Type Indicator */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-zinc-500">Format:</span>
-            <div className="flex gap-2">
-              <span className="px-2 py-1 text-xs bg-blue-400/10 border border-blue-400/20 text-blue-400 rounded">
-                JSON
-              </span>
-              <span className="px-2 py-1 text-xs bg-zinc-400/10 border border-zinc-400/20 text-zinc-400 rounded">
-                Text
-              </span>
-            </div>
-          </div>
-
           {useMonacoForResponse ? (
             <div
               className="w-full h-[300px] rounded-md border border-white/10 bg-white/5 overflow-hidden"
@@ -541,14 +552,14 @@ export function YAMLResponseDetails({
                 currentMatchIndex={currentMatchIndex}
               />
             </div>
-          ) : (
+          ) : searchText ? (
             <div
               className="relative w-full h-[300px] rounded-md border border-white/10 bg-white/5 overflow-hidden"
               style={{ height: BODY_FIXED_HEIGHT, minHeight: BODY_FIXED_HEIGHT }}
             >
               <pre
                 ref={responseBodyRef}
-                className="absolute inset-0 m-0 p-3 text-xs font-mono text-zinc-300 whitespace-pre-wrap overflow-y-auto overflow-x-auto pointer-events-none"
+                className="absolute inset-0 m-0 p-3 text-sm font-mono text-zinc-300 whitespace-pre-wrap overflow-y-auto overflow-x-auto pointer-events-none"
               >
                 {renderHighlightedText(bodyText)}
               </pre>
@@ -556,11 +567,20 @@ export function YAMLResponseDetails({
                 ref={responseBodyTextareaRef}
                 value={bodyText}
                 readOnly
+                onScroll={syncBodyScroll}
                 placeholder="Response body..."
                 style={{ height: '100%', minHeight: '100%' }}
-                className="relative w-full h-full bg-transparent border-0 text-transparent caret-zinc-200 text-xs font-mono resize-none overflow-y-auto overflow-x-auto selection:bg-yellow-200/40 outline-none p-3"
+                className="relative w-full h-full bg-transparent border-0 text-transparent caret-transparent text-sm font-mono resize-none overflow-y-auto overflow-x-auto selection:bg-yellow-200/40 outline-none p-3"
               />
             </div>
+          ) : (
+            <textarea
+              value={bodyText}
+              readOnly
+              placeholder="Response body..."
+              style={{ height: BODY_FIXED_HEIGHT, minHeight: BODY_FIXED_HEIGHT }}
+              className="w-full bg-white/5 border border-white/10 rounded text-zinc-300 text-sm font-mono h-[300px] resize-none overflow-y-auto overflow-x-auto outline-none p-3"
+            />
           )}
 
         </div>

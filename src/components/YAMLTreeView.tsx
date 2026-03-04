@@ -1,21 +1,25 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Search, X, Plus } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
-import type { YAMLNode } from '../types/yaml';
+import type { YAMLNode, RedirectedRequestInfo } from '../types/yaml';
 import { YAMLTreeNode } from './YAMLTreeNode';
 import { YAMLContextMenu, type YAMLAddableNodeType } from './YAMLContextMenu';
 
 interface YAMLTreeViewProps {
   tree: YAMLNode | null;
   selectedNode: YAMLNode | null;
-  onNodeSelect: (node: YAMLNode) => void;
+  selectedNodeIds: string[];
+  redirectedRequestMap: Record<string, RedirectedRequestInfo>;
+  onSelectionChange: (primaryNode: YAMLNode | null, nodeIds: string[]) => void;
   onTreeChange: (tree: YAMLNode) => void;
 }
 
 export function YAMLTreeView({
   tree,
   selectedNode,
-  onNodeSelect,
+  selectedNodeIds,
+  redirectedRequestMap,
+  onSelectionChange,
   onTreeChange,
 }: YAMLTreeViewProps) {
   const { t } = useLanguage();
@@ -25,6 +29,7 @@ export function YAMLTreeView({
     node: YAMLNode;
   } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [clipboardNodes, setClipboardNodes] = useState<YAMLNode[]>([]);
   const treeContainerRef = useRef<HTMLDivElement | null>(null);
 
   const visibleNodes = useMemo(() => {
@@ -40,6 +45,48 @@ export function YAMLTreeView({
     walk(tree);
     return out;
   }, [tree]);
+
+  const parentMap = useMemo(() => {
+    const map = new Map<string, string | null>();
+    if (!tree) return map;
+
+    const walk = (node: YAMLNode, parentId: string | null) => {
+      map.set(node.id, parentId);
+      node.children?.forEach((child) => walk(child, node.id));
+    };
+
+    walk(tree, null);
+    return map;
+  }, [tree]);
+
+  const nodeById = useMemo(() => {
+    const map = new Map<string, YAMLNode>();
+    visibleNodes.forEach((node) => map.set(node.id, node));
+    return map;
+  }, [visibleNodes]);
+
+  const selectedNodes = useMemo(
+    () => selectedNodeIds.map((id) => nodeById.get(id)).filter(Boolean) as YAMLNode[],
+    [selectedNodeIds, nodeById]
+  );
+
+  const effectiveSelectedIds = useMemo(() => {
+    if (!tree) return [] as string[];
+    const selectedSet = new Set(selectedNodeIds);
+
+    const hasSelectedAncestor = (nodeId: string) => {
+      let parentId = parentMap.get(nodeId) ?? null;
+      while (parentId) {
+        if (selectedSet.has(parentId)) return true;
+        parentId = parentMap.get(parentId) ?? null;
+      }
+      return false;
+    };
+
+    return selectedNodeIds.filter((id) => id !== tree.id && !hasSelectedAncestor(id));
+  }, [selectedNodeIds, parentMap, tree]);
+
+  const allSelectedDisabled = selectedNodes.length > 0 && selectedNodes.every((node) => node.data?.enabled === false);
 
   useEffect(() => {
     if (!selectedNode?.id || !treeContainerRef.current) return;
@@ -61,6 +108,32 @@ export function YAMLTreeView({
       target?.isContentEditable;
     if (isTypingContext) return;
 
+    const isCommand = e.metaKey || e.ctrlKey;
+
+    if ((e.key === 'Delete' || e.key === 'Backspace') && effectiveSelectedIds.length > 0) {
+      e.preventDefault();
+      handleBulkDelete();
+      return;
+    }
+
+    if (isCommand && e.key.toLowerCase() === 'c' && effectiveSelectedIds.length > 0) {
+      e.preventDefault();
+      handleCopySelection();
+      return;
+    }
+
+    if (isCommand && e.key.toLowerCase() === 'v' && clipboardNodes.length > 0) {
+      e.preventDefault();
+      handlePasteSelection();
+      return;
+    }
+
+    if (isCommand && e.key.toLowerCase() === 'd' && effectiveSelectedIds.length > 0) {
+      e.preventDefault();
+      handleBulkDuplicate();
+      return;
+    }
+
     const currentIndex = selectedNode
       ? visibleNodes.findIndex((n) => n.id === selectedNode.id)
       : -1;
@@ -68,16 +141,59 @@ export function YAMLTreeView({
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       const nextIndex = currentIndex < 0 ? 0 : Math.min(currentIndex + 1, visibleNodes.length - 1);
-      onNodeSelect(visibleNodes[nextIndex]);
+      onSelectionChange(visibleNodes[nextIndex], [visibleNodes[nextIndex].id]);
       return;
     }
 
     if (e.key === 'ArrowUp') {
       e.preventDefault();
       const prevIndex = currentIndex < 0 ? 0 : Math.max(currentIndex - 1, 0);
-      onNodeSelect(visibleNodes[prevIndex]);
+      onSelectionChange(visibleNodes[prevIndex], [visibleNodes[prevIndex].id]);
       return;
     }
+  };
+
+  const handleNodeSelect = (node: YAMLNode, event: React.MouseEvent) => {
+    const isToggle = event.metaKey || event.ctrlKey;
+    const isRange = event.shiftKey;
+
+    if (isRange && selectedNode) {
+      const anchorIndex = visibleNodes.findIndex((n) => n.id === selectedNode.id);
+      const targetIndex = visibleNodes.findIndex((n) => n.id === node.id);
+
+      if (anchorIndex >= 0 && targetIndex >= 0) {
+        const [start, end] = anchorIndex < targetIndex
+          ? [anchorIndex, targetIndex]
+          : [targetIndex, anchorIndex];
+        const rangeIds = visibleNodes.slice(start, end + 1).map((n) => n.id);
+        const nextIds = Array.from(new Set([...selectedNodeIds, ...rangeIds]));
+        onSelectionChange(node, nextIds);
+        return;
+      }
+    }
+
+    if (isToggle) {
+      const isAlreadySelected = selectedNodeIds.includes(node.id);
+      const nextIds = isAlreadySelected
+        ? selectedNodeIds.filter((id) => id !== node.id)
+        : [...selectedNodeIds, node.id];
+
+      if (nextIds.length === 0) {
+        onSelectionChange(null, []);
+        return;
+      }
+
+      if (isAlreadySelected && selectedNode?.id === node.id) {
+        const fallbackPrimary = visibleNodes.find((n) => n.id === nextIds[nextIds.length - 1]) ?? null;
+        onSelectionChange(fallbackPrimary, nextIds);
+        return;
+      }
+
+      onSelectionChange(node, nextIds);
+      return;
+    }
+
+    onSelectionChange(node, [node.id]);
   };
 
   const handleContextMenu = (e: React.MouseEvent, node: YAMLNode) => {
@@ -129,7 +245,24 @@ export function YAMLTreeView({
   const handleNodeMove = (nodeId: string, targetId: string, position: 'before' | 'after' | 'inside') => {
     if (!tree) return;
 
-    const updatedTree = moveNodeInTree(tree, nodeId, targetId, position);
+    const draggedSelection = effectiveSelectedIds.includes(nodeId)
+      ? visibleNodes
+          .map((node) => node.id)
+          .filter((id) => effectiveSelectedIds.includes(id))
+      : [nodeId];
+
+    if (draggedSelection.includes(targetId)) {
+      return;
+    }
+
+    const moveOrder = position === 'after'
+      ? [...draggedSelection].reverse()
+      : draggedSelection;
+
+    const updatedTree = moveOrder.reduce(
+      (currentTree, draggedId) => moveNodeInTree(currentTree, draggedId, targetId, position),
+      tree
+    );
     onTreeChange(updatedTree);
   };
 
@@ -140,7 +273,66 @@ export function YAMLTreeView({
     onTreeChange(updatedTree);
   };
 
-  // No filtrar, solo pasar el searchQuery para highlight
+  const handleBulkDelete = () => {
+    if (!tree || effectiveSelectedIds.length === 0) return;
+
+    const updatedTree = effectiveSelectedIds.reduce(
+      (currentTree, nodeId) => removeNodeFromTree(currentTree, nodeId),
+      tree
+    );
+    onSelectionChange(null, []);
+    onTreeChange(updatedTree);
+  };
+
+  const handleCopySelection = () => {
+    if (effectiveSelectedIds.length === 0) return;
+
+    const copied = effectiveSelectedIds
+      .map((id) => nodeById.get(id))
+      .filter(Boolean)
+      .map((node) => cloneNodeSnapshot(node as YAMLNode));
+
+    setClipboardNodes(copied);
+  };
+
+  const handlePasteSelection = () => {
+    if (!tree || clipboardNodes.length === 0) return;
+
+    const copySuffix = t('yamlEditor.common.copy') || 'Copy';
+    const pastedNodes = clipboardNodes.map((node) => cloneNodeWithNewIds(node, copySuffix));
+    const targetNode = selectedNode && nodeById.get(selectedNode.id) ? selectedNode : tree;
+
+    const updatedTree = targetNode.id === tree.id
+      ? pastedNodes.reduce((currentTree, node) => addNodeToTree(currentTree, tree.id, node), tree)
+      : insertNodesAfterTarget(tree, targetNode.id, pastedNodes);
+
+    onTreeChange(updatedTree);
+    onSelectionChange(pastedNodes[pastedNodes.length - 1] || null, pastedNodes.map((node) => node.id));
+  };
+
+  const handleBulkDuplicate = () => {
+    if (!tree || effectiveSelectedIds.length === 0) return;
+
+    const copySuffix = t('yamlEditor.common.copy') || 'Copy';
+    const updatedTree = effectiveSelectedIds.reduce(
+      (currentTree, nodeId) => duplicateNodeInTree(currentTree, nodeId, copySuffix),
+      tree
+    );
+    onTreeChange(updatedTree);
+  };
+
+  const handleBulkToggleEnabled = () => {
+    if (!tree || effectiveSelectedIds.length === 0) return;
+
+    const nextEnabled = allSelectedDisabled;
+    const updatedTree = effectiveSelectedIds.reduce(
+      (currentTree, nodeId) => updateNodeEnabled(currentTree, nodeId, nextEnabled),
+      tree
+    );
+    onTreeChange(updatedTree);
+  };
+
+  // No filtrar, solo pasar el searchQuery para señales visuales del nodo
 
   if (!tree) {
     return (
@@ -200,6 +392,37 @@ export function YAMLTreeView({
         </div>
       </div>
 
+      {selectedNodeIds.length > 1 && (
+        <div className="flex-shrink-0 px-3 pb-2">
+          <div className="flex flex-wrap items-center gap-2 p-3 bg-[#111111] border border-white/10 rounded-lg">
+            <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+              {selectedNodeIds.length} selected
+            </span>
+            <button
+              onClick={handleBulkDuplicate}
+              disabled={effectiveSelectedIds.length === 0}
+              className="px-2.5 py-1.5 text-xs font-semibold rounded border border-white/10 text-zinc-300 hover:bg-white/5 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Duplicate
+            </button>
+            <button
+              onClick={handleBulkToggleEnabled}
+              disabled={effectiveSelectedIds.length === 0}
+              className="px-2.5 py-1.5 text-xs font-semibold rounded border border-white/10 text-zinc-300 hover:bg-white/5 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {allSelectedDisabled ? 'Enable' : 'Disable'}
+            </button>
+            <button
+              onClick={handleBulkDelete}
+              disabled={effectiveSelectedIds.length === 0}
+              className="px-2.5 py-1.5 text-xs font-semibold rounded border border-red-400/20 text-red-300 hover:bg-red-400/10 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Tree */}
       <div
         ref={treeContainerRef}
@@ -212,9 +435,10 @@ export function YAMLTreeView({
           <YAMLTreeNode
             node={tree}
             depth={0}
-            isSelected={selectedNode?.id === tree.id}
-            selectedNodeId={selectedNode?.id}
-            onNodeSelect={onNodeSelect}
+            isSelected={selectedNodeIds.includes(tree.id)}
+            selectedNodeIds={selectedNodeIds}
+            redirectedRequestMap={redirectedRequestMap}
+            onNodeSelect={handleNodeSelect}
             onNodeToggle={handleNodeToggle}
             onContextMenu={handleContextMenu}
             onNodeMove={handleNodeMove}
@@ -310,17 +534,7 @@ function duplicateNodeInTree(tree: YAMLNode, nodeId: string, copySuffix: string)
   if (!nodeToDuplicate) return tree;
 
   // Clonar profundamente con nuevos IDs
-  const cloneWithNewIds = (node: YAMLNode): YAMLNode => {
-    const newId = `node_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    return {
-      ...node,
-      id: newId,
-      name: `${node.name} (${copySuffix})`,
-      children: node.children ? node.children.map(cloneWithNewIds) : []
-    };
-  };
-
-  const newNode = cloneWithNewIds(nodeToDuplicate);
+  const newNode = cloneNodeWithNewIds(nodeToDuplicate, copySuffix);
 
   // Insertar después del original
   const insertAfterOriginal = (node: YAMLNode): YAMLNode => {
@@ -340,6 +554,43 @@ function duplicateNodeInTree(tree: YAMLNode, nodeId: string, copySuffix: string)
   };
 
   return insertAfterOriginal(tree);
+}
+
+function insertNodesAfterTarget(tree: YAMLNode, targetId: string, newNodes: YAMLNode[]): YAMLNode {
+  if (!newNodes.length) return tree;
+
+  if (tree.children) {
+    const index = tree.children.findIndex((child) => child.id === targetId);
+    if (index !== -1) {
+      const newChildren = [...tree.children];
+      newChildren.splice(index + 1, 0, ...newNodes);
+      return { ...tree, children: newChildren };
+    }
+
+    return {
+      ...tree,
+      children: tree.children.map((child) => insertNodesAfterTarget(child, targetId, newNodes)),
+    };
+  }
+
+  return tree;
+}
+
+function cloneNodeSnapshot(node: YAMLNode): YAMLNode {
+  return {
+    ...node,
+    children: node.children ? node.children.map(cloneNodeSnapshot) : undefined,
+  };
+}
+
+function cloneNodeWithNewIds(node: YAMLNode, copySuffix?: string): YAMLNode {
+  const newId = `node_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  return {
+    ...node,
+    id: newId,
+    name: copySuffix ? `${node.name} (${copySuffix})` : node.name,
+    children: node.children ? node.children.map((child) => cloneNodeWithNewIds(child, copySuffix)) : undefined,
+  };
 }
 
 function updateNodeEnabled(tree: YAMLNode, nodeId: string, enabled: boolean): YAMLNode {
@@ -765,7 +1016,7 @@ function createNodeByType(type: string | 'root_plan'): YAMLNode {
         name: 'HTTP Defaults',
         data: {
           base_url: 'https://api.example.com',
-          timeout: '30s'
+          timeout: ''
         },
       };
     case 'metrics':

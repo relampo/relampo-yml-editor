@@ -88,7 +88,7 @@ function normalizeRequestForEditor(request: any): any {
 
   return {
     ...req,
-    timeout: typeof req.timeout === 'string' && req.timeout.trim().length > 0 ? req.timeout : '30s',
+    timeout: typeof req.timeout === 'string' && req.timeout.trim() !== '30s' ? req.timeout : '',
     cookie_override: normalizeOverride(req.cookie_override),
     cache_override: normalizeOverride(req.cache_override),
     throughput: normalizeThroughput(req.throughput),
@@ -799,6 +799,9 @@ function stepNodeToObject(node: YAMLNode): any {
   if (node.type === 'request') {
     const normalizedRequest = normalizeRequestForEditor(node.data);
     const request: any = { request: { ...normalizedRequest } };
+    if (request.request.timeout === '') {
+      delete request.request.timeout;
+    }
 
     // Sincronizar node.name a request.name si fue editado
     if (node.name && node.name !== node.data?.name) {
