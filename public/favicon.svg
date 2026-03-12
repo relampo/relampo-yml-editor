@@ -1,0 +1,20 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="relampoEditorGradient" x1="4" y1="4" x2="28" y2="28" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FDE047" />
+      <stop offset="50%" stop-color="#FACC15" />
+      <stop offset="100%" stop-color="#EAB308" />
+    </linearGradient>
+    <filter id="relampoEditorShadow" x="0" y="0" width="32" height="32" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#FACC15" flood-opacity="0.30"/>
+    </filter>
+  </defs>
+  <g filter="url(#relampoEditorShadow)">
+    <rect x="0" y="0" width="32" height="32" rx="8" fill="url(#relampoEditorGradient)"/>
+  </g>
+  <g transform="translate(9 7)">
+    <svg width="14" height="18" viewBox="0 0 18 22" fill="none">
+      <path d="M10.5 0L0 12.5H7.5L6 22L18 9H10.5V0Z" fill="white"/>
+    </svg>
+  </g>
+</svg>
