@@ -43,6 +43,7 @@ export function YAMLEditor() {
   const [isDragOver, setIsDragOver] = useState(false);
   const [hasDocumentActivity, setHasDocumentActivity] = useState(false);
   const actionMessageTimeoutRef = useRef<number | null>(null);
+  const bypassUnloadWarningRef = useRef(false);
 
   const showActionMessage = (message: string) => {
     setActionMessage(message);
@@ -116,6 +117,77 @@ export function YAMLEditor() {
     return null;
   };
 
+  const lockTypedNodeSelectionInNode = (node: YAMLNode): [YAMLNode, boolean] => {
+    let changed = false;
+    let nextData = node.data;
+    let nextChildren = node.children;
+
+    const defaultType =
+      node.type === 'extractor' ? 'regex' :
+      node.type === 'assertion' ? 'status' :
+      null;
+
+    if (defaultType) {
+      const currentData = node.data || {};
+      const currentType = typeof node.data?.type === 'string' && node.data.type.trim() !== ''
+        ? node.data.type.trim()
+        : defaultType;
+      const typedData = { ...currentData, __lockedType: currentType } as Record<string, any>;
+      delete typedData.__allowTypeSelection;
+      if (currentData.__lockedType !== currentType || currentData.__allowTypeSelection !== undefined) {
+        nextData = typedData;
+        changed = true;
+      }
+    }
+
+    if (node.children && node.children.length > 0) {
+      let childChanged = false;
+      const updatedChildren = node.children.map((child) => {
+        const [nextChild, wasChanged] = lockTypedNodeSelectionInNode(child);
+        if (wasChanged) childChanged = true;
+        return nextChild;
+      });
+      if (childChanged) {
+        nextChildren = updatedChildren;
+        changed = true;
+      }
+    }
+
+    if (!changed) return [node, false];
+
+    return [
+      {
+        ...node,
+        data: nextData,
+        children: nextChildren,
+      },
+      true,
+    ];
+  };
+
+  const lockTypedNodeSelectionForCurrentTree = (): YAMLNode | null => {
+    if (!yamlTree) return null;
+    const [lockedTree, changed] = lockTypedNodeSelectionInNode(yamlTree);
+    if (!changed) return yamlTree;
+    setYamlTree(lockedTree);
+    if (selectedNode) {
+      const refreshedNode = findNodeById(lockedTree, selectedNode.id);
+      if (refreshedNode) {
+        setSelectedNode(refreshedNode);
+      }
+    }
+    return lockedTree;
+  };
+
+  const getPersistableYaml = (): string => {
+    const activeTree = lockTypedNodeSelectionForCurrentTree();
+    if (!activeTree) return yamlCode;
+    const serialized = treeToYAML(activeTree);
+    setYamlCode(serialized);
+    setYamlContent(serialized);
+    return serialized;
+  };
+
   const redirectedRequestMap = useMemo<Record<string, RedirectedRequestInfo>>(() => {
     if (!yamlTree) return {};
     return detectRedirectFollowUps(yamlTree);
@@ -166,10 +238,13 @@ export function YAMLEditor() {
   // Synchronize code to tree
   const syncCodeToTree = (code: string) => {
     try {
-      const tree = parseYAMLToTree(code);
-      console.log('Parsed tree:', tree);
-      setYamlTree(tree);
-      syncSelectionWithTree(tree);
+      const parsedTree = parseYAMLToTree(code);
+      const [normalizedTree] = parsedTree
+        ? lockTypedNodeSelectionInNode(parsedTree)
+        : [parsedTree, false];
+      console.log('Parsed tree:', normalizedTree);
+      setYamlTree(normalizedTree);
+      syncSelectionWithTree(normalizedTree);
 
       setError(null);
     } catch (err) {
@@ -360,8 +435,21 @@ export function YAMLEditor() {
   };
 
   const handleSave = () => {
+    if (serializeDebounceRef.current) {
+      window.clearTimeout(serializeDebounceRef.current);
+      serializeDebounceRef.current = null;
+    }
+
+    let persistableYaml = yamlCode;
+    try {
+      persistableYaml = getPersistableYaml();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error generating YAML');
+      return;
+    }
+
     const now = new Date();
-    localStorage.setItem('relampo-yaml-draft', yamlCode);
+    localStorage.setItem('relampo-yaml-draft', persistableYaml);
     localStorage.setItem('relampo-yaml-draft-timestamp', now.toISOString());
     localStorage.setItem('relampo-yaml-draft-filename', currentFileName);
     setHasDocumentActivity(true);
@@ -387,13 +475,13 @@ export function YAMLEditor() {
     return value;
   };
 
-  const buildDownloadContent = (includeResponses: boolean) => {
+  const buildDownloadContent = (includeResponses: boolean, sourceYaml: string) => {
     if (includeResponses) {
-      return yamlCode;
+      return sourceYaml;
     }
 
     try {
-      const parsed = yaml.load(yamlCode);
+      const parsed = yaml.load(sourceYaml);
       const sanitized = stripResponsesFromObject(parsed);
       return yaml.dump(sanitized, {
         lineWidth: -1,
@@ -411,7 +499,20 @@ export function YAMLEditor() {
   };
 
   const handleDownload = (includeResponses: boolean) => {
-    const content = buildDownloadContent(includeResponses);
+    if (serializeDebounceRef.current) {
+      window.clearTimeout(serializeDebounceRef.current);
+      serializeDebounceRef.current = null;
+    }
+
+    let sourceYaml = yamlCode;
+    try {
+      sourceYaml = getPersistableYaml();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error generating YAML');
+      return;
+    }
+
+    const content = buildDownloadContent(includeResponses, sourceYaml);
     if (content === null) return;
 
     const blob = new Blob([content], { type: 'text/yaml' });
@@ -423,6 +524,9 @@ export function YAMLEditor() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    setHasDocumentActivity(true);
+    setIsDirty(false);
+    setLastSavedAt(new Date().toLocaleTimeString());
     showActionMessage(
       includeResponses
         ? (language === 'es' ? 'YAML descargado con respuestas' : 'YAML downloaded with responses')
@@ -431,7 +535,41 @@ export function YAMLEditor() {
   };
 
   useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!isDirty || bypassUnloadWarningRef.current) return;
+      event.preventDefault();
+      event.returnValue = '';
+      return '';
+    };
+
+    window.onbeforeunload = handleBeforeUnload;
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      if (window.onbeforeunload === handleBeforeUnload) {
+        window.onbeforeunload = null;
+      }
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [isDirty]);
+
+  useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      const isRefreshShortcut =
+        e.key === 'F5' || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'r');
+
+      if (isRefreshShortcut && isDirty) {
+        e.preventDefault();
+        const confirmMessage = language === 'es'
+          ? 'Tienes cambios sin guardar. Si recargas, se perderán. ¿Quieres continuar?'
+          : 'You have unsaved changes. If you reload, they will be lost. Continue?';
+        const shouldReload = window.confirm(confirmMessage);
+        if (shouldReload) {
+          bypassUnloadWarningRef.current = true;
+          window.location.reload();
+        }
+        return;
+      }
+
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
         e.preventDefault();
         if (e.shiftKey) {
@@ -443,7 +581,7 @@ export function YAMLEditor() {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [yamlCode, currentFileName, language]);
+  }, [yamlCode, currentFileName, language, isDirty]);
 
   return (
     <div

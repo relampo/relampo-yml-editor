@@ -167,7 +167,7 @@ npm install lucide-react
 
 ## 📧 Contacto
 
-¿Preguntas? Escríbenos a **info@sqaadvisory.com**
+¿Preguntas? Escríbenos a **info@relampo.com**
 
 ---
 

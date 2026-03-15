@@ -3151,6 +3151,12 @@ function renderSparkDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data
 function renderAssertionDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): React.JSX.Element {
   const data = node.data || {};
   const assertionType = data.type || 'status';
+  const isAssertionTypeSelectionAllowed = data.__allowTypeSelection === true;
+  const lockedAssertionType = typeof data.__lockedType === 'string' && data.__lockedType.trim() !== ''
+    ? data.__lockedType.trim()
+    : '';
+  const effectiveAssertionLockedType = lockedAssertionType || assertionType;
+  const isAssertionTypeLocked = !isAssertionTypeSelectionAllowed && effectiveAssertionLockedType !== '';
   const assertionTypes = [
     { value: 'status', label: 'Status', icon: CheckCircle2 },
     { value: 'status_in', label: 'Status in', icon: CheckCircle2 },
@@ -3221,6 +3227,9 @@ function renderAssertionDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
 
   const handleChange = (field: string, value: any) => {
     if (onNodeUpdate) {
+      if (field === 'type' && isAssertionTypeLocked && value !== effectiveAssertionLockedType) {
+        return;
+      }
       onNodeUpdate(node.id, { ...data, [field]: value });
     }
   };
@@ -3235,11 +3244,13 @@ function renderAssertionDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
         <div className="flex flex-wrap items-center gap-1">
           {assertionTypes.map((type) => {
             const active = assertionType === type.value;
+            const disabled = isAssertionTypeLocked && type.value !== effectiveAssertionLockedType;
             const Icon = type.icon;
             return (
               <button
                 key={type.value}
                 type="button"
+                disabled={disabled}
                 onClick={() => handleChange('type', type.value)}
                 aria-pressed={active}
                 className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${active
@@ -3247,8 +3258,9 @@ function renderAssertionDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
                   : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/[0.06]'
                   }`}
                 style={active ? assertionTypeButtonStyle[type.value] : undefined}
+                aria-disabled={disabled}
               >
-                <span className="inline-flex items-center gap-1.5">
+                <span className={`inline-flex items-center gap-1.5 ${disabled ? 'opacity-45 cursor-not-allowed' : ''}`}>
                   <Icon className="h-3.5 w-3.5" />
                   <span>{type.label}</span>
                 </span>
@@ -3256,6 +3268,11 @@ function renderAssertionDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
             );
           })}
         </div>
+        {isAssertionTypeLocked && (
+          <p className="mt-2 text-xs text-zinc-500">
+            Type locked to <span className="text-zinc-300 font-mono">{effectiveAssertionLockedType}</span> after loading or saving.
+          </p>
+        )}
       </div>
 
       {/* Conditional Fields Based on Type */}
@@ -3319,8 +3336,16 @@ function renderAssertionDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
             </label>
             <Input
               type="number"
-              value={data.match_no !== undefined ? data.match_no : 1}
-              onChange={(e) => handleChange('match_no', parseInt(e.target.value) || 1)}
+              value={data.match_no !== undefined && data.match_no !== null ? data.match_no : ''}
+              onChange={(e) => {
+                const raw = e.target.value;
+                if (raw === '') {
+                  handleChange('match_no', '');
+                  return;
+                }
+                const parsed = parseInt(raw, 10);
+                handleChange('match_no', Number.isNaN(parsed) ? '' : parsed);
+              }}
               placeholder="1"
               className="bg-white/5 border-white/10 text-zinc-300 text-sm font-mono"
             />
@@ -3419,6 +3444,12 @@ function renderAssertionDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
 function renderExtractorDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): React.JSX.Element {
   const data = node.data || {};
   const extractorType = data.type || 'regex';
+  const isExtractorTypeSelectionAllowed = data.__allowTypeSelection === true;
+  const lockedExtractorType = typeof data.__lockedType === 'string' && data.__lockedType.trim() !== ''
+    ? data.__lockedType.trim()
+    : '';
+  const effectiveExtractorLockedType = lockedExtractorType || extractorType;
+  const isExtractorTypeLocked = !isExtractorTypeSelectionAllowed && effectiveExtractorLockedType !== '';
   const extractorTypes = [
     { value: 'regex', label: 'Regex', icon: TextSearch },
     { value: 'jsonpath', label: 'Jsonpath', icon: Braces },
@@ -3500,6 +3531,9 @@ function renderExtractorDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
         return;
       }
       if (field === 'type') {
+        if (isExtractorTypeLocked && value !== effectiveExtractorLockedType) {
+          return;
+        }
         onNodeUpdate(node.id, { ...data, ...getExtractorDefaults(value), var: extractorVariableName, variable: extractorVariableName });
         return;
       }
@@ -3517,11 +3551,13 @@ function renderExtractorDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
         <div className="flex flex-wrap items-center gap-1">
           {extractorTypes.map((type) => {
             const active = extractorType === type.value;
+            const disabled = isExtractorTypeLocked && type.value !== effectiveExtractorLockedType;
             const Icon = type.icon;
             return (
               <button
                 key={type.value}
                 type="button"
+                disabled={disabled}
                 onClick={() => handleChange('type', type.value)}
                 aria-pressed={active}
                 className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${active
@@ -3529,8 +3565,9 @@ function renderExtractorDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
                   : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/[0.06]'
                   }`}
                 style={active ? extractorTypeButtonStyle[type.value] : undefined}
+                aria-disabled={disabled}
               >
-                <span className="inline-flex items-center gap-1.5">
+                <span className={`inline-flex items-center gap-1.5 ${disabled ? 'opacity-45 cursor-not-allowed' : ''}`}>
                   <Icon className="h-3.5 w-3.5" />
                   <span>{type.label}</span>
                 </span>
@@ -3538,6 +3575,11 @@ function renderExtractorDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
             );
           })}
         </div>
+        {isExtractorTypeLocked && (
+          <p className="mt-2 text-xs text-zinc-500">
+            Type locked to <span className="text-zinc-300 font-mono">{effectiveExtractorLockedType}</span> after loading or saving.
+          </p>
+        )}
       </div>
 
       {/* Variable Name - common to all types */}
