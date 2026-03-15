@@ -20,6 +20,37 @@ import {
 
 type ViewMode = 'code' | 'tree';
 
+const LARGE_FILE_CHAR_THRESHOLD = 2_000_000;
+const LARGE_FILE_LINE_THRESHOLD = 50_000;
+
+type ParseWorkerRequest = {
+  id: number;
+  yaml: string;
+};
+
+type ParseWorkerResponse =
+  | { id: number; ok: true; tree: YAMLNode | null }
+  | { id: number; ok: false; error: string };
+
+type DocumentMetrics = {
+  chars: number;
+  lines: number;
+  large: boolean;
+};
+
+function getDocumentMetrics(text: string): DocumentMetrics {
+  const chars = text.length;
+  if (chars === 0) return { chars: 0, lines: 0, large: false };
+
+  let lines = 1;
+  for (let i = 0; i < text.length; i += 1) {
+    if (text.charCodeAt(i) === 10) lines += 1;
+  }
+
+  const large = chars >= LARGE_FILE_CHAR_THRESHOLD || lines >= LARGE_FILE_LINE_THRESHOLD;
+  return { chars, lines, large };
+}
+
 export function YAMLEditor() {
   const { language, setLanguage, t } = useLanguage();
   const { yamlContent, setYamlContent } = useYAML();
@@ -35,6 +66,9 @@ export function YAMLEditor() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const parseDebounceRef = useRef<number | null>(null);
   const serializeDebounceRef = useRef<number | null>(null);
+  const parseWorkerRef = useRef<Worker | null>(null);
+  const parseRequestIdRef = useRef(0);
+  const activeParseRequestIdRef = useRef(0);
   const [isInitialized, setIsInitialized] = useState(false);
   const [currentFileName, setCurrentFileName] = useState('relampo-script.yaml');
   const [isDirty, setIsDirty] = useState(false);
@@ -44,6 +78,10 @@ export function YAMLEditor() {
   const [hasDocumentActivity, setHasDocumentActivity] = useState(false);
   const actionMessageTimeoutRef = useRef<number | null>(null);
   const bypassUnloadWarningRef = useRef(false);
+  const [isParsing, setIsParsing] = useState(false);
+  const [isTreeOutdated, setIsTreeOutdated] = useState(false);
+  const selectedNodeRef = useRef<YAMLNode | null>(null);
+  const selectedNodeIdsRef = useRef<string[]>([]);
 
   const showActionMessage = (message: string) => {
     setActionMessage(message);
@@ -61,13 +99,29 @@ export function YAMLEditor() {
     return /\.(ya?ml)$/i.test(trimmed) ? trimmed : `${trimmed}.yaml`;
   };
 
+  const documentMetrics = useMemo(() => getDocumentMetrics(yamlCode), [yamlCode]);
+  const isLargeFileMode = documentMetrics.large;
+
+  useEffect(() => {
+    selectedNodeRef.current = selectedNode;
+  }, [selectedNode]);
+
+  useEffect(() => {
+    selectedNodeIdsRef.current = selectedNodeIds;
+  }, [selectedNodeIds]);
+
   // Initialize tree on mount
   useEffect(() => {
     if (!isInitialized) {
       const defaultYaml = yamlContent || getDefaultYAML();
+      const metrics = getDocumentMetrics(defaultYaml);
       setYamlCode(defaultYaml);
       setYamlContent(defaultYaml);
       syncCodeToTree(defaultYaml);
+      if (metrics.large) {
+        setViewMode('code');
+        setIsTreeOutdated(Boolean(defaultYaml.trim()));
+      }
       setIsInitialized(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -214,43 +268,128 @@ export function YAMLEditor() {
     if (!tree) {
       setSelectedNode(null);
       setSelectedNodeIds([]);
+      selectedNodeRef.current = null;
+      selectedNodeIdsRef.current = [];
       return;
     }
 
-    const survivingIds = selectedNodeIds.filter((id) => findNodeById(tree, id));
+    const survivingIds = selectedNodeIdsRef.current.filter((id) => findNodeById(tree, id));
     setSelectedNodeIds(survivingIds);
+    selectedNodeIdsRef.current = survivingIds;
 
-    if (selectedNode && survivingIds.includes(selectedNode.id)) {
-      const freshNode = findNodeById(tree, selectedNode.id);
+    const currentSelectedNode = selectedNodeRef.current;
+    if (currentSelectedNode && survivingIds.includes(currentSelectedNode.id)) {
+      const freshNode = findNodeById(tree, currentSelectedNode.id);
       setSelectedNode(freshNode ?? null);
+      selectedNodeRef.current = freshNode ?? null;
       return;
     }
 
     if (survivingIds.length > 0) {
       const nextPrimary = findNodeById(tree, survivingIds[survivingIds.length - 1]);
       setSelectedNode(nextPrimary ?? null);
+      selectedNodeRef.current = nextPrimary ?? null;
       return;
     }
 
     setSelectedNode(null);
+    selectedNodeRef.current = null;
   };
 
-  // Synchronize code to tree
-  const syncCodeToTree = (code: string) => {
-    try {
-      const parsedTree = parseYAMLToTree(code);
+  useEffect(() => {
+    if (typeof Worker === 'undefined') return;
+    const worker = new Worker(new URL('../workers/yamlParser.worker.ts', import.meta.url), { type: 'module' });
+    parseWorkerRef.current = worker;
+
+    worker.onmessage = (event: MessageEvent<ParseWorkerResponse>) => {
+      const message = event.data;
+      if (!message || message.id !== activeParseRequestIdRef.current) return;
+
+      setIsParsing(false);
+
+      if (!message.ok) {
+        setError(message.error || (language === 'es' ? 'Error al parsear YAML' : 'Error parsing YAML'));
+        setYamlTree(null);
+        syncSelectionWithTree(null);
+        setIsTreeOutdated(true);
+        return;
+      }
+
+      const parsedTree = message.tree;
       const [normalizedTree] = parsedTree
         ? lockTypedNodeSelectionInNode(parsedTree)
         : [parsedTree, false];
-      console.log('Parsed tree:', normalizedTree);
       setYamlTree(normalizedTree);
       syncSelectionWithTree(normalizedTree);
-
       setError(null);
+      setIsTreeOutdated(false);
+    };
+
+    worker.onerror = () => {
+      setIsParsing(false);
+    };
+
+    return () => {
+      worker.terminate();
+      if (parseWorkerRef.current === worker) {
+        parseWorkerRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [language]);
+
+  // Synchronize code to tree
+  const syncCodeToTree = (code: string, options?: { force?: boolean }) => {
+    if (!code || code.trim() === '') {
+      activeParseRequestIdRef.current = ++parseRequestIdRef.current;
+      setYamlTree(null);
+      syncSelectionWithTree(null);
+      setError(null);
+      setIsParsing(false);
+      setIsTreeOutdated(false);
+      return;
+    }
+
+    const shouldSkipAutoParse = getDocumentMetrics(code).large && !options?.force;
+    if (shouldSkipAutoParse) {
+      activeParseRequestIdRef.current = ++parseRequestIdRef.current;
+      setError(null);
+      setIsParsing(false);
+      setIsTreeOutdated(Boolean(code.trim()));
+      return;
+    }
+
+    const requestId = ++parseRequestIdRef.current;
+    activeParseRequestIdRef.current = requestId;
+    setIsParsing(true);
+
+    const worker = parseWorkerRef.current;
+    if (worker) {
+      worker.postMessage({ id: requestId, yaml: code } as ParseWorkerRequest);
+      return;
+    }
+
+    try {
+      const parsedTree = parseYAMLToTree(code);
+      if (activeParseRequestIdRef.current !== requestId) return;
+
+      const [normalizedTree] = parsedTree
+        ? lockTypedNodeSelectionInNode(parsedTree)
+        : [parsedTree, false];
+      setYamlTree(normalizedTree);
+      syncSelectionWithTree(normalizedTree);
+      setError(null);
+      setIsTreeOutdated(false);
     } catch (err) {
-      console.error('Parse error:', err);
+      if (activeParseRequestIdRef.current !== requestId) return;
       setError(err instanceof Error ? err.message : 'Error parsing YAML');
       setYamlTree(null);
+      syncSelectionWithTree(null);
+      setIsTreeOutdated(true);
+    } finally {
+      if (activeParseRequestIdRef.current === requestId) {
+        setIsParsing(false);
+      }
     }
   };
 
@@ -261,6 +400,7 @@ export function YAMLEditor() {
       setYamlCode(code);
       setYamlContent(code); // Actualizar contexto
       setError(null);
+      setIsTreeOutdated(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error generating YAML');
     }
@@ -276,6 +416,15 @@ export function YAMLEditor() {
     if (parseDebounceRef.current) {
       window.clearTimeout(parseDebounceRef.current);
     }
+
+    if (getDocumentMetrics(newCode).large) {
+      activeParseRequestIdRef.current = ++parseRequestIdRef.current;
+      setIsTreeOutdated(Boolean(newCode.trim()));
+      setError(null);
+      setIsParsing(false);
+      return;
+    }
+
     parseDebounceRef.current = window.setTimeout(() => {
       syncCodeToTree(newCode);
     }, 350);
@@ -301,11 +450,22 @@ export function YAMLEditor() {
     syncTreeToCode(newTree);
     setHasDocumentActivity(true);
     setIsDirty(true);
+    setIsTreeOutdated(false);
   };
 
   const handleSelectionChange = (primaryNode: YAMLNode | null, nodeIds: string[]) => {
     setSelectedNode(primaryNode);
     setSelectedNodeIds(nodeIds);
+    selectedNodeRef.current = primaryNode;
+    selectedNodeIdsRef.current = nodeIds;
+  };
+
+  const handleParseNow = () => {
+    if (parseDebounceRef.current) {
+      window.clearTimeout(parseDebounceRef.current);
+      parseDebounceRef.current = null;
+    }
+    syncCodeToTree(yamlCode, { force: true });
   };
 
   const handleNodeUpdate = (nodeId: string, updatedData: any) => {
@@ -375,9 +535,16 @@ export function YAMLEditor() {
     const reader = new FileReader();
     reader.onload = (event) => {
       const content = event.target?.result as string;
+      const metrics = getDocumentMetrics(content);
       setYamlCode(content);
       setYamlContent(content);
       syncCodeToTree(content);
+      if (metrics.large) {
+        setViewMode('code');
+        setIsTreeOutdated(Boolean(content.trim()));
+      } else {
+        setIsTreeOutdated(false);
+      }
       setCurrentFileName(normalizeYamlFileName(file.name));
       setHasDocumentActivity(true);
       setIsDirty(false);
@@ -583,6 +750,16 @@ export function YAMLEditor() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [yamlCode, currentFileName, language, isDirty]);
 
+  const formattedLineCount = useMemo(
+    () => documentMetrics.lines.toLocaleString(language === 'es' ? 'es-ES' : 'en-US'),
+    [documentMetrics.lines, language]
+  );
+
+  const formattedCharCount = useMemo(
+    () => documentMetrics.chars.toLocaleString(language === 'es' ? 'es-ES' : 'en-US'),
+    [documentMetrics.chars, language]
+  );
+
   return (
     <div
       className={`relative flex flex-col h-full bg-[#0a0a0a] w-full overflow-hidden ${isDragOver ? 'ring-2 ring-yellow-400/70 ring-inset' : ''}`}
@@ -776,6 +953,43 @@ export function YAMLEditor() {
         </div>
       )}
 
+      {isLargeFileMode && (
+        <div className="px-6 py-3 bg-yellow-500/10 border-b border-yellow-500/20 flex-shrink-0">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm text-yellow-300 font-semibold">
+                {language === 'es'
+                  ? 'Modo de archivo grande activo: el árbol no se parsea automáticamente.'
+                  : 'Large file mode is active: tree parsing is manual.'}
+              </p>
+              <p className="text-xs text-yellow-200/80">
+                {language === 'es'
+                  ? `Líneas: ${formattedLineCount} · Caracteres: ${formattedCharCount}`
+                  : `Lines: ${formattedLineCount} · Characters: ${formattedCharCount}`}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={handleParseNow}
+                variant="outline"
+                size="sm"
+                disabled={isParsing}
+                className="border-yellow-300/30 bg-yellow-300/10 hover:bg-yellow-300/20 text-yellow-200 disabled:opacity-50"
+              >
+                {isParsing
+                  ? (language === 'es' ? 'Parseando...' : 'Parsing...')
+                  : (language === 'es' ? 'Parsear árbol ahora' : 'Parse tree now')}
+              </Button>
+              {isTreeOutdated && (
+                <span className="text-[11px] px-2 py-1 rounded border border-yellow-300/30 bg-yellow-300/10 text-yellow-200">
+                  {language === 'es' ? 'Árbol desactualizado' : 'Tree outdated'}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Main Resizable Layout: Toggled Code/Tree (Left) | Details (Right) */}
       <div className="flex flex-1 overflow-hidden min-h-0 min-w-0 bg-[#0a0a0a]">
         {/* Left Panel: Toggled Code/Tree */}
@@ -824,6 +1038,7 @@ export function YAMLEditor() {
                 onChange={handleCodeChange}
                 readOnly={true}
                 active={viewMode === 'code'}
+                largeFileMode={isLargeFileMode}
               />
             )}
           </div>

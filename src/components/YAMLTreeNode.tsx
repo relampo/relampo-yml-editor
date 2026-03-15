@@ -229,11 +229,6 @@ export function YAMLTreeNode({
   const hasRequestHit = searchHitFlags.request || hasDirectNameMatch;
   const hasResponseHit = searchHitFlags.response;
 
-  // Debug: log tipos de nodos especiales
-  if (['extract', 'extractor', 'assert', 'assertion', 'spark_before', 'spark_after', 'think_time'].includes(node.type)) {
-    console.log(`Node type: ${node.type}, Color: ${color}`);
-  }
-
   return (
     <div className="select-none">
       <div
