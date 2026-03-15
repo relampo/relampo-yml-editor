@@ -1,0 +1,7 @@
+test:
+  name: semantic-error-demo
+
+scenarios:
+  - name: Login Flow
+    steps:
+      - get: /login

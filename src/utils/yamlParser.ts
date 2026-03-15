@@ -9,10 +9,32 @@ function parseGroupFromTemplate(template: any): number | undefined {
   return Number.isFinite(num) ? num : undefined;
 }
 
+function normalizeAssertionForEditor(assertion: any): any {
+  const next = { ...(assertion || {}) };
+  delete next.__allowTypeSelection;
+  if (next.type === 'jsonpath') next.type = 'json';
+  if (!next.type && typeof next.name === 'string' && next.name.trim() !== '') next.type = next.name.trim();
+  if (!next.type) next.type = 'status';
+  if (next.type && !next.__lockedType) next.__lockedType = next.type;
+  return next;
+}
+
+function normalizeAssertionForEngine(assertion: any): any {
+  const next = { ...(assertion || {}) };
+  if (next.type === 'jsonpath') next.type = 'json';
+  if (!next.type && typeof next.name === 'string' && next.name.trim() !== '') next.type = next.name.trim();
+  if (!next.type) next.type = 'status';
+  delete next.__lockedType;
+  delete next.__allowTypeSelection;
+  return next;
+}
+
 function normalizeExtractorForEditor(extractor: any): any {
   const next = { ...(extractor || {}) };
+  delete next.__allowTypeSelection;
   if (next.type === 'json') next.type = 'jsonpath';
   if (!next.type) next.type = 'regex';
+  if (next.type && !next.__lockedType) next.__lockedType = next.type;
   if (!next.from) next.from = 'body';
   if (next.var === undefined && next.variable !== undefined) next.var = next.variable;
   if (next.variable === undefined && next.var !== undefined) next.variable = next.var;
@@ -52,6 +74,8 @@ function normalizeExtractorForEngine(extractor: any): any {
   if (!next.type) next.type = 'regex';
   if (next.var === undefined && next.variable !== undefined) next.var = next.variable;
   if (next.variable === undefined && next.var !== undefined) next.variable = next.var;
+  delete next.__lockedType;
+  delete next.__allowTypeSelection;
 
   if (next.type === 'regex') {
     const mode = String(next.capture_mode || '').toLowerCase();
@@ -397,13 +421,14 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
     // ASSERTIONS as array (Pulse format: assertions[])
     if (req.assertions && Array.isArray(req.assertions)) {
       req.assertions.forEach((assertion: any, idx: number) => {
-        const label = assertion.type || 'check';
-        const detail = assertion.value || assertion.pattern || assertion.name || '';
+        const normalizedAssertion = normalizeAssertionForEditor(assertion);
+        const label = normalizedAssertion.type || 'check';
+        const detail = normalizedAssertion.value || normalizedAssertion.pattern || normalizedAssertion.name || '';
         requestNode.children!.push({
           id: `${stepId}_assertion_${idx}`,
           type: 'assertion',
           name: `Assert: ${label}${detail ? ' = ' + String(detail).substring(0, 20) : ''}`,
-          data: assertion,
+          data: normalizedAssertion,
           path: [...path, 'assertions', idx],
         });
       });
@@ -523,13 +548,14 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       };
 
       step.assertions.forEach((assertion: any, idx: number) => {
-        const label = assertion.type || assertion.name || 'check';
-        const detail = assertion.value || assertion.pattern || '';
+        const normalizedAssertion = normalizeAssertionForEditor(assertion);
+        const label = normalizedAssertion.type || normalizedAssertion.name || 'check';
+        const detail = normalizedAssertion.value || normalizedAssertion.pattern || '';
         groupNode.children!.push({
           id: `${stepId}_assertion_${idx}`,
           type: 'assertion',
           name: `Assert: ${label}${detail ? ' = ' + String(detail).substring(0, 20) : ''}`,
-          data: assertion,
+          data: normalizedAssertion,
           path: [...path, 'assertions', idx],
         });
       });
@@ -538,7 +564,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
     }
     // Si solo hay una assertion, retornarla directamente
     else if (step.assertions.length === 1) {
-      const assertion = step.assertions[0];
+      const assertion = normalizeAssertionForEditor(step.assertions[0]);
       const label = assertion.type || assertion.name || 'check';
       const detail = assertion.value || assertion.pattern || '';
 
@@ -554,7 +580,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
 
   // Assertion (standalone - single object)
   if (step.assertion || step.assert) {
-    const assertData = step.assertion || step.assert;
+    const assertData = normalizeAssertionForEditor(step.assertion || step.assert);
     const label = assertData.type || assertData.name || 'check';
     const detail = assertData.value || assertData.pattern || '';
 
@@ -855,7 +881,7 @@ function stepNodeToObject(node: YAMLNode): any {
       // ASSERTIONS (Pulse format: assertions[])
       const assertionNodes = node.children.filter(child => child.type === 'assertion');
       if (assertionNodes.length > 0) {
-        request.request.assertions = assertionNodes.map(assertion => assertion.data);
+        request.request.assertions = assertionNodes.map(assertion => normalizeAssertionForEngine(assertion.data));
       }
 
       // ASSERT (detect format from data)
@@ -1000,8 +1026,19 @@ function stepNodeToObject(node: YAMLNode): any {
   }
 
   // Assertion standalone (single assertion step)
-  if (node.type === 'assertion' || node.type === 'assert') {
-    const res: any = { assertion: node.data };
+  if (node.type === 'assertion') {
+    const res: any = { assertion: normalizeAssertionForEngine(node.data) };
+    if (node.data?.enabled === false) {
+      res.enabled = false;
+    }
+    return res;
+  }
+
+  if (node.type === 'assert') {
+    const nextData = { ...(node.data || {}) };
+    delete nextData.__lockedType;
+    delete nextData.__allowTypeSelection;
+    const res: any = { assertion: nextData };
     if (node.data?.enabled === false) {
       res.enabled = false;
     }

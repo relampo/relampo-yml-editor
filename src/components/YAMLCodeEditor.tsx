@@ -8,9 +8,10 @@ interface YAMLCodeEditorProps {
   onChange: (value: string) => void;
   readOnly?: boolean;
   active?: boolean;
+  largeFileMode?: boolean;
 }
 
-export function YAMLCodeEditor({ value, onChange, readOnly = false, active = true }: YAMLCodeEditorProps) {
+export function YAMLCodeEditor({ value, onChange, readOnly = false, active = true, largeFileMode = false }: YAMLCodeEditorProps) {
   const editorRef = useRef<MonacoEditorNS.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<Monaco | null>(null);
   const findDecorationsRef = useRef<MonacoEditorNS.IEditorDecorationsCollection | null>(null);
@@ -42,7 +43,13 @@ export function YAMLCodeEditor({ value, onChange, readOnly = false, active = tru
     if (!active) return;
     recomputeMatches();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchQuery, value, active]);
+  }, [searchQuery, active]);
+
+  useEffect(() => {
+    if (!active || largeFileMode || !searchQuery.trim()) return;
+    recomputeMatches();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value, active, largeFileMode, searchQuery]);
 
   useEffect(() => {
     const editor = editorRef.current;
@@ -171,13 +178,16 @@ export function YAMLCodeEditor({ value, onChange, readOnly = false, active = tru
       readOnly,
       minimap: { enabled: false },
       scrollBeyondLastLine: false,
-      wordWrap: 'on' as const,
+      wordWrap: largeFileMode ? 'off' as const : 'on' as const,
       automaticLayout: true,
       renderLineHighlight: 'none' as const,
       occurrencesHighlight: 'off' as const,
       selectionHighlight: false,
       codeLens: false,
-      folding: true,
+      folding: !largeFileMode,
+      links: !largeFileMode,
+      wordBasedSuggestions: largeFileMode ? 'off' as const : 'currentDocument' as const,
+      unicodeHighlight: { ambiguousCharacters: false, invisibleCharacters: false },
       lineNumbersMinChars: 3,
       padding: { top: 12, bottom: 12 },
       find: {
@@ -186,7 +196,7 @@ export function YAMLCodeEditor({ value, onChange, readOnly = false, active = tru
         seedSearchStringFromSelection: 'never' as const,
       },
     }),
-    [readOnly]
+    [readOnly, largeFileMode]
   );
 
   return (

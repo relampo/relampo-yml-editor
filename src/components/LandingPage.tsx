@@ -1192,7 +1192,7 @@ $ relampo run test.yaml --cloud
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <a
-                href="mailto:info@sqaadvisory.com"
+                href="mailto:info@relampo.com"
                 className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#fde047] via-[#facc15] to-[#eab308] px-8 py-4 text-base font-semibold text-black shadow-[0_0_0_1px_rgba(250,204,21,0.35)] hover:opacity-95 transition-opacity"
               >
                 <Mail className="h-5 w-5" />
@@ -1206,7 +1206,7 @@ $ relampo run test.yaml --cloud
               </button>
             </div>
             <p className="mt-6 text-sm text-zinc-400">
-              {t.cta.questionsEmail} <a href="mailto:info@sqaadvisory.com" className="text-[#facc15] hover:underline">info@sqaadvisory.com</a>
+              {t.cta.questionsEmail} <a href="mailto:info@relampo.com" className="text-[#facc15] hover:underline">info@relampo.com</a>
             </p>
           </div>
         </section>
@@ -1221,7 +1221,7 @@ $ relampo run test.yaml --cloud
             </h3>
             <div className="flex items-center justify-center gap-6">
               <a
-                href="https://linkedin.com/company/relampo"
+                href="https://www.linkedin.com/company/relampo"
                 target="_blank"
                 rel="noreferrer"
                 className="group flex flex-col items-center gap-2 transition-all hover:scale-110"
@@ -1231,7 +1231,7 @@ $ relampo run test.yaml --cloud
                 <span className="text-xs text-zinc-500 group-hover:text-zinc-300 transition-colors">LinkedIn</span>
               </a>
               <a
-                href="https://github.com/sqaadvisory/relampo"
+                href="https://github.com/relampo"
                 target="_blank"
                 rel="noreferrer"
                 className="group flex flex-col items-center gap-2 transition-all hover:scale-110"
@@ -1241,7 +1241,7 @@ $ relampo run test.yaml --cloud
                 <span className="text-xs text-zinc-500 group-hover:text-zinc-300 transition-colors">GitHub</span>
               </a>
               <a
-                href="https://discord.gg/relampo"
+                href="https://discord.gg/8WRhQdF9BE"
                 target="_blank"
                 rel="noreferrer"
                 className="group flex flex-col items-center gap-2 transition-all hover:scale-110"
@@ -1251,7 +1251,7 @@ $ relampo run test.yaml --cloud
                 <span className="text-xs text-zinc-500 group-hover:text-zinc-300 transition-colors">Discord</span>
               </a>
               <a
-                href="https://instagram.com/relampo.dev"
+                href="https://www.instagram.com/relampohq/"
                 target="_blank"
                 rel="noreferrer"
                 className="group flex flex-col items-center gap-2 transition-all hover:scale-110"
@@ -1261,7 +1261,7 @@ $ relampo run test.yaml --cloud
                 <span className="text-xs text-zinc-500 group-hover:text-zinc-300 transition-colors">Instagram</span>
               </a>
               <a
-                href="https://youtube.com/@relampo"
+                href="https://www.youtube.com/@relampoHQ"
                 target="_blank"
                 rel="noreferrer"
                 className="group flex flex-col items-center gap-2 transition-all hover:scale-110"

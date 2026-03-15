@@ -34,6 +34,7 @@ import { canDrop, canContain } from '../utils/yamlDragDropRules';
 
 // Estado global para drag & drop (dataTransfer.getData no funciona en dragOver)
 let currentDraggedNode: { id: string; type: YAMLNodeType } | null = null;
+const DND_CLEAR_EVENT = 'yaml-tree-dnd-clear-indicators';
 
 export function setDraggedNode(node: { id: string; type: YAMLNodeType } | null) {
   currentDraggedNode = node;
@@ -41,6 +42,11 @@ export function setDraggedNode(node: { id: string; type: YAMLNodeType } | null) 
 
 export function getDraggedNode() {
   return currentDraggedNode;
+}
+
+function clearDragIndicatorsGlobally() {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new Event(DND_CLEAR_EVENT));
 }
 
 interface YAMLTreeNodeProps {
@@ -78,7 +84,18 @@ export function YAMLTreeNode({
 
   // Limpiar timer al desmontar
   useEffect(() => {
+    const clearIndicator = () => {
+      setDragOver(null);
+      if (hoverTimerRef.current) {
+        clearTimeout(hoverTimerRef.current);
+        hoverTimerRef.current = null;
+      }
+    };
+
+    window.addEventListener(DND_CLEAR_EVENT, clearIndicator);
+
     return () => {
+      window.removeEventListener(DND_CLEAR_EVENT, clearIndicator);
       if (hoverTimerRef.current) {
         clearTimeout(hoverTimerRef.current);
       }
@@ -86,6 +103,7 @@ export function YAMLTreeNode({
   }, []);
 
   const handleDragStart = (e: React.DragEvent) => {
+    clearDragIndicatorsGlobally();
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', node.id); // Necesario para Firefox
     // Guardar en estado global (dataTransfer.getData no funciona en dragOver)
@@ -93,6 +111,7 @@ export function YAMLTreeNode({
   };
 
   const handleDragEnd = () => {
+    clearDragIndicatorsGlobally();
     setDraggedNode(null);
   };
 
@@ -196,6 +215,7 @@ export function YAMLTreeNode({
 
     setDragOver(null);
     setDraggedNode(null);
+    clearDragIndicatorsGlobally();
   };
 
   const icon = getNodeIcon(node.type);
@@ -208,11 +228,6 @@ export function YAMLTreeNode({
     : false;
   const hasRequestHit = searchHitFlags.request || hasDirectNameMatch;
   const hasResponseHit = searchHitFlags.response;
-
-  // Debug: log tipos de nodos especiales
-  if (['extract', 'extractor', 'assert', 'assertion', 'spark_before', 'spark_after', 'think_time'].includes(node.type)) {
-    console.log(`Node type: ${node.type}, Color: ${color}`);
-  }
 
   return (
     <div className="select-none">

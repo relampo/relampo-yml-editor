@@ -1,0 +1,17 @@
+test:
+ name: bad-indent
+
+scenarios:
+  - name: Login Flow
+    load:
+      users: 2
+     duration: 5s
+    steps:
+      - get: /login
+        headers:
+         Accept: text/html
+          User-Agent: relampo
+      - post: /login
+       body:
+          username: test
+          password: secret
