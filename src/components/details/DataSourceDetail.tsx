@@ -85,12 +85,12 @@ export function DataSourceDetail({ node, onNodeUpdate }: DataSourceDetailProps) 
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-8">
         <div className="space-y-8 max-w-4xl">
-          {/* File Configuration */}
+          {/* Data Source Details */}
           <div className="bg-[#111111] rounded-xl p-6 border border-white/5 shadow-2xl">
             <div className="flex items-center justify-between mb-6">
               <h4 className="text-sm font-semibold text-zinc-100 flex items-center gap-2">
                 {getFileIcon()}
-                File Configuration
+                Data Source Details
               </h4>
               <div className="px-3 py-1 bg-white/5 border border-white/10 rounded-md text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
                 {data.type || 'csv'}
@@ -100,30 +100,60 @@ export function DataSourceDetail({ node, onNodeUpdate }: DataSourceDetailProps) 
             <div className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">
-                  File Path
+                  Name
                 </label>
-                <div className="flex gap-2">
-                  <Input
-                    value={pathValue}
-                    onChange={(e) => handleChange('file', e.target.value)}
-                    placeholder="path/to/data.csv"
-                    className="flex-1 bg-[#0a0a0a] border-white/10 text-zinc-300 font-mono"
-                  />
-                  <Button
-                    onClick={handleBrowseClick}
-                    variant="outline"
-                    className="border-yellow-400/20 bg-yellow-400/5 hover:bg-yellow-400/10 text-yellow-400"
-                  >
-                    <Upload className="w-4 h-4 mr-2" />
-                    Browse
-                  </Button>
+                <div
+                  className="h-10 px-3 rounded-md bg-[#0a0a0a] border border-white/10 text-zinc-300 font-mono text-sm flex items-center truncate"
+                  title={node.name}
+                >
+                  {node.name}
                 </div>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  onChange={handleFileChange}
-                  className="hidden"
-                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">
+                    Type
+                  </label>
+                  <select
+                    value={data.type || 'csv'}
+                    onChange={(e) => handleChange('type', e.target.value)}
+                    className="w-full h-10 bg-[#0a0a0a] border border-white/10 rounded-md px-3 text-sm text-zinc-300"
+                  >
+                    <option value="csv">CSV</option>
+                    <option value="txt">TXT</option>
+                    <option value="json">JSON</option>
+                    <option value="xml">XML</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">
+                    File
+                  </label>
+                  <div className="flex gap-2">
+                    <Input
+                      value={pathValue}
+                      onChange={(e) => handleChange('file', e.target.value)}
+                      placeholder="users.csv or /path/to/users.csv"
+                      className="flex-1 h-10 bg-[#0a0a0a] border-white/10 text-zinc-300 font-mono"
+                    />
+                    <Button
+                      onClick={handleBrowseClick}
+                      variant="outline"
+                      className="h-10 border-yellow-400/20 bg-yellow-400/5 hover:bg-yellow-400/10 text-yellow-400"
+                    >
+                      <Upload className="w-4 h-4 mr-2" />
+                      Browse
+                    </Button>
+                  </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -160,10 +190,14 @@ export function DataSourceDetail({ node, onNodeUpdate }: DataSourceDetailProps) 
           <div className="bg-blue-500/5 border border-blue-500/10 rounded-xl p-6">
             <div className="flex gap-3">
               <div className="w-1 h-auto bg-blue-500 rounded-full shrink-0" />
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                <strong className="text-zinc-200 block mb-1">Usage Instruction:</strong>
-                Ensure the file exists at the specified path. Pulse will load data from this file for parameterization.
-              </p>
+              <div className="text-xs text-zinc-400 leading-relaxed space-y-3">
+                <div>
+                  <strong className="text-zinc-200">Local:</strong> In browser mode, the file picker usually returns only the file name. Copy and paste the full CSV/TXT path if you plan to run this script locally.
+                </div>
+                <div>
+                  <strong className="text-zinc-200">Distributed:</strong> Use only the file name or a relative path (for example, <code className="text-zinc-300">users.csv</code>). Relampo handles path resolution automatically across distributed nodes.
+                </div>
+              </div>
             </div>
           </div>
         </div>
