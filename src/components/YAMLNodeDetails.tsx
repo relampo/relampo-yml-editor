@@ -161,13 +161,13 @@ function FileField({
         <div className="mt-1.5 space-y-0.5 text-[10px] text-zinc-400">
           {language === 'es' ? (
             <>
-              <p>Local: en navegador, el selector de archivos normalmente solo devuelve el nombre. Copia/pega la ruta completa del CSV si necesitas ruta absoluta.</p>
-              <p>Distribuido: usa solo nombre de archivo o ruta relativa (por ejemplo, users.csv).</p>
+              <p>Local: en modo navegador, el selector de archivos normalmente solo devuelve el nombre del archivo. Copia y pega la ruta completa del CSV/TXT si vas a ejecutar este script localmente.</p>
+              <p>Distribuido: usa solo el nombre del archivo o una ruta relativa (por ejemplo, users.csv). Relampo resuelve el resto automáticamente desde los nodos distribuidos.</p>
             </>
           ) : (
             <>
-              <p>Local: in browser mode, the file picker usually returns only the file name. Copy/paste the full CSV path if you need an absolute path.</p>
-              <p>Distributed: use only file name or relative path (for example, users.csv).</p>
+              <p>Local: in browser mode, the file picker usually returns only the file name. Copy/paste the full CSV/TXT path if you will run this script locally.</p>
+              <p>Distributed: use only file name or relative path (for example, users.csv). Relampo resolves the remaining path details automatically across distributed nodes.</p>
             </>
           )}
         </div>
@@ -451,9 +451,9 @@ function renderDataSourceDetails(
 
   return (
     <div className="space-y-6">
-      {/* Row 1: Name, Type, File */}
-      <div className="flex items-end gap-4">
-        <div className="flex-shrink-0">
+      {/* Row 1: Name */}
+      <div>
+        <div className="w-full">
           <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
             Name
           </label>
@@ -467,12 +467,15 @@ function renderDataSourceDetails(
                 onNodeUpdate(node.id, updatedData);
               }
             }}
-            className="w-[100px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-semibold h-[38px]"
+            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-semibold h-[38px]"
             placeholder="Name"
           />
         </div>
+      </div>
 
-        <div className="w-[100px] flex-shrink-0">
+      {/* Row 2: Type + File */}
+      <div className="grid grid-cols-1 md:grid-cols-[120px_1fr] gap-4 items-end">
+        <div>
           <SelectField
             label="Type"
             value={data.type || 'csv'}
@@ -486,7 +489,7 @@ function renderDataSourceDetails(
           />
         </div>
 
-        <div className="flex-1">
+        <div>
           <FileField label="File" value={data.file || data.path || ''} field="file" onChange={handleChange} noMargin={true} showPathHint />
         </div>
       </div>
