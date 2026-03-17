@@ -80,8 +80,15 @@ function SelectField({ label, value, field, options, onChange, noMargin = false,
 }
 
 // Componente especial para campo File con botón Browse
-function FileField({ label, value, field, onChange, noMargin = false }: EditableFieldProps & { noMargin?: boolean }) {
-  const { t } = useLanguage();
+function FileField({
+  label,
+  value,
+  field,
+  onChange,
+  noMargin = false,
+  showPathHint = false
+}: EditableFieldProps & { noMargin?: boolean; showPathHint?: boolean }) {
+  const { t, language } = useLanguage();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleBrowseClick = async (e: React.MouseEvent) => {
@@ -150,6 +157,21 @@ function FileField({ label, value, field, onChange, noMargin = false }: Editable
           className="hidden"
         />
       </div>
+      {showPathHint && (
+        <div className="mt-1.5 space-y-0.5 text-[10px] text-zinc-400">
+          {language === 'es' ? (
+            <>
+              <p>Local: en navegador, el selector de archivos normalmente solo devuelve el nombre. Copia/pega la ruta completa del CSV si necesitas ruta absoluta.</p>
+              <p>Distribuido: usa solo nombre de archivo o ruta relativa (por ejemplo, users.csv).</p>
+            </>
+          ) : (
+            <>
+              <p>Local: in browser mode, the file picker usually returns only the file name. Copy/paste the full CSV path if you need an absolute path.</p>
+              <p>Distributed: use only file name or relative path (for example, users.csv).</p>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -465,7 +487,7 @@ function renderDataSourceDetails(
         </div>
 
         <div className="flex-1">
-          <FileField label="File" value={data.file || data.path || ''} field="file" onChange={handleChange} noMargin={true} />
+          <FileField label="File" value={data.file || data.path || ''} field="file" onChange={handleChange} noMargin={true} showPathHint />
         </div>
       </div>
 
