@@ -80,8 +80,15 @@ function SelectField({ label, value, field, options, onChange, noMargin = false,
 }
 
 // Componente especial para campo File con botón Browse
-function FileField({ label, value, field, onChange, noMargin = false }: EditableFieldProps & { noMargin?: boolean }) {
-  const { t } = useLanguage();
+function FileField({
+  label,
+  value,
+  field,
+  onChange,
+  noMargin = false,
+  showPathHint = false
+}: EditableFieldProps & { noMargin?: boolean; showPathHint?: boolean }) {
+  const { t, language } = useLanguage();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleBrowseClick = async (e: React.MouseEvent) => {
@@ -150,6 +157,21 @@ function FileField({ label, value, field, onChange, noMargin = false }: Editable
           className="hidden"
         />
       </div>
+      {showPathHint && (
+        <div className="mt-1.5 space-y-0.5 text-[10px] text-zinc-400">
+          {language === 'es' ? (
+            <>
+              <p>Local: en modo navegador, el selector de archivos normalmente solo devuelve el nombre del archivo. Copia y pega la ruta completa del CSV/TXT si vas a ejecutar este script localmente.</p>
+              <p>Distribuido: usa solo el nombre del archivo o una ruta relativa (por ejemplo, users.csv). Relampo resuelve el resto automáticamente desde los nodos distribuidos.</p>
+            </>
+          ) : (
+            <>
+              <p>Local: in browser mode, the file picker usually returns only the file name. Copy/paste the full CSV/TXT path if you will run this script locally.</p>
+              <p>Distributed: use only file name or relative path (for example, users.csv). Relampo resolves the remaining path details automatically across distributed nodes.</p>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -349,10 +371,12 @@ interface YAMLNodeDetailsProps {
   onNodeUpdate?: (nodeId: string, updatedData: any) => void;
 }
 
-export function YAMLNodeDetails({ node, redirectedInfo = null, redirectSourceInfo = null, onNodeUpdate }: YAMLNodeDetailsProps) {
+export function YAMLNodeDetails({ node, redirectSourceInfo = null, onNodeUpdate }: YAMLNodeDetailsProps) {
   const { t } = useLanguage();
   const [nodeName, setNodeName] = useState(node?.name || '');
-  const isRequestNode = ['request', 'get', 'post', 'put', 'delete', 'patch', 'head', 'options'].includes(node?.type || '');
+  const isRequestNode = ['request', 'get', 'post', 'put', 'delete', 'patch', 'head', 'options'].includes(
+    node?.type || '',
+  );
 
   // Sincronizar cuando cambia el nodo seleccionado
   useEffect(() => {
@@ -361,21 +385,19 @@ export function YAMLNodeDetails({ node, redirectedInfo = null, redirectSourceInf
 
   if (!node) {
     return (
-      <div className="h-full bg-[#0a0a0a] flex flex-col">
-        <div className="px-6 py-3 border-b border-white/5 bg-[#111111]">
-          <div className="flex items-center gap-2">
-            <div className="w-1 h-4 bg-zinc-400 rounded-full" />
-            <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
-              {t('yamlEditor.details')}
-            </h3>
+      <div className='h-full bg-[#0a0a0a] flex flex-col'>
+        <div className='px-6 py-3 border-b border-white/5 bg-[#111111]'>
+          <div className='flex items-center gap-2'>
+            <div className='w-1 h-4 bg-zinc-400 rounded-full' />
+            <h3 className='text-xs font-semibold text-zinc-400 uppercase tracking-wider'>{t('yamlEditor.details')}</h3>
           </div>
         </div>
 
-        <div className="flex-1 flex items-center justify-center p-6">
-          <div className="text-center">
-            <FileText className="w-12 h-12 text-zinc-700 mx-auto mb-3" />
-            <p className="text-sm text-zinc-500">{t('yamlEditor.selectNode')}</p>
-            <p className="text-xs text-zinc-600 mt-1">{t('yamlEditor.viewDetails')}</p>
+        <div className='flex-1 flex items-center justify-center p-6'>
+          <div className='text-center'>
+            <FileText className='w-12 h-12 text-zinc-700 mx-auto mb-3' />
+            <p className='text-sm text-zinc-500'>{t('yamlEditor.selectNode')}</p>
+            <p className='text-xs text-zinc-600 mt-1'>{t('yamlEditor.viewDetails')}</p>
           </div>
         </div>
       </div>
@@ -397,7 +419,12 @@ export function YAMLNodeDetails({ node, redirectedInfo = null, redirectSourceInf
       case 'scenario':
         return renderScenarioDetails(node, onNodeUpdate, nodeName, setNodeName);
       case 'load':
-        return <LoadDetails node={node} onNodeUpdate={onNodeUpdate} />;
+        return (
+          <LoadDetails
+            node={node}
+            onNodeUpdate={onNodeUpdate}
+          />
+        );
       case 'request':
       case 'get':
       case 'post':
@@ -406,7 +433,13 @@ export function YAMLNodeDetails({ node, redirectedInfo = null, redirectSourceInf
       case 'patch':
       case 'head':
       case 'options':
-        return <YAMLRequestDetails node={node} redirectSourceInfo={redirectSourceInfo} onNodeUpdate={onNodeUpdate} />;
+        return (
+          <YAMLRequestDetails
+            node={node}
+            redirectSourceInfo={redirectSourceInfo}
+            onNodeUpdate={onNodeUpdate}
+          />
+        );
       case 'group':
       case 'transaction':
         return renderGroupDetails(node, onNodeUpdate, nodeName, setNodeName);
@@ -445,28 +478,30 @@ export function YAMLNodeDetails({ node, redirectedInfo = null, redirectSourceInf
   };
 
   return (
-    <div className="h-full bg-[#0a0a0a] flex flex-col overflow-hidden">
+    <div className='h-full bg-[#0a0a0a] flex flex-col overflow-hidden'>
       {/* Header */}
-      <div className="px-6 py-3 border-b border-white/5 bg-[#111111] flex-shrink-0">
+      <div className='px-6 py-3 border-b border-white/5 bg-[#111111] flex-shrink-0'>
         <div className={`flex gap-2 ${isRequestNode ? 'items-start' : 'items-center'}`}>
           <div className={`w-1 rounded-full bg-yellow-400 ${isRequestNode ? 'h-6 mt-0.5' : 'h-4'}`} />
-          <h3 className={`flex-1 ${isRequestNode ? 'text-base italic font-medium text-zinc-200 normal-case tracking-normal leading-snug whitespace-normal break-words' : 'text-xs font-semibold text-zinc-400 uppercase tracking-wider'}`}>
+          <h3
+            className={`flex-1 ${isRequestNode ? 'text-base italic font-medium text-zinc-200 normal-case tracking-normal leading-snug whitespace-normal break-words' : 'text-xs font-semibold text-zinc-400 uppercase tracking-wider'}`}
+          >
             {isRequestNode ? node.name : t('yamlEditor.details')}
           </h3>
         </div>
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className='flex-1 overflow-y-auto p-6'>
         {/* Node Name - Editable (Hide for data_source as it handles its own name field in the row) */}
         {node.type !== 'test' && node.type !== 'data_source' && (
-          <div className="mb-6">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+          <div className='mb-6'>
+            <label className='text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2'>
               {t('yamlEditor.common.name')}
             </label>
             <Input
               value={nodeName}
-              onChange={(e) => setNodeName(e.target.value)}
+              onChange={e => setNodeName(e.target.value)}
               maxLength={50}
               onBlur={() => {
                 if (onNodeUpdate && nodeName !== node.name) {
@@ -475,8 +510,8 @@ export function YAMLNodeDetails({ node, redirectedInfo = null, redirectSourceInf
                 }
               }}
               style={{ width: `${Math.min(Math.max((nodeName || '').length + 2, 12), 48)}ch` }}
-              className="max-w-full shrink-0 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-semibold"
-              placeholder="Node name"
+              className='max-w-full shrink-0 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-semibold'
+              placeholder='Node name'
             />
           </div>
         )}
@@ -484,8 +519,7 @@ export function YAMLNodeDetails({ node, redirectedInfo = null, redirectSourceInf
         {/* Type-specific details */}
         {node.type === 'data_source'
           ? renderDataSourceDetails(node, onNodeUpdate, nodeName, setNodeName)
-          : renderTypeSpecificDetails(node)
-        }
+          : renderTypeSpecificDetails(node)}
       </div>
     </div>
   );
@@ -618,9 +652,9 @@ function renderDataSourceDetails(
 
   return (
     <div className="space-y-6">
-      {/* Row 1: Name, Type, File */}
-      <div className="flex items-end gap-4">
-        <div className="flex-shrink-0">
+      {/* Row 1: Name */}
+      <div>
+        <div className="w-full">
           <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
             Name
           </label>
@@ -634,12 +668,15 @@ function renderDataSourceDetails(
                 onNodeUpdate(node.id, updatedData);
               }
             }}
-            className="w-[100px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-semibold h-[38px]"
+            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-semibold h-[38px]"
             placeholder="Name"
           />
         </div>
+      </div>
 
-        <div className="w-[100px] flex-shrink-0">
+      {/* Row 2: Type + File */}
+      <div className="grid grid-cols-1 md:grid-cols-[120px_1fr] gap-4 items-end">
+        <div>
           <SelectField
             label="Type"
             value={data.type || 'csv'}
@@ -653,8 +690,8 @@ function renderDataSourceDetails(
           />
         </div>
 
-        <div className="flex-1">
-          <FileField label="File" value={data.file || data.path || ''} field="file" onChange={handleChange} noMargin={true} />
+        <div>
+          <FileField label="File" value={data.file || data.path || ''} field="file" onChange={handleChange} noMargin={true} showPathHint />
         </div>
       </div>
 
@@ -759,11 +796,6 @@ function renderHttpDefaultsDetails(node: YAMLNode, onNodeUpdate?: (nodeId: strin
   delete mainFields.headers;
   delete mainFields.auth;
 
-  const handleChange = (field: string, value: any) => {
-    if (onNodeUpdate) onNodeUpdate(node.id, { ...data, [field]: value });
-  };
-  const compactInputClass = 'w-[10ch] max-w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono';
-  const limited = (value: string) => value.slice(0, 5);
 
   const handleMainFieldsUpdate = (fields: Record<string, string>) => {
     if (onNodeUpdate) {
@@ -940,13 +972,20 @@ function renderScenarioDetails(
 function LoadDetails({ node, onNodeUpdate }: { node: YAMLNode; onNodeUpdate?: (nodeId: string, data: any) => void }): React.JSX.Element {
   const data = node.data || {};
   const rawLoadType = String(data.type || 'constant').toLowerCase().trim();
-  const loadType = (
+  const loadType: 'constant' | 'ramp' | 'ramp_up_down' | 'throughput' | 'intent' =
     rawLoadType === 'rampupdown' ||
     rawLoadType === 'ramp_updown' ||
     rawLoadType === 'rampup_down' ||
     rawLoadType === 'ramp-up-down' ||
     rawLoadType === 'ramp_up_down'
-  ) ? 'ramp_up_down' : (rawLoadType === 'ramp' ? 'ramp' : (rawLoadType === 'throughput' ? 'throughput' : 'constant'));
+      ? 'ramp_up_down'
+      : rawLoadType === 'ramp'
+        ? 'ramp'
+        : rawLoadType === 'throughput'
+          ? 'throughput'
+          : rawLoadType === 'intent'
+            ? 'intent'
+            : 'constant';
 
   const loadTypeDefaults: Record<string, Record<string, any>> = {
     constant: {
@@ -1316,34 +1355,35 @@ function LoadDetails({ node, onNodeUpdate }: { node: YAMLNode; onNodeUpdate?: (n
   };
 
   const extraHandles = (() => {
-    if (chartPoints.length < 2) return [] as Array<{ pointIdx: number; x: number; y: number; time: number; users: number; kind: string }>;
+    if (chartPoints.length < 2)
+      return [] as Array<{ pointIdx: number; x: number; y: number; time: number; users: number; kind: string }>;
     if (loadType === 'ramp_up_down' || loadType === 'throughput' || loadType === 'intent') {
       const left = chartPoints[1];
       const right = chartPoints[2] || chartPoints[1];
-      return [{
-        pointIdx: 11,
-        x: (left.x + right.x) / 2,
-        y: (left.y + right.y) / 2,
-        time: (left.time + right.time) / 2,
-        users: (left.users + right.users) / 2,
-        kind: 'plateau',
-      }];
+      return [
+        {
+          pointIdx: 11,
+          x: (left.x + right.x) / 2,
+          y: (left.y + right.y) / 2,
+          time: (left.time + right.time) / 2,
+          users: (left.users + right.users) / 2,
+          kind: 'plateau',
+        },
+      ];
     }
     const first = chartPoints[0];
     const last = chartPoints[chartPoints.length - 1];
-    return [{
-      pointIdx: 11,
-      x: (first.x + last.x) / 2,
-      y: (first.y + last.y) / 2,
-      time: (first.time + last.time) / 2,
-      users: (first.users + last.users) / 2,
-      kind: 'mid',
-    }];
+    return [
+      {
+        pointIdx: 11,
+        x: (first.x + last.x) / 2,
+        y: (first.y + last.y) / 2,
+        time: (first.time + last.time) / 2,
+        users: (first.users + last.users) / 2,
+        kind: 'mid',
+      },
+    ];
   })();
-  const allHandles = [
-    ...chartPoints.map((p, idx) => ({ ...p, pointIdx: idx, kind: 'base' })),
-    ...extraHandles,
-  ];
 
   const updateLoadFromDraggedPoint = (pointIdx: number, timeSec: number, valueY: number) => {
     const updates: Record<string, any> = {};
@@ -1450,35 +1490,6 @@ function LoadDetails({ node, onNodeUpdate }: { node: YAMLNode; onNodeUpdate?: (n
     }
   };
 
-  const handlePointDragStart = (pointIdx: number) => (e: React.MouseEvent<SVGCircleElement>) => {
-    const draggable = [...Array(visualizationPoints.length).keys(), 11];
-    if (!draggable.includes(pointIdx)) return;
-    e.preventDefault();
-    dragRef.current.pointIdx = pointIdx;
-    setDraggingPointIdx(pointIdx);
-
-    const handleMove = (moveEvent: MouseEvent) => {
-      if (dragRef.current.pointIdx === null) return;
-      const svg = (e.currentTarget.ownerSVGElement || null);
-      if (!svg) return;
-      const rect = svg.getBoundingClientRect();
-      const relativeX = Math.min(Math.max(moveEvent.clientX - rect.left, 40), 380);
-      const relativeY = Math.min(Math.max(moveEvent.clientY - rect.top, 10), 170);
-      const timeSec = ((relativeX - 40) / 340) * maxTime;
-      const valueY = ((170 - relativeY) / 160) * maxUsers;
-      updateLoadFromDraggedPoint(dragRef.current.pointIdx, timeSec, valueY);
-    };
-
-    const handleUp = () => {
-      dragRef.current.pointIdx = null;
-      setDraggingPointIdx(null);
-      window.removeEventListener('mousemove', handleMove);
-      window.removeEventListener('mouseup', handleUp);
-    };
-
-    window.addEventListener('mousemove', handleMove);
-    window.addEventListener('mouseup', handleUp);
-  };
 
   return (
     <div className="space-y-6">
@@ -2783,7 +2794,11 @@ function renderCookiesDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, da
   const policy = String(data.policy || 'standard').toLowerCase();
   const persistAcrossIterations = data.persist_across_iterations !== false;
   const clearEachIteration = data.clear_each_iteration === true;
-  const seedCookies = Array.isArray(data.cookies) ? data.cookies : [];
+  const seedCookies: Array<{ name?: string; value?: string; domain?: string; path?: string }> = Array.isArray(
+    data.cookies,
+  )
+    ? data.cookies
+    : [];
 
   const updateData = (nextData: any) => {
     if (onNodeUpdate) onNodeUpdate(node.id, nextData);
@@ -2851,7 +2866,7 @@ function renderCookiesDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, da
   const effectiveClearEachIteration = persistAcrossIterations ? false : clearEachIteration;
   const isIgnorePolicy = policy === 'ignore_cookies';
   const invalidSeedRows = seedCookies
-    .map((cookie: any, index: number) => ({ cookie, index }))
+    .map((cookie, index) => ({ cookie, index }))
     .filter(({ cookie }) => !String(cookie?.name || '').trim() || !String(cookie?.domain || '').trim())
     .map(({ index }) => index);
   const summaryLine = normalizedMode === 'auto'
@@ -3203,13 +3218,7 @@ function ErrorPolicyDetails({ node, onNodeUpdate }: { node: YAMLNode; onNodeUpda
     ? (data.active_rules.filter((r: string) => ['on_4xx', 'on_5xx', 'on_timeout'].includes(r)) as Array<'on_4xx' | 'on_5xx' | 'on_timeout'>)
     : [];
 
-  const handleChange = (field: string, value: any) => {
-    if (onNodeUpdate) onNodeUpdate(node.id, { ...data, [field]: value });
-  };
 
-  const on4xx = String(data.on_4xx || 'continue');
-  const on5xx = String(data.on_5xx || 'stop');
-  const onTimeout = String(data.on_timeout || 'stop');
   const currentValueForRule = (rule: 'on_4xx' | 'on_5xx' | 'on_timeout') =>
     String(data[rule] || (rule === 'on_4xx' ? 'continue' : 'stop'));
 
@@ -3378,6 +3387,12 @@ function renderSparkDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data
 function renderAssertionDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): React.JSX.Element {
   const data = node.data || {};
   const assertionType = data.type || 'status';
+  const isAssertionTypeSelectionAllowed = data.__allowTypeSelection === true;
+  const lockedAssertionType = typeof data.__lockedType === 'string' && data.__lockedType.trim() !== ''
+    ? data.__lockedType.trim()
+    : '';
+  const effectiveAssertionLockedType = lockedAssertionType || assertionType;
+  const isAssertionTypeLocked = !isAssertionTypeSelectionAllowed && effectiveAssertionLockedType !== '';
   const assertionTypes = [
     { value: 'status', label: 'Status', icon: CheckCircle2 },
     { value: 'status_in', label: 'Status in', icon: CheckCircle2 },
@@ -3448,6 +3463,9 @@ function renderAssertionDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
 
   const handleChange = (field: string, value: any) => {
     if (onNodeUpdate) {
+      if (field === 'type' && isAssertionTypeLocked && value !== effectiveAssertionLockedType) {
+        return;
+      }
       onNodeUpdate(node.id, { ...data, [field]: value });
     }
   };
@@ -3462,11 +3480,13 @@ function renderAssertionDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
         <div className="flex flex-wrap items-center gap-1">
           {assertionTypes.map((type) => {
             const active = assertionType === type.value;
+            const disabled = isAssertionTypeLocked && type.value !== effectiveAssertionLockedType;
             const Icon = type.icon;
             return (
               <button
                 key={type.value}
                 type="button"
+                disabled={disabled}
                 onClick={() => handleChange('type', type.value)}
                 aria-pressed={active}
                 className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${active
@@ -3474,8 +3494,9 @@ function renderAssertionDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
                   : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/[0.06]'
                   }`}
                 style={active ? assertionTypeButtonStyle[type.value] : undefined}
+                aria-disabled={disabled}
               >
-                <span className="inline-flex items-center gap-1.5">
+                <span className={`inline-flex items-center gap-1.5 ${disabled ? 'opacity-45 cursor-not-allowed' : ''}`}>
                   <Icon className="h-3.5 w-3.5" />
                   <span>{type.label}</span>
                 </span>
@@ -3483,6 +3504,11 @@ function renderAssertionDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
             );
           })}
         </div>
+        {isAssertionTypeLocked && (
+          <p className="mt-2 text-xs text-zinc-500">
+            Type locked to <span className="text-zinc-300 font-mono">{effectiveAssertionLockedType}</span> after loading or saving.
+          </p>
+        )}
       </div>
 
       {/* Conditional Fields Based on Type */}
@@ -3546,8 +3572,16 @@ function renderAssertionDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
             </label>
             <Input
               type="number"
-              value={data.match_no !== undefined ? data.match_no : 1}
-              onChange={(e) => handleChange('match_no', parseInt(e.target.value) || 1)}
+              value={data.match_no !== undefined && data.match_no !== null ? data.match_no : ''}
+              onChange={(e) => {
+                const raw = e.target.value;
+                if (raw === '') {
+                  handleChange('match_no', '');
+                  return;
+                }
+                const parsed = parseInt(raw, 10);
+                handleChange('match_no', Number.isNaN(parsed) ? '' : parsed);
+              }}
               placeholder="1"
               className="bg-white/5 border-white/10 text-zinc-300 text-sm font-mono"
             />
@@ -3646,6 +3680,12 @@ function renderAssertionDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
 function renderExtractorDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, data: any) => void): React.JSX.Element {
   const data = node.data || {};
   const extractorType = data.type || 'regex';
+  const isExtractorTypeSelectionAllowed = data.__allowTypeSelection === true;
+  const lockedExtractorType = typeof data.__lockedType === 'string' && data.__lockedType.trim() !== ''
+    ? data.__lockedType.trim()
+    : '';
+  const effectiveExtractorLockedType = lockedExtractorType || extractorType;
+  const isExtractorTypeLocked = !isExtractorTypeSelectionAllowed && effectiveExtractorLockedType !== '';
   const extractorTypes = [
     { value: 'regex', label: 'Regex', icon: TextSearch },
     { value: 'jsonpath', label: 'Jsonpath', icon: Braces },
@@ -3727,6 +3767,9 @@ function renderExtractorDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
         return;
       }
       if (field === 'type') {
+        if (isExtractorTypeLocked && value !== effectiveExtractorLockedType) {
+          return;
+        }
         onNodeUpdate(node.id, { ...data, ...getExtractorDefaults(value), var: extractorVariableName, variable: extractorVariableName });
         return;
       }
@@ -3744,11 +3787,13 @@ function renderExtractorDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
         <div className="flex flex-wrap items-center gap-1">
           {extractorTypes.map((type) => {
             const active = extractorType === type.value;
+            const disabled = isExtractorTypeLocked && type.value !== effectiveExtractorLockedType;
             const Icon = type.icon;
             return (
               <button
                 key={type.value}
                 type="button"
+                disabled={disabled}
                 onClick={() => handleChange('type', type.value)}
                 aria-pressed={active}
                 className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${active
@@ -3756,8 +3801,9 @@ function renderExtractorDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
                   : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/[0.06]'
                   }`}
                 style={active ? extractorTypeButtonStyle[type.value] : undefined}
+                aria-disabled={disabled}
               >
-                <span className="inline-flex items-center gap-1.5">
+                <span className={`inline-flex items-center gap-1.5 ${disabled ? 'opacity-45 cursor-not-allowed' : ''}`}>
                   <Icon className="h-3.5 w-3.5" />
                   <span>{type.label}</span>
                 </span>
@@ -3765,6 +3811,11 @@ function renderExtractorDetails(node: YAMLNode, onNodeUpdate?: (nodeId: string, 
             );
           })}
         </div>
+        {isExtractorTypeLocked && (
+          <p className="mt-2 text-xs text-zinc-500">
+            Type locked to <span className="text-zinc-300 font-mono">{effectiveExtractorLockedType}</span> after loading or saving.
+          </p>
+        )}
       </div>
 
       {/* Variable Name - common to all types */}

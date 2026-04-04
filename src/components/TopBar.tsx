@@ -57,7 +57,7 @@ export function TopBar({
         {/* Relampo Logo */}
         <div className="relative w-8 h-8 bg-gradient-to-br from-yellow-300 via-yellow-400 to-yellow-500 rounded-lg flex items-center justify-center shadow-lg shadow-yellow-400/30">
           <svg width="14" height="18" viewBox="0 0 18 22" fill="none">
-            <path d="M10.5 0L0 12.5H7.5L6 22L18 9H10.5V0Z" fill="white" className="drop-shadow-lg"/>
+            <path d="M10.5 0L0 12.5H7.5L6 22L18 9H10.5V0Z" fill="white" className="drop-shadow-lg" />
           </svg>
         </div>
         <div>

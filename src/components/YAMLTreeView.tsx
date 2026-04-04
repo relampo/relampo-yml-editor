@@ -198,6 +198,12 @@ export function YAMLTreeView({
 
   const handleContextMenu = (e: React.MouseEvent, node: YAMLNode) => {
     e.preventDefault();
+
+    // If right-clicking an unselected node, target only that node for context actions.
+    if (!selectedNodeIds.includes(node.id)) {
+      onSelectionChange(node, [node.id]);
+    }
+
     setContextMenu({
       x: e.clientX,
       y: e.clientY,
@@ -207,6 +213,20 @@ export function YAMLTreeView({
 
   const handleCloseContextMenu = () => {
     setContextMenu(null);
+  };
+
+  const getContextActionTargetIds = (fallbackNodeId?: string): string[] => {
+    const fallback = fallbackNodeId ? [fallbackNodeId] : [];
+    if (!contextMenu) return fallback;
+
+    const contextNodeId = contextMenu.node.id;
+    const contextInSelection = effectiveSelectedIds.includes(contextNodeId);
+
+    if (contextInSelection && effectiveSelectedIds.length > 1) {
+      return effectiveSelectedIds;
+    }
+
+    return [contextNodeId];
   };
 
   const handleNodeToggle = (nodeId: string) => {
@@ -219,8 +239,11 @@ export function YAMLTreeView({
   const handleAddNode = (nodeType: YAMLAddableNodeType) => {
     if (!contextMenu || !tree) return;
 
-    const newNode = createNodeByType(nodeType);
-    const updatedTree = addNodeToTree(tree, contextMenu.node.id, newNode);
+    const targetIds = getContextActionTargetIds();
+    const updatedTree = targetIds.reduce(
+      (currentTree, targetId) => addNodeToTree(currentTree, targetId, createNodeByType(nodeType)),
+      tree
+    );
     onTreeChange(updatedTree);
     handleCloseContextMenu();
   };
@@ -229,7 +252,11 @@ export function YAMLTreeView({
     if (!tree) return;
 
     const copySuffix = t('yamlEditor.common.copy') || 'Copy';
-    const updatedTree = duplicateNodeInTree(tree, nodeId, copySuffix);
+    const targetIds = getContextActionTargetIds(nodeId);
+    const updatedTree = targetIds.reduce(
+      (currentTree, targetId) => duplicateNodeInTree(currentTree, targetId, copySuffix),
+      tree
+    );
     onTreeChange(updatedTree);
     handleCloseContextMenu();
   };
@@ -237,7 +264,12 @@ export function YAMLTreeView({
   const handleRemoveNode = () => {
     if (!contextMenu || !tree) return;
 
-    const updatedTree = removeNodeFromTree(tree, contextMenu.node.id);
+    const targetIds = getContextActionTargetIds();
+    const updatedTree = targetIds.reduce(
+      (currentTree, nodeId) => removeNodeFromTree(currentTree, nodeId),
+      tree
+    );
+    onSelectionChange(null, []);
     onTreeChange(updatedTree);
     handleCloseContextMenu();
   };
@@ -269,7 +301,11 @@ export function YAMLTreeView({
   const handleToggleEnabled = (nodeId: string, enabled: boolean) => {
     if (!tree) return;
 
-    const updatedTree = updateNodeEnabled(tree, nodeId, enabled);
+    const targetIds = getContextActionTargetIds(nodeId);
+    const updatedTree = targetIds.reduce(
+      (currentTree, targetId) => updateNodeEnabled(currentTree, targetId, enabled),
+      tree
+    );
     onTreeChange(updatedTree);
   };
 
@@ -354,9 +390,6 @@ export function YAMLTreeView({
             <div className="absolute inset-0 rounded-xl bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
           </button>
 
-          <p className="mt-8 text-xs text-zinc-600">
-            Pulse Relampo v1.1 • Motor Enterprise
-          </p>
         </div>
       </div>
     );
@@ -910,7 +943,7 @@ function createNodeByType(type: string | 'root_plan'): YAMLNode {
         name: 'Assertion',
         data: {
           type: 'status',
-          value: 200
+          __allowTypeSelection: true,
         },
       };
     case 'extractor':
@@ -920,6 +953,7 @@ function createNodeByType(type: string | 'root_plan'): YAMLNode {
         name: 'Extractor',
         data: {
           type: 'regex',
+          __allowTypeSelection: true,
           from: 'body',
           var: 'extracted_value',
           variable: 'extracted_value',

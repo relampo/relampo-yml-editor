@@ -1,13 +1,12 @@
-import { useState, useEffect, useRef } from 'react';
-import { Input } from './ui/input';
-import { Textarea } from './ui/textarea';
-import { Search, ChevronUp, ChevronDown } from 'lucide-react';
+import { ChevronDown, ChevronUp, Search } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { useLanguage } from '../contexts/LanguageContext';
 import type { RedirectSourceInfo, YAMLNode } from '../types/yaml';
+import { BodyTypeSelector } from './fields/BodyTypeSelector';
 import { MethodDropdown } from './fields/MethodDropdown';
 import { QueryParamsEditor } from './fields/QueryParamsEditor';
-import { BodyTypeSelector } from './fields/BodyTypeSelector';
+import { Input } from './ui/input';
 import { YAMLResponseDetails } from './YAMLResponseDetails';
-import { useLanguage } from '../contexts/LanguageContext';
 
 interface YAMLRequestDetailsProps {
   node: YAMLNode;
