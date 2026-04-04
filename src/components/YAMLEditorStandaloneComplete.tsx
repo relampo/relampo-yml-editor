@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from './ui/button';
 import { Upload, Download, Code2, GitBranch } from 'lucide-react';
 import { YAMLCodeEditor } from './YAMLCodeEditor';
@@ -33,10 +33,10 @@ export function YAMLEditorStandaloneComplete() {
       syncCodeToTree(defaultYaml);
       setIsInitialized(true);
     }
-  }, [isInitialized]);
+  }, [isInitialized, syncCodeToTree]);
 
   // Helper to find a node by ID in the tree
-  const findNodeById = (node: YAMLNode, id: string): YAMLNode | null => {
+  const findNodeById = useCallback((node: YAMLNode, id: string): YAMLNode | null => {
     if (node.id === id) return node;
     if (node.children) {
       for (const child of node.children) {
@@ -45,9 +45,9 @@ export function YAMLEditorStandaloneComplete() {
       }
     }
     return null;
-  };
+  }, []);
 
-  const syncSelectionWithTree = (tree: YAMLNode | null) => {
+  const syncSelectionWithTree = useCallback((tree: YAMLNode | null) => {
     if (!tree) {
       setSelectedNode(null);
       setSelectedNodeIds([]);
@@ -70,10 +70,10 @@ export function YAMLEditorStandaloneComplete() {
     }
 
     setSelectedNode(null);
-  };
+  }, [selectedNodeIds, selectedNode, findNodeById]);
 
   // Sincronizar código a árbol
-  const syncCodeToTree = (code: string) => {
+  const syncCodeToTree = useCallback((code: string) => {
     try {
       const tree = parseYAMLToTree(code);
       setYamlTree(tree);
@@ -85,7 +85,7 @@ export function YAMLEditorStandaloneComplete() {
       setError(err instanceof Error ? err.message : 'Error parsing YAML');
       setYamlTree(null);
     }
-  };
+  }, [syncSelectionWithTree]);
 
   // Sincronizar árbol a código
   const syncTreeToCode = (tree: YAMLNode) => {
@@ -387,6 +387,10 @@ export function YAMLEditorStandaloneComplete() {
 
         {/* Resize Handle */}
         <div
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize panel"
+          tabIndex={0}
           onMouseDown={handleResizeStart}
           className="w-2 bg-white/5 hover:bg-yellow-400/30 cursor-col-resize flex-shrink-0 transition-colors relative active:bg-yellow-400/40"
         />

@@ -1,11 +1,10 @@
-import React, { useMemo, useState } from "react";
-import { motion } from "motion/react";
+import React, { useState } from "react";
+import { LazyMotion, domAnimation, m } from "motion/react";
 import {
   ArrowRight,
   Braces,
   CheckCircle2,
   Cloud,
-  Copy,
   Gauge,
   Mail,
   Play,
@@ -16,7 +15,6 @@ import {
   Timer,
   Workflow,
   Zap,
-  X,
   Linkedin,
   Github,
   Instagram,
@@ -63,16 +61,13 @@ export function LandingPage({ onEnter }: { onEnter?: () => void }) {
   const [language, setLanguage] = useState<Language>('en');
   const t = translations[language];
   
-  const nav = useMemo<NavItem[]>(
-    () => [
-      { id: "how", label: t.nav.howItWorks },
-      { id: "roadmap", label: t.nav.roadmap },
-      { id: "league", label: t.nav.league },
-      { id: "about", label: t.nav.team },
-      { id: "cta", label: t.nav.contact },
-    ],
-    [t]
-  );
+  const nav: NavItem[] = [
+    { id: "how", label: t.nav.howItWorks },
+    { id: "roadmap", label: t.nav.roadmap },
+    { id: "league", label: t.nav.league },
+    { id: "about", label: t.nav.team },
+    { id: "cta", label: t.nav.contact },
+  ];
 
   const [mobileMenu, setMobileMenu] = useState(false);
   const [activeStep, setActiveStep] = useState(0);
@@ -110,49 +105,46 @@ export function LandingPage({ onEnter }: { onEnter?: () => void }) {
     setMobileMenu(false);
   };
 
-  const crewMembers = useMemo<CrewMember[]>(
-    () => [
-      {
-        id: "delvis",
-        name: "Delvis",
-        role: t.team.members.delvis.role,
-        bio: t.team.members.delvis.bio,
-        img: delvisImg,
-      },
-      {
-        id: "angel",
-        name: "Ángel",
-        role: t.team.members.angel.role,
-        bio: t.team.members.angel.bio,
-        img: angelImg,
-      },
-      {
-        id: "violena",
-        name: "Violena",
-        role: t.team.members.violena.role,
-        bio: t.team.members.violena.bio,
-        img: violenaImg,
-      },
-      {
-        id: "alayo",
-        name: "Alayo",
-        role: t.team.members.alayo.role,
-        bio: t.team.members.alayo.bio,
-        img: alayoImg,
-      },
-      {
-        id: "chris",
-        name: "Chris",
-        role: t.team.members.chris.role,
-        bio: t.team.members.chris.bio,
-        img: chrisImg,
-      },
-    ],
-    [t]
-  );
+  const crewMembers: CrewMember[] = [
+    {
+      id: "delvis",
+      name: "Delvis",
+      role: t.team.members.delvis.role,
+      bio: t.team.members.delvis.bio,
+      img: delvisImg,
+    },
+    {
+      id: "angel",
+      name: "Ángel",
+      role: t.team.members.angel.role,
+      bio: t.team.members.angel.bio,
+      img: angelImg,
+    },
+    {
+      id: "violena",
+      name: "Violena",
+      role: t.team.members.violena.role,
+      bio: t.team.members.violena.bio,
+      img: violenaImg,
+    },
+    {
+      id: "alayo",
+      name: "Alayo",
+      role: t.team.members.alayo.role,
+      bio: t.team.members.alayo.bio,
+      img: alayoImg,
+    },
+    {
+      id: "chris",
+      name: "Chris",
+      role: t.team.members.chris.role,
+      bio: t.team.members.chris.bio,
+      img: chrisImg,
+    },
+  ];
 
   // Interactive workflow steps
-  const workflowSteps = useMemo(() => [
+  const workflowSteps = [
     {
       step: 1,
       title: t.howItWorks.workflow.step1.title,
@@ -181,9 +173,10 @@ export function LandingPage({ onEnter }: { onEnter?: () => void }) {
       command: t.howItWorks.workflow.step4.command,
       icon: Cloud,
     },
-  ], [t]);
+  ];
 
   return (
+    <LazyMotion features={domAnimation}>
     <div className="min-h-screen bg-[#07080c] text-zinc-50">
       {/* Background */}
       <div aria-hidden className="pointer-events-none fixed inset-0 -z-10">
@@ -291,7 +284,7 @@ export function LandingPage({ onEnter }: { onEnter?: () => void }) {
         <section id="top" className="py-12 md:py-16">
           <div className="grid gap-12 md:grid-cols-2 md:items-center">
             <div>
-              <motion.h1
+              <m.h1
                 initial={{ opacity: 0, y: 14 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.05 }}
@@ -312,9 +305,9 @@ export function LandingPage({ onEnter }: { onEnter?: () => void }) {
                     </span>
                   </>
                 )}
-              </motion.h1>
+              </m.h1>
 
-              <motion.p
+              <m.p
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.12 }}
@@ -333,9 +326,9 @@ export function LandingPage({ onEnter }: { onEnter?: () => void }) {
                     Sin limitaciones locales.
                   </>
                 )}
-              </motion.p>
+              </m.p>
 
-              <motion.div
+              <m.div
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.18 }}
@@ -354,10 +347,10 @@ export function LandingPage({ onEnter }: { onEnter?: () => void }) {
                 >
                   {language === 'en' ? 'Try the UI Demo' : 'Probar el Demo UI'}
                 </button>
-              </motion.div>
+              </m.div>
 
               {/* Trust Signals */}
-              <motion.div
+              <m.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.6, delay: 0.24 }}
@@ -375,11 +368,11 @@ export function LandingPage({ onEnter }: { onEnter?: () => void }) {
                   <Check className="h-4 w-4 text-emerald-400" />
                   <span>{language === 'en' ? 'No credit card' : 'Sin tarjeta de crédito'}</span>
                 </div>
-              </motion.div>
+              </m.div>
             </div>
 
             {/* Hero visual - Terminal Preview */}
-            <motion.div
+            <m.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
@@ -396,99 +389,99 @@ export function LandingPage({ onEnter }: { onEnter?: () => void }) {
               </div>
               <div className="font-mono text-sm leading-relaxed">
                 {/* Line 0 */}
-                <motion.div
+                <m.div
                   animate={{
                     color: activeTerminalLine === 0 ? "#facc15" : "#a1a1aa",
                   }}
                   transition={{ duration: 0.5 }}
                 >
                   <span className="text-emerald-400">$</span> relampo record --target https://api.myapp.com
-                </motion.div>
+                </m.div>
 
                 {/* Line 1 */}
-                <motion.div
+                <m.div
                   animate={{
                     color: activeTerminalLine === 1 ? "#facc15" : "#71717a",
                   }}
                   transition={{ duration: 0.5 }}
                 >
                   🎯 Recording traffic...
-                </motion.div>
+                </m.div>
 
                 {/* Line 2 */}
-                <motion.div
+                <m.div
                   animate={{
                     color: activeTerminalLine === 2 ? "#facc15" : "#a1a1aa",
                   }}
                   transition={{ duration: 0.5 }}
                 >
                   <span className="text-emerald-400">✓</span> Captured 42 requests
-                </motion.div>
+                </m.div>
 
                 {/* Line 3 */}
-                <motion.div
+                <m.div
                   animate={{
                     color: activeTerminalLine === 3 ? "#facc15" : "#a1a1aa",
                   }}
                   transition={{ duration: 0.5 }}
                 >
                   <span className="text-emerald-400">✓</span> Generated scenario.yaml
-                </motion.div>
+                </m.div>
 
                 <div className="h-3" />
 
                 {/* Line 4 */}
-                <motion.div
+                <m.div
                   animate={{
                     color: activeTerminalLine === 4 ? "#facc15" : "#a1a1aa",
                   }}
                   transition={{ duration: 0.5 }}
                 >
                   <span className="text-emerald-400">$</span> relampo validate scenario.yaml
-                </motion.div>
+                </m.div>
 
                 {/* Line 5 */}
-                <motion.div
+                <m.div
                   animate={{
                     color: activeTerminalLine === 5 ? "#facc15" : "#a1a1aa",
                   }}
                   transition={{ duration: 0.5 }}
                 >
                   <span className="text-emerald-400">✓</span> All checks passed
-                </motion.div>
+                </m.div>
 
                 <div className="h-3" />
 
                 {/* Line 6 */}
-                <motion.div
+                <m.div
                   animate={{
                     color: activeTerminalLine === 6 ? "#facc15" : "#a1a1aa",
                   }}
                   transition={{ duration: 0.5 }}
                 >
                   <span className="text-emerald-400">$</span> relampo run scenario.yaml --var env=staging --var base_url=https://staging.example.com
-                </motion.div>
+                </m.div>
 
                 {/* Line 7 (wraps back to 0) */}
-                <motion.div
+                <m.div
                   animate={{
                     color: activeTerminalLine === 0 ? "#facc15" : "#71717a",
                   }}
                   transition={{ duration: 0.5 }}
                 >
                   ☁️  Running on cloud (500 VUs × 4 nodes)...
-                </motion.div>
+                </m.div>
 
-                <motion.div
+                <m.div
                   animate={{
                     color: activeTerminalLine === 1 ? "#facc15" : "#a1a1aa",
                   }}
                   transition={{ duration: 0.5 }}
                 >
                   <span className="text-[#facc15]">⚡</span> Test completed in 5m 23s
-                </motion.div>
+                </m.div>
               </div>
-            </motion.div>
+            </m.div>
           </div>
         </section>
 
@@ -515,7 +508,7 @@ export function LandingPage({ onEnter }: { onEnter?: () => void }) {
             />
             
             {/* Animated Yellow Progress Line */}
-            <motion.div
+            <m.div
               className="absolute top-8 h-0.5 bg-gradient-to-r from-[#fde047] via-[#facc15] to-[#eab308] shadow-[0_0_8px_rgba(250,204,21,0.4)]"
               style={{ left: "10%" }}
               initial={{ width: "0%" }}
@@ -535,7 +528,7 @@ export function LandingPage({ onEnter }: { onEnter?: () => void }) {
                 return (
                   <div key={step.step} className="relative flex flex-col items-center" style={{ width: "20%" }}>
                     {/* Circle Point */}
-                    <motion.button
+                    <m.button
                       onClick={() => setActiveStep(index)}
                       className={`relative z-10 flex h-12 w-12 items-center justify-center rounded-full border-2 transition-all ${
                         isActive || isPast
@@ -548,10 +541,10 @@ export function LandingPage({ onEnter }: { onEnter?: () => void }) {
                       transition={{ duration: 0.3 }}
                     >
                       <Icon className={`h-5 w-5 ${isActive || isPast ? "text-black" : "text-zinc-500"}`} />
-                    </motion.button>
+                    </m.button>
 
                     {/* Step Title */}
-                    <motion.div
+                    <m.div
                       className="mt-4 text-center"
                       initial={{ opacity: 0, y: 5 }}
                       animate={{ 
@@ -569,7 +562,7 @@ export function LandingPage({ onEnter }: { onEnter?: () => void }) {
                       {/* Description - Only show on active */}
                       <div className="h-16 md:h-14 flex items-start justify-center">
                         {isActive && (
-                          <motion.div
+                          <m.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
@@ -577,10 +570,10 @@ export function LandingPage({ onEnter }: { onEnter?: () => void }) {
                             className="text-[10px] md:text-xs text-zinc-500 mt-1 max-w-[120px] md:max-w-[160px]"
                           >
                             {step.description}
-                          </motion.div>
+                          </m.div>
                         )}
                       </div>
-                    </motion.div>
+                    </m.div>
                   </div>
                 );
               })}
@@ -680,75 +673,75 @@ export function LandingPage({ onEnter }: { onEnter?: () => void }) {
                     <span className="text-xs text-zinc-400">scenario.yaml</span>
                   </div>
                   <div className="overflow-x-auto text-sm leading-relaxed font-mono">
-                    <motion.div animate={{ color: activeYamlLine === 0 ? "#facc15" : "#e4e4e7" }} transition={{ duration: 0.5 }}>
+                    <m.div animate={{ color: activeYamlLine === 0 ? "#facc15" : "#e4e4e7" }} transition={{ duration: 0.5 }}>
                       scenarios:
-                    </motion.div>
-                    <motion.div animate={{ color: activeYamlLine === 1 ? "#facc15" : "#e4e4e7" }} transition={{ duration: 0.5 }}>
+                    </m.div>
+                    <m.div animate={{ color: activeYamlLine === 1 ? "#facc15" : "#e4e4e7" }} transition={{ duration: 0.5 }}>
                       &nbsp;&nbsp;- name: Login & Order Flow
-                    </motion.div>
-                    <motion.div animate={{ color: activeYamlLine === 2 ? "#facc15" : "#e4e4e7" }} transition={{ duration: 0.5 }}>
+                    </m.div>
+                    <m.div animate={{ color: activeYamlLine === 2 ? "#facc15" : "#e4e4e7" }} transition={{ duration: 0.5 }}>
                       &nbsp;&nbsp;&nbsp;&nbsp;load:
-                    </motion.div>
-                    <motion.div animate={{ color: activeYamlLine === 3 ? "#facc15" : "#e4e4e7" }} transition={{ duration: 0.5 }}>
+                    </m.div>
+                    <m.div animate={{ color: activeYamlLine === 3 ? "#facc15" : "#e4e4e7" }} transition={{ duration: 0.5 }}>
                       &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;users: 50
-                    </motion.div>
-                    <motion.div animate={{ color: activeYamlLine === 4 ? "#facc15" : "#e4e4e7" }} transition={{ duration: 0.5 }}>
+                    </m.div>
+                    <m.div animate={{ color: activeYamlLine === 4 ? "#facc15" : "#e4e4e7" }} transition={{ duration: 0.5 }}>
                       &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;duration: 2m
-                    </motion.div>
-                    <motion.div animate={{ color: activeYamlLine === 5 ? "#facc15" : "#e4e4e7" }} transition={{ duration: 0.5 }}>
+                    </m.div>
+                    <m.div animate={{ color: activeYamlLine === 5 ? "#facc15" : "#e4e4e7" }} transition={{ duration: 0.5 }}>
                       &nbsp;&nbsp;&nbsp;&nbsp;steps:
-                    </motion.div>
-                    <motion.div animate={{ color: activeYamlLine === 6 ? "#facc15" : "#e4e4e7" }} transition={{ duration: 0.5 }}>
+                    </m.div>
+                    <m.div animate={{ color: activeYamlLine === 6 ? "#facc15" : "#e4e4e7" }} transition={{ duration: 0.5 }}>
                       &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- request:
-                    </motion.div>
-                    <motion.div animate={{ color: activeYamlLine === 7 ? "#facc15" : "#e4e4e7" }} transition={{ duration: 0.5 }}>
+                    </m.div>
+                    <m.div animate={{ color: activeYamlLine === 7 ? "#facc15" : "#e4e4e7" }} transition={{ duration: 0.5 }}>
                       &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;method: POST
-                    </motion.div>
-                    <motion.div animate={{ color: activeYamlLine === 8 ? "#facc15" : "#e4e4e7" }} transition={{ duration: 0.5 }}>
+                    </m.div>
+                    <m.div animate={{ color: activeYamlLine === 8 ? "#facc15" : "#e4e4e7" }} transition={{ duration: 0.5 }}>
                       &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;url: /login
-                    </motion.div>
-                    <motion.div animate={{ color: activeYamlLine === 9 ? "#facc15" : "#e4e4e7" }} transition={{ duration: 0.5 }}>
+                    </m.div>
+                    <m.div animate={{ color: activeYamlLine === 9 ? "#facc15" : "#e4e4e7" }} transition={{ duration: 0.5 }}>
                       &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;body:
-                    </motion.div>
-                    <motion.div animate={{ color: activeYamlLine === 10 ? "#facc15" : "#e4e4e7" }} transition={{ duration: 0.5 }}>
+                    </m.div>
+                    <m.div animate={{ color: activeYamlLine === 10 ? "#facc15" : "#e4e4e7" }} transition={{ duration: 0.5 }}>
                       &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;username: test
-                    </motion.div>
-                    <motion.div animate={{ color: activeYamlLine === 11 ? "#facc15" : "#e4e4e7" }} transition={{ duration: 0.5 }}>
+                    </m.div>
+                    <m.div animate={{ color: activeYamlLine === 11 ? "#facc15" : "#e4e4e7" }} transition={{ duration: 0.5 }}>
                       &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;password: secret
-                    </motion.div>
-                    <motion.div animate={{ color: activeYamlLine === 12 ? "#facc15" : "#e4e4e7" }} transition={{ duration: 0.5 }}>
+                    </m.div>
+                    <m.div animate={{ color: activeYamlLine === 12 ? "#facc15" : "#e4e4e7" }} transition={{ duration: 0.5 }}>
                       &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;extract:
-                    </motion.div>
-                    <motion.div animate={{ color: activeYamlLine === 13 ? "#facc15" : "#e4e4e7" }} transition={{ duration: 0.5 }}>
+                    </m.div>
+                    <m.div animate={{ color: activeYamlLine === 13 ? "#facc15" : "#e4e4e7" }} transition={{ duration: 0.5 }}>
                       &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;token: $.token
-                    </motion.div>
-                    <motion.div animate={{ color: activeYamlLine === 14 ? "#facc15" : "#e4e4e7" }} transition={{ duration: 0.5 }}>
+                    </m.div>
+                    <m.div animate={{ color: activeYamlLine === 14 ? "#facc15" : "#e4e4e7" }} transition={{ duration: 0.5 }}>
                       &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;assert:
-                    </motion.div>
-                    <motion.div animate={{ color: activeYamlLine === 15 ? "#facc15" : "#e4e4e7" }} transition={{ duration: 0.5 }}>
+                    </m.div>
+                    <m.div animate={{ color: activeYamlLine === 15 ? "#facc15" : "#e4e4e7" }} transition={{ duration: 0.5 }}>
                       &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;status: 200
-                    </motion.div>
-                    <motion.div animate={{ color: activeYamlLine === 16 ? "#facc15" : "#e4e4e7" }} transition={{ duration: 0.5 }}>
+                    </m.div>
+                    <m.div animate={{ color: activeYamlLine === 16 ? "#facc15" : "#e4e4e7" }} transition={{ duration: 0.5 }}>
                       &nbsp;
-                    </motion.div>
-                    <motion.div animate={{ color: activeYamlLine === 17 ? "#facc15" : "#e4e4e7" }} transition={{ duration: 0.5 }}>
+                    </m.div>
+                    <m.div animate={{ color: activeYamlLine === 17 ? "#facc15" : "#e4e4e7" }} transition={{ duration: 0.5 }}>
                       &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- think_time: 1s
-                    </motion.div>
-                    <motion.div animate={{ color: activeYamlLine === 18 ? "#facc15" : "#e4e4e7" }} transition={{ duration: 0.5 }}>
+                    </m.div>
+                    <m.div animate={{ color: activeYamlLine === 18 ? "#facc15" : "#e4e4e7" }} transition={{ duration: 0.5 }}>
                       &nbsp;
-                    </motion.div>
-                    <motion.div animate={{ color: activeYamlLine === 19 ? "#facc15" : "#e4e4e7" }} transition={{ duration: 0.5 }}>
+                    </m.div>
+                    <m.div animate={{ color: activeYamlLine === 19 ? "#facc15" : "#e4e4e7" }} transition={{ duration: 0.5 }}>
                       &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- POST: /api/orders
-                    </motion.div>
-                    <motion.div animate={{ color: activeYamlLine === 20 ? "#facc15" : "#e4e4e7" }} transition={{ duration: 0.5 }}>
+                    </m.div>
+                    <m.div animate={{ color: activeYamlLine === 20 ? "#facc15" : "#e4e4e7" }} transition={{ duration: 0.5 }}>
                       &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;body:
-                    </motion.div>
-                    <motion.div animate={{ color: activeYamlLine === 21 ? "#facc15" : "#e4e4e7" }} transition={{ duration: 0.5 }}>
+                    </m.div>
+                    <m.div animate={{ color: activeYamlLine === 21 ? "#facc15" : "#e4e4e7" }} transition={{ duration: 0.5 }}>
                       &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;product: "item-123"
-                    </motion.div>
-                    <motion.div animate={{ color: activeYamlLine === 22 ? "#facc15" : "#e4e4e7" }} transition={{ duration: 0.5 }}>
+                    </m.div>
+                    <m.div animate={{ color: activeYamlLine === 22 ? "#facc15" : "#e4e4e7" }} transition={{ duration: 0.5 }}>
                       &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;quantity: 2
-                    </motion.div>
+                    </m.div>
                   </div>
                 </div>
               </div>
@@ -785,8 +778,8 @@ export function LandingPage({ onEnter }: { onEnter?: () => void }) {
                 </p>
 
                 <div className="space-y-3">
-                  {t.freeCloud.features.map((feature, index) => (
-                    <div key={index} className="flex items-center gap-3 text-zinc-300">
+                  {t.freeCloud.features.map((feature) => (
+                    <div key={feature} className="flex items-center gap-3 text-zinc-300">
                       <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#facc15]/20">
                         <Check className="h-5 w-5 text-[#facc15]" />
                       </div>
@@ -1145,7 +1138,7 @@ $ relampo run test.yaml --vars-file env/staging.yaml --var env=staging
 
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {crewMembers.map((m) => (
-              <motion.div
+              <m.div
                 key={m.id}
                 whileHover={{ y: -6 }}
                 transition={{ duration: 0.2 }}
@@ -1153,7 +1146,7 @@ $ relampo run test.yaml --vars-file env/staging.yaml --var env=staging
               >
                 <div className="flex items-start gap-4 mb-4">
                   <div className="shrink-0">
-                    <motion.div 
+                    <m.div 
                       whileHover={{ scale: 1.6 }}
                       transition={{ duration: 0.3 }}
                       className="h-16 w-16 overflow-hidden rounded-full bg-[#000000] ring-2 ring-[#facc15]/70 transition-all duration-300 hover:ring-4 hover:ring-[#facc15] relative z-10"
@@ -1163,7 +1156,7 @@ $ relampo run test.yaml --vars-file env/staging.yaml --var env=staging
                         alt={m.name} 
                         className="h-full w-full object-cover"
                       />
-                    </motion.div>
+                    </m.div>
                   </div>
                   <div>
                     <div className="text-base font-bold text-white">{m.name}</div>
@@ -1173,7 +1166,7 @@ $ relampo run test.yaml --vars-file env/staging.yaml --var env=staging
                   </div>
                 </div>
                 <p className="text-sm leading-relaxed text-zinc-400">{m.bio}</p>
-              </motion.div>
+              </m.div>
             ))}
           </div>
         </section>
@@ -1293,5 +1286,6 @@ $ relampo run test.yaml --vars-file env/staging.yaml --var env=staging
         </div>
       </footer>
     </div>
+    </LazyMotion>
   );
 }

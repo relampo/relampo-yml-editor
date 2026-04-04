@@ -18,8 +18,6 @@ import {
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
 
-type ViewMode = 'code' | 'tree';
-
 const LARGE_FILE_CHAR_THRESHOLD = 2_000_000;
 const LARGE_FILE_LINE_THRESHOLD = 50_000;
 
@@ -124,7 +122,6 @@ export function YAMLEditor() {
       }
       setIsInitialized(true);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Handle Resize Logic
@@ -335,7 +332,6 @@ export function YAMLEditor() {
         parseWorkerRef.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [language]);
 
   // Synchronize code to tree
@@ -655,7 +651,7 @@ export function YAMLEditor() {
         noRefs: true,
         sortKeys: false,
       });
-    } catch (err) {
+    } catch {
       setError(
         language === 'es'
           ? 'No se pudo generar el YAML sin respuestas. Verifica que el contenido sea válido.'
@@ -750,15 +746,8 @@ export function YAMLEditor() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [yamlCode, currentFileName, language, isDirty]);
 
-  const formattedLineCount = useMemo(
-    () => documentMetrics.lines.toLocaleString(language === 'es' ? 'es-ES' : 'en-US'),
-    [documentMetrics.lines, language]
-  );
-
-  const formattedCharCount = useMemo(
-    () => documentMetrics.chars.toLocaleString(language === 'es' ? 'es-ES' : 'en-US'),
-    [documentMetrics.chars, language]
-  );
+  const formattedLineCount = documentMetrics.lines.toLocaleString(language === 'es' ? 'es-ES' : 'en-US');
+  const formattedCharCount = documentMetrics.chars.toLocaleString(language === 'es' ? 'es-ES' : 'en-US');
 
   return (
     <div
@@ -892,7 +881,7 @@ export function YAMLEditor() {
             {/* Language Toggle - EXACT COPY from Converter */}
             <div className="lang-toggle" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span className="lang-label" style={{ fontSize: '12px', fontWeight: '600', color: language === 'en' ? '#facc15' : '#a3a3a3', transition: 'color 0.3s ease' }}>EN</span>
-              <label className="toggle-switch" style={{ position: 'relative', display: 'inline-block', width: '44px', height: '24px', cursor: 'pointer' }}>
+              <label className="toggle-switch" htmlFor="langToggle" aria-label="Language toggle" style={{ position: 'relative', display: 'inline-block', width: '44px', height: '24px', cursor: 'pointer' }}>
                 <input
                   type="checkbox"
                   id="langToggle"
@@ -909,7 +898,7 @@ export function YAMLEditor() {
                   backgroundColor: '#1a1a1a',
                   border: '1px solid rgba(255, 255, 255, 0.1)',
                   borderRadius: '24px',
-                  transition: 'all 0.3s ease'
+                  transition: 'background-color 0.3s ease, border-color 0.3s ease'
                 }}></span>
               </label>
               <span className="lang-label" style={{ fontSize: '12px', fontWeight: '600', color: language === 'es' ? '#facc15' : '#a3a3a3', transition: 'color 0.3s ease' }}>ES</span>
@@ -923,7 +912,7 @@ export function YAMLEditor() {
                   bottom: 2px;
                   background: linear-gradient(135deg, #fde047 0%, #facc15 45%, #eab308 100%);
                   border-radius: 50%;
-                  transition: all 0.3s ease;
+                  transition: transform 0.3s ease;
                   box-shadow: 0 2px 8px rgba(250, 204, 21, 0.4);
                 }
                 input:checked + .toggle-slider:before {
@@ -1046,6 +1035,10 @@ export function YAMLEditor() {
 
         {/* Center Resize Handle */}
         <div
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize panel"
+          tabIndex={0}
           onMouseDown={() => setIsResizing(true)}
           className="w-1 bg-white/5 hover:bg-yellow-400/40 flex-shrink-0 transition-colors relative active:bg-yellow-400/60 z-50 group"
           style={{ cursor: 'col-resize' }}

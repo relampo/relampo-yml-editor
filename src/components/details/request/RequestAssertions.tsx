@@ -1,16 +1,15 @@
-import React from 'react';
 import { DetailSection } from '../../ui/details/DetailSection';
 import { CompactInput } from '../../ui/details/CompactInput';
 import { Label } from '../../ui/label';
-import { Button } from '../../ui/button';
-import { Plus, Trash2 } from 'lucide-react';
 
 interface RequestAssertionsProps {
     assert: any; // AssertConfig
     onUpdate: (field: string, value: any) => void;
 }
 
-export function RequestAssertions({ assert = {}, onUpdate }: RequestAssertionsProps) {
+const EMPTY_ASSERT = {};
+
+export function RequestAssertions({ assert = EMPTY_ASSERT, onUpdate }: RequestAssertionsProps) {
     // Helper to update specific assertion field
     const handleChange = (field: string, value: any) => {
         // If value is empty/null, maybe delete the key? 

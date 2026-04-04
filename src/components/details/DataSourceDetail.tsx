@@ -1,7 +1,6 @@
 import { useRef } from 'react';
 import { Database, FileSpreadsheet, FileJson, FileCode, Upload } from 'lucide-react';
 import type { ScriptNode } from '../../types/script';
-import { useLanguage } from '../../contexts/LanguageContext';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
 
@@ -11,7 +10,6 @@ interface DataSourceDetailProps {
 }
 
 export function DataSourceDetail({ node, onNodeUpdate }: DataSourceDetailProps) {
-  const { t } = useLanguage();
   const data = node.data || { type: 'csv', file: '', variable_names: '' };
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -99,9 +97,9 @@ export function DataSourceDetail({ node, onNodeUpdate }: DataSourceDetailProps) 
 
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">
+                <p className="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">
                   Name
-                </label>
+                </p>
                 <div
                   className="h-10 px-3 rounded-md bg-[#0a0a0a] border border-white/10 text-zinc-300 font-mono text-sm flex items-center truncate"
                   title={node.name}
@@ -112,10 +110,11 @@ export function DataSourceDetail({ node, onNodeUpdate }: DataSourceDetailProps) 
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">
+                  <label htmlFor="ds-detail-type" className="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">
                     Type
                   </label>
                   <select
+                    id="ds-detail-type"
                     value={data.type || 'csv'}
                     onChange={(e) => handleChange('type', e.target.value)}
                     className="w-full h-10 bg-[#0a0a0a] border border-white/10 rounded-md px-3 text-sm text-zinc-300"
@@ -128,11 +127,12 @@ export function DataSourceDetail({ node, onNodeUpdate }: DataSourceDetailProps) 
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">
+                  <label htmlFor="ds-detail-file" className="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">
                     File
                   </label>
                   <div className="flex gap-2">
                     <Input
+                      id="ds-detail-file"
                       value={pathValue}
                       onChange={(e) => handleChange('file', e.target.value)}
                       placeholder="users.csv or /path/to/users.csv"
@@ -162,10 +162,11 @@ export function DataSourceDetail({ node, onNodeUpdate }: DataSourceDetailProps) 
           <div className="bg-[#111111] rounded-xl p-6 border border-white/5 shadow-2xl">
             <h4 className="text-sm font-semibold text-zinc-100 mb-4 tracking-tight">Variable Mapping</h4>
             <div className="mb-4">
-              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">
+              <label htmlFor="ds-detail-var-names" className="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">
                 Variable Names (comma-separated)
               </label>
               <Input
+                id="ds-detail-var-names"
                 value={data.variable_names || ''}
                 onChange={(e) => handleChange('variable_names', e.target.value)}
                 placeholder="var1, var2, var3"
@@ -175,7 +176,7 @@ export function DataSourceDetail({ node, onNodeUpdate }: DataSourceDetailProps) 
             {data.variable_names ? (
               <div className="flex flex-wrap gap-2 mt-4">
                 {data.variable_names.split(',').map((name: string, idx: number) => (
-                  <div key={idx} className="bg-yellow-400/10 border border-yellow-400/20 rounded-lg px-3 py-1.5 text-xs font-mono text-yellow-400">
+                  <div key={name.trim() || idx} className="bg-yellow-400/10 border border-yellow-400/20 rounded-lg px-3 py-1.5 text-xs font-mono text-yellow-400">
                     {name.trim() ? '{{' + name.trim() + '}}' : ''}
                   </div>
                 )).filter((item: any) => item !== '')}

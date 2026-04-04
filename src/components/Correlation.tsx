@@ -1,28 +1,79 @@
 import { useState, useEffect } from 'react';
-import { 
-  FileWarning, 
-  Sparkles, 
-  Check, 
-  Loader2, 
-  RefreshCw, 
-  Filter,
-  ChevronRight,
+import {
+  FileWarning,
+  Sparkles,
+  Check,
+  Loader2,
+  RefreshCw,
   X,
   AlertCircle,
   CheckCircle2,
   Circle,
-  Eye,
-  Play,
-  Square
 } from 'lucide-react';
 import { Button } from './ui/button';
-import { Input } from './ui/input';
 import { useYAML } from '../contexts/YAMLContext';
 import { analyzeYAMLForCorrelations, applyCorrelations } from '../utils/correlationAnalyzer';
 import type { CorrelationCandidate } from '../types/correlation';
 
 // Types
 type CorrelationState = 'no-recording' | 'ready' | 'analyzing' | 'results' | 'yaml-changed';
+
+function ColoredDiff({ diffText }: { diffText: string }) {
+  const lines = diffText.split('\n');
+  return (
+    <>
+      {lines.map((line, idx) => {
+        if (line.startsWith('+ ')) {
+          return (
+            <div key={idx} className="text-green-400">
+              {line}
+            </div>
+          );
+        } else if (line.startsWith('- ')) {
+          return (
+            <div key={idx} className="text-red-400">
+              {line}
+            </div>
+          );
+        } else if (line.includes('extractors:') || line.includes('Agregar extractor')) {
+          return (
+            <div key={idx} className="text-yellow-400 font-semibold">
+              {line}
+            </div>
+          );
+        } else if (line.includes('Reemplazar') || line.includes('con ${')) {
+          const parts = line.split(/(\$\{[^}]+\})/g);
+          return (
+            <div key={idx} className="text-cyan-400">
+              {parts.map((part, i) => {
+                if (part.match(/\$\{[^}]+\}/)) {
+                  return (
+                    <span key={i} className="text-blue-400 font-semibold">
+                      {part}
+                    </span>
+                  );
+                }
+                return part;
+              })}
+            </div>
+          );
+        } else if (line.trim().startsWith('•')) {
+          return (
+            <div key={idx} className="text-zinc-400">
+              {line}
+            </div>
+          );
+        } else {
+          return (
+            <div key={idx} className="text-zinc-500">
+              {line}
+            </div>
+          );
+        }
+      })}
+    </>
+  );
+}
 
 type AnalysisStep = {
   label: string;
@@ -46,14 +97,11 @@ export function Correlation() {
     if (!yamlContent || yamlContent.trim() === '') {
       setState('no-recording');
     } else if (yamlContent.includes('steps:') && yamlContent.includes('response:')) {
-      // Solo cambiar a "ready" si no hay resultados previos
-      if (state !== 'results') {
-        setState('ready');
-      }
+      setState(prev => prev !== 'results' ? 'ready' : prev);
     } else {
       setState('no-recording');
     }
-  }, [yamlContent]); // Removido 'state' de las dependencias
+  }, [yamlContent]);
 
   // Simular progreso del análisis
   useEffect(() => {
@@ -100,7 +148,7 @@ export function Correlation() {
     setTimeout(() => setAnalysisSteps(prev => prev.map((s, i) => i <= 4 ? {...s, status: 'complete'} : i === 5 ? {...s, status: 'loading'} : s)), 4500);
     setTimeout(() => setAnalysisSteps(prev => prev.map((s, i) => i <= 5 ? {...s, status: 'complete'} : i === 6 ? {...s, status: 'loading'} : s)), 5000);
     setTimeout(() => {
-      setAnalysisSteps(prev => prev.map((s, i) => ({...s, status: 'complete'})));
+      setAnalysisSteps(prev => prev.map((s) => ({...s, status: 'complete'})));
       
       // Ejecutar análisis real del YAML aquí, cuando todo esté completo
       console.log('🚀 Running real YAML analysis...');
@@ -108,13 +156,6 @@ export function Correlation() {
       console.log('📊 Analysis complete, candidates found:', analysisResult.length);
       setCandidates(analysisResult);
     }, 5500);
-  };
-
-  // Función para detener análisis
-  const stopAnalysis = () => {
-    setIsAnalyzing(false);
-    setAnalysisProgress(0);
-    setState('ready');
   };
 
   // Mock analysis steps
@@ -174,67 +215,6 @@ export function Correlation() {
       'api_key': 'API Key'
     };
     return labels[type] || type;
-  };
-
-  // Función para renderizar diff con colores
-  const renderColoredDiff = (diffText: string) => {
-    const lines = diffText.split('\n');
-    return lines.map((line, idx) => {
-      // Colorear líneas según contenido
-      if (line.startsWith('+ ')) {
-        // Líneas de adición (verde)
-        return (
-          <div key={idx} className="text-green-400">
-            {line}
-          </div>
-        );
-      } else if (line.startsWith('- ')) {
-        // Líneas de remoción (rojo)
-        return (
-          <div key={idx} className="text-red-400">
-            {line}
-          </div>
-        );
-      } else if (line.includes('extractors:') || line.includes('Agregar extractor')) {
-        // Keywords de extractor (amarillo)
-        return (
-          <div key={idx} className="text-yellow-400 font-semibold">
-            {line}
-          </div>
-        );
-      } else if (line.includes('Reemplazar') || line.includes('con ${')) {
-        // Keywords de reemplazo (cyan)
-        const parts = line.split(/(\$\{[^}]+\})/g);
-        return (
-          <div key={idx} className="text-cyan-400">
-            {parts.map((part, i) => {
-              if (part.match(/\$\{[^}]+\}/)) {
-                return (
-                  <span key={i} className="text-blue-400 font-semibold">
-                    {part}
-                  </span>
-                );
-              }
-              return part;
-            })}
-          </div>
-        );
-      } else if (line.trim().startsWith('•')) {
-        // Listado de usos (zinc)
-        return (
-          <div key={idx} className="text-zinc-400">
-            {line}
-          </div>
-        );
-      } else {
-        // Texto normal
-        return (
-          <div key={idx} className="text-zinc-500">
-            {line}
-          </div>
-        );
-      }
-    });
   };
 
   // Render functions for each state
@@ -332,8 +312,8 @@ export function Correlation() {
 
           {/* Analysis steps */}
           <div className="space-y-3">
-            {analysisSteps.map((step, idx) => (
-              <div key={idx} className="flex items-center gap-3">
+            {analysisSteps.map((step) => (
+              <div key={step.label} className="flex items-center gap-3">
                 {step.status === 'complete' && (
                   <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
                 )}
@@ -498,8 +478,8 @@ export function Correlation() {
                     </td>
                     <td className="p-3">
                       <div className="space-y-1">
-                        {candidate.usedIn.map((usage, idx) => (
-                          <div key={idx} className="text-xs text-zinc-500">{usage}</div>
+                        {candidate.usedIn.map((usage) => (
+                          <div key={usage} className="text-xs text-zinc-500">{usage}</div>
                         ))}
                       </div>
                     </td>
@@ -601,7 +581,7 @@ export function Correlation() {
               <div>
                 <h4 className="text-sm font-semibold text-zinc-300 mb-3">Cambios en el YAML</h4>
                 <div className="bg-[#111111] border border-white/10 rounded p-3 font-mono text-xs whitespace-pre-wrap text-zinc-300">
-                  {renderColoredDiff(selectedCandidate.diff)}
+                  <ColoredDiff diffText={selectedCandidate.diff} />
                 </div>
               </div>
 

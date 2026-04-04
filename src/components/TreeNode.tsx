@@ -125,7 +125,7 @@ export function TreeNode({
     }),
   });
 
-  const [{ isOver, canDrop: canDropHere }, dropRef] = useDrop({
+  const [{ isOver, canDrop: _ }, dropRef] = useDrop({
     accept: DRAG_TYPE,
     canDrop: (item: { node: ScriptNode; parentNode?: ScriptNode }) => {
       // Can't drop on itself or its descendants
@@ -214,6 +214,9 @@ export function TreeNode({
       )}
 
       <div
+        role="treeitem"
+        aria-selected={isSelected}
+        tabIndex={0}
         className={`
           group flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all duration-150
           ${isDragging
@@ -221,15 +224,16 @@ export function TreeNode({
             : canDrag
             ? 'cursor-grab hover:shadow-md hover:shadow-yellow-400/20'
             : 'cursor-pointer'
-          } 
+          }
           ${isSelected
             ? 'bg-gradient-to-r from-yellow-500/10 to-yellow-600/10 text-zinc-100 shadow-md border border-yellow-400/30'
             : 'hover:bg-white/5 text-zinc-300'
-          } 
+          }
           ${getDropStyle()}
         `}
         style={{ paddingLeft: `${depth * 16 + 12}px` }}
         onClick={() => onNodeSelect(node)}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onNodeSelect(node); }}
         onContextMenu={(e) => {
           e.preventDefault();
           onContextMenu(e, node);

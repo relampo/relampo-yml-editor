@@ -7,6 +7,40 @@ import type { editor as MonacoEditorNS } from 'monaco-editor';
 type BodyType = 'none' | 'json' | 'form' | 'raw';
 type SearchMode = 'text' | 'regex';
 
+interface HighlightedTextProps {
+  text: string;
+  searchText: string;
+  searchMode: SearchMode;
+  currentMatchIndex: number;
+}
+
+function HighlightedText({ text, searchText, searchMode, currentMatchIndex }: HighlightedTextProps) {
+  if (!searchText || !text) return <>{text}</>;
+  const ranges = findMatchRanges(text, searchText, searchMode);
+  if (ranges.length === 0) return <>{text}</>;
+  const nodes: Array<JSX.Element | string> = [];
+  let cursor = 0;
+  ranges.forEach((r, idx) => {
+    if (cursor < r.start) nodes.push(text.slice(cursor, r.start));
+    const isActive = idx === currentMatchIndex;
+    nodes.push(
+      <mark
+        key={`${r.start}-${r.end}-${idx}`}
+        data-match-index={idx}
+        className={isActive
+          ? 'bg-yellow-300 text-black ring-2 ring-amber-500 shadow-[0_0_0_1px_rgba(245,158,11,0.45)] rounded-sm'
+          : 'rounded-sm'}
+        style={isActive ? undefined : { backgroundColor: 'rgba(59,130,246,0.4)', color: '#dbeafe' }}
+      >
+        {text.slice(r.start, r.end)}
+      </mark>
+    );
+    cursor = r.end;
+  });
+  if (cursor < text.length) nodes.push(text.slice(cursor));
+  return <>{nodes}</>;
+}
+
 interface BodyTypeSelectorProps {
   body: any;
   onBodyChange: (body: any, type: BodyType) => void;
@@ -41,8 +75,8 @@ export function BodyTypeSelector({
   const [jsonError, setJsonError] = useState('');
   const [rawValue, setRawValue] = useState('');
   const [typeSwitchError, setTypeSwitchError] = useState('');
-  const [isEditingJson, setIsEditingJson] = useState(false);
-  const [isEditingRaw, setIsEditingRaw] = useState(false);
+  const [, setIsEditingJson] = useState(false);
+  const [, setIsEditingRaw] = useState(false);
   const [formData, setFormData] = useState<FormDataItem[]>([{ key: '', value: '', enabled: true }]);
   const jsonTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const rawTextareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -205,35 +239,6 @@ export function BodyTypeSelector({
     onBodyChange(obj, 'form');
   };
 
-  const renderHighlightedText = (text: string) => {
-    if (!searchText || !text) return text;
-    const ranges = findMatchRanges(text, searchText, searchMode);
-    if (ranges.length === 0) return text;
-    const nodes: Array<JSX.Element | string> = [];
-    let cursor = 0;
-    ranges.forEach((r, idx) => {
-      if (cursor < r.start) nodes.push(text.slice(cursor, r.start));
-      const isActive = idx === currentMatchIndex;
-      nodes.push(
-        <mark
-          key={`${r.start}-${r.end}-${idx}`}
-          data-match-index={idx}
-          className={isActive
-            ? 'bg-yellow-300 text-black ring-2 ring-amber-500 shadow-[0_0_0_1px_rgba(245,158,11,0.45)] rounded-sm'
-            : 'rounded-sm'}
-          style={isActive ? undefined : { backgroundColor: 'rgba(59,130,246,0.4)', color: '#dbeafe' }}
-        >
-          {text.slice(r.start, r.end)}
-        </mark>
-      );
-      cursor = r.end;
-    });
-    if (cursor < text.length) nodes.push(text.slice(cursor));
-    return (
-      <>{nodes}</>
-    );
-  };
-
   const useMonacoForJson = useMemo(() => shouldUseMonaco(jsonValue), [jsonValue]);
   const useMonacoForRaw = useMemo(() => shouldUseMonaco(rawValue), [rawValue]);
 
@@ -293,9 +298,9 @@ export function BodyTypeSelector({
       {/* Body Type Selector */}
       <div className="mb-4">
         {!hideTypeLabel && (
-          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
+          <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
             Body Type
-          </label>
+          </p>
         )}
         <div className="flex gap-2">
           {[
@@ -328,9 +333,9 @@ export function BodyTypeSelector({
       {bodyType === 'json' && (
         <div>
           <div className="flex items-center justify-between mb-2">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+            <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
               JSON Body
-            </label>
+            </span>
             {jsonError ? (
               <div className="flex items-center gap-1 text-xs text-red-400">
                 <AlertCircle className="w-3 h-3" />
@@ -366,7 +371,7 @@ export function BodyTypeSelector({
                 ref={jsonHighlightRef}
                 className="absolute inset-0 m-0 p-3 text-sm font-mono text-zinc-300 whitespace-pre-wrap overflow-y-auto overflow-x-auto pointer-events-none"
               >
-                {renderHighlightedText(jsonValue)}
+                <HighlightedText text={jsonValue} searchText={searchText} searchMode={searchMode} currentMatchIndex={currentMatchIndex} />
               </pre>
               <textarea
                 ref={jsonTextareaRef}
@@ -400,9 +405,9 @@ export function BodyTypeSelector({
       {bodyType === 'form' && (
         <div>
           <div className="flex items-center justify-between mb-2">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+            <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
               Form Data (application/x-www-form-urlencoded)
-            </label>
+            </span>
             <button
               onClick={handleAddFormDataItem}
               className="flex items-center gap-1 px-2 py-1 text-xs text-emerald-400 hover:text-emerald-300 hover:bg-emerald-400/10 rounded transition-colors"
@@ -413,7 +418,7 @@ export function BodyTypeSelector({
           </div>
           <div className="space-y-2">
             {formData.map((item, index) => (
-              <div key={index} className="flex items-center gap-2">
+              <div key={item.key || index} className="flex items-center gap-2">
                 <input
                   type="checkbox"
                   checked={item.enabled}
@@ -447,9 +452,9 @@ export function BodyTypeSelector({
 
       {bodyType === 'raw' && (
         <div>
-          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+          <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
             Raw Body (text/plain)
-          </label>
+          </p>
           {useMonacoForRaw ? (
             <div
               className="w-full h-[300px] rounded-md border border-white/10 bg-white/5 overflow-hidden"
@@ -473,7 +478,7 @@ export function BodyTypeSelector({
                 ref={rawHighlightRef}
                 className="absolute inset-0 m-0 p-3 text-sm font-mono text-zinc-300 whitespace-pre-wrap overflow-y-auto overflow-x-auto pointer-events-none"
               >
-                {renderHighlightedText(rawValue)}
+                <HighlightedText text={rawValue} searchText={searchText} searchMode={searchMode} currentMatchIndex={currentMatchIndex} />
               </pre>
               <textarea
                 ref={rawTextareaRef}
@@ -508,10 +513,6 @@ export function BodyTypeSelector({
       {/* Search highlight is rendered inline in body editor area when searchText is active */}
     </div>
   );
-}
-
-function escapeRegex(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 interface MonacoBodyEditorProps {

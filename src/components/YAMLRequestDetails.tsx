@@ -1,6 +1,5 @@
 import { ChevronDown, ChevronUp, Search } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { useLanguage } from '../contexts/LanguageContext';
 import type { RedirectSourceInfo, YAMLNode } from '../types/yaml';
 import { BodyTypeSelector } from './fields/BodyTypeSelector';
 import { MethodDropdown } from './fields/MethodDropdown';
@@ -18,7 +17,6 @@ type Tab = 'request' | 'response';
 type SearchMode = 'text' | 'regex';
 
 export function YAMLRequestDetails({ node, redirectSourceInfo = null, onNodeUpdate }: YAMLRequestDetailsProps) {
-  const { language } = useLanguage();
   const data = node.data || {};
   const [formData, setFormData] = useState(data);
   const [activeTab, setActiveTab] = useState<Tab>('request');
@@ -80,16 +78,17 @@ export function YAMLRequestDetails({ node, redirectSourceInfo = null, onNodeUpda
     else setResponseReplace(value);
   };
 
-  useEffect(() => {
+  const handleTabChange = (tab: Tab) => {
+    setActiveTab(tab);
     setCurrentMatchIndex(0);
-  }, [activeTab]);
+  };
 
   return (
     <div className="flex flex-col h-full">
       {/* Tabs */}
       <div className="flex items-center border-b border-white/5 bg-[#111111] flex-shrink-0">
         <button
-          onClick={() => setActiveTab('request')}
+          onClick={() => handleTabChange('request')}
           className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${activeTab === 'request'
             ? 'text-yellow-400 bg-yellow-400/10 border-b-2 border-yellow-400'
             : 'text-zinc-400 hover:text-zinc-300 hover:bg-white/5'
@@ -99,7 +98,7 @@ export function YAMLRequestDetails({ node, redirectSourceInfo = null, onNodeUpda
         </button>
         {formData.response && (
           <button
-            onClick={() => setActiveTab('response')}
+            onClick={() => handleTabChange('response')}
             className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${activeTab === 'response'
               ? 'text-cyan-400 bg-cyan-400/10 border-b-2 border-cyan-400'
               : 'text-zinc-400 hover:text-zinc-300 hover:bg-white/5'
@@ -171,7 +170,7 @@ function RequestContent({
   effectiveRedirectAutomatically,
   effectiveFollowRedirects,
   onFieldChange,
-  onBodyChange,
+  onBodyChange: _,
   searchText,
   searchMode,
   replaceValue,
@@ -181,7 +180,6 @@ function RequestContent({
   onReplaceValueChange,
   onNavigate,
 }: RequestContentProps) {
-  const { language } = useLanguage();
   const compactInputClass = 'w-[14ch] max-w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono';
 
   const splitQuery = (fullUrl: string): { withoutQuery: string; query: string } => {
@@ -328,20 +326,22 @@ function RequestContent({
       <div>
         <div className="grid grid-cols-12 gap-3 items-end">
           <div className="col-span-2">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+            <label htmlFor="req-method" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
               Method
             </label>
             <MethodDropdown
+              id="req-method"
               value={formData.method || 'GET'}
               onChange={(method) => onFieldChange('method', method)}
               className="w-full"
             />
           </div>
           <div className="col-span-2">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+            <label htmlFor="req-protocol" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
               Protocol
             </label>
             <select
+              id="req-protocol"
               value={urlParts.protocol}
               onChange={(e) => onFieldChange('url', buildUrl(formData.url || '', { protocol: e.target.value }))}
               className={`${compactInputClass} w-full`}
@@ -351,10 +351,11 @@ function RequestContent({
             </select>
           </div>
           <div className="col-span-4">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+            <label htmlFor="req-base-url" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
               Base URL
             </label>
             <Input
+              id="req-base-url"
               value={urlParts.baseUrl}
               onChange={(e) => onFieldChange('url', buildUrl(formData.url || '', { baseUrl: e.target.value }))}
               placeholder="api.example.com"
@@ -362,10 +363,11 @@ function RequestContent({
             />
           </div>
           <div className="col-span-4">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+            <label htmlFor="req-path" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
               Path
             </label>
             <Input
+              id="req-path"
               value={urlParts.path}
               onChange={(e) => onFieldChange('url', buildUrl(formData.url || '', { path: e.target.value }))}
               placeholder="/endpoint"
@@ -425,9 +427,9 @@ function RequestContent({
       {/* Body */}
       <div>
         <div className="flex items-center gap-2 mb-2">
-          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+          <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
             Request Body
-          </label>
+          </p>
         </div>
         <div className="p-3 border border-white/10 rounded bg-[#0a0a0a]">
         <div className="flex items-center gap-2 flex-wrap">
@@ -510,13 +512,13 @@ function RequestContent({
         </div>
       </div>
       <div className="flex items-center gap-2 mb-2 mt-3">
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
           Format / Body Type
-        </label>
+        </p>
       </div>
       <BodyTypeSelector
         body={formData.body}
-        onBodyChange={(body, type) => onFieldChange('body', body)}
+        onBodyChange={(body) => onFieldChange('body', body)}
         searchText={searchText}
         searchMode={searchMode}
         currentMatchIndex={currentMatchIndex}
@@ -527,9 +529,9 @@ function RequestContent({
       {formData.think_time && (
         <div>
           <div className="flex items-center gap-2 mb-2">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
               ⏱ Think Time
-            </label>
+            </p>
           </div>
           <div className="px-3 py-2 bg-cyan-400/5 border border-cyan-400/20 rounded text-sm font-mono text-cyan-400">
             {String(formData.think_time)}
@@ -541,10 +543,11 @@ function RequestContent({
       <div>
         <div className="grid grid-cols-5 gap-3 items-start w-full">
           <div className="min-w-0">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+            <label htmlFor="req-timeout" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
               Timeout
             </label>
             <Input
+              id="req-timeout"
               value={formData.timeout === '30s' ? '' : (formData.timeout || '')}
               onChange={(e) => onFieldChange('timeout', e.target.value)}
               placeholder=""
@@ -552,10 +555,11 @@ function RequestContent({
             />
           </div>
           <div className="min-w-0">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+            <label htmlFor="req-cookie-override" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
               Cookie Override
             </label>
             <select
+              id="req-cookie-override"
               value={formData.cookie_override || 'inherit'}
               onChange={(e) => onFieldChange('cookie_override', e.target.value)}
               className="block w-full h-[38px] px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono"
@@ -566,10 +570,11 @@ function RequestContent({
             </select>
           </div>
           <div className="min-w-0">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+            <label htmlFor="req-cache-override" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
               Cache Override
             </label>
             <select
+              id="req-cache-override"
               value={formData.cache_override || 'inherit'}
               onChange={(e) => onFieldChange('cache_override', e.target.value)}
               className="block w-full h-[38px] px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono"
@@ -580,10 +585,11 @@ function RequestContent({
             </select>
           </div>
           <div className="min-w-0">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+            <label htmlFor="req-throughput" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
               Throughput (Request)
             </label>
             <select
+              id="req-throughput"
               value={formData.throughput?.enabled ? 'enabled' : 'disabled'}
               onChange={(e) => {
                 if (e.target.value === 'enabled') {
@@ -603,10 +609,11 @@ function RequestContent({
             </select>
           </div>
           <div className={`min-w-0 ${formData.throughput?.enabled ? '' : 'opacity-55'}`}>
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+            <label htmlFor="req-target-rps" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
               Target RPS
             </label>
             <Input
+              id="req-target-rps"
               type="number"
               min="0.1"
               step="0.1"

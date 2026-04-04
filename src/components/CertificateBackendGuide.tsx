@@ -1,4 +1,4 @@
-import { Code, Server, Shield, CheckCircle, Terminal } from 'lucide-react';
+import { Server, Shield, CheckCircle, Terminal } from 'lucide-react';
 
 export function CertificateBackendGuide() {
   return (

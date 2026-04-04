@@ -4,7 +4,6 @@ import {
   Braces,
   CheckCircle,
   Clock,
-  Code,
   CodeXml,
   Cookie,
   Copy,
@@ -13,16 +12,12 @@ import {
   EyeOff,
   Filter,
   Folder,
-  FolderOpen,
   Gauge,
   GitBranch,
   Globe,
   HardDrive,
-  List,
   Paperclip,
   Plus,
-  RefreshCw,
-  Repeat,
   Settings,
   Tag,
   Trash2,
@@ -30,7 +25,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
-import type { YAMLNode, YAMLNodeType } from '../types/yaml';
+import type { YAMLNode } from '../types/yaml';
 
 export type YAMLAddableNodeType =
   | 'scenarios'
@@ -141,12 +136,14 @@ export function YAMLContextMenu({
   return (
     <div
       ref={menuRef}
+      role="menu"
       className='fixed z-50 min-w-[220px] max-h-[80vh] overflow-y-auto bg-[#111111] border border-white/10 rounded-lg shadow-2xl shadow-black/50 py-1'
       style={{
         left: `${position.x}px`,
         top: `${position.y}px`,
       }}
       onClick={e => e.stopPropagation()}
+      onKeyDown={e => e.stopPropagation()}
     >
       {canAddChildren && (
         <>

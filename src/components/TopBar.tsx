@@ -1,7 +1,5 @@
-import { ChevronDown, Bell, User, Languages } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
-import type { Language } from '../i18n/translations';
 
 interface TopBarProps {
   selectedProject: string;
@@ -10,26 +8,14 @@ interface TopBarProps {
   onEnvironmentChange: (env: string) => void;
 }
 
-export function TopBar({
-  selectedProject,
-  onProjectChange,
-  selectedEnvironment,
-  onEnvironmentChange,
-}: TopBarProps) {
-  const { language, setLanguage, t } = useLanguage();
-  const [showProjectMenu, setShowProjectMenu] = useState(false);
-  const [showLangMenu, setShowLangMenu] = useState(false);
-  const [showUserMenu, setShowUserMenu] = useState(false);
+export function TopBar(_: TopBarProps) {
+  const { language, setLanguage } = useLanguage();
+  const [, setShowProjectMenu] = useState(false);
+  const [, setShowLangMenu] = useState(false);
+  const [, setShowUserMenu] = useState(false);
   const projectRef = useRef<HTMLDivElement>(null);
   const langRef = useRef<HTMLDivElement>(null);
   const userRef = useRef<HTMLDivElement>(null);
-
-  const projects = ['E-Commerce Load Test', 'API Gateway Performance', 'Mobile Backend Stress Test'];
-  const languages: { code: Language; label: string; flag: string }[] = [
-    { code: 'en', label: 'English', flag: '🇺🇸' },
-    { code: 'es', label: 'Español', flag: '🇪🇸' },
-    { code: 'pt', label: 'Portugus', flag: '🇧🇷' },
-  ];
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -47,8 +33,6 @@ export function TopBar({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
-  const currentLanguage = languages.find(l => l.code === language);
 
   return (
     <header className="h-14 flex items-center justify-between px-6 bg-[#0a0a0a] border-b border-white/5 shadow-2xl">

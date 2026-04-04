@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { 
-  Play, Square, Pause, Trash2, Flag, Download, Copy, Check, 
-  X, AlertTriangle, CheckCircle2, Filter, Search, Pin, 
-  ChevronDown, ChevronRight, Settings, Save, FileDown, Shield, Info
+import {
+  Play, Square, Pause, Trash2, Flag, Copy, Check,
+  X, AlertTriangle, CheckCircle2, Filter, Search, Pin,
 } from 'lucide-react';
 import { CertificateStatus, type CertStatus } from '../CertificateStatus';
 import { InstallCertModal, InstallInstructionsDrawer } from '../InstallCertModal';
@@ -372,8 +371,9 @@ export function RecordingView() {
                 </div>
                 
                 <div className="flex items-center gap-2">
-                  <label className="text-xs text-neutral-400">Port:</label>
+                  <label htmlFor="proxy-port" className="text-xs text-neutral-400">Port:</label>
                   <input
+                    id="proxy-port"
                     type="text"
                     value={port}
                     onChange={(e) => setPort(e.target.value)}
@@ -566,7 +566,7 @@ export function RecordingView() {
           <div className="space-y-4">
             {/* Presets */}
             <div>
-              <label className="text-xs font-medium text-neutral-700 mb-2 block">Presets</label>
+              <p className="text-xs font-medium text-neutral-700 mb-2 block">Presets</p>
               <div className="flex gap-2">
                 {(['full', 'web', 'api'] as const).map((preset) => (
                   <button
@@ -588,7 +588,7 @@ export function RecordingView() {
 
             {/* Toggles */}
             <div>
-              <label className="text-xs font-medium text-neutral-700 mb-2 block">Options</label>
+              <p className="text-xs font-medium text-neutral-700 mb-2 block">Options</p>
               <div className="grid grid-cols-5 gap-3">
                 {[
                   { label: 'Exclude Embedded', value: excludeEmbedded, setter: setExcludeEmbedded },
@@ -714,7 +714,10 @@ export function RecordingView() {
               filteredRequests.map((request) => (
                 <div
                   key={request.id}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => setSelectedRequest(request)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedRequest(request); }}
                   className={`px-4 py-2.5 border-b border-neutral-200 cursor-pointer hover:bg-neutral-50 transition-colors ${
                     selectedRequest?.id === request.id ? 'bg-blue-50' : ''
                   }`}
@@ -903,7 +906,7 @@ export function RecordingView() {
       {/* Save Modal (simple placeholder) */}
       {showSaveModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setShowSaveModal(false)}></div>
+          <div role="presentation" className="absolute inset-0 bg-black/40" onClick={() => setShowSaveModal(false)} onKeyDown={() => {}}></div>
           <div className="relative bg-white rounded-xl shadow-2xl p-6 max-w-md">
             <h3 className="text-lg font-semibold text-neutral-900 mb-2">Save Recording?</h3>
             <p className="text-sm text-neutral-600 mb-4">

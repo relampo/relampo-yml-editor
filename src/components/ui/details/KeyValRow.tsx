@@ -1,7 +1,7 @@
 import React from 'react';
 import { CompactInput } from './CompactInput';
 import { Button } from '../button';
-import { Trash2, Lock, Eye, EyeOff, Copy } from 'lucide-react';
+import { Trash2, Eye, EyeOff } from 'lucide-react';
 
 interface KeyValRowProps {
     k: string;

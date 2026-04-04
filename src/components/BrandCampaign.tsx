@@ -460,7 +460,7 @@ For questions or print-ready files, contact the design team.
       
       setDownloadMessage('✓ Complete brand package downloaded!');
       setTimeout(() => setDownloadMessage(null), 3000);
-    } catch (error) {
+    } catch {
       setDownloadMessage('Error creating package. Please try again.');
       setTimeout(() => setDownloadMessage(null), 3000);
     }
@@ -468,12 +468,12 @@ For questions or print-ready files, contact the design team.
 
   const handleShare = async () => {
     setDownloadMessage('Copying share link to clipboard...');
-    
+
     try {
       await navigator.clipboard.writeText('https://relampo.dev/brand-campaign');
       setDownloadMessage('✓ Share link copied to clipboard!');
       setTimeout(() => setDownloadMessage(null), 3000);
-    } catch (error) {
+    } catch {
       setDownloadMessage('Share link: https://relampo.dev/brand-campaign');
       setTimeout(() => setDownloadMessage(null), 5000);
     }
@@ -563,9 +563,10 @@ For questions or print-ready files, contact the design team.
               </h3>
               <div className="space-y-2">
                 {brandColors.map((color) => (
-                  <div
+                  <button
                     key={color.hex}
-                    className="flex items-center gap-2 p-2 rounded-lg hover:bg-white/5 transition-colors cursor-pointer group"
+                    type="button"
+                    className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-white/5 transition-colors cursor-pointer group"
                     onClick={() => copyToClipboard(color.hex)}
                   >
                     <div
@@ -581,7 +582,7 @@ For questions or print-ready files, contact the design team.
                     ) : (
                       <Copy className="w-3 h-3 text-zinc-600 opacity-0 group-hover:opacity-100 transition-opacity" />
                     )}
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>

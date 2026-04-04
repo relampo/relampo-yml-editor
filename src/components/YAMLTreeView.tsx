@@ -459,6 +459,8 @@ export function YAMLTreeView({
       {/* Tree */}
       <div
         ref={treeContainerRef}
+        role="tree"
+        aria-label="YAML tree"
         className="flex-1 overflow-y-auto px-3 pb-3 outline-none"
         tabIndex={0}
         onKeyDown={handleTreeKeyDown}
@@ -686,7 +688,7 @@ function moveNodeInTree(
     };
   };
 
-  let treeWithoutNode = removeNode(tree);
+  const treeWithoutNode = removeNode(tree);
 
   // Paso 3: Insertar el nodo en la nueva posición
   let inserted = false;

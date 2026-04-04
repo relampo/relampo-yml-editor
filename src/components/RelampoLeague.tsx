@@ -1,6 +1,6 @@
 import { Trophy, TrendingUp, TrendingDown, ChevronRight, Zap, Award } from 'lucide-react';
 import { useState } from 'react';
-import { POWER_TIERS, getTierConfig, type TimeRange } from '../types/league';
+import { getTierConfig, type TimeRange } from '../types/league';
 import { mockLeagueDataMonthly, mockLeagueDataAllTime } from '../data/mockLeagueData';
 import { PowerTierIcon } from './PowerTierIcon';
 

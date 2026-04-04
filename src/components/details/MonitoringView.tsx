@@ -23,13 +23,6 @@ export function MonitoringView() {
     { time: '60s', cpu: 65, memory: 68, disk: 44, network: 65 },
   ];
 
-  const currentMetrics = [
-    { label: 'Requests', value: '1,248', unit: 'total', icon: Activity, color: 'blue' },
-    { label: 'Avg Response Time', value: '156', unit: 'ms', icon: Activity, color: 'green' },
-    { label: 'Error %', value: '0.56', unit: '%', icon: Activity, color: 'red' },
-    { label: 'Concurrency', value: '100', unit: 'users', icon: Activity, color: 'purple' },
-  ];
-
   return (
     <div className="h-full flex flex-col bg-[#0a0a0a]">
       {/* Header */}

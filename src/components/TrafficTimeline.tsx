@@ -3,11 +3,10 @@ import { RecordedRequest, RecordingStatus } from './Recorder';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { 
-  Search, 
-  Trash2, 
-  Tag, 
+  Search,
+  Trash2,
+  Tag,
   MoreVertical,
-  Filter,
   ListTree,
   List,
   GitBranch,

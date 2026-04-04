@@ -4,7 +4,7 @@ import { HTML5Backend } from 'react-dnd-html5-backend';
 import { ScriptTree } from './ScriptTree';
 import { DetailPanel } from './DetailPanel';
 import { RenameDialog } from './RenameDialog';
-import { Circle, FileText, Sparkles, Bug, Zap, Activity, Languages } from 'lucide-react';
+import { Circle, FileText, Sparkles, Bug, Zap, Activity } from 'lucide-react';
 import type { ScriptNode } from '../types/script';
 import { mockScriptTree } from '../data/mockScriptTree';
 import type { AddableNodeType } from './ContextMenu';

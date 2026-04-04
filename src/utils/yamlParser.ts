@@ -195,7 +195,7 @@ export function treeToYAML(tree: YAMLNode): string {
 }
 
 // Convert parsed object to tree structure
-function convertToTree(obj: any, path: string[] = []): YAMLNode {
+function convertToTree(obj: any, _: string[] = []): YAMLNode {
   const rootId = 'root';
 
   const root: YAMLNode = {
@@ -744,7 +744,6 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
 
   // Loop
   if (step.loop !== undefined) {
-    const loopCount = typeof step.loop === 'number' ? step.loop : step.loop.count;
     const loopNode: YAMLNode = {
       id: stepId,
       type: 'loop',
@@ -767,7 +766,6 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
 
   // Retry
   if (step.retry) {
-    const attempts = step.retry.attempts || step.retry.max_attempts || 3;
     const retryNode: YAMLNode = {
       id: stepId,
       type: 'retry',

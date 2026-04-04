@@ -12,11 +12,8 @@ import {
   Sparkles,
   Layers,
   Play,
-  Square,
-  Pause,
   Download,
   Shield,
-  Cookie,
 } from 'lucide-react';
 
 export function FrontendImplementationDoc() {

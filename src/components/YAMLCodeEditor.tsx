@@ -42,13 +42,11 @@ export function YAMLCodeEditor({ value, onChange, readOnly = false, active = tru
   useEffect(() => {
     if (!active) return;
     recomputeMatches();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery, active]);
 
   useEffect(() => {
     if (!active || largeFileMode || !searchQuery.trim()) return;
     recomputeMatches();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, active, largeFileMode, searchQuery]);
 
   useEffect(() => {
@@ -83,7 +81,7 @@ export function YAMLCodeEditor({ value, onChange, readOnly = false, active = tru
   const handleEditorDidMount = (editor: MonacoEditorNS.IStandaloneCodeEditor, monaco: Monaco) => {
     monacoRef.current = monaco;
     try {
-      if (!monaco.languages.getLanguages().some((l) => l.id === 'yaml-relampo')) {
+      if (!monaco.languages.getLanguages().some((l: { id: string; }) => l.id === 'yaml-relampo')) {
         monaco.languages.register({ id: 'yaml-relampo' });
       }
     } catch {

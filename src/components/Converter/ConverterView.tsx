@@ -21,7 +21,7 @@ export function ConverterView() {
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const handleEditorDidMount = (editor: any, monaco: any) => {
+    const handleEditorDidMount = (editor: any, _: any) => {
         editorRef.current = editor;
     };
 
@@ -132,7 +132,7 @@ export function ConverterView() {
                 </div>
                 <div className="lang-toggle">
                     <span className="lang-label" style={{ color: lang === 'en' ? '#facc15' : '#a3a3a3' }}>EN</span>
-                    <label className="toggle-switch">
+                    <label className="toggle-switch" aria-label="Language toggle">
                         <input
                             type="checkbox"
                             checked={lang === 'es'}
@@ -161,11 +161,14 @@ export function ConverterView() {
                     </div>
 
                     <div
+                        role="button"
+                        tabIndex={0}
                         className={`upload-zone ${isDragging ? 'has-file' : ''}`}
                         onDragOver={handleDragOver}
                         onDragLeave={handleDragLeave}
                         onDrop={handleDrop}
                         onClick={() => fileInputRef.current?.click()}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') fileInputRef.current?.click(); }}
                     >
                         <svg className="upload-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
@@ -175,7 +178,7 @@ export function ConverterView() {
                         <div className="upload-subtitle">or click to select</div>
 
                         {file && (
-                            <div className="file-info visible" onClick={(e) => e.stopPropagation()}>
+                            <div role="presentation" className="file-info visible" onClick={(e) => e.stopPropagation()} onKeyDown={() => {}}>
                                 <div className="file-name">{file.name}</div>
                                 <button className="file-remove" onClick={handleClear} title="Remove file">
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -235,7 +238,6 @@ export function ConverterView() {
                                     placeholder="Search in YAML..."
                                     value={searchValue}
                                     onChange={(e) => setSearchValue(e.target.value)}
-                                    autoFocus
                                 />
                                 <span className="search-counter">{searchMatches.current}/{searchMatches.count}</span>
                             </div>
@@ -360,8 +362,8 @@ export function ConverterView() {
                                         Unsupported Elements
                                     </div>
                                     <ul className="reference-list" id="elementsUnsupported">
-                                        {limitations.map((limitation, index) => (
-                                            <li key={index}>{limitation}</li>
+                                        {limitations.map((limitation) => (
+                                            <li key={limitation}>{limitation}</li>
                                         ))}
                                     </ul>
                                 </div>

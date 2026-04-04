@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from './ui/button';
 import { Play, Square, Download, CheckSquare, Square as SquareIcon, FileCode2 } from 'lucide-react';
 import { RecordingSetup } from './RecordingSetup';
@@ -201,7 +201,7 @@ export function Recorder() {
       const firstUrl = new URL(reqs[0].url);
       domain = firstUrl.hostname;
       baseUrl = `${firstUrl.protocol}//${firstUrl.hostname}`;
-    } catch (e) {
+    } catch {
       // usar valores por defecto
     }
 

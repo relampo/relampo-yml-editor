@@ -30,8 +30,6 @@ export function EditableList({
   onUpdate,
   keyPlaceholder = 'Name',
   valuePlaceholder = 'Value',
-  keyLabel = 'Name',
-  valueLabel = 'Value',
   enableCheckboxes = true,
   enableBulkActions = true,
   onBulkDelete,
@@ -275,7 +273,6 @@ export function EditableList({
                       {editingKey === item.originalKey ? (
                         <div className="flex items-center gap-2 flex-1 min-w-0">
                           <Input
-                            autoFocus
                             value={item.key}
                             onChange={(e) => {
                               const newItems = localItems.map(i =>
@@ -343,7 +340,6 @@ export function EditableList({
                           {editingValue?.key === item.originalKey ? (
                             <div className="flex-1 flex items-center gap-2 min-w-0">
                               <Input
-                                autoFocus
                                 value={editingValue.value}
                                 onChange={(e) => setEditingValue({ key: item.originalKey, value: e.target.value })}
                                 onBlur={handleValueSave}

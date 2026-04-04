@@ -2,6 +2,7 @@ interface MethodDropdownProps {
   value: string;
   onChange: (method: string) => void;
   className?: string;
+  id?: string;
 }
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD' | 'OPTIONS';
@@ -19,12 +20,13 @@ const METHOD_COLORS: Record<HttpMethod, string> = {
   OPTIONS: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20',
 };
 
-export function MethodDropdown({ value, onChange, className = '' }: MethodDropdownProps) {
+export function MethodDropdown({ value, onChange, className = '', id }: MethodDropdownProps) {
   const currentMethod = (value?.toUpperCase() || 'GET') as HttpMethod;
   const colorClasses = METHOD_COLORS[currentMethod] || METHOD_COLORS.GET;
 
   return (
     <select
+      id={id}
       value={currentMethod}
       onChange={(e) => onChange(e.target.value)}
       className={`px-3 py-2 border rounded text-sm font-mono font-semibold uppercase cursor-pointer transition-colors ${colorClasses} ${className}`}

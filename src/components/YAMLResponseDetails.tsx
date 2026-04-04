@@ -21,6 +21,77 @@ const BODY_FIXED_HEIGHT = 300;
 const MONACO_SWITCH_LINE_THRESHOLD = 2000;
 const MONACO_SWITCH_SIZE_THRESHOLD = 120 * 1024;
 
+interface HeaderLineProps {
+  line: string;
+  className: string;
+  ranges: Array<{ start: number; end: number }>;
+  startIndex: number;
+  currentMatchIndex: number;
+  hasSearch: boolean;
+}
+
+function HeaderLine({ line, className, ranges, startIndex, currentMatchIndex, hasSearch }: HeaderLineProps) {
+  if (ranges.length === 0 || !hasSearch) {
+    return <span className={className}>{line}</span>;
+  }
+  const parts: Array<JSX.Element | string> = [];
+  let cursor = 0;
+  ranges.forEach((r, idx) => {
+    if (cursor < r.start) parts.push(line.slice(cursor, r.start));
+    const absoluteIndex = startIndex + idx;
+    const isActive = absoluteIndex === currentMatchIndex;
+    parts.push(
+      <mark
+        key={`header-${absoluteIndex}-${r.start}-${r.end}`}
+        data-header-match-index={absoluteIndex}
+        className={isActive
+          ? 'bg-yellow-300 text-black ring-2 ring-amber-500 shadow-[0_0_0_1px_rgba(245,158,11,0.45)] rounded-sm'
+          : 'rounded-sm'}
+        style={isActive ? undefined : { backgroundColor: 'rgba(59,130,246,0.4)', color: '#dbeafe' }}
+      >
+        {line.slice(r.start, r.end)}
+      </mark>
+    );
+    cursor = r.end;
+  });
+  if (cursor < line.length) parts.push(line.slice(cursor));
+  return <span className={className}>{parts}</span>;
+}
+
+interface HighlightedTextProps {
+  text: string;
+  searchText: string;
+  searchMode: 'text' | 'regex';
+  currentMatchIndex: number;
+}
+
+function HighlightedText({ text, searchText, searchMode, currentMatchIndex }: HighlightedTextProps) {
+  if (!text || !searchText) return <>{text}</>;
+  const ranges = findMatchRanges(text, searchText, searchMode);
+  if (ranges.length === 0) return <>{text}</>;
+  const nodes: Array<JSX.Element | string> = [];
+  let cursor = 0;
+  ranges.forEach((r, idx) => {
+    if (cursor < r.start) nodes.push(text.slice(cursor, r.start));
+    const isActive = idx === currentMatchIndex;
+    nodes.push(
+      <mark
+        key={`${r.start}-${r.end}-${idx}`}
+        data-match-index={idx}
+        className={isActive
+          ? 'bg-yellow-300 text-black ring-2 ring-amber-500 shadow-[0_0_0_1px_rgba(245,158,11,0.45)] rounded-sm'
+          : 'rounded-sm'}
+        style={isActive ? undefined : { backgroundColor: 'rgba(59,130,246,0.4)', color: '#dbeafe' }}
+      >
+        {text.slice(r.start, r.end)}
+      </mark>
+    );
+    cursor = r.end;
+  });
+  if (cursor < text.length) nodes.push(text.slice(cursor));
+  return <>{nodes}</>;
+}
+
 export function YAMLResponseDetails({
   response,
   searchText = '',
@@ -30,7 +101,7 @@ export function YAMLResponseDetails({
   onSearchModeChange,
   onNavigate,
 }: YAMLResponseDetailsProps) {
-  const [formData, setFormData] = useState(response || {});
+  const formData = response || {};
   const [headersCollapsed, setHeadersCollapsed] = useState(false);
   const [headerSearchText, setHeaderSearchText] = useState('');
   const [headerSearchMode, setHeaderSearchMode] = useState<'text' | 'regex'>('text');
@@ -38,18 +109,6 @@ export function YAMLResponseDetails({
   const headersContentRef = useRef<HTMLDivElement | null>(null);
   const responseBodyRef = useRef<HTMLPreElement | null>(null);
   const responseBodyTextareaRef = useRef<HTMLTextAreaElement | null>(null);
-
-  useEffect(() => {
-    setFormData(response || {});
-  }, [response]);
-
-  if (!response) {
-    return (
-      <div className="text-sm text-zinc-500 italic">
-        No response data recorded
-      </div>
-    );
-  }
 
   const getStatusReason = (status?: number) => {
     if (!status) return 'Unknown';
@@ -59,18 +118,22 @@ export function YAMLResponseDetails({
     if (status >= 500) return 'Server Error';
     return 'Unknown';
   };
+
   const bodyText = useMemo(
-    () => (formData.body ? (typeof formData.body === 'string' ? formData.body : JSON.stringify(formData.body, null, 2)) : ''),
-    [formData.body]
+    () => (!response ? '' : formData.body ? (typeof formData.body === 'string' ? formData.body : JSON.stringify(formData.body, null, 2)) : ''),
+    [response, formData.body]
   );
+
   const shouldUseMonaco = (text: string) => {
     if (!text) return false;
     const lines = text.split('\n').length;
     const bytes = new Blob([text]).size;
     return lines > MONACO_SWITCH_LINE_THRESHOLD || bytes > MONACO_SWITCH_SIZE_THRESHOLD;
   };
-  const useMonacoForResponse = useMemo(() => shouldUseMonaco(bodyText), [bodyText]);
+  const useMonacoForResponse = shouldUseMonaco(bodyText);
+
   const headerEntries = useMemo(() => {
+    if (!response) return [] as Array<[string, string]>;
     const raw = formData.headers;
     if (!raw) return [] as Array<[string, string]>;
     if (Array.isArray(raw)) {
@@ -94,12 +157,16 @@ export function YAMLResponseDetails({
       return Object.entries(raw).map(([k, v]) => [k, String(v ?? '')] as [string, string]);
     }
     return [] as Array<[string, string]>;
-  }, [formData.headers]);
+  }, [response, formData.headers]);
+
   const headerStatusLine = useMemo(
     () =>
-      `${String(formData.http_version || 'HTTP/1.1')} ${String(formData.status || 0)} ${String(formData.status_text || getStatusReason(formData.status))}`,
-    [formData.http_version, formData.status, formData.status_text]
+      !response
+        ? ''
+        : `${String(formData.http_version || 'HTTP/1.1')} ${String(formData.status || 0)} ${String(formData.status_text || getStatusReason(formData.status))}`,
+    [response, formData.http_version, formData.status, formData.status_text]
   );
+
   const headerLines = useMemo(
     () => [headerStatusLine, ...headerEntries.map(([k, v]) => `${k}: ${v}`)],
     [headerStatusLine, headerEntries]
@@ -167,7 +234,7 @@ export function YAMLResponseDetails({
       return;
     }
     if (headerCurrentMatchIndex >= headerTotalMatches) {
-      setHeaderCurrentMatchIndex(headerTotalMatches - 1);
+      setHeaderCurrentMatchIndex(prev => Math.min(prev, headerTotalMatches - 1));
     }
   }, [headerTotalMatches, headerCurrentMatchIndex]);
 
@@ -187,6 +254,7 @@ export function YAMLResponseDetails({
     });
     return () => cancelAnimationFrame(raf);
   }, [headerSearchText, headerTotalMatches, headerCurrentMatchIndex, headerLines, headersCollapsed]);
+
   const buildSearchRegex = () => {
     if (!searchText || searchMode !== 'regex') return null;
     try {
@@ -235,62 +303,6 @@ export function YAMLResponseDetails({
   const totalMatches = matches.length;
   const regexInvalid = !!searchText && searchMode === 'regex' && !buildSearchRegex();
 
-  const handlePrevious = () => {
-    if (!onNavigate || totalMatches === 0) return;
-    const newIndex = currentMatchIndex === 0 ? totalMatches - 1 : currentMatchIndex - 1;
-    onNavigate(newIndex);
-  };
-  const handleNext = () => {
-    if (!onNavigate || totalMatches === 0) return;
-    const newIndex = currentMatchIndex === totalMatches - 1 ? 0 : currentMatchIndex + 1;
-    onNavigate(newIndex);
-  };
-  const handleHeaderPrevious = () => {
-    if (headerTotalMatches === 0) return;
-    setHeaderCurrentMatchIndex((prev) => (prev === 0 ? headerTotalMatches - 1 : prev - 1));
-  };
-  const handleHeaderNext = () => {
-    if (headerTotalMatches === 0) return;
-    setHeaderCurrentMatchIndex((prev) => (prev === headerTotalMatches - 1 ? 0 : prev + 1));
-  };
-
-  const renderHighlightedText = (text: string) => {
-    if (!text || !searchText) return text;
-    const ranges = collectMatches(text);
-    if (ranges.length === 0) return text;
-    const nodes: Array<JSX.Element | string> = [];
-    let cursor = 0;
-    ranges.forEach((r, idx) => {
-      if (cursor < r.start) nodes.push(text.slice(cursor, r.start));
-      const isActive = idx === currentMatchIndex;
-      nodes.push(
-        <mark
-          key={`${r.start}-${r.end}-${idx}`}
-          data-match-index={idx}
-          className={isActive
-            ? 'bg-yellow-300 text-black ring-2 ring-amber-500 shadow-[0_0_0_1px_rgba(245,158,11,0.45)] rounded-sm'
-            : 'rounded-sm'}
-          style={isActive ? undefined : { backgroundColor: 'rgba(59,130,246,0.4)', color: '#dbeafe' }}
-        >
-          {text.slice(r.start, r.end)}
-        </mark>
-      );
-      cursor = r.end;
-    });
-    if (cursor < text.length) nodes.push(text.slice(cursor));
-    return (
-      <>{nodes}</>
-    );
-  };
-
-  const syncBodyScroll = () => {
-    const textarea = responseBodyTextareaRef.current;
-    const highlight = responseBodyRef.current;
-    if (!textarea || !highlight) return;
-    highlight.scrollTop = textarea.scrollTop;
-    highlight.scrollLeft = textarea.scrollLeft;
-  };
-
   useEffect(() => {
     if (!searchText || totalMatches === 0 || useMonacoForResponse || !responseBodyRef.current) return;
     const highlight = responseBodyRef.current;
@@ -325,6 +337,41 @@ export function YAMLResponseDetails({
 
     return () => cancelAnimationFrame(raf);
   }, [searchText, searchMode, currentMatchIndex, bodyText, totalMatches, useMonacoForResponse]);
+
+  if (!response) {
+    return (
+      <div className="text-sm text-zinc-500 italic">
+        No response data recorded
+      </div>
+    );
+  }
+
+  const handlePrevious = () => {
+    if (!onNavigate || totalMatches === 0) return;
+    const newIndex = currentMatchIndex === 0 ? totalMatches - 1 : currentMatchIndex - 1;
+    onNavigate(newIndex);
+  };
+  const handleNext = () => {
+    if (!onNavigate || totalMatches === 0) return;
+    const newIndex = currentMatchIndex === totalMatches - 1 ? 0 : currentMatchIndex + 1;
+    onNavigate(newIndex);
+  };
+  const handleHeaderPrevious = () => {
+    if (headerTotalMatches === 0) return;
+    setHeaderCurrentMatchIndex((prev) => (prev === 0 ? headerTotalMatches - 1 : prev - 1));
+  };
+  const handleHeaderNext = () => {
+    if (headerTotalMatches === 0) return;
+    setHeaderCurrentMatchIndex((prev) => (prev === headerTotalMatches - 1 ? 0 : prev + 1));
+  };
+
+  const syncBodyScroll = () => {
+    const textarea = responseBodyTextareaRef.current;
+    const highlight = responseBodyRef.current;
+    if (!textarea || !highlight) return;
+    highlight.scrollTop = textarea.scrollTop;
+    highlight.scrollLeft = textarea.scrollLeft;
+  };
 
   const responseSearchControls = (
     <div className="p-3 border border-white/10 rounded bg-[#0a0a0a] mt-3">
@@ -472,44 +519,41 @@ export function YAMLResponseDetails({
               <div ref={headersContentRef} className="max-h-[260px] overflow-auto px-3 py-2 font-mono text-xs leading-6">
                 {(() => {
                   let globalMatchIndex = 0;
-                  const renderLine = (line: string, className: string) => {
-                    const ranges = collectHeaderMatchesForLine(line);
+                  const statusRanges = collectHeaderMatchesForLine(headerStatusLine);
+                  const statusStartIndex = globalMatchIndex;
+                  globalMatchIndex += statusRanges.length;
+
+                  const entryData = headerEntries.map(([key, value]) => {
+                    const lineText = `${key}: ${value}`;
+                    const ranges = collectHeaderMatchesForLine(lineText);
                     const startIndex = globalMatchIndex;
                     globalMatchIndex += ranges.length;
-                    if (ranges.length === 0 || !headerSearchText) {
-                      return <span className={className}>{line}</span>;
-                    }
-                    const parts: Array<JSX.Element | string> = [];
-                    let cursor = 0;
-                    ranges.forEach((r, idx) => {
-                      if (cursor < r.start) parts.push(line.slice(cursor, r.start));
-                      const absoluteIndex = startIndex + idx;
-                      const isActive = absoluteIndex === headerCurrentMatchIndex;
-                      parts.push(
-                        <mark
-                          key={`header-${absoluteIndex}-${r.start}-${r.end}`}
-                          data-header-match-index={absoluteIndex}
-                          className={isActive
-                            ? 'bg-yellow-300 text-black ring-2 ring-amber-500 shadow-[0_0_0_1px_rgba(245,158,11,0.45)] rounded-sm'
-                            : 'rounded-sm'}
-                          style={isActive ? undefined : { backgroundColor: 'rgba(59,130,246,0.4)', color: '#dbeafe' }}
-                        >
-                          {line.slice(r.start, r.end)}
-                        </mark>
-                      );
-                      cursor = r.end;
-                    });
-                    if (cursor < line.length) parts.push(line.slice(cursor));
-                    return <span className={className}>{parts}</span>;
-                  };
+                    return { lineText, ranges, startIndex };
+                  });
 
                   return (
                     <>
-                      <div className="text-zinc-100">{renderLine(headerStatusLine, 'text-zinc-100')}</div>
+                      <div className="text-zinc-100">
+                        <HeaderLine
+                          line={headerStatusLine}
+                          className="text-zinc-100"
+                          ranges={statusRanges}
+                          startIndex={statusStartIndex}
+                          currentMatchIndex={headerCurrentMatchIndex}
+                          hasSearch={!!headerSearchText}
+                        />
+                      </div>
                       {headerEntries.length > 0 ? (
-                        headerEntries.map(([key, value], idx) => (
-                          <div key={`${key}-${idx}`} className="text-zinc-300">
-                            {renderLine(`${key}: ${value}`, 'text-zinc-200 break-all')}
+                        entryData.map(({ lineText, ranges, startIndex }, idx) => (
+                          <div key={`${headerEntries[idx][0]}-${idx}`} className="text-zinc-300">
+                            <HeaderLine
+                              line={lineText}
+                              className="text-zinc-200 break-all"
+                              ranges={ranges}
+                              startIndex={startIndex}
+                              currentMatchIndex={headerCurrentMatchIndex}
+                              hasSearch={!!headerSearchText}
+                            />
                           </div>
                         ))
                       ) : (
@@ -529,9 +573,9 @@ export function YAMLResponseDetails({
       {/* Response Body */}
       <div>
         <div className="flex items-center gap-2 mb-2">
-          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+          <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
             Response Body
-          </label>
+          </p>
           {searchText && totalMatches > 0 && (
             <span className="text-xs text-yellow-400 flex items-center gap-1">
               <span>✓</span> {totalMatches} match(es)
@@ -561,7 +605,7 @@ export function YAMLResponseDetails({
                 ref={responseBodyRef}
                 className="absolute inset-0 m-0 p-3 text-sm font-mono text-zinc-300 whitespace-pre-wrap overflow-y-auto overflow-x-auto pointer-events-none"
               >
-                {renderHighlightedText(bodyText)}
+                <HighlightedText text={bodyText} searchText={searchText} searchMode={searchMode} currentMatchIndex={currentMatchIndex} />
               </pre>
               <textarea
                 ref={responseBodyTextareaRef}
@@ -587,10 +631,6 @@ export function YAMLResponseDetails({
       </div>
     </div>
   );
-}
-
-function escapeRegex(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 interface MonacoResponseBodyEditorProps {

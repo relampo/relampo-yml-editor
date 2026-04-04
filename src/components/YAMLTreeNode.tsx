@@ -3,7 +3,6 @@ import {
   FileText,
   Folder,
   FolderOpen,
-  User,
   GitBranch,
   Code,
   Cookie,
@@ -16,8 +15,6 @@ import {
   Package,
   Settings,
   BarChart3,
-  RotateCw,
-  Repeat,
   Gauge,
   Database,
   HardDrive,
@@ -232,6 +229,9 @@ export function YAMLTreeNode({
   return (
     <div className="select-none">
       <div
+        role="treeitem"
+        aria-selected={isSelected}
+        tabIndex={0}
         draggable
         data-node-id={node.id}
         onDragStart={handleDragStart}
@@ -240,6 +240,7 @@ export function YAMLTreeNode({
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         onClick={(e) => onNodeSelect(node, e)}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onNodeSelect(node, e as any); }}
         onContextMenu={(e) => onContextMenu(e, node)}
         className={`
           relative group flex items-center gap-2 px-2 py-1.5 pr-3 rounded cursor-pointer transition-colors overflow-visible

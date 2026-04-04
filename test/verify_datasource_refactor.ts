@@ -1,7 +1,8 @@
 
 import { parseYAMLToTree, treeToYAML } from '../src/utils/yamlParser';
-import * as fs from 'fs';
-import * as path from 'path';
+import * as _fs from 'fs';
+import * as _path from 'path';
+import { YAMLNode } from '../src/types/yaml';
 
 // Mock YAML string with OLD format (bind map)
 const oldYaml = `
@@ -24,7 +25,7 @@ data_source:
 console.log("--- Testing parseYAMLToTree (Migration) ---");
 try {
     const treeOld = parseYAMLToTree(oldYaml);
-    const dataSourceNode = treeOld.children?.find(c => c.type === 'data_source');
+    const dataSourceNode = treeOld?.children?.find(c => c.type === 'data_source');
     if (dataSourceNode && dataSourceNode.data.variable_names === 'email,password') {
         console.log("PASS: Old YAML 'bind' migrated to 'variable_names':", dataSourceNode.data.variable_names);
     } else {
@@ -32,7 +33,7 @@ try {
     }
 
     const treeNew = parseYAMLToTree(newYaml);
-    const dataSourceNodeNew = treeNew.children?.find(c => c.type === 'data_source');
+    const dataSourceNodeNew = treeNew?.children?.find(c => c.type === 'data_source');
     if (dataSourceNodeNew && dataSourceNodeNew.data.variable_names === 'id,name,price') {
         console.log("PASS: New YAML 'variable_names' parsed correctly:", dataSourceNodeNew.data.variable_names);
     } else {
@@ -41,7 +42,7 @@ try {
 
     console.log("\n--- Testing treeToYAML (Generation) ---");
     // Generate YAML from treeOld (should prioritize variable_names and remove bind)
-    const generatedYaml = treeToYAML(treeOld);
+    const generatedYaml = treeToYAML(treeOld as YAMLNode);
     console.log("Generated YAML:\n", generatedYaml);
 
     if (generatedYaml.includes('variable_names: email,password') && !generatedYaml.includes('bind:')) {

@@ -1,6 +1,4 @@
-import React, { useMemo } from 'react';
 import { CompactInput } from '../../ui/details/CompactInput';
-import { Badge } from '../../ui/badge';
 import { isValidUrl } from '../../../lib/validation';
 
 interface RequestSummaryProps {
@@ -52,8 +50,9 @@ export function RequestSummary({
             </div>
 
             <div className="flex items-center gap-2">
-                <label className="text-[10px] font-semibold text-zinc-600 uppercase tracking-wider min-w-[30px]">Name</label>
+                <label htmlFor="request-summary-name" className="text-[10px] font-semibold text-zinc-600 uppercase tracking-wider min-w-[30px]">Name</label>
                 <CompactInput
+                    id="request-summary-name"
                     value={name || ''}
                     onChange={(e) => onChangeName(e.target.value)}
                     placeholder="Descriptive name (optional)"

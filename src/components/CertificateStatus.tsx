@@ -1,4 +1,4 @@
-import { Shield, ShieldAlert, ShieldCheck, ShieldX, Download, Settings, PlayCircle, AlertCircle, Info } from 'lucide-react';
+import { Shield, ShieldAlert, ShieldCheck, ShieldX, Download, PlayCircle, Info } from 'lucide-react';
 import { useState } from 'react';
 
 export type CertStatus = 'missing' | 'needs_install' | 'trusted' | 'expired' | 'invalid';

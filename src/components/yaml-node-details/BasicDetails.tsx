@@ -17,10 +17,11 @@ export function TestDetails({ node, onNodeUpdate }: NamedNodeDetailProps) {
     <div className="space-y-6">
       <div className="flex gap-4">
         <div className="flex-1 min-w-0">
-          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+          <label htmlFor="test-detail-name" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
             Name
           </label>
           <Input
+            id="test-detail-name"
             value={data.name || node.name || ''}
             maxLength={50}
             onChange={(event) => handleChange('name', event.target.value.slice(0, 50))}
@@ -29,10 +30,11 @@ export function TestDetails({ node, onNodeUpdate }: NamedNodeDetailProps) {
           />
         </div>
         <div className="w-24 shrink-0">
-          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+          <label htmlFor="test-detail-version" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
             Version
           </label>
           <Input
+            id="test-detail-version"
             value={data.version || ''}
             maxLength={5}
             onChange={(event) => handleChange('version', event.target.value.slice(0, 5))}
@@ -43,10 +45,11 @@ export function TestDetails({ node, onNodeUpdate }: NamedNodeDetailProps) {
       </div>
 
       <div>
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+        <label htmlFor="test-detail-description" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
           Description
         </label>
         <Textarea
+          id="test-detail-description"
           value={data.description || ''}
           maxLength={250}
           onChange={(event) => handleChange('description', event.target.value.slice(0, 250))}
@@ -122,10 +125,11 @@ export function DataSourceDetails({ node, onNodeUpdate, nodeName, setNodeName }:
     <div className="space-y-6">
       <div>
         <div className="w-full">
-          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+          <label htmlFor="ds-basic-name" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
             Name
           </label>
           <Input
+            id="ds-basic-name"
             value={nodeName || ''}
             onChange={(event) => setNodeName?.(event.target.value)}
             maxLength={50}
@@ -168,10 +172,11 @@ export function DataSourceDetails({ node, onNodeUpdate, nodeName, setNodeName }:
       </div>
 
       <div className="w-full">
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+        <label htmlFor="ds-basic-var-names" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
           Variable Names (comma-separated)
         </label>
         <Input
+          id="ds-basic-var-names"
           value={data.variable_names || ''}
           onChange={(event) => handleChange('variable_names', event.target.value)}
           className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono focus:border-white/30 transition-all h-[38px]"
@@ -224,9 +229,9 @@ export function DataSourceDetails({ node, onNodeUpdate, nodeName, setNodeName }:
         <>
           <div className="h-px bg-white/10 my-4" />
           <div className="mb-4">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
+            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
               Column Bindings
-            </label>
+            </p>
             <EditableList
               title="Bind"
               items={bind}
@@ -243,9 +248,9 @@ export function DataSourceDetails({ node, onNodeUpdate, nodeName, setNodeName }:
 
       {showDiagnosis && (
         <div className="mt-8 pt-4 border-t border-white/5">
-          <label className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest block mb-1">
+          <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest block mb-1">
             Debug: Node Data (Type: {node.type})
-          </label>
+          </p>
           <pre className="p-3 bg-black/40 rounded border border-white/5 text-[10px] font-mono text-zinc-500 overflow-auto max-h-[150px]">
             {JSON.stringify(data, null, 2)}
           </pre>
@@ -282,7 +287,7 @@ export function HttpDefaultsDetails({ node, onNodeUpdate }: NodeDetailProps) {
       return;
     }
     if (!auth) {
-      const { auth: _auth, ...rest } = data;
+      const { auth: _, ...rest } = data;
       onNodeUpdate(node.id, rest);
       return;
     }
@@ -292,9 +297,9 @@ export function HttpDefaultsDetails({ node, onNodeUpdate }: NodeDetailProps) {
   return (
     <div className="space-y-6">
       <div>
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
+        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
           Configuration
-        </label>
+        </p>
         <EditableList
           title="Fields"
           items={mainFields}
@@ -342,10 +347,11 @@ export function ScenariosContainerDetails({ node, onNodeUpdate }: NodeDetailProp
   return (
     <div className="space-y-4">
       <div>
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+        <label htmlFor="scenarios-container-description" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
           Description / Comments
         </label>
         <Textarea
+          id="scenarios-container-description"
           value={data.description || ''}
           onChange={(event) => handleChange('description', event.target.value)}
           placeholder="Add notes or description about your scenarios..."
@@ -356,9 +362,9 @@ export function ScenariosContainerDetails({ node, onNodeUpdate }: NodeDetailProp
       <div className="h-px bg-white/10" />
 
       <div>
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
+        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
           Scenarios in this test
-        </label>
+        </p>
         {scenarios.length === 0 ? (
           <div className="p-6 text-center text-zinc-500 text-sm border border-dashed border-white/10 rounded">
             No scenarios defined. Right-click on "scenarios" in the tree to add one.
@@ -399,10 +405,11 @@ export function ScenarioDetails({ node, onNodeUpdate }: NamedNodeDetailProps) {
 
   return (
     <div className="mb-4">
-      <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+      <label htmlFor="scenario-comments" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
         Comments / Description
       </label>
       <Textarea
+        id="scenario-comments"
         value={data.comments || ''}
         onChange={(event) => handleChange('comments', event.target.value.slice(0, 250))}
         maxLength={250}
@@ -423,10 +430,11 @@ export function MetricsDetails({ node, onNodeUpdate }: NodeDetailProps) {
   return (
     <div className="space-y-6">
       <div>
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+        <label htmlFor="metrics-enabled" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
           Enabled
         </label>
         <select
+          id="metrics-enabled"
           value={data.enabled ? 'true' : 'false'}
           onChange={(event) => handleChange('enabled', event.target.value === 'true')}
           className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
@@ -450,9 +458,9 @@ export function SparkDetails({ node, onNodeUpdate }: NodeDetailProps) {
 
   return (
     <div className="mb-4">
-      <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+      <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
         {'</>'} Spark Script (JavaScript)
-      </label>
+      </p>
       <SparkCodeEditor
         value={data.script || ''}
         onChange={(newScript) => onNodeUpdate?.(node.id, { ...data, script: newScript })}
@@ -579,7 +587,7 @@ export function FileDetails({ node, onNodeUpdate }: NodeDetailProps) {
     }
 
     if (field === 'mime' || field === 'mime_type') {
-      const { mime_type: _legacyMimeType, ...rest } = data;
+      const { mime_type: _, ...rest } = data;
       onNodeUpdate(node.id, { ...rest, mime: raw });
       return;
     }
@@ -601,10 +609,11 @@ export function FileDetails({ node, onNodeUpdate }: NodeDetailProps) {
         </div>
 
         <div className="min-w-0">
-          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+          <label htmlFor="file-detail-mime" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
             MIME Type
           </label>
           <select
+            id="file-detail-mime"
             value={mimeValue}
             onChange={(event) => handleChange('mime', event.target.value)}
             className="w-full px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono h-[38px] outline-none"
@@ -647,9 +656,9 @@ export function GenericDetails({ node }: NodeDetailProps) {
 
   return (
     <div>
-      <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+      <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
         Properties
-      </label>
+      </p>
       <pre className="p-3 bg-white/5 border border-white/10 rounded text-xs font-mono text-zinc-300 overflow-x-auto">
         {JSON.stringify(node.data, null, 2)}
       </pre>
@@ -669,7 +678,7 @@ export function GroupDetails({ node, onNodeUpdate }: NamedNodeDetailProps) {
       return;
     }
     if (!auth) {
-      const { auth: _auth, ...rest } = data;
+      const { auth: _, ...rest } = data;
       onNodeUpdate(node.id, rest);
       return;
     }

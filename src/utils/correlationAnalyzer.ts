@@ -46,8 +46,6 @@ function calculateEntropy(value: string): number {
 
 // Función para clasificar el tipo de valor
 function classifyValueType(value: string, key: string): CorrelationCandidate['type'] {
-  const lowerKey = key.toLowerCase();
-  
   if (/token|jwt|bearer/i.test(key)) return 'auth_token';
   if (/session|sid/i.test(key)) return 'session_id';
   if (/csrf|xsrf/i.test(key)) return 'csrf_token';
@@ -73,9 +71,9 @@ function parseSimpleYAMLObject(yamlStr: string): any {
   const result: any = {};
   const lines = yamlStr.split('\n').filter(l => l.trim() && !l.trim().startsWith('#'));
   
-  let currentPath: string[] = [];
+  const currentPath: string[] = [];
   let currentObj = result;
-  let stack: any[] = [result];
+  const stack: any[] = [result];
   let lastIndent = -1;
   
   for (const line of lines) {

@@ -111,7 +111,7 @@ function parseHeaderManager(headerManager: Element) {
   return headers;
 }
 
-function extractBaseURLFromPath(rawPath: string): string {
+function _extractBaseURLFromPath(rawPath: string): string {
   if (!rawPath) {
     return '';
   }
@@ -236,7 +236,7 @@ function parseCSVDataSet(csvNode: Element) {
   const filename = getStringProp(csvNode, 'filename');
   const variableNames = getStringProp(csvNode, 'variableNames');
   const shareMode = getStringProp(csvNode, 'shareMode');
-  const recycle = getBoolProp(csvNode, 'recycle');
+  const _recycle = getBoolProp(csvNode, 'recycle');
   const stopThread = getBoolProp(csvNode, 'stopThread');
 
   // Include even if filename is empty
@@ -286,7 +286,7 @@ function convertGroovyToJavaScript(groovyCode: string): string {
   return jsCode.trim();
 }
 
-function parseAssertions(hashTreeNode: Element | null, context: Context) {
+function parseAssertions(hashTreeNode: Element | null, _context: Context) {
   if (!hashTreeNode) return null;
 
   const assertions: any[] = [];
@@ -374,7 +374,7 @@ function parseAssertions(hashTreeNode: Element | null, context: Context) {
   };
 }
 
-function parseExtractors(hashTreeNode: Element | null, context: Context) {
+function parseExtractors(hashTreeNode: Element | null, _context: Context) {
   if (!hashTreeNode) return null;
 
   const extractors: any[] = [];
@@ -553,7 +553,7 @@ export function convertJMXToPulseYAML(jmxText: string, customOptions = {}): Conv
   const rootPairs = getHashTreePairs(testPlanHashTree);
 
   // First pass for config elements
-  for (const { element, hashTree } of rootPairs) {
+  for (const { element, hashTree: _hashTree } of rootPairs) {
     if (element.tagName === 'Arguments') {
       Object.assign(variables, parseUserDefinedVariables(element));
     } else if (element.tagName === 'CSVDataSet') {
