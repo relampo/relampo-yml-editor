@@ -1,4 +1,4 @@
-import type { YAMLNode } from '../types/yaml';
+import type { AuthConfig, YAMLNode } from '../types/yaml';
 import * as jsyaml from 'js-yaml';
 
 function parseGroupFromTemplate(template: any): number | undefined {
@@ -98,6 +98,54 @@ function normalizeRequestForEditor(request: any): any {
   };
 }
 
+function normalizeAuthForEditor(auth: any): AuthConfig | undefined {
+  if (!auth || typeof auth !== 'object' || Array.isArray(auth)) return undefined;
+
+  const type = typeof auth.type === 'string' ? auth.type.trim().toLowerCase() : '';
+  if (type !== 'bearer' && type !== 'api_key' && type !== 'basic') return undefined;
+
+  const normalized: AuthConfig = { type: type as AuthConfig['type'] };
+
+  if (typeof auth.token === 'string') normalized.token = auth.token;
+  if (typeof auth.name === 'string') normalized.name = auth.name;
+  if (typeof auth.value === 'string') normalized.value = auth.value;
+  if (typeof auth.username === 'string') normalized.username = auth.username;
+  if (typeof auth.password === 'string') normalized.password = auth.password;
+  if (typeof auth.in === 'string') {
+    const location = auth.in.trim().toLowerCase();
+    if (location === 'header' || location === 'query') {
+      normalized.in = location as AuthConfig['in'];
+    }
+  }
+
+  return normalized;
+}
+
+function normalizeAuthForYaml(auth: any): AuthConfig | undefined {
+  const normalized = normalizeAuthForEditor(auth);
+  if (!normalized?.type) return undefined;
+
+  if (normalized.type === 'bearer') {
+    if (!normalized.token) return { type: 'bearer' };
+    return { type: 'bearer', token: normalized.token };
+  }
+
+  if (normalized.type === 'api_key') {
+    return {
+      type: 'api_key',
+      name: normalized.name || '',
+      value: normalized.value || '',
+      in: normalized.in || 'header',
+    };
+  }
+
+  return {
+    type: 'basic',
+    username: normalized.username || '',
+    password: normalized.password || '',
+  };
+}
+
 // Parser: YAML string → Tree
 export function parseYAMLToTree(yamlString: string): YAMLNode | null {
   if (!yamlString || yamlString.trim() === "") {
@@ -175,7 +223,10 @@ function convertToTree(obj: any, path: string[] = []): YAMLNode {
       id: `${rootId}_http_defaults`,
       type: 'http_defaults',
       name: 'HTTP Defaults',
-      data: obj.http_defaults,
+      data: {
+        ...obj.http_defaults,
+        auth: normalizeAuthForEditor(obj.http_defaults.auth),
+      },
       path: ['http_defaults'],
     });
   }
@@ -602,7 +653,10 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       name: step.group.name || 'Group',
       children: [],
       expanded: true,
-      data: step.group,
+      data: {
+        ...step.group,
+        auth: normalizeAuthForEditor(step.group.auth),
+      },
       path,
     };
 
@@ -737,7 +791,11 @@ function treeToObject(tree: YAMLNode): any {
         obj.data_source.name = child.name;
       }
     } else if (child.type === 'http_defaults') {
-      obj.http_defaults = child.data;
+      obj.http_defaults = {
+        ...child.data,
+        ...(normalizeAuthForYaml(child.data?.auth) ? { auth: normalizeAuthForYaml(child.data?.auth) } : {}),
+      };
+      if (!obj.http_defaults.auth) delete obj.http_defaults.auth;
     } else if (child.type === 'scenarios') {
       obj.scenarios = child.children?.map(scenarioNode => scenarioNodeToObject(scenarioNode)) || [];
     } else if (child.type === 'metrics') {
@@ -926,6 +984,30 @@ function stepNodeToObject(node: YAMLNode): any {
         steps: node.children?.map(stepNodeToObject) || [],
       },
     };
+
+    const auth = normalizeAuthForYaml(node.data?.auth);
+    if (auth) {
+      res.group.auth = auth;
+    }
+
+    if (node.data?.enabled === false) {
+      res.enabled = false;
+    }
+    return res;
+  }
+
+  if (node.type === 'transaction') {
+    const res: any = {
+      transaction: {
+        name: node.name || node.data?.name || 'Transaction',
+        steps: node.children?.map(stepNodeToObject) || [],
+      },
+    };
+
+    const auth = normalizeAuthForYaml(node.data?.auth);
+    if (auth) {
+      res.transaction.auth = auth;
+    }
 
     if (node.data?.enabled === false) {
       res.enabled = false;

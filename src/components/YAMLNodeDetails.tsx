@@ -1,12 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { FileText, Plus, Trash2, Users, TrendingUp, Mountain, Gauge, Cookie, Cpu, Hand, AlertTriangle, ServerCrash, Clock3, CheckCircle2, Tag, Search, SearchX, TextSearch, Braces, Brackets, BetweenHorizontalStart, Binary } from 'lucide-react';
-import type { YAMLNode, RedirectSourceInfo, RedirectedRequestInfo } from '../types/yaml';
+import { AlertTriangle, BetweenHorizontalStart, Binary, Braces, Brackets, CheckCircle2, Clock3, Cookie, Cpu, FileText, Gauge, Hand, Mountain, Plus, Search, SearchX, ServerCrash, Tag, TextSearch, TrendingUp, Users } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { YAMLRequestDetails } from './YAMLRequestDetails';
-import { SparkCodeEditor } from './SparkCodeEditor';
+import type { AuthConfig, RedirectSourceInfo, RedirectedRequestInfo, YAMLNode } from '../types/yaml';
 import { EditableList } from './EditableList';
+import { SparkCodeEditor } from './SparkCodeEditor';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
+import { YAMLRequestDetails } from './YAMLRequestDetails';
 
 interface EditableFieldProps {
   label: string;
@@ -150,6 +150,194 @@ function FileField({ label, value, field, onChange, noMargin = false }: Editable
           className="hidden"
         />
       </div>
+    </div>
+  );
+}
+
+type EditableAuthType = 'none' | 'bearer' | 'api_key' | 'basic';
+type EditableAuthConfig = AuthConfig & { type: EditableAuthType };
+
+function normalizeAuthEditorValue(auth: any): EditableAuthConfig {
+  const type = typeof auth?.type === 'string' ? auth.type.trim().toLowerCase() : '';
+  if (type === 'bearer') {
+    return { type, token: typeof auth?.token === 'string' ? auth.token : '' };
+  }
+  if (type === 'api_key') {
+    return {
+      type,
+      name: typeof auth?.name === 'string' ? auth.name : '',
+      value: typeof auth?.value === 'string' ? auth.value : '',
+      in: auth?.in === 'query' ? 'query' : 'header',
+    };
+  }
+  if (type === 'basic') {
+    return {
+      type,
+      username: typeof auth?.username === 'string' ? auth.username : '',
+      password: typeof auth?.password === 'string' ? auth.password : '',
+    };
+  }
+  return { type: 'none' };
+}
+
+function authEditorValueToData(auth: EditableAuthConfig & { type: EditableAuthType }): AuthConfig | undefined {
+  if ((auth.type as EditableAuthType) === 'none') return undefined;
+  if (auth.type === 'bearer') {
+    return { type: 'bearer', token: auth.token || '' };
+  }
+  if (auth.type === 'api_key') {
+    return {
+      type: 'api_key',
+      name: auth.name || '',
+      value: auth.value || '',
+      in: auth.in || 'header',
+    };
+  }
+  return {
+    type: 'basic',
+    username: auth.username || '',
+    password: auth.password || '',
+  };
+}
+
+interface AuthConfigEditorProps {
+  auth?: AuthConfig;
+  onChange: (auth?: AuthConfig) => void;
+  scopeLabel: string;
+}
+
+function AuthConfigEditor({ auth, onChange, scopeLabel }: AuthConfigEditorProps) {
+  const value = normalizeAuthEditorValue(auth);
+
+  const handleTypeChange = (type: string) => {
+    const nextType = type as EditableAuthType;
+    if (nextType === 'none') {
+      onChange(undefined);
+      return;
+    }
+
+    if (nextType === 'bearer') {
+      onChange({ type: 'bearer', token: '' });
+      return;
+    }
+    if (nextType === 'api_key') {
+      onChange({ type: 'api_key', name: '', value: '', in: 'header' });
+      return;
+    }
+    onChange({ type: 'basic', username: '', password: '' });
+  };
+
+  const handleFieldChange = (field: keyof EditableAuthConfig, nextValue: string) => {
+    onChange(authEditorValueToData({ ...value, [field]: nextValue } as EditableAuthConfig));
+  };
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+          {scopeLabel} Authentication
+        </label>
+        <select
+          value={value.type}
+          onChange={(e) => handleTypeChange(e.target.value)}
+          className="w-full px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono focus:border-white/30 transition-all outline-none appearance-none h-[38px]"
+        >
+          <option value="none" className="bg-[#1a1a1a]">None</option>
+          <option value="bearer" className="bg-[#1a1a1a]">Bearer</option>
+          <option value="api_key" className="bg-[#1a1a1a]">API Key</option>
+          <option value="basic" className="bg-[#1a1a1a]">Basic Auth</option>
+        </select>
+      </div>
+
+      {value.type === 'bearer' && (
+        <div>
+          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+            Token
+          </label>
+          <Input
+            type="password"
+            value={value.token || ''}
+            onChange={(e) => handleFieldChange('token', e.target.value)}
+            placeholder="{{api_token}}"
+            className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+          />
+        </div>
+      )}
+
+      {value.type === 'api_key' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+              Key Name
+            </label>
+            <Input
+              value={value.name || ''}
+              onChange={(e) => handleFieldChange('name', e.target.value)}
+              placeholder="X-API-Key"
+              className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+              Send In
+            </label>
+            <select
+              value={value.in || 'header'}
+              onChange={(e) => handleFieldChange('in', e.target.value)}
+              className="w-full px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono focus:border-white/30 transition-all outline-none appearance-none h-[38px]"
+            >
+              <option value="header" className="bg-[#1a1a1a]">Header</option>
+              <option value="query" className="bg-[#1a1a1a]">Query Param</option>
+            </select>
+          </div>
+          <div className="md:col-span-2">
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+              Key Value
+            </label>
+            <Input
+              type="password"
+              value={value.value || ''}
+              onChange={(e) => handleFieldChange('value', e.target.value)}
+              placeholder="{{api_key}}"
+              className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+            />
+          </div>
+        </div>
+      )}
+
+      {value.type === 'basic' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+              Username
+            </label>
+            <Input
+              value={value.username || ''}
+              onChange={(e) => handleFieldChange('username', e.target.value)}
+              placeholder="{{username}}"
+              className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+              Password
+            </label>
+            <Input
+              type="password"
+              value={value.password || ''}
+              onChange={(e) => handleFieldChange('password', e.target.value)}
+              placeholder="{{password}}"
+              className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+            />
+          </div>
+        </div>
+      )}
+
+      {value.type !== 'none' && (
+        <div className="text-xs text-zinc-500">
+          Secrets stay masked in the editor and serialize into the YAML `auth` block.
+        </div>
+      )}
     </div>
   );
 }
@@ -568,6 +756,7 @@ function renderHttpDefaultsDetails(node: YAMLNode, onNodeUpdate?: (nodeId: strin
   // Campos principales (excluyendo headers)
   const mainFields = { ...data };
   delete mainFields.headers;
+  delete mainFields.auth;
 
   const handleChange = (field: string, value: any) => {
     if (onNodeUpdate) onNodeUpdate(node.id, { ...data, [field]: value });
@@ -577,7 +766,11 @@ function renderHttpDefaultsDetails(node: YAMLNode, onNodeUpdate?: (nodeId: strin
 
   const handleMainFieldsUpdate = (fields: Record<string, string>) => {
     if (onNodeUpdate) {
-      onNodeUpdate(node.id, { ...fields, headers: data.headers || {} });
+      onNodeUpdate(node.id, {
+        ...fields,
+        headers: data.headers || {},
+        ...(data.auth ? { auth: data.auth } : {}),
+      });
     }
   };
 
@@ -586,6 +779,16 @@ function renderHttpDefaultsDetails(node: YAMLNode, onNodeUpdate?: (nodeId: strin
       const newData = { ...data, headers: updatedHeaders };
       onNodeUpdate(node.id, newData);
     }
+  };
+
+  const handleAuthUpdate = (auth?: AuthConfig) => {
+    if (!onNodeUpdate) return;
+    if (!auth) {
+      const { auth: _auth, ...rest } = data;
+      onNodeUpdate(node.id, rest);
+      return;
+    }
+    onNodeUpdate(node.id, { ...data, auth });
   };
 
   return (
@@ -625,6 +828,14 @@ function renderHttpDefaultsDetails(node: YAMLNode, onNodeUpdate?: (nodeId: strin
           addButtonVariant="pill"
         />
       </div>
+
+      <div className="h-px bg-white/10" />
+
+      <AuthConfigEditor
+        auth={data.auth}
+        onChange={handleAuthUpdate}
+        scopeLabel="Global"
+      />
     </div>
   );
 }
@@ -2051,10 +2262,25 @@ function renderGroupDetails(
   const handleChange = (field: string, value: any) => {
     if (onNodeUpdate) onNodeUpdate(node.id, { ...data, [field]: value });
   };
+  const handleAuthUpdate = (auth?: AuthConfig) => {
+    if (!onNodeUpdate) return;
+    if (!auth) {
+      const { auth: _auth, ...rest } = data;
+      onNodeUpdate(node.id, rest);
+      return;
+    }
+    onNodeUpdate(node.id, { ...data, auth });
+  };
   return (
     <div className="space-y-6">
       <EditableField label="Group Name" value={data.name || ''} field="name" onChange={handleChange} maxLength={50} />
       <DetailField label="Steps Count" value={node.children?.length || 0} mono />
+      <div className="h-px bg-white/10" />
+      <AuthConfigEditor
+        auth={data.auth}
+        onChange={handleAuthUpdate}
+        scopeLabel="Group"
+      />
     </div>
   );
 }

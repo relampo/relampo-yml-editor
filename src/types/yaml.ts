@@ -20,6 +20,7 @@ export type YAMLNodeType =
   | 'options'
   | 'simple'
   | 'group'
+  | 'transaction'
   | 'if'
   | 'loop'
   | 'retry'
@@ -82,9 +83,20 @@ export interface DataSource {
   on_exhausted?: 'stop' | 'recycle' | 'fail_test';
 }
 
+export interface AuthConfig {
+  type?: 'bearer' | 'api_key' | 'basic';
+  token?: string;
+  name?: string;
+  value?: string;
+  in?: 'header' | 'query';
+  username?: string;
+  password?: string;
+}
+
 export interface HttpDefaults {
   base_url?: string;
   headers?: Record<string, string>;
+  auth?: AuthConfig;
   timeout?: string;
   follow_redirects?: boolean;
   retry_policy?: {
@@ -179,6 +191,7 @@ export interface ThinkTimeStep {
 
 export interface GroupStep {
   name?: string;
+  auth?: AuthConfig;
   steps: any[];
 }
 
