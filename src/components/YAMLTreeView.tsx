@@ -832,6 +832,15 @@ function createNodeByType(type: string | 'root_plan'): YAMLNode {
         data: { name: 'Group' },
         expanded: true,
       };
+    case 'transaction':
+      return {
+        id,
+        type: 'transaction',
+        name: 'Transaction',
+        children: [],
+        data: { name: 'Transaction' },
+        expanded: true,
+      };
     case 'if':
       return {
         id,

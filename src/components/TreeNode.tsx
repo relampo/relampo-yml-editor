@@ -80,7 +80,7 @@ const getNodeColor = (type: NodeType): string => {
     'controller-loop': 'text-blue-400',
     'controller-group': 'text-orange-400',
     'controller-retry': 'text-red-400',
-    'controller-transaction': 'text-orange-400',
+    'controller-transaction': 'text-white',
     'http-request': 'text-blue-400',
     'cookie-manager': 'text-pink-400',
     'cache-manager': 'text-slate-400',

@@ -337,6 +337,7 @@ function getNodeIcon(type: YAMLNodeType): any {
     'head': Globe,
     'options': Globe,
     'group': Folder,
+    'transaction': GitBranch,
     'simple': FolderOpen,
     'if': Folder,
     'loop': Folder,
@@ -403,6 +404,8 @@ function getNodeColor(type: YAMLNodeType, node?: YAMLNode, isRedirectedFollowUp 
     case 'group':
     case 'simple':
       return 'text-blue-400';
+    case 'transaction':
+      return 'text-white';
     case 'if':
       return 'text-pink-500';
     case 'loop':

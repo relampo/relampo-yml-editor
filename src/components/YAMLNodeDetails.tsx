@@ -408,6 +408,7 @@ export function YAMLNodeDetails({ node, redirectedInfo = null, redirectSourceInf
       case 'options':
         return <YAMLRequestDetails node={node} redirectSourceInfo={redirectSourceInfo} onNodeUpdate={onNodeUpdate} />;
       case 'group':
+      case 'transaction':
         return renderGroupDetails(node, onNodeUpdate, nodeName, setNodeName);
       case 'if':
         return renderIfDetails(node, onNodeUpdate);

@@ -33,6 +33,7 @@ export type AddableNodeType =
   | 'load'
   | 'http-request'
   | 'controller-group'
+  | 'controller-transaction'
   | 'controller-if'
   | 'controller-loop'
   | 'controller-retry'
@@ -63,7 +64,7 @@ export function ContextMenu({ x, y, node, onAddNode, onRename, onRemove, onClose
         return ['variables', 'data-source', 'http-defaults', 'scenario', 'metrics'];
       
       case 'scenario': {
-        const options: AddableNodeType[] = ['data-source', 'http-request', 'controller-group', 'controller-if', 'controller-loop', 'controller-retry'];
+        const options: AddableNodeType[] = ['data-source', 'http-request', 'controller-group', 'controller-transaction', 'controller-if', 'controller-loop', 'controller-retry'];
         
         // Add managers only if they don't exist yet (solo una vez)
         if (!hasChild('cookie-manager')) {
@@ -87,7 +88,7 @@ export function ContextMenu({ x, y, node, onAddNode, onRename, onRemove, onClose
       case 'controller-loop':
       case 'controller-retry':
       case 'controller-transaction':
-        return ['http-request', 'controller-group', 'controller-if', 'controller-loop', 'controller-retry'];
+        return ['http-request', 'controller-group', 'controller-transaction', 'controller-if', 'controller-loop', 'controller-retry'];
       
       default:
         return [];
@@ -129,6 +130,7 @@ export function ContextMenu({ x, y, node, onAddNode, onRename, onRemove, onClose
     'load': { label: 'Load Profile', icon: Gauge, color: 'text-green-500' },
     'http-request': { label: 'HTTP Request', icon: Globe, color: 'text-blue-500' },
     'controller-group': { label: 'Simple Controller', icon: GitBranch, color: 'text-orange-500' },
+    'controller-transaction': { label: 'Transaction Controller', icon: GitBranch, color: 'text-white' },
     'controller-if': { label: 'If Controller', icon: Code, color: 'text-amber-500' },
     'controller-loop': { label: 'Loop Controller', icon: Repeat, color: 'text-blue-500' },
     'controller-retry': { label: 'Retry Controller', icon: RotateCw, color: 'text-red-500' },
@@ -157,7 +159,7 @@ export function ContextMenu({ x, y, node, onAddNode, onRename, onRemove, onClose
     },
     {
       title: 'Controllers',
-      types: ['controller-group', 'controller-if', 'controller-loop', 'controller-retry'] as AddableNodeType[],
+      types: ['controller-group', 'controller-transaction', 'controller-if', 'controller-loop', 'controller-retry'] as AddableNodeType[],
     },
     {
       title: 'Post-Processors',

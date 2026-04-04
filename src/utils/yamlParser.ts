@@ -670,6 +670,30 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
     return groupNode;
   }
 
+  if (step.transaction) {
+    const transactionNode: YAMLNode = {
+      id: stepId,
+      type: 'transaction',
+      name: step.transaction.name || 'Transaction',
+      children: [],
+      expanded: true,
+      data: {
+        ...step.transaction,
+        auth: normalizeAuthForEditor(step.transaction.auth),
+      },
+      path,
+    };
+
+    if (step.transaction.steps && Array.isArray(step.transaction.steps)) {
+      step.transaction.steps.forEach((childStep: any, childIndex: number) => {
+        const childNode = convertStepToNode(childStep, stepId, childIndex, [...path, 'steps', childIndex]);
+        transactionNode.children!.push(childNode);
+      });
+    }
+
+    return transactionNode;
+  }
+
   // If
   if (step.if !== undefined) {
     const ifNode: YAMLNode = {

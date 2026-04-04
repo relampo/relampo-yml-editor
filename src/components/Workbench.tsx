@@ -89,6 +89,7 @@ export function Workbench() {
         'load': 'Load Profile',
         'http-request': 'GET /new-request',
         'controller-group': 'Simple Controller',
+        'controller-transaction': 'Transaction Controller',
         'controller-if': 'If Controller',
         'controller-loop': 'Loop Controller',
         'controller-retry': 'Retry Controller',
@@ -140,6 +141,8 @@ export function Workbench() {
           };
         case 'controller-loop':
           return { loopCount: 1 };
+        case 'controller-transaction':
+          return { transactionName: 'Transaction Controller' };
         case 'controller-if':
           return { condition: '' };
         case 'controller-retry':

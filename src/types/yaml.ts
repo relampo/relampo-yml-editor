@@ -84,7 +84,7 @@ export interface DataSource {
 }
 
 export interface AuthConfig {
-  type?: 'bearer' | 'api_key' | 'basic';
+  type?: 'bearer' | 'api_key' | 'basic'| 'none';
   token?: string;
   name?: string;
   value?: string;

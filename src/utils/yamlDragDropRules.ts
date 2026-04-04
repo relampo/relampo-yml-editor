@@ -50,7 +50,7 @@ const SCENARIO_CONFIG_ELEMENTS: YAMLNodeType[] = [
 
 /** Logic Controllers - can contain other controllers and samplers */
 const LOGIC_CONTROLLERS: YAMLNodeType[] = [
-  'group', 'simple', 'if', 'loop', 'retry'
+  'group', 'simple', 'transaction', 'if', 'loop', 'retry'
 ];
 
 /** HTTP Samplers - the actual requests */
@@ -144,6 +144,7 @@ const containmentRules: Partial<Record<YAMLNodeType, YAMLNodeType[]>> = {
   // Logic Controllers - can contain steps and other controllers
   'group': STEP_ELEMENTS,
   'simple': STEP_ELEMENTS,
+  'transaction': STEP_ELEMENTS,
   'if': STEP_ELEMENTS,
   'loop': STEP_ELEMENTS,
   'retry': STEP_ELEMENTS,
