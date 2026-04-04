@@ -134,6 +134,19 @@ El editor soporta la especificación completa de **Relampo v1**:
   - `steps` - Steps del test
     - Tipos: request, group, if, loop, retry, think_time
 
+### Overrides desde CLI
+
+Las variables definidas en el editor también pueden sobrescribirse al ejecutar el escenario desde Relampo CLI:
+
+```bash
+relampo run scenario.yaml --var env=staging --var base_url=https://staging.example.com
+relampo run scenario.yaml --vars-file env/staging.yaml --var env=staging
+```
+
+Precedencia:
+
+`CLI > env vars > archivo > YAML`
+
 ## 🔒 Seguridad macOS
 
 Si macOS bloquea la app:

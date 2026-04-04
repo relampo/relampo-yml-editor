@@ -141,7 +141,7 @@ npm install -g relampo
 
 1. Edit your YAML configuration file
 2. Define your test scenarios
-3. Run the test: \`relampo run ${fileName}\`
+3. Run the test: \`relampo run ${fileName} --var env=staging\`
 4. View results: \`relampo report\`
 
 ## YAML Structure
@@ -152,6 +152,12 @@ Define reusable variables:
 variables:
   base_url: "https://api.example.com"
   api_key: "\${API_KEY}"
+\`\`\`
+
+Override them at runtime without editing the YAML:
+\`\`\`bash
+relampo run ${fileName} --var env=staging --var base_url=https://staging.example.com
+relampo run ${fileName} --vars-file env/staging.yaml --var env=staging
 \`\`\`
 
 ### Scenarios

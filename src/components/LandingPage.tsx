@@ -466,7 +466,7 @@ export function LandingPage({ onEnter }: { onEnter?: () => void }) {
                   }}
                   transition={{ duration: 0.5 }}
                 >
-                  <span className="text-emerald-400">$</span> relampo run scenario.yaml --cloud
+                  <span className="text-emerald-400">$</span> relampo run scenario.yaml --var env=staging --var base_url=https://staging.example.com
                 </motion.div>
 
                 {/* Line 7 (wraps back to 0) */}
@@ -832,9 +832,9 @@ export function LandingPage({ onEnter }: { onEnter?: () => void }) {
               <pre className="text-xs sm:text-sm md:text-base font-mono text-zinc-100 leading-relaxed overflow-x-auto">
 {`$ npm install -g relampo
 $ relampo record --target https://your-api.com
-$ relampo run test.yaml --cloud
+$ relampo run test.yaml --vars-file env/staging.yaml --var env=staging
 
-✓ Test running on cloud sandbox (125 VUs × 4 nodes)`}
+✓ Test running with staging overrides applied`}
               </pre>
             </div>
           </div>

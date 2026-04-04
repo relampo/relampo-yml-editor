@@ -2,6 +2,19 @@
 
 Visual editor for Relampo load testing YAML files.
 
+## CLI Variable Overrides
+
+The editor already supports `variables` in YAML. Those values can now be overridden at execution time from the Relampo CLI without editing the file.
+
+```bash
+relampo run scenario.yaml --var env=staging --var base_url=https://staging.example.com
+relampo run scenario.yaml --vars-file env/staging.yaml --var env=staging
+```
+
+Precedence:
+
+`CLI > env vars > variables file > YAML`
+
 ## ✅ Pulse Compatibility
 
 **Compatible con Pulse v1.1** - Los archivos YAML generados por este editor pueden ejecutarse directamente con Pulse CLI.

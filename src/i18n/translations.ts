@@ -32,8 +32,8 @@ export const translations = {
         command: "relampo record https://api.example.com",
       },
       step3: {
-        title: "3. Run in cloud",
-        command: "relampo run script.yaml --cloud",
+        title: "3. Run with overrides",
+        command: "relampo run script.yaml --var env=staging",
       },
     },
 
@@ -58,9 +58,9 @@ export const translations = {
           command: "$ relampo validate api.yaml",
         },
         step4: {
-          title: "Run free in Cloud",
-          description: "Free sandbox with 500 VUs included",
-          command: "$ relampo run api.yaml --cloud",
+          title: "Run with environment overrides",
+          description: "Promote the same YAML across dev, staging, and prod",
+          command: "$ relampo run api.yaml --vars-file env/staging.yaml --var env=staging",
         },
       },
       fromRecordingToResults: "From recording to results",
@@ -479,8 +479,8 @@ export const translations = {
         command: "relampo record https://api.ejemplo.com",
       },
       step3: {
-        title: "3. Ejecutar en la nube",
-        command: "relampo run script.yaml --cloud",
+        title: "3. Ejecutar con overrides",
+        command: "relampo run script.yaml --var env=staging",
       },
     },
 
@@ -505,9 +505,9 @@ export const translations = {
           command: "$ relampo validate api.yaml",
         },
         step4: {
-          title: "Ejecutar gratis en Cloud",
-          description: "Sandbox gratuito con 500 VUs incluidos",
-          command: "$ relampo run api.yaml --cloud",
+          title: "Ejecutar con overrides por ambiente",
+          description: "Promueve el mismo YAML entre dev, staging y prod",
+          command: "$ relampo run api.yaml --vars-file env/staging.yaml --var env=staging",
         },
       },
       fromRecordingToResults: "Desde grabación a resultados",
