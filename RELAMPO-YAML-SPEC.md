@@ -82,6 +82,7 @@ test:
 ```
 
 **Propiedades**:
+
 - `name` (requerido): Nombre descriptivo del test
 - `description` (opcional): Descripción extendida
 - `version` (opcional): Versión del script
@@ -119,9 +120,10 @@ data_source:
 ```
 
 **Propiedades**:
+
 - `type`: Tipo de fuente (`csv`, `json`, `inline`)
 - `file`: Ruta al archivo
-- `mode`: 
+- `mode`:
   - `per_vu`: Cada usuario virtual tiene su propia iteración
   - `shared`: Todos comparten el data source
 - `strategy`:
@@ -145,8 +147,18 @@ http_defaults:
   headers:
     Accept: "application/json"
     User-Agent: "Relampo/2.0"
-    Authorization: "Bearer {{token}}"
+  auth:
+    type: bearer
+    token: "{{token}}"
 ```
+
+Autenticación centralizada soportada:
+
+- `bearer`: `type` + `token`
+- `api_key`: `type` + `name` + `value` + `in` (`header` o `query`)
+- `basic`: `type` + `username` + `password`
+
+La auth en `http_defaults.auth` se hereda a todos los requests. Un `group.auth` reemplaza la auth heredada solo dentro de ese grupo.
 
 ---
 
@@ -168,6 +180,7 @@ scenarios:
 ### Tipos de Load
 
 #### Constant Load
+
 ```yaml
 load:
   type: constant
@@ -177,6 +190,7 @@ load:
 ```
 
 #### Ramp Load
+
 ```yaml
 load:
   type: ramp
@@ -269,6 +283,7 @@ steps:
 ```
 
 **Propiedades del Request**:
+
 - `name` (opcional): Nombre descriptivo
 - `method`: GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS
 - `url`: Path relativo (si hay base_url) o URL completa
@@ -321,6 +336,7 @@ steps:
 ```
 
 **Características**:
+
 - Nodo tipo `headers` en el árbol
 - Color: rojo (`red-400`/`red-500`)
 - Icono: Tag
@@ -329,6 +345,7 @@ steps:
 - Se posiciona primero en los hijos del request
 
 **Formato en YAML**:
+
 ```yaml
 headers:
   Content-Type: "application/json"
@@ -345,6 +362,7 @@ headers:
 ### Sintaxis
 
 #### Forma Simple
+
 ```yaml
 steps:
   - think_time: 3s
@@ -352,6 +370,7 @@ steps:
 ```
 
 #### Dentro de un Request (inline)
+
 ```yaml
 steps:
   - request:
@@ -361,6 +380,7 @@ steps:
 ```
 
 #### Rango Aleatorio
+
 ```yaml
 steps:
   - think_time:
@@ -370,6 +390,7 @@ steps:
 ```
 
 #### Distribución Normal
+
 ```yaml
 steps:
   - think_time:
@@ -381,6 +402,7 @@ steps:
 ### Lógica de Herencia (JMeter-style)
 
 #### Think Time Global
+
 Cuando se define a nivel de `steps` o `scenario`, se aplica **antes de cada request hijo**:
 
 ```yaml
@@ -399,6 +421,7 @@ scenarios:
 ```
 
 #### Think Time Específico (Override)
+
 Un request puede override el think_time global:
 
 ```yaml
@@ -499,6 +522,7 @@ steps:
 ### Lógica de Herencia (JMeter-style)
 
 #### Assertions Globales
+
 Cuando se define a nivel de `steps`, valida **todos los requests**:
 
 ```yaml
@@ -521,6 +545,7 @@ scenarios:
 ```
 
 #### Assertions Específicas (Override)
+
 Un request puede tener sus propias assertions (reemplaza las globales):
 
 ```yaml
@@ -649,6 +674,7 @@ steps:
 ### Casos de Uso
 
 #### Generar UUID
+
 ```yaml
 spark:
   - when: before
@@ -660,6 +686,7 @@ spark:
 ```
 
 #### Validar Respuesta
+
 ```yaml
 spark:
   - when: after
@@ -672,6 +699,7 @@ spark:
 ```
 
 #### Extraer Token con Regex
+
 ```yaml
 spark:
   - when: after
@@ -719,6 +747,7 @@ steps:
 ```
 
 **Variables disponibles**:
+
 - `{{__counter}}`: Índice actual del loop (1-based)
 - `{{loop_index}}`: Índice actual (0-based)
 
@@ -736,6 +765,7 @@ steps:
 ```
 
 **Operadores soportados**:
+
 - `==`, `!=`
 - `>`, `<`, `>=`, `<=`
 - `&&`, `||`
@@ -760,6 +790,7 @@ steps:
 ```
 
 **Estrategias de backoff**:
+
 - `fixed`: Delay fijo
 - `exponential`: Delay exponencial (1s, 2s, 4s, 8s...)
 - `linear`: Incremento lineal (1s, 2s, 3s...)
@@ -787,6 +818,7 @@ Además del data source global, se puede definir un data source específico para
 ### Lógica de Herencia (JMeter-style)
 
 #### Data Source Global
+
 ```yaml
 scenarios:
   - name: "User Flow"
@@ -811,6 +843,7 @@ scenarios:
 ```
 
 #### Data Source Específico (Override)
+
 ```yaml
 scenarios:
   - name: "User Flow"
@@ -858,6 +891,7 @@ Relampo adopta la lógica de herencia de JMeter para `think_time`, `assertions` 
 | `think_time` | Aplica antes de todos | Override para ese request | Específico > Global |
 | `assertions` | Valida todos | Override (reemplaza) | Específico REEMPLAZA Global |
 | `data_source` | Variables para todos | Override | Específico > Global |
+| `auth` | `http_defaults.auth` aplica a todos | `group.auth` reemplaza dentro del grupo | Grupo > Global |
 
 ### Alcance por Nivel
 
@@ -869,6 +903,10 @@ scenarios:
       
       - group:
           name: "Login Flow"
+          auth:
+            type: basic
+            username: "{{admin_user}}"
+            password: "{{admin_pass}}"
           steps:
             - think_time: 1s    # Alcance: solo requests en este group (override)
             
@@ -933,6 +971,7 @@ steps:
 ```
 
 **Propiedades**:
+
 - `field`: Nombre del campo en el form
 - `path`: Ruta al archivo
 - `mime`: Tipo MIME (opcional, se detecta automáticamente)
@@ -953,6 +992,7 @@ scenarios:
 ```
 
 **Modos**:
+
 - `auto`: Manejo automático de cookies (como navegador)
 - `manual`: Control manual vía Spark Scripts
 - `disabled`: Sin cookies
