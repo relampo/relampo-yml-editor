@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { Button } from './ui/button';
-import { Upload, Download, Save, Code2, GitBranch, ChevronDown } from 'lucide-react';
+import { Upload, Download, Code2, GitBranch, ChevronDown } from 'lucide-react';
 import yaml from 'js-yaml';
 import { YAMLCodeEditor } from './YAMLCodeEditor';
 import { YAMLTreeView } from './YAMLTreeView';
@@ -76,6 +76,7 @@ export function YAMLEditor() {
   const [hasDocumentActivity, setHasDocumentActivity] = useState(false);
   const actionMessageTimeoutRef = useRef<number | null>(null);
   const bypassUnloadWarningRef = useRef(false);
+  const autosaveDebounceRef = useRef<number | null>(null);
   const [isParsing, setIsParsing] = useState(false);
   const [isTreeOutdated, setIsTreeOutdated] = useState(false);
   const selectedNodeRef = useRef<YAMLNode | null>(null);
@@ -437,6 +438,9 @@ export function YAMLEditor() {
       if (actionMessageTimeoutRef.current) {
         window.clearTimeout(actionMessageTimeoutRef.current);
       }
+      if (autosaveDebounceRef.current) {
+        window.clearTimeout(autosaveDebounceRef.current);
+      }
     };
   }, []);
 
@@ -621,6 +625,21 @@ export function YAMLEditor() {
     showActionMessage(language === 'es' ? 'Cambios guardados' : 'Changes saved');
   };
 
+  useEffect(() => {
+    if (!isDirty || !isInitialized) return;
+    if (autosaveDebounceRef.current) {
+      window.clearTimeout(autosaveDebounceRef.current);
+    }
+    autosaveDebounceRef.current = window.setTimeout(() => {
+      handleSave();
+    }, 2000);
+    return () => {
+      if (autosaveDebounceRef.current) {
+        window.clearTimeout(autosaveDebounceRef.current);
+      }
+    };
+  }, [isDirty, yamlCode]);
+
   const stripResponsesFromObject = (value: any): any => {
     if (Array.isArray(value)) {
       return value.map(stripResponsesFromObject);
@@ -800,7 +819,7 @@ export function YAMLEditor() {
                   }`}
                 >
                   {isDirty
-                    ? (language === 'es' ? 'Sin guardar' : 'Unsaved')
+                    ? (language === 'es' ? 'Guardando...' : 'Saving...')
                     : (language === 'es' ? 'Guardado' : 'Saved')}
                 </span>
               )}
@@ -824,16 +843,6 @@ export function YAMLEditor() {
               >
                 <Upload className="w-4 h-4 mr-2" />
                 {t('yamlEditor.uploadYaml')}
-              </Button>
-
-              <Button
-                onClick={handleSave}
-                variant="outline"
-                size="sm"
-                className="border-white/10 bg-white/5 hover:bg-white/10 text-zinc-300"
-              >
-                <Save className="w-4 h-4 mr-2" />
-                {language === 'es' ? 'Guardar' : 'Save'}
               </Button>
 
               <DropdownMenu>
