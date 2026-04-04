@@ -183,9 +183,10 @@ function RequestContent({
   const compactInputClass = 'w-[14ch] max-w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono';
 
   const splitQuery = (fullUrl: string): { withoutQuery: string; query: string } => {
-    const idx = fullUrl.indexOf('?');
-    if (idx < 0) return { withoutQuery: fullUrl, query: '' };
-    return { withoutQuery: fullUrl.slice(0, idx), query: fullUrl.slice(idx) };
+    const url = typeof fullUrl === 'string' ? fullUrl : String(fullUrl ?? '');
+    const idx = url.indexOf('?');
+    if (idx < 0) return { withoutQuery: url, query: '' };
+    return { withoutQuery: url.slice(0, idx), query: url.slice(idx) };
   };
 
   const parseUrlParts = (fullUrl: string): { protocol: 'http' | 'https'; baseUrl: string; path: string } => {
