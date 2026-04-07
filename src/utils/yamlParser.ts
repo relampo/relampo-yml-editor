@@ -393,6 +393,19 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
     return requestNode;
   }
 
+  if (step.sql) {
+    const sql = normalizeSQLForEditor(step.sql);
+    return {
+      id: stepId,
+      type: 'sql',
+      name: buildSQLStepName(sql),
+      data: sql,
+      path: [...path, 'sql'],
+      children: [],
+      expanded: false,
+    };
+  }
+
   // Think time (standalone - can be between requests)
   if (step.think_time !== undefined) {
     let duration: string;
