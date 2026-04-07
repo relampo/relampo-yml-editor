@@ -58,6 +58,10 @@ const HTTP_SAMPLERS: YAMLNodeType[] = [
   'request', 'get', 'post', 'put', 'delete', 'patch', 'head', 'options'
 ];
 
+const SQL_SAMPLERS: YAMLNodeType[] = [
+  'sql',
+];
+
 /** Pre-Processors - execute before sampler */
 const PRE_PROCESSORS: YAMLNodeType[] = [
   'spark_before'
@@ -81,6 +85,7 @@ const TIMERS: YAMLNodeType[] = [
 /** All step-level elements (can be inside steps or controllers) */
 const STEP_ELEMENTS: YAMLNodeType[] = [
   ...HTTP_SAMPLERS,
+  ...SQL_SAMPLERS,
   ...LOGIC_CONTROLLERS,
   ...TIMERS,
   'data_source',
@@ -140,6 +145,9 @@ const containmentRules: Partial<Record<YAMLNodeType, YAMLNodeType[]>> = {
   'patch': SAMPLER_CHILDREN,
   'head': SAMPLER_CHILDREN,
   'options': SAMPLER_CHILDREN,
+
+  // SQL steps are leaf executable steps
+  'sql': [],
 
   // Logic Controllers - can contain steps and other controllers
   'group': STEP_ELEMENTS,
