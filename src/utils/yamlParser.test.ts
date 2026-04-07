@@ -1,5 +1,11 @@
+import { readFileSync } from 'node:fs';
 import { describe, it, expect } from 'vitest';
 import { parseYAMLToTree, treeToYAML } from './yamlParser';
+
+const sqlE2EScenarioYAML = readFileSync(
+  new URL('../../../relampo-backend/examples/sql-e2e-scenario.yaml', import.meta.url),
+  'utf8'
+);
 
 // ─── parseYAMLToTree ───────────────────────────────────────────────────────
 
@@ -122,6 +128,94 @@ scenarios:
     expect(step.type).toBe('request');
     expect(step.data.url).toBe('https://example.com/login');
     expect(step.data.method).toBe('POST');
+  });
+
+
+  it('parses sql steps', () => {
+    const yaml = `
+test:
+  name: t
+scenarios:
+  - name: s
+    steps:
+      - sql:
+          dialect: postgres
+          kind: query
+          connection:
+            host: "{{db_host}}"
+            port: 5432
+            database: app
+            user: "{{db_user}}"
+            password: "{{db_password}}"
+            ssl_mode: disable
+            validate_connectivity: true
+            max_open_conns: 6
+          query: |
+            SELECT id
+            FROM users
+            WHERE status = $1
+          params:
+            - active
+          allow_writes: false
+`;
+    const tree = parseYAMLToTree(yaml)!;
+    const step = tree
+      .children!.find((c) => c.type === 'scenarios')!
+      .children![0]
+      .children!.find((c) => c.type === 'steps')!
+      .children![0];
+    expect(step.type).toBe('sql');
+    expect(step.data.dialect).toBe('postgres');
+    expect(step.data.kind).toBe('query');
+    expect(step.data.connection.database).toBe('app');
+    expect(step.data.connection.ssl_mode).toBe('disable');
+    expect(step.data.connection.validate_connectivity).toBe(true);
+    expect(step.data.connection.max_open_conns).toBe(6);
+    expect(step.data.params).toEqual(['active']);
+  });
+
+  it('parses the backend sql e2e example with both dialects and extractor-rich query steps', () => {
+    const tree = parseYAMLToTree(sqlE2EScenarioYAML)!;
+    const scenariosNode = tree.children!.find((c) => c.type === 'scenarios');
+
+    expect(tree.name).toBe('SQL Database Operations E2E Test');
+    expect(tree.children!.find((c) => c.type === 'variables')?.data.db_host).toBe('localhost');
+    expect(scenariosNode?.children).toHaveLength(2);
+
+    const scenarios = scenariosNode!.children!;
+    const allSqlSteps = scenarios.flatMap((scenario) =>
+      scenario.children!
+        .find((c) => c.type === 'steps')!
+        .children!
+        .filter((c) => c.type === 'sql')
+    );
+
+    expect(allSqlSteps).toHaveLength(7);
+
+    const postgresCreate = allSqlSteps[0];
+    const postgresLookup = allSqlSteps[2];
+    const mysqlCreate = allSqlSteps[3];
+    const mysqlCount = allSqlSteps[6];
+
+    expect(postgresCreate.data.kind).toBe('exec');
+    expect(postgresCreate.data.allow_writes).toBe(true);
+    expect(postgresCreate.data.connection.validate_connectivity).toBe(true);
+    expect(postgresCreate.data.connection.max_open_conns).toBe(5);
+    expect(postgresCreate.data.on_error).toBe('continue');
+
+    expect(postgresLookup.data.kind).toBe('query');
+    expect(postgresLookup.data.params).toEqual(['{{test_email}}']);
+    expect(postgresLookup.data.extract).toEqual({
+      user_id: "jsonpath('$[0].id')",
+      found_email: "jsonpath('$[0].email')",
+    });
+
+    expect(mysqlCreate.data.dialect).toBe('mysql');
+    expect(mysqlCreate.data.connection.port).toBe('{{mysql_port}}');
+    expect(mysqlCreate.data.connection.validate_connectivity).toBe(true);
+    expect(mysqlCount.data.extract).toEqual({
+      user_count: "jsonpath('$[0].count')",
+    });
   });
 
   it('parses scenario load node', () => {
@@ -268,6 +362,106 @@ scenarios:
     const tree = parseYAMLToTree(input)!;
     const output = treeToYAML(tree);
     expect(output).toContain('Login Flow');
+  });
+
+
+  it('round-trips sql steps', () => {
+    const input = `
+test:
+  name: t
+scenarios:
+  - name: s
+    steps:
+      - sql:
+          dialect: mysql
+          kind: query
+          connection:
+            host: db.internal
+            port: 3306
+            database: analytics
+            user: "{{db_user}}"
+            password: "{{db_password}}"
+            ssl_mode: require
+            validate_connectivity: true
+            max_open_conns: 4
+          query: SELECT count(*) FROM runs WHERE status = ?
+          params:
+            - success
+          allow_writes: false
+`;
+    const tree = parseYAMLToTree(input)!;
+    const output = treeToYAML(tree);
+    const reparsed = parseYAMLToTree(output)!;
+    const step = reparsed
+      .children!.find((c) => c.type === 'scenarios')!
+      .children![0]
+      .children!.find((c) => c.type === 'steps')!
+      .children![0];
+    expect(output).toContain('sql:');
+    expect(output).toContain('kind: query');
+    expect(output).toContain('allow_writes: false');
+    expect(output).toContain('ssl_mode: require');
+    expect(step.type).toBe('sql');
+    expect(step.data.dialect).toBe('mysql');
+    expect(step.data.kind).toBe('query');
+    expect(step.data.connection.max_open_conns).toBe(4);
+    expect(step.data.params).toEqual(['success']);
+  });
+
+  it('normalizes legacy sql aliases to spec field names on round-trip', () => {
+    const input = `
+test:
+  name: t
+scenarios:
+  - name: s
+    steps:
+      - sql:
+          dialect: postgres
+          connection:
+            host: db.internal
+            sslmode: disable
+          query: UPDATE users SET active = false WHERE id = $1
+          params:
+            - 42
+          validate_connection: true
+          allow_write: true
+          max_open_conns: 3
+`;
+    const output = treeToYAML(parseYAMLToTree(input)!);
+    expect(output).toContain('kind: exec');
+    expect(output).toContain('allow_writes: true');
+    expect(output).toContain('validate_connectivity: true');
+    expect(output).toContain('ssl_mode: disable');
+    expect(output).toContain('max_open_conns: 3');
+    expect(output).not.toContain('allow_write:');
+    expect(output).not.toContain('validate_connection:');
+    expect(output).not.toContain('sslmode:');
+  });
+
+  it('round-trips the backend sql e2e example without losing canonical sql fields', () => {
+    const output = treeToYAML(parseYAMLToTree(sqlE2EScenarioYAML)!);
+    const reparsed = parseYAMLToTree(output)!;
+    const scenarios = reparsed.children!.find((c) => c.type === 'scenarios')!.children!;
+
+    expect(output).toContain('allow_writes: true');
+    expect(output).toContain('validate_connectivity: true');
+    expect(output).toContain('ssl_mode: disable');
+    expect(output).toContain("user_count: jsonpath('$[0].count')");
+    expect(output).not.toContain('allow_write:');
+    expect(output).not.toContain('validate_connection:');
+    expect(output).not.toContain('sslmode:');
+
+    const sqlSteps = scenarios.flatMap((scenario) =>
+      scenario.children!
+        .find((c) => c.type === 'steps')!
+        .children!
+        .filter((c) => c.type === 'sql')
+    );
+
+    expect(sqlSteps).toHaveLength(7);
+    expect(sqlSteps.filter((step) => step.data.kind === 'exec')).toHaveLength(4);
+    expect(sqlSteps.filter((step) => step.data.kind === 'query')).toHaveLength(3);
+    expect(sqlSteps.filter((step) => step.data.allow_writes === true)).toHaveLength(4);
   });
 });
 
