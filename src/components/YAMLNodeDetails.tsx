@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import type { RedirectSourceInfo, RedirectedRequestInfo, YAMLNode } from '../types/yaml';
 import { YAMLRequestDetails } from './YAMLRequestDetails';
+import { YAMLSQLDetails } from './YAMLSQLDetails';
 import { Input } from './ui/input';
 import {
   DataSourceDetails,
@@ -31,7 +32,7 @@ interface YAMLNodeDetailsProps {
   onNodeUpdate?: (nodeId: string, updatedData: any) => void;
 }
 
-const REQUEST_NODE_TYPES = ['request', 'get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
+const REQUEST_NODE_TYPES = ['request', 'sql', 'get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
 
 export function YAMLNodeDetails({
   node,
@@ -143,6 +144,7 @@ function NodeDetailsContent({
     case 'load':
       return <LoadDetails node={node} onNodeUpdate={onNodeUpdate} />;
     case 'request':
+    case 'sql':
     case 'get':
     case 'post':
     case 'put':
@@ -150,6 +152,9 @@ function NodeDetailsContent({
     case 'patch':
     case 'head':
     case 'options':
+      if (node.type === 'sql') {
+        return <YAMLSQLDetails node={node} onNodeUpdate={onNodeUpdate} />;
+      }
       return <YAMLRequestDetails node={node} redirectSourceInfo={redirectSourceInfo} onNodeUpdate={onNodeUpdate} />;
     case 'group':
     case 'transaction':
