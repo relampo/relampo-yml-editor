@@ -58,12 +58,12 @@ What kind of motion?
 
 Only animate these properties — they run on the GPU compositor and avoid layout/paint:
 
-| Safe to animate | Triggers |
-|----------------|----------|
-| `transform` | Compositor only |
-| `opacity` | Compositor only |
-| `filter` | Compositor only (some filters) |
-| `clip-path` | Paint only (acceptable for reveals) |
+| Safe to animate    | Triggers                                 |
+| ------------------ | ---------------------------------------- |
+| `transform`        | Compositor only                          |
+| `opacity`          | Compositor only                          |
+| `filter`           | Compositor only (some filters)           |
+| `clip-path`        | Paint only (acceptable for reveals)      |
 | `background-color` | Paint only (acceptable for color shifts) |
 
 ### Never Animate
@@ -81,7 +81,9 @@ Use `transform: scale()` instead of `width`/`height`. Use `transform: translate(
 ### will-change
 
 ```css
-.element:hover { will-change: transform; }
+.element:hover {
+  will-change: transform;
+}
 
 .element.is-animating {
   will-change: transform;
@@ -99,7 +101,10 @@ Use `transform: scale()` instead of `width`/`height`. Use `transform: translate(
 
 ```css
 .button {
-  transition: transform 200ms ease, opacity 200ms ease, box-shadow 200ms ease;
+  transition:
+    transform 200ms ease,
+    opacity 200ms ease,
+    box-shadow 200ms ease;
 
   &:hover {
     transform: translateY(-2px);
@@ -115,15 +120,15 @@ Use `transform: scale()` instead of `width`/`height`. Use `transform: translate(
 
 ### Easing Reference
 
-| Easing | When to use |
-|--------|-------------|
-| `ease-out` | Elements entering the screen |
-| `ease-in` | Elements leaving the screen |
-| `ease-in-out` | Elements moving from one position to another |
-| `cubic-bezier(0.34, 1.56, 0.64, 1)` | Springy overshoot |
-| `cubic-bezier(0.22, 0.61, 0.36, 1)` | Smooth deceleration |
-| `cubic-bezier(0.68, -0.55, 0.27, 1.55)` | Elastic snap |
-| `linear` | Scroll-driven or physics-based only |
+| Easing                                  | When to use                                  |
+| --------------------------------------- | -------------------------------------------- |
+| `ease-out`                              | Elements entering the screen                 |
+| `ease-in`                               | Elements leaving the screen                  |
+| `ease-in-out`                           | Elements moving from one position to another |
+| `cubic-bezier(0.34, 1.56, 0.64, 1)`     | Springy overshoot                            |
+| `cubic-bezier(0.22, 0.61, 0.36, 1)`     | Smooth deceleration                          |
+| `cubic-bezier(0.68, -0.55, 0.27, 1.55)` | Elastic snap                                 |
+| `linear`                                | Scroll-driven or physics-based only          |
 
 ### Spring-Like Easing
 
@@ -150,7 +155,9 @@ CSS doesn't have native spring physics, but you can approximate:
   --_index: 0;
   opacity: 0;
   transform: translateY(1rem);
-  transition: opacity 300ms ease-out, transform 300ms ease-out;
+  transition:
+    opacity 300ms ease-out,
+    transform 300ms ease-out;
   transition-delay: calc(var(--_index) * 50ms);
 }
 
@@ -163,9 +170,15 @@ CSS doesn't have native spring physics, but you can approximate:
 Set `--_index` per element via inline style or `:nth-child()`:
 
 ```css
-.list-item:nth-child(1) { --_index: 0; }
-.list-item:nth-child(2) { --_index: 1; }
-.list-item:nth-child(3) { --_index: 2; }
+.list-item:nth-child(1) {
+  --_index: 0;
+}
+.list-item:nth-child(2) {
+  --_index: 1;
+}
+.list-item:nth-child(3) {
+  --_index: 2;
+}
 /* or use inline style="--_index: N" */
 ```
 
@@ -190,7 +203,9 @@ Set `--_index` per element via inline style or `:nth-child()`:
 
 ```css
 @keyframes pulse {
-  50% { transform: scale(1.05); }
+  50% {
+    transform: scale(1.05);
+  }
 }
 
 .pulse {
@@ -202,16 +217,13 @@ Set `--_index` per element via inline style or `:nth-child()`:
 
 ```css
 @keyframes shimmer {
-  to { background-position: -200% center; }
+  to {
+    background-position: -200% center;
+  }
 }
 
 .skeleton {
-  background: linear-gradient(
-    90deg,
-    oklch(90% 0 0) 0%,
-    oklch(95% 0 0) 40%,
-    oklch(90% 0 0) 80%
-  );
+  background: linear-gradient(90deg, oklch(90% 0 0) 0%, oklch(95% 0 0) 40%, oklch(90% 0 0) 80%);
   background-size: 200% 100%;
   animation: shimmer 1.5s ease-in-out infinite;
 }
@@ -253,8 +265,12 @@ Set `--_index` per element via inline style or `:nth-child()`:
 }
 
 @keyframes grow-width {
-  from { transform: scaleX(0); }
-  to { transform: scaleX(1); }
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
 }
 ```
 
@@ -288,7 +304,9 @@ Set `--_index` per element via inline style or `:nth-child()`:
 }
 
 @keyframes parallax {
-  to { transform: translateY(-30%); }
+  to {
+    transform: translateY(-30%);
+  }
 }
 ```
 
@@ -324,8 +342,12 @@ Scroll-driven animations: Chrome 115+, Safari 18+, Firefox 110+ (flag). For non-
 ### Named View Transitions (shared element)
 
 ```css
-.hero-image { view-transition-name: hero; }
-.page-title { view-transition-name: title; }
+.hero-image {
+  view-transition-name: hero;
+}
+.page-title {
+  view-transition-name: title;
+}
 
 ::view-transition-old(hero),
 ::view-transition-new(hero) {
@@ -338,11 +360,15 @@ Scroll-driven animations: Chrome 115+, Safari 18+, Firefox 110+ (flag). For non-
 
 ```css
 @keyframes slide-from-right {
-  from { transform: translateX(100%); }
+  from {
+    transform: translateX(100%);
+  }
 }
 
 @keyframes slide-to-left {
-  to { transform: translateX(-100%); }
+  to {
+    transform: translateX(-100%);
+  }
 }
 
 ::view-transition-old(root) {
@@ -362,7 +388,9 @@ Every animation you write MUST include a reduced-motion fallback.
 
 ```css
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
@@ -383,7 +411,9 @@ Every animation you write MUST include a reduced-motion fallback.
 }
 
 @keyframes fade-in {
-  from { opacity: 0; }
+  from {
+    opacity: 0;
+  }
 }
 ```
 

@@ -46,7 +46,7 @@ Build the raw color palette using `oklch()`. Every color starts here.
   --primary-600: oklch(48% 0.22 250);
   --primary-700: oklch(40% 0.18 250);
   --primary-800: oklch(32% 0.14 250);
-  --primary-900: oklch(25% 0.10 250);
+  --primary-900: oklch(25% 0.1 250);
 
   /* Neutral */
   --neutral-0: oklch(100% 0 0);
@@ -98,10 +98,7 @@ Map primitives to purpose-driven names. These are the tokens components actually
   --color-surface: light-dark(var(--neutral-0), var(--neutral-900));
   --color-surface-raised: light-dark(var(--neutral-0), var(--neutral-800));
   --color-surface-sunken: light-dark(var(--neutral-50), var(--neutral-1000));
-  --color-surface-overlay: light-dark(
-    oklch(100% 0 0 / 0.8),
-    oklch(15% 0 0 / 0.8)
-  );
+  --color-surface-overlay: light-dark(oklch(100% 0 0 / 0.8), oklch(15% 0 0 / 0.8));
 
   /* Text */
   --color-text: light-dark(var(--neutral-900), var(--neutral-100));
@@ -120,7 +117,7 @@ Map primitives to purpose-driven names. These are the tokens components actually
   /* Status */
   --color-success: light-dark(oklch(50% 0.18 150), oklch(70% 0.18 150));
   --color-warning: light-dark(oklch(55% 0.18 85), oklch(75% 0.18 85));
-  --color-error: light-dark(oklch(50% 0.22 25), oklch(70% 0.20 25));
+  --color-error: light-dark(oklch(50% 0.22 25), oklch(70% 0.2 25));
   --color-info: light-dark(oklch(50% 0.15 250), oklch(70% 0.15 250));
 }
 ```
@@ -150,11 +147,12 @@ This single declaration enables the browser's native light/dark toggle. The user
 Allow users to force a theme with a data attribute:
 
 ```css
-:root, [data-theme="light"] {
+:root,
+[data-theme='light'] {
   color-scheme: light;
 }
 
-[data-theme="dark"] {
+[data-theme='dark'] {
   color-scheme: dark;
 }
 ```
@@ -164,8 +162,7 @@ The `light-dark()` values in semantic tokens automatically respond to the `color
 ### Theme Toggle (minimal JS)
 
 ```js
-document.documentElement.dataset.theme =
-  document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+document.documentElement.dataset.theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
 ```
 
 Store preference in `localStorage`. On load, set the attribute before first paint to avoid flash.
@@ -190,13 +187,13 @@ Components should use internal custom properties (underscore prefix) mapped to s
     --_bg: var(--color-primary-hover);
   }
 
-  &[data-variant="outline"] {
+  &[data-variant='outline'] {
     --_bg: transparent;
     --_color: var(--color-primary);
     --_border: var(--color-primary);
   }
 
-  &[data-variant="ghost"] {
+  &[data-variant='ghost'] {
     --_bg: transparent;
     --_color: var(--color-primary);
   }
@@ -211,13 +208,13 @@ Register custom properties to enable transitions and type checking:
 
 ```css
 @property --gradient-angle {
-  syntax: "<angle>";
+  syntax: '<angle>';
   inherits: false;
   initial-value: 0deg;
 }
 
 @property --color-primary-l {
-  syntax: "<percentage>";
+  syntax: '<percentage>';
   inherits: true;
   initial-value: 55%;
 }
@@ -234,7 +231,7 @@ Register custom properties to enable transitions and type checking:
 
 ```css
 @property --angle {
-  syntax: "<angle>";
+  syntax: '<angle>';
   inherits: false;
   initial-value: 0deg;
 }
@@ -288,6 +285,7 @@ Support Windows High Contrast mode. System colors replace your custom colors:
 Key system color keywords: `Canvas`, `CanvasText`, `LinkText`, `ButtonFace`, `ButtonText`, `Highlight`, `HighlightText`, `GrayText`.
 
 Rules in forced-colors mode:
+
 - Custom colors are overridden — don't fight it
 - Borders and outlines become the primary visual indicators
 - Ensure interactive elements remain distinguishable
@@ -298,14 +296,14 @@ Rules in forced-colors mode:
 For brand themes, seasonal themes, or user-customizable themes, use data attributes with full token overrides:
 
 ```css
-[data-theme="ocean"] {
+[data-theme='ocean'] {
   color-scheme: dark;
-  --primary-500: oklch(60% 0.20 230);
+  --primary-500: oklch(60% 0.2 230);
   --color-surface: oklch(18% 0.02 230);
   --color-text: oklch(90% 0.01 230);
 }
 
-[data-theme="forest"] {
+[data-theme='forest'] {
   color-scheme: dark;
   --primary-500: oklch(55% 0.18 150);
   --color-surface: oklch(15% 0.02 150);

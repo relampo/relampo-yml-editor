@@ -20,22 +20,22 @@ El editor ahora soporta completamente el formato YAML de **Pulse** para load tes
 #### Elementos Soportados:
 
 ```yaml
-test:              # Metadatos del test
-variables:         # Variables globales
-data_source:       # Fuentes de datos CSV/JSON
-http_defaults:     # Configuración HTTP por defecto
-scenarios:         # Thread Groups
+test: # Metadatos del test
+variables: # Variables globales
+data_source: # Fuentes de datos CSV/JSON
+http_defaults: # Configuración HTTP por defecto
+scenarios: # Thread Groups
   - scenario:
-      load:        # Configuración de carga
-      cookies:     # Cookie Manager
+      load: # Configuración de carga
+      cookies: # Cookie Manager
       cache_manager:
       error_policy:
-      steps:       # Pasos del test
+      steps: # Pasos del test
         - request: # HTTP Samplers
-        - group:   # Transaction Controller
-        - loop:    # Loop Controller
-        - if:      # If Controller
-        - retry:   # Retry Controller
+        - group: # Transaction Controller
+        - loop: # Loop Controller
+        - if: # If Controller
+        - retry: # Retry Controller
         - think_time:
 ```
 
@@ -49,7 +49,7 @@ Scripts JavaScript que se ejecutan antes/después de cada request.
 
 ```yaml
 - request:
-    name: "Login"
+    name: 'Login'
     method: POST
     url: /api/login
     spark:
@@ -58,7 +58,7 @@ Scripts JavaScript que se ejecutan antes/después de cada request.
           vars.timestamp = Date.now();
           vars.sessionId = Math.random().toString(36);
           console.log("Starting request...");
-      
+
       - when: after
         script: |
           if (response.status === 200) {
@@ -71,15 +71,15 @@ Scripts JavaScript que se ejecutan antes/después de cada request.
 
 #### Variables Disponibles:
 
-| Variable | Disponible | Descripción |
-|----------|------------|-------------|
-| `vars` | before/after | Objeto para almacenar/leer variables |
-| `response` | after only | Objeto con la respuesta |
-| `response.status` | after only | Código HTTP |
-| `response.body` | after only | Cuerpo de la respuesta |
-| `response.headers` | after only | Headers de respuesta |
-| `response.duration_ms` | after only | Tiempo de respuesta |
-| `console.log()` | before/after | Para debugging |
+| Variable               | Disponible   | Descripción                          |
+| ---------------------- | ------------ | ------------------------------------ |
+| `vars`                 | before/after | Objeto para almacenar/leer variables |
+| `response`             | after only   | Objeto con la respuesta              |
+| `response.status`      | after only   | Código HTTP                          |
+| `response.body`        | after only   | Cuerpo de la respuesta               |
+| `response.headers`     | after only   | Headers de respuesta                 |
+| `response.duration_ms` | after only   | Tiempo de respuesta                  |
+| `console.log()`        | before/after | Para debugging                       |
 
 ---
 
@@ -89,16 +89,16 @@ El editor de Spark Scripts incluye:
 
 #### Syntax Highlighting por Colores:
 
-| Elemento | Color | Ejemplo |
-|----------|-------|---------|
-| Keywords | 🟣 Purple | `const`, `let`, `if`, `else`, `return`, `function` |
-| Strings | 🟢 Green | `"hello"`, `'world'`, `` `template` `` |
-| Numbers | 🟠 Orange | `123`, `3.14`, `0xFF` |
-| Built-ins | 🔵 Cyan | `vars`, `response`, `console`, `Math`, `JSON` |
-| Methods | 🟡 Yellow | `.log()`, `.match()`, `.parse()` |
-| Properties | 💗 Pink | `vars.myVar`, `response.status` |
-| Comments | ⚪ Gray | `// comment`, `/* block */` |
-| Operators | ⚪ Gray | `+`, `-`, `===`, `&&`, `||` |
+| Elemento   | Color     | Ejemplo                                            |
+| ---------- | --------- | -------------------------------------------------- | --- | --- |
+| Keywords   | 🟣 Purple | `const`, `let`, `if`, `else`, `return`, `function` |
+| Strings    | 🟢 Green  | `"hello"`, `'world'`, `` `template` ``             |
+| Numbers    | 🟠 Orange | `123`, `3.14`, `0xFF`                              |
+| Built-ins  | 🔵 Cyan   | `vars`, `response`, `console`, `Math`, `JSON`      |
+| Methods    | 🟡 Yellow | `.log()`, `.match()`, `.parse()`                   |
+| Properties | 💗 Pink   | `vars.myVar`, `response.status`                    |
+| Comments   | ⚪ Gray   | `// comment`, `/* block */`                        |
+| Operators  | ⚪ Gray   | `+`, `-`, `===`, `&&`, `                           |     | `   |
 
 #### Validación en Tiempo Real:
 
@@ -140,21 +140,21 @@ extractors:
     var: CSRF_TOKEN
     pattern: "csrf_token='([a-f0-9]{32})'"
     match_no: 1
-    default: "NOT_FOUND"
-  
+    default: 'NOT_FOUND'
+
   - type: jsonpath
     var: USER_ID
-    expression: "$.data.user.id"
+    expression: '$.data.user.id'
 ```
 
 #### Tipos Soportados:
 
-| Tipo | Descripción |
-|------|-------------|
-| `regex` | Expresión regular |
+| Tipo       | Descripción         |
+| ---------- | ------------------- |
+| `regex`    | Expresión regular   |
 | `jsonpath` | JSONPath expression |
-| `xpath` | XPath expression |
-| `boundary` | Boundary extractor |
+| `xpath`    | XPath expression    |
+| `boundary` | Boundary extractor  |
 
 #### Editor Visual:
 
@@ -175,30 +175,30 @@ Validan que las respuestas cumplan expectativas.
 assertions:
   - type: status
     value: 200
-  
+
   - type: contains
-    value: "success"
-  
+    value: 'success'
+
   - type: response_time
     max_ms: 2000
-  
+
   - type: regex
     pattern: "\"status\":\\s*\"ok\""
 ```
 
 #### Tipos de Assertion:
 
-| Tipo | Propiedades | Descripción |
-|------|-------------|-------------|
-| `status` | `value` | Status code exacto |
-| `status_in` | `value[]` | Status en lista |
-| `contains` | `value` | Body contiene texto |
-| `not_contains` | `value` | Body NO contiene texto |
-| `regex` | `pattern` | Body matches regex |
-| `response_time` | `max_ms` | Tiempo máximo |
-| `response_size` | `min_bytes`, `max_bytes` | Tamaño de respuesta |
-| `header` | `name`, `value` | Validar header |
-| `json` | `path`, `value` | Validar valor JSON |
+| Tipo            | Propiedades              | Descripción            |
+| --------------- | ------------------------ | ---------------------- |
+| `status`        | `value`                  | Status code exacto     |
+| `status_in`     | `value[]`                | Status en lista        |
+| `contains`      | `value`                  | Body contiene texto    |
+| `not_contains`  | `value`                  | Body NO contiene texto |
+| `regex`         | `pattern`                | Body matches regex     |
+| `response_time` | `max_ms`                 | Tiempo máximo          |
+| `response_size` | `min_bytes`, `max_bytes` | Tamaño de respuesta    |
+| `header`        | `name`, `value`          | Validar header         |
+| `json`          | `path`, `value`          | Validar valor JSON     |
 
 #### Editor Visual:
 
@@ -213,7 +213,7 @@ assertions:
 
 ```yaml
 - group:
-    name: "Login Flow"
+    name: 'Login Flow'
     steps:
       - request: ...
       - request: ...
@@ -231,7 +231,7 @@ assertions:
 #### If Controller:
 
 ```yaml
-- if: "{{isLoggedIn}} == true"
+- if: '{{isLoggedIn}} == true'
   steps:
     - request: ...
 ```
@@ -282,16 +282,16 @@ Sistema completo de reglas de organización similar a JMeter.
 
 #### Categorías de Nodos:
 
-| Categoría | Elementos | Color |
-|-----------|-----------|-------|
-| Config | test, variables, http_defaults | 🟠 Orange |
-| Scenario | scenario, load, cookies | 🟡 Yellow/Green |
-| Sampler | request, get, post, etc. | 🟢 Emerald |
-| Controller | group, loop, if, retry | 🔵 Indigo/Violet |
-| Pre-Processor | spark_before | 🟠 Orange |
-| Post-Processor | spark_after, extractor | 🟡 Amber/Blue |
-| Assertion | assertion, assert | 🟢 Green |
-| Timer | think_time | 🔵 Cyan |
+| Categoría      | Elementos                      | Color            |
+| -------------- | ------------------------------ | ---------------- |
+| Config         | test, variables, http_defaults | 🟠 Orange        |
+| Scenario       | scenario, load, cookies        | 🟡 Yellow/Green  |
+| Sampler        | request, get, post, etc.       | 🟢 Emerald       |
+| Controller     | group, loop, if, retry         | 🔵 Indigo/Violet |
+| Pre-Processor  | spark_before                   | 🟠 Orange        |
+| Post-Processor | spark_after, extractor         | 🟡 Amber/Blue    |
+| Assertion      | assertion, assert              | 🟢 Green         |
+| Timer          | think_time                     | 🔵 Cyan          |
 
 ---
 
@@ -326,28 +326,28 @@ Sistema completo de reglas de organización similar a JMeter.
 
 ### Iconos Actualizados:
 
-| Tipo | Icono Anterior | Icono Nuevo |
-|------|----------------|-------------|
-| Spark (before/after) | ⚡ Zap | `</>` Code |
+| Tipo                 | Icono Anterior | Icono Nuevo |
+| -------------------- | -------------- | ----------- |
+| Spark (before/after) | ⚡ Zap         | `</>` Code  |
 
 ### Colores por Tipo de Nodo:
 
 ```typescript
 const colors = {
-  'root': 'text-orange-400',
-  'test': 'text-orange-400',
-  'variables': 'text-neutral-400',
-  'data_source': 'text-emerald-400',
-  'scenario': 'text-yellow-400',
-  'request': 'text-emerald-400',
-  'group': 'text-indigo-400',
-  'loop': 'text-violet-400',
-  'if': 'text-pink-400',
-  'spark_before': 'text-orange-400',
-  'spark_after': 'text-amber-400',
-  'extractor': 'text-blue-400',
-  'assertion': 'text-green-400',
-  'think_time': 'text-cyan-400',
+  root: 'text-orange-400',
+  test: 'text-orange-400',
+  variables: 'text-neutral-400',
+  data_source: 'text-emerald-400',
+  scenario: 'text-yellow-400',
+  request: 'text-emerald-400',
+  group: 'text-indigo-400',
+  loop: 'text-violet-400',
+  if: 'text-pink-400',
+  spark_before: 'text-orange-400',
+  spark_after: 'text-amber-400',
+  extractor: 'text-blue-400',
+  assertion: 'text-green-400',
+  think_time: 'text-cyan-400',
 };
 ```
 
@@ -357,24 +357,24 @@ const colors = {
 
 ### Nuevos Archivos:
 
-| Archivo | Descripción |
-|---------|-------------|
+| Archivo                              | Descripción                              |
+| ------------------------------------ | ---------------------------------------- |
 | `src/components/SparkCodeEditor.tsx` | Editor de código con syntax highlighting |
-| `docs/PULSE_FORMAT_SUPPORT.md` | Documentación del formato Pulse |
-| `docs/HIERARCHY_RULES.md` | Reglas de jerarquía y drag-drop |
-| `docs/CHANGELOG.md` | Este documento |
+| `docs/PULSE_FORMAT_SUPPORT.md`       | Documentación del formato Pulse          |
+| `docs/HIERARCHY_RULES.md`            | Reglas de jerarquía y drag-drop          |
+| `docs/CHANGELOG.md`                  | Este documento                           |
 
 ### Archivos Modificados:
 
-| Archivo | Cambios |
-|---------|---------|
-| `src/types/yaml.ts` | Nuevos tipos: `spark`, `spark_before`, `spark_after` |
-| `src/utils/yamlParser.ts` | Parser bidireccional YAML ↔ Tree |
-| `src/utils/yamlDragDropRules.ts` | Reglas completas estilo JMeter |
-| `src/components/YAMLTreeNode.tsx` | Iconos y colores para nuevos tipos |
-| `src/components/YAMLNodeDetails.tsx` | Detalles editables para Spark/Assertion/Extractor |
-| `src/components/YAMLRequestDetails.tsx` | Vista de Spark, Extractors, Assertions |
-| `src/components/YAMLEditor.tsx` | YAML de ejemplo actualizado |
+| Archivo                                 | Cambios                                              |
+| --------------------------------------- | ---------------------------------------------------- |
+| `src/types/yaml.ts`                     | Nuevos tipos: `spark`, `spark_before`, `spark_after` |
+| `src/utils/yamlParser.ts`               | Parser bidireccional YAML ↔ Tree                     |
+| `src/utils/yamlDragDropRules.ts`        | Reglas completas estilo JMeter                       |
+| `src/components/YAMLTreeNode.tsx`       | Iconos y colores para nuevos tipos                   |
+| `src/components/YAMLNodeDetails.tsx`    | Detalles editables para Spark/Assertion/Extractor    |
+| `src/components/YAMLRequestDetails.tsx` | Vista de Spark, Extractors, Assertions               |
+| `src/components/YAMLEditor.tsx`         | YAML de ejemplo actualizado                          |
 
 ---
 

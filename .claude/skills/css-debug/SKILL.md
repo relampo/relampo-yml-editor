@@ -36,15 +36,15 @@ Debug Progress:
 
 Determine which category the bug falls into:
 
-| Category | Symptoms |
-|----------|----------|
-| **Specificity** | Style not applying, wrong color/size, `!important` needed to override |
-| **Inheritance** | Child element has unexpected value, property "leaking" |
-| **Layout** | Wrong size, unexpected overflow, collapsing margins, broken alignment |
-| **Stacking** | Element behind/in front of wrong element, z-index not working |
-| **Custom properties** | Variable not resolving, wrong value, fallback showing |
-| **Containment** | Container queries not firing, layout shifts, sizing anomalies |
-| **Performance** | Janky animations, layout shifts, long paint times |
+| Category              | Symptoms                                                              |
+| --------------------- | --------------------------------------------------------------------- |
+| **Specificity**       | Style not applying, wrong color/size, `!important` needed to override |
+| **Inheritance**       | Child element has unexpected value, property "leaking"                |
+| **Layout**            | Wrong size, unexpected overflow, collapsing margins, broken alignment |
+| **Stacking**          | Element behind/in front of wrong element, z-index not working         |
+| **Custom properties** | Variable not resolving, wrong value, fallback showing                 |
+| **Containment**       | Container queries not firing, layout shifts, sizing anomalies         |
+| **Performance**       | Janky animations, layout shifts, long paint times                     |
 
 Ask the user which category applies if unclear from their description.
 
@@ -54,11 +54,17 @@ Identify the specific element(s) and file(s) involved. Use the outline technique
 
 ```css
 /* Nuclear option — outline every element */
-* { outline: 1px solid oklch(60% 0.25 0 / 0.3); }
+* {
+  outline: 1px solid oklch(60% 0.25 0 / 0.3);
+}
 
 /* Targeted — outline specific container */
-.suspect { outline: 2px solid red; }
-.suspect * { outline: 1px solid blue; }
+.suspect {
+  outline: 2px solid red;
+}
+.suspect * {
+  outline: 1px solid blue;
+}
 ```
 
 Outlines don't affect layout (unlike borders), making them ideal for debugging.
@@ -66,9 +72,15 @@ Outlines don't affect layout (unlike borders), making them ideal for debugging.
 ### Scoped Debugging Utility
 
 ```css
-[data-debug] { outline: 2px dashed oklch(60% 0.25 25); }
-[data-debug] > * { outline: 1px solid oklch(60% 0.20 250); }
-[data-debug] > * > * { outline: 1px solid oklch(60% 0.15 150); }
+[data-debug] {
+  outline: 2px dashed oklch(60% 0.25 25);
+}
+[data-debug] > * {
+  outline: 1px solid oklch(60% 0.2 250);
+}
+[data-debug] > * > * {
+  outline: 1px solid oklch(60% 0.15 150);
+}
 ```
 
 Add `data-debug` to any element in HTML to visualize its box tree without layout side effects.
@@ -118,6 +130,7 @@ For inherited properties (`color`, `font-size`, `line-height`, `font-family`, `c
 ### Non-Inheriting Properties
 
 These do NOT inherit (common surprises):
+
 - `background` — transparent by default, doesn't inherit
 - `border` — none by default
 - `padding`, `margin` — 0 by default
@@ -244,7 +257,7 @@ Stacking contexts are created by:
 ### Common Issues
 
 **Problem**: Custom property shows as "invalid value."
-**Cause**: The property resolves to a value that's invalid for the CSS property it's used in. Custom properties are resolved at *computed value time*, not parse time.
+**Cause**: The property resolves to a value that's invalid for the CSS property it's used in. Custom properties are resolved at _computed value time_, not parse time.
 
 **Problem**: `var()` fallback is showing instead of the variable value.
 **Cause**: The property is not set on the element or any ancestor. Check spelling, check scope.
@@ -327,14 +340,14 @@ WHY: [explain why this fixes it]
 
 ## Quick Reference: Diagnostic Commands
 
-| Technique | CSS |
-|-----------|-----|
-| Outline everything | `* { outline: 1px solid red; }` |
-| Show overflow | `* { outline: 1px solid red; overflow: visible !important; }` |
-| Highlight stacking | `* { position: relative; outline: 1px solid blue; }` |
-| Show empty elements | `*:empty { outline: 2px dashed orange; }` |
-| Highlight focus order | `:focus { outline: 3px solid lime !important; }` |
-| Show box sizing | `* { background: oklch(60% 0.2 0 / 0.05); }` |
+| Technique             | CSS                                                           |
+| --------------------- | ------------------------------------------------------------- |
+| Outline everything    | `* { outline: 1px solid red; }`                               |
+| Show overflow         | `* { outline: 1px solid red; overflow: visible !important; }` |
+| Highlight stacking    | `* { position: relative; outline: 1px solid blue; }`          |
+| Show empty elements   | `*:empty { outline: 2px dashed orange; }`                     |
+| Highlight focus order | `:focus { outline: 3px solid lime !important; }`              |
+| Show box sizing       | `* { background: oklch(60% 0.2 0 / 0.05); }`                  |
 
 ## Rules
 

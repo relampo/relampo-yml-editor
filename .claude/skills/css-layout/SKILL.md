@@ -62,25 +62,33 @@ Use when you have a semantic, named layout with distinct regions.
 .page {
   display: grid;
   grid-template:
-    "header  header"  auto
-    "sidebar main"    1fr
-    "footer  footer"  auto
+    'header  header' auto
+    'sidebar main' 1fr
+    'footer  footer' auto
     / minmax(200px, 300px) 1fr;
   min-height: 100dvh;
 }
 
-.header  { grid-area: header; }
-.sidebar { grid-area: sidebar; }
-.main    { grid-area: main; }
-.footer  { grid-area: footer; }
+.header {
+  grid-area: header;
+}
+.sidebar {
+  grid-area: sidebar;
+}
+.main {
+  grid-area: main;
+}
+.footer {
+  grid-area: footer;
+}
 
 @media (max-width: 48em) {
   .page {
     grid-template:
-      "header"  auto
-      "main"    1fr
-      "sidebar" auto
-      "footer"  auto
+      'header' auto
+      'main' 1fr
+      'sidebar' auto
+      'footer' auto
       / 1fr;
   }
 }
@@ -133,8 +141,12 @@ Use for masonry-like packing when items have varying sizes.
   gap: var(--space-xs);
 }
 
-.gallery-item--wide { grid-column: span 2; }
-.gallery-item--tall { grid-row: span 2; }
+.gallery-item--wide {
+  grid-column: span 2;
+}
+.gallery-item--tall {
+  grid-row: span 2;
+}
 ```
 
 ## Flexbox Patterns
@@ -149,7 +161,9 @@ Use for masonry-like packing when items have varying sizes.
   flex-wrap: wrap;
 }
 
-.nav-spacer { margin-inline-start: auto; }
+.nav-spacer {
+  margin-inline-start: auto;
+}
 ```
 
 ### Wrapping Tag List
@@ -169,7 +183,9 @@ Use for masonry-like packing when items have varying sizes.
   display: flex;
   gap: var(--space-m);
 
-  > * { flex: 1; }
+  > * {
+    flex: 1;
+  }
 }
 ```
 
@@ -182,7 +198,9 @@ body {
   min-height: 100dvh;
 }
 
-main { flex: 1; }
+main {
+  flex: 1;
+}
 ```
 
 ## Centering Patterns
@@ -236,9 +254,9 @@ Header, footer, sidebar, and main content with the content area taking remaining
 body {
   display: grid;
   grid-template:
-    "header header" auto
-    "nav    main"   1fr
-    "footer footer" auto
+    'header header' auto
+    'nav    main' 1fr
+    'footer footer' auto
     / minmax(200px, 20%) 1fr;
   min-height: 100dvh;
 }
@@ -254,7 +272,9 @@ body {
 }
 
 @media (max-width: 48em) {
-  .layout { grid-template-columns: 1fr; }
+  .layout {
+    grid-template-columns: 1fr;
+  }
 }
 ```
 
@@ -269,8 +289,15 @@ The sidebar takes its natural width, main content gets the rest.
   gap: var(--space-l);
 }
 
-.with-sidebar > :first-child { flex-basis: 250px; flex-grow: 1; }
-.with-sidebar > :last-child  { flex-basis: 0; flex-grow: 999; min-inline-size: 60%; }
+.with-sidebar > :first-child {
+  flex-basis: 250px;
+  flex-grow: 1;
+}
+.with-sidebar > :last-child {
+  flex-basis: 0;
+  flex-grow: 999;
+  min-inline-size: 60%;
+}
 ```
 
 ### Pancake Stack
@@ -332,18 +359,18 @@ Use container queries for component-level responsiveness. Media queries are for 
 
 Always use logical properties instead of physical ones.
 
-| Physical | Logical |
-|----------|---------|
-| `width` | `inline-size` |
-| `height` | `block-size` |
-| `margin-left` | `margin-inline-start` |
-| `margin-right` | `margin-inline-end` |
-| `margin-top` | `margin-block-start` |
-| `padding-left` | `padding-inline-start` |
-| `top` | `inset-block-start` |
-| `left` | `inset-inline-start` |
-| `text-align: left` | `text-align: start` |
-| `border-left` | `border-inline-start` |
+| Physical           | Logical                |
+| ------------------ | ---------------------- |
+| `width`            | `inline-size`          |
+| `height`           | `block-size`           |
+| `margin-left`      | `margin-inline-start`  |
+| `margin-right`     | `margin-inline-end`    |
+| `margin-top`       | `margin-block-start`   |
+| `padding-left`     | `padding-inline-start` |
+| `top`              | `inset-block-start`    |
+| `left`             | `inset-inline-start`   |
+| `text-align: left` | `text-align: start`    |
+| `border-left`      | `border-inline-start`  |
 
 ```css
 .element {

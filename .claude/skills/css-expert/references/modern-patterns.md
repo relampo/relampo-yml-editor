@@ -10,9 +10,9 @@ Comprehensive catalog of modern CSS patterns that css.dev skills should prefer. 
 .page {
   display: grid;
   grid-template:
-    "header header" auto
-    "sidebar main" 1fr
-    "footer footer" auto
+    'header header' auto
+    'sidebar main' 1fr
+    'footer footer' auto
     / 250px 1fr;
 }
 ```
@@ -116,7 +116,7 @@ body {
     --_bg: color-mix(in oklch, var(--color-primary), black 15%);
   }
 
-  &[data-variant="ghost"] {
+  &[data-variant='ghost'] {
     --_bg: transparent;
     --_color: var(--color-primary);
   }
@@ -129,16 +129,26 @@ body {
 @layer reset, tokens, base, layout, components, utilities;
 
 @layer reset {
-  *, *::before, *::after { box-sizing: border-box; }
-  * { margin: 0; }
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+  * {
+    margin: 0;
+  }
 }
 
 @layer tokens {
-  :root { /* design tokens here */ }
+  :root {
+    /* design tokens here */
+  }
 }
 
 @layer components {
-  .card { /* component styles */ }
+  .card {
+    /* component styles */
+  }
 }
 
 @layer utilities {
@@ -174,10 +184,14 @@ body {
 
 ```css
 /* :is() — grouped selectors with specificity of the highest */
-:is(h1, h2, h3) { line-height: 1.2; }
+:is(h1, h2, h3) {
+  line-height: 1.2;
+}
 
 /* :where() — same grouping but zero specificity */
-:where(.prose) :where(h1, h2, h3) { margin-block-start: var(--space-l); }
+:where(.prose) :where(h1, h2, h3) {
+  margin-block-start: var(--space-l);
+}
 ```
 
 ### Nesting
@@ -213,11 +227,17 @@ body {
 }
 
 @container sidebar (inline-size > 400px) {
-  .widget { display: grid; grid-template-columns: 1fr 1fr; }
+  .widget {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 @container sidebar (inline-size <= 400px) {
-  .widget { display: flex; flex-direction: column; }
+  .widget {
+    display: flex;
+    flex-direction: column;
+  }
 }
 ```
 
@@ -229,8 +249,12 @@ body {
   line-height: 1.6;
 }
 
-h1 { font-size: clamp(2rem, 1.5rem + 2.5vw, 3.5rem); }
-h2 { font-size: clamp(1.5rem, 1.25rem + 1.25vw, 2.25rem); }
+h1 {
+  font-size: clamp(2rem, 1.5rem + 2.5vw, 3.5rem);
+}
+h2 {
+  font-size: clamp(1.5rem, 1.25rem + 1.25vw, 2.25rem);
+}
 ```
 
 ### Logical Properties
@@ -286,8 +310,14 @@ h2 { font-size: clamp(1.5rem, 1.25rem + 1.25vw, 2.25rem); }
 
 ```css
 @keyframes fade-in {
-  from { opacity: 0; translate: 0 2rem; }
-  to { opacity: 1; translate: 0; }
+  from {
+    opacity: 0;
+    translate: 0 2rem;
+  }
+  to {
+    opacity: 1;
+    translate: 0;
+  }
 }
 
 .reveal {
@@ -305,14 +335,19 @@ h2 { font-size: clamp(1.5rem, 1.25rem + 1.25vw, 2.25rem); }
   animation-duration: 200ms;
 }
 
-.hero { view-transition-name: hero; }
+.hero {
+  view-transition-name: hero;
+}
 ```
 
 ### Performance-Safe Transitions
 
 ```css
 .card {
-  transition: transform 200ms ease, opacity 200ms ease, box-shadow 200ms ease;
+  transition:
+    transform 200ms ease,
+    opacity 200ms ease,
+    box-shadow 200ms ease;
 
   &:hover {
     transform: translateY(-2px);
@@ -327,28 +362,35 @@ h2 { font-size: clamp(1.5rem, 1.25rem + 1.25vw, 2.25rem); }
 
 ```css
 @font-face {
-  font-family: "Inter";
-  src: url("inter-variable.woff2") format("woff2-variations");
+  font-family: 'Inter';
+  src: url('inter-variable.woff2') format('woff2-variations');
   font-weight: 100 900;
   font-display: swap;
 }
 
 body {
-  font-family: "Inter", system-ui, sans-serif;
+  font-family: 'Inter', system-ui, sans-serif;
   font-optical-sizing: auto;
 }
 
-h1 { font-variation-settings: "wght" 750; }
+h1 {
+  font-variation-settings: 'wght' 750;
+}
 ```
 
 ### System Font Stack
 
 ```css
 body {
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
 }
 
 code {
-  font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, monospace;
+  font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, monospace;
 }
 ```

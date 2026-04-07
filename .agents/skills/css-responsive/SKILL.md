@@ -77,12 +77,12 @@ Apply in this order — each layer reduces the need for the next:
 
 ### Container Query Units
 
-| Unit | Meaning |
-|------|---------|
-| `cqi` | 1% of container inline size |
-| `cqb` | 1% of container block size |
-| `cqmin` | smaller of `cqi` and `cqb` |
-| `cqmax` | larger of `cqi` and `cqb` |
+| Unit    | Meaning                     |
+| ------- | --------------------------- |
+| `cqi`   | 1% of container inline size |
+| `cqb`   | 1% of container block size  |
+| `cqmin` | smaller of `cqi` and `cqb`  |
+| `cqmax` | larger of `cqi` and `cqb`   |
 
 ```css
 .card-title {
@@ -99,7 +99,10 @@ Apply in this order — each layer reduces the need for the next:
 }
 
 @container sidebar (inline-size > 300px) {
-  .widget { display: grid; grid-template-columns: 1fr 1fr; }
+  .widget {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
 }
 ```
 
@@ -114,7 +117,9 @@ Use media queries only for page-level layout shifts.
   .page {
     grid-template-columns: 1fr;
   }
-  .sidebar { display: none; }
+  .sidebar {
+    display: none;
+  }
 }
 ```
 
@@ -128,9 +133,15 @@ Use media queries only for page-level layout shifts.
 ### Recommended Breakpoints (if needed)
 
 ```css
-/* Compact */    @media (max-width: 48em) { }
-/* Medium */     @media (min-width: 48em) and (max-width: 64em) { }
-/* Expanded */   @media (min-width: 64em) { }
+/* Compact */
+@media (max-width: 48em) {
+}
+/* Medium */
+@media (min-width: 48em) and (max-width: 64em) {
+}
+/* Expanded */
+@media (min-width: 64em) {
+}
 ```
 
 ## Fluid Typography
@@ -141,10 +152,10 @@ Use `clamp()` for font sizes that scale smoothly between a minimum and maximum.
 
 ```css
 :root {
-  --text-sm:  clamp(0.8rem, 0.75rem + 0.25vw, 0.875rem);
+  --text-sm: clamp(0.8rem, 0.75rem + 0.25vw, 0.875rem);
   --text-base: clamp(1rem, 0.925rem + 0.375vw, 1.125rem);
-  --text-lg:  clamp(1.125rem, 1rem + 0.625vw, 1.375rem);
-  --text-xl:  clamp(1.25rem, 1.1rem + 0.75vw, 1.625rem);
+  --text-lg: clamp(1.125rem, 1rem + 0.625vw, 1.375rem);
+  --text-xl: clamp(1.25rem, 1.1rem + 0.75vw, 1.625rem);
   --text-2xl: clamp(1.5rem, 1.25rem + 1.25vw, 2.25rem);
   --text-3xl: clamp(2rem, 1.5rem + 2.5vw, 3.5rem);
 }
@@ -165,9 +176,9 @@ clamp(minimum, preferred, maximum)
 ```css
 :root {
   --space-xs: clamp(0.5rem, 0.4rem + 0.5vw, 0.75rem);
-  --space-s:  clamp(0.75rem, 0.6rem + 0.75vw, 1rem);
-  --space-m:  clamp(1rem, 0.8rem + 1vw, 1.5rem);
-  --space-l:  clamp(1.5rem, 1.2rem + 1.5vw, 2rem);
+  --space-s: clamp(0.75rem, 0.6rem + 0.75vw, 1rem);
+  --space-m: clamp(1rem, 0.8rem + 1vw, 1.5rem);
+  --space-l: clamp(1.5rem, 1.2rem + 1.5vw, 2rem);
   --space-xl: clamp(2rem, 1.6rem + 2vw, 3rem);
   --space-2xl: clamp(3rem, 2.4rem + 3vw, 4.5rem);
 }
@@ -180,12 +191,7 @@ clamp(minimum, preferred, maximum)
 ```html
 <img
   src="image-800.jpg"
-  srcset="
-    image-400.jpg 400w,
-    image-800.jpg 800w,
-    image-1200.jpg 1200w,
-    image-1600.jpg 1600w
-  "
+  srcset="image-400.jpg 400w, image-800.jpg 800w, image-1200.jpg 1200w, image-1600.jpg 1600w"
   sizes="
     (max-width: 48em) 100vw,
     (max-width: 64em) 50vw,
@@ -194,7 +200,7 @@ clamp(minimum, preferred, maximum)
   alt="Description"
   loading="lazy"
   decoding="async"
->
+/>
 ```
 
 ### Art Direction with `<picture>`
@@ -205,18 +211,18 @@ clamp(minimum, preferred, maximum)
     media="(min-width: 64em)"
     srcset="hero-wide.avif"
     type="image/avif"
-  >
+  />
   <source
     media="(min-width: 48em)"
     srcset="hero-medium.avif"
     type="image/avif"
-  >
+  />
   <img
     src="hero-narrow.jpg"
     alt="Description"
     loading="lazy"
     decoding="async"
-  >
+  />
 </picture>
 ```
 
@@ -241,12 +247,12 @@ img {
 
 ### Modern Viewport Units
 
-| Unit | Meaning |
-|------|---------|
+| Unit  | Meaning                                                      |
+| ----- | ------------------------------------------------------------ |
 | `dvh` | Dynamic viewport height (accounts for mobile browser chrome) |
-| `svh` | Small viewport height (smallest possible viewport) |
-| `lvh` | Large viewport height (largest possible viewport) |
-| `dvw` | Dynamic viewport width |
+| `svh` | Small viewport height (smallest possible viewport)           |
+| `lvh` | Large viewport height (largest possible viewport)            |
+| `dvw` | Dynamic viewport width                                       |
 
 ### Usage
 
@@ -295,8 +301,12 @@ img {
 ### min-content / max-content
 
 ```css
-.nav { inline-size: max-content; }
-.label { inline-size: min-content; }
+.nav {
+  inline-size: max-content;
+}
+.label {
+  inline-size: min-content;
+}
 ```
 
 ## Logical Properties
@@ -332,7 +342,9 @@ Full mapping reference in the [css-layout](../css-layout/SKILL.md) skill.
 
 ```css
 @media (prefers-color-scheme: dark) {
-  .logo { filter: brightness(1.2); }
+  .logo {
+    filter: brightness(1.2);
+  }
 }
 ```
 
@@ -340,7 +352,9 @@ Full mapping reference in the [css-layout](../css-layout/SKILL.md) skill.
 
 ```css
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
@@ -396,14 +410,18 @@ Use `clamp()` for spacing that scales between viewports without breakpoints:
 ```css
 :root {
   --space-xs: clamp(0.5rem, 0.4rem + 0.5vw, 0.75rem);
-  --space-s:  clamp(0.75rem, 0.6rem + 0.75vw, 1rem);
-  --space-m:  clamp(1rem, 0.8rem + 1vw, 1.5rem);
-  --space-l:  clamp(1.5rem, 1.2rem + 1.5vw, 2rem);
+  --space-s: clamp(0.75rem, 0.6rem + 0.75vw, 1rem);
+  --space-m: clamp(1rem, 0.8rem + 1vw, 1.5rem);
+  --space-l: clamp(1.5rem, 1.2rem + 1.5vw, 2rem);
   --space-xl: clamp(2rem, 1.6rem + 2vw, 3rem);
 }
 
-section { padding-block: var(--space-xl); }
-.stack > * + * { margin-block-start: var(--space-m); }
+section {
+  padding-block: var(--space-xl);
+}
+.stack > * + * {
+  margin-block-start: var(--space-m);
+}
 ```
 
 ## Checklist Before Delivering

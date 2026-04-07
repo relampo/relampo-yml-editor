@@ -59,82 +59,90 @@ Este documento describe las reglas de jerarquía y organización de elementos, s
 ## 📦 Categorías de Elementos
 
 ### 🔧 Config Elements (Nivel Root)
+
 Elementos de configuración global del test.
 
-| Elemento | Descripción | Equivalente JMeter |
-|----------|-------------|-------------------|
-| `test` | Metadatos del test (name, description, version) | Test Plan |
-| `variables` | Variables definidas por el usuario | User Defined Variables |
-| `data_source` | Fuente de datos CSV/JSON | CSV Data Set Config |
-| `http_defaults` | Configuración HTTP por defecto | HTTP Request Defaults |
-| `metrics` | Configuración de métricas | Listeners |
+| Elemento        | Descripción                                     | Equivalente JMeter     |
+| --------------- | ----------------------------------------------- | ---------------------- |
+| `test`          | Metadatos del test (name, description, version) | Test Plan              |
+| `variables`     | Variables definidas por el usuario              | User Defined Variables |
+| `data_source`   | Fuente de datos CSV/JSON                        | CSV Data Set Config    |
+| `http_defaults` | Configuración HTTP por defecto                  | HTTP Request Defaults  |
+| `metrics`       | Configuración de métricas                       | Listeners              |
 
 ### 🧵 Scenario Elements
+
 Elementos que configuran un escenario (Thread Group).
 
-| Elemento | Descripción | Equivalente JMeter |
-|----------|-------------|-------------------|
-| `scenario` | Un escenario de prueba | Thread Group |
-| `load` | Configuración de carga | Thread Group Properties |
-| `cookies` | Gestión de cookies | HTTP Cookie Manager |
-| `cache_manager` | Gestión de caché | HTTP Cache Manager |
-| `error_policy` | Política de errores | - |
+| Elemento        | Descripción            | Equivalente JMeter      |
+| --------------- | ---------------------- | ----------------------- |
+| `scenario`      | Un escenario de prueba | Thread Group            |
+| `load`          | Configuración de carga | Thread Group Properties |
+| `cookies`       | Gestión de cookies     | HTTP Cookie Manager     |
+| `cache_manager` | Gestión de caché       | HTTP Cache Manager      |
+| `error_policy`  | Política de errores    | -                       |
 
 ### 🌐 HTTP Samplers
+
 Elementos que realizan peticiones HTTP.
 
-| Elemento | Descripción | Equivalente JMeter |
-|----------|-------------|-------------------|
-| `request` | Petición HTTP completa | HTTP Request |
-| `get` | GET shorthand | HTTP Request (GET) |
-| `post` | POST shorthand | HTTP Request (POST) |
-| `put` | PUT shorthand | HTTP Request (PUT) |
-| `delete` | DELETE shorthand | HTTP Request (DELETE) |
-| `patch` | PATCH shorthand | HTTP Request (PATCH) |
-| `head` | HEAD shorthand | HTTP Request (HEAD) |
-| `options` | OPTIONS shorthand | HTTP Request (OPTIONS) |
+| Elemento  | Descripción            | Equivalente JMeter     |
+| --------- | ---------------------- | ---------------------- |
+| `request` | Petición HTTP completa | HTTP Request           |
+| `get`     | GET shorthand          | HTTP Request (GET)     |
+| `post`    | POST shorthand         | HTTP Request (POST)    |
+| `put`     | PUT shorthand          | HTTP Request (PUT)     |
+| `delete`  | DELETE shorthand       | HTTP Request (DELETE)  |
+| `patch`   | PATCH shorthand        | HTTP Request (PATCH)   |
+| `head`    | HEAD shorthand         | HTTP Request (HEAD)    |
+| `options` | OPTIONS shorthand      | HTTP Request (OPTIONS) |
 
 ### 🎛️ Logic Controllers
+
 Elementos que controlan el flujo de ejecución.
 
-| Elemento | Descripción | Equivalente JMeter |
-|----------|-------------|-------------------|
-| `group` | Agrupa steps relacionados | Transaction Controller |
-| `simple` | Controlador simple | Simple Controller |
-| `loop` | Repite N veces | Loop Controller |
-| `if` | Ejecución condicional | If Controller |
-| `retry` | Reintenta en caso de error | - |
+| Elemento | Descripción                | Equivalente JMeter     |
+| -------- | -------------------------- | ---------------------- |
+| `group`  | Agrupa steps relacionados  | Transaction Controller |
+| `simple` | Controlador simple         | Simple Controller      |
+| `loop`   | Repite N veces             | Loop Controller        |
+| `if`     | Ejecución condicional      | If Controller          |
+| `retry`  | Reintenta en caso de error | -                      |
 
 ### ⚡ Pre-Processors
+
 Elementos que se ejecutan ANTES del sampler.
 
-| Elemento | Descripción | Equivalente JMeter |
-|----------|-------------|-------------------|
+| Elemento       | Descripción                   | Equivalente JMeter  |
+| -------------- | ----------------------------- | ------------------- |
 | `spark_before` | Script JavaScript pre-request | JSR223 PreProcessor |
 
 ### 🔄 Post-Processors
+
 Elementos que se ejecutan DESPUÉS del sampler.
 
-| Elemento | Descripción | Equivalente JMeter |
-|----------|-------------|-------------------|
+| Elemento      | Descripción                    | Equivalente JMeter   |
+| ------------- | ------------------------------ | -------------------- |
 | `spark_after` | Script JavaScript post-request | JSR223 PostProcessor |
-| `extractor` | Extrae valores de la respuesta | JSON/Regex Extractor |
-| `extract` | Formato legacy de extractor | - |
+| `extractor`   | Extrae valores de la respuesta | JSON/Regex Extractor |
+| `extract`     | Formato legacy de extractor    | -                    |
 
 ### ✅ Assertions
+
 Elementos que validan las respuestas.
 
-| Elemento | Descripción | Equivalente JMeter |
-|----------|-------------|-------------------|
-| `assertion` | Validación de respuesta | Response Assertion |
-| `assert` | Formato legacy de assertion | - |
+| Elemento    | Descripción                 | Equivalente JMeter |
+| ----------- | --------------------------- | ------------------ |
+| `assertion` | Validación de respuesta     | Response Assertion |
+| `assert`    | Formato legacy de assertion | -                  |
 
 ### ⏱️ Timers
+
 Elementos que agregan pausas.
 
-| Elemento | Descripción | Equivalente JMeter |
-|----------|-------------|-------------------|
-| `think_time` | Pausa entre requests | Constant Timer |
+| Elemento     | Descripción          | Equivalente JMeter |
+| ------------ | -------------------- | ------------------ |
+| `think_time` | Pausa entre requests | Constant Timer     |
 
 ---
 
@@ -173,27 +181,29 @@ Elementos que agregan pausas.
 ## 🔄 Reglas de Drag & Drop
 
 ### Reglas de "Siblings" (Hermanos)
+
 Elementos que pueden estar al mismo nivel y reordenarse entre sí:
 
-| Grupo | Elementos |
-|-------|-----------|
-| Root Level | test, variables, data_source, http_defaults, scenarios, metrics |
-| Scenarios | scenario (solo entre otros scenarios) |
-| Scenario Config | load, cookies, cache_manager, error_policy |
-| Steps | request, get, post, ..., group, loop, if, retry, think_time |
-| Sampler Children | spark_before, spark_after, extractor, assertion, think_time |
+| Grupo            | Elementos                                                       |
+| ---------------- | --------------------------------------------------------------- |
+| Root Level       | test, variables, data_source, http_defaults, scenarios, metrics |
+| Scenarios        | scenario (solo entre otros scenarios)                           |
+| Scenario Config  | load, cookies, cache_manager, error_policy                      |
+| Steps            | request, get, post, ..., group, loop, if, retry, think_time     |
+| Sampler Children | spark_before, spark_after, extractor, assertion, think_time     |
 
 ### Operaciones de Drop
 
-| Posición | Descripción | Regla |
-|----------|-------------|-------|
-| `inside` | Soltar DENTRO de un contenedor | Verificar `canContain()` |
-| `before` | Soltar ANTES de un elemento | Verificar `canBeSiblings()` |
-| `after` | Soltar DESPUÉS de un elemento | Verificar `canBeSiblings()` |
+| Posición | Descripción                    | Regla                       |
+| -------- | ------------------------------ | --------------------------- |
+| `inside` | Soltar DENTRO de un contenedor | Verificar `canContain()`    |
+| `before` | Soltar ANTES de un elemento    | Verificar `canBeSiblings()` |
+| `after`  | Soltar DESPUÉS de un elemento  | Verificar `canBeSiblings()` |
 
 ### Elementos Inmovibles
 
 Los siguientes elementos NO pueden ser arrastrados:
+
 - `root` - El nodo raíz del test
 - `test` - Metadatos del test (siempre primero)
 - `scenarios` - Contenedor de scenarios
@@ -207,24 +217,24 @@ Los siguientes elementos NO pueden ser arrastrados:
 
 ```yaml
 - request:
-    name: "Login"
+    name: 'Login'
     method: POST
     url: /api/login
-    spark:                    # ⚡ Pre/Post processors
+    spark: # ⚡ Pre/Post processors
       - when: before
         script: |
           vars.timestamp = Date.now();
       - when: after
         script: |
           vars.token = response.body.match(/token=(\w+)/)[1];
-    extractors:               # 🔍 Extractors
+    extractors: # 🔍 Extractors
       - type: regex
         var: TOKEN
-        pattern: "token=([a-f0-9]+)"
-    assertions:               # ✅ Assertions
+        pattern: 'token=([a-f0-9]+)'
+    assertions: # ✅ Assertions
       - type: status
         value: 200
-    think_time: "3s"          # ⏱️ Timer
+    think_time: '3s' # ⏱️ Timer
 ```
 
 ### ✅ Correcto: Controllers anidados
@@ -232,25 +242,25 @@ Los siguientes elementos NO pueden ser arrastrados:
 ```yaml
 steps:
   - group:
-      name: "Authentication"
+      name: 'Authentication'
       steps:
         - request:
-            name: "Get Token"
+            name: 'Get Token'
             method: GET
             url: /token
-        
+
         - loop: 3
           steps:
             - request:
-                name: "Retry Login"
+                name: 'Retry Login'
                 method: POST
                 url: /login
             - think_time: 1s
-        
-        - if: "{{loginSuccess}} == true"
+
+        - if: '{{loginSuccess}} == true'
           steps:
             - request:
-                name: "Dashboard"
+                name: 'Dashboard'
                 method: GET
                 url: /dashboard
 ```
@@ -308,27 +318,27 @@ const result = validateTreeStructure(tree);
 
 El editor usa colores para identificar categorías:
 
-| Categoría | Color | Icono |
-|-----------|-------|-------|
-| Root/Test | 🟠 Orange | 📋 |
-| Variables | ⚪ Neutral | 📦 |
-| Data Source | 🟢 Emerald | 🗄️ |
-| HTTP Defaults | ⚪ Neutral | ⚙️ |
-| Scenarios | 🟣 Purple | 📂 |
-| Scenario | 🟡 Yellow | ⚡ |
-| Load | 🟢 Green | 📊 |
-| Steps | 🟠 Orange | 📋 |
-| Request | 🟢 Emerald | 🌐 |
-| Group | 🔵 Indigo | 📦 |
-| Loop | 🟣 Violet | 🔄 |
-| If | 💗 Pink | ❓ |
-| Retry | 🟡 Amber | 🔁 |
-| Spark Before | 🟠 Orange | ⚡ |
-| Spark After | 🟡 Amber | ⚡ |
-| Extractor | 🔵 Blue | 🔍 |
-| Assertion | 🟢 Green | ✅ |
-| Think Time | 🔵 Cyan | ⏱️ |
-| Cookies | 💗 Pink | 🍪 |
+| Categoría     | Color      | Icono |
+| ------------- | ---------- | ----- |
+| Root/Test     | 🟠 Orange  | 📋    |
+| Variables     | ⚪ Neutral | 📦    |
+| Data Source   | 🟢 Emerald | 🗄️    |
+| HTTP Defaults | ⚪ Neutral | ⚙️    |
+| Scenarios     | 🟣 Purple  | 📂    |
+| Scenario      | 🟡 Yellow  | ⚡    |
+| Load          | 🟢 Green   | 📊    |
+| Steps         | 🟠 Orange  | 📋    |
+| Request       | 🟢 Emerald | 🌐    |
+| Group         | 🔵 Indigo  | 📦    |
+| Loop          | 🟣 Violet  | 🔄    |
+| If            | 💗 Pink    | ❓    |
+| Retry         | 🟡 Amber   | 🔁    |
+| Spark Before  | 🟠 Orange  | ⚡    |
+| Spark After   | 🟡 Amber   | ⚡    |
+| Extractor     | 🔵 Blue    | 🔍    |
+| Assertion     | 🟢 Green   | ✅    |
+| Think Time    | 🔵 Cyan    | ⏱️    |
+| Cookies       | 💗 Pink    | 🍪    |
 
 ---
 

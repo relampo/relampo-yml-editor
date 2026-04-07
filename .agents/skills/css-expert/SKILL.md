@@ -9,7 +9,7 @@ description: |
 license: MIT
 metadata:
   author: css-dev
-  version: "1.0"
+  version: '1.0'
 ---
 
 # css.dev — Expert CSS Guidance
@@ -117,7 +117,9 @@ Prefer **container queries** for component-level responsiveness and **media quer
 Use `clamp()` for fluid values that don't need breakpoints:
 
 ```css
-h1 { font-size: clamp(1.5rem, 1rem + 2vw, 3rem); }
+h1 {
+  font-size: clamp(1.5rem, 1rem + 2vw, 3rem);
+}
 ```
 
 ### Animation Guidelines

@@ -162,13 +162,14 @@ For essential motion, reduce but don't remove:
     border-color: var(--color-border);
   }
 
-  .button[data-variant="ghost"] {
+  .button[data-variant='ghost'] {
     border: 2px solid currentColor;
   }
 }
 ```
 
 Key actions in `prefers-contrast: more`:
+
 - Darken body text toward black/white
 - Make muted text visible (bump contrast)
 - Increase border widths
@@ -243,7 +244,7 @@ System color keywords to use: `Canvas`, `CanvasText`, `LinkText`, `ButtonFace`, 
   height: 24px;
 
   &::after {
-    content: "";
+    content: '';
     position: absolute;
     inset: -10px;
     /* actual touch area: 44x44 */
@@ -263,12 +264,12 @@ For inline links, ensure adequate line-height and padding:
 
 ### WCAG 2.2 AA Minimums
 
-| Element | Minimum Ratio |
-|---------|---------------|
-| Normal text (< 24px / < 18.66px bold) | 4.5:1 |
-| Large text (>= 24px / >= 18.66px bold) | 3:1 |
-| UI components and graphical objects | 3:1 |
-| Decorative/disabled elements | No requirement |
+| Element                                | Minimum Ratio  |
+| -------------------------------------- | -------------- |
+| Normal text (< 24px / < 18.66px bold)  | 4.5:1          |
+| Large text (>= 24px / >= 18.66px bold) | 3:1            |
+| UI components and graphical objects    | 3:1            |
+| Decorative/disabled elements           | No requirement |
 
 ### What to Find
 
@@ -312,13 +313,13 @@ Always pair color with a secondary indicator — shape, icon, text, pattern, or 
 
 ```css
 /* Form validation — color + icon + border */
-.field[aria-invalid="true"] {
+.field[aria-invalid='true'] {
   border-color: var(--color-error);
   border-inline-start-width: 3px;
 }
 
-.field[aria-invalid="true"] + .error-message::before {
-  content: "\26A0\FE0F "; /* warning sign */
+.field[aria-invalid='true'] + .error-message::before {
+  content: '\26A0\FE0F '; /* warning sign */
 }
 
 /* Links — color + underline */
@@ -357,12 +358,20 @@ Ensure a proper `.visually-hidden` / `.sr-only` utility exists:
 
 ```css
 /* BAD — content removed from accessibility tree */
-.hide { display: none; }
-.hide { visibility: hidden; }
+.hide {
+  display: none;
+}
+.hide {
+  visibility: hidden;
+}
 
 /* BAD — incomplete hiding, may cause layout shifts */
-.hide { font-size: 0; }
-.hide { text-indent: -9999px; }
+.hide {
+  font-size: 0;
+}
+.hide {
+  text-indent: -9999px;
+}
 ```
 
 ## Step 9: Skip Links
@@ -404,7 +413,10 @@ Visual order should match DOM order for keyboard navigation. If `order` or visua
 
 ```css
 /* WARNING: This changes visual order but not tab order */
-.nav { display: flex; flex-direction: row-reverse; }
+.nav {
+  display: flex;
+  flex-direction: row-reverse;
+}
 
 /* If needed, use reading-flow (emerging) or restructure the DOM */
 ```

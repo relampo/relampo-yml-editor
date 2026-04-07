@@ -100,9 +100,18 @@ Apply these replacements. Always show before/after.
 
 ```css
 /* BEFORE */
-.sidebar { float: left; width: 250px; }
-.main { margin-left: 270px; }
-.clearfix::after { content: ""; display: table; clear: both; }
+.sidebar {
+  float: left;
+  width: 250px;
+}
+.main {
+  margin-left: 270px;
+}
+.clearfix::after {
+  content: '';
+  display: table;
+  clear: both;
+}
 
 /* AFTER */
 .layout {
@@ -116,26 +125,45 @@ Apply these replacements. Always show before/after.
 
 ```css
 /* BEFORE */
-.button { background: blue !important; }
-.nav .button { background: green !important; }
+.button {
+  background: blue !important;
+}
+.nav .button {
+  background: green !important;
+}
 
 /* AFTER */
 @layer components {
-  .button { background: var(--_bg, var(--color-primary)); }
+  .button {
+    background: var(--_bg, var(--color-primary));
+  }
 }
-.nav .button { --_bg: var(--color-nav-action); }
+.nav .button {
+  --_bg: var(--color-nav-action);
+}
 ```
 
 ### Vendor prefixes → Unprefixed
 
 ```css
 /* BEFORE */
-.flex { display: -webkit-flex; display: -ms-flexbox; display: flex; }
-.transform { -webkit-transform: rotate(45deg); transform: rotate(45deg); }
+.flex {
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: flex;
+}
+.transform {
+  -webkit-transform: rotate(45deg);
+  transform: rotate(45deg);
+}
 
 /* AFTER */
-.flex { display: flex; }
-.transform { transform: rotate(45deg); }
+.flex {
+  display: flex;
+}
+.transform {
+  transform: rotate(45deg);
+}
 ```
 
 ### px media queries → em
@@ -156,57 +184,88 @@ Conversion: divide px by 16 → em.
 
 ```css
 /* BEFORE — in CSS */
-@import url("reset.css");
-@import url("components.css");
+@import url('reset.css');
+@import url('components.css');
 
 /* AFTER — in HTML */
 /* <link rel="stylesheet" href="reset.css"> */
 /* <link rel="stylesheet" href="components.css"> */
 
 /* OR — if consolidating into one file, use @layer */
-@layer reset { /* contents of reset.css */ }
+@layer reset {
+  /* contents of reset.css */
+}
 ```
 
 ### Old flexbox syntax
 
 ```css
 /* BEFORE */
-.box { display: -webkit-box; -webkit-box-orient: horizontal; -webkit-box-pack: center; }
+.box {
+  display: -webkit-box;
+  -webkit-box-orient: horizontal;
+  -webkit-box-pack: center;
+}
 
 /* AFTER */
-.box { display: flex; justify-content: center; }
+.box {
+  display: flex;
+  justify-content: center;
+}
 ```
 
 ### Hex/RGB colors → oklch
 
 ```css
 /* BEFORE */
-:root { --primary: #3366ff; --danger: rgb(220, 53, 69); }
+:root {
+  --primary: #3366ff;
+  --danger: rgb(220, 53, 69);
+}
 
 /* AFTER */
-:root { --primary: oklch(55% 0.25 260); --danger: oklch(55% 0.22 25); }
+:root {
+  --primary: oklch(55% 0.25 260);
+  --danger: oklch(55% 0.22 25);
+}
 ```
 
 ### px font sizes → clamp/rem
 
 ```css
 /* BEFORE */
-h1 { font-size: 32px; }
-body { font-size: 16px; }
+h1 {
+  font-size: 32px;
+}
+body {
+  font-size: 16px;
+}
 
 /* AFTER */
-h1 { font-size: clamp(1.5rem, 1rem + 2vw, 3rem); }
-body { font-size: clamp(1rem, 0.875rem + 0.5vw, 1.125rem); }
+h1 {
+  font-size: clamp(1.5rem, 1rem + 2vw, 3rem);
+}
+body {
+  font-size: clamp(1rem, 0.875rem + 0.5vw, 1.125rem);
+}
 ```
 
 ### Physical → Logical properties
 
 ```css
 /* BEFORE */
-.element { margin-left: 1rem; padding-right: 2rem; text-align: left; }
+.element {
+  margin-left: 1rem;
+  padding-right: 2rem;
+  text-align: left;
+}
 
 /* AFTER */
-.element { margin-inline-start: 1rem; padding-inline-end: 2rem; text-align: start; }
+.element {
+  margin-inline-start: 1rem;
+  padding-inline-end: 2rem;
+  text-align: start;
+}
 ```
 
 ## Step 5: Extract Design Tokens
@@ -237,6 +296,7 @@ Find repeated values and extract into custom properties using a three-layer arch
 ```
 
 Look for:
+
 - Colors used more than once → extract
 - Spacing values → map to a spacing scale
 - Font sizes → map to a type scale
