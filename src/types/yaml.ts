@@ -11,6 +11,7 @@ export type YAMLNodeType =
   | 'steps'
   | 'step'
   | 'request'
+  | 'sql'
   | 'get'
   | 'post'
   | 'put'
@@ -84,7 +85,7 @@ export interface DataSource {
 }
 
 export interface AuthConfig {
-  type?: 'bearer' | 'api_key' | 'basic'| 'none';
+  type?: 'bearer' | 'api_key' | 'basic' | 'none';
   token?: string;
   name?: string;
   value?: string;
@@ -150,6 +151,39 @@ export interface RequestStep {
   };
   on_error?: 'continue' | 'stop' | 'fail_iteration';
   data_source?: DataSource;
+}
+
+export interface SQLConnection {
+  host?: string;
+  port?: number | string;
+  database?: string;
+  user?: string;
+  password?: string;
+  dsn?: string;
+  ssl_mode?: string;
+  charset?: string;
+  options?: Record<string, string>;
+  validate_connectivity?: boolean;
+  max_open_conns?: number;
+  max_idle_conns?: number;
+  conn_max_lifetime?: string;
+  conn_max_idle_time?: string;
+  [key: string]: any;
+}
+
+export interface SQLStep {
+  name?: string;
+  dialect?: 'postgres' | 'mysql' | string;
+  kind?: 'query' | 'exec' | string;
+  driver?: string;
+  connection?: SQLConnection;
+  query?: string;
+  params?: any[] | Record<string, any> | string | number | boolean;
+  allow_writes?: boolean;
+  timeout?: string;
+  on_error?: 'continue' | 'stop' | 'fail_iteration';
+  enabled?: boolean;
+  [key: string]: any;
 }
 
 export interface AssertConfig {
