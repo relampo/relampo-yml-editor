@@ -77,6 +77,31 @@ scenarios:
       
       # Think time
       - think_time: 2s
+
+      # Parameterized SQL step
+      - sql:
+          name: "Fetch active users"
+          dialect: postgres
+          connection:
+            host: "{{db_host}}"
+            port: 5432
+            database: relampo
+            user: "{{db_user}}"
+            password: "{{db_password}}"
+            sslmode: require
+          validate_connection: true
+          allow_write: false
+          query: |
+            SELECT id, email
+            FROM users
+            WHERE status = $1
+            LIMIT $2
+          params:
+            - active
+            - 25
+          max_open_conns: 5
+          max_idle_conns: 2
+          conn_max_lifetime: 5m
       
       # Request with spark before/after
       - request:
