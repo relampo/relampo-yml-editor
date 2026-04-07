@@ -345,6 +345,7 @@ function getNodeIcon(type: YAMLNodeType): any {
     'steps': Package,
     'step': Code,
     'request': Globe,
+    'sql': Database,
     'get': Globe,
     'post': Globe,
     'put': Globe,
@@ -409,6 +410,7 @@ function getNodeColor(type: YAMLNodeType, node?: YAMLNode, isRedirectedFollowUp 
     case 'step':
       return 'text-amber-400';
     case 'request':
+    case 'sql':
     case 'get':
     case 'post':
     case 'put':
@@ -468,7 +470,7 @@ function getNodeBadge(
   const httpMethods = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
 
   // Badge DISABLED para requests deshabilitados
-  if (node.data?.enabled === false && (httpMethods.includes(node.type) || node.type === 'request')) {
+  if (node.data?.enabled === false && (httpMethods.includes(node.type) || node.type === 'request' || node.type === 'sql')) {
     return (
       <span className="text-xs px-1.5 py-0.5 rounded bg-zinc-700/30 text-zinc-400 font-mono font-medium border border-zinc-600/30 uppercase">
         disabled
@@ -496,6 +498,14 @@ function getNodeBadge(
           : 'bg-blue-400/15 text-blue-400 border-blue-400/30'
       }`}>
         {node.data.method}
+      </span>
+    );
+  }
+
+  if (node.type === 'sql') {
+    return (
+      <span className="inline-flex h-5 items-center text-xs leading-none px-1.5 py-0.5 rounded font-mono font-medium border uppercase bg-teal-400/15 text-teal-400 border-teal-400/30">
+        {node.data?.dialect || 'sql'}
       </span>
     );
   }

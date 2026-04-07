@@ -800,6 +800,30 @@ function createNodeByType(type: string | 'root_plan'): YAMLNode {
         data: { url: '/api/endpoint' },
         children: [],
       };
+    case 'sql':
+      return {
+        id,
+        type: 'sql',
+        name: 'POSTGRES: SELECT',
+        data: {
+          dialect: 'postgres',
+          kind: 'query',
+          query: 'SELECT 1',
+          connection: {
+            host: '{{db_host}}',
+            port: 5432,
+            database: 'app',
+            user: '{{db_user}}',
+            password: '{{db_password}}',
+            validate_connectivity: true,
+            max_open_conns: 5,
+            max_idle_conns: 2,
+          },
+          params: [],
+          allow_writes: false,
+        },
+        children: [],
+      };
     case 'get':
       return {
         id,
