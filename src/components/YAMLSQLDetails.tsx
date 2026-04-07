@@ -102,30 +102,46 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
-          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-            Dialect
-          </label>
+          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Dialect</label>
           <select
             value={data.dialect || 'postgres'}
-            onChange={(event) => handleChange('dialect', event.target.value)}
+            onChange={event => handleChange('dialect', event.target.value)}
             className="w-full h-[38px] px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono outline-none"
           >
-            <option value="postgres" className="bg-[#1a1a1a]">postgres</option>
-            <option value="mysql" className="bg-[#1a1a1a]">mysql</option>
+            <option
+              value="postgres"
+              className="bg-[#1a1a1a]"
+            >
+              postgres
+            </option>
+            <option
+              value="mysql"
+              className="bg-[#1a1a1a]"
+            >
+              mysql
+            </option>
           </select>
         </div>
 
         <div>
-          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-            Kind
-          </label>
+          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Kind</label>
           <select
             value={kind}
-            onChange={(event) => handleChange('kind', event.target.value)}
+            onChange={event => handleChange('kind', event.target.value)}
             className="w-full h-[38px] px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono outline-none"
           >
-            <option value="query" className="bg-[#1a1a1a]">query</option>
-            <option value="exec" className="bg-[#1a1a1a]">exec</option>
+            <option
+              value="query"
+              className="bg-[#1a1a1a]"
+            >
+              query
+            </option>
+            <option
+              value="exec"
+              className="bg-[#1a1a1a]"
+            >
+              exec
+            </option>
           </select>
         </div>
 
@@ -135,7 +151,7 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
           </label>
           <Input
             value={data.driver || ''}
-            onChange={(event) => handleChange('driver', event.target.value)}
+            onChange={event => handleChange('driver', event.target.value)}
             placeholder="Optional driver name"
             className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
           />
@@ -143,12 +159,10 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
       </div>
 
       <div>
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-          Query
-        </label>
+        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Query</label>
         <Textarea
           value={data.query || ''}
-          onChange={(event) => handleChange('query', event.target.value)}
+          onChange={event => handleChange('query', event.target.value)}
           placeholder={'SELECT id, email\nFROM users\nWHERE status = $1\nLIMIT $2'}
           className="w-full min-h-[180px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
         />
@@ -159,28 +173,34 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-            Timeout
-          </label>
+          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Timeout</label>
           <Input
             value={data.timeout || ''}
-            onChange={(event) => handleChange('timeout', event.target.value)}
+            onChange={event => handleChange('timeout', event.target.value)}
             placeholder="30s"
             className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
           />
         </div>
 
         <div>
-          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-            On Error
-          </label>
+          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">On Error</label>
           <select
             value={data.on_error || data.error_policy?.on_error || 'stop'}
-            onChange={(event) => handleChange('on_error', event.target.value)}
+            onChange={event => handleChange('on_error', event.target.value)}
             className="w-full h-[38px] px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono outline-none"
           >
-            <option value="stop" className="bg-[#1a1a1a]">stop</option>
-            <option value="continue" className="bg-[#1a1a1a]">continue</option>
+            <option
+              value="stop"
+              className="bg-[#1a1a1a]"
+            >
+              stop
+            </option>
+            <option
+              value="continue"
+              className="bg-[#1a1a1a]"
+            >
+              continue
+            </option>
           </select>
         </div>
       </div>
@@ -192,11 +212,21 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
           </label>
           <select
             value={validateConnectivity ? 'true' : 'false'}
-            onChange={(event) => handleConnectionChange('validate_connectivity', event.target.value === 'true')}
+            onChange={event => handleConnectionChange('validate_connectivity', event.target.value === 'true')}
             className="w-full h-[38px] px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono outline-none"
           >
-            <option value="true" className="bg-[#1a1a1a]">true</option>
-            <option value="false" className="bg-[#1a1a1a]">false</option>
+            <option
+              value="true"
+              className="bg-[#1a1a1a]"
+            >
+              true
+            </option>
+            <option
+              value="false"
+              className="bg-[#1a1a1a]"
+            >
+              false
+            </option>
           </select>
         </div>
 
@@ -206,24 +236,36 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
           </label>
           <select
             value={allowWrites ? 'true' : 'false'}
-            onChange={(event) => handleBooleanChange('allow_writes', event.target.value)}
+            onChange={event => handleBooleanChange('allow_writes', event.target.value)}
             className={`w-full h-[38px] px-3 py-2 border rounded text-sm font-mono outline-none ${
               allowWrites
                 ? 'bg-red-400/10 text-red-300 border-red-400/30'
                 : 'bg-emerald-400/10 text-emerald-300 border-emerald-400/30'
             }`}
           >
-            <option value="false" className="bg-[#1a1a1a]">false</option>
-            <option value="true" className="bg-[#1a1a1a]">true</option>
+            <option
+              value="false"
+              className="bg-[#1a1a1a]"
+            >
+              false
+            </option>
+            <option
+              value="true"
+              className="bg-[#1a1a1a]"
+            >
+              true
+            </option>
           </select>
         </div>
       </div>
 
-      <div className={`p-3 rounded border text-xs ${
-        allowWrites
-          ? 'bg-red-400/8 border-red-400/20 text-red-200'
-          : 'bg-emerald-400/8 border-emerald-400/20 text-emerald-200'
-      }`}>
+      <div
+        className={`p-3 rounded border text-xs ${
+          allowWrites
+            ? 'bg-red-400/8 border-red-400/20 text-red-200'
+            : 'bg-emerald-400/8 border-emerald-400/20 text-emerald-200'
+        }`}
+      >
         {allowWrites
           ? 'Write execution is enabled for this step. Keep credentials and query text tightly scoped.'
           : kind === 'exec'
@@ -234,66 +276,54 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
       <div className="h-px bg-white/10" />
 
       <div>
-        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
-          Connection
-        </p>
+        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">Connection</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              Host
-            </label>
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Host</label>
             <Input
               value={connection.host || ''}
-              onChange={(event) => handleConnectionChange('host', event.target.value)}
+              onChange={event => handleConnectionChange('host', event.target.value)}
               placeholder="{{db_host}}"
               className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
             />
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              Port
-            </label>
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Port</label>
             <Input
               value={connection.port ?? ''}
-              onChange={(event) => handleConnectionChange('port', event.target.value)}
+              onChange={event => handleConnectionChange('port', event.target.value)}
               placeholder={data.dialect === 'mysql' ? '3306' : '5432'}
               className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
             />
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              Database
-            </label>
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Database</label>
             <Input
               value={connection.database || ''}
-              onChange={(event) => handleConnectionChange('database', event.target.value)}
+              onChange={event => handleConnectionChange('database', event.target.value)}
               placeholder="app"
               className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
             />
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              User
-            </label>
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">User</label>
             <Input
               value={connection.user || ''}
-              onChange={(event) => handleConnectionChange('user', event.target.value)}
+              onChange={event => handleConnectionChange('user', event.target.value)}
               placeholder="{{db_user}}"
               className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
             />
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              Password
-            </label>
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Password</label>
             <Input
               type="password"
               value={connection.password || ''}
-              onChange={(event) => handleConnectionChange('password', event.target.value)}
+              onChange={event => handleConnectionChange('password', event.target.value)}
               placeholder="{{db_password}}"
               className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
             />
@@ -305,31 +335,27 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
             </label>
             <Input
               value={connection.dsn || ''}
-              onChange={(event) => handleConnectionChange('dsn', event.target.value)}
+              onChange={event => handleConnectionChange('dsn', event.target.value)}
               placeholder="Optional DSN/connection string"
               className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
             />
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              SSL Mode
-            </label>
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">SSL Mode</label>
             <Input
               value={connection.ssl_mode || ''}
-              onChange={(event) => handleConnectionChange('ssl_mode', event.target.value)}
+              onChange={event => handleConnectionChange('ssl_mode', event.target.value)}
               placeholder="disable, require, verify-full"
               className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
             />
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              Charset
-            </label>
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Charset</label>
             <Input
               value={connection.charset || ''}
-              onChange={(event) => handleConnectionChange('charset', event.target.value)}
+              onChange={event => handleConnectionChange('charset', event.target.value)}
               placeholder="utf8mb4"
               className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
             />
@@ -353,12 +379,10 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
       <div className="h-px bg-white/10" />
 
       <div>
-        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
-          Bound Parameters
-        </p>
+        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">Bound Parameters</p>
         <Textarea
           value={paramsText}
-          onChange={(event) => {
+          onChange={event => {
             setParamsText(event.target.value);
             if (paramsError) {
               setParamsError('');
@@ -369,7 +393,8 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
           className="w-full min-h-[120px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
         />
         <p className="mt-1 text-xs text-zinc-500">
-          Use YAML for positional arrays or named maps. Scenario variables such as <code>{'{{user_id}}'}</code> are supported.
+          Use YAML for positional arrays or named maps. Scenario variables such as <code>{'{{user_id}}'}</code> are
+          supported.
         </p>
         {paramsError && (
           <div className="mt-2 p-3 bg-red-400/8 border border-red-400/20 rounded text-xs text-red-300">
@@ -381,9 +406,7 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
       <div className="h-px bg-white/10" />
 
       <div>
-        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
-          Pooling
-        </p>
+        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">Pooling</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
@@ -392,7 +415,7 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
             <Input
               type="number"
               value={connection.max_open_conns ?? ''}
-              onChange={(event) => handleConnectionNumberChange('max_open_conns', event.target.value)}
+              onChange={event => handleConnectionNumberChange('max_open_conns', event.target.value)}
               placeholder="5"
               className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
             />
@@ -405,7 +428,7 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
             <Input
               type="number"
               value={connection.max_idle_conns ?? ''}
-              onChange={(event) => handleConnectionNumberChange('max_idle_conns', event.target.value)}
+              onChange={event => handleConnectionNumberChange('max_idle_conns', event.target.value)}
               placeholder="2"
               className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
             />
@@ -417,7 +440,7 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
             </label>
             <Input
               value={connection.conn_max_lifetime || ''}
-              onChange={(event) => handleConnectionChange('conn_max_lifetime', event.target.value)}
+              onChange={event => handleConnectionChange('conn_max_lifetime', event.target.value)}
               placeholder="5m"
               className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
             />
@@ -429,7 +452,7 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
             </label>
             <Input
               value={connection.conn_max_idle_time || ''}
-              onChange={(event) => handleConnectionChange('conn_max_idle_time', event.target.value)}
+              onChange={event => handleConnectionChange('conn_max_idle_time', event.target.value)}
               placeholder="1m"
               className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
             />

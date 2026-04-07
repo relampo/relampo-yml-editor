@@ -14,8 +14,17 @@ export function ComponentsShowcase() {
       <div className="mb-12 pb-8 border-b-2 border-neutral-200">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-yellow-300 via-yellow-400 to-yellow-500 flex items-center justify-center shadow-xl shadow-yellow-400/40">
-            <svg width="32" height="38" viewBox="0 0 32 38" fill="none">
-              <path d="M18.5 0L0 21H14L10.5 38L32 16.5H18.5V0Z" fill="white" className="drop-shadow-lg"/>
+            <svg
+              width="32"
+              height="38"
+              viewBox="0 0 32 38"
+              fill="none"
+            >
+              <path
+                d="M18.5 0L0 21H14L10.5 38L32 16.5H18.5V0Z"
+                fill="white"
+                className="drop-shadow-lg"
+              />
             </svg>
           </div>
           <div>
@@ -29,13 +38,21 @@ export function ComponentsShowcase() {
       <section className="mb-12">
         <h2 className="text-2xl font-bold text-neutral-900 mb-6 flex items-center gap-2">
           <div className="w-6 h-6 rounded bg-gradient-to-br from-yellow-300 via-yellow-400 to-yellow-500 flex items-center justify-center">
-            <svg width="12" height="14" viewBox="0 0 12 14" fill="none">
-              <path d="M7 0L0 7.5H5L3.5 14L12 6H7V0Z" fill="white"/>
+            <svg
+              width="12"
+              height="14"
+              viewBox="0 0 12 14"
+              fill="none"
+            >
+              <path
+                d="M7 0L0 7.5H5L3.5 14L12 6H7V0Z"
+                fill="white"
+              />
             </svg>
           </div>
           System Overview
         </h2>
-        
+
         <div className="grid grid-cols-3 gap-6 mb-6">
           <div className="bg-gradient-to-br from-purple-50 to-blue-50 border-2 border-purple-200 rounded-xl p-6">
             <div className="text-lg font-bold text-purple-900 mb-2">5 Levels</div>
@@ -69,9 +86,7 @@ export function ComponentsShowcase() {
               <div className="bg-white border border-blue-200 rounded p-2">
                 Automatically added at month-end based on performance level
               </div>
-              <div className="bg-white border border-blue-200 rounded p-2">
-                Drives consistent usage and engagement
-              </div>
+              <div className="bg-white border border-blue-200 rounded p-2">Drives consistent usage and engagement</div>
             </div>
           </div>
         </div>
@@ -80,22 +95,28 @@ export function ComponentsShowcase() {
       {/* Features */}
       <section className="mb-12">
         <h2 className="text-2xl font-bold text-neutral-900 mb-6">Key Features</h2>
-        
+
         <div className="grid grid-cols-2 gap-6">
           <div className="bg-white border border-neutral-200 rounded-xl p-6">
             <h3 className="font-semibold text-neutral-900 mb-3">Filtering & Scoping</h3>
             <ul className="space-y-2 text-sm text-neutral-700">
               <li className="flex items-start gap-2">
                 <span className="text-blue-600">•</span>
-                <span><strong>Time Range:</strong> This month, Last 30 days, All time</span>
+                <span>
+                  <strong>Time Range:</strong> This month, Last 30 days, All time
+                </span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-blue-600">•</span>
-                <span><strong>Metrics:</strong> Hours or Runs</span>
+                <span>
+                  <strong>Metrics:</strong> Hours or Runs
+                </span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-blue-600">•</span>
-                <span><strong>Scope:</strong> Organization, Team, or Project</span>
+                <span>
+                  <strong>Scope:</strong> Organization, Team, or Project
+                </span>
               </li>
             </ul>
           </div>
@@ -105,15 +126,21 @@ export function ComponentsShowcase() {
             <ul className="space-y-2 text-sm text-neutral-700">
               <li className="flex items-start gap-2">
                 <span className="text-purple-600">•</span>
-                <span><strong>Rankings:</strong> #1-3 with medal icons, #4+ with numbers</span>
+                <span>
+                  <strong>Rankings:</strong> #1-3 with medal icons, #4+ with numbers
+                </span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-purple-600">•</span>
-                <span><strong>Progress bars:</strong> Visual progress to next level</span>
+                <span>
+                  <strong>Progress bars:</strong> Visual progress to next level
+                </span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-purple-600">•</span>
-                <span><strong>Delta indicators:</strong> Trending up/down from previous period</span>
+                <span>
+                  <strong>Delta indicators:</strong> Trending up/down from previous period
+                </span>
               </li>
             </ul>
           </div>
@@ -154,9 +181,7 @@ export function ComponentsShowcase() {
               <button
                 onClick={() => setCurrentView('empty')}
                 className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
-                  currentView === 'empty'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-white text-neutral-700 hover:bg-neutral-100'
+                  currentView === 'empty' ? 'bg-blue-600 text-white' : 'bg-white text-neutral-700 hover:bg-neutral-100'
                 }`}
               >
                 Empty
@@ -190,7 +215,7 @@ export function ComponentsShowcase() {
                   <li>• Shows rewards footer</li>
                 </ul>
               </div>
-              
+
               <div>
                 <div className="font-mono text-sm text-purple-900 mb-2">Expanded View</div>
                 <ul className="text-xs text-neutral-600 space-y-1">
@@ -204,9 +229,15 @@ export function ComponentsShowcase() {
               <div>
                 <div className="font-mono text-sm text-green-900 mb-2">States</div>
                 <ul className="text-xs text-neutral-600 space-y-1">
-                  <li>• <strong>Loading:</strong> Skeleton UI while fetching</li>
-                  <li>• <strong>Empty:</strong> First-time user guidance</li>
-                  <li>• <strong>Default:</strong> Populated leaderboard</li>
+                  <li>
+                    • <strong>Loading:</strong> Skeleton UI while fetching
+                  </li>
+                  <li>
+                    • <strong>Empty:</strong> First-time user guidance
+                  </li>
+                  <li>
+                    • <strong>Default:</strong> Populated leaderboard
+                  </li>
                 </ul>
               </div>
             </div>
@@ -217,7 +248,7 @@ export function ComponentsShowcase() {
       {/* Design Specifications */}
       <section className="mb-12">
         <h2 className="text-2xl font-bold text-neutral-900 mb-6">Design Specifications</h2>
-        
+
         <div className="bg-white border border-neutral-200 rounded-xl p-6">
           <div className="grid grid-cols-2 gap-8">
             <div>
@@ -225,7 +256,9 @@ export function ComponentsShowcase() {
               <div className="space-y-3 text-sm">
                 <div className="flex items-center justify-between py-2 border-b border-neutral-100">
                   <span className="text-neutral-600">Rank number</span>
-                  <code className="bg-neutral-100 px-2 py-1 rounded text-xs">#1: text-yellow-600, #2: text-neutral-400, #3: text-orange-600</code>
+                  <code className="bg-neutral-100 px-2 py-1 rounded text-xs">
+                    #1: text-yellow-600, #2: text-neutral-400, #3: text-orange-600
+                  </code>
                 </div>
                 <div className="flex items-center justify-between py-2 border-b border-neutral-100">
                   <span className="text-neutral-600">User name</span>
@@ -277,7 +310,7 @@ export function ComponentsShowcase() {
       {/* Usage Examples */}
       <section className="mb-12">
         <h2 className="text-2xl font-bold text-neutral-900 mb-6">Code Example</h2>
-        
+
         <div className="bg-neutral-900 text-green-400 p-6 rounded-xl font-mono text-sm overflow-x-auto">
           <pre>{`import { RelampoLeague } from './components/RelampoLeague';
 import { RelampoLeagueExpanded } from './components/RelampoLeagueExpanded';
@@ -305,9 +338,7 @@ function Dashboard() {
       </section>
 
       {/* Expanded View Modal */}
-      {showExpanded && (
-        <RelampoLeagueExpanded onClose={() => setShowExpanded(false)} />
-      )}
+      {showExpanded && <RelampoLeagueExpanded onClose={() => setShowExpanded(false)} />}
     </div>
   );
 }

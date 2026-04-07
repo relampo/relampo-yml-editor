@@ -85,9 +85,15 @@ export function DesignDoc() {
                 Modern, enterprise-grade performance testing platform
               </p>
               <div className="flex flex-wrap gap-3 mb-8">
-                <span className="px-4 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium">React + TypeScript</span>
-                <span className="px-4 py-2 bg-purple-50 text-purple-700 rounded-lg text-sm font-medium">Tailwind CSS v4</span>
-                <span className="px-4 py-2 bg-green-50 text-green-700 rounded-lg text-sm font-medium">Lucide React Icons</span>
+                <span className="px-4 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium">
+                  React + TypeScript
+                </span>
+                <span className="px-4 py-2 bg-purple-50 text-purple-700 rounded-lg text-sm font-medium">
+                  Tailwind CSS v4
+                </span>
+                <span className="px-4 py-2 bg-green-50 text-green-700 rounded-lg text-sm font-medium">
+                  Lucide React Icons
+                </span>
                 <span className="px-4 py-2 bg-yellow-50 text-yellow-700 rounded-lg text-sm font-medium">Vite</span>
               </div>
             </div>
@@ -95,15 +101,24 @@ export function DesignDoc() {
             {/* Logo Section */}
             <section className="mb-16">
               <h2 className="text-2xl font-bold text-neutral-900 mb-6">Logo & Brand Identity</h2>
-              
+
               <div className="bg-neutral-50 border-2 border-neutral-200 rounded-xl p-8">
                 <div className="grid grid-cols-2 gap-6">
                   {/* Logo on dark */}
                   <div className="bg-neutral-900 rounded-xl p-8 flex items-center justify-center">
                     <div className="flex items-center gap-2.5">
                       <div className="relative w-9 h-9 bg-gradient-to-br from-yellow-300 via-yellow-400 to-yellow-500 rounded-lg flex items-center justify-center shadow-xl shadow-yellow-400/40">
-                        <svg width="18" height="22" viewBox="0 0 18 22" fill="none">
-                          <path d="M10.5 0L0 12.5H7.5L6 22L18 9H10.5V0Z" fill="white" className="drop-shadow-lg"/>
+                        <svg
+                          width="18"
+                          height="22"
+                          viewBox="0 0 18 22"
+                          fill="none"
+                        >
+                          <path
+                            d="M10.5 0L0 12.5H7.5L6 22L18 9H10.5V0Z"
+                            fill="white"
+                            className="drop-shadow-lg"
+                          />
                         </svg>
                       </div>
                       <span className="text-xl font-black tracking-tight text-white">RELAMPO</span>
@@ -114,8 +129,17 @@ export function DesignDoc() {
                   <div className="bg-white border-2 border-neutral-200 rounded-xl p-8 flex items-center justify-center">
                     <div className="flex items-center gap-2.5">
                       <div className="relative w-9 h-9 bg-gradient-to-br from-yellow-300 via-yellow-400 to-yellow-500 rounded-lg flex items-center justify-center shadow-xl shadow-yellow-400/40">
-                        <svg width="18" height="22" viewBox="0 0 18 22" fill="none">
-                          <path d="M10.5 0L0 12.5H7.5L6 22L18 9H10.5V0Z" fill="white" className="drop-shadow-lg"/>
+                        <svg
+                          width="18"
+                          height="22"
+                          viewBox="0 0 18 22"
+                          fill="none"
+                        >
+                          <path
+                            d="M10.5 0L0 12.5H7.5L6 22L18 9H10.5V0Z"
+                            fill="white"
+                            className="drop-shadow-lg"
+                          />
                         </svg>
                       </div>
                       <span className="text-xl font-black tracking-tight text-neutral-900">RELAMPO</span>
@@ -125,7 +149,8 @@ export function DesignDoc() {
 
                 <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                   <p className="text-sm text-blue-900">
-                    <strong>Note:</strong> Visit the <strong>Logo Downloads</strong> tab to download all logo variations in SVG format.
+                    <strong>Note:</strong> Visit the <strong>Logo Downloads</strong> tab to download all logo variations
+                    in SVG format.
                   </p>
                 </div>
               </div>
@@ -134,7 +159,7 @@ export function DesignDoc() {
             {/* Colors */}
             <section className="mb-16">
               <h2 className="text-2xl font-bold text-neutral-900 mb-6">Brand Colors</h2>
-              
+
               <div className="bg-neutral-50 border-2 border-neutral-200 rounded-xl p-8">
                 <div className="grid grid-cols-3 gap-4">
                   <div className="bg-white border border-neutral-200 rounded-lg p-4">
@@ -169,9 +194,10 @@ export function DesignDoc() {
                 <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                   <h4 className="font-semibold text-neutral-900 mb-2">Why Vibrant Yellow?</h4>
                   <p className="text-sm text-neutral-700 leading-relaxed">
-                    The bright yellow gradient represents <strong>speed, energy, and instant power</strong> — like a lightning bolt. 
-                    It's bold, memorable, and stands out in the performance testing space. Yellow conveys urgency, 
-                    high performance, and the electric nature of "Relampo" (Portuguese for "lightning flash").
+                    The bright yellow gradient represents <strong>speed, energy, and instant power</strong> — like a
+                    lightning bolt. It's bold, memorable, and stands out in the performance testing space. Yellow
+                    conveys urgency, high performance, and the electric nature of "Relampo" (Portuguese for "lightning
+                    flash").
                   </p>
                 </div>
               </div>
@@ -180,7 +206,7 @@ export function DesignDoc() {
             {/* Typography */}
             <section className="mb-16">
               <h2 className="text-2xl font-bold text-neutral-900 mb-6">Typography</h2>
-              
+
               <div className="bg-neutral-50 border-2 border-neutral-200 rounded-xl p-8">
                 <div className="space-y-6">
                   <div className="bg-white border border-neutral-200 rounded-lg p-6">
@@ -201,13 +227,15 @@ export function DesignDoc() {
             {/* UI Components Preview */}
             <section className="mb-16">
               <h2 className="text-2xl font-bold text-neutral-900 mb-6">UI Components</h2>
-              
+
               <div className="bg-neutral-50 border-2 border-neutral-200 rounded-xl p-8">
                 <p className="text-neutral-700 mb-4">
-                  For interactive component examples and the Relampo League showcase, visit the <strong>Relampo League</strong> tab.
+                  For interactive component examples and the Relampo League showcase, visit the{' '}
+                  <strong>Relampo League</strong> tab.
                 </p>
                 <p className="text-neutral-600 text-sm">
-                  The design system includes buttons, inputs, cards, navigation elements, and more — all optimized for the dark theme.
+                  The design system includes buttons, inputs, cards, navigation elements, and more — all optimized for
+                  the dark theme.
                 </p>
               </div>
             </section>

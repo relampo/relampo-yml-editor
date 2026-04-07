@@ -34,9 +34,9 @@
 
 ```yaml
 test:
-  name: "Nombre del Test"
-  description: "Descripción opcional"
-  version: "1.0"
+  name: 'Nombre del Test'
+  description: 'Descripción opcional'
+  version: '1.0'
 
 variables:
   key: value
@@ -48,13 +48,13 @@ data_source:
     var_name: column_name
 
 http_defaults:
-  base_url: "https://api.example.com"
-  timeout: "30s"
+  base_url: 'https://api.example.com'
+  timeout: '30s'
   headers:
-    Accept: "application/json"
+    Accept: 'application/json'
 
 scenarios:
-  - name: "Scenario Name"
+  - name: 'Scenario Name'
     load:
       type: constant
       users: 10
@@ -72,10 +72,10 @@ scenarios:
 
 ```yaml
 test:
-  name: "Mi Test de Carga"
-  description: "Test de API de usuarios"
-  version: "1.0"
-  author: "Team QA"
+  name: 'Mi Test de Carga'
+  description: 'Test de API de usuarios'
+  version: '1.0'
+  author: 'Team QA'
   tags:
     - api
     - users
@@ -97,9 +97,9 @@ test:
 
 ```yaml
 variables:
-  base_url: "https://api.example.com"
-  api_key: "secret-key-123"
-  timeout: "30s"
+  base_url: 'https://api.example.com'
+  api_key: 'secret-key-123'
+  timeout: '30s'
   max_retries: 3
 ```
 
@@ -110,9 +110,9 @@ Las variables se referencian con `{{variable_name}}` en cualquier parte del YAML
 ```yaml
 data_source:
   type: csv
-  file: "data/users.csv"
-  mode: per_vu          # per_vu | shared
-  strategy: sequential  # sequential | random
+  file: 'data/users.csv'
+  mode: per_vu # per_vu | shared
+  strategy: sequential # sequential | random
   bind:
     email: email_column
     password: pass_column
@@ -140,16 +140,16 @@ Configuración HTTP aplicada a todos los requests (a menos que se override).
 
 ```yaml
 http_defaults:
-  base_url: "https://api.example.com"
-  timeout: "30s"
+  base_url: 'https://api.example.com'
+  timeout: '30s'
   follow_redirects: true
   max_redirects: 5
   headers:
-    Accept: "application/json"
-    User-Agent: "Relampo/2.0"
+    Accept: 'application/json'
+    User-Agent: 'Relampo/2.0'
   auth:
     type: bearer
-    token: "{{token}}"
+    token: '{{token}}'
 ```
 
 Autenticación centralizada soportada:
@@ -168,11 +168,11 @@ La auth en `http_defaults.auth` se hereda a todos los requests. Un `group.auth` 
 
 ```yaml
 scenarios:
-  - name: "User Flow"
+  - name: 'User Flow'
     load:
       type: constant
       users: 10
-      duration: "5m"
+      duration: '5m'
     steps:
       - request: ...
 ```
@@ -185,8 +185,8 @@ scenarios:
 load:
   type: constant
   users: 50
-  duration: "10m"
-  ramp_up: "30s"  # Opcional: tiempo de ramp-up
+  duration: '10m'
+  ramp_up: '30s' # Opcional: tiempo de ramp-up
 ```
 
 #### Ramp Load
@@ -196,9 +196,9 @@ load:
   type: ramp
   start_users: 1
   end_users: 100
-  duration: "10m"
+  duration: '10m'
   step_users: 10
-  step_duration: "1m"
+  step_duration: '1m'
 ```
 
 #### Stages Load
@@ -212,36 +212,36 @@ load:
   type: stages
   stages:
     - users: 10
-      duration: "2m"
+      duration: '2m'
     - users: 50
-      duration: "5m"
+      duration: '5m'
     - users: 10
-      duration: "2m"
+      duration: '2m'
 ```
 
 ### Configuración Adicional del Scenario
 
 ```yaml
 scenarios:
-  - name: "Complete Scenario"
+  - name: 'Complete Scenario'
     load:
       type: constant
       users: 10
-      duration: "5m"
-    
+      duration: '5m'
+
     cookies:
-      mode: auto                      # auto | manual | disabled
+      mode: auto # auto | manual | disabled
       persist_across_iterations: true
-    
+
     cache_manager:
       enabled: true
       max_size_mb: 50
-    
+
     error_policy:
-      on_4xx: continue  # continue | stop | retry
+      on_4xx: continue # continue | stop | retry
       on_5xx: retry
       on_timeout: stop
-    
+
     steps:
       - request: ...
 ```
@@ -266,19 +266,19 @@ steps:
 ```yaml
 steps:
   - request:
-      name: "Get Users"
+      name: 'Get Users'
       method: GET
       url: /api/users
       headers:
-        Authorization: "Bearer {{token}}"
-        Content-Type: "application/json"
+        Authorization: 'Bearer {{token}}'
+        Content-Type: 'application/json'
       params:
         page: 1
         limit: 50
       body:
-        name: "John Doe"
-        email: "john@example.com"
-      timeout: "10s"
+        name: 'John Doe'
+        email: 'john@example.com'
+      timeout: '10s'
       follow_redirects: true
 ```
 
@@ -304,8 +304,8 @@ Los headers se pueden definir de múltiples formas:
 ```yaml
 http_defaults:
   headers:
-    Accept: "application/json"
-    User-Agent: "Relampo/2.0"
+    Accept: 'application/json'
+    User-Agent: 'Relampo/2.0'
 ```
 
 ### Headers en el Request
@@ -316,10 +316,10 @@ steps:
       method: POST
       url: /api/login
       headers:
-        Content-Type: "application/json"
-        X-Request-ID: "{{request_id}}"
+        Content-Type: 'application/json'
+        X-Request-ID: '{{request_id}}'
       body:
-        email: "user@example.com"
+        email: 'user@example.com'
 ```
 
 ### Headers como Nodo Hijo (Editor)
@@ -348,9 +348,9 @@ steps:
 
 ```yaml
 headers:
-  Content-Type: "application/json"
-  Authorization: "Bearer {{token}}"
-  X-Custom-Header: "value"
+  Content-Type: 'application/json'
+  Authorization: 'Bearer {{token}}'
+  X-Custom-Header: 'value'
 ```
 
 ---
@@ -376,7 +376,7 @@ steps:
   - request:
       method: GET
       url: /api/data
-      think_time: 2s    # Se aplica DESPUÉS del request
+      think_time: 2s # Se aplica DESPUÉS del request
 ```
 
 #### Rango Aleatorio
@@ -386,7 +386,7 @@ steps:
   - think_time:
       min: 1s
       max: 5s
-      distribution: uniform  # uniform | normal | poisson
+      distribution: uniform # uniform | normal | poisson
 ```
 
 #### Distribución Normal
@@ -407,17 +407,17 @@ Cuando se define a nivel de `steps` o `scenario`, se aplica **antes de cada requ
 
 ```yaml
 scenarios:
-  - name: "User Flow"
+  - name: 'User Flow'
     steps:
-      - think_time: 2s          # GLOBAL: aplica a TODOS los requests
-      
+      - think_time: 2s # GLOBAL: aplica a TODOS los requests
+
       - request:
           method: GET
-          url: /api/users       # Espera 2s antes de ejecutar
-      
+          url: /api/users # Espera 2s antes de ejecutar
+
       - request:
           method: POST
-          url: /api/data        # Espera 2s antes de ejecutar
+          url: /api/data # Espera 2s antes de ejecutar
 ```
 
 #### Think Time Específico (Override)
@@ -426,22 +426,22 @@ Un request puede override el think_time global:
 
 ```yaml
 scenarios:
-  - name: "User Flow"
+  - name: 'User Flow'
     steps:
-      - think_time: 2s          # Global
-      
+      - think_time: 2s # Global
+
       - request:
           method: GET
-          url: /api/users       # Usa global: 2s
-      
+          url: /api/users # Usa global: 2s
+
       - request:
           method: POST
           url: /api/checkout
-          think_time: 10s       # Override: 10s (usuario piensa más)
-      
+          think_time: 10s # Override: 10s (usuario piensa más)
+
       - request:
           method: GET
-          url: /api/products    # Usa global: 2s
+          url: /api/products # Usa global: 2s
 ```
 
 **Precedencia**: Request específico > Global
@@ -462,49 +462,49 @@ steps:
       assertions:
         - type: status
           value: 200
-        
+
         - type: status_in
           value: [200, 201, 204]
-        
+
         - type: body_contains
-          value: "success"
-        
+          value: 'success'
+
         - type: body_not_contains
-          value: "error"
-        
+          value: 'error'
+
         - type: regex
           pattern: "\"status\":\\s*\"ok\""
-        
+
         - type: response_time_ms_max
           value: 2000
-        
+
         - type: response_size
           min_bytes: 100
           max_bytes: 50000
-        
+
         - type: header
-          name: "Content-Type"
-          value: "application/json"
-        
+          name: 'Content-Type'
+          value: 'application/json'
+
         - type: jsonpath
-          path: "$.data.status"
-          value: "active"
+          path: '$.data.status'
+          value: 'active'
 ```
 
 ### Tipos de Assertion
 
-| Tipo | Descripción | Propiedades |
-|------|-------------|-------------|
-| `status` | Código de estado exacto | `value: 200` |
-| `status_in` | Código en lista | `value: [200, 201]` |
-| `body_contains` | Body contiene texto | `value: "texto"` |
-| `body_not_contains` | Body no contiene texto | `value: "error"` |
-| `regex` | Body coincide con regex | `pattern: "..."` |
-| `response_time_ms_max` | Tiempo máximo en ms | `value: 2000` |
-| `response_size` | Tamaño de respuesta | `min_bytes`, `max_bytes` |
-| `header` | Validar header | `name`, `value` |
-| `jsonpath` | Validar valor JSON | `path`, `value` |
-| `xpath` | Validar valor XML | `path`, `value` |
+| Tipo                   | Descripción             | Propiedades              |
+| ---------------------- | ----------------------- | ------------------------ |
+| `status`               | Código de estado exacto | `value: 200`             |
+| `status_in`            | Código en lista         | `value: [200, 201]`      |
+| `body_contains`        | Body contiene texto     | `value: "texto"`         |
+| `body_not_contains`    | Body no contiene texto  | `value: "error"`         |
+| `regex`                | Body coincide con regex | `pattern: "..."`         |
+| `response_time_ms_max` | Tiempo máximo en ms     | `value: 2000`            |
+| `response_size`        | Tamaño de respuesta     | `min_bytes`, `max_bytes` |
+| `header`               | Validar header          | `name`, `value`          |
+| `jsonpath`             | Validar valor JSON      | `path`, `value`          |
+| `xpath`                | Validar valor XML       | `path`, `value`          |
 
 ### Formato Legacy (Object)
 
@@ -516,7 +516,7 @@ steps:
       assert:
         status: 200
         response_time_ms_max: 1000
-        body_contains: "success"
+        body_contains: 'success'
 ```
 
 ### Lógica de Herencia (JMeter-style)
@@ -527,21 +527,21 @@ Cuando se define a nivel de `steps`, valida **todos los requests**:
 
 ```yaml
 scenarios:
-  - name: "User Flow"
+  - name: 'User Flow'
     steps:
-      - assertions:               # GLOBAL: valida TODOS
+      - assertions: # GLOBAL: valida TODOS
           - type: status
             value: 200
           - type: response_time_ms_max
             value: 3000
-      
+
       - request:
           method: GET
-          url: /api/users         # Validado con assertions globales
-      
+          url: /api/users # Validado con assertions globales
+
       - request:
           method: POST
-          url: /api/data          # Validado con assertions globales
+          url: /api/data # Validado con assertions globales
 ```
 
 #### Assertions Específicas (Override)
@@ -550,24 +550,24 @@ Un request puede tener sus propias assertions (reemplaza las globales):
 
 ```yaml
 scenarios:
-  - name: "User Flow"
+  - name: 'User Flow'
     steps:
-      - assertions:               # Global
+      - assertions: # Global
           - type: status
             value: 200
-      
+
       - request:
           method: GET
-          url: /api/users         # Usa globales
-      
+          url: /api/users # Usa globales
+
       - request:
           method: POST
           url: /api/login
-          assertions:             # Override completo
+          assertions: # Override completo
             - type: status
               value: 201
             - type: body_contains
-              value: "token"
+              value: 'token'
 ```
 
 **Precedencia**: Request específico REEMPLAZA global (no merge)
@@ -590,31 +590,31 @@ steps:
           var: CSRF_TOKEN
           pattern: "csrf_token='([a-f0-9]{32})'"
           match_no: 1
-          default: "NOT_FOUND"
-        
+          default: 'NOT_FOUND'
+
         - type: jsonpath
           var: USER_ID
-          expression: "$.data.user.id"
-          default: "0"
-        
+          expression: '$.data.user.id'
+          default: '0'
+
         - type: xpath
           var: TITLE
-          expression: "//title/text()"
-        
+          expression: '//title/text()'
+
         - type: boundary
           var: SESSION_ID
-          left: "sessionId="
-          right: ";"
+          left: 'sessionId='
+          right: ';'
 ```
 
 ### Tipos de Extractor
 
-| Tipo | Descripción | Propiedades |
-|------|-------------|-------------|
-| `regex` | Expresión regular | `pattern`, `match_no`, `default` |
-| `jsonpath` | JSONPath expression | `expression`, `default` |
-| `xpath` | XPath expression | `expression`, `default` |
-| `boundary` | Extracción por delimitadores | `left`, `right`, `default` |
+| Tipo       | Descripción                  | Propiedades                      |
+| ---------- | ---------------------------- | -------------------------------- |
+| `regex`    | Expresión regular            | `pattern`, `match_no`, `default` |
+| `jsonpath` | JSONPath expression          | `expression`, `default`          |
+| `xpath`    | XPath expression             | `expression`, `default`          |
+| `boundary` | Extracción por delimitadores | `left`, `right`, `default`       |
 
 ### Formato Legacy (Object)
 
@@ -624,8 +624,8 @@ steps:
       method: GET
       url: /api/data
       extract:
-        TOKEN: "regex(\"token=([a-f0-9]+)\")"
-        USER_ID: "jsonpath(\"$.user.id\")"
+        TOKEN: 'regex("token=([a-f0-9]+)")'
+        USER_ID: 'jsonpath("$.user.id")'
 ```
 
 ---
@@ -639,7 +639,7 @@ steps:
 ```yaml
 steps:
   - request:
-      name: "My Request"
+      name: 'My Request'
       method: GET
       url: /api/endpoint
       spark:
@@ -648,7 +648,7 @@ steps:
             vars.timestamp = Date.now();
             vars.requestId = Math.random().toString(36).substring(7);
             console.log("Starting request: " + vars.requestId);
-        
+
         - when: after
           script: |
             if (response.status === 200) {
@@ -661,15 +661,15 @@ steps:
 
 ### Variables Disponibles
 
-| Variable | Disponible | Descripción |
-|----------|------------|-------------|
-| `vars` | before/after | Objeto para variables custom |
-| `response` | after only | Objeto con la respuesta |
-| `response.status` | after only | Código HTTP |
-| `response.body` | after only | Cuerpo de la respuesta |
-| `response.headers` | after only | Headers de respuesta |
-| `response.duration_ms` | after only | Tiempo en ms |
-| `console.log()` | before/after | Logging |
+| Variable               | Disponible   | Descripción                  |
+| ---------------------- | ------------ | ---------------------------- |
+| `vars`                 | before/after | Objeto para variables custom |
+| `response`             | after only   | Objeto con la respuesta      |
+| `response.status`      | after only   | Código HTTP                  |
+| `response.body`        | after only   | Cuerpo de la respuesta       |
+| `response.headers`     | after only   | Headers de respuesta         |
+| `response.duration_ms` | after only   | Tiempo en ms                 |
+| `console.log()`        | before/after | Logging                      |
 
 ### Casos de Uso
 
@@ -722,7 +722,7 @@ Agrupa steps relacionados para mejor organización:
 ```yaml
 steps:
   - group:
-      name: "Login Flow"
+      name: 'Login Flow'
       steps:
         - request:
             method: GET
@@ -757,7 +757,7 @@ Ejecuta steps condicionalmente:
 
 ```yaml
 steps:
-  - if: "{{isLoggedIn}} == true"
+  - if: '{{isLoggedIn}} == true'
     steps:
       - request:
           method: GET
@@ -802,7 +802,7 @@ Define comportamiento en caso de error:
 ```yaml
 steps:
   - on_error:
-      action: continue  # continue | stop | retry
+      action: continue # continue | stop | retry
     steps:
       - request:
           method: DELETE
@@ -821,53 +821,53 @@ Además del data source global, se puede definir un data source específico para
 
 ```yaml
 scenarios:
-  - name: "User Flow"
+  - name: 'User Flow'
     steps:
-      - data_source:          # GLOBAL: disponible para todos
+      - data_source: # GLOBAL: disponible para todos
           type: csv
           file: users.csv
           bind:
             email: email
             password: password
-      
+
       - request:
           method: POST
           url: /api/login
           body:
-            email: "{{email}}"      # Usa data source global
-            password: "{{password}}"
-      
+            email: '{{email}}' # Usa data source global
+            password: '{{password}}'
+
       - request:
           method: GET
-          url: /api/profile         # También puede usar las variables
+          url: /api/profile # También puede usar las variables
 ```
 
 #### Data Source Específico (Override)
 
 ```yaml
 scenarios:
-  - name: "User Flow"
+  - name: 'User Flow'
     steps:
-      - data_source:          # Global
+      - data_source: # Global
           type: csv
           file: users.csv
           bind:
             email: email
-      
+
       - request:
           method: GET
-          url: /api/public      # Usa global
-      
+          url: /api/public # Usa global
+
       - request:
           method: POST
           url: /api/admin/action
-          data_source:          # Override
+          data_source: # Override
             type: csv
             file: admin_users.csv
             bind:
               admin_email: email
           body:
-            email: "{{admin_email}}"
+            email: '{{admin_email}}'
 ```
 
 **Precedencia**: Request específico > Global
@@ -886,34 +886,34 @@ Relampo adopta la lógica de herencia de JMeter para `think_time`, `assertions` 
 
 ### Resumen de Precedencia
 
-| Elemento | Global (steps) | Específico (request) | Comportamiento |
-|----------|----------------|----------------------|----------------|
-| `think_time` | Aplica antes de todos | Override para ese request | Específico > Global |
-| `assertions` | Valida todos | Override (reemplaza) | Específico REEMPLAZA Global |
-| `data_source` | Variables para todos | Override | Específico > Global |
-| `auth` | `http_defaults.auth` aplica a todos | `group.auth` reemplaza dentro del grupo | Grupo > Global |
+| Elemento      | Global (steps)                      | Específico (request)                    | Comportamiento              |
+| ------------- | ----------------------------------- | --------------------------------------- | --------------------------- |
+| `think_time`  | Aplica antes de todos               | Override para ese request               | Específico > Global         |
+| `assertions`  | Valida todos                        | Override (reemplaza)                    | Específico REEMPLAZA Global |
+| `data_source` | Variables para todos                | Override                                | Específico > Global         |
+| `auth`        | `http_defaults.auth` aplica a todos | `group.auth` reemplaza dentro del grupo | Grupo > Global              |
 
 ### Alcance por Nivel
 
 ```yaml
 scenarios:
-  - name: "User Flow"
+  - name: 'User Flow'
     steps:
-      - think_time: 2s          # Alcance: todos los requests en este scenario
-      
+      - think_time: 2s # Alcance: todos los requests en este scenario
+
       - group:
-          name: "Login Flow"
+          name: 'Login Flow'
           auth:
             type: basic
-            username: "{{admin_user}}"
-            password: "{{admin_pass}}"
+            username: '{{admin_user}}'
+            password: '{{admin_pass}}'
           steps:
-            - think_time: 1s    # Alcance: solo requests en este group (override)
-            
+            - think_time: 1s # Alcance: solo requests en este group (override)
+
             - request:
                 method: POST
                 url: /api/login
-                think_time: 5s  # Alcance: solo este request (override)
+                think_time: 5s # Alcance: solo este request (override)
 ```
 
 ### Compatibilidad hacia Atrás
@@ -939,7 +939,7 @@ steps:
   - assertions:
       - type: status
         value: 200
-  
+
   - request:
       method: GET
       url: /api/users
@@ -959,15 +959,15 @@ steps:
       method: POST
       url: /api/upload
       headers:
-        Content-Type: "multipart/form-data"
+        Content-Type: 'multipart/form-data'
       files:
-        - field: "avatar"
-          path: "data/avatar.png"
-          mime: "image/png"
-        
-        - field: "document"
-          path: "data/doc.pdf"
-          mime: "application/pdf"
+        - field: 'avatar'
+          path: 'data/avatar.png'
+          mime: 'image/png'
+
+        - field: 'document'
+          path: 'data/doc.pdf'
+          mime: 'application/pdf'
 ```
 
 **Propiedades**:
@@ -984,9 +984,9 @@ steps:
 
 ```yaml
 scenarios:
-  - name: "User Flow"
+  - name: 'User Flow'
     cookies:
-      mode: auto                      # auto | manual | disabled
+      mode: auto # auto | manual | disabled
       persist_across_iterations: true
       clear_on_error: false
 ```
@@ -1001,7 +1001,7 @@ scenarios:
 
 ```yaml
 scenarios:
-  - name: "User Flow"
+  - name: 'User Flow'
     cache_manager:
       enabled: true
       max_size_mb: 50
@@ -1031,10 +1031,10 @@ metrics:
 ```yaml
 metrics:
   thresholds:
-    response_time_p95: 1000      # P95 < 1000ms
-    response_time_p99: 3000      # P99 < 3000ms
-    error_rate: 0.01             # Error rate < 1%
-    http_req_duration: 500       # Media < 500ms
+    response_time_p95: 1000 # P95 < 1000ms
+    response_time_p99: 3000 # P99 < 3000ms
+    error_rate: 0.01 # Error rate < 1%
+    http_req_duration: 500 # Media < 500ms
 ```
 
 ---
@@ -1045,8 +1045,8 @@ metrics:
 
 ```yaml
 test:
-  name: "E-Commerce User Journey"
-  version: "2.0"
+  name: 'E-Commerce User Journey'
+  version: '2.0'
 
 data_source:
   type: csv
@@ -1056,21 +1056,21 @@ data_source:
     user_password: password
 
 http_defaults:
-  base_url: "https://shop.example.com"
-  timeout: "10s"
+  base_url: 'https://shop.example.com'
+  timeout: '10s'
   headers:
-    Accept: "application/json"
+    Accept: 'application/json'
 
 scenarios:
-  - name: "Browse and Buy"
+  - name: 'Browse and Buy'
     load:
       type: constant
       users: 50
-      duration: "10m"
-    
+      duration: '10m'
+
     cookies:
       mode: auto
-    
+
     steps:
       # Configuración global para todo el scenario
       - data_source:
@@ -1079,102 +1079,102 @@ scenarios:
           bind:
             email: email
             password: password
-      
+
       - think_time: 2s
-      
+
       - assertions:
           - type: status
             value: 200
           - type: response_time_ms_max
             value: 3000
-      
+
       # Login
       - request:
-          name: "Login"
+          name: 'Login'
           method: POST
           url: /api/login
           headers:
-            Content-Type: "application/json"
+            Content-Type: 'application/json'
           body:
-            email: "{{user_email}}"
-            password: "{{user_password}}"
+            email: '{{user_email}}'
+            password: '{{user_password}}'
           extractors:
             - type: jsonpath
               var: TOKEN
-              expression: "$.token"
+              expression: '$.token'
           assertions:
             - type: status
               value: 201
             - type: body_contains
-              value: "token"
-      
+              value: 'token'
+
       # Browse products (hereda think_time: 2s y assertions globales)
       - request:
-          name: "Browse Products"
+          name: 'Browse Products'
           method: GET
           url: /api/products
           headers:
-            Authorization: "Bearer {{TOKEN}}"
-      
+            Authorization: 'Bearer {{TOKEN}}'
+
       # View product detail
       - request:
-          name: "View Product"
+          name: 'View Product'
           method: GET
           url: /api/products/123
           headers:
-            Authorization: "Bearer {{TOKEN}}"
-      
+            Authorization: 'Bearer {{TOKEN}}'
+
       # Add to cart
       - request:
-          name: "Add to Cart"
+          name: 'Add to Cart'
           method: POST
           url: /api/cart
           headers:
-            Authorization: "Bearer {{TOKEN}}"
-            Content-Type: "application/json"
+            Authorization: 'Bearer {{TOKEN}}'
+            Content-Type: 'application/json'
           body:
             product_id: 123
             quantity: 1
-      
+
       # Checkout (usuario piensa más)
       - request:
-          name: "Checkout"
+          name: 'Checkout'
           method: POST
           url: /api/checkout
-          think_time: 10s         # Override: 10s en lugar de 2s
+          think_time: 10s # Override: 10s en lugar de 2s
           headers:
-            Authorization: "Bearer {{TOKEN}}"
-            Content-Type: "application/json"
+            Authorization: 'Bearer {{TOKEN}}'
+            Content-Type: 'application/json'
           assertions:
             - type: status
-              value: 201          # Override assertions
+              value: 201 # Override assertions
             - type: body_contains
-              value: "order_id"
+              value: 'order_id'
           body:
-            payment_method: "credit_card"
+            payment_method: 'credit_card'
 ```
 
 ### Ejemplo 2: API Test con Spark Scripts
 
 ```yaml
 test:
-  name: "API Integration Test"
-  version: "2.0"
+  name: 'API Integration Test'
+  version: '2.0'
 
 variables:
-  base_url: "https://api.example.com"
+  base_url: 'https://api.example.com'
 
 http_defaults:
-  base_url: "{{base_url}}"
-  timeout: "30s"
+  base_url: '{{base_url}}'
+  timeout: '30s'
 
 scenarios:
-  - name: "API Flow"
+  - name: 'API Flow'
     load:
       type: constant
       users: 10
-      duration: "5m"
-    
+      duration: '5m'
+
     steps:
       # Global config
       - assertions:
@@ -1182,15 +1182,15 @@ scenarios:
             value: [200, 201, 204]
           - type: response_time_ms_max
             value: 5000
-      
+
       - think_time:
           min: 1s
           max: 3s
           distribution: normal
-      
+
       # Get CSRF Token
       - request:
-          name: "Get CSRF"
+          name: 'Get CSRF'
           method: GET
           url: /login
           spark:
@@ -1198,7 +1198,7 @@ scenarios:
               script: |
                 vars.sessionStart = Date.now();
                 console.log("Starting session...");
-            
+
             - when: after
               script: |
                 if (response.status !== 200) {
@@ -1208,15 +1208,15 @@ scenarios:
             - type: regex
               var: CSRF_TOKEN
               pattern: "csrf_token='([a-f0-9]+)'"
-              default: "NO_TOKEN"
-      
+              default: 'NO_TOKEN'
+
       # Submit Login
       - request:
-          name: "Login"
+          name: 'Login'
           method: POST
           url: /api/auth/login
           headers:
-            Content-Type: "application/json"
+            Content-Type: 'application/json'
           body: |
             {
               "email": "test@example.com",
@@ -1228,7 +1228,7 @@ scenarios:
               script: |
                 const duration = Date.now() - vars.sessionStart;
                 console.log("Login completed in " + duration + "ms");
-                
+
                 if (response.body.includes("Welcome")) {
                   vars.loginSuccess = true;
                 } else {
@@ -1238,13 +1238,13 @@ scenarios:
           extractors:
             - type: jsonpath
               var: AUTH_TOKEN
-              expression: "$.data.token"
+              expression: '$.data.token'
           assertions:
             - type: status
               value: 200
             - type: body_contains
-              value: "Welcome"
-      
+              value: 'Welcome'
+
       # Fetch data (con retry)
       - retry:
           attempts: 3
@@ -1253,86 +1253,86 @@ scenarios:
           initial_delay: 1s
         steps:
           - request:
-              name: "Fetch Data"
+              name: 'Fetch Data'
               method: GET
               url: /api/data
               headers:
-                Authorization: "Bearer {{AUTH_TOKEN}}"
+                Authorization: 'Bearer {{AUTH_TOKEN}}'
 ```
 
 ### Ejemplo 3: Multi-Group Flow
 
 ```yaml
 test:
-  name: "Complex Multi-Group Test"
-  version: "2.0"
+  name: 'Complex Multi-Group Test'
+  version: '2.0'
 
 scenarios:
-  - name: "User Journey"
+  - name: 'User Journey'
     load:
       type: ramp
       start_users: 1
       end_users: 100
-      duration: "15m"
-    
+      duration: '15m'
+
     steps:
       # Global config
       - think_time: 2s
       - assertions:
           - type: status
             value: 200
-      
+
       # Group 1: Authentication
       - group:
-          name: "Authentication"
+          name: 'Authentication'
           steps:
             - request:
-                name: "Login"
+                name: 'Login'
                 method: POST
                 url: /api/login
                 body:
-                  email: "user@example.com"
-                  password: "secret"
+                  email: 'user@example.com'
+                  password: 'secret'
                 extractors:
                   - type: jsonpath
                     var: TOKEN
-                    expression: "$.token"
-      
+                    expression: '$.token'
+
       # Group 2: User Operations
       - group:
-          name: "User Operations"
+          name: 'User Operations'
           steps:
             - loop: 5
               steps:
                 - request:
-                    name: "List Items"
+                    name: 'List Items'
                     method: GET
                     url: /api/items?page={{__counter}}
                     headers:
-                      Authorization: "Bearer {{TOKEN}}"
-                
+                      Authorization: 'Bearer {{TOKEN}}'
+
                 - think_time: 1s
-            
+
             - request:
-                name: "Create Item"
+                name: 'Create Item'
                 method: POST
                 url: /api/items
                 headers:
-                  Authorization: "Bearer {{TOKEN}}"
-                  Content-Type: "application/json"
+                  Authorization: 'Bearer {{TOKEN}}'
+                  Content-Type: 'application/json'
                 body:
-                  name: "New Item"
+                  name: 'New Item'
                   price: 99.99
-      
+
       # Conditional: Only if logged in
-      - if: "{{TOKEN}} != null"
+      - if: '{{TOKEN}} != null'
         steps:
           - request:
-              name: "Access Dashboard"
+              name: 'Access Dashboard'
               method: GET
               url: /api/dashboard
               headers:
-                Authorization: "Bearer {{TOKEN}}"
+                Authorization: 'Bearer {{TOKEN}}'
 ```
 
 ---

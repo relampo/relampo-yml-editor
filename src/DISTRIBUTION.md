@@ -74,6 +74,7 @@ curl -L https://tu-url.com/relampo-standalone-mac-linux.tar.gz | tar -xz && cd r
 Para Windows necesitas crear un `.bat` script en lugar de `.sh`:
 
 **run.bat:**
+
 ```batch
 @echo off
 echo Starting Relampo...
@@ -140,6 +141,7 @@ PORT=3456  # Cambiar este número
 Para crear un `.app` verdadero con icono:
 
 1. Crear estructura:
+
 ```
 Relampo.app/
 ├── Contents/
@@ -151,6 +153,7 @@ Relampo.app/
 ```
 
 2. Info.plist:
+
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

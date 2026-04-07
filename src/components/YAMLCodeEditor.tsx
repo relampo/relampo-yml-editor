@@ -11,7 +11,13 @@ interface YAMLCodeEditorProps {
   largeFileMode?: boolean;
 }
 
-export function YAMLCodeEditor({ value, onChange, readOnly = false, active = true, largeFileMode = false }: YAMLCodeEditorProps) {
+export function YAMLCodeEditor({
+  value,
+  onChange,
+  readOnly = false,
+  active = true,
+  largeFileMode = false,
+}: YAMLCodeEditorProps) {
   const editorRef = useRef<MonacoEditorNS.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<Monaco | null>(null);
   const findDecorationsRef = useRef<MonacoEditorNS.IEditorDecorationsCollection | null>(null);
@@ -36,7 +42,7 @@ export function YAMLCodeEditor({ value, onChange, readOnly = false, active = tru
     }
     const nextMatches = model.findMatches(searchQuery, false, false, false, null, true);
     setMatches(nextMatches);
-    setCurrentMatchIndex((prev) => (nextMatches.length === 0 ? 0 : Math.min(prev, nextMatches.length - 1)));
+    setCurrentMatchIndex(prev => (nextMatches.length === 0 ? 0 : Math.min(prev, nextMatches.length - 1)));
   };
 
   useEffect(() => {
@@ -81,7 +87,7 @@ export function YAMLCodeEditor({ value, onChange, readOnly = false, active = tru
   const handleEditorDidMount = (editor: MonacoEditorNS.IStandaloneCodeEditor, monaco: Monaco) => {
     monacoRef.current = monaco;
     try {
-      if (!monaco.languages.getLanguages().some((l: { id: string; }) => l.id === 'yaml-relampo')) {
+      if (!monaco.languages.getLanguages().some((l: { id: string }) => l.id === 'yaml-relampo')) {
         monaco.languages.register({ id: 'yaml-relampo' });
       }
     } catch {
@@ -118,11 +124,31 @@ export function YAMLCodeEditor({ value, onChange, readOnly = false, active = tru
         { token: 'string.key', foreground: 'FACC15', fontStyle: 'bold' },
         { token: 'string.key.yaml', foreground: 'FACC15', fontStyle: 'bold' },
         { token: 'entity.name.tag', foreground: 'FACC15', fontStyle: 'bold' },
-        { token: 'entity.name.tag.yaml', foreground: 'FACC15', fontStyle: 'bold' },
-        { token: 'support.type.property-name', foreground: 'FACC15', fontStyle: 'bold' },
-        { token: 'support.type.property-name.yaml', foreground: 'FACC15', fontStyle: 'bold' },
-        { token: 'meta.object-literal.key', foreground: 'FACC15', fontStyle: 'bold' },
-        { token: 'meta.object-literal.key.yaml', foreground: 'FACC15', fontStyle: 'bold' },
+        {
+          token: 'entity.name.tag.yaml',
+          foreground: 'FACC15',
+          fontStyle: 'bold',
+        },
+        {
+          token: 'support.type.property-name',
+          foreground: 'FACC15',
+          fontStyle: 'bold',
+        },
+        {
+          token: 'support.type.property-name.yaml',
+          foreground: 'FACC15',
+          fontStyle: 'bold',
+        },
+        {
+          token: 'meta.object-literal.key',
+          foreground: 'FACC15',
+          fontStyle: 'bold',
+        },
+        {
+          token: 'meta.object-literal.key.yaml',
+          foreground: 'FACC15',
+          fontStyle: 'bold',
+        },
         { token: 'type', foreground: '60A5FA' },
         { token: 'type.yaml', foreground: '60A5FA' },
         { token: 'keyword', foreground: '60A5FA' },
@@ -163,12 +189,12 @@ export function YAMLCodeEditor({ value, onChange, readOnly = false, active = tru
 
   const handleNextMatch = () => {
     if (totalMatches === 0) return;
-    setCurrentMatchIndex((prev) => (prev + 1) % totalMatches);
+    setCurrentMatchIndex(prev => (prev + 1) % totalMatches);
   };
 
   const handlePrevMatch = () => {
     if (totalMatches === 0) return;
-    setCurrentMatchIndex((prev) => (prev - 1 + totalMatches) % totalMatches);
+    setCurrentMatchIndex(prev => (prev - 1 + totalMatches) % totalMatches);
   };
 
   const editorOptions = useMemo(
@@ -176,7 +202,7 @@ export function YAMLCodeEditor({ value, onChange, readOnly = false, active = tru
       readOnly,
       minimap: { enabled: false },
       scrollBeyondLastLine: false,
-      wordWrap: largeFileMode ? 'off' as const : 'on' as const,
+      wordWrap: largeFileMode ? ('off' as const) : ('on' as const),
       automaticLayout: true,
       renderLineHighlight: 'none' as const,
       occurrencesHighlight: 'off' as const,
@@ -184,8 +210,11 @@ export function YAMLCodeEditor({ value, onChange, readOnly = false, active = tru
       codeLens: false,
       folding: !largeFileMode,
       links: !largeFileMode,
-      wordBasedSuggestions: largeFileMode ? 'off' as const : 'currentDocument' as const,
-      unicodeHighlight: { ambiguousCharacters: false, invisibleCharacters: false },
+      wordBasedSuggestions: largeFileMode ? ('off' as const) : ('currentDocument' as const),
+      unicodeHighlight: {
+        ambiguousCharacters: false,
+        invisibleCharacters: false,
+      },
       lineNumbersMinChars: 3,
       padding: { top: 12, bottom: 12 },
       find: {
@@ -194,24 +223,28 @@ export function YAMLCodeEditor({ value, onChange, readOnly = false, active = tru
         seedSearchStringFromSelection: 'never' as const,
       },
     }),
-    [readOnly, largeFileMode]
+    [readOnly, largeFileMode],
   );
 
   return (
     <div className="relative h-full w-full bg-[#0a0a0a] flex flex-col text-sm">
       <div className="flex-shrink-0 px-3 pt-3 pb-2 bg-[#0a0a0a]">
-        <div className={`flex items-center gap-2 p-3 bg-[#111111] border rounded-lg transition-colors ${
-          searchQuery.trim() ? 'border-yellow-400/35' : 'border-white/10'
-        }`}>
-          <div className={`flex-1 flex items-center gap-2 bg-[#0a0a0a] border rounded px-3 py-1.5 transition-colors ${
-            searchQuery.trim() ? 'border-yellow-400/45' : 'border-white/10'
-          }`}>
+        <div
+          className={`flex items-center gap-2 p-3 bg-[#111111] border rounded-lg transition-colors ${
+            searchQuery.trim() ? 'border-yellow-400/35' : 'border-white/10'
+          }`}
+        >
+          <div
+            className={`flex-1 flex items-center gap-2 bg-[#0a0a0a] border rounded px-3 py-1.5 transition-colors ${
+              searchQuery.trim() ? 'border-yellow-400/45' : 'border-white/10'
+            }`}
+          >
             <Search className="w-4 h-4 text-zinc-500 flex-shrink-0" />
             <input
               type="text"
               placeholder="Search in YAML..."
               value={searchQuery}
-              onChange={(e) => {
+              onChange={e => {
                 setSearchQuery(e.target.value);
                 setCurrentMatchIndex(0);
               }}
@@ -259,7 +292,7 @@ export function YAMLCodeEditor({ value, onChange, readOnly = false, active = tru
           height="100%"
           language="yaml-relampo"
           value={value}
-          onChange={(nextValue) => {
+          onChange={nextValue => {
             if (!readOnly) onChange(nextValue || '');
           }}
           onMount={handleEditorDidMount}

@@ -25,11 +25,26 @@ export default defineConfig({
       'next-themes@0.4.6': 'next-themes',
       'lucide-react@0.487.0': 'lucide-react',
       'input-otp@1.4.2': 'input-otp',
-      'figma:asset/8c420cea8295fe8268ad6343f3f458ad9b833622.png': path.resolve(__dirname, './src/assets/8c420cea8295fe8268ad6343f3f458ad9b833622.png'),
-      'figma:asset/82af6e269bfaf8702bf826a4ad0d5531345b142e.png': path.resolve(__dirname, './src/assets/82af6e269bfaf8702bf826a4ad0d5531345b142e.png'),
-      'figma:asset/6520242ec1d1ee886f3f480a096425eadd3e4f17.png': path.resolve(__dirname, './src/assets/6520242ec1d1ee886f3f480a096425eadd3e4f17.png'),
-      'figma:asset/50840d39adf6cbcd41c3a963cd670b992b897cb2.png': path.resolve(__dirname, './src/assets/50840d39adf6cbcd41c3a963cd670b992b897cb2.png'),
-      'figma:asset/0d66f73cb54002f3e2d95dc43fd0b53e0249b309.png': path.resolve(__dirname, './src/assets/0d66f73cb54002f3e2d95dc43fd0b53e0249b309.png'),
+      'figma:asset/8c420cea8295fe8268ad6343f3f458ad9b833622.png': path.resolve(
+        __dirname,
+        './src/assets/8c420cea8295fe8268ad6343f3f458ad9b833622.png',
+      ),
+      'figma:asset/82af6e269bfaf8702bf826a4ad0d5531345b142e.png': path.resolve(
+        __dirname,
+        './src/assets/82af6e269bfaf8702bf826a4ad0d5531345b142e.png',
+      ),
+      'figma:asset/6520242ec1d1ee886f3f480a096425eadd3e4f17.png': path.resolve(
+        __dirname,
+        './src/assets/6520242ec1d1ee886f3f480a096425eadd3e4f17.png',
+      ),
+      'figma:asset/50840d39adf6cbcd41c3a963cd670b992b897cb2.png': path.resolve(
+        __dirname,
+        './src/assets/50840d39adf6cbcd41c3a963cd670b992b897cb2.png',
+      ),
+      'figma:asset/0d66f73cb54002f3e2d95dc43fd0b53e0249b309.png': path.resolve(
+        __dirname,
+        './src/assets/0d66f73cb54002f3e2d95dc43fd0b53e0249b309.png',
+      ),
       'embla-carousel-react@8.6.0': 'embla-carousel-react',
       'cmdk@1.1.1': 'cmdk',
       'class-variance-authority@0.7.1': 'class-variance-authority',

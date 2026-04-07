@@ -19,11 +19,13 @@ Descarga → Descomprime → `./build-yaml-editor-only.sh` → Espera 10 min →
 ## 🎯 ¿Para quién es esto?
 
 ### ✅ Casos de Uso
+
 - Quieres editar archivos YAML de Relampo en tu Mac sin navegador
 - Necesitas una app de escritorio dedicada para configuraciones de test
 - Prefieres una herramienta standalone sin dependencias web
 
 ### ❌ NO es para ti si
+
 - Necesitas la plataforma completa de Relampo (usa la versión web)
 - Quieres gestionar múltiples proyectos (usa el Workbench)
 - Necesitas acceder a Relampo League
@@ -35,6 +37,7 @@ Descarga → Descomprime → `./build-yaml-editor-only.sh` → Espera 10 min →
 ### ✅ Incluido (100% funcional)
 
 #### Panel Izquierdo - Vista de Árbol
+
 - Vista jerárquica del YAML
 - **Drag & Drop** para reordenar
 - **Context Menu** (click derecho)
@@ -42,22 +45,26 @@ Descarga → Descomprime → `./build-yaml-editor-only.sh` → Espera 10 min →
 - Iconos por tipo de nodo
 
 #### Panel Central - Editor de Código
+
 - Edición manual de YAML
 - Syntax highlighting
 - Sincronización con árbol
 
 #### Panel Derecho - Detalles
+
 - Formularios dinámicos
 - Editar propiedades
 - Guardar automático
 
 #### Barra Superior - Herramientas
+
 - Upload YAML
 - Download YAML
 - Validate
 - Toggle idioma (EN/ES)
 
 ### ❌ NO Incluido (removido por diseño)
+
 - Landing page de marketing
 - Dashboard de proyectos
 - Sistema de settings globales
@@ -91,31 +98,36 @@ open yaml-editor-releases/
 
 ## 📖 Documentación Disponible
 
-| Archivo | Propósito |
-|---------|-----------|
-| `README.md` | Visión general y guía rápida |
-| `GUIA-INSTALACION-MAC.md` | Guía detallada paso a paso |
-| `QUICK-START-MAC.txt` | Referencia ultra-rápida |
-| `FUNCIONALIDADES-YAML-EDITOR.md` | Lista completa de funcionalidades |
-| `VERIFICACION-FUNCIONALIDADES.md` | Checklist de verificación técnica |
-| `CONFIRMACION-FUNCIONALIDADES.txt` | Confirmación línea por línea |
-| `BUILD-YAML-DESKTOP.md` | Detalles técnicos del build |
+| Archivo                            | Propósito                         |
+| ---------------------------------- | --------------------------------- |
+| `README.md`                        | Visión general y guía rápida      |
+| `GUIA-INSTALACION-MAC.md`          | Guía detallada paso a paso        |
+| `QUICK-START-MAC.txt`              | Referencia ultra-rápida           |
+| `FUNCIONALIDADES-YAML-EDITOR.md`   | Lista completa de funcionalidades |
+| `VERIFICACION-FUNCIONALIDADES.md`  | Checklist de verificación técnica |
+| `CONFIRMACION-FUNCIONALIDADES.txt` | Confirmación línea por línea      |
+| `BUILD-YAML-DESKTOP.md`            | Detalles técnicos del build       |
 
 ---
 
 ## ❓ Preguntas Frecuentes
 
 ### ¿Se eliminó el drag & drop?
+
 **NO.** El drag & drop está 100% incluido. Archivo: `YAMLTreeNode.tsx` (líneas 50-194).
 
 ### ¿Se eliminó el context menu?
+
 **NO.** El context menu está 100% incluido. Archivo: `YAMLContextMenu.tsx` (completo).
 
 ### ¿Se eliminó el panel de detalles?
+
 **NO.** El panel de detalles está 100% incluido. Archivo: `YAMLNodeDetails.tsx` (completo).
 
 ### ¿Qué se eliminó entonces?
+
 Solo las **páginas de navegación** de la aplicación completa:
+
 - Landing page (marketing)
 - Workbench (gestor de proyectos)
 - Dashboard
@@ -125,7 +137,9 @@ Solo las **páginas de navegación** de la aplicación completa:
 El **YAML Editor en sí** está 100% intacto.
 
 ### ¿Cómo verifico que todo está incluido?
+
 Antes de ejecutar el build:
+
 ```bash
 ls -la components/YAML*.tsx
 ls -la utils/yamlDragDropRules.ts
@@ -134,15 +148,19 @@ ls -la utils/yamlDragDropRules.ts
 Deberías ver todos los archivos del YAML Editor.
 
 ### ¿Por qué tarda 10 minutos?
+
 El script:
+
 1. Instala ~500 dependencias npm (5 min)
 2. Compila con Vite (2 min)
 3. Empaqueta con Electron (3 min)
 
 ### ¿Qué tamaño tiene el binario?
+
 ~200-300 MB (incluye Electron runtime + Chromium)
 
 ### ¿Funciona offline?
+
 Sí, una vez instalada la app funciona 100% offline.
 
 ---
@@ -165,6 +183,7 @@ Lucide React       → Icons
 
 **Theme:** Dark profesional  
 **Colores:**
+
 - Backgrounds: `#0a0a0a`, `#111111`
 - Primary: `#facc15` (yellow-400)
 - Text: `zinc-100`, `zinc-400`
@@ -177,14 +196,15 @@ Lucide React       → Icons
 ## 📊 Especificación YAML Soportada
 
 ### Relampo v1
+
 ```yaml
 version: 1
 test_metadata: { ... }
-variables: [ ... ]
-data_sources: [ ... ]
+variables: [...]
+data_sources: [...]
 http_defaults: { ... }
 scenarios:
-  - name: "..."
+  - name: '...'
     load:
       type: constant | ramp_up | steady | spike | step | stress
       users: 100
@@ -202,19 +222,19 @@ scenarios:
 
 ## 🚦 Estado del Proyecto
 
-| Componente | Estado | Notas |
-|------------|--------|-------|
-| YAML Editor | ✅ 100% | Completo y funcional |
-| Drag & Drop | ✅ 100% | Con validación y auto-expansión |
-| Context Menu | ✅ 100% | Todas las opciones |
-| Panel Detalles | ✅ 100% | Formularios dinámicos |
-| i18n (EN/ES) | ✅ 100% | Traducciones completas |
-| Upload/Download | ✅ 100% | Funcional |
-| Validación YAML | ✅ 100% | En tiempo real |
-| Electron Build | ✅ 100% | Script automatizado |
-| Landing Page | ❌ N/A | Removida intencionalmente |
-| Workbench | ❌ N/A | Removido intencionalmente |
-| Relampo League | ❌ N/A | Removido intencionalmente |
+| Componente      | Estado  | Notas                           |
+| --------------- | ------- | ------------------------------- |
+| YAML Editor     | ✅ 100% | Completo y funcional            |
+| Drag & Drop     | ✅ 100% | Con validación y auto-expansión |
+| Context Menu    | ✅ 100% | Todas las opciones              |
+| Panel Detalles  | ✅ 100% | Formularios dinámicos           |
+| i18n (EN/ES)    | ✅ 100% | Traducciones completas          |
+| Upload/Download | ✅ 100% | Funcional                       |
+| Validación YAML | ✅ 100% | En tiempo real                  |
+| Electron Build  | ✅ 100% | Script automatizado             |
+| Landing Page    | ❌ N/A  | Removida intencionalmente       |
+| Workbench       | ❌ N/A  | Removido intencionalmente       |
+| Relampo League  | ❌ N/A  | Removido intencionalmente       |
 
 ---
 
@@ -232,19 +252,25 @@ scenarios:
 ## 📝 Notas Importantes
 
 ### Seguridad macOS
+
 Primera vez que abras la app:
+
 ```bash
 xattr -cr /Applications/Relampo\ YAML\ Editor.app
 ```
 
 ### Limpieza Post-Build
+
 Puedes borrar la carpeta temporal después de instalar:
+
 ```bash
 rm -rf yaml-editor-standalone/
 ```
 
 ### Actualizaciones Futuras
+
 Para actualizar:
+
 1. Descarga nueva versión del ZIP
 2. Re-ejecuta el script
 3. Reemplaza la app en Applications

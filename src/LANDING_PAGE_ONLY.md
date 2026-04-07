@@ -5,6 +5,7 @@
 Después de descargar el ZIP completo, **ELIMINA** estas carpetas y archivos:
 
 ### ❌ Eliminar - Archivos del Workbench
+
 ```
 /app/                          (toda la carpeta - contiene workbench)
 /components/workbench/         (toda la carpeta - componentes del workbench)
@@ -13,21 +14,25 @@ Después de descargar el ZIP completo, **ELIMINA** estas carpetas y archivos:
 ### ✅ Mantener - Archivos de la Landing Page
 
 #### Componentes principales
+
 ```
 /components/LandingPage.tsx
 ```
 
 #### Traducciones (i18n)
+
 ```
 /i18n/translations.ts
 ```
 
 #### Estilos
+
 ```
 /styles/globals.css
 ```
 
 #### Imágenes del equipo
+
 ```
 /team/delvis.jpg
 /team/angel.jpg
@@ -37,6 +42,7 @@ Después de descargar el ZIP completo, **ELIMINA** estas carpetas y archivos:
 ```
 
 #### Configuración del proyecto
+
 ```
 /App.tsx                       (modificar - ver abajo)
 /package.json
@@ -69,8 +75,19 @@ export default function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route
+          path="/"
+          element={<LandingPage />}
+        />
+        <Route
+          path="*"
+          element={
+            <Navigate
+              to="/"
+              replace
+            />
+          }
+        />
       </Routes>
     </Router>
   );
@@ -110,6 +127,7 @@ En `package.json`, asegúrate de tener estas dependencias:
 ## ✨ Resultado
 
 Tendrás una landing page completamente funcional con:
+
 - ✅ Internacionalización EN/ES
 - ✅ Sección Hero con animaciones
 - ✅ Quick Start

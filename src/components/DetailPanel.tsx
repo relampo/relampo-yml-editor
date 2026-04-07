@@ -42,8 +42,8 @@ export function DetailPanel({ selectedNode, activeTab, onNodeUpdate }: DetailPan
           </div>
           <h3 className="text-zinc-100 mb-3 font-semibold tracking-tight">Correlation AI</h3>
           <p className="text-sm text-zinc-400 leading-relaxed">
-            AI-powered correlation detection to automatically identify dynamic values
-            that need to be extracted and correlated across requests.
+            AI-powered correlation detection to automatically identify dynamic values that need to be extracted and
+            correlated across requests.
           </p>
         </div>
       </div>
@@ -69,7 +69,12 @@ export function DetailPanel({ selectedNode, activeTab, onNodeUpdate }: DetailPan
       case 'http-request':
         return <HttpRequestDetail node={selectedNode} />;
       case 'data-source':
-        return <DataSourceDetail node={selectedNode} onNodeUpdate={onNodeUpdate} />;
+        return (
+          <DataSourceDetail
+            node={selectedNode}
+            onNodeUpdate={onNodeUpdate}
+          />
+        );
       default:
         return (
           <div className="flex items-center justify-center h-full">
@@ -82,9 +87,5 @@ export function DetailPanel({ selectedNode, activeTab, onNodeUpdate }: DetailPan
     }
   };
 
-  return (
-    <div className="flex-1 bg-[#0a0a0a] overflow-hidden min-w-0">
-      {renderDetailView()}
-    </div>
-  );
+  return <div className="flex-1 bg-[#0a0a0a] overflow-hidden min-w-0">{renderDetailView()}</div>;
 }

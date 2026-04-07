@@ -7,18 +7,53 @@ import { RelampoLeagueExpanded } from './RelampoLeagueExpanded';
 export function Dashboard() {
   const { t } = useLanguage();
   const [showExpandedLeague, setShowExpandedLeague] = useState(false);
-  
+
   const stats = [
-    { label: t('dashboard.activeTests'), value: '3', icon: Activity, color: 'blue' },
-    { label: t('dashboard.avgResponseTime'), value: '156ms', icon: Clock, color: 'green' },
-    { label: t('dashboard.successRate'), value: '99.2%', icon: CheckCircle, color: 'emerald' },
-    { label: t('dashboard.throughput'), value: '1.2k/s', icon: TrendingUp, color: 'purple' },
+    {
+      label: t('dashboard.activeTests'),
+      value: '3',
+      icon: Activity,
+      color: 'blue',
+    },
+    {
+      label: t('dashboard.avgResponseTime'),
+      value: '156ms',
+      icon: Clock,
+      color: 'green',
+    },
+    {
+      label: t('dashboard.successRate'),
+      value: '99.2%',
+      icon: CheckCircle,
+      color: 'emerald',
+    },
+    {
+      label: t('dashboard.throughput'),
+      value: '1.2k/s',
+      icon: TrendingUp,
+      color: 'purple',
+    },
   ];
 
   const recentTests = [
-    { name: t('dashboard.ecommerceTest'), status: 'passed', duration: '15m 23s', date: t('dashboard.today') + ', 14:23' },
-    { name: t('dashboard.apiGatewayTest'), status: 'running', duration: '3m 12s', date: t('dashboard.today') + ', 14:18' },
-    { name: t('dashboard.mobileBackendTest'), status: 'failed', duration: '8m 45s', date: t('dashboard.yesterday') + ', 16:45' },
+    {
+      name: t('dashboard.ecommerceTest'),
+      status: 'passed',
+      duration: '15m 23s',
+      date: t('dashboard.today') + ', 14:23',
+    },
+    {
+      name: t('dashboard.apiGatewayTest'),
+      status: 'running',
+      duration: '3m 12s',
+      date: t('dashboard.today') + ', 14:18',
+    },
+    {
+      name: t('dashboard.mobileBackendTest'),
+      status: 'failed',
+      duration: '8m 45s',
+      date: t('dashboard.yesterday') + ', 16:45',
+    },
   ];
 
   return (
@@ -32,7 +67,7 @@ export function Dashboard() {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-4 gap-4">
-          {stats.map((stat) => {
+          {stats.map(stat => {
             const Icon = stat.icon;
             const colorMap: Record<string, string> = {
               blue: 'bg-blue-500/10 text-blue-400',
@@ -41,7 +76,10 @@ export function Dashboard() {
               purple: 'bg-purple-500/10 text-purple-400',
             };
             return (
-              <div key={stat.label} className="bg-[#111111] border border-white/5 rounded-lg p-4 shadow-2xl hover:shadow-yellow-400/10 transition-shadow">
+              <div
+                key={stat.label}
+                className="bg-[#111111] border border-white/5 rounded-lg p-4 shadow-2xl hover:shadow-yellow-400/10 transition-shadow"
+              >
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-sm text-zinc-400">{stat.label}</span>
                   <div className={`p-2 rounded-lg ${colorMap[stat.color]}`}>
@@ -63,13 +101,20 @@ export function Dashboard() {
             </div>
             <div className="divide-y divide-white/5">
               {recentTests.map((test, index) => (
-                <div key={index} className="px-6 py-4 flex items-center justify-between hover:bg-white/5 cursor-pointer transition-colors">
+                <div
+                  key={index}
+                  className="px-6 py-4 flex items-center justify-between hover:bg-white/5 cursor-pointer transition-colors"
+                >
                   <div className="flex items-center gap-4">
-                    <div className={`w-2 h-2 rounded-full ${
-                      test.status === 'passed' ? 'bg-green-400' :
-                      test.status === 'running' ? 'bg-blue-400 animate-pulse' :
-                      'bg-red-400'
-                    }`} />
+                    <div
+                      className={`w-2 h-2 rounded-full ${
+                        test.status === 'passed'
+                          ? 'bg-green-400'
+                          : test.status === 'running'
+                            ? 'bg-blue-400 animate-pulse'
+                            : 'bg-red-400'
+                      }`}
+                    />
                     <div>
                       <p className="text-sm text-zinc-100">{test.name}</p>
                       <p className="text-xs text-zinc-500 mt-0.5">{test.date}</p>
@@ -77,11 +122,15 @@ export function Dashboard() {
                   </div>
                   <div className="flex items-center gap-6">
                     <span className="text-sm text-zinc-400">{test.duration}</span>
-                    <span className={`px-3 py-1 rounded-full text-xs capitalize ${
-                      test.status === 'passed' ? 'bg-green-500/10 text-green-400 border border-green-400/30' :
-                      test.status === 'running' ? 'bg-blue-500/10 text-blue-400 border border-blue-400/30' :
-                      'bg-red-500/10 text-red-400 border border-red-400/30'
-                    }`}>
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs capitalize ${
+                        test.status === 'passed'
+                          ? 'bg-green-500/10 text-green-400 border border-green-400/30'
+                          : test.status === 'running'
+                            ? 'bg-blue-500/10 text-blue-400 border border-blue-400/30'
+                            : 'bg-red-500/10 text-red-400 border border-red-400/30'
+                      }`}
+                    >
                       {t(`dashboard.status.${test.status}`)}
                     </span>
                   </div>
@@ -96,9 +145,7 @@ export function Dashboard() {
       </div>
 
       {/* Expanded League Modal */}
-      {showExpandedLeague && (
-        <RelampoLeagueExpanded onClose={() => setShowExpandedLeague(false)} />
-      )}
+      {showExpandedLeague && <RelampoLeagueExpanded onClose={() => setShowExpandedLeague(false)} />}
     </div>
   );
 }

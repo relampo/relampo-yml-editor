@@ -38,11 +38,13 @@ Guía completa paso a paso para recrear Pulse en Figma.
 ## Método 1: Plugin HTML to Figma
 
 ### Ventajas
+
 ✅ Rápido  
 ✅ Mantiene estructura  
 ✅ Bueno para iteraciones
 
 ### Desventajas
+
 ❌ Requiere limpieza  
 ❌ No perfecto
 
@@ -65,12 +67,14 @@ npm run dev
 #### 1.3 Capturar HTML
 
 **Opción A: Browser Extension**
+
 1. Instala extensión Chrome/Firefox
 2. Abre app en localhost:5173
 3. Selecciona `<div id="root">`
 4. "Send to Figma"
 
 **Opción B: Desde Figma**
+
 1. Plugins > HTML to Figma
 2. Pega URL o HTML source
 3. Import
@@ -88,6 +92,7 @@ npm run dev
 ## Método 2: Recreación Manual
 
 ### Recomendado para:
+
 ✅ Control total  
 ✅ Componentes limpios  
 ✅ Design system optimizado
@@ -170,6 +175,7 @@ Pulse/Shadow/
 6. Nombre: "Button/Primary"
 
 **Crear variantes:**
+
 1. Add variant
 2. Propiedad "State":
    - Default
@@ -177,6 +183,7 @@ Pulse/Shadow/
    - Disabled (Neutral/200)
 
 **Repetir para:**
+
 - Button/Success (Green/600)
 - Button/Destructive (Red/600)
 - Button/Special (Purple/600)
@@ -228,6 +235,7 @@ Pulse/Shadow/
    - Shadow: SM
 
 **Elementos:**
+
 - Logo + Project selector (left)
 - Environment selector
 - Notifications + Avatar (right)
@@ -244,6 +252,7 @@ Pulse/Shadow/
    - Shadow: SM
 
 **Elementos:**
+
 - Logo section
 - Nav items
 - Settings (bottom)
@@ -259,6 +268,7 @@ Pulse/Shadow/
    - Right stroke: Neutral/200
 
 **Elementos:**
+
 - Header
 - Tree nodes con indent
 
@@ -306,6 +316,7 @@ Workbench
 ## Método 3: Screenshots + Recreación
 
 ### Ventajas
+
 ✅ Referencia visual exacta  
 ✅ Bueno para QA  
 ✅ Combina velocidad y control
@@ -315,6 +326,7 @@ Workbench
 #### 3.1 Capturar Screenshots
 
 **Herramientas:**
+
 - Mac: Cmd + Shift + 4
 - Windows: Win + Shift + S
 - Chrome: Cmd/Ctrl + Shift + P > "Screenshot"
@@ -374,6 +386,7 @@ Pulse Design System.fig
 4. Publish changes
 
 En otros archivos:
+
 - Assets panel (Cmd/Ctrl + Shift + O)
 - Team Library
 - Enable "Pulse Design System"
@@ -417,6 +430,7 @@ Button / Primary / Hover
 ## Checklist de Componentes
 
 ### Buttons
+
 - [ ] Primary
 - [ ] Success
 - [ ] Destructive
@@ -424,6 +438,7 @@ Button / Primary / Hover
 - [ ] Icon
 
 ### Forms
+
 - [ ] Input/Text
 - [ ] Input/Number
 - [ ] Textarea
@@ -431,11 +446,13 @@ Button / Primary / Hover
 - [ ] Select
 
 ### Navigation
+
 - [ ] Sidebar Nav Item
 - [ ] Tab Primary
 - [ ] Tab Secondary
 
 ### Data Display
+
 - [ ] Card/Base
 - [ ] Card/Stat
 - [ ] Badge/Method
@@ -444,6 +461,7 @@ Button / Primary / Hover
 - [ ] Avatar
 
 ### Layout
+
 - [ ] TopBar
 - [ ] Sidebar
 - [ ] Script Tree
@@ -458,16 +476,19 @@ Button / Primary / Hover
 **Siempre usar** para componentes flexibles
 
 **Buttons:**
+
 - Horizontal, Hug contents
 - Padding: 16px/8px
 - Spacing: 8px
 
 **Cards:**
+
 - Vertical, Hug height
 - Padding: 16px
 - Spacing: 16px
 
 **Lists:**
+
 - Vertical, Fill container
 - Spacing: 0px (con dividers)
 
@@ -484,14 +505,17 @@ Input / Text / Focus
 ### Constraints
 
 **TopBar:**
+
 - Left & Right: constrain
 - Top: pin
 
 **Sidebar:**
+
 - Left: pin
 - Top & Bottom: constrain
 
 **Main:**
+
 - All sides: constrain
 
 ---
@@ -499,11 +523,13 @@ Input / Text / Focus
 ## Workflow Recomendado
 
 ### Semana 1: Setup
+
 - Día 1-2: Design system base
 - Día 3-4: Componentes básicos
 - Día 5: Review
 
 ### Semana 2: Layouts
+
 - Día 1: TopBar + Sidebar
 - Día 2: Dashboard
 - Día 3: Workbench base
@@ -511,6 +537,7 @@ Input / Text / Focus
 - Día 5: Review
 
 ### Semana 3: Vistas
+
 - Día 1: Recording
 - Día 2: Monitoring
 - Día 3: Debugging
@@ -518,6 +545,7 @@ Input / Text / Focus
 - Día 5: Polish
 
 ### Semana 4: Refinamiento
+
 - Día 1-2: Estados
 - Día 3: Prototyping
 - Día 4-5: QA + handoff
@@ -527,6 +555,7 @@ Input / Text / Focus
 ## Checklist de Calidad
 
 ### Diseño
+
 - [ ] Auto Layout en componentes
 - [ ] Spacing consistente (4px/8px)
 - [ ] Colores usan variables
@@ -535,6 +564,7 @@ Input / Text / Focus
 - [ ] Radius consistente
 
 ### Componentes
+
 - [ ] Componentes reutilizables
 - [ ] Variantes apropiadas
 - [ ] Nombres descriptivos
@@ -542,12 +572,14 @@ Input / Text / Focus
 - [ ] Documentación
 
 ### Screens
+
 - [ ] Todas las screens principales
 - [ ] Estados importantes
 - [ ] Responsive configurado
 - [ ] Constraints correctos
 
 ### Handoff
+
 - [ ] Annotations
 - [ ] Dev notes
 - [ ] Flows prototipados
@@ -584,6 +616,7 @@ Laptop: 1280px × 800px (optional)
 ### ¿Cómo manejo charts?
 
 Opciones:
+
 1. Placeholder con texto
 2. Screenshot del chart real
 3. Dibuja manualmente
@@ -606,16 +639,19 @@ Fase 2: Tablet/mobile (futuro)
 ## Recursos
 
 ### Tutoriales
+
 - [Figma Auto Layout](https://help.figma.com/hc/en-us/articles/360040451373)
 - [Figma Components](https://help.figma.com/hc/en-us/articles/360038662654)
 - [Figma Variables](https://help.figma.com/hc/en-us/articles/15339657135383)
 
 ### Inspiración
+
 - Material Design
 - Ant Design
 - Atlassian Design
 
 ### Íconos
+
 - [Lucide Icons](https://lucide.dev/icons/)
 - Plugin "Iconify" en Figma
 

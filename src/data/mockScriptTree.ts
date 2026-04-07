@@ -80,8 +80,18 @@ export const mockScriptTree: ScriptNode = {
           name: 'Cookie Manager',
           data: {
             cookies: [
-              { name: 'session_id', value: 'abc123xyz', domain: '.example.com', path: '/' },
-              { name: 'user_pref', value: 'dark_mode', domain: '.example.com', path: '/' },
+              {
+                name: 'session_id',
+                value: 'abc123xyz',
+                domain: '.example.com',
+                path: '/',
+              },
+              {
+                name: 'user_pref',
+                value: 'dark_mode',
+                domain: '.example.com',
+                path: '/',
+              },
             ],
           },
         },
@@ -91,8 +101,16 @@ export const mockScriptTree: ScriptNode = {
           name: 'Cache Manager',
           data: {
             cache: [
-              { key: 'user_session', value: 'session_abc123', expires: '2024-12-31' },
-              { key: 'api_response', value: 'cached_data', expires: '2024-12-31' },
+              {
+                key: 'user_session',
+                value: 'session_abc123',
+                expires: '2024-12-31',
+              },
+              {
+                key: 'api_response',
+                value: 'cached_data',
+                expires: '2024-12-31',
+              },
             ],
           },
         },
@@ -117,8 +135,8 @@ export const mockScriptTree: ScriptNode = {
             method: 'GET',
             url: 'https://api.example.com/api/users',
             headers: {
-              'Accept': 'application/json',
-              'Authorization': 'Bearer ${access_token}',
+              Accept: 'application/json',
+              Authorization: 'Bearer ${access_token}',
             },
             response: {
               status: 200,
@@ -127,12 +145,16 @@ export const mockScriptTree: ScriptNode = {
                 'Content-Type': 'application/json',
                 'Cache-Control': 'no-cache',
               },
-              body: JSON.stringify({
-                users: [
-                  { id: 1, name: 'John Doe', email: 'john@example.com' },
-                  { id: 2, name: 'Jane Smith', email: 'jane@example.com' },
-                ],
-              }, null, 2),
+              body: JSON.stringify(
+                {
+                  users: [
+                    { id: 1, name: 'John Doe', email: 'john@example.com' },
+                    { id: 2, name: 'Jane Smith', email: 'jane@example.com' },
+                  ],
+                },
+                null,
+                2,
+              ),
               contentType: 'application/json',
               size: 512,
               duration: 145,
@@ -188,12 +210,16 @@ export const mockScriptTree: ScriptNode = {
                 url: 'https://api.example.com/api/auth/login',
                 headers: {
                   'Content-Type': 'application/json',
-                  'Accept': 'application/json',
+                  Accept: 'application/json',
                 },
-                body: JSON.stringify({
-                  email: 'user@example.com',
-                  password: '[REDACTED]',
-                }, null, 2),
+                body: JSON.stringify(
+                  {
+                    email: 'user@example.com',
+                    password: '[REDACTED]',
+                  },
+                  null,
+                  2,
+                ),
                 response: {
                   status: 201,
                   statusText: 'Created',
@@ -201,10 +227,14 @@ export const mockScriptTree: ScriptNode = {
                     'Content-Type': 'application/json',
                     'Set-Cookie': '[REDACTED]',
                   },
-                  body: JSON.stringify({
-                    token: '[REDACTED]',
-                    user: { id: 1, name: 'John Doe' },
-                  }, null, 2),
+                  body: JSON.stringify(
+                    {
+                      token: '[REDACTED]',
+                      user: { id: 1, name: 'John Doe' },
+                    },
+                    null,
+                    2,
+                  ),
                   contentType: 'application/json',
                   size: 156,
                   duration: 234,
@@ -232,8 +262,8 @@ export const mockScriptTree: ScriptNode = {
                 method: 'GET',
                 url: 'https://api.example.com/dashboard',
                 headers: {
-                  'Accept': 'application/json',
-                  'Authorization': 'Bearer ${auth_token}',
+                  Accept: 'application/json',
+                  Authorization: 'Bearer ${auth_token}',
                 },
                 response: {
                   status: 200,
@@ -241,9 +271,13 @@ export const mockScriptTree: ScriptNode = {
                   headers: {
                     'Content-Type': 'application/json',
                   },
-                  body: JSON.stringify({
-                    widgets: ['analytics', 'tasks', 'notifications'],
-                  }, null, 2),
+                  body: JSON.stringify(
+                    {
+                      widgets: ['analytics', 'tasks', 'notifications'],
+                    },
+                    null,
+                    2,
+                  ),
                   contentType: 'application/json',
                   size: 324,
                   duration: 89,
@@ -269,8 +303,8 @@ export const mockScriptTree: ScriptNode = {
                 method: 'GET',
                 url: 'https://api.example.com/admin/settings',
                 headers: {
-                  'Accept': 'application/json',
-                  'Authorization': 'Bearer ${auth_token}',
+                  Accept: 'application/json',
+                  Authorization: 'Bearer ${auth_token}',
                 },
                 response: {
                   status: 200,
@@ -278,9 +312,13 @@ export const mockScriptTree: ScriptNode = {
                   headers: {
                     'Content-Type': 'application/json',
                   },
-                  body: JSON.stringify({
-                    settings: { theme: 'dark', notifications: true },
-                  }, null, 2),
+                  body: JSON.stringify(
+                    {
+                      settings: { theme: 'dark', notifications: true },
+                    },
+                    null,
+                    2,
+                  ),
                   contentType: 'application/json',
                   size: 128,
                   duration: 67,
@@ -306,7 +344,7 @@ export const mockScriptTree: ScriptNode = {
                 method: 'GET',
                 url: 'https://api.example.com/api/products',
                 headers: {
-                  'Accept': 'application/json',
+                  Accept: 'application/json',
                 },
                 response: {
                   status: 200,
@@ -314,12 +352,16 @@ export const mockScriptTree: ScriptNode = {
                   headers: {
                     'Content-Type': 'application/json',
                   },
-                  body: JSON.stringify({
-                    products: [
-                      { id: 101, name: 'Product A', price: 29.99 },
-                      { id: 102, name: 'Product B', price: 49.99 },
-                    ],
-                  }, null, 2),
+                  body: JSON.stringify(
+                    {
+                      products: [
+                        { id: 101, name: 'Product A', price: 29.99 },
+                        { id: 102, name: 'Product B', price: 49.99 },
+                      ],
+                    },
+                    null,
+                    2,
+                  ),
                   contentType: 'application/json',
                   size: 256,
                   duration: 112,
@@ -347,22 +389,30 @@ export const mockScriptTree: ScriptNode = {
                 url: 'https://api.example.com/api/checkout',
                 headers: {
                   'Content-Type': 'application/json',
-                  'Authorization': 'Bearer ${auth_token}',
+                  Authorization: 'Bearer ${auth_token}',
                 },
-                body: JSON.stringify({
-                  cart_id: 'cart_789',
-                  payment_method: 'credit_card',
-                }, null, 2),
+                body: JSON.stringify(
+                  {
+                    cart_id: 'cart_789',
+                    payment_method: 'credit_card',
+                  },
+                  null,
+                  2,
+                ),
                 response: {
                   status: 200,
                   statusText: 'OK',
                   headers: {
                     'Content-Type': 'application/json',
                   },
-                  body: JSON.stringify({
-                    order_id: 'order_456',
-                    status: 'confirmed',
-                  }, null, 2),
+                  body: JSON.stringify(
+                    {
+                      order_id: 'order_456',
+                      status: 'confirmed',
+                    },
+                    null,
+                    2,
+                  ),
                   contentType: 'application/json',
                   size: 98,
                   duration: 523,

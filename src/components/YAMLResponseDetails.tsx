@@ -44,13 +44,15 @@ function HeaderLine({ line, className, ranges, startIndex, currentMatchIndex, ha
       <mark
         key={`header-${absoluteIndex}-${r.start}-${r.end}`}
         data-header-match-index={absoluteIndex}
-        className={isActive
-          ? 'bg-yellow-300 text-black ring-2 ring-amber-500 shadow-[0_0_0_1px_rgba(245,158,11,0.45)] rounded-sm'
-          : 'rounded-sm'}
+        className={
+          isActive
+            ? 'bg-yellow-300 text-black ring-2 ring-amber-500 shadow-[0_0_0_1px_rgba(245,158,11,0.45)] rounded-sm'
+            : 'rounded-sm'
+        }
         style={isActive ? undefined : { backgroundColor: 'rgba(59,130,246,0.4)', color: '#dbeafe' }}
       >
         {line.slice(r.start, r.end)}
-      </mark>
+      </mark>,
     );
     cursor = r.end;
   });
@@ -78,13 +80,15 @@ function HighlightedText({ text, searchText, searchMode, currentMatchIndex }: Hi
       <mark
         key={`${r.start}-${r.end}-${idx}`}
         data-match-index={idx}
-        className={isActive
-          ? 'bg-yellow-300 text-black ring-2 ring-amber-500 shadow-[0_0_0_1px_rgba(245,158,11,0.45)] rounded-sm'
-          : 'rounded-sm'}
+        className={
+          isActive
+            ? 'bg-yellow-300 text-black ring-2 ring-amber-500 shadow-[0_0_0_1px_rgba(245,158,11,0.45)] rounded-sm'
+            : 'rounded-sm'
+        }
         style={isActive ? undefined : { backgroundColor: 'rgba(59,130,246,0.4)', color: '#dbeafe' }}
       >
         {text.slice(r.start, r.end)}
-      </mark>
+      </mark>,
     );
     cursor = r.end;
   });
@@ -120,8 +124,15 @@ export function YAMLResponseDetails({
   };
 
   const bodyText = useMemo(
-    () => (!response ? '' : formData.body ? (typeof formData.body === 'string' ? formData.body : JSON.stringify(formData.body, null, 2)) : ''),
-    [response, formData.body]
+    () =>
+      !response
+        ? ''
+        : formData.body
+          ? typeof formData.body === 'string'
+            ? formData.body
+            : JSON.stringify(formData.body, null, 2)
+          : '',
+    [response, formData.body],
   );
 
   const shouldUseMonaco = (text: string) => {
@@ -138,7 +149,7 @@ export function YAMLResponseDetails({
     if (!raw) return [] as Array<[string, string]>;
     if (Array.isArray(raw)) {
       return raw
-        .map((item) => {
+        .map(item => {
           if (!item) return null;
           if (Array.isArray(item) && item.length >= 2) {
             return [String(item[0]), String(item[1])] as [string, string];
@@ -164,12 +175,12 @@ export function YAMLResponseDetails({
       !response
         ? ''
         : `${String(formData.http_version || 'HTTP/1.1')} ${String(formData.status || 0)} ${String(formData.status_text || getStatusReason(formData.status))}`,
-    [response, formData.http_version, formData.status, formData.status_text]
+    [response, formData.http_version, formData.status, formData.status_text],
   );
 
   const headerLines = useMemo(
     () => [headerStatusLine, ...headerEntries.map(([k, v]) => `${k}: ${v}`)],
-    [headerStatusLine, headerEntries]
+    [headerStatusLine, headerEntries],
   );
 
   const buildHeaderSearchRegex = () => {
@@ -220,12 +231,12 @@ export function YAMLResponseDetails({
   };
 
   const headerLineMatches = useMemo(
-    () => headerLines.map((line) => collectHeaderMatchesForLine(line)),
-    [headerLines, headerSearchText, headerSearchMode]
+    () => headerLines.map(line => collectHeaderMatchesForLine(line)),
+    [headerLines, headerSearchText, headerSearchMode],
   );
   const headerTotalMatches = useMemo(
     () => headerLineMatches.reduce((acc, ranges) => acc + ranges.length, 0),
-    [headerLineMatches]
+    [headerLineMatches],
   );
 
   useEffect(() => {
@@ -243,13 +254,10 @@ export function YAMLResponseDetails({
     const container = headersContentRef.current;
     const raf = requestAnimationFrame(() => {
       const activeMark = container.querySelector(
-        `mark[data-header-match-index="${headerCurrentMatchIndex}"]`
+        `mark[data-header-match-index="${headerCurrentMatchIndex}"]`,
       ) as HTMLElement | null;
       if (!activeMark) return;
-      const targetTop = Math.max(
-        0,
-        activeMark.offsetTop - container.clientHeight / 2 + activeMark.offsetHeight / 2
-      );
+      const targetTop = Math.max(0, activeMark.offsetTop - container.clientHeight / 2 + activeMark.offsetHeight / 2);
       container.scrollTop = targetTop;
     });
     return () => cancelAnimationFrame(raf);
@@ -308,9 +316,7 @@ export function YAMLResponseDetails({
     const highlight = responseBodyRef.current;
     const textarea = responseBodyTextareaRef.current;
     const raf = requestAnimationFrame(() => {
-      const activeMark = highlight.querySelector(
-        `mark[data-match-index="${currentMatchIndex}"]`
-      ) as HTMLElement | null;
+      const activeMark = highlight.querySelector(`mark[data-match-index="${currentMatchIndex}"]`) as HTMLElement | null;
       if (!activeMark) return;
       activeMark.scrollIntoView({ block: 'center', inline: 'nearest' });
       if (textarea) {
@@ -339,11 +345,7 @@ export function YAMLResponseDetails({
   }, [searchText, searchMode, currentMatchIndex, bodyText, totalMatches, useMonacoForResponse]);
 
   if (!response) {
-    return (
-      <div className="text-sm text-zinc-500 italic">
-        No response data recorded
-      </div>
-    );
+    return <div className="text-sm text-zinc-500 italic">No response data recorded</div>;
   }
 
   const handlePrevious = () => {
@@ -358,11 +360,11 @@ export function YAMLResponseDetails({
   };
   const handleHeaderPrevious = () => {
     if (headerTotalMatches === 0) return;
-    setHeaderCurrentMatchIndex((prev) => (prev === 0 ? headerTotalMatches - 1 : prev - 1));
+    setHeaderCurrentMatchIndex(prev => (prev === 0 ? headerTotalMatches - 1 : prev - 1));
   };
   const handleHeaderNext = () => {
     if (headerTotalMatches === 0) return;
-    setHeaderCurrentMatchIndex((prev) => (prev === headerTotalMatches - 1 ? 0 : prev + 1));
+    setHeaderCurrentMatchIndex(prev => (prev === headerTotalMatches - 1 ? 0 : prev + 1));
   };
 
   const syncBodyScroll = () => {
@@ -378,29 +380,31 @@ export function YAMLResponseDetails({
       <div className="flex items-center gap-2 flex-wrap">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-            <Input
-              value={searchText}
-              onChange={(e) => onSearchChange?.(e.target.value)}
-              placeholder="Search in response body..."
+          <Input
+            value={searchText}
+            onChange={e => onSearchChange?.(e.target.value)}
+            placeholder="Search in response body..."
             className="pl-9 pr-3 bg-white/5 border-white/10 text-zinc-300 text-sm focus-visible:border-yellow-400/60 focus-visible:ring-yellow-400/30"
           />
         </div>
         <div className="flex items-center rounded-md border border-white/10 bg-white/5 p-0.5">
           <button
             onClick={() => onSearchModeChange?.('text')}
-                    className={`px-2 py-1 text-xs rounded transition-colors ${searchMode === 'text'
-              ? 'bg-yellow-400/20 text-yellow-400 border border-yellow-400/40'
-              : 'text-zinc-400 hover:text-zinc-200'
-              }`}
+            className={`px-2 py-1 text-xs rounded transition-colors ${
+              searchMode === 'text'
+                ? 'bg-yellow-400/20 text-yellow-400 border border-yellow-400/40'
+                : 'text-zinc-400 hover:text-zinc-200'
+            }`}
           >
-              Text
+            Text
           </button>
           <button
             onClick={() => onSearchModeChange?.('regex')}
-            className={`px-2 py-1 text-xs rounded transition-colors ${searchMode === 'regex'
-              ? 'bg-yellow-400/20 text-yellow-400 border border-yellow-400/40'
-              : 'text-zinc-400 hover:text-zinc-200'
-              }`}
+            className={`px-2 py-1 text-xs rounded transition-colors ${
+              searchMode === 'regex'
+                ? 'bg-yellow-400/20 text-yellow-400 border border-yellow-400/40'
+                : 'text-zinc-400 hover:text-zinc-200'
+            }`}
           >
             Regex
           </button>
@@ -414,7 +418,7 @@ export function YAMLResponseDetails({
               onClick={handlePrevious}
               disabled={totalMatches === 0}
               className="p-1.5 hover:bg-white/10 rounded border border-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                title="Previous match"
+              title="Previous match"
             >
               <ChevronUp className="w-4 h-4 text-zinc-400" />
             </button>
@@ -422,17 +426,15 @@ export function YAMLResponseDetails({
               onClick={handleNext}
               disabled={totalMatches === 0}
               className="p-1.5 hover:bg-white/10 rounded border border-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                title="Next match"
+              title="Next match"
             >
               <ChevronDown className="w-4 h-4 text-zinc-400" />
             </button>
           </div>
         )}
       </div>
-      {regexInvalid && (
-          <div className="mt-2 text-xs text-red-400">Invalid regex pattern</div>
-        )}
-      </div>
+      {regexInvalid && <div className="mt-2 text-xs text-red-400">Invalid regex pattern</div>}
+    </div>
   );
 
   return (
@@ -440,15 +442,11 @@ export function YAMLResponseDetails({
       {/* Response Headers (Collapsible) */}
       <div className="border border-white/10 rounded bg-[#0a0a0a] overflow-hidden">
         <button
-          onClick={() => setHeadersCollapsed((prev) => !prev)}
+          onClick={() => setHeadersCollapsed(prev => !prev)}
           className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-white/5 transition-colors"
         >
-          <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-            Response Headers
-          </span>
-          <span className="text-xs text-zinc-400">
-            {headersCollapsed ? 'Show' : 'Hide'}
-          </span>
+          <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Response Headers</span>
+          <span className="text-xs text-zinc-400">{headersCollapsed ? 'Show' : 'Hide'}</span>
         </button>
         {!headersCollapsed && (
           <div className="p-3 pt-0">
@@ -457,7 +455,7 @@ export function YAMLResponseDetails({
                 <div className="relative flex-1">
                   <Input
                     value={headerSearchText}
-                    onChange={(e) => setHeaderSearchText(e.target.value)}
+                    onChange={e => setHeaderSearchText(e.target.value)}
                     placeholder="Search in headers..."
                     className="pr-3 bg-white/5 border-white/10 text-zinc-300 text-sm focus-visible:border-yellow-400/60 focus-visible:ring-yellow-400/30"
                   />
@@ -465,19 +463,21 @@ export function YAMLResponseDetails({
                 <div className="flex items-center rounded-md border border-white/10 bg-white/5 p-0.5">
                   <button
                     onClick={() => setHeaderSearchMode('text')}
-                    className={`px-2 py-1 text-xs rounded transition-colors ${headerSearchMode === 'text'
-                      ? 'bg-yellow-400/20 text-yellow-400 border border-yellow-400/40'
-                      : 'text-zinc-400 hover:text-zinc-200'
-                      }`}
+                    className={`px-2 py-1 text-xs rounded transition-colors ${
+                      headerSearchMode === 'text'
+                        ? 'bg-yellow-400/20 text-yellow-400 border border-yellow-400/40'
+                        : 'text-zinc-400 hover:text-zinc-200'
+                    }`}
                   >
                     Text
                   </button>
                   <button
                     onClick={() => setHeaderSearchMode('regex')}
-                    className={`px-2 py-1 text-xs rounded transition-colors ${headerSearchMode === 'regex'
-                      ? 'bg-yellow-400/20 text-yellow-400 border border-yellow-400/40'
-                      : 'text-zinc-400 hover:text-zinc-200'
-                      }`}
+                    className={`px-2 py-1 text-xs rounded transition-colors ${
+                      headerSearchMode === 'regex'
+                        ? 'bg-yellow-400/20 text-yellow-400 border border-yellow-400/40'
+                        : 'text-zinc-400 hover:text-zinc-200'
+                    }`}
                   >
                     Regex
                   </button>
@@ -506,9 +506,7 @@ export function YAMLResponseDetails({
                   </div>
                 )}
               </div>
-              {headerRegexInvalid && (
-                <div className="mt-2 text-xs text-red-400">Invalid regex pattern</div>
-              )}
+              {headerRegexInvalid && <div className="mt-2 text-xs text-red-400">Invalid regex pattern</div>}
             </div>
             <div className="mt-2 rounded-md border border-white/10 bg-black/30 overflow-hidden">
               <div className="px-3 py-2 border-b border-white/10 bg-white/[0.03]">
@@ -516,7 +514,10 @@ export function YAMLResponseDetails({
                   Raw HTTP Headers
                 </span>
               </div>
-              <div ref={headersContentRef} className="max-h-[260px] overflow-auto px-3 py-2 font-mono text-xs leading-6">
+              <div
+                ref={headersContentRef}
+                className="max-h-[260px] overflow-auto px-3 py-2 font-mono text-xs leading-6"
+              >
                 {(() => {
                   let globalMatchIndex = 0;
                   const statusRanges = collectHeaderMatchesForLine(headerStatusLine);
@@ -545,7 +546,10 @@ export function YAMLResponseDetails({
                       </div>
                       {headerEntries.length > 0 ? (
                         entryData.map(({ lineText, ranges, startIndex }, idx) => (
-                          <div key={`${headerEntries[idx][0]}-${idx}`} className="text-zinc-300">
+                          <div
+                            key={`${headerEntries[idx][0]}-${idx}`}
+                            className="text-zinc-300"
+                          >
                             <HeaderLine
                               line={lineText}
                               className="text-zinc-200 break-all"
@@ -573,9 +577,7 @@ export function YAMLResponseDetails({
       {/* Response Body */}
       <div>
         <div className="flex items-center gap-2 mb-2">
-          <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-            Response Body
-          </p>
+          <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Response Body</p>
           {searchText && totalMatches > 0 && (
             <span className="text-xs text-yellow-400 flex items-center gap-1">
               <span>✓</span> {totalMatches} match(es)
@@ -587,7 +589,10 @@ export function YAMLResponseDetails({
           {useMonacoForResponse ? (
             <div
               className="w-full h-[300px] rounded-md border border-white/10 bg-white/5 overflow-hidden"
-              style={{ height: BODY_FIXED_HEIGHT, minHeight: BODY_FIXED_HEIGHT }}
+              style={{
+                height: BODY_FIXED_HEIGHT,
+                minHeight: BODY_FIXED_HEIGHT,
+              }}
             >
               <MonacoResponseBodyEditor
                 value={bodyText}
@@ -599,13 +604,21 @@ export function YAMLResponseDetails({
           ) : searchText ? (
             <div
               className="relative w-full h-[300px] rounded-md border border-white/10 bg-white/5 overflow-hidden"
-              style={{ height: BODY_FIXED_HEIGHT, minHeight: BODY_FIXED_HEIGHT }}
+              style={{
+                height: BODY_FIXED_HEIGHT,
+                minHeight: BODY_FIXED_HEIGHT,
+              }}
             >
               <pre
                 ref={responseBodyRef}
                 className="absolute inset-0 m-0 p-3 text-sm font-mono text-zinc-300 whitespace-pre-wrap overflow-y-auto overflow-x-auto pointer-events-none"
               >
-                <HighlightedText text={bodyText} searchText={searchText} searchMode={searchMode} currentMatchIndex={currentMatchIndex} />
+                <HighlightedText
+                  text={bodyText}
+                  searchText={searchText}
+                  searchMode={searchMode}
+                  currentMatchIndex={currentMatchIndex}
+                />
               </pre>
               <textarea
                 ref={responseBodyTextareaRef}
@@ -622,11 +635,13 @@ export function YAMLResponseDetails({
               value={bodyText}
               readOnly
               placeholder="Response body..."
-              style={{ height: BODY_FIXED_HEIGHT, minHeight: BODY_FIXED_HEIGHT }}
+              style={{
+                height: BODY_FIXED_HEIGHT,
+                minHeight: BODY_FIXED_HEIGHT,
+              }}
               className="w-full bg-white/5 border border-white/10 rounded text-zinc-300 text-sm font-mono h-[300px] resize-none overflow-y-auto overflow-x-auto outline-none p-3"
             />
           )}
-
         </div>
       </div>
     </div>
@@ -640,19 +655,11 @@ interface MonacoResponseBodyEditorProps {
   currentMatchIndex: number;
 }
 
-function MonacoResponseBodyEditor({
-  value,
-  searchText,
-  searchMode,
-  currentMatchIndex,
-}: MonacoResponseBodyEditorProps) {
+function MonacoResponseBodyEditor({ value, searchText, searchMode, currentMatchIndex }: MonacoResponseBodyEditorProps) {
   const editorRef = useRef<MonacoEditorNS.IStandaloneCodeEditor | null>(null);
   const decorationsRef = useRef<MonacoEditorNS.IEditorDecorationsCollection | null>(null);
 
-  const matchRanges = useMemo(
-    () => findMatchRanges(value, searchText, searchMode),
-    [value, searchText, searchMode]
-  );
+  const matchRanges = useMemo(() => findMatchRanges(value, searchText, searchMode), [value, searchText, searchMode]);
 
   const offsetToPosition = (text: string, offset: number) => {
     const safeOffset = Math.max(0, Math.min(offset, text.length));
@@ -722,7 +729,7 @@ function MonacoResponseBodyEditor({
         height="100%"
         language="json"
         value={value}
-        onMount={(editor) => {
+        onMount={editor => {
           editorRef.current = editor;
           decorationsRef.current = editor.createDecorationsCollection([]);
         }}

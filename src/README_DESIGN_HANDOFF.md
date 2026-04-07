@@ -37,11 +37,13 @@ Paquete completo de diseño para recrear Pulse en Figma y mantener consistencia 
 ## Estado Actual de Pulse
 
 ### Estructura Global
+
 - TopBar con selector de proyecto y ambiente
 - Sidebar de navegación (5 secciones)
 - Layout responsivo de 3 columnas
 
 ### Vistas Principales
+
 - **Dashboard** - Métricas y tests recientes
 - **Workbench** - 6 tabs de trabajo
 - **Projects** - Grid de proyectos
@@ -49,6 +51,7 @@ Paquete completo de diseño para recrear Pulse en Figma y mantener consistencia 
 - **Help** - Ayuda
 
 ### Workbench Tabs
+
 - **Recording** - Captura de tráfico HTTP
 - **Scripting** - Editor con tree y panels
 - **Debugging** - Ejecución con AI insights
@@ -57,6 +60,7 @@ Paquete completo de diseño para recrear Pulse en Figma y mantener consistencia 
 - **Monitoring** - Métricas en tiempo real
 
 ### Componentes Core
+
 - Script Tree (9 tipos de nodos)
 - Detail Panels para cada elemento
 - Sistema de tabs multinivel
@@ -65,6 +69,7 @@ Paquete completo de diseño para recrear Pulse en Figma y mantener consistencia 
 - Cards de métricas
 
 ### Stack Técnico
+
 - React + TypeScript
 - Tailwind CSS v4
 - Lucide Icons
@@ -76,18 +81,21 @@ Paquete completo de diseño para recrear Pulse en Figma y mantener consistencia 
 ## Características del Sistema de Diseño
 
 ### Principios
+
 1. **Profesionalismo Enterprise** - Diseño limpio
 2. **Claridad** - Jerarquía visual clara
 3. **Eficiencia** - Densidad equilibrada
 4. **Consistencia** - Patrones predecibles
 
 ### Paleta
+
 - **Neutral Grays** - 10 tonos (50-900)
 - **Primary Blue** - Acciones y selecciones
 - **Semantic** - Green, Red, Amber, Purple
 - **Charts** - 5 colores optimizados
 
 ### Tipografía
+
 - Base: 16px
 - Font: System-ui, SF Pro, Inter
 - Escalas: 12px → 24px
@@ -95,7 +103,9 @@ Paquete completo de diseño para recrear Pulse en Figma y mantener consistencia 
 - Line Height: 1.5
 
 ### Componentes
+
 60+ variantes en 8 categorías:
+
 - Buttons (6 tipos)
 - Forms (7 tipos)
 - Navigation (5 tipos)
@@ -135,15 +145,19 @@ pulse/
 ## Casos de Uso
 
 ### "Necesito un color para botón primario"
+
 → COLOR_PALETTE.md → Primary Blue → `bg-blue-600`
 
 ### "¿Cómo implementar un Badge?"
+
 → COMPONENT_LIBRARY.md → Search "Badge" → Copia código
 
 ### "¿Qué spacing usar?"
+
 → DESIGN_SYSTEM.md → Espaciado → `gap-4` (16px)
 
 ### "¿Cómo exportar a Figma?"
+
 → FIGMA_EXPORT_GUIDE.md → Elige método → Sigue pasos
 
 ---
@@ -215,16 +229,19 @@ R: Sí, pero documenta cambios y actualiza componentes.
 ## Próximos Pasos
 
 ### Diseñador
+
 1. Lee DESIGN_SYSTEM.md (30 min)
 2. Lee FIGMA_EXPORT_GUIDE.md (20 min)
 3. Comienza Fase 1 (setup Figma)
 
 ### Developer
+
 1. Ejecuta `npm run dev`
 2. Explora vistas (15 min)
 3. Lee DESIGN_SYSTEM.md tokens (15 min)
 
 ### PM/QA
+
 1. Ejecuta `npm run dev`
 2. Lee este README (15 min)
 3. Browse COMPONENT_LIBRARY.md

@@ -3,7 +3,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 
 export function Settings() {
   const { t } = useLanguage();
-  
+
   const settingsSections = [
     {
       title: 'Profile',
@@ -54,17 +54,23 @@ export function Settings() {
 
         {/* Settings Sections */}
         <div className="space-y-4">
-          {settingsSections.map((section) => {
+          {settingsSections.map(section => {
             const Icon = section.icon;
             return (
-              <div key={section.title} className="bg-[#111111] border border-white/5 rounded-lg overflow-hidden shadow-2xl">
+              <div
+                key={section.title}
+                className="bg-[#111111] border border-white/5 rounded-lg overflow-hidden shadow-2xl"
+              >
                 <div className="px-6 py-4 border-b border-white/5 flex items-center gap-3">
                   <Icon className="w-5 h-5 text-yellow-400" />
                   <h3 className="text-zinc-100">{section.title}</h3>
                 </div>
                 <div className="divide-y divide-white/5">
                   {section.items.map((item, index) => (
-                    <div key={index} className="px-6 py-4 flex items-center justify-between hover:bg-white/5 transition-colors">
+                    <div
+                      key={index}
+                      className="px-6 py-4 flex items-center justify-between hover:bg-white/5 transition-colors"
+                    >
                       <span className="text-sm text-zinc-300">{item.label}</span>
                       <span className="text-sm text-zinc-100">{item.value}</span>
                     </div>

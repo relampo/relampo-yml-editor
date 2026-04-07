@@ -1,16 +1,63 @@
-import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import {
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from 'recharts';
 import { Activity, Cpu, HardDrive, Database } from 'lucide-react';
 
 export function MonitoringView() {
   // Mock data for charts
   const responseTimeData = [
     { time: '0s', responseTime: 120, concurrency: 10, errors: 0, requests: 45 },
-    { time: '10s', responseTime: 145, concurrency: 25, errors: 0, requests: 98 },
-    { time: '20s', responseTime: 132, concurrency: 50, errors: 1, requests: 156 },
-    { time: '30s', responseTime: 168, concurrency: 75, errors: 2, requests: 234 },
-    { time: '40s', responseTime: 195, concurrency: 100, errors: 3, requests: 312 },
-    { time: '50s', responseTime: 178, concurrency: 100, errors: 1, requests: 298 },
-    { time: '60s', responseTime: 156, concurrency: 100, errors: 0, requests: 287 },
+    {
+      time: '10s',
+      responseTime: 145,
+      concurrency: 25,
+      errors: 0,
+      requests: 98,
+    },
+    {
+      time: '20s',
+      responseTime: 132,
+      concurrency: 50,
+      errors: 1,
+      requests: 156,
+    },
+    {
+      time: '30s',
+      responseTime: 168,
+      concurrency: 75,
+      errors: 2,
+      requests: 234,
+    },
+    {
+      time: '40s',
+      responseTime: 195,
+      concurrency: 100,
+      errors: 3,
+      requests: 312,
+    },
+    {
+      time: '50s',
+      responseTime: 178,
+      concurrency: 100,
+      errors: 1,
+      requests: 298,
+    },
+    {
+      time: '60s',
+      responseTime: 156,
+      concurrency: 100,
+      errors: 0,
+      requests: 287,
+    },
   ];
 
   const cpuMemoryData = [
@@ -30,9 +77,7 @@ export function MonitoringView() {
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-zinc-100">Performance Monitoring</h3>
-            <p className="text-sm text-zinc-400 mt-1">
-              Real-time metrics and system resource utilization
-            </p>
+            <p className="text-sm text-zinc-400 mt-1">Real-time metrics and system resource utilization</p>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
@@ -97,57 +142,61 @@ export function MonitoringView() {
           <div className="bg-white border border-neutral-200 rounded-lg p-4">
             <h4 className="text-sm text-neutral-900 mb-4">Global Overview</h4>
             <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer
+                width="100%"
+                height="100%"
+              >
                 <LineChart data={responseTimeData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis 
-                    dataKey="time" 
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke="#e5e7eb"
+                  />
+                  <XAxis
+                    dataKey="time"
                     tick={{ fontSize: 12 }}
                     stroke="#9ca3af"
                   />
-                  <YAxis 
+                  <YAxis
                     tick={{ fontSize: 12 }}
                     stroke="#9ca3af"
                   />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'white', 
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'white',
                       border: '1px solid #e5e7eb',
                       borderRadius: '8px',
-                      fontSize: '12px'
+                      fontSize: '12px',
                     }}
                   />
-                  <Legend 
-                    wrapperStyle={{ fontSize: '12px' }}
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="responseTime" 
-                    stroke="#3b82f6" 
+                  <Legend wrapperStyle={{ fontSize: '12px' }} />
+                  <Line
+                    type="monotone"
+                    dataKey="responseTime"
+                    stroke="#3b82f6"
                     strokeWidth={2}
                     name="Response Time (ms)"
                     dot={{ r: 3 }}
                   />
-                  <Line 
-                    type="monotone" 
-                    dataKey="concurrency" 
-                    stroke="#10b981" 
+                  <Line
+                    type="monotone"
+                    dataKey="concurrency"
+                    stroke="#10b981"
                     strokeWidth={2}
                     name="Concurrency"
                     dot={{ r: 3 }}
                   />
-                  <Line 
-                    type="monotone" 
-                    dataKey="errors" 
-                    stroke="#ef4444" 
+                  <Line
+                    type="monotone"
+                    dataKey="errors"
+                    stroke="#ef4444"
                     strokeWidth={2}
                     name="Errors"
                     dot={{ r: 3 }}
                   />
-                  <Line 
-                    type="monotone" 
-                    dataKey="requests" 
-                    stroke="#8b5cf6" 
+                  <Line
+                    type="monotone"
+                    dataKey="requests"
+                    stroke="#8b5cf6"
                     strokeWidth={2}
                     name="Requests/sec"
                     dot={{ r: 3 }}
@@ -166,31 +215,37 @@ export function MonitoringView() {
                 <h4 className="text-sm text-neutral-900">CPU Usage</h4>
               </div>
               <div className="h-48">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer
+                  width="100%"
+                  height="100%"
+                >
                   <AreaChart data={cpuMemoryData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                    <XAxis 
-                      dataKey="time" 
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="#e5e7eb"
+                    />
+                    <XAxis
+                      dataKey="time"
                       tick={{ fontSize: 11 }}
                       stroke="#9ca3af"
                     />
-                    <YAxis 
+                    <YAxis
                       tick={{ fontSize: 11 }}
                       stroke="#9ca3af"
                     />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'white', 
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'white',
                         border: '1px solid #e5e7eb',
                         borderRadius: '8px',
-                        fontSize: '11px'
+                        fontSize: '11px',
                       }}
                     />
-                    <Area 
-                      type="monotone" 
-                      dataKey="cpu" 
-                      stroke="#3b82f6" 
-                      fill="#3b82f6" 
+                    <Area
+                      type="monotone"
+                      dataKey="cpu"
+                      stroke="#3b82f6"
+                      fill="#3b82f6"
                       fillOpacity={0.2}
                       name="CPU %"
                     />
@@ -206,31 +261,37 @@ export function MonitoringView() {
                 <h4 className="text-sm text-neutral-900">Memory Usage</h4>
               </div>
               <div className="h-48">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer
+                  width="100%"
+                  height="100%"
+                >
                   <AreaChart data={cpuMemoryData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                    <XAxis 
-                      dataKey="time" 
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="#e5e7eb"
+                    />
+                    <XAxis
+                      dataKey="time"
                       tick={{ fontSize: 11 }}
                       stroke="#9ca3af"
                     />
-                    <YAxis 
+                    <YAxis
                       tick={{ fontSize: 11 }}
                       stroke="#9ca3af"
                     />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'white', 
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'white',
                         border: '1px solid #e5e7eb',
                         borderRadius: '8px',
-                        fontSize: '11px'
+                        fontSize: '11px',
                       }}
                     />
-                    <Area 
-                      type="monotone" 
-                      dataKey="memory" 
-                      stroke="#10b981" 
-                      fill="#10b981" 
+                    <Area
+                      type="monotone"
+                      dataKey="memory"
+                      stroke="#10b981"
+                      fill="#10b981"
                       fillOpacity={0.2}
                       name="Memory %"
                     />
@@ -246,31 +307,37 @@ export function MonitoringView() {
                 <h4 className="text-sm text-neutral-900">Disk I/O</h4>
               </div>
               <div className="h-48">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer
+                  width="100%"
+                  height="100%"
+                >
                   <AreaChart data={cpuMemoryData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                    <XAxis 
-                      dataKey="time" 
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="#e5e7eb"
+                    />
+                    <XAxis
+                      dataKey="time"
                       tick={{ fontSize: 11 }}
                       stroke="#9ca3af"
                     />
-                    <YAxis 
+                    <YAxis
                       tick={{ fontSize: 11 }}
                       stroke="#9ca3af"
                     />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'white', 
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'white',
                         border: '1px solid #e5e7eb',
                         borderRadius: '8px',
-                        fontSize: '11px'
+                        fontSize: '11px',
                       }}
                     />
-                    <Area 
-                      type="monotone" 
-                      dataKey="disk" 
-                      stroke="#8b5cf6" 
-                      fill="#8b5cf6" 
+                    <Area
+                      type="monotone"
+                      dataKey="disk"
+                      stroke="#8b5cf6"
+                      fill="#8b5cf6"
                       fillOpacity={0.2}
                       name="Disk %"
                     />
@@ -286,31 +353,37 @@ export function MonitoringView() {
                 <h4 className="text-sm text-neutral-900">Network I/O</h4>
               </div>
               <div className="h-48">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer
+                  width="100%"
+                  height="100%"
+                >
                   <AreaChart data={cpuMemoryData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                    <XAxis 
-                      dataKey="time" 
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="#e5e7eb"
+                    />
+                    <XAxis
+                      dataKey="time"
                       tick={{ fontSize: 11 }}
                       stroke="#9ca3af"
                     />
-                    <YAxis 
+                    <YAxis
                       tick={{ fontSize: 11 }}
                       stroke="#9ca3af"
                     />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'white', 
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'white',
                         border: '1px solid #e5e7eb',
                         borderRadius: '8px',
-                        fontSize: '11px'
+                        fontSize: '11px',
                       }}
                     />
-                    <Area 
-                      type="monotone" 
-                      dataKey="network" 
-                      stroke="#f59e0b" 
-                      fill="#f59e0b" 
+                    <Area
+                      type="monotone"
+                      dataKey="network"
+                      stroke="#f59e0b"
+                      fill="#f59e0b"
                       fillOpacity={0.2}
                       name="Network MB/s"
                     />

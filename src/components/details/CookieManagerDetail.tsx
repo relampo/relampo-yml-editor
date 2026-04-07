@@ -15,9 +15,7 @@ export function CookieManagerDetail({ node }: CookieManagerDetailProps) {
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-zinc-100">{node.name}</h3>
-            <p className="text-sm text-zinc-400 mt-1">
-              Manages cookies at the scenario level
-            </p>
+            <p className="text-sm text-zinc-400 mt-1">Manages cookies at the scenario level</p>
           </div>
           <button className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-300 hover:to-yellow-400 text-black font-semibold rounded-lg transition-colors text-sm shadow-lg shadow-yellow-400/30">
             <Plus className="w-4 h-4" />
@@ -41,26 +39,17 @@ export function CookieManagerDetail({ node }: CookieManagerDetailProps) {
             </thead>
             <tbody>
               {data.cookies.map((cookie, index) => (
-                <tr key={index} className="border-t border-white/5 hover:bg-white/5 transition-colors">
-                  <td className="px-4 py-3 text-sm text-zinc-100 font-mono">
-                    {cookie.name}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-zinc-300 font-mono">
-                    {cookie.value}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-zinc-400">
-                    {cookie.domain}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-zinc-400">
-                    {cookie.path}
-                  </td>
+                <tr
+                  key={index}
+                  className="border-t border-white/5 hover:bg-white/5 transition-colors"
+                >
+                  <td className="px-4 py-3 text-sm text-zinc-100 font-mono">{cookie.name}</td>
+                  <td className="px-4 py-3 text-sm text-zinc-300 font-mono">{cookie.value}</td>
+                  <td className="px-4 py-3 text-sm text-zinc-400">{cookie.domain}</td>
+                  <td className="px-4 py-3 text-sm text-zinc-400">{cookie.path}</td>
                   <td className="px-4 py-3 text-sm">
-                    <button className="text-blue-400 hover:text-blue-300 mr-3">
-                      Edit
-                    </button>
-                    <button className="text-red-400 hover:text-red-300">
-                      Remove
-                    </button>
+                    <button className="text-blue-400 hover:text-blue-300 mr-3">Edit</button>
+                    <button className="text-red-400 hover:text-red-300">Remove</button>
                   </td>
                 </tr>
               ))}

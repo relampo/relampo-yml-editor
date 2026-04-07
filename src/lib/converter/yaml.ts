@@ -7,7 +7,7 @@ export function stringifyYAML(obj: any): string {
   return yaml.dump(obj, {
     indent: 2,
     lineWidth: -1, // Don't wrap long lines
-    noRefs: true,  // Don't use anchors/aliases
-    sortKeys: false // Keep order of keys as defined
+    noRefs: true, // Don't use anchors/aliases
+    sortKeys: false, // Keep order of keys as defined
   });
 }

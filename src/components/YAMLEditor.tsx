@@ -20,9 +20,7 @@ type ParseWorkerRequest = {
   yaml: string;
 };
 
-type ParseWorkerResponse =
-  | { id: number; ok: true; tree: YAMLNode | null }
-  | { id: number; ok: false; error: string };
+type ParseWorkerResponse = { id: number; ok: true; tree: YAMLNode | null } | { id: number; ok: false; error: string };
 
 type DocumentMetrics = {
   chars: number;
@@ -65,15 +63,12 @@ function lockTypedNodeSelectionInNode(node: YAMLNode): [YAMLNode, boolean] {
   let nextData = node.data;
   let nextChildren = node.children;
 
-  const defaultType =
-    node.type === 'extractor' ? 'regex' : node.type === 'assertion' ? 'status' : null;
+  const defaultType = node.type === 'extractor' ? 'regex' : node.type === 'assertion' ? 'status' : null;
 
   if (defaultType) {
     const currentData = node.data || {};
     const currentType =
-      typeof node.data?.type === 'string' && node.data.type.trim() !== ''
-        ? node.data.type.trim()
-        : defaultType;
+      typeof node.data?.type === 'string' && node.data.type.trim() !== '' ? node.data.type.trim() : defaultType;
     const typedData = { ...currentData, __lockedType: currentType } as Record<string, unknown>;
     delete typedData.__allowTypeSelection;
     if (currentData.__lockedType !== currentType || currentData.__allowTypeSelection !== undefined) {
@@ -84,7 +79,7 @@ function lockTypedNodeSelectionInNode(node: YAMLNode): [YAMLNode, boolean] {
 
   if (node.children && node.children.length > 0) {
     let childChanged = false;
-    const updatedChildren = node.children.map((child) => {
+    const updatedChildren = node.children.map(child => {
       const [nextChild, wasChanged] = lockTypedNodeSelectionInNode(child);
       if (wasChanged) childChanged = true;
       return nextChild;
@@ -129,8 +124,12 @@ export function YAMLEditor() {
   const documentMetrics = useMemo(() => getDocumentMetrics(yamlCode), [yamlCode]);
   const isLargeFileMode = documentMetrics.large;
 
-  useEffect(() => { selectedNodeRef.current = selectedNode; }, [selectedNode]);
-  useEffect(() => { selectedNodeIdsRef.current = selectedNodeIds; }, [selectedNodeIds]);
+  useEffect(() => {
+    selectedNodeRef.current = selectedNode;
+  }, [selectedNode]);
+  useEffect(() => {
+    selectedNodeIdsRef.current = selectedNodeIds;
+  }, [selectedNodeIds]);
 
   const syncSelectionWithTree = (tree: YAMLNode | null) => {
     if (!tree) {
@@ -141,7 +140,7 @@ export function YAMLEditor() {
       return;
     }
 
-    const survivingIds = selectedNodeIdsRef.current.filter((id) => findNodeById(tree, id));
+    const survivingIds = selectedNodeIdsRef.current.filter(id => findNodeById(tree, id));
     setSelectedNodeIds(survivingIds);
     selectedNodeIdsRef.current = survivingIds;
 
@@ -236,16 +235,16 @@ export function YAMLEditor() {
         setIsTreeOutdated(true);
         return;
       }
-      const [normalizedTree] = message.tree
-        ? lockTypedNodeSelectionInNode(message.tree)
-        : [message.tree, false];
+      const [normalizedTree] = message.tree ? lockTypedNodeSelectionInNode(message.tree) : [message.tree, false];
       setYamlTree(normalizedTree);
       syncSelectionWithTree(normalizedTree);
       setError(null);
       setIsTreeOutdated(false);
     };
 
-    worker.onerror = () => { setIsParsing(false); };
+    worker.onerror = () => {
+      setIsParsing(false);
+    };
 
     return () => {
       worker.terminate();
@@ -286,9 +285,7 @@ export function YAMLEditor() {
     try {
       const parsedTree = parseYAMLToTree(code);
       if (activeParseRequestIdRef.current !== requestId) return;
-      const [normalizedTree] = parsedTree
-        ? lockTypedNodeSelectionInNode(parsedTree)
-        : [parsedTree, false];
+      const [normalizedTree] = parsedTree ? lockTypedNodeSelectionInNode(parsedTree) : [parsedTree, false];
       setYamlTree(normalizedTree);
       syncSelectionWithTree(normalizedTree);
       setError(null);
@@ -420,7 +417,9 @@ export function YAMLEditor() {
     }, 220);
   };
 
-  const handleUpload = () => { fileInputRef.current?.click(); };
+  const handleUpload = () => {
+    fileInputRef.current?.click();
+  };
 
   const isYamlFile = (file: File) => /\.(ya?ml)$/i.test(file.name);
 
@@ -433,7 +432,7 @@ export function YAMLEditor() {
     setYamlTree(null);
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = event => {
       const content = event.target?.result as string;
       const metrics = getDocumentMetrics(content);
       setYamlCode(content);
@@ -460,15 +459,13 @@ export function YAMLEditor() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!isYamlFile(file)) {
-      setError(
-        language === 'es'
-          ? 'Solo se permiten archivos .yaml o .yml'
-          : 'Only .yaml or .yml files are supported'
-      );
+      setError(language === 'es' ? 'Solo se permiten archivos .yaml o .yml' : 'Only .yaml or .yml files are supported');
       e.target.value = '';
       return;
     }
-    loadYamlFile(file, () => { e.target.value = ''; });
+    loadYamlFile(file, () => {
+      e.target.value = '';
+    });
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
@@ -489,22 +486,14 @@ export function YAMLEditor() {
     const file = e.dataTransfer.files?.[0];
     if (!file) return;
     if (!isYamlFile(file)) {
-      setError(
-        language === 'es'
-          ? 'Solo se permiten archivos .yaml o .yml'
-          : 'Only .yaml or .yml files are supported'
-      );
+      setError(language === 'es' ? 'Solo se permiten archivos .yaml o .yml' : 'Only .yaml or .yml files are supported');
       return;
     }
     loadYamlFile(file);
   };
 
-  const formattedLineCount = documentMetrics.lines.toLocaleString(
-    language === 'es' ? 'es-ES' : 'en-US'
-  );
-  const formattedCharCount = documentMetrics.chars.toLocaleString(
-    language === 'es' ? 'es-ES' : 'en-US'
-  );
+  const formattedLineCount = documentMetrics.lines.toLocaleString(language === 'es' ? 'es-ES' : 'en-US');
+  const formattedCharCount = documentMetrics.chars.toLocaleString(language === 'es' ? 'es-ES' : 'en-US');
 
   return (
     <div
@@ -653,7 +642,10 @@ export function YAMLEditor() {
           className="w-1 bg-white/5 hover:bg-yellow-400/40 flex-shrink-0 transition-colors relative active:bg-yellow-400/60 z-50 group"
           style={{ cursor: 'col-resize' }}
         >
-          <div className="absolute inset-y-0 -left-4 -right-4 z-50" style={{ cursor: 'col-resize' }} />
+          <div
+            className="absolute inset-y-0 -left-4 -right-4 z-50"
+            style={{ cursor: 'col-resize' }}
+          />
           <div className="absolute inset-y-0 left-1/2 -ml-[1px] w-[2px] bg-white/20 group-hover:bg-yellow-400/80 transition-colors" />
         </div>
 
@@ -667,8 +659,8 @@ export function YAMLEditor() {
           <div className="flex-1 overflow-hidden">
             <YAMLNodeDetails
               node={selectedNode}
-              redirectedInfo={selectedNode ? redirectedRequestMap[selectedNode.id] ?? null : null}
-              redirectSourceInfo={selectedNode ? redirectSourceMap[selectedNode.id] ?? null : null}
+              redirectedInfo={selectedNode ? (redirectedRequestMap[selectedNode.id] ?? null) : null}
+              redirectSourceInfo={selectedNode ? (redirectSourceMap[selectedNode.id] ?? null) : null}
               onNodeUpdate={handleNodeUpdate}
             />
           </div>
@@ -690,7 +682,9 @@ function detectRedirectFollowUps(tree: YAMLNode): Record<string, RedirectedReque
   const getLocationHeader = (node: YAMLNode): string => {
     const headers = node.data?.response?.headers;
     if (!headers || typeof headers !== 'object') return '';
-    return String((headers as Record<string, unknown>).Location || (headers as Record<string, unknown>).location || '').trim();
+    return String(
+      (headers as Record<string, unknown>).Location || (headers as Record<string, unknown>).location || '',
+    ).trim();
   };
 
   const getStatusCode = (node: YAMLNode): number => {
@@ -703,9 +697,7 @@ function detectRedirectFollowUps(tree: YAMLNode): Record<string, RedirectedReque
     const trimmed = String(value || '').trim();
     if (!trimmed) return '';
     try {
-      const parsed = /^https?:\/\//i.test(trimmed)
-        ? new URL(trimmed)
-        : new URL(trimmed, 'http://relampo.local');
+      const parsed = /^https?:\/\//i.test(trimmed) ? new URL(trimmed) : new URL(trimmed, 'http://relampo.local');
       const normalized = `${parsed.pathname || '/'}${parsed.search || ''}`;
       return normalized.replace(/\/+$/, '') || '/';
     } catch {

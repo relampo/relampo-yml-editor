@@ -17,27 +17,33 @@ export function TestDetails({ node, onNodeUpdate }: NamedNodeDetailProps) {
     <div className="space-y-6">
       <div className="flex gap-4">
         <div className="flex-1 min-w-0">
-          <label htmlFor="test-detail-name" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+          <label
+            htmlFor="test-detail-name"
+            className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
+          >
             Name
           </label>
           <Input
             id="test-detail-name"
             value={data.name || node.name || ''}
             maxLength={50}
-            onChange={(event) => handleChange('name', event.target.value.slice(0, 50))}
+            onChange={event => handleChange('name', event.target.value.slice(0, 50))}
             placeholder="Test Plan Name"
             className="w-[70px] shrink-0 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-semibold"
           />
         </div>
         <div className="w-24 shrink-0">
-          <label htmlFor="test-detail-version" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+          <label
+            htmlFor="test-detail-version"
+            className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
+          >
             Version
           </label>
           <Input
             id="test-detail-version"
             value={data.version || ''}
             maxLength={5}
-            onChange={(event) => handleChange('version', event.target.value.slice(0, 5))}
+            onChange={event => handleChange('version', event.target.value.slice(0, 5))}
             placeholder="1.0"
             className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono text-center"
           />
@@ -45,14 +51,17 @@ export function TestDetails({ node, onNodeUpdate }: NamedNodeDetailProps) {
       </div>
 
       <div>
-        <label htmlFor="test-detail-description" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+        <label
+          htmlFor="test-detail-description"
+          className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
+        >
           Description
         </label>
         <Textarea
           id="test-detail-description"
           value={data.description || ''}
           maxLength={250}
-          onChange={(event) => handleChange('description', event.target.value.slice(0, 250))}
+          onChange={event => handleChange('description', event.target.value.slice(0, 250))}
           placeholder="Test description..."
           className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 min-h-[100px] resize-none"
         />
@@ -72,13 +81,13 @@ export function VariablesDetails({ node, onNodeUpdate }: NodeDetailProps) {
       return;
     }
     if (Array.isArray(data.variables)) {
-      onNodeUpdate(
-        node.id,
-        {
-          ...data,
-          variables: Object.entries(updatedItems).map(([name, value]) => ({ name, value })),
-        },
-      );
+      onNodeUpdate(node.id, {
+        ...data,
+        variables: Object.entries(updatedItems).map(([name, value]) => ({
+          name,
+          value,
+        })),
+      });
       return;
     }
     onNodeUpdate(node.id, updatedItems);
@@ -125,13 +134,16 @@ export function DataSourceDetails({ node, onNodeUpdate, nodeName, setNodeName }:
     <div className="space-y-6">
       <div>
         <div className="w-full">
-          <label htmlFor="ds-basic-name" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+          <label
+            htmlFor="ds-basic-name"
+            className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
+          >
             Name
           </label>
           <Input
             id="ds-basic-name"
             value={nodeName || ''}
-            onChange={(event) => setNodeName?.(event.target.value)}
+            onChange={event => setNodeName?.(event.target.value)}
             maxLength={50}
             onBlur={() => {
               if (onNodeUpdate && nodeName !== node.name) {
@@ -172,19 +184,20 @@ export function DataSourceDetails({ node, onNodeUpdate, nodeName, setNodeName }:
       </div>
 
       <div className="w-full">
-        <label htmlFor="ds-basic-var-names" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+        <label
+          htmlFor="ds-basic-var-names"
+          className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
+        >
           Variable Names (comma-separated)
         </label>
         <Input
           id="ds-basic-var-names"
           value={data.variable_names || ''}
-          onChange={(event) => handleChange('variable_names', event.target.value)}
+          onChange={event => handleChange('variable_names', event.target.value)}
           className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono focus:border-white/30 transition-all h-[38px]"
           placeholder="var1, var2, var3"
         />
-        <p className="text-[10px] text-zinc-500 mt-1 italic">
-          Define variable names separated by commas manually.
-        </p>
+        <p className="text-[10px] text-zinc-500 mt-1 italic">Define variable names separated by commas manually.</p>
       </div>
 
       <div className="flex gap-4">
@@ -229,9 +242,7 @@ export function DataSourceDetails({ node, onNodeUpdate, nodeName, setNodeName }:
         <>
           <div className="h-px bg-white/10 my-4" />
           <div className="mb-4">
-            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
-              Column Bindings
-            </p>
+            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">Column Bindings</p>
             <EditableList
               title="Bind"
               items={bind}
@@ -268,14 +279,11 @@ export function HttpDefaultsDetails({ node, onNodeUpdate }: NodeDetailProps) {
   delete mainFields.auth;
 
   const handleMainFieldsUpdate = (fields: Record<string, string>) => {
-    onNodeUpdate?.(
-      node.id,
-      {
-        ...fields,
-        headers: data.headers || {},
-        ...(data.auth ? { auth: data.auth } : {}),
-      },
-    );
+    onNodeUpdate?.(node.id, {
+      ...fields,
+      headers: data.headers || {},
+      ...(data.auth ? { auth: data.auth } : {}),
+    });
   };
 
   const handleHeadersUpdate = (updatedHeaders: Record<string, string>) => {
@@ -297,9 +305,7 @@ export function HttpDefaultsDetails({ node, onNodeUpdate }: NodeDetailProps) {
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
-          Configuration
-        </p>
+        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">Configuration</p>
         <EditableList
           title="Fields"
           items={mainFields}
@@ -331,7 +337,11 @@ export function HttpDefaultsDetails({ node, onNodeUpdate }: NodeDetailProps) {
 
       <div className="h-px bg-white/10" />
 
-      <AuthConfigEditor auth={data.auth} onChange={handleAuthUpdate} scopeLabel="Global" />
+      <AuthConfigEditor
+        auth={data.auth}
+        onChange={handleAuthUpdate}
+        scopeLabel="Global"
+      />
     </div>
   );
 }
@@ -347,13 +357,16 @@ export function ScenariosContainerDetails({ node, onNodeUpdate }: NodeDetailProp
   return (
     <div className="space-y-4">
       <div>
-        <label htmlFor="scenarios-container-description" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+        <label
+          htmlFor="scenarios-container-description"
+          className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
+        >
           Description / Comments
         </label>
         <Textarea
           id="scenarios-container-description"
           value={data.description || ''}
-          onChange={(event) => handleChange('description', event.target.value)}
+          onChange={event => handleChange('description', event.target.value)}
           placeholder="Add notes or description about your scenarios..."
           className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 min-h-[100px]"
         />
@@ -382,9 +395,7 @@ export function ScenariosContainerDetails({ node, onNodeUpdate }: NodeDetailProp
                   </div>
                   <div>
                     <div className="text-sm font-semibold text-zinc-200">{scenario.name}</div>
-                    {scenario.data?.name && (
-                      <div className="text-xs text-zinc-500 mt-0.5">{scenario.data.name}</div>
-                    )}
+                    {scenario.data?.name && <div className="text-xs text-zinc-500 mt-0.5">{scenario.data.name}</div>}
                   </div>
                 </div>
               </div>
@@ -405,13 +416,16 @@ export function ScenarioDetails({ node, onNodeUpdate }: NamedNodeDetailProps) {
 
   return (
     <div className="mb-4">
-      <label htmlFor="scenario-comments" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+      <label
+        htmlFor="scenario-comments"
+        className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
+      >
         Comments / Description
       </label>
       <Textarea
         id="scenario-comments"
         value={data.comments || ''}
-        onChange={(event) => handleChange('comments', event.target.value.slice(0, 250))}
+        onChange={event => handleChange('comments', event.target.value.slice(0, 250))}
         maxLength={250}
         placeholder="Add notes or comments about this scenario..."
         className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 min-h-[80px]"
@@ -430,13 +444,16 @@ export function MetricsDetails({ node, onNodeUpdate }: NodeDetailProps) {
   return (
     <div className="space-y-6">
       <div>
-        <label htmlFor="metrics-enabled" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+        <label
+          htmlFor="metrics-enabled"
+          className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
+        >
           Enabled
         </label>
         <select
           id="metrics-enabled"
           value={data.enabled ? 'true' : 'false'}
-          onChange={(event) => handleChange('enabled', event.target.value === 'true')}
+          onChange={event => handleChange('enabled', event.target.value === 'true')}
           className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
         >
           <option value="true">true</option>
@@ -463,7 +480,7 @@ export function SparkDetails({ node, onNodeUpdate }: NodeDetailProps) {
       </p>
       <SparkCodeEditor
         value={data.script || ''}
-        onChange={(newScript) => onNodeUpdate?.(node.id, { ...data, script: newScript })}
+        onChange={newScript => onNodeUpdate?.(node.id, { ...data, script: newScript })}
         placeholder="// Write your JavaScript code here..."
         minHeight="280px"
       />
@@ -496,7 +513,7 @@ export function HeaderDetails({ node, onNodeUpdate }: NodeDetailProps) {
           <div className="flex items-center gap-2 shrink-0 w-[70px]">
             <Input
               value={data.name || ''}
-              onChange={(event) => handleChange('name', event.target.value)}
+              onChange={event => handleChange('name', event.target.value)}
               placeholder="Content-Type"
               list="header-names-list"
               className="flex-1 px-2 py-1 text-xs font-mono text-purple-400 font-bold bg-purple-400/5 border-purple-400/20 focus:border-purple-400/40"
@@ -506,15 +523,18 @@ export function HeaderDetails({ node, onNodeUpdate }: NodeDetailProps) {
           <div className="w-0 flex-1 min-w-0">
             <Input
               value={data.value || ''}
-              onChange={(event) => handleChange('value', event.target.value)}
+              onChange={event => handleChange('value', event.target.value)}
               placeholder="application/json"
               className="w-full px-2 py-1 text-sm font-mono text-zinc-300 bg-white/5 border-white/10 focus:border-white/30"
             />
           </div>
         </div>
         <datalist id="header-names-list">
-          {commonHeaders.map((header) => (
-            <option key={header} value={header} />
+          {commonHeaders.map(header => (
+            <option
+              key={header}
+              value={header}
+            />
           ))}
         </datalist>
       </div>
@@ -534,7 +554,7 @@ export function HeadersDetails({ node, onNodeUpdate }: NodeDetailProps) {
       <EditableList
         title="HTTP Headers"
         items={data}
-        onUpdate={(items) => onNodeUpdate?.(node.id, items)}
+        onUpdate={items => onNodeUpdate?.(node.id, items)}
         keyPlaceholder="Header-Name"
         valuePlaceholder="Header value"
         keyLabel="Header Name"
@@ -609,30 +629,43 @@ export function FileDetails({ node, onNodeUpdate }: NodeDetailProps) {
         </div>
 
         <div className="min-w-0">
-          <label htmlFor="file-detail-mime" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+          <label
+            htmlFor="file-detail-mime"
+            className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
+          >
             MIME Type
           </label>
           <select
             id="file-detail-mime"
             value={mimeValue}
-            onChange={(event) => handleChange('mime', event.target.value)}
+            onChange={event => handleChange('mime', event.target.value)}
             className="w-full px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono h-[38px] outline-none"
           >
-            <option value="" className="bg-[#1a1a1a]">application/octet-stream</option>
-            {commonMimeTypes.map((mime) => (
-              <option key={mime} value={mime} className="bg-[#1a1a1a]">
+            <option
+              value=""
+              className="bg-[#1a1a1a]"
+            >
+              application/octet-stream
+            </option>
+            {commonMimeTypes.map(mime => (
+              <option
+                key={mime}
+                value={mime}
+                className="bg-[#1a1a1a]"
+              >
                 {mime}
               </option>
             ))}
             {mimeValue && !commonMimeTypes.includes(mimeValue) && (
-              <option value={mimeValue} className="bg-[#1a1a1a]">
+              <option
+                value={mimeValue}
+                className="bg-[#1a1a1a]"
+              >
                 {mimeValue}
               </option>
             )}
           </select>
-          <div className="mt-1 text-xs text-zinc-500">
-            Common: application/pdf, image/jpeg, text/csv
-          </div>
+          <div className="mt-1 text-xs text-zinc-500">Common: application/pdf, image/jpeg, text/csv</div>
         </div>
       </div>
 
@@ -656,9 +689,7 @@ export function GenericDetails({ node }: NodeDetailProps) {
 
   return (
     <div>
-      <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-        Properties
-      </p>
+      <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Properties</p>
       <pre className="p-3 bg-white/5 border border-white/10 rounded text-xs font-mono text-zinc-300 overflow-x-auto">
         {JSON.stringify(node.data, null, 2)}
       </pre>
@@ -687,10 +718,24 @@ export function GroupDetails({ node, onNodeUpdate }: NamedNodeDetailProps) {
 
   return (
     <div className="space-y-6">
-      <EditableField label="Group Name" value={data.name || ''} field="name" onChange={handleChange} maxLength={50} />
-      <DetailField label="Steps Count" value={node.children?.length || 0} mono />
+      <EditableField
+        label="Group Name"
+        value={data.name || ''}
+        field="name"
+        onChange={handleChange}
+        maxLength={50}
+      />
+      <DetailField
+        label="Steps Count"
+        value={node.children?.length || 0}
+        mono
+      />
       <div className="h-px bg-white/10" />
-      <AuthConfigEditor auth={data.auth} onChange={handleAuthUpdate} scopeLabel="Group" />
+      <AuthConfigEditor
+        auth={data.auth}
+        onChange={handleAuthUpdate}
+        scopeLabel="Group"
+      />
     </div>
   );
 }

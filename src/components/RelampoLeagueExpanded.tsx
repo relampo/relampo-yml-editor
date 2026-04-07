@@ -1,15 +1,15 @@
-import { 
-  X, 
-  Trophy, 
-  TrendingUp, 
-  TrendingDown, 
-  Award, 
+import {
+  X,
+  Trophy,
+  TrendingUp,
+  TrendingDown,
+  Award,
   Search,
   Zap,
   Info,
   Target,
   GitPullRequest,
-  Bug
+  Bug,
 } from 'lucide-react';
 import { useState } from 'react';
 import { POWER_TIERS, getTierConfig, type TimeRange } from '../types/league';
@@ -26,11 +26,9 @@ export function RelampoLeagueExpanded({ onClose }: RelampoLeagueExpandedProps) {
   const [showInfo, setShowInfo] = useState(false);
 
   const data = timeRange === 'monthly' ? mockLeagueDataMonthly : mockLeagueDataAllTime;
-  
+
   const filteredData = searchQuery
-    ? data.filter(entry => 
-        entry.userName.toLowerCase().includes(searchQuery.toLowerCase())
-      )
+    ? data.filter(entry => entry.userName.toLowerCase().includes(searchQuery.toLowerCase()))
     : data;
 
   const getInitials = (name: string) => {
@@ -64,8 +62,17 @@ export function RelampoLeagueExpanded({ onClose }: RelampoLeagueExpandedProps) {
           <div className="flex items-start justify-between mb-6">
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-yellow-300 via-yellow-400 to-yellow-500 flex items-center justify-center shadow-xl shadow-yellow-400/40">
-                <svg width="30" height="37" viewBox="0 0 18 22" fill="none">
-                  <path d="M10.5 0L0 12.5H7.5L6 22L18 9H10.5V0Z" fill="white" className="drop-shadow-lg"/>
+                <svg
+                  width="30"
+                  height="37"
+                  viewBox="0 0 18 22"
+                  fill="none"
+                >
+                  <path
+                    d="M10.5 0L0 12.5H7.5L6 22L18 9H10.5V0Z"
+                    fill="white"
+                    className="drop-shadow-lg"
+                  />
                 </svg>
               </div>
               <div>
@@ -73,9 +80,7 @@ export function RelampoLeagueExpanded({ onClose }: RelampoLeagueExpandedProps) {
                   Relampo League
                   <Trophy className="w-6 h-6 text-yellow-400" />
                 </h1>
-                <p className="text-sm text-zinc-400">
-                  Measuring technical impact, not consumption
-                </p>
+                <p className="text-sm text-zinc-400">Measuring technical impact, not consumption</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -110,7 +115,8 @@ export function RelampoLeagueExpanded({ onClose }: RelampoLeagueExpandedProps) {
                     Performance Explorers
                   </div>
                   <p className="text-[11px] text-zinc-500 leading-relaxed">
-                    <span className="text-yellow-400 font-bold">+1 point</span> per different project tested (max 10/month)
+                    <span className="text-yellow-400 font-bold">+1 point</span> per different project tested (max
+                    10/month)
                   </p>
                 </div>
                 <div className="space-y-2">
@@ -119,7 +125,8 @@ export function RelampoLeagueExpanded({ onClose }: RelampoLeagueExpandedProps) {
                     Relampo Contributors
                   </div>
                   <p className="text-[11px] text-zinc-500 leading-relaxed">
-                    <span className="text-yellow-400 font-bold">+2-10 points</span> per accepted PR in YAML, CLI, Recorder, etc.
+                    <span className="text-yellow-400 font-bold">+2-10 points</span> per accepted PR in YAML, CLI,
+                    Recorder, etc.
                   </p>
                 </div>
                 <div className="space-y-2">
@@ -134,9 +141,13 @@ export function RelampoLeagueExpanded({ onClose }: RelampoLeagueExpandedProps) {
               </div>
               <div className="pt-3 border-t border-white/5">
                 <div className="text-[11px] text-zinc-400 space-y-1">
-                  <p>✓ Points are earned monthly and <strong className="text-zinc-300">DO NOT reset</strong></p>
+                  <p>
+                    ✓ Points are earned monthly and <strong className="text-zinc-300">DO NOT reset</strong>
+                  </p>
                   <p>✓ There is monthly ranking and all-time ranking</p>
-                  <p>✓ Power Tiers represent <strong className="text-zinc-300">behavior</strong>, not just points</p>
+                  <p>
+                    ✓ Power Tiers represent <strong className="text-zinc-300">behavior</strong>, not just points
+                  </p>
                 </div>
               </div>
             </div>
@@ -151,7 +162,7 @@ export function RelampoLeagueExpanded({ onClose }: RelampoLeagueExpandedProps) {
                 type="text"
                 placeholder="Search by name..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={e => setSearchQuery(e.target.value)}
                 className="w-full pl-9 pr-4 py-2 text-sm bg-[#111111] border border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500/50 text-zinc-100 placeholder:text-zinc-600"
               />
             </div>
@@ -196,7 +207,8 @@ export function RelampoLeagueExpanded({ onClose }: RelampoLeagueExpandedProps) {
               <div className="text-center px-4 py-2 bg-[#111111] border border-white/10 rounded-lg">
                 <div className="text-xs text-zinc-500 mb-1">Virtual Users</div>
                 <div className="text-lg font-bold text-yellow-400">
-                  <span className="text-zinc-600 line-through mr-2 text-sm">500</span>750
+                  <span className="text-zinc-600 line-through mr-2 text-sm">500</span>
+                  750
                 </div>
               </div>
               <div className="text-center px-4 py-2 bg-[#111111] border border-white/10 rounded-lg">
@@ -213,9 +225,15 @@ export function RelampoLeagueExpanded({ onClose }: RelampoLeagueExpandedProps) {
         <div className="px-8 py-4 border-b border-white/5 bg-[#0a0a0a]">
           <div className="flex items-center gap-3 flex-wrap">
             <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Power Tiers:</span>
-            {POWER_TIERS.map((tier) => (
-              <div key={tier.name} className={`px-3 py-1.5 text-xs font-semibold rounded-lg border ${tier.bgColor} ${tier.color} ${tier.borderColor} flex items-center gap-1.5`}>
-                <PowerTierIcon tier={tier.name} className="w-3 h-3" />
+            {POWER_TIERS.map(tier => (
+              <div
+                key={tier.name}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg border ${tier.bgColor} ${tier.color} ${tier.borderColor} flex items-center gap-1.5`}
+              >
+                <PowerTierIcon
+                  tier={tier.name}
+                  className="w-3 h-3"
+                />
                 <span>{tier.name}</span>
                 <span className="text-[10px] opacity-60">({tier.minPoints}+ pts)</span>
               </div>
@@ -233,10 +251,10 @@ export function RelampoLeagueExpanded({ onClose }: RelampoLeagueExpandedProps) {
             </div>
           ) : (
             <div className="p-6 space-y-2">
-              {filteredData.map((entry) => {
+              {filteredData.map(entry => {
                 const tierConfig = getTierConfig(entry.currentTier);
                 const medal = getRankMedal(entry.rank);
-                
+
                 return (
                   <div
                     key={entry.userId}
@@ -248,14 +266,10 @@ export function RelampoLeagueExpanded({ onClose }: RelampoLeagueExpandedProps) {
                         {medal ? (
                           <>
                             <div className="text-2xl mb-1">{medal}</div>
-                            <div className="text-xs font-semibold text-zinc-500">
-                              #{entry.rank}
-                            </div>
+                            <div className="text-xs font-semibold text-zinc-500">#{entry.rank}</div>
                           </>
                         ) : (
-                          <div className="text-lg font-bold text-zinc-400">
-                            #{entry.rank}
-                          </div>
+                          <div className="text-lg font-bold text-zinc-400">#{entry.rank}</div>
                         )}
                       </div>
 
@@ -267,15 +281,15 @@ export function RelampoLeagueExpanded({ onClose }: RelampoLeagueExpandedProps) {
                       {/* User Info */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-2">
-                          <span className="font-bold text-zinc-100 text-base">
-                            {entry.userName}
-                          </span>
+                          <span className="font-bold text-zinc-100 text-base">{entry.userName}</span>
                           {entry.delta !== undefined && entry.delta !== 0 && (
-                            <span className={`flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${
-                              entry.delta > 0 
-                                ? 'bg-green-500/20 text-green-400 border border-green-400/30' 
-                                : 'bg-red-500/20 text-red-400 border border-red-400/30'
-                            }`}>
+                            <span
+                              className={`flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${
+                                entry.delta > 0
+                                  ? 'bg-green-500/20 text-green-400 border border-green-400/30'
+                                  : 'bg-red-500/20 text-red-400 border border-red-400/30'
+                              }`}
+                            >
                               {entry.delta > 0 ? (
                                 <TrendingUp className="w-3 h-3" />
                               ) : (
@@ -289,8 +303,13 @@ export function RelampoLeagueExpanded({ onClose }: RelampoLeagueExpandedProps) {
                         {/* Power Tier & Monthly Wins */}
                         <div className="flex items-center gap-2 mb-2">
                           {tierConfig && (
-                            <span className={`px-2.5 py-1 text-xs font-bold rounded-lg border ${tierConfig.bgColor} ${tierConfig.color} ${tierConfig.borderColor} flex items-center gap-1.5`}>
-                              <PowerTierIcon tier={entry.currentTier!} className="w-3 h-3" />
+                            <span
+                              className={`px-2.5 py-1 text-xs font-bold rounded-lg border ${tierConfig.bgColor} ${tierConfig.color} ${tierConfig.borderColor} flex items-center gap-1.5`}
+                            >
+                              <PowerTierIcon
+                                tier={entry.currentTier!}
+                                className="w-3 h-3"
+                              />
                               <span>{tierConfig.name}</span>
                             </span>
                           )}
@@ -301,9 +320,7 @@ export function RelampoLeagueExpanded({ onClose }: RelampoLeagueExpandedProps) {
                             </span>
                           )}
                           {entry.monthlyWins.length > 1 && (
-                            <span className="text-[10px] text-zinc-500">
-                              +{entry.monthlyWins.length - 1} more
-                            </span>
+                            <span className="text-[10px] text-zinc-500">+{entry.monthlyWins.length - 1} more</span>
                           )}
                         </div>
 
@@ -326,12 +343,8 @@ export function RelampoLeagueExpanded({ onClose }: RelampoLeagueExpandedProps) {
 
                       {/* Total Points */}
                       <div className="text-right">
-                        <div className="text-3xl font-bold text-zinc-100 mb-1">
-                          {entry.totalPoints}
-                        </div>
-                        <div className="text-xs text-zinc-500 font-medium uppercase tracking-wide">
-                          Points
-                        </div>
+                        <div className="text-3xl font-bold text-zinc-100 mb-1">{entry.totalPoints}</div>
+                        <div className="text-xs text-zinc-500 font-medium uppercase tracking-wide">Points</div>
                       </div>
                     </div>
                   </div>
@@ -345,7 +358,8 @@ export function RelampoLeagueExpanded({ onClose }: RelampoLeagueExpandedProps) {
         <div className="p-6 border-t border-white/5 bg-[#0a0a0a]">
           <div className="flex items-center justify-between">
             <div className="text-sm text-zinc-400">
-              Showing <span className="font-semibold text-zinc-200">{filteredData.length}</span> {filteredData.length === 1 ? 'user' : 'users'}
+              Showing <span className="font-semibold text-zinc-200">{filteredData.length}</span>{' '}
+              {filteredData.length === 1 ? 'user' : 'users'}
             </div>
             <button
               onClick={onClose}

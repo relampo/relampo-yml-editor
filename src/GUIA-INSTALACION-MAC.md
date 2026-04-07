@@ -26,6 +26,7 @@ ls -la
 ```
 
 Deberías ver archivos como:
+
 - `build-yaml-editor-only.sh`
 - `AppYAMLStandalone.tsx`
 - `components/`
@@ -115,6 +116,7 @@ xattr -cr /Applications/Relampo\ YAML\ Editor.app
 ## ✨ ¡LISTO!
 
 Ahora tienes una **aplicación nativa** en tu Mac con:
+
 - ✅ Ventana nativa (no navegador)
 - ✅ YAML Editor completo de 3 paneles
 - ✅ Tema dark profesional
@@ -125,22 +127,28 @@ Ahora tienes una **aplicación nativa** en tu Mac con:
 ## 🐛 Solución de Problemas
 
 ### Error: "command not found: node"
+
 **Solución:** Instala Node.js desde https://nodejs.org/
 
 ### Error: "Permission denied"
-**Solución:** 
+
+**Solución:**
+
 ```bash
 chmod +x build-yaml-editor-only.sh
 ```
 
 ### Error durante el build
+
 **Solución:** Limpia y vuelve a intentar:
+
 ```bash
 rm -rf yaml-editor-project
 ./build-yaml-editor-only.sh
 ```
 
 ### El .dmg no se genera
+
 **Solución:** Verifica que tengas espacio en disco (necesitas ~2GB libres)
 
 ---

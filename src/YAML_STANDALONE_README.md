@@ -126,7 +126,7 @@ scp relampo-yaml-editor-standalone.tar.gz user@yourserver.com:/var/www/downloads
 
 ## 📝 Ejemplo para tu README
 
-```markdown
+````markdown
 # Relampo YAML Editor
 
 ## 🚀 Quick Install
@@ -151,12 +151,13 @@ curl -L https://github.com/tu-usuario/relampo/releases/download/v1.0.0/relampo-y
 ## Features
 
 ⚡ **YAML Editor** for performance testing configurations
+
 - Visual tree editor with drag & drop
 - Code editor with syntax highlighting
 - Upload/Download YAML files
 - English/Spanish support
 - Works 100% offline
-\`\`\`
+  \`\`\`
 
 ---
 
@@ -175,6 +176,7 @@ cd relampo-yaml-editor
 # Debería abrir: http://localhost:8080
 # Solo con el YAML Editor visible
 ```
+````
 
 ---
 
@@ -212,15 +214,15 @@ cd relampo-yaml-editor
 
 ## 🎯 Diferencias con el Bundle Completo
 
-| Feature | Bundle Completo | YAML Editor Standalone |
-|---------|----------------|------------------------|
-| **Landing Page** | ✅ Sí | ❌ No |
-| **Workbench** | ✅ Sí | ❌ No |
-| **Dashboard** | ✅ Sí | ❌ No |
-| **YAML Editor** | ✅ Sí | ✅ **Sí (solo esto)** |
-| **Sidebar Nav** | ✅ Sí | ❌ No |
-| **Tamaño** | ~5-10MB | ~1-2MB |
-| **Uso** | Plataforma completa | Editor enfocado |
+| Feature          | Bundle Completo     | YAML Editor Standalone |
+| ---------------- | ------------------- | ---------------------- |
+| **Landing Page** | ✅ Sí               | ❌ No                  |
+| **Workbench**    | ✅ Sí               | ❌ No                  |
+| **Dashboard**    | ✅ Sí               | ❌ No                  |
+| **YAML Editor**  | ✅ Sí               | ✅ **Sí (solo esto)**  |
+| **Sidebar Nav**  | ✅ Sí               | ❌ No                  |
+| **Tamaño**       | ~5-10MB             | ~1-2MB                 |
+| **Uso**          | Plataforma completa | Editor enfocado        |
 
 ---
 
@@ -269,12 +271,14 @@ Runtime Memory: ~50-100 MB (en navegador)
 Si quieres un ejecutable **verdadero** (`.app` para Mac, `.exe` para Windows) sin necesidad de Python:
 
 ### Con Tauri (Recomendado):
+
 - ✅ Binario nativo (~5-10MB)
 - ✅ No necesita Python
 - ✅ Icono personalizado
 - ✅ Instalador `.dmg`/`.exe`
 
 ### Con Electron:
+
 - ✅ Más maduro
 - ❌ Más pesado (~100MB)
 
@@ -285,11 +289,13 @@ Si quieres un ejecutable **verdadero** (`.app` para Mac, `.exe` para Windows) si
 ## 🆘 Troubleshooting
 
 ### "Permission denied"
+
 ```bash
 chmod +x run.sh
 ```
 
 ### "Python not found"
+
 ```bash
 # Mac
 brew install python3
@@ -299,9 +305,11 @@ sudo apt-get install python3
 ```
 
 ### "Port already in use"
+
 El script automáticamente busca otro puerto disponible.
 
 ### "Browser doesn't open"
+
 Abrir manualmente: `http://localhost:8080`
 
 ---
@@ -326,12 +334,14 @@ Abrir manualmente: `http://localhost:8080`
 Ahora tienes un **YAML Editor standalone distribuible** que funciona como un ejecutable simple.
 
 **Para generar:**
+
 ```bash
 chmod +x build-yaml-standalone.sh
 ./build-yaml-standalone.sh
 ```
 
 **Para distribuir:**
+
 ```bash
 # Subir a GitHub
 gh release create v1.0.0 relampo-yaml-editor-standalone.tar.gz
@@ -341,6 +351,7 @@ scp relampo-yaml-editor-standalone.tar.gz user@server:/downloads/
 ```
 
 **Para usuarios:**
+
 ```bash
 curl -L YOUR_URL | tar -xz && cd relampo-yaml-editor && ./run.sh
 ```

@@ -14,7 +14,8 @@ import type { NodeDetailProps } from './types';
 export function LoadDetails({ node, onNodeUpdate }: NodeDetailProps) {
   const data = node.data || {};
   const loadType = normalizeLoadType(data.type);
-  const compactInputClass = 'w-[10ch] max-w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono';
+  const compactInputClass =
+    'w-[10ch] max-w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono';
   const intentTargetUnit = String(data.target_unit || 'rps').toLowerCase();
   const throughputPerMinute = (parseFloat(String(data.target_rps || '0')) || 0) * 60;
   const intentTargetPerMinute = (parseFloat(String(data.target_value || '0')) || 0) * 60;
@@ -57,9 +58,7 @@ export function LoadDetails({ node, onNodeUpdate }: NodeDetailProps) {
   return (
     <div className="space-y-6">
       <div>
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
-          Load Pattern
-        </label>
+        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">Load Pattern</label>
         <div className="flex flex-wrap items-center gap-1">
           <button
             onClick={() => handleChange('type', 'constant')}
@@ -108,7 +107,10 @@ export function LoadDetails({ node, onNodeUpdate }: NodeDetailProps) {
 
       <div className="h-px bg-white/10" />
 
-      <LoadVisualization data={data} loadType={loadType} />
+      <LoadVisualization
+        data={data}
+        loadType={loadType}
+      />
     </div>
   );
 }
@@ -134,12 +136,40 @@ function LoadFields({
     return (
       <div className="space-y-3">
         <div className="grid grid-cols-3 gap-2.5">
-          <LabeledInput label="Virtual Users" value={data.users || ''} placeholder="10" className={compactInputClass} onChange={(value) => onChange('users', limitedInputValue(value))} type="number" />
-          <LabeledInput label="Duration" value={data.duration || ''} placeholder="5m" className={compactInputClass} onChange={(value) => onChange('duration', limitedInputValue(value))} helpText="Format: 500ms, 5s, 5m" />
-          <LabeledInput label="Iterations" value={data.iterations || ''} placeholder="0" className={compactInputClass} onChange={(value) => onChange('iterations', limitedInputValue(value))} type="number" />
+          <LabeledInput
+            label="Virtual Users"
+            value={data.users || ''}
+            placeholder="10"
+            className={compactInputClass}
+            onChange={value => onChange('users', limitedInputValue(value))}
+            type="number"
+          />
+          <LabeledInput
+            label="Duration"
+            value={data.duration || ''}
+            placeholder="5m"
+            className={compactInputClass}
+            onChange={value => onChange('duration', limitedInputValue(value))}
+            helpText="Format: 500ms, 5s, 5m"
+          />
+          <LabeledInput
+            label="Iterations"
+            value={data.iterations || ''}
+            placeholder="0"
+            className={compactInputClass}
+            onChange={value => onChange('iterations', limitedInputValue(value))}
+            type="number"
+          />
         </div>
         <div className="grid grid-cols-3 gap-2.5">
-          <LabeledInput label="Ramp Up" value={data.ramp_up || ''} placeholder="0s" className={compactInputClass} onChange={(value) => onChange('ramp_up', limitedInputValue(value))} helpText="Format: 500ms, 5s, 5m" />
+          <LabeledInput
+            label="Ramp Up"
+            value={data.ramp_up || ''}
+            placeholder="0s"
+            className={compactInputClass}
+            onChange={value => onChange('ramp_up', limitedInputValue(value))}
+            helpText="Format: 500ms, 5s, 5m"
+          />
           <div />
         </div>
       </div>
@@ -150,12 +180,40 @@ function LoadFields({
     return (
       <div className="space-y-3">
         <div className="grid grid-cols-3 gap-2.5">
-          <LabeledInput label="Start Users" value={data.start_users || ''} placeholder="1" className={compactInputClass} onChange={(value) => onChange('start_users', limitedInputValue(value))} type="number" />
-          <LabeledInput label="End Users" value={data.end_users || ''} placeholder="100" className={compactInputClass} onChange={(value) => onChange('end_users', limitedInputValue(value))} type="number" />
-          <LabeledInput label="Duration" value={data.duration || ''} placeholder="10m" className={compactInputClass} onChange={(value) => onChange('duration', limitedInputValue(value))} helpText="Format: 500ms, 5s, 5m" />
+          <LabeledInput
+            label="Start Users"
+            value={data.start_users || ''}
+            placeholder="1"
+            className={compactInputClass}
+            onChange={value => onChange('start_users', limitedInputValue(value))}
+            type="number"
+          />
+          <LabeledInput
+            label="End Users"
+            value={data.end_users || ''}
+            placeholder="100"
+            className={compactInputClass}
+            onChange={value => onChange('end_users', limitedInputValue(value))}
+            type="number"
+          />
+          <LabeledInput
+            label="Duration"
+            value={data.duration || ''}
+            placeholder="10m"
+            className={compactInputClass}
+            onChange={value => onChange('duration', limitedInputValue(value))}
+            helpText="Format: 500ms, 5s, 5m"
+          />
         </div>
         <div className="grid grid-cols-3 gap-2.5">
-          <LabeledInput label="Iterations" value={data.iterations || ''} placeholder="0" className={compactInputClass} onChange={(value) => onChange('iterations', limitedInputValue(value))} type="number" />
+          <LabeledInput
+            label="Iterations"
+            value={data.iterations || ''}
+            placeholder="0"
+            className={compactInputClass}
+            onChange={value => onChange('iterations', limitedInputValue(value))}
+            type="number"
+          />
           <div />
           <div />
         </div>
@@ -167,13 +225,48 @@ function LoadFields({
     return (
       <div className="space-y-3">
         <div className="grid grid-cols-3 gap-2.5">
-          <LabeledInput label="Virtual Users" value={data.users || ''} placeholder="50" className={compactInputClass} onChange={(value) => onChange('users', limitedInputValue(value))} type="number" />
-          <LabeledInput label="Duration" value={data.duration || ''} placeholder="10m" className={compactInputClass} onChange={(value) => onChange('duration', limitedInputValue(value))} helpText="Format: 500ms, 5s, 5m" />
-          <LabeledInput label="Iterations" value={data.iterations || ''} placeholder="0" className={compactInputClass} onChange={(value) => onChange('iterations', limitedInputValue(value))} type="number" />
+          <LabeledInput
+            label="Virtual Users"
+            value={data.users || ''}
+            placeholder="50"
+            className={compactInputClass}
+            onChange={value => onChange('users', limitedInputValue(value))}
+            type="number"
+          />
+          <LabeledInput
+            label="Duration"
+            value={data.duration || ''}
+            placeholder="10m"
+            className={compactInputClass}
+            onChange={value => onChange('duration', limitedInputValue(value))}
+            helpText="Format: 500ms, 5s, 5m"
+          />
+          <LabeledInput
+            label="Iterations"
+            value={data.iterations || ''}
+            placeholder="0"
+            className={compactInputClass}
+            onChange={value => onChange('iterations', limitedInputValue(value))}
+            type="number"
+          />
         </div>
         <div className="grid grid-cols-3 gap-2.5">
-          <LabeledInput label="Ramp Up" value={data.ramp_up || ''} placeholder="1m" className={compactInputClass} onChange={(value) => onChange('ramp_up', limitedInputValue(value))} helpText="Format: 500ms, 5s, 5m" />
-          <LabeledInput label="Ramp Down" value={data.ramp_down || ''} placeholder="1m" className={compactInputClass} onChange={(value) => onChange('ramp_down', limitedInputValue(value))} helpText="Format: 500ms, 5s, 5m" />
+          <LabeledInput
+            label="Ramp Up"
+            value={data.ramp_up || ''}
+            placeholder="1m"
+            className={compactInputClass}
+            onChange={value => onChange('ramp_up', limitedInputValue(value))}
+            helpText="Format: 500ms, 5s, 5m"
+          />
+          <LabeledInput
+            label="Ramp Down"
+            value={data.ramp_down || ''}
+            placeholder="1m"
+            className={compactInputClass}
+            onChange={value => onChange('ramp_down', limitedInputValue(value))}
+            helpText="Format: 500ms, 5s, 5m"
+          />
           <div />
         </div>
       </div>
@@ -185,33 +278,109 @@ function LoadFields({
       <div className="space-y-3">
         <div className="grid grid-cols-4 gap-2.5">
           <div>
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Target Unit</label>
-            <select value={data.target_unit || 'rps'} onChange={(event) => onChange('target_unit', event.target.value)} className="w-[10ch] max-w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono">
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+              Target Unit
+            </label>
+            <select
+              value={data.target_unit || 'rps'}
+              onChange={event => onChange('target_unit', event.target.value)}
+              className="w-[10ch] max-w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+            >
               <option value="rps">RPS</option>
               <option value="vus">VU</option>
             </select>
           </div>
-          <LabeledInput label="Target Value" value={data.target_value || ''} placeholder="3" className={compactInputClass} onChange={(value) => onChange('target_value', limitedInputValue(value))} type="number" helpText={intentTargetUnit === 'rps' ? `${intentTargetPerMinute.toFixed(0)} req/min` : undefined} />
-          <LabeledInput label="Duration" value={data.duration || ''} placeholder="10m" className={compactInputClass} onChange={(value) => onChange('duration', limitedInputValue(value))} helpText="Format: 500ms, 5s, 5m" />
-          <LabeledInput label="Warmup" value={data.warmup || ''} placeholder="30s" className={compactInputClass} onChange={(value) => onChange('warmup', limitedInputValue(value))} helpText="Format: 500ms, 5s, 5m" />
+          <LabeledInput
+            label="Target Value"
+            value={data.target_value || ''}
+            placeholder="3"
+            className={compactInputClass}
+            onChange={value => onChange('target_value', limitedInputValue(value))}
+            type="number"
+            helpText={intentTargetUnit === 'rps' ? `${intentTargetPerMinute.toFixed(0)} req/min` : undefined}
+          />
+          <LabeledInput
+            label="Duration"
+            value={data.duration || ''}
+            placeholder="10m"
+            className={compactInputClass}
+            onChange={value => onChange('duration', limitedInputValue(value))}
+            helpText="Format: 500ms, 5s, 5m"
+          />
+          <LabeledInput
+            label="Warmup"
+            value={data.warmup || ''}
+            placeholder="30s"
+            className={compactInputClass}
+            onChange={value => onChange('warmup', limitedInputValue(value))}
+            helpText="Format: 500ms, 5s, 5m"
+          />
         </div>
         <div className="grid grid-cols-4 gap-2.5">
-          <LabeledInput label="Ramp Up" value={data.ramp_up || ''} placeholder="30s" className={compactInputClass} onChange={(value) => onChange('ramp_up', limitedInputValue(value))} helpText="Format: 500ms, 5s, 5m" />
-          <LabeledInput label="Ramp Down" value={data.ramp_down || ''} placeholder="30s" className={compactInputClass} onChange={(value) => onChange('ramp_down', limitedInputValue(value))} helpText="Format: 500ms, 5s, 5m" />
-          <LabeledInput label="P95 Max (ms)" value={data.p95_max_ms || ''} placeholder="800" className={compactInputClass} onChange={(value) => onChange('p95_max_ms', limitedInputValue(value))} type="number" />
-          <LabeledInput label="Error Max (%)" value={data.error_rate_max_pct || ''} placeholder="1" className={compactInputClass} onChange={(value) => onChange('error_rate_max_pct', limitedInputValue(value))} type="number" />
+          <LabeledInput
+            label="Ramp Up"
+            value={data.ramp_up || ''}
+            placeholder="30s"
+            className={compactInputClass}
+            onChange={value => onChange('ramp_up', limitedInputValue(value))}
+            helpText="Format: 500ms, 5s, 5m"
+          />
+          <LabeledInput
+            label="Ramp Down"
+            value={data.ramp_down || ''}
+            placeholder="30s"
+            className={compactInputClass}
+            onChange={value => onChange('ramp_down', limitedInputValue(value))}
+            helpText="Format: 500ms, 5s, 5m"
+          />
+          <LabeledInput
+            label="P95 Max (ms)"
+            value={data.p95_max_ms || ''}
+            placeholder="800"
+            className={compactInputClass}
+            onChange={value => onChange('p95_max_ms', limitedInputValue(value))}
+            type="number"
+          />
+          <LabeledInput
+            label="Error Max (%)"
+            value={data.error_rate_max_pct || ''}
+            placeholder="1"
+            className={compactInputClass}
+            onChange={value => onChange('error_rate_max_pct', limitedInputValue(value))}
+            type="number"
+          />
         </div>
         <div className="grid grid-cols-3 gap-2.5">
           <div>
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Aggressiveness</label>
-            <select value={data.aggressiveness || 'medium'} onChange={(event) => onChange('aggressiveness', event.target.value)} className="w-[10ch] max-w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono">
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+              Aggressiveness
+            </label>
+            <select
+              value={data.aggressiveness || 'medium'}
+              onChange={event => onChange('aggressiveness', event.target.value)}
+              className="w-[10ch] max-w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+            >
               <option value="low">Low</option>
               <option value="medium">Medium</option>
               <option value="high">High</option>
             </select>
           </div>
-          <LabeledInput label="Min VUs" value={data.min_vus || ''} placeholder="1" className={compactInputClass} onChange={(value) => onChange('min_vus', limitedInputValue(value))} type="number" />
-          <LabeledInput label="Max VUs" value={data.max_vus || ''} placeholder="80" className={compactInputClass} onChange={(value) => onChange('max_vus', limitedInputValue(value))} type="number" />
+          <LabeledInput
+            label="Min VUs"
+            value={data.min_vus || ''}
+            placeholder="1"
+            className={compactInputClass}
+            onChange={value => onChange('min_vus', limitedInputValue(value))}
+            type="number"
+          />
+          <LabeledInput
+            label="Max VUs"
+            value={data.max_vus || ''}
+            placeholder="80"
+            className={compactInputClass}
+            onChange={value => onChange('max_vus', limitedInputValue(value))}
+            type="number"
+          />
         </div>
       </div>
     );
@@ -220,13 +389,49 @@ function LoadFields({
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-3 gap-2.5">
-        <LabeledInput label="Target RPS" value={data.target_rps || ''} placeholder="20" className={compactInputClass} onChange={(value) => onChange('target_rps', limitedInputValue(value))} type="number" helpText={`${throughputPerMinute.toFixed(0)} req/min`} />
-        <LabeledInput label="Duration" value={data.duration || ''} placeholder="10m" className={compactInputClass} onChange={(value) => onChange('duration', limitedInputValue(value))} helpText="Format: 500ms, 5s, 5m" />
-        <LabeledInput label="Iterations" value={data.iterations || ''} placeholder="0" className={compactInputClass} onChange={(value) => onChange('iterations', limitedInputValue(value))} type="number" />
+        <LabeledInput
+          label="Target RPS"
+          value={data.target_rps || ''}
+          placeholder="20"
+          className={compactInputClass}
+          onChange={value => onChange('target_rps', limitedInputValue(value))}
+          type="number"
+          helpText={`${throughputPerMinute.toFixed(0)} req/min`}
+        />
+        <LabeledInput
+          label="Duration"
+          value={data.duration || ''}
+          placeholder="10m"
+          className={compactInputClass}
+          onChange={value => onChange('duration', limitedInputValue(value))}
+          helpText="Format: 500ms, 5s, 5m"
+        />
+        <LabeledInput
+          label="Iterations"
+          value={data.iterations || ''}
+          placeholder="0"
+          className={compactInputClass}
+          onChange={value => onChange('iterations', limitedInputValue(value))}
+          type="number"
+        />
       </div>
       <div className="grid grid-cols-3 gap-2.5">
-        <LabeledInput label="Ramp Up" value={data.ramp_up || ''} placeholder="1m" className={compactInputClass} onChange={(value) => onChange('ramp_up', limitedInputValue(value))} helpText="Format: 500ms, 5s, 5m" />
-        <LabeledInput label="Ramp Down" value={data.ramp_down || ''} placeholder="1m" className={compactInputClass} onChange={(value) => onChange('ramp_down', limitedInputValue(value))} helpText="Format: 500ms, 5s, 5m" />
+        <LabeledInput
+          label="Ramp Up"
+          value={data.ramp_up || ''}
+          placeholder="1m"
+          className={compactInputClass}
+          onChange={value => onChange('ramp_up', limitedInputValue(value))}
+          helpText="Format: 500ms, 5s, 5m"
+        />
+        <LabeledInput
+          label="Ramp Down"
+          value={data.ramp_down || ''}
+          placeholder="1m"
+          className={compactInputClass}
+          onChange={value => onChange('ramp_down', limitedInputValue(value))}
+          helpText="Format: 500ms, 5s, 5m"
+        />
         <div />
       </div>
     </div>
@@ -257,7 +462,7 @@ function LabeledInput({
         type={type}
         maxLength={5}
         value={value}
-        onChange={(event) => onChange(event.target.value)}
+        onChange={event => onChange(event.target.value)}
         placeholder={placeholder}
         className={className}
       />

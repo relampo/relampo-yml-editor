@@ -3,9 +3,11 @@
 ## 🎯 INSTRUCCIONES SIMPLES
 
 ### 1. Descarga este ZIP desde Figma Make
+
 Haz clic en el botón **"Download"** arriba a la derecha
 
 ### 2. Descomprime el archivo
+
 ```bash
 cd ~/Downloads
 unzip relampo-[nombre-del-archivo].zip
@@ -13,12 +15,14 @@ cd [nombre-de-la-carpeta]
 ```
 
 ### 3. Ejecuta el script
+
 ```bash
 chmod +x build-yaml-editor-only.sh
 ./build-yaml-editor-only.sh
 ```
 
 ### 4. Encuentra tu aplicación
+
 Los binarios estarán en: **`yaml-editor-releases/`**
 
 - **macOS**: Abre el `.dmg` y arrastra a Applications
@@ -39,7 +43,7 @@ Una aplicación de **escritorio nativa** que contiene SOLO el YAML Editor de Rel
 ✅ Sin landing page  
 ✅ Sin workbench  
 ✅ Sin Relampo League  
-✅ Solo el editor YAML con sus 3 paneles  
+✅ Solo el editor YAML con sus 3 paneles
 
 ---
 

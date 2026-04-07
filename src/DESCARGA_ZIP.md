@@ -3,6 +3,7 @@
 ## 🔽 Pasos para descargar
 
 ### 1. Descargar el proyecto completo
+
 En la esquina superior derecha de Figma Make, busca el botón de **"Download"** o **"Descargar"** y haz clic para descargar todo el proyecto como archivo ZIP.
 
 ---
@@ -38,17 +39,20 @@ relampo-landing/
 ## 🎯 Opción A: Landing + Workbench (Proyecto completo)
 
 ### ✅ Si quieres TODO (Landing + Workbench):
+
 **¡No elimines NADA!** Solo:
 
 1. Descomprime el ZIP
 2. Abre la terminal en la carpeta del proyecto
 3. Ejecuta:
+
 ```bash
 npm install
 npm run dev
 ```
 
 ✨ **Tendrás:**
+
 - Landing page completa con i18n (EN/ES)
 - Workbench funcional
 - Navegación bidireccional entre landing y workbench
@@ -86,6 +90,7 @@ npm run dev
 ```
 
 ✨ **Tendrás solo:**
+
 - Landing page completa
 - Internacionalización EN/ES
 - Hero section con "DISPONIBLE AHORA Y PARA SIEMPRE"
@@ -123,10 +128,12 @@ npm run dev
 ## 🆕 Cambios recientes incluidos
 
 ✅ **Textos actualizados:**
+
 - "DISPONIBLE AHORA" → "DISPONIBLE AHORA Y PARA SIEMPRE" (EN/ES)
 - En Hero section y Roadmap section
 
 ✅ **Footer con redes sociales:**
+
 - LinkedIn (icono amarillo #facc15)
 - GitHub (icono amarillo #facc15)
 - Discord (icono amarillo #facc15)
@@ -138,6 +145,7 @@ npm run dev
 - Totalmente bilingüe
 
 ✅ **Team section corregida:**
+
 - Fotos correctas para cada miembro
 - Bio de Delvis actualizada: "amante fiel de las pruebas de performance"
 - Título: "Construido por ingenieros de software" (EN/ES)
@@ -147,18 +155,22 @@ npm run dev
 ## 🐛 Solución de problemas
 
 ### Error: "Cannot find module..."
+
 ```bash
 npm install
 ```
 
 ### Error: "Port 5173 is already in use"
+
 ```bash
 # Cierra la otra aplicación o usa otro puerto
 npm run dev -- --port 3000
 ```
 
 ### Los iconos no aparecen
+
 Verifica que `lucide-react` esté instalado:
+
 ```bash
 npm install lucide-react
 ```

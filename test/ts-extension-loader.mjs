@@ -10,4 +10,3 @@ export async function resolve(specifier, context, defaultResolve) {
     throw error;
   }
 }
-

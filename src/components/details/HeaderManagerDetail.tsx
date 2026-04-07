@@ -15,9 +15,7 @@ export function HeaderManagerDetail({ node }: HeaderManagerDetailProps) {
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-zinc-100">{node.name}</h3>
-            <p className="text-sm text-zinc-400 mt-1">
-              Global headers applied to all requests in this scenario
-            </p>
+            <p className="text-sm text-zinc-400 mt-1">Global headers applied to all requests in this scenario</p>
           </div>
           <button className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-300 hover:to-yellow-400 text-black font-semibold rounded-lg transition-colors text-sm shadow-lg shadow-yellow-400/30">
             <Plus className="w-4 h-4" />
@@ -40,7 +38,10 @@ export function HeaderManagerDetail({ node }: HeaderManagerDetailProps) {
             </thead>
             <tbody>
               {data.headers.map((header, index) => (
-                <tr key={index} className="border-t border-white/5 hover:bg-white/5 transition-colors">
+                <tr
+                  key={index}
+                  className="border-t border-white/5 hover:bg-white/5 transition-colors"
+                >
                   <td className="px-4 py-3">
                     <button className="text-zinc-400 hover:text-zinc-100">
                       {header.enabled ? (
@@ -50,19 +51,11 @@ export function HeaderManagerDetail({ node }: HeaderManagerDetailProps) {
                       )}
                     </button>
                   </td>
-                  <td className="px-4 py-3 text-sm text-zinc-100 font-mono">
-                    {header.name}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-zinc-300 font-mono">
-                    {header.value}
-                  </td>
+                  <td className="px-4 py-3 text-sm text-zinc-100 font-mono">{header.name}</td>
+                  <td className="px-4 py-3 text-sm text-zinc-300 font-mono">{header.value}</td>
                   <td className="px-4 py-3 text-sm">
-                    <button className="text-blue-400 hover:text-blue-300 mr-3">
-                      Edit
-                    </button>
-                    <button className="text-red-400 hover:text-red-300">
-                      Remove
-                    </button>
+                    <button className="text-blue-400 hover:text-blue-300 mr-3">Edit</button>
+                    <button className="text-red-400 hover:text-red-300">Remove</button>
                   </td>
                 </tr>
               ))}

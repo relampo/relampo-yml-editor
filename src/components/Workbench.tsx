@@ -19,36 +19,40 @@ export function Workbench() {
   const [scriptTree, setScriptTree] = useState<ScriptNode>(mockScriptTree);
   const [renamingNode, setRenamingNode] = useState<ScriptNode | null>(null);
 
-  const tabs: Array<{ id: WorkbenchTab; label: string; icon: React.ReactNode }> = [
+  const tabs: Array<{
+    id: WorkbenchTab;
+    label: string;
+    icon: React.ReactNode;
+  }> = [
     {
       id: 'recording',
       label: t('workbench.recording'),
-      icon: <Circle className="w-4 h-4" />
+      icon: <Circle className="w-4 h-4" />,
     },
     {
       id: 'scripting',
       label: t('workbench.scripting'),
-      icon: <FileText className="w-4 h-4" />
+      icon: <FileText className="w-4 h-4" />,
     },
     {
       id: 'correlation',
       label: t('workbench.correlation'),
-      icon: <Sparkles className="w-4 h-4" />
+      icon: <Sparkles className="w-4 h-4" />,
     },
     {
       id: 'debugging',
       label: t('workbench.debugging'),
-      icon: <Bug className="w-4 h-4" />
+      icon: <Bug className="w-4 h-4" />,
     },
     {
       id: 'generation',
       label: t('workbench.generation'),
-      icon: <Zap className="w-4 h-4" />
+      icon: <Zap className="w-4 h-4" />,
     },
     {
       id: 'monitoring',
       label: t('workbench.monitoring'),
-      icon: <Activity className="w-4 h-4" />
+      icon: <Activity className="w-4 h-4" />,
     },
   ];
 
@@ -79,23 +83,23 @@ export function Workbench() {
   const handleNodeAdd = (parentId: string, nodeType: AddableNodeType) => {
     const generateNodeName = (type: AddableNodeType): string => {
       const nameMap: Record<AddableNodeType, string> = {
-        'variables': 'Variables',
+        variables: 'Variables',
         'data-source': 'Data Source',
         'http-defaults': 'HTTP Defaults',
-        'scenario': 'New Scenario',
-        'metrics': 'Metrics',
+        scenario: 'New Scenario',
+        metrics: 'Metrics',
         'cookie-manager': 'Cookie Manager',
         'cache-manager': 'Cache Manager',
-        'load': 'Load Profile',
+        load: 'Load Profile',
         'http-request': 'GET /new-request',
         'controller-group': 'Simple Controller',
         'controller-transaction': 'Transaction Controller',
         'controller-if': 'If Controller',
         'controller-loop': 'Loop Controller',
         'controller-retry': 'Retry Controller',
-        'timer': 'Think Time',
-        'extractor': 'Extractor',
-        'assertion': 'Assertion',
+        timer: 'Think Time',
+        extractor: 'Extractor',
+        assertion: 'Assertion',
       };
       return nameMap[type] || 'New Element';
     };
@@ -338,23 +342,21 @@ export function Workbench() {
       <div className="bg-[#111111] border-b border-white/5 flex-shrink-0">
         <div className="flex items-center justify-between px-8">
           <div className="flex items-center gap-2">
-            {tabs.map((tab) => (
+            {tabs.map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`
                 group flex items-center gap-2.5 px-5 py-4 text-sm font-medium relative 
                 transition-all duration-200 ease-out
-                ${activeTab === tab.id
-                    ? 'text-zinc-100'
-                    : 'text-zinc-500 hover:text-zinc-300'
-                  }
+                ${activeTab === tab.id ? 'text-zinc-100' : 'text-zinc-500 hover:text-zinc-300'}
               `}
               >
-                <div className={`transition-colors duration-200 ${activeTab === tab.id
-                  ? 'text-yellow-400'
-                  : 'text-zinc-600 group-hover:text-zinc-400'
-                  }`}>
+                <div
+                  className={`transition-colors duration-200 ${
+                    activeTab === tab.id ? 'text-yellow-400' : 'text-zinc-600 group-hover:text-zinc-400'
+                  }`}
+                >
                   {tab.icon}
                 </div>
                 <span className="tracking-tight">{tab.label}</span>
@@ -367,19 +369,30 @@ export function Workbench() {
 
           {/* Language Toggle */}
           <div className="flex items-center gap-2 py-2">
-            <span className={`text-xs font-medium transition-colors ${language === 'en' ? 'text-yellow-400' : 'text-zinc-500'
-              }`}>EN</span>
+            <span
+              className={`text-xs font-medium transition-colors ${
+                language === 'en' ? 'text-yellow-400' : 'text-zinc-500'
+              }`}
+            >
+              EN
+            </span>
             <button
               onClick={() => setLanguage(language === 'en' ? 'es' : 'en')}
               className="relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 focus:ring-offset-[#111111] bg-zinc-700 hover:bg-zinc-600"
             >
               <span
-                className={`inline-block h-3 w-3 transform rounded-full bg-yellow-400 transition-transform ${language === 'es' ? 'translate-x-5' : 'translate-x-1'
-                  }`}
+                className={`inline-block h-3 w-3 transform rounded-full bg-yellow-400 transition-transform ${
+                  language === 'es' ? 'translate-x-5' : 'translate-x-1'
+                }`}
               />
             </button>
-            <span className={`text-xs font-medium transition-colors ${language === 'es' ? 'text-yellow-400' : 'text-zinc-500'
-              }`}>ES</span>
+            <span
+              className={`text-xs font-medium transition-colors ${
+                language === 'es' ? 'text-yellow-400' : 'text-zinc-500'
+              }`}
+            >
+              ES
+            </span>
           </div>
         </div>
       </div>

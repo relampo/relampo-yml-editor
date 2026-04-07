@@ -46,8 +46,8 @@ interface TreeNodeProps {
 const getNodeIcon = (type: NodeType) => {
   const iconMap: Record<NodeType, any> = {
     'test-plan': FileText,
-    'scenario': Folder,
-    'profile': User,
+    scenario: Folder,
+    profile: User,
     'controller-simple': GitBranch,
     'controller-if': Code,
     'controller-loop': Repeat,
@@ -58,14 +58,14 @@ const getNodeIcon = (type: NodeType) => {
     'cookie-manager': Cookie,
     'cache-manager': HardDrive,
     'header-manager': FileCode,
-    'timer': Clock,
-    'assertion': CheckCircle,
-    'extractor': Filter,
-    'variables': Package,
+    timer: Clock,
+    assertion: CheckCircle,
+    extractor: Filter,
+    variables: Package,
     'data-source': Database,
     'http-defaults': Settings,
-    'metrics': BarChart3,
-    'load': Gauge,
+    metrics: BarChart3,
+    load: Gauge,
   };
   return iconMap[type] || FileText;
 };
@@ -73,8 +73,8 @@ const getNodeIcon = (type: NodeType) => {
 const getNodeColor = (type: NodeType): string => {
   const colorMap: Record<NodeType, string> = {
     'test-plan': 'text-orange-400',
-    'scenario': 'text-purple-400',
-    'profile': 'text-green-400',
+    scenario: 'text-purple-400',
+    profile: 'text-green-400',
     'controller-simple': 'text-orange-400',
     'controller-if': 'text-amber-400',
     'controller-loop': 'text-blue-400',
@@ -85,14 +85,14 @@ const getNodeColor = (type: NodeType): string => {
     'cookie-manager': 'text-pink-400',
     'cache-manager': 'text-slate-400',
     'header-manager': 'text-indigo-400',
-    'timer': 'text-cyan-400',
-    'assertion': 'text-green-400',
-    'extractor': 'text-violet-400',
-    'variables': 'text-neutral-400',
+    timer: 'text-cyan-400',
+    assertion: 'text-green-400',
+    extractor: 'text-violet-400',
+    variables: 'text-neutral-400',
     'data-source': 'text-emerald-400',
     'http-defaults': 'text-neutral-400',
-    'metrics': 'text-neutral-400',
-    'load': 'text-green-400',
+    metrics: 'text-neutral-400',
+    load: 'text-green-400',
   };
   return colorMap[type] || 'text-neutral-400';
 };
@@ -120,7 +120,7 @@ export function TreeNode({
     type: DRAG_TYPE,
     item: { node, parentNode },
     canDrag: () => canDrag,
-    collect: (monitor) => ({
+    collect: monitor => ({
       isDragging: !!monitor.isDragging(),
     }),
   });
@@ -146,12 +146,12 @@ export function TreeNode({
 
       const hoverBoundingRect = nodeRef.current.getBoundingClientRect();
       const clientOffset = monitor.getClientOffset();
-      
+
       if (!clientOffset) return;
 
       const hoverClientY = clientOffset.y - hoverBoundingRect.top;
       const hoverHeight = hoverBoundingRect.height;
-      
+
       // Divide the node into three zones
       const topThreshold = hoverHeight * 0.25;
       const bottomThreshold = hoverHeight * 0.75;
@@ -183,7 +183,7 @@ export function TreeNode({
       }
       setDropPosition(null);
     },
-    collect: (monitor) => ({
+    collect: monitor => ({
       isOver: monitor.isOver({ shallow: true }),
       canDrop: monitor.canDrop(),
     }),
@@ -205,7 +205,7 @@ export function TreeNode({
     <div className="relative">
       {/* Before indicator */}
       {isOver && dropPosition === 'before' && (
-        <div 
+        <div
           className="absolute left-0 right-0 h-0.5 bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-500 z-10"
           style={{ top: '-1px', left: `${depth * 16 + 12}px` }}
         >
@@ -219,22 +219,26 @@ export function TreeNode({
         tabIndex={0}
         className={`
           group flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all duration-150
-          ${isDragging
-            ? 'opacity-40 cursor-grabbing scale-95'
-            : canDrag
-            ? 'cursor-grab hover:shadow-md hover:shadow-yellow-400/20'
-            : 'cursor-pointer'
+          ${
+            isDragging
+              ? 'opacity-40 cursor-grabbing scale-95'
+              : canDrag
+                ? 'cursor-grab hover:shadow-md hover:shadow-yellow-400/20'
+                : 'cursor-pointer'
           }
-          ${isSelected
-            ? 'bg-gradient-to-r from-yellow-500/10 to-yellow-600/10 text-zinc-100 shadow-md border border-yellow-400/30'
-            : 'hover:bg-white/5 text-zinc-300'
+          ${
+            isSelected
+              ? 'bg-gradient-to-r from-yellow-500/10 to-yellow-600/10 text-zinc-100 shadow-md border border-yellow-400/30'
+              : 'hover:bg-white/5 text-zinc-300'
           }
           ${getDropStyle()}
         `}
         style={{ paddingLeft: `${depth * 16 + 12}px` }}
         onClick={() => onNodeSelect(node)}
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onNodeSelect(node); }}
-        onContextMenu={(e) => {
+        onKeyDown={e => {
+          if (e.key === 'Enter' || e.key === ' ') onNodeSelect(node);
+        }}
+        onContextMenu={e => {
           e.preventDefault();
           onContextMenu(e, node);
         }}
@@ -242,7 +246,7 @@ export function TreeNode({
       >
         {hasChildren && (
           <button
-            onClick={(e) => {
+            onClick={e => {
               e.stopPropagation();
               onNodeToggle(node.id);
             }}
@@ -265,7 +269,7 @@ export function TreeNode({
 
       {/* After indicator */}
       {isOver && dropPosition === 'after' && (
-        <div 
+        <div
           className="absolute left-0 right-0 h-0.5 bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-500 z-10"
           style={{ bottom: '-1px', left: `${depth * 16 + 12}px` }}
         >
@@ -275,7 +279,7 @@ export function TreeNode({
 
       {hasChildren && isExpanded && (
         <div>
-          {node.children!.map((child) => (
+          {node.children!.map(child => (
             <TreeNode
               key={child.id}
               node={child}

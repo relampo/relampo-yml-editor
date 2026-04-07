@@ -1,15 +1,5 @@
 import { useState, useEffect } from 'react';
-import {
-  FileWarning,
-  Sparkles,
-  Check,
-  Loader2,
-  RefreshCw,
-  X,
-  AlertCircle,
-  CheckCircle2,
-  Circle,
-} from 'lucide-react';
+import { FileWarning, Sparkles, Check, Loader2, RefreshCw, X, AlertCircle, CheckCircle2, Circle } from 'lucide-react';
 import { Button } from './ui/button';
 import { useYAML } from '../contexts/YAMLContext';
 import { analyzeYAMLForCorrelations, applyCorrelations } from '../utils/correlationAnalyzer';
@@ -25,30 +15,45 @@ function ColoredDiff({ diffText }: { diffText: string }) {
       {lines.map((line, idx) => {
         if (line.startsWith('+ ')) {
           return (
-            <div key={idx} className="text-green-400">
+            <div
+              key={idx}
+              className="text-green-400"
+            >
               {line}
             </div>
           );
         } else if (line.startsWith('- ')) {
           return (
-            <div key={idx} className="text-red-400">
+            <div
+              key={idx}
+              className="text-red-400"
+            >
               {line}
             </div>
           );
         } else if (line.includes('extractors:') || line.includes('Agregar extractor')) {
           return (
-            <div key={idx} className="text-yellow-400 font-semibold">
+            <div
+              key={idx}
+              className="text-yellow-400 font-semibold"
+            >
               {line}
             </div>
           );
         } else if (line.includes('Reemplazar') || line.includes('con ${')) {
           const parts = line.split(/(\$\{[^}]+\})/g);
           return (
-            <div key={idx} className="text-cyan-400">
+            <div
+              key={idx}
+              className="text-cyan-400"
+            >
               {parts.map((part, i) => {
                 if (part.match(/\$\{[^}]+\}/)) {
                   return (
-                    <span key={i} className="text-blue-400 font-semibold">
+                    <span
+                      key={i}
+                      className="text-blue-400 font-semibold"
+                    >
                       {part}
                     </span>
                   );
@@ -59,13 +64,19 @@ function ColoredDiff({ diffText }: { diffText: string }) {
           );
         } else if (line.trim().startsWith('•')) {
           return (
-            <div key={idx} className="text-zinc-400">
+            <div
+              key={idx}
+              className="text-zinc-400"
+            >
               {line}
             </div>
           );
         } else {
           return (
-            <div key={idx} className="text-zinc-500">
+            <div
+              key={idx}
+              className="text-zinc-500"
+            >
               {line}
             </div>
           );
@@ -97,7 +108,7 @@ export function Correlation() {
     if (!yamlContent || yamlContent.trim() === '') {
       setState('no-recording');
     } else if (yamlContent.includes('steps:') && yamlContent.includes('response:')) {
-      setState(prev => prev !== 'results' ? 'ready' : prev);
+      setState(prev => (prev !== 'results' ? 'ready' : prev));
     } else {
       setState('no-recording');
     }
@@ -128,10 +139,13 @@ export function Correlation() {
     setIsAnalyzing(true);
     setState('analyzing');
     setCandidates([]); // Limpiar candidatos anteriores
-    
+
     // Resetear steps
     setAnalysisSteps([
-      { label: 'Analizando patrones sintácticos (shape analysis)', status: 'loading' },
+      {
+        label: 'Analizando patrones sintácticos (shape analysis)',
+        status: 'loading',
+      },
       { label: 'Analizando nombres y contexto (semantic)', status: 'pending' },
       { label: 'Analizando flujo entre steps', status: 'pending' },
       { label: 'Análisis estadístico', status: 'pending' },
@@ -141,15 +155,51 @@ export function Correlation() {
     ]);
 
     // Simular progreso de steps
-    setTimeout(() => setAnalysisSteps(prev => prev.map((s, i) => i === 0 ? {...s, status: 'complete'} : i === 1 ? {...s, status: 'loading'} : s)), 1000);
-    setTimeout(() => setAnalysisSteps(prev => prev.map((s, i) => i <= 1 ? {...s, status: 'complete'} : i === 2 ? {...s, status: 'loading'} : s)), 2000);
-    setTimeout(() => setAnalysisSteps(prev => prev.map((s, i) => i <= 2 ? {...s, status: 'complete'} : i === 3 ? {...s, status: 'loading'} : s)), 3000);
-    setTimeout(() => setAnalysisSteps(prev => prev.map((s, i) => i <= 3 ? {...s, status: 'complete'} : i === 4 ? {...s, status: 'loading'} : s)), 4000);
-    setTimeout(() => setAnalysisSteps(prev => prev.map((s, i) => i <= 4 ? {...s, status: 'complete'} : i === 5 ? {...s, status: 'loading'} : s)), 4500);
-    setTimeout(() => setAnalysisSteps(prev => prev.map((s, i) => i <= 5 ? {...s, status: 'complete'} : i === 6 ? {...s, status: 'loading'} : s)), 5000);
+    setTimeout(
+      () =>
+        setAnalysisSteps(prev =>
+          prev.map((s, i) => (i === 0 ? { ...s, status: 'complete' } : i === 1 ? { ...s, status: 'loading' } : s)),
+        ),
+      1000,
+    );
+    setTimeout(
+      () =>
+        setAnalysisSteps(prev =>
+          prev.map((s, i) => (i <= 1 ? { ...s, status: 'complete' } : i === 2 ? { ...s, status: 'loading' } : s)),
+        ),
+      2000,
+    );
+    setTimeout(
+      () =>
+        setAnalysisSteps(prev =>
+          prev.map((s, i) => (i <= 2 ? { ...s, status: 'complete' } : i === 3 ? { ...s, status: 'loading' } : s)),
+        ),
+      3000,
+    );
+    setTimeout(
+      () =>
+        setAnalysisSteps(prev =>
+          prev.map((s, i) => (i <= 3 ? { ...s, status: 'complete' } : i === 4 ? { ...s, status: 'loading' } : s)),
+        ),
+      4000,
+    );
+    setTimeout(
+      () =>
+        setAnalysisSteps(prev =>
+          prev.map((s, i) => (i <= 4 ? { ...s, status: 'complete' } : i === 5 ? { ...s, status: 'loading' } : s)),
+        ),
+      4500,
+    );
+    setTimeout(
+      () =>
+        setAnalysisSteps(prev =>
+          prev.map((s, i) => (i <= 5 ? { ...s, status: 'complete' } : i === 6 ? { ...s, status: 'loading' } : s)),
+        ),
+      5000,
+    );
     setTimeout(() => {
-      setAnalysisSteps(prev => prev.map((s) => ({...s, status: 'complete'})));
-      
+      setAnalysisSteps(prev => prev.map(s => ({ ...s, status: 'complete' })));
+
       // Ejecutar análisis real del YAML aquí, cuando todo esté completo
       console.log('🚀 Running real YAML analysis...');
       const analysisResult = analyzeYAMLForCorrelations(yamlContent);
@@ -160,7 +210,10 @@ export function Correlation() {
 
   // Mock analysis steps
   const [analysisSteps, setAnalysisSteps] = useState<AnalysisStep[]>([
-    { label: 'Analizando patrones sintácticos (shape analysis)', status: 'pending' },
+    {
+      label: 'Analizando patrones sintácticos (shape analysis)',
+      status: 'pending',
+    },
     { label: 'Analizando nombres y contexto (semantic)', status: 'pending' },
     { label: 'Analizando flujo entre steps', status: 'pending' },
     { label: 'Análisis estadístico', status: 'pending' },
@@ -207,12 +260,12 @@ export function Correlation() {
 
   const getTypeLabel = (type: string) => {
     const labels: Record<string, string> = {
-      'session_id': 'Session ID',
-      'auth_token': 'Auth Token',
-      'csrf_token': 'CSRF Token',
-      'cursor': 'Cursor',
-      'user_id': 'User ID',
-      'api_key': 'API Key'
+      session_id: 'Session ID',
+      auth_token: 'Auth Token',
+      csrf_token: 'CSRF Token',
+      cursor: 'Cursor',
+      user_id: 'User ID',
+      api_key: 'API Key',
     };
     return labels[type] || type;
   };
@@ -226,7 +279,8 @@ export function Correlation() {
           No se encontró información de grabación en este YAML
         </h2>
         <p className="text-sm text-zinc-400 mb-6 leading-relaxed">
-          Para poder sugerir correlaciones automáticas, el YAML debe incluir la sección de tráfico grabado (requests y responses).
+          Para poder sugerir correlaciones automáticas, el YAML debe incluir la sección de tráfico grabado (requests y
+          responses).
         </p>
         <ul className="text-xs text-zinc-500 text-left max-w-md mx-auto mb-8 space-y-2">
           <li className="flex items-start gap-2">
@@ -235,14 +289,13 @@ export function Correlation() {
           </li>
           <li className="flex items-start gap-2">
             <span className="text-yellow-400 mt-0.5">•</span>
-            <span>O que incluya una sección <code className="font-mono bg-zinc-900 px-1 rounded">recording:</code> (o equivalente)</span>
+            <span>
+              O que incluya una sección <code className="font-mono bg-zinc-900 px-1 rounded">recording:</code> (o
+              equivalente)
+            </span>
           </li>
         </ul>
-        <Button
-          className="bg-yellow-400 hover:bg-yellow-500 text-black font-medium"
-        >
-          Volver al editor YAML
-        </Button>
+        <Button className="bg-yellow-400 hover:bg-yellow-500 text-black font-medium">Volver al editor YAML</Button>
       </div>
     </div>
   );
@@ -256,9 +309,7 @@ export function Correlation() {
               <Sparkles className="w-6 h-6 text-yellow-400" />
             </div>
             <div className="flex-1">
-              <h3 className="text-lg font-semibold text-zinc-100 mb-2">
-                YAML actual: script + recording detectado
-              </h3>
+              <h3 className="text-lg font-semibold text-zinc-100 mb-2">YAML actual: script + recording detectado</h3>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="text-zinc-500">Steps en script:</span>
@@ -282,7 +333,8 @@ export function Correlation() {
         </div>
 
         <div className="text-xs text-zinc-500 leading-relaxed">
-          Analizaremos el script y el tráfico grabado para detectar valores dinámicos (session_id, tokens, IDs, cursores…) y proponer correlaciones automatizadas.
+          Analizaremos el script y el tráfico grabado para detectar valores dinámicos (session_id, tokens, IDs,
+          cursores…) y proponer correlaciones automatizadas.
         </div>
       </div>
     </div>
@@ -294,15 +346,13 @@ export function Correlation() {
         <div className="bg-[#111111] border border-white/10 rounded-lg p-6">
           <div className="flex items-center gap-3 mb-6">
             <Loader2 className="w-6 h-6 text-yellow-400 animate-spin" />
-            <h3 className="text-lg font-semibold text-zinc-100">
-              Analizando correlaciones sobre el YAML actual…
-            </h3>
+            <h3 className="text-lg font-semibold text-zinc-100">Analizando correlaciones sobre el YAML actual…</h3>
           </div>
 
           {/* Progress bar */}
           <div className="mb-6">
             <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
-              <div 
+              <div
                 className="h-full bg-gradient-to-r from-yellow-400 to-yellow-500 transition-all duration-500"
                 style={{ width: `${analysisProgress}%` }}
               />
@@ -312,22 +362,25 @@ export function Correlation() {
 
           {/* Analysis steps */}
           <div className="space-y-3">
-            {analysisSteps.map((step) => (
-              <div key={step.label} className="flex items-center gap-3">
-                {step.status === 'complete' && (
-                  <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
-                )}
+            {analysisSteps.map(step => (
+              <div
+                key={step.label}
+                className="flex items-center gap-3"
+              >
+                {step.status === 'complete' && <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />}
                 {step.status === 'loading' && (
                   <Loader2 className="w-4 h-4 text-yellow-400 animate-spin flex-shrink-0" />
                 )}
-                {step.status === 'pending' && (
-                  <Circle className="w-4 h-4 text-zinc-600 flex-shrink-0" />
-                )}
-                <span className={`text-sm ${
-                  step.status === 'complete' ? 'text-zinc-400' :
-                  step.status === 'loading' ? 'text-zinc-200' :
-                  'text-zinc-600'
-                }`}>
+                {step.status === 'pending' && <Circle className="w-4 h-4 text-zinc-600 flex-shrink-0" />}
+                <span
+                  className={`text-sm ${
+                    step.status === 'complete'
+                      ? 'text-zinc-400'
+                      : step.status === 'loading'
+                        ? 'text-zinc-200'
+                        : 'text-zinc-600'
+                  }`}
+                >
                   {step.label}
                 </span>
               </div>
@@ -377,7 +430,7 @@ export function Correlation() {
             <div className="flex items-center gap-3">
               <select
                 value={filterType}
-                onChange={(e) => setFilterType(e.target.value)}
+                onChange={e => setFilterType(e.target.value)}
                 className="px-3 py-1.5 bg-[#111111] border border-white/10 rounded text-sm text-zinc-300 focus:outline-none focus:ring-1 focus:ring-yellow-400"
               >
                 <option value="all">Todos los tipos</option>
@@ -393,7 +446,7 @@ export function Correlation() {
                 <input
                   type="checkbox"
                   checked={showLowConfidence}
-                  onChange={(e) => setShowLowConfidence(e.target.checked)}
+                  onChange={e => setShowLowConfidence(e.target.checked)}
                   className="rounded border-white/10"
                 />
                 Mostrar baja confianza
@@ -431,17 +484,18 @@ export function Correlation() {
                 </tr>
               </thead>
               <tbody>
-                {filteredCandidates.map((candidate) => (
+                {filteredCandidates.map(candidate => (
                   <tr
                     key={candidate.id}
                     onClick={() => setSelectedCandidate(candidate)}
                     className={`border-b border-white/5 cursor-pointer transition-colors ${
-                      selectedCandidate?.id === candidate.id
-                        ? 'bg-yellow-400/10'
-                        : 'hover:bg-white/5'
+                      selectedCandidate?.id === candidate.id ? 'bg-yellow-400/10' : 'hover:bg-white/5'
                     }`}
                   >
-                    <td className="p-3" onClick={(e) => e.stopPropagation()}>
+                    <td
+                      className="p-3"
+                      onClick={e => e.stopPropagation()}
+                    >
                       <input
                         type="checkbox"
                         checked={selectedCandidates.has(candidate.id)}
@@ -458,13 +512,11 @@ export function Correlation() {
                       </div>
                     </td>
                     <td className="p-3">
-                      <div 
+                      <div
                         className="relative group"
                         title={candidate.fullValue}
                       >
-                        <code className="text-xs text-zinc-400 font-mono cursor-help">
-                          {candidate.valueExample}
-                        </code>
+                        <code className="text-xs text-zinc-400 font-mono cursor-help">{candidate.valueExample}</code>
                         {/* Tooltip on hover */}
                         <div className="absolute left-0 top-full mt-1 hidden group-hover:block z-50 bg-black border border-white/20 rounded px-2 py-1 text-xs font-mono text-zinc-300 max-w-md break-all shadow-lg">
                           {candidate.fullValue}
@@ -472,14 +524,17 @@ export function Correlation() {
                       </div>
                     </td>
                     <td className="p-3 text-zinc-400">
-                      <div className="text-xs">
-                        {candidate.source}
-                      </div>
+                      <div className="text-xs">{candidate.source}</div>
                     </td>
                     <td className="p-3">
                       <div className="space-y-1">
-                        {candidate.usedIn.map((usage) => (
-                          <div key={usage} className="text-xs text-zinc-500">{usage}</div>
+                        {candidate.usedIn.map(usage => (
+                          <div
+                            key={usage}
+                            className="text-xs text-zinc-500"
+                          >
+                            {usage}
+                          </div>
                         ))}
                       </div>
                     </td>
@@ -503,9 +558,7 @@ export function Correlation() {
           <div className="w-[480px] bg-[#0a0a0a] overflow-auto">
             <div className="p-4 border-b border-white/5 flex items-center justify-between sticky top-0 bg-[#111111]">
               <div className="flex items-center gap-2">
-                <span className="text-lg font-mono font-semibold text-zinc-100">
-                  {selectedCandidate.variable}
-                </span>
+                <span className="text-lg font-mono font-semibold text-zinc-100">{selectedCandidate.variable}</span>
                 <span className="px-2 py-0.5 bg-zinc-800 rounded text-xs text-zinc-400">
                   {getTypeLabel(selectedCandidate.type)}
                 </span>
@@ -522,9 +575,7 @@ export function Correlation() {
               {/* Explanation */}
               <div>
                 <h4 className="text-sm font-semibold text-zinc-300 mb-2">Explicación</h4>
-                <p className="text-sm text-zinc-400 leading-relaxed">
-                  {selectedCandidate.explanation}
-                </p>
+                <p className="text-sm text-zinc-400 leading-relaxed">{selectedCandidate.explanation}</p>
               </div>
 
               {/* Technical details */}
@@ -593,9 +644,7 @@ export function Correlation() {
                 >
                   Rechazar
                 </Button>
-                <Button
-                  className="flex-1 bg-yellow-400 hover:bg-yellow-500 text-black font-medium"
-                >
+                <Button className="flex-1 bg-yellow-400 hover:bg-yellow-500 text-black font-medium">
                   Aplicar al YAML
                 </Button>
               </div>
@@ -611,12 +660,15 @@ export function Correlation() {
             <h3 className="text-lg font-semibold text-zinc-100 mb-4">
               Aplicar {selectedCandidates.size} correlaciones al YAML
             </h3>
-            
+
             <div className="mb-6 space-y-2">
               {filteredCandidates
                 .filter(c => selectedCandidates.has(c.id))
                 .map(c => (
-                  <div key={c.id} className="flex items-center gap-2 text-sm">
+                  <div
+                    key={c.id}
+                    className="flex items-center gap-2 text-sm"
+                  >
                     <Check className="w-4 h-4 text-green-400" />
                     <span className="font-mono text-zinc-300">{c.variable}</span>
                     <span className="text-zinc-600">→</span>
@@ -641,7 +693,10 @@ export function Correlation() {
                 onClick={() => {
                   setShowApplyModal(false);
                   // Here would trigger the actual apply
-                  const newYAML = applyCorrelations(yamlContent, filteredCandidates.filter(c => selectedCandidates.has(c.id)));
+                  const newYAML = applyCorrelations(
+                    yamlContent,
+                    filteredCandidates.filter(c => selectedCandidates.has(c.id)),
+                  );
                   setYamlContent(newYAML);
                 }}
                 className="flex-1 bg-yellow-400 hover:bg-yellow-500 text-black font-medium"
@@ -660,11 +715,10 @@ export function Correlation() {
       <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-4 flex items-start gap-3">
         <AlertCircle className="w-5 h-5 text-orange-400 flex-shrink-0 mt-0.5" />
         <div className="flex-1">
-          <h4 className="text-sm font-semibold text-orange-400 mb-1">
-            El YAML ha cambiado significativamente
-          </h4>
+          <h4 className="text-sm font-semibold text-orange-400 mb-1">El YAML ha cambiado significativamente</h4>
           <p className="text-sm text-zinc-400 mb-3">
-            El YAML ha cambiado significativamente desde el último análisis. Vuelve a ejecutar el análisis antes de aplicar correlaciones.
+            El YAML ha cambiado significativamente desde el último análisis. Vuelve a ejecutar el análisis antes de
+            aplicar correlaciones.
           </p>
           <Button
             onClick={() => setState('analyzing')}

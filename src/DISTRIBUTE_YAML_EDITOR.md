@@ -38,6 +38,7 @@ gh release create v1.0.0 \
 ```
 
 **URL resultante:**
+
 ```
 https://github.com/TU_USUARIO/relampo/releases/download/v1.0.0/relampo-yaml-editor-standalone.tar.gz
 ```
@@ -53,6 +54,7 @@ ssh user@yourserver.com "chmod 644 /var/www/downloads/relampo-yaml-editor-standa
 ```
 
 **URL resultante:**
+
 ```
 https://yourserver.com/downloads/relampo-yaml-editor-standalone.tar.gz
 ```
@@ -84,7 +86,7 @@ aws s3 presign s3://tu-bucket/releases/relampo-yaml-editor-standalone.tar.gz
 
 ### Actualiza tu README.md principal:
 
-```markdown
+````markdown
 # Relampo YAML Editor
 
 ⚡ Herramienta visual para crear y editar configuraciones YAML de performance testing.
@@ -100,13 +102,17 @@ curl -L https://github.com/TU_USUARIO/relampo/releases/download/v1.0.0/relampo-y
 ### Manual
 
 \`\`\`bash
+
 # 1. Descargar
+
 curl -L https://github.com/TU_USUARIO/relampo/releases/download/v1.0.0/relampo-yaml-editor-standalone.tar.gz -o relampo.tar.gz
 
 # 2. Extraer
+
 tar -xzf relampo.tar.gz
 
 # 3. Ejecutar
+
 cd relampo-yaml-editor
 ./run.sh
 \`\`\`
@@ -133,20 +139,26 @@ Presiona `Ctrl+C` en la terminal donde ejecutaste `./run.sh`
 ## 🐛 Troubleshooting
 
 ### "Permission denied"
+
 \`\`\`bash
 chmod +x run.sh
 \`\`\`
 
 ### "Python not found"
+
 \`\`\`bash
+
 # Mac
+
 brew install python3
 
 # Ubuntu/Debian
+
 sudo apt-get install python3
 \`\`\`
 
 ### "Port 8080 already in use"
+
 El script automáticamente buscará otro puerto disponible.
 
 ## 📚 Documentación
@@ -182,6 +194,7 @@ Súbelo a YouTube y agrégalo al README:
 
 [![Relampo YAML Editor Demo](https://img.youtube.com/vi/YOUR_VIDEO_ID/0.jpg)](https://www.youtube.com/watch?v=YOUR_VIDEO_ID)
 ```
+````
 
 ---
 
@@ -194,8 +207,10 @@ Súbelo a YouTube y agrégalo al README:
 <section class="hero">
   <h1>⚡ Relampo YAML Editor</h1>
   <p>Visual configuration tool for performance testing</p>
-  <a href="https://github.com/TU_USUARIO/relampo/releases/download/v1.0.0/relampo-yaml-editor-standalone.tar.gz" 
-     class="download-btn">
+  <a
+    href="https://github.com/TU_USUARIO/relampo/releases/download/v1.0.0/relampo-yaml-editor-standalone.tar.gz"
+    class="download-btn"
+  >
     Download for Mac/Linux
   </a>
   <pre><code>curl -L DOWNLOAD_URL | tar -xz && cd relampo-yaml-editor && ./run.sh</code></pre>
@@ -205,6 +220,7 @@ Súbelo a YouTube y agrégalo al README:
 ### En redes sociales:
 
 **Twitter/X:**
+
 ```
 🚀 Lanzamos Relampo YAML Editor!
 
@@ -220,6 +236,7 @@ https://github.com/TU_USUARIO/relampo
 ```
 
 **LinkedIn:**
+
 ```
 Excited to announce the release of Relampo YAML Editor - a visual configuration tool for performance testing!
 
@@ -266,10 +283,10 @@ useEffect(() => {
   if (analyticsConsent) {
     fetch('https://api.yourserver.com/ping', {
       method: 'POST',
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         version: '1.0.0',
-        timestamp: Date.now() 
-      })
+        timestamp: Date.now(),
+      }),
     }).catch(() => {}); // Silencioso
   }
 }, []);
@@ -306,17 +323,15 @@ En el editor, puedes agregar un check de actualizaciones:
 // utils/updateChecker.ts
 export async function checkForUpdates() {
   try {
-    const response = await fetch(
-      'https://api.github.com/repos/TU_USUARIO/relampo/releases/latest'
-    );
+    const response = await fetch('https://api.github.com/repos/TU_USUARIO/relampo/releases/latest');
     const latest = await response.json();
     const currentVersion = '1.0.0';
-    
+
     if (latest.tag_name > `v${currentVersion}`) {
       return {
         available: true,
         version: latest.tag_name,
-        url: latest.html_url
+        url: latest.html_url,
       };
     }
   } catch {
@@ -407,29 +422,29 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: Setup Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '18'
-    
-    - name: Install dependencies
-      run: npm ci
-    
-    - name: Build bundle
-      run: |
-        chmod +x build-yaml-standalone.sh
-        ./build-yaml-standalone.sh
-    
-    - name: Create Release
-      uses: softprops/action-gh-release@v1
-      with:
-        files: relampo-yaml-editor-standalone.tar.gz
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build bundle
+        run: |
+          chmod +x build-yaml-standalone.sh
+          ./build-yaml-standalone.sh
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: relampo-yaml-editor-standalone.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
 
 Ahora cada vez que hagas un tag:
@@ -440,6 +455,7 @@ git push origin v1.0.2
 ```
 
 GitHub automáticamente:
+
 1. Ejecuta el build
 2. Genera el bundle
 3. Crea el release
@@ -480,7 +496,7 @@ Ahora tienes un **YAML Editor standalone completamente distribuible** que:
 ✅ Se instala con un comando  
 ✅ Abre solo el editor (sin landing page)  
 ✅ Es super ligero (~1-2MB)  
-✅ Funciona offline  
+✅ Funciona offline
 
 **Para distribuir:**
 

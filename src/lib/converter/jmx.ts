@@ -6,14 +6,10 @@ const DEFAULT_OPTIONS = {
   defaultDuration: '1m',
   defaultRampUp: '0s',
   defaultTimeout: '10s',
-  defaultUA: 'Pulse-Test'
+  defaultUA: 'Pulse-Test',
 };
 
-const CONTROLLER_TAGS = new Set([
-  'GenericController',
-  'TransactionController',
-  'SimpleController'
-]);
+const CONTROLLER_TAGS = new Set(['GenericController', 'TransactionController', 'SimpleController']);
 
 interface Context {
   stats?: {
@@ -176,7 +172,7 @@ function extractSamplerArguments(sampler: Element) {
 }
 
 function attachQueryParams(path: string, args: any[]) {
-  const namedArgs = args.filter((arg) => arg.name);
+  const namedArgs = args.filter(arg => arg.name);
   if (namedArgs.length === 0) {
     return path;
   }
@@ -184,7 +180,7 @@ function attachQueryParams(path: string, args: any[]) {
   const [beforeHash, hash = ''] = path.split('#');
   const separator = beforeHash.includes('?') ? '&' : '?';
   const params = namedArgs
-    .map((arg) => `${encodeURIComponent(arg.name)}=${encodeURIComponent(arg.value ?? '')}`)
+    .map(arg => `${encodeURIComponent(arg.name)}=${encodeURIComponent(arg.value ?? '')}`)
     .join('&');
   const rebuilt = `${beforeHash}${separator}${params}`;
   return hash ? `${rebuilt}#${hash}` : rebuilt;
@@ -196,8 +192,8 @@ function buildBodyFromArgs(args: any[]) {
   }
 
   return args
-    .filter((arg) => arg.name)
-    .map((arg) => `${encodeURIComponent(arg.name)}=${encodeURIComponent(arg.value ?? '')}`)
+    .filter(arg => arg.name)
+    .map(arg => `${encodeURIComponent(arg.name)}=${encodeURIComponent(arg.value ?? '')}`)
     .join('&');
 }
 
@@ -245,12 +241,15 @@ function parseCSVDataSet(csvNode: Element) {
     file: filename || 'INCOMPLETE',
     mode: shareMode === 'shareMode.all' ? 'shared' : 'per_vu',
     strategy: 'sequential',
-    on_exhausted: stopThread ? 'stop' : 'recycle'
+    on_exhausted: stopThread ? 'stop' : 'recycle',
   };
 
   // Parse variable names
   if (variableNames) {
-    const varList = variableNames.split(',').map(v => v.trim()).filter(v => v);
+    const varList = variableNames
+      .split(',')
+      .map(v => v.trim())
+      .filter(v => v);
     if (varList.length > 0) {
       dataSource.bind = {};
       for (const varName of varList) {
@@ -323,31 +322,33 @@ function parseAssertions(hashTreeNode: Element | null, _context: Context) {
         if (testField === 'Assertion.response_code' || !testField) {
           assertions.push({
             type: 'status',
-            value: parseInt(value) || value
+            value: parseInt(value) || value,
           });
         } else if (testField === 'Assertion.response_data' || testField === '') {
-          if (testType === '1') { // Contains
+          if (testType === '1') {
+            // Contains
             assertions.push({ type: 'contains', value });
-          } else if (testType === '16') { // Not contains
+          } else if (testType === '16') {
+            // Not contains
             assertions.push({ type: 'not_contains', value });
-          } else if (testType === '8') { // Regex
+          } else if (testType === '8') {
+            // Regex
             assertions.push({ type: 'regex', pattern: value });
-          } else if (testType === '2') { // Equals
+          } else if (testType === '2') {
+            // Equals
             assertions.push({ type: 'contains', value });
           }
         }
-      }
-      else if (tag === 'JSR223Assertion') {
+      } else if (tag === 'JSR223Assertion') {
         const script = getStringProp(child, 'script');
         if (script) {
           sparkScripts.push({
             name: elementName || 'JSR223 Assertion',
             when: 'after',
-            script: convertGroovyToJavaScript(script)
+            script: convertGroovyToJavaScript(script),
           });
         }
-      }
-      else if (tag === 'JSONPathAssertion') {
+      } else if (tag === 'JSONPathAssertion') {
         const jsonPath = getStringProp(child, 'JSON_PATH');
         const expectedValue = getStringProp(child, 'EXPECTED_VALUE');
         if (jsonPath) {
@@ -355,7 +356,7 @@ function parseAssertions(hashTreeNode: Element | null, _context: Context) {
             name: elementName,
             type: 'jsonpath',
             path: jsonPath,
-            value: expectedValue || true
+            value: expectedValue || true,
           });
         }
       }
@@ -370,7 +371,7 @@ function parseAssertions(hashTreeNode: Element | null, _context: Context) {
 
   return {
     assertions: assertions.length > 0 ? assertions : null,
-    sparkScripts: sparkScripts.length > 0 ? sparkScripts : null
+    sparkScripts: sparkScripts.length > 0 ? sparkScripts : null,
   };
 }
 
@@ -392,7 +393,7 @@ function parseExtractors(hashTreeNode: Element | null, _context: Context) {
           extractors.push({
             type: 'jsonpath',
             var: refName || 'INCOMPLETE',
-            path: jsonPath
+            path: jsonPath,
           });
         }
       } else if (tag === 'RegexExtractor') {
@@ -402,7 +403,7 @@ function parseExtractors(hashTreeNode: Element | null, _context: Context) {
           extractors.push({
             type: 'regex',
             var: refName || 'INCOMPLETE',
-            pattern: regex
+            pattern: regex,
           });
         }
       }
@@ -431,7 +432,7 @@ function convertSamplerToStep(sampler: Element, samplerHashTree: Element | null,
 
   const request: any = {
     method,
-    url
+    url,
   };
 
   if (samplerName) {
@@ -449,7 +450,7 @@ function convertSamplerToStep(sampler: Element, samplerHashTree: Element | null,
 
   if (!methodUsesQuery && args.length > 0) {
     if (postBodyRaw) {
-      const body = args.map((arg) => arg.value ?? '').join('');
+      const body = args.map(arg => arg.value ?? '').join('');
       request.body = convertJMeterVarToRelampo(body);
     } else {
       const encoded = buildBodyFromArgs(args);
@@ -503,8 +504,8 @@ function processHashTree(pairs: any[], context: Context) {
           steps.push({
             group: {
               name: getElementName(element, 'Group'),
-              steps: childSteps
-            }
+              steps: childSteps,
+            },
           });
           if (context.stats) context.stats.folders++;
         }
@@ -522,9 +523,7 @@ export function convertJMXToPulseYAML(jmxText: string, customOptions = {}): Conv
 
   // Root TestPlan
   const testPlan = xmlDoc.querySelector('TestPlan');
-  const testPlanHashTree = testPlan?.nextElementSibling?.tagName === 'hashTree'
-    ? testPlan.nextElementSibling
-    : null;
+  const testPlanHashTree = testPlan?.nextElementSibling?.tagName === 'hashTree' ? testPlan.nextElementSibling : null;
 
   if (!testPlan || !testPlanHashTree) {
     throw new Error('Invalid JMX: Missing TestPlan');
@@ -540,10 +539,10 @@ export function convertJMXToPulseYAML(jmxText: string, customOptions = {}): Conv
       variables: 0,
       dataSources: 0,
       timers: 0,
-      controllers: 0
+      controllers: 0,
     },
     warnings: [],
-    globalSparkScripts: []
+    globalSparkScripts: [],
   };
 
   // Extract Variables & DataSources at Root Level
@@ -579,13 +578,13 @@ export function convertJMXToPulseYAML(jmxText: string, customOptions = {}): Conv
   const apiScenarioManager: any = {
     test: {
       name: getElementName(testPlan, 'Imported JMX Plan'),
-      version: '1.0'
+      version: '1.0',
     },
     http_defaults: {
       timeout: options.defaultTimeout,
       headers: {
-        'User-Agent': options.defaultUA
-      }
+        'User-Agent': options.defaultUA,
+      },
     },
     scenarios: [
       {
@@ -595,11 +594,11 @@ export function convertJMXToPulseYAML(jmxText: string, customOptions = {}): Conv
           start_users: 1,
           end_users: options.defaultUsers as number,
           duration: options.defaultDuration,
-          ramp_time: options.defaultRampUp
+          ramp_time: options.defaultRampUp,
         },
-        steps: steps
-      }
-    ]
+        steps: steps,
+      },
+    ],
   };
 
   if (Object.keys(variables).length > 0) {
@@ -648,6 +647,6 @@ export function convertJMXToPulseYAML(jmxText: string, customOptions = {}): Conv
   return {
     yaml: header + yamlContent,
     stats: context.stats,
-    limitations: limitations
+    limitations: limitations,
   };
 }

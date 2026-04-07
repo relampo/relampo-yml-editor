@@ -2,16 +2,7 @@ import { useState } from 'react';
 import { RecordedRequest, RecordingStatus } from './Recorder';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
-import { 
-  Search,
-  Trash2,
-  Tag,
-  MoreVertical,
-  ListTree,
-  List,
-  GitBranch,
-  Radio
-} from 'lucide-react';
+import { Search, Trash2, Tag, MoreVertical, ListTree, List, GitBranch, Radio } from 'lucide-react';
 
 interface TrafficTimelineProps {
   requests: RecordedRequest[];
@@ -22,12 +13,7 @@ interface TrafficTimelineProps {
 
 type GroupingMode = 'flat' | 'by-page' | 'by-transaction';
 
-export function TrafficTimeline({ 
-  requests, 
-  selectedRequest, 
-  onSelectRequest,
-  status 
-}: TrafficTimelineProps) {
+export function TrafficTimeline({ requests, selectedRequest, onSelectRequest, status }: TrafficTimelineProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [groupingMode, setGroupingMode] = useState<GroupingMode>('flat');
   const [showFilteredOut, setShowFilteredOut] = useState(false);
@@ -99,7 +85,7 @@ export function TrafficTimeline({
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
             <Input
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={e => setSearchQuery(e.target.value)}
               placeholder="Filter by URL, method, or status..."
               className="pl-9 bg-[#0a0a0a] border-white/10 text-sm"
             />
@@ -110,9 +96,7 @@ export function TrafficTimeline({
             <button
               onClick={() => setGroupingMode('flat')}
               className={`p-1.5 rounded transition-colors ${
-                groupingMode === 'flat'
-                  ? 'bg-yellow-400/10 text-yellow-400'
-                  : 'text-zinc-400 hover:text-zinc-300'
+                groupingMode === 'flat' ? 'bg-yellow-400/10 text-yellow-400' : 'text-zinc-400 hover:text-zinc-300'
               }`}
               title="Flat list"
             >
@@ -121,9 +105,7 @@ export function TrafficTimeline({
             <button
               onClick={() => setGroupingMode('by-page')}
               className={`p-1.5 rounded transition-colors ${
-                groupingMode === 'by-page'
-                  ? 'bg-yellow-400/10 text-yellow-400'
-                  : 'text-zinc-400 hover:text-zinc-300'
+                groupingMode === 'by-page' ? 'bg-yellow-400/10 text-yellow-400' : 'text-zinc-400 hover:text-zinc-300'
               }`}
               title="Group by page"
             >
@@ -169,7 +151,7 @@ export function TrafficTimeline({
           <input
             type="checkbox"
             checked={showFilteredOut}
-            onChange={(e) => setShowFilteredOut(e.target.checked)}
+            onChange={e => setShowFilteredOut(e.target.checked)}
             className="w-3.5 h-3.5 rounded border-white/20 bg-[#0a0a0a] text-yellow-400 focus:ring-yellow-400 focus:ring-offset-0"
           />
           Show filtered-out requests
@@ -182,15 +164,16 @@ export function TrafficTimeline({
           <div className="h-full flex items-center justify-center">
             <div className="text-center max-w-md px-4">
               <Radio className="w-16 h-16 text-yellow-400/20 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-zinc-300 mb-2">
-                No requests recorded yet
-              </h3>
+              <h3 className="text-lg font-semibold text-zinc-300 mb-2">No requests recorded yet</h3>
               <p className="text-sm text-zinc-500 mb-6">
-                Configure the proxy settings, open your application in a browser, and click "Start Recording" to begin capturing HTTP traffic.
+                Configure the proxy settings, open your application in a browser, and click "Start Recording" to begin
+                capturing HTTP traffic.
               </p>
               {status === 'idle' && (
                 <div className="text-xs text-zinc-600 space-y-1">
-                  <p>1. Set your browser's proxy to <span className="text-yellow-400 font-mono">127.0.0.1:8000</span></p>
+                  <p>
+                    1. Set your browser's proxy to <span className="text-yellow-400 font-mono">127.0.0.1:8000</span>
+                  </p>
                   <p>2. Click "Start Recording" above</p>
                   <p>3. Navigate your application</p>
                 </div>
@@ -219,9 +202,7 @@ export function TrafficTimeline({
                   key={request.id}
                   onClick={() => onSelectRequest(request)}
                   className={`border-b border-white/5 cursor-pointer transition-colors ${
-                    selectedRequest?.id === request.id
-                      ? 'bg-yellow-400/10'
-                      : 'hover:bg-white/5'
+                    selectedRequest?.id === request.id ? 'bg-yellow-400/10' : 'hover:bg-white/5'
                   } ${request.excluded ? 'opacity-40' : ''}`}
                 >
                   <td className="px-4 py-3 text-zinc-500 text-xs">{idx + 1}</td>
@@ -232,15 +213,17 @@ export function TrafficTimeline({
                     {request.deltaTime > 0 ? formatDeltaTime(request.deltaTime) : '-'}
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`px-2 py-0.5 rounded text-xs font-medium border ${getMethodColor(request.method)}`}>
+                    <span
+                      className={`px-2 py-0.5 rounded text-xs font-medium border ${getMethodColor(request.method)}`}
+                    >
                       {request.method}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-zinc-300 text-xs font-mono truncate max-w-xs">
-                    {request.path}
-                  </td>
+                  <td className="px-4 py-3 text-zinc-300 text-xs font-mono truncate max-w-xs">{request.path}</td>
                   <td className="px-4 py-3">
-                    <span className={`px-2 py-0.5 rounded text-xs font-medium border ${getStatusColor(request.status)}`}>
+                    <span
+                      className={`px-2 py-0.5 rounded text-xs font-medium border ${getStatusColor(request.status)}`}
+                    >
                       {request.status}
                     </span>
                   </td>

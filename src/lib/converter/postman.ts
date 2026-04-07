@@ -8,7 +8,7 @@ const DEFAULT_OPTIONS = {
   defaultDuration: '1m',
   defaultRampUp: '0s',
   defaultTimeout: '10s',
-  defaultUA: 'Relampo-Test'
+  defaultUA: 'Relampo-Test',
 };
 
 interface Stats {
@@ -115,7 +115,7 @@ function mapRequestItemToStep(item: any, context: Context) {
   const request = item.request ?? {};
   const mappedRequest: any = {
     method: request.method || 'GET',
-    url: normalizeURL(getRequestURL(request))
+    url: normalizeURL(getRequestURL(request)),
   };
 
   // Add request name if present
@@ -162,8 +162,8 @@ function mapRequestItemToStep(item: any, context: Context) {
     // Complex test scripts
     if (item.event && item.event.some((e: any) => e.listen === 'test' && e.script?.exec?.length > 0)) {
       const testScript = item.event.find((e: any) => e.listen === 'test');
-      const hasNonExtractLogic = testScript.script.exec.some((line: string) =>
-        !line.match(EXTRACT_REGEX) && line.trim().length > 0 && !line.trim().startsWith('//')
+      const hasNonExtractLogic = testScript.script.exec.some(
+        (line: string) => !line.match(EXTRACT_REGEX) && line.trim().length > 0 && !line.trim().startsWith('//'),
       );
       if (hasNonExtractLogic) {
         context.stats.requestsWithComplexTests = (context.stats.requestsWithComplexTests || 0) + 1;
@@ -187,8 +187,8 @@ function mapItemsToSteps(items: any[] = [], context: Context): any[] {
       steps.push({
         group: {
           name: item.name || 'Folder',
-          steps: mapItemsToSteps(item.item, context)
-        }
+          steps: mapItemsToSteps(item.item, context),
+        },
       });
       if (context.stats) {
         context.stats.folders++;
@@ -251,8 +251,8 @@ export function convertPostmanJSONToPulseYAML(postmanText: string, customOptions
       requestsWithPreScripts: 0,
       requestsWithComplexTests: 0,
       hasCollectionAuth: false,
-      hasCollectionVariables: false
-    }
+      hasCollectionVariables: false,
+    },
   };
 
   // Check for collection-level auth
@@ -269,15 +269,15 @@ export function convertPostmanJSONToPulseYAML(postmanText: string, customOptions
     test: {
       name: collection?.info?.name || 'Imported Collection',
       description: 'Imported from Postman collection',
-      version: '1.0'
+      version: '1.0',
     },
     variables: {},
     http_defaults: {
       timeout: options.defaultTimeout,
       headers: {
         Accept: 'application/json',
-        'User-Agent': options.defaultUA
-      }
+        'User-Agent': options.defaultUA,
+      },
     },
     scenarios: [
       {
@@ -285,15 +285,15 @@ export function convertPostmanJSONToPulseYAML(postmanText: string, customOptions
         load: {
           users: options.defaultUsers,
           duration: options.defaultDuration,
-          ramp_up: options.defaultRampUp
+          ramp_up: options.defaultRampUp,
         },
         cookies: 'auto',
-        steps: mapItemsToSteps(collection?.item ?? [], context)
-      }
+        steps: mapItemsToSteps(collection?.item ?? [], context),
+      },
     ],
     metrics: {
-      enabled: true
-    }
+      enabled: true,
+    },
   };
 
   const baseURL = detectBaseURL(collection?.item ?? []);
@@ -328,13 +328,19 @@ export function convertPostmanJSONToPulseYAML(postmanText: string, customOptions
     limitations.push('Collection variables not auto-converted');
   }
   if (context.stats.requestsWithAuth > 0) {
-    limitations.push(`Authentication for ${context.stats.requestsWithAuth} request${context.stats.requestsWithAuth > 1 ? 's' : ''}`);
+    limitations.push(
+      `Authentication for ${context.stats.requestsWithAuth} request${context.stats.requestsWithAuth > 1 ? 's' : ''}`,
+    );
   }
   if (context.stats.requestsWithPreScripts > 0) {
-    limitations.push(`Pre-request scripts for ${context.stats.requestsWithPreScripts} request${context.stats.requestsWithPreScripts > 1 ? 's' : ''}`);
+    limitations.push(
+      `Pre-request scripts for ${context.stats.requestsWithPreScripts} request${context.stats.requestsWithPreScripts > 1 ? 's' : ''}`,
+    );
   }
   if (context.stats.requestsWithComplexTests > 0) {
-    limitations.push(`Test scripts for ${context.stats.requestsWithComplexTests} request${context.stats.requestsWithComplexTests > 1 ? 's' : ''}`);
+    limitations.push(
+      `Test scripts for ${context.stats.requestsWithComplexTests} request${context.stats.requestsWithComplexTests > 1 ? 's' : ''}`,
+    );
   }
 
   if (limitations.length > 0) {
@@ -353,7 +359,7 @@ export function convertPostmanJSONToPulseYAML(postmanText: string, customOptions
   const result = {
     yaml: header + yamlContent,
     stats: context.stats,
-    limitations: limitations
+    limitations: limitations,
   };
 
   return result;

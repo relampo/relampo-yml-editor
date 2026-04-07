@@ -52,7 +52,10 @@ export function YAMLEditorHeader({
               fill="none"
               style={{ filter: 'drop-shadow(0 2px 6px rgba(0, 0, 0, 0.25))' }}
             >
-              <path d="M10.5 0L0 12.5H7.5L6 22L18 9H10.5V0Z" fill="white" />
+              <path
+                d="M10.5 0L0 12.5H7.5L6 22L18 9H10.5V0Z"
+                fill="white"
+              />
             </svg>
           </div>
           <div>
@@ -88,9 +91,7 @@ export function YAMLEditorHeader({
                 {language === 'es' ? 'Último guardado:' : 'Last save:'} {lastSavedAt}
               </span>
             )}
-            {actionMessage && (
-              <span className="text-[11px] text-zinc-300">{actionMessage}</span>
-            )}
+            {actionMessage && <span className="text-[11px] text-zinc-300">{actionMessage}</span>}
           </div>
 
           {/* Action Buttons */}
@@ -124,9 +125,7 @@ export function YAMLEditorHeader({
                   className="rounded-md px-3 py-2 focus:bg-yellow-400/10 focus:text-white cursor-pointer data-[highlighted]:bg-yellow-400/10 data-[highlighted]:text-white"
                 >
                   <div className="flex flex-col">
-                    <span>
-                      {language === 'es' ? 'Descargar con respuestas' : 'Download with responses'}
-                    </span>
+                    <span>{language === 'es' ? 'Descargar con respuestas' : 'Download with responses'}</span>
                     <span className="text-xs text-zinc-500">
                       {language === 'es'
                         ? 'Útil para editar y correlacionar el script'
@@ -139,9 +138,7 @@ export function YAMLEditorHeader({
                   className="rounded-md px-3 py-2 focus:bg-yellow-400/10 focus:text-white cursor-pointer data-[highlighted]:bg-yellow-400/10 data-[highlighted]:text-white"
                 >
                   <div className="flex flex-col">
-                    <span>
-                      {language === 'es' ? 'Descargar sin respuestas' : 'Download without responses'}
-                    </span>
+                    <span>{language === 'es' ? 'Descargar sin respuestas' : 'Download without responses'}</span>
                     <span className="text-xs text-zinc-500">
                       {language === 'es'
                         ? 'Ideal para lanzar pruebas con el script'
@@ -154,7 +151,10 @@ export function YAMLEditorHeader({
           </div>
 
           {/* Language Toggle */}
-          <div className="lang-toggle" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div
+            className="lang-toggle"
+            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+          >
             <span
               className="lang-label"
               style={{

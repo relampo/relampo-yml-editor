@@ -10,14 +10,14 @@ export const dark = {
     hover: 'hover:bg-white/5',
     active: 'bg-yellow-500/10',
   },
-  
+
   // Borders
   border: {
     subtle: 'border-white/5',
     normal: 'border-white/10',
     strong: 'border-white/20',
   },
-  
+
   // Text
   text: {
     primary: 'text-zinc-100',
@@ -26,7 +26,7 @@ export const dark = {
     muted: 'text-zinc-500',
     disabled: 'text-zinc-600',
   },
-  
+
   // Accents
   accent: {
     yellow: {
@@ -56,12 +56,13 @@ export const dark = {
       border: 'border-purple-400/30',
     },
   },
-  
+
   // Components
   card: 'bg-[#111111] border border-white/5 rounded-xl shadow-2xl',
   input: 'bg-[#0a0a0a] border border-white/10 text-zinc-100 placeholder-zinc-600',
   button: {
-    primary: 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-black font-semibold hover:from-yellow-300 hover:to-yellow-400',
+    primary:
+      'bg-gradient-to-r from-yellow-400 to-yellow-500 text-black font-semibold hover:from-yellow-300 hover:to-yellow-400',
     secondary: 'bg-white/5 hover:bg-white/10 text-zinc-300 border border-white/10',
     ghost: 'hover:bg-white/5 text-zinc-400',
   },

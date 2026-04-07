@@ -13,14 +13,7 @@ interface EditableFieldProps {
   maxLength?: number;
 }
 
-export function EditableField({
-  label,
-  value,
-  field,
-  onChange,
-  type = 'text',
-  maxLength,
-}: EditableFieldProps) {
+export function EditableField({ label, value, field, onChange, type = 'text', maxLength }: EditableFieldProps) {
   const [localValue, setLocalValue] = useState(String(value || ''));
 
   useEffect(() => {
@@ -31,13 +24,11 @@ export function EditableField({
 
   return (
     <div className="mb-5">
-      <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-        {label}
-      </label>
+      <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{label}</label>
       <Input
         type={type}
         value={localValue}
-        onChange={(event) => setLocalValue(event.target.value)}
+        onChange={event => setLocalValue(event.target.value)}
         onBlur={() => onChange(field, localValue)}
         maxLength={maxLength}
         className={`${isNameField ? 'w-[70px] shrink-0' : 'w-full'} h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono focus:border-white/30 transition-all`}
@@ -67,17 +58,19 @@ export function SelectField({
 }: SelectFieldProps) {
   return (
     <div className={noMargin ? '' : 'mb-5'}>
-      <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-        {label}
-      </label>
+      <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{label}</label>
       <select
         value={value}
         disabled={disabled}
-        onChange={(event) => onChange(field, event.target.value)}
+        onChange={event => onChange(field, event.target.value)}
         className={`w-full px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono focus:border-white/30 transition-all outline-none appearance-none h-[38px] ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
       >
-        {options.map((option) => (
-          <option key={option.value} value={option.value} className="bg-[#1a1a1a]">
+        {options.map(option => (
+          <option
+            key={option.value}
+            value={option.value}
+            className="bg-[#1a1a1a]"
+          >
             {option.label}
           </option>
         ))}
@@ -91,14 +84,7 @@ interface FileFieldProps extends EditableFieldProps {
   showPathHint?: boolean;
 }
 
-export function FileField({
-  label,
-  value,
-  field,
-  onChange,
-  noMargin = false,
-  showPathHint = false,
-}: FileFieldProps) {
+export function FileField({ label, value, field, onChange, noMargin = false, showPathHint = false }: FileFieldProps) {
   const { t, language } = useLanguage();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -134,13 +120,11 @@ export function FileField({
 
   return (
     <div className={noMargin ? '' : 'mb-5'}>
-      <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-        {label}
-      </label>
+      <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{label}</label>
       <div className="flex gap-2">
         <Input
           value={String(value || '')}
-          onChange={(event) => onChange(field, event.target.value)}
+          onChange={event => onChange(field, event.target.value)}
           placeholder="path/to/file.csv"
           className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono h-[38px]"
           title={String(value || '')}
@@ -163,7 +147,12 @@ export function FileField({
           >
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
             <polyline points="17 8 12 3 7 8" />
-            <line x1="12" y1="3" x2="12" y2="15" />
+            <line
+              x1="12"
+              y1="3"
+              x2="12"
+              y2="15"
+            />
           </svg>
           {t('yamlEditor.common.browse')}
         </button>
@@ -179,13 +168,25 @@ export function FileField({
         <div className="mt-1.5 space-y-0.5 text-[10px] text-zinc-400">
           {language === 'es' ? (
             <>
-              <p>Local: en modo navegador, el selector de archivos normalmente solo devuelve el nombre del archivo. Copia y pega la ruta completa del CSV/TXT si vas a ejecutar este script localmente.</p>
-              <p>Distribuido: usa solo el nombre del archivo o una ruta relativa (por ejemplo, users.csv). Relampo resuelve el resto automáticamente desde los nodos distribuidos.</p>
+              <p>
+                Local: en modo navegador, el selector de archivos normalmente solo devuelve el nombre del archivo. Copia
+                y pega la ruta completa del CSV/TXT si vas a ejecutar este script localmente.
+              </p>
+              <p>
+                Distribuido: usa solo el nombre del archivo o una ruta relativa (por ejemplo, users.csv). Relampo
+                resuelve el resto automáticamente desde los nodos distribuidos.
+              </p>
             </>
           ) : (
             <>
-              <p>Local: in browser mode, the file picker usually returns only the file name. Copy/paste the full CSV/TXT path if you will run this script locally.</p>
-              <p>Distributed: use only file name or relative path (for example, users.csv). Relampo resolves the remaining path details automatically across distributed nodes.</p>
+              <p>
+                Local: in browser mode, the file picker usually returns only the file name. Copy/paste the full CSV/TXT
+                path if you will run this script locally.
+              </p>
+              <p>
+                Distributed: use only file name or relative path (for example, users.csv). Relampo resolves the
+                remaining path details automatically across distributed nodes.
+              </p>
             </>
           )}
         </div>
@@ -273,7 +274,12 @@ export function AuthConfigEditor({ auth, onChange, scopeLabel }: AuthConfigEdito
   };
 
   const handleFieldChange = (field: keyof EditableAuthConfig, nextValue: string) => {
-    onChange(authEditorValueToData({ ...value, [field]: nextValue } as EditableAuthConfig));
+    onChange(
+      authEditorValueToData({
+        ...value,
+        [field]: nextValue,
+      } as EditableAuthConfig),
+    );
   };
 
   return (
@@ -284,25 +290,43 @@ export function AuthConfigEditor({ auth, onChange, scopeLabel }: AuthConfigEdito
         </label>
         <select
           value={value.type}
-          onChange={(event) => handleTypeChange(event.target.value)}
+          onChange={event => handleTypeChange(event.target.value)}
           className="w-full px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono focus:border-white/30 transition-all outline-none appearance-none h-[38px]"
         >
-          <option value="none" className="bg-[#1a1a1a]">None</option>
-          <option value="bearer" className="bg-[#1a1a1a]">Bearer</option>
-          <option value="api_key" className="bg-[#1a1a1a]">API Key</option>
-          <option value="basic" className="bg-[#1a1a1a]">Basic Auth</option>
+          <option
+            value="none"
+            className="bg-[#1a1a1a]"
+          >
+            None
+          </option>
+          <option
+            value="bearer"
+            className="bg-[#1a1a1a]"
+          >
+            Bearer
+          </option>
+          <option
+            value="api_key"
+            className="bg-[#1a1a1a]"
+          >
+            API Key
+          </option>
+          <option
+            value="basic"
+            className="bg-[#1a1a1a]"
+          >
+            Basic Auth
+          </option>
         </select>
       </div>
 
       {value.type === 'bearer' && (
         <div>
-          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-            Token
-          </label>
+          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Token</label>
           <Input
             type="password"
             value={value.token || ''}
-            onChange={(event) => handleFieldChange('token', event.target.value)}
+            onChange={event => handleFieldChange('token', event.target.value)}
             placeholder="{{api_token}}"
             className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
           />
@@ -312,37 +336,41 @@ export function AuthConfigEditor({ auth, onChange, scopeLabel }: AuthConfigEdito
       {value.type === 'api_key' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              Key Name
-            </label>
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Key Name</label>
             <Input
               value={value.name || ''}
-              onChange={(event) => handleFieldChange('name', event.target.value)}
+              onChange={event => handleFieldChange('name', event.target.value)}
               placeholder="X-API-Key"
               className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
             />
           </div>
           <div>
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              Send In
-            </label>
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Send In</label>
             <select
               value={value.in || 'header'}
-              onChange={(event) => handleFieldChange('in', event.target.value)}
+              onChange={event => handleFieldChange('in', event.target.value)}
               className="w-full px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono focus:border-white/30 transition-all outline-none appearance-none h-[38px]"
             >
-              <option value="header" className="bg-[#1a1a1a]">Header</option>
-              <option value="query" className="bg-[#1a1a1a]">Query Param</option>
+              <option
+                value="header"
+                className="bg-[#1a1a1a]"
+              >
+                Header
+              </option>
+              <option
+                value="query"
+                className="bg-[#1a1a1a]"
+              >
+                Query Param
+              </option>
             </select>
           </div>
           <div className="md:col-span-2">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              Key Value
-            </label>
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Key Value</label>
             <Input
               type="password"
               value={value.value || ''}
-              onChange={(event) => handleFieldChange('value', event.target.value)}
+              onChange={event => handleFieldChange('value', event.target.value)}
               placeholder="{{api_key}}"
               className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
             />
@@ -353,24 +381,20 @@ export function AuthConfigEditor({ auth, onChange, scopeLabel }: AuthConfigEdito
       {value.type === 'basic' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              Username
-            </label>
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Username</label>
             <Input
               value={value.username || ''}
-              onChange={(event) => handleFieldChange('username', event.target.value)}
+              onChange={event => handleFieldChange('username', event.target.value)}
               placeholder="{{username}}"
               className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
             />
           </div>
           <div>
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              Password
-            </label>
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Password</label>
             <Input
               type="password"
               value={value.password || ''}
-              onChange={(event) => handleFieldChange('password', event.target.value)}
+              onChange={event => handleFieldChange('password', event.target.value)}
               placeholder="{{password}}"
               className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
             />
@@ -397,22 +421,14 @@ interface DetailFieldProps {
   multiline?: boolean;
 }
 
-export function DetailField({
-  label,
-  value,
-  mono,
-  small,
-  editable = true,
-  onChange,
-  multiline,
-}: DetailFieldProps) {
+export function DetailField({ label, value, mono, small, editable = true, onChange, multiline }: DetailFieldProps) {
   if (!editable) {
     return (
       <div className="mb-4">
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-          {label}
-        </label>
-        <div className={`px-3 py-2 bg-white/5 border border-white/10 rounded ${small ? 'text-xs' : 'text-sm'} text-zinc-300 ${mono ? 'font-mono' : ''}`}>
+        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{label}</label>
+        <div
+          className={`px-3 py-2 bg-white/5 border border-white/10 rounded ${small ? 'text-xs' : 'text-sm'} text-zinc-300 ${mono ? 'font-mono' : ''}`}
+        >
           {String(value)}
         </div>
       </div>
@@ -422,12 +438,10 @@ export function DetailField({
   if (multiline) {
     return (
       <div className="mb-4">
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-          {label}
-        </label>
+        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{label}</label>
         <Textarea
           value={String(value)}
-          onChange={(event) => onChange?.(event.target.value)}
+          onChange={event => onChange?.(event.target.value)}
           className={`bg-white/5 border-white/10 text-zinc-300 ${small ? 'text-xs' : 'text-sm'} ${mono ? 'font-mono' : ''} min-h-[80px]`}
         />
       </div>
@@ -436,12 +450,10 @@ export function DetailField({
 
   return (
     <div className="mb-4">
-      <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-        {label}
-      </label>
+      <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{label}</label>
       <Input
         value={String(value)}
-        onChange={(event) => onChange?.(event.target.value)}
+        onChange={event => onChange?.(event.target.value)}
         className={`bg-white/5 border-white/10 text-zinc-300 ${small ? 'text-xs' : 'text-sm'} ${mono ? 'font-mono' : ''}`}
       />
     </div>

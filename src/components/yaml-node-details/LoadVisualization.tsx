@@ -19,44 +19,42 @@ export function LoadVisualization({ data, loadType }: LoadVisualizationProps) {
   const intentRpsBandMin = Math.max(0, intentTargetValue - intentRpsBandHalf);
   const intentRpsBandMax = intentTargetValue + intentRpsBandHalf;
   const maxUsers = Math.max(
-    ...visualizationPoints.map((point) => point.users),
+    ...visualizationPoints.map(point => point.users),
     showIntentVuBand ? intentMaxVus : 0,
     isIntentRps ? intentRpsBandMax : 0,
     10,
   );
-  const maxTime = Math.max(...visualizationPoints.map((point) => point.time), 60);
+  const maxTime = Math.max(...visualizationPoints.map(point => point.time), 60);
   const chartHeightPx = 184;
   const yAxisLabel =
-    loadType === 'throughput' || (loadType === 'intent' && intentTargetUnit === 'rps')
-      ? 'RPS'
-      : 'Users';
+    loadType === 'throughput' || (loadType === 'intent' && intentTargetUnit === 'rps') ? 'RPS' : 'Users';
   const vizColor = loadColors[loadType];
   const throughputPerMinute = (parseFloat(String(data.target_rps || '0')) || 0) * 60;
   const intentTargetPerMinute = (parseFloat(String(data.target_value || '0')) || 0) * 60;
 
-  const timeAxisTicks = [0, 1, 2, 3, 4].map((index) => ({
-    x: 40 + (index * 85),
+  const timeAxisTicks = [0, 1, 2, 3, 4].map(index => ({
+    x: 40 + index * 85,
     label: formatTimeLabel(Math.round((maxTime / 4) * index)),
   }));
 
   const timeRanges = getTimeRanges(data, loadType, maxTime);
   const transitionMarkers = getTransitionMarkers(data, loadType, maxTime);
-  const horizontalRanges = timeRanges.filter((range) => range.label === 'Steady' || range.label === 'Target');
-  const verticalRanges = timeRanges.filter((range) => range.label !== 'Steady' && range.label !== 'Target');
-  const chartPoints = visualizationPoints.map((point) => ({
+  const horizontalRanges = timeRanges.filter(range => range.label === 'Steady' || range.label === 'Target');
+  const verticalRanges = timeRanges.filter(range => range.label !== 'Steady' && range.label !== 'Target');
+  const chartPoints = visualizationPoints.map(point => ({
     ...point,
-    x: 40 + ((point.time / maxTime) * 340),
-    y: 170 - ((point.users / maxUsers) * 160),
+    x: 40 + (point.time / maxTime) * 340,
+    y: 170 - (point.users / maxUsers) * 160,
   }));
-  const linePoints = chartPoints.map((point) => `${point.x},${point.y}`).join(' ');
+  const linePoints = chartPoints.map(point => `${point.x},${point.y}`).join(' ');
   const areaPoints = [
     '40,170',
-    ...chartPoints.map((point) => `${point.x},${point.y}`),
+    ...chartPoints.map(point => `${point.x},${point.y}`),
     `${chartPoints[chartPoints.length - 1]?.x || 40},170`,
   ].join(' ');
-  const horizontalRangeLabels = horizontalRanges.map((range) => {
-    const startX = 40 + ((range.start / maxTime) * 340);
-    const endX = 40 + ((range.end / maxTime) * 340);
+  const horizontalRangeLabels = horizontalRanges.map(range => {
+    const startX = 40 + (range.start / maxTime) * 340;
+    const endX = 40 + (range.end / maxTime) * 340;
     const plateauY = chartPoints[1]?.y ?? chartPoints[0]?.y ?? 90;
     return {
       ...range,
@@ -64,7 +62,7 @@ export function LoadVisualization({ data, loadType }: LoadVisualizationProps) {
       y: Math.max(20, plateauY - 14),
     };
   });
-  const angledRangeLabels = verticalRanges.map((range) => {
+  const angledRangeLabels = verticalRanges.map(range => {
     let from = chartPoints[0];
     let to = chartPoints[1] || chartPoints[0];
     if (range.label === 'Ramp Down' && chartPoints.length >= 4) {
@@ -81,25 +79,25 @@ export function LoadVisualization({ data, loadType }: LoadVisualizationProps) {
     const isDescending = to.y - from.y > 0;
     return {
       ...range,
-      x: ((from.x + to.x) / 2) + (isDescending ? 10 : -10),
-      y: ((from.y + to.y) / 2) - 8,
+      x: (from.x + to.x) / 2 + (isDescending ? 10 : -10),
+      y: (from.y + to.y) / 2 - 8,
       angle,
     };
   });
   const intentBandY = {
-    min: 170 - ((intentMinVus / maxUsers) * 160),
-    max: 170 - ((intentMaxVus / maxUsers) * 160),
+    min: 170 - (intentMinVus / maxUsers) * 160,
+    max: 170 - (intentMaxVus / maxUsers) * 160,
   };
   const intentBandHeight = Math.max(0, intentBandY.min - intentBandY.max);
-  const intentTargetY = 170 - ((intentTargetValue / maxUsers) * 160);
+  const intentTargetY = 170 - (intentTargetValue / maxUsers) * 160;
   const intentRpsBandY = {
-    min: 170 - ((intentRpsBandMin / maxUsers) * 160),
-    max: 170 - ((intentRpsBandMax / maxUsers) * 160),
+    min: 170 - (intentRpsBandMin / maxUsers) * 160,
+    max: 170 - (intentRpsBandMax / maxUsers) * 160,
   };
   const intentRpsBandHeight = Math.max(0, intentRpsBandY.min - intentRpsBandY.max);
   const intentWarmupSec = Math.max(0, parseTimeToSeconds(String(data.warmup || '0s')));
-  const intentWarmupX = 40 + ((340 * Math.min(intentWarmupSec, maxTime)) / maxTime);
-  const intentMinY = 170 - ((intentMinVus / maxUsers) * 160);
+  const intentWarmupX = 40 + (340 * Math.min(intentWarmupSec, maxTime)) / maxTime;
+  const intentMinY = 170 - (intentMinVus / maxUsers) * 160;
   const intentWarmupIdleLine =
     showIntentVuBand && intentWarmupSec > 0 ? `40,${intentMinY} ${intentWarmupX},${intentMinY}` : '';
   const intentVuVariationLine = buildIntentVariationLine({
@@ -136,23 +134,29 @@ export function LoadVisualization({ data, loadType }: LoadVisualizationProps) {
         <div className="mb-2 flex items-center justify-between text-[11px] text-zinc-500">
           <span>Visual preview</span>
           <span className="font-mono">
-            Peak {yAxisLabel}: {maxUsers.toFixed(0)} | Total: {maxTime >= 60 ? `${Math.round(maxTime / 60)}m` : `${maxTime}s`}
+            Peak {yAxisLabel}: {maxUsers.toFixed(0)} | Total:{' '}
+            {maxTime >= 60 ? `${Math.round(maxTime / 60)}m` : `${maxTime}s`}
           </span>
         </div>
         <div className="mb-2 text-[11px] text-zinc-400">
           Time ranges are shown for reference based on the current load configuration.
         </div>
         {loadType === 'throughput' && (
-          <div className="mb-2 text-[11px] text-zinc-400">Target throughput: {throughputPerMinute.toFixed(0)} req/min.</div>
+          <div className="mb-2 text-[11px] text-zinc-400">
+            Target throughput: {throughputPerMinute.toFixed(0)} req/min.
+          </div>
         )}
         {showIntentVuBand && (
           <div className="mb-2 text-[11px] text-amber-300/90">
-            Intent control band: warmup is prep-only (cyan). Ajustes comienzan en el marcador amarillo, justo al terminar warmup.
+            Intent control band: warmup is prep-only (cyan). Ajustes comienzan en el marcador amarillo, justo al
+            terminar warmup.
           </div>
         )}
         {isIntentRps && (
           <div className="mb-2 text-[11px] text-emerald-300/90">
-            Intent RPS band: warmup is prep-only, then controlled RPS variability. VU guardrails: {intentMinVus.toFixed(0)}..{intentMaxVus.toFixed(0)}.
+            Intent RPS band: warmup is prep-only, then controlled RPS variability. VU guardrails:{' '}
+            {intentMinVus.toFixed(0)}..
+            {intentMaxVus.toFixed(0)}.
           </div>
         )}
         {isIntent && (
@@ -180,10 +184,16 @@ export function LoadVisualization({ data, loadType }: LoadVisualizationProps) {
               </span>
             </div>
             <div className="relative h-2.5 rounded-full bg-zinc-800/80 overflow-hidden">
-              <div className="absolute inset-y-0 left-0 bg-cyan-400/70" style={{ width: `${intentWarmupPct}%` }} />
+              <div
+                className="absolute inset-y-0 left-0 bg-cyan-400/70"
+                style={{ width: `${intentWarmupPct}%` }}
+              />
               <div
                 className={`absolute inset-y-0 ${isIntentVus ? 'bg-amber-400/70' : 'bg-emerald-400/70'}`}
-                style={{ left: `${intentWarmupPct}%`, width: `${intentControlPct}%` }}
+                style={{
+                  left: `${intentWarmupPct}%`,
+                  width: `${intentControlPct}%`,
+                }}
               />
               <div
                 className="absolute top-[-2px] h-[14px] w-[2px] bg-cyan-200/90"
@@ -200,35 +210,67 @@ export function LoadVisualization({ data, loadType }: LoadVisualizationProps) {
             )}
           </div>
         )}
-        <svg viewBox="0 0 400 200" className="w-full" style={{ height: `${chartHeightPx}px` }}>
+        <svg
+          viewBox="0 0 400 200"
+          className="w-full"
+          style={{ height: `${chartHeightPx}px` }}
+        >
           <defs>
-            <linearGradient id="loadAreaGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={vizColor.stroke} stopOpacity="0.32" />
-              <stop offset="100%" stopColor={vizColor.stroke} stopOpacity="0.04" />
+            <linearGradient
+              id="loadAreaGradient"
+              x1="0"
+              y1="0"
+              x2="0"
+              y2="1"
+            >
+              <stop
+                offset="0%"
+                stopColor={vizColor.stroke}
+                stopOpacity="0.32"
+              />
+              <stop
+                offset="100%"
+                stopColor={vizColor.stroke}
+                stopOpacity="0.04"
+              />
             </linearGradient>
           </defs>
 
-          <line x1="40" y1="10" x2="40" y2="170" stroke="#3f3f46" strokeWidth="2" />
-          <line x1="40" y1="170" x2="380" y2="170" stroke="#3f3f46" strokeWidth="2" />
+          <line
+            x1="40"
+            y1="10"
+            x2="40"
+            y2="170"
+            stroke="#3f3f46"
+            strokeWidth="2"
+          />
+          <line
+            x1="40"
+            y1="170"
+            x2="380"
+            y2="170"
+            stroke="#3f3f46"
+            strokeWidth="2"
+          />
 
-          {[0, 1, 2, 3, 4].map((index) => (
+          {[0, 1, 2, 3, 4].map(index => (
             <line
               key={`h-${index}`}
               x1="40"
-              y1={10 + (index * 40)}
+              y1={10 + index * 40}
               x2="380"
-              y2={10 + (index * 40)}
+              y2={10 + index * 40}
               stroke="#27272a"
               strokeWidth="1"
               strokeDasharray={index === 4 ? '0' : '3 5'}
             />
           ))}
 
-          {[0, 1, 2, 3, 4].map((index) => (
+          {[0, 1, 2, 3, 4].map(index => (
             <text
               key={`y-${index}`}
               x="35"
-              y={14 + (index * 40)}
+              y={14 + index * 40}
               fill="#71717a"
               fontSize="10"
               textAnchor="end"
@@ -252,8 +294,8 @@ export function LoadVisualization({ data, loadType }: LoadVisualizationProps) {
             </text>
           ))}
 
-          {transitionMarkers.map((marker) => {
-            const x = 40 + ((marker.time / maxTime) * 340);
+          {transitionMarkers.map(marker => {
+            const x = 40 + (marker.time / maxTime) * 340;
             return (
               <g key={marker.key}>
                 <line
@@ -329,35 +371,122 @@ export function LoadVisualization({ data, loadType }: LoadVisualizationProps) {
 
           {showIntentVuBand && (
             <g>
-              <rect x="40" y={intentBandY.max} width="340" height={intentBandHeight} fill="#f59e0b18" stroke="#f59e0b55" strokeDasharray="4 4" />
-              <line x1="40" y1={intentTargetY} x2="380" y2={intentTargetY} stroke="#fbbf24" strokeWidth="1.5" strokeDasharray="6 5" />
+              <rect
+                x="40"
+                y={intentBandY.max}
+                width="340"
+                height={intentBandHeight}
+                fill="#f59e0b18"
+                stroke="#f59e0b55"
+                strokeDasharray="4 4"
+              />
+              <line
+                x1="40"
+                y1={intentTargetY}
+                x2="380"
+                y2={intentTargetY}
+                stroke="#fbbf24"
+                strokeWidth="1.5"
+                strokeDasharray="6 5"
+              />
               {intentWarmupIdleLine && (
-                <polyline points={intentWarmupIdleLine} fill="none" stroke="#67e8f9" strokeWidth="2" strokeLinecap="round" />
+                <polyline
+                  points={intentWarmupIdleLine}
+                  fill="none"
+                  stroke="#67e8f9"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
               )}
               {intentVuVariationLine && (
-                <polyline points={intentVuVariationLine} fill="none" stroke="#f59e0b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.95" />
+                <polyline
+                  points={intentVuVariationLine}
+                  fill="none"
+                  stroke="#f59e0b"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  opacity="0.95"
+                />
               )}
             </g>
           )}
 
           {isIntentRps && (
             <g>
-              <rect x="40" y={intentRpsBandY.max} width="340" height={intentRpsBandHeight} fill="#10b98118" stroke="#10b98150" strokeDasharray="4 4" />
-              <line x1="40" y1={intentTargetY} x2="380" y2={intentTargetY} stroke="#34d399" strokeWidth="1.5" strokeDasharray="6 5" />
+              <rect
+                x="40"
+                y={intentRpsBandY.max}
+                width="340"
+                height={intentRpsBandHeight}
+                fill="#10b98118"
+                stroke="#10b98150"
+                strokeDasharray="4 4"
+              />
+              <line
+                x1="40"
+                y1={intentTargetY}
+                x2="380"
+                y2={intentTargetY}
+                stroke="#34d399"
+                strokeWidth="1.5"
+                strokeDasharray="6 5"
+              />
               {intentRpsWarmupLine && (
-                <polyline points={intentRpsWarmupLine} fill="none" stroke="#67e8f9" strokeWidth="2" strokeLinecap="round" />
+                <polyline
+                  points={intentRpsWarmupLine}
+                  fill="none"
+                  stroke="#67e8f9"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
               )}
               {intentRpsVariationLine && (
-                <polyline points={intentRpsVariationLine} fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.95" />
+                <polyline
+                  points={intentRpsVariationLine}
+                  fill="none"
+                  stroke="#10b981"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  opacity="0.95"
+                />
               )}
             </g>
           )}
 
-          <polygon points={areaPoints} fill="url(#loadAreaGradient)" />
-          <polyline points={linePoints} fill="none" stroke={vizColor.stroke} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+          <polygon
+            points={areaPoints}
+            fill="url(#loadAreaGradient)"
+          />
+          <polyline
+            points={linePoints}
+            fill="none"
+            stroke={vizColor.stroke}
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
 
-          <text x="200" y="198" fill="#a1a1aa" fontSize="11" textAnchor="middle" fontWeight="600">Time</text>
-          <text x="15" y="100" fill="#a1a1aa" fontSize="11" textAnchor="middle" fontWeight="600" transform="rotate(-90 15 100)">
+          <text
+            x="200"
+            y="198"
+            fill="#a1a1aa"
+            fontSize="11"
+            textAnchor="middle"
+            fontWeight="600"
+          >
+            Time
+          </text>
+          <text
+            x="15"
+            y="100"
+            fill="#a1a1aa"
+            fontSize="11"
+            textAnchor="middle"
+            fontWeight="600"
+            transform="rotate(-90 15 100)"
+          >
             {yAxisLabel}
           </text>
         </svg>
@@ -381,7 +510,10 @@ function getVisualizationPoints(data: Record<string, any>, loadType: LoadType) {
   } else if (loadType === 'ramp') {
     points.push(
       { time: 0, users: parseInt(data.start_users, 10) || 1 },
-      { time: parseTimeToSeconds(data.duration || '60s'), users: parseInt(data.end_users, 10) || 100 },
+      {
+        time: parseTimeToSeconds(data.duration || '60s'),
+        users: parseInt(data.end_users, 10) || 100,
+      },
     );
   } else if (loadType === 'ramp_up_down') {
     const users = parseInt(data.users, 10) || 10;
@@ -433,17 +565,19 @@ function getTimeRanges(data: Record<string, any>, loadType: LoadType, maxTime: n
   const steadyEnd = Math.max(steadyStart, maxTime - rampDown);
   return [
     { label: 'Ramp Up', start: 0, end: steadyStart },
-    { label: loadType === 'throughput' ? 'Target' : 'Steady', start: steadyStart, end: steadyEnd },
+    {
+      label: loadType === 'throughput' ? 'Target' : 'Steady',
+      start: steadyStart,
+      end: steadyEnd,
+    },
     { label: 'Ramp Down', start: steadyEnd, end: maxTime },
-  ].filter((range) => range.end > range.start);
+  ].filter(range => range.end > range.start);
 }
 
 function getTransitionMarkers(data: Record<string, any>, loadType: LoadType, maxTime: number) {
   if (loadType === 'constant') {
     const rampUp = Math.max(0, parseTimeToSeconds(String(data.ramp_up || '0s')));
-    return rampUp > 0 && rampUp < maxTime
-      ? [{ key: 'ramp-up', time: rampUp, label: formatTimeLabel(rampUp) }]
-      : [];
+    return rampUp > 0 && rampUp < maxTime ? [{ key: 'ramp-up', time: rampUp, label: formatTimeLabel(rampUp) }] : [];
   }
   if (loadType === 'ramp') {
     return [];
@@ -453,8 +587,16 @@ function getTransitionMarkers(data: Record<string, any>, loadType: LoadType, max
   const steadyStart = Math.min(rampUp, maxTime);
   const steadyEnd = Math.max(steadyStart, maxTime - rampDown);
   return [
-    steadyStart > 0 && steadyStart < maxTime ? { key: 'ramp-up', time: steadyStart, label: formatTimeLabel(steadyStart) } : null,
-    steadyEnd > 0 && steadyEnd < maxTime ? { key: 'ramp-down', time: steadyEnd, label: formatTimeLabel(steadyEnd) } : null,
+    steadyStart > 0 && steadyStart < maxTime
+      ? {
+          key: 'ramp-up',
+          time: steadyStart,
+          label: formatTimeLabel(steadyStart),
+        }
+      : null,
+    steadyEnd > 0 && steadyEnd < maxTime
+      ? { key: 'ramp-down', time: steadyEnd, label: formatTimeLabel(steadyEnd) }
+      : null,
   ].filter(Boolean) as Array<{ key: string; time: number; label: string }>;
 }
 
@@ -489,12 +631,14 @@ function buildIntentVariationLine({
   }
   const segments = 12;
   const waveAmplitude = amplitude ?? Math.max(0.8, Math.min((maxValue - minValue) / 2, 12) * 0.7);
-  return Array.from({ length: segments + 1 }).map((_, index) => {
-    const ratio = index / segments;
-    const x = startX + (width * ratio);
-    const wave = Math.sin(ratio * Math.PI * 4);
-    const bounded = Math.max(minValue, Math.min(maxValue, center + (wave * waveAmplitude)));
-    const y = 170 - ((bounded / maxUsers) * 160);
-    return `${x},${y}`;
-  }).join(' ');
+  return Array.from({ length: segments + 1 })
+    .map((_, index) => {
+      const ratio = index / segments;
+      const x = startX + width * ratio;
+      const wave = Math.sin(ratio * Math.PI * 4);
+      const bounded = Math.max(minValue, Math.min(maxValue, center + wave * waveAmplitude));
+      const y = 170 - (bounded / maxUsers) * 160;
+      return `${x},${y}`;
+    })
+    .join(' ');
 }

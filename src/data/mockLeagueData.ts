@@ -9,11 +9,11 @@ export const mockLeagueDataMonthly: LeagueEntry[] = [
     pointsBreakdown: {
       explorers: 95,
       contributors: 325,
-      detectors: 67
+      detectors: 67,
     },
     currentTier: 'Hurricane',
     monthlyWins: ['Feb 2025', 'Jan 2025', 'Dec 2024'],
-    delta: 0
+    delta: 0,
   },
   {
     rank: 2,
@@ -23,11 +23,11 @@ export const mockLeagueDataMonthly: LeagueEntry[] = [
     pointsBreakdown: {
       explorers: 78,
       contributors: 189,
-      detectors: 45
+      detectors: 45,
     },
     currentTier: 'Storm',
     monthlyWins: ['Nov 2024'],
-    delta: 1
+    delta: 1,
   },
   {
     rank: 3,
@@ -37,11 +37,11 @@ export const mockLeagueDataMonthly: LeagueEntry[] = [
     pointsBreakdown: {
       explorers: 103,
       contributors: 142,
-      detectors: 53
+      detectors: 53,
     },
     currentTier: 'Storm',
     monthlyWins: ['Oct 2024', 'Sep 2024'],
-    delta: -1
+    delta: -1,
   },
   {
     rank: 4,
@@ -51,11 +51,11 @@ export const mockLeagueDataMonthly: LeagueEntry[] = [
     pointsBreakdown: {
       explorers: 87,
       contributors: 98,
-      detectors: 60
+      detectors: 60,
     },
     currentTier: 'Storm',
     monthlyWins: [],
-    delta: 2
+    delta: 2,
   },
   {
     rank: 5,
@@ -65,11 +65,11 @@ export const mockLeagueDataMonthly: LeagueEntry[] = [
     pointsBreakdown: {
       explorers: 71,
       contributors: 85,
-      detectors: 33
+      detectors: 33,
     },
     currentTier: 'Storm',
     monthlyWins: ['Aug 2024'],
-    delta: 0
+    delta: 0,
   },
   {
     rank: 6,
@@ -79,11 +79,11 @@ export const mockLeagueDataMonthly: LeagueEntry[] = [
     pointsBreakdown: {
       explorers: 89,
       contributors: 38,
-      detectors: 15
+      detectors: 15,
     },
     currentTier: 'Thunder',
     monthlyWins: [],
-    delta: -2
+    delta: -2,
   },
   {
     rank: 7,
@@ -93,11 +93,11 @@ export const mockLeagueDataMonthly: LeagueEntry[] = [
     pointsBreakdown: {
       explorers: 78,
       contributors: 12,
-      detectors: 8
+      detectors: 8,
     },
     currentTier: 'Thunder',
     monthlyWins: [],
-    delta: 1
+    delta: 1,
   },
   {
     rank: 8,
@@ -107,11 +107,11 @@ export const mockLeagueDataMonthly: LeagueEntry[] = [
     pointsBreakdown: {
       explorers: 51,
       contributors: 10,
-      detectors: 6
+      detectors: 6,
     },
     currentTier: 'Bolt',
     monthlyWins: [],
-    delta: 0
+    delta: 0,
   },
   {
     rank: 9,
@@ -121,11 +121,11 @@ export const mockLeagueDataMonthly: LeagueEntry[] = [
     pointsBreakdown: {
       explorers: 38,
       contributors: 5,
-      detectors: 2
+      detectors: 2,
     },
     currentTier: 'Bolt',
     monthlyWins: [],
-    delta: -1
+    delta: -1,
   },
   {
     rank: 10,
@@ -135,12 +135,12 @@ export const mockLeagueDataMonthly: LeagueEntry[] = [
     pointsBreakdown: {
       explorers: 20,
       contributors: 2,
-      detectors: 1
+      detectors: 1,
     },
     currentTier: 'Bolt',
     monthlyWins: [],
-    delta: 1
-  }
+    delta: 1,
+  },
 ];
 
 export const mockLeagueDataAllTime: LeagueEntry[] = [
@@ -152,11 +152,11 @@ export const mockLeagueDataAllTime: LeagueEntry[] = [
     pointsBreakdown: {
       explorers: 421,
       contributors: 987,
-      detectors: 439
+      detectors: 439,
     },
     currentTier: 'Hurricane',
     monthlyWins: ['Feb 2025', 'Jan 2025', 'Dec 2024', 'Nov 2024'],
-    delta: 0
+    delta: 0,
   },
   {
     rank: 2,
@@ -166,11 +166,11 @@ export const mockLeagueDataAllTime: LeagueEntry[] = [
     pointsBreakdown: {
       explorers: 356,
       contributors: 845,
-      detectors: 322
+      detectors: 322,
     },
     currentTier: 'Hurricane',
     monthlyWins: ['Oct 2024', 'Sep 2024'],
-    delta: 0
+    delta: 0,
   },
   {
     rank: 3,
@@ -180,11 +180,11 @@ export const mockLeagueDataAllTime: LeagueEntry[] = [
     pointsBreakdown: {
       explorers: 478,
       contributors: 567,
-      detectors: 244
+      detectors: 244,
     },
     currentTier: 'Hurricane',
     monthlyWins: ['Aug 2024', 'Jul 2024', 'Jun 2024'],
-    delta: 1
+    delta: 1,
   },
   {
     rank: 4,
@@ -194,11 +194,11 @@ export const mockLeagueDataAllTime: LeagueEntry[] = [
     pointsBreakdown: {
       explorers: 387,
       contributors: 423,
-      detectors: 235
+      detectors: 235,
     },
     currentTier: 'Hurricane',
     monthlyWins: ['May 2024'],
-    delta: -1
+    delta: -1,
   },
   {
     rank: 5,
@@ -208,11 +208,11 @@ export const mockLeagueDataAllTime: LeagueEntry[] = [
     pointsBreakdown: {
       explorers: 298,
       contributors: 412,
-      detectors: 166
+      detectors: 166,
     },
     currentTier: 'Storm',
     monthlyWins: ['Apr 2024', 'Mar 2024'],
-    delta: 0
+    delta: 0,
   },
   {
     rank: 6,
@@ -222,11 +222,11 @@ export const mockLeagueDataAllTime: LeagueEntry[] = [
     pointsBreakdown: {
       explorers: 345,
       contributors: 201,
-      detectors: 108
+      detectors: 108,
     },
     currentTier: 'Storm',
     monthlyWins: [],
-    delta: 1
+    delta: 1,
   },
   {
     rank: 7,
@@ -236,11 +236,11 @@ export const mockLeagueDataAllTime: LeagueEntry[] = [
     pointsBreakdown: {
       explorers: 289,
       contributors: 167,
-      detectors: 67
+      detectors: 67,
     },
     currentTier: 'Storm',
     monthlyWins: ['Feb 2024'],
-    delta: -1
+    delta: -1,
   },
   {
     rank: 8,
@@ -250,11 +250,11 @@ export const mockLeagueDataAllTime: LeagueEntry[] = [
     pointsBreakdown: {
       explorers: 234,
       contributors: 112,
-      detectors: 52
+      detectors: 52,
     },
     currentTier: 'Thunder',
     monthlyWins: [],
-    delta: 0
+    delta: 0,
   },
   {
     rank: 9,
@@ -264,11 +264,11 @@ export const mockLeagueDataAllTime: LeagueEntry[] = [
     pointsBreakdown: {
       explorers: 178,
       contributors: 65,
-      detectors: 24
+      detectors: 24,
     },
     currentTier: 'Thunder',
     monthlyWins: [],
-    delta: 1
+    delta: 1,
   },
   {
     rank: 10,
@@ -278,10 +278,10 @@ export const mockLeagueDataAllTime: LeagueEntry[] = [
     pointsBreakdown: {
       explorers: 98,
       contributors: 34,
-      detectors: 13
+      detectors: 13,
     },
     currentTier: 'Bolt',
     monthlyWins: [],
-    delta: -1
-  }
+    delta: -1,
+  },
 ];

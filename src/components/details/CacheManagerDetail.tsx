@@ -16,9 +16,7 @@ export function CacheManagerDetail({ node }: CacheManagerDetailProps) {
           <HardDrive className="w-5 h-5 text-slate-600" />
           <h3 className="text-neutral-900">{node.name}</h3>
         </div>
-        <p className="text-xs text-neutral-500">
-          HTTP cache simulation for realistic browser behavior
-        </p>
+        <p className="text-xs text-neutral-500">HTTP cache simulation for realistic browser behavior</p>
       </div>
 
       {/* Content */}
@@ -27,15 +25,13 @@ export function CacheManagerDetail({ node }: CacheManagerDetailProps) {
           {/* Cache Configuration */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <h4 className="text-sm font-medium text-neutral-900">
-                Cache Configuration
-              </h4>
+              <h4 className="text-sm font-medium text-neutral-900">Cache Configuration</h4>
               <button className="px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-1.5">
                 <Plus className="w-3 h-3" />
                 Add Entry
               </button>
             </div>
-            
+
             <div className="space-y-2 text-sm mb-4">
               <div className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg">
                 <span className="text-neutral-700">Max Cache Size</span>
@@ -57,16 +53,14 @@ export function CacheManagerDetail({ node }: CacheManagerDetailProps) {
             <h4 className="text-sm font-medium text-neutral-900 mb-3">
               Cached Items
               {data.cache && data.cache.length > 0 && (
-                <span className="ml-2 text-xs text-neutral-500">
-                  ({data.cache.length} entries)
-                </span>
+                <span className="ml-2 text-xs text-neutral-500">({data.cache.length} entries)</span>
               )}
             </h4>
-            
+
             {data.cache && data.cache.length > 0 ? (
               <div className="space-y-2">
                 {data.cache.map((item: any, idx: number) => (
-                  <div 
+                  <div
                     key={idx}
                     className="border border-neutral-200 rounded-lg p-4 hover:border-neutral-300 transition-colors"
                   >
@@ -87,9 +81,7 @@ export function CacheManagerDetail({ node }: CacheManagerDetailProps) {
                         {item.expires && (
                           <div>
                             <label className="text-xs text-neutral-500 block mb-0.5">Expires</label>
-                            <div className="text-sm text-neutral-600">
-                              {item.expires}
-                            </div>
+                            <div className="text-sm text-neutral-600">{item.expires}</div>
                           </div>
                         )}
                       </div>

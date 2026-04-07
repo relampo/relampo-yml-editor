@@ -8,8 +8,17 @@ export function RelampoLeagueLoading() {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-yellow-300 via-yellow-400 to-yellow-500 flex items-center justify-center shadow-lg shadow-yellow-400/40">
-              <svg width="20" height="24" viewBox="0 0 20 24" fill="none">
-                <path d="M11 0L0 13H8.5L6.5 24L20 10H11V0Z" fill="white" className="drop-shadow-lg"/>
+              <svg
+                width="20"
+                height="24"
+                viewBox="0 0 20 24"
+                fill="none"
+              >
+                <path
+                  d="M11 0L0 13H8.5L6.5 24L20 10H11V0Z"
+                  fill="white"
+                  className="drop-shadow-lg"
+                />
               </svg>
             </div>
             <div>
@@ -38,8 +47,17 @@ export function RelampoLeagueEmpty() {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-yellow-300 via-yellow-400 to-yellow-500 flex items-center justify-center shadow-lg shadow-yellow-400/40">
-              <svg width="20" height="24" viewBox="0 0 20 24" fill="none">
-                <path d="M11 0L0 13H8.5L6.5 24L20 10H11V0Z" fill="white" className="drop-shadow-lg"/>
+              <svg
+                width="20"
+                height="24"
+                viewBox="0 0 20 24"
+                fill="none"
+              >
+                <path
+                  d="M11 0L0 13H8.5L6.5 24L20 10H11V0Z"
+                  fill="white"
+                  className="drop-shadow-lg"
+                />
               </svg>
             </div>
             <div>

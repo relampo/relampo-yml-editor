@@ -31,7 +31,7 @@ export function FrontendImplementationDoc() {
           </div>
         </div>
         <p className="text-lg text-neutral-700 max-w-3xl">
-          Comprehensive documentation of Relampo's frontend implementation, including the Script Tree with drag & drop, 
+          Comprehensive documentation of Relampo's frontend implementation, including the Script Tree with drag & drop,
           Recording UI with HTTPS certificate management, internationalization, and all interactive components.
         </p>
       </div>
@@ -42,7 +42,7 @@ export function FrontendImplementationDoc() {
           <Package className="w-6 h-6 text-blue-600" />
           Technology Stack
         </h2>
-        
+
         <div className="grid grid-cols-3 gap-4 mb-6">
           <div className="bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-200 rounded-xl p-6">
             <div className="text-2xl font-bold text-blue-900 mb-2">React 18</div>
@@ -108,8 +108,8 @@ export function FrontendImplementationDoc() {
         <div className="bg-gradient-to-br from-purple-50 to-blue-50 border-2 border-purple-200 rounded-xl p-8 mb-6">
           <h3 className="text-xl font-bold text-purple-900 mb-4">Architecture Overview</h3>
           <p className="text-neutral-700 mb-6">
-            The Script Tree is the core component that represents the hierarchical structure of performance tests. 
-            It's implemented as a recursive tree with full drag & drop support and business rule validation.
+            The Script Tree is the core component that represents the hierarchical structure of performance tests. It's
+            implemented as a recursive tree with full drag & drop support and business rule validation.
           </p>
 
           <div className="grid grid-cols-2 gap-6">
@@ -158,9 +158,15 @@ export function FrontendImplementationDoc() {
 }`}</pre>
               </div>
               <div className="mt-4 text-xs text-neutral-600 space-y-1">
-                <div>• <strong>Recursive structure</strong> allows unlimited nesting</div>
-                <div>• <strong>Type-safe</strong> with TypeScript interfaces</div>
-                <div>• <strong>Flexible data</strong> property for node-specific config</div>
+                <div>
+                  • <strong>Recursive structure</strong> allows unlimited nesting
+                </div>
+                <div>
+                  • <strong>Type-safe</strong> with TypeScript interfaces
+                </div>
+                <div>
+                  • <strong>Flexible data</strong> property for node-specific config
+                </div>
               </div>
             </div>
           </div>
@@ -182,27 +188,39 @@ export function FrontendImplementationDoc() {
               <ul className="space-y-2 text-sm text-neutral-700">
                 <li className="flex items-start gap-2">
                   <span className="text-green-600 font-bold">✓</span>
-                  <span><strong>Green ring</strong> when drop is allowed (nesting inside)</span>
+                  <span>
+                    <strong>Green ring</strong> when drop is allowed (nesting inside)
+                  </span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-blue-600 font-bold">—</span>
-                  <span><strong>Blue line</strong> showing insert position (before/after sibling)</span>
+                  <span>
+                    <strong>Blue line</strong> showing insert position (before/after sibling)
+                  </span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-red-600 font-bold">✗</span>
-                  <span><strong>Red ring</strong> when drop is prohibited</span>
+                  <span>
+                    <strong>Red ring</strong> when drop is prohibited
+                  </span>
                 </li>
                 <li className="flex items-start gap-2">
                   <GripVertical className="w-4 h-4 text-neutral-400 mt-0.5" />
-                  <span><strong>Grip icon</strong> appears on draggable nodes</span>
+                  <span>
+                    <strong>Grip icon</strong> appears on draggable nodes
+                  </span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="opacity-50">⚡</span>
-                  <span><strong>50% opacity</strong> while dragging</span>
+                  <span>
+                    <strong>50% opacity</strong> while dragging
+                  </span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span>📂</span>
-                  <span><strong>Auto-expand</strong> target on drop (when nesting)</span>
+                  <span>
+                    <strong>Auto-expand</strong> target on drop (when nesting)
+                  </span>
                 </li>
               </ul>
             </div>
@@ -244,7 +262,9 @@ export function FrontendImplementationDoc() {
               <div className="bg-blue-50 border-2 border-blue-400 rounded-lg p-4 text-center">
                 <div className="text-xs font-semibold text-blue-900 mb-2">TOP ZONE (25%)</div>
                 <div className="h-2 bg-blue-500 rounded-full mb-2"></div>
-                <div className="text-xs text-blue-700">Insert <strong>BEFORE</strong> this node</div>
+                <div className="text-xs text-blue-700">
+                  Insert <strong>BEFORE</strong> this node
+                </div>
                 <div className="text-xs text-blue-600 mt-1">(Reorder as sibling)</div>
               </div>
               <div className="bg-green-50 border-2 border-green-400 rounded-lg p-4 text-center">
@@ -252,13 +272,17 @@ export function FrontendImplementationDoc() {
                 <div className="h-16 bg-green-500 rounded-lg mb-2 flex items-center justify-center text-white text-xs">
                   Node Content
                 </div>
-                <div className="text-xs text-green-700">Insert <strong>INSIDE</strong> this node</div>
+                <div className="text-xs text-green-700">
+                  Insert <strong>INSIDE</strong> this node
+                </div>
                 <div className="text-xs text-green-600 mt-1">(Nest as child)</div>
               </div>
               <div className="bg-blue-50 border-2 border-blue-400 rounded-lg p-4 text-center">
                 <div className="text-xs font-semibold text-blue-900 mb-2">BOTTOM ZONE (25%)</div>
                 <div className="h-2 bg-blue-500 rounded-full mb-2"></div>
-                <div className="text-xs text-blue-700">Insert <strong>AFTER</strong> this node</div>
+                <div className="text-xs text-blue-700">
+                  Insert <strong>AFTER</strong> this node
+                </div>
                 <div className="text-xs text-blue-600 mt-1">(Reorder as sibling)</div>
               </div>
             </div>
@@ -340,7 +364,9 @@ export function FrontendImplementationDoc() {
                   <span className="text-amber-600">✎</span>
                   <div>
                     <strong>Rename</strong>
-                    <div className="text-xs text-neutral-500 mt-0.5">Special handling for HTTP requests (preserves method prefix)</div>
+                    <div className="text-xs text-neutral-500 mt-0.5">
+                      Special handling for HTTP requests (preserves method prefix)
+                    </div>
                   </div>
                 </li>
                 <li className="flex items-start gap-2">
@@ -364,8 +390,8 @@ export function FrontendImplementationDoc() {
                 </div>
               </div>
               <div className="text-xs text-neutral-600">
-                The rename dialog intelligently preserves HTTP method prefixes (GET, POST, PUT, DELETE, etc.) 
-                to maintain semantic correctness.
+                The rename dialog intelligently preserves HTTP method prefixes (GET, POST, PUT, DELETE, etc.) to
+                maintain semantic correctness.
               </div>
             </div>
           </div>
@@ -382,8 +408,8 @@ export function FrontendImplementationDoc() {
         <div className="bg-gradient-to-br from-red-50 to-orange-50 border-2 border-red-200 rounded-xl p-8 mb-6">
           <h3 className="text-xl font-bold text-red-900 mb-4">HTTPS Certificate Management</h3>
           <p className="text-neutral-700 mb-6">
-            Complete system for managing SSL/TLS certificates required for recording HTTPS traffic. 
-            Includes certificate generation, installation guides, and status monitoring.
+            Complete system for managing SSL/TLS certificates required for recording HTTPS traffic. Includes certificate
+            generation, installation guides, and status monitoring.
           </p>
 
           <div className="grid grid-cols-2 gap-6">
@@ -473,8 +499,8 @@ export function FrontendImplementationDoc() {
               </div>
             </div>
             <div className="text-xs text-neutral-600">
-              <strong>Note:</strong> Proxy configuration is editable and persisted to localStorage. 
-              Users can configure their preferred host/port for the recording proxy.
+              <strong>Note:</strong> Proxy configuration is editable and persisted to localStorage. Users can configure
+              their preferred host/port for the recording proxy.
             </div>
           </div>
         </div>
@@ -490,8 +516,8 @@ export function FrontendImplementationDoc() {
         <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-8 mb-6">
           <h3 className="text-xl font-bold text-green-900 mb-4">Multi-Language Support</h3>
           <p className="text-neutral-700 mb-6">
-            Complete internationalization system supporting English, Spanish, and Portuguese with context-based translations 
-            and a persistent language selector in the TopBar.
+            Complete internationalization system supporting English, Spanish, and Portuguese with context-based
+            translations and a persistent language selector in the TopBar.
           </p>
 
           <div className="grid grid-cols-2 gap-6">
@@ -559,7 +585,8 @@ function MyComponent() {
 }`}</pre>
           </div>
           <div className="mt-4 text-xs text-neutral-600">
-            <strong>Note:</strong> Language preference is persisted to localStorage and automatically restored on page reload.
+            <strong>Note:</strong> Language preference is persisted to localStorage and automatically restored on page
+            reload.
           </div>
         </div>
       </section>
@@ -642,18 +669,18 @@ function MyComponent() {
               <div className="ml-4">├─ TopBar (Project/Env + Language Selector)</div>
               <div className="ml-4">└─ Workbench</div>
               <div className="ml-8">├─ DndProvider (Drag & Drop Context)</div>
-              <div className="ml-8">│  └─ ScriptTree</div>
-              <div className="ml-12">│     ├─ TreeNode (Recursive)</div>
-              <div className="ml-12">│     │  ├─ useDrag</div>
-              <div className="ml-12">│     │  └─ useDrop</div>
-              <div className="ml-12">│     └─ ContextMenu</div>
+              <div className="ml-8">│ └─ ScriptTree</div>
+              <div className="ml-12">│ ├─ TreeNode (Recursive)</div>
+              <div className="ml-12">│ │ ├─ useDrag</div>
+              <div className="ml-12">│ │ └─ useDrop</div>
+              <div className="ml-12">│ └─ ContextMenu</div>
               <div className="ml-8">├─ DetailPanel (Context-aware)</div>
-              <div className="ml-12">│  ├─ RecordingView</div>
-              <div className="ml-12">│  │  ├─ CertificateStatus</div>
-              <div className="ml-12">│  │  └─ InstallCertModal</div>
-              <div className="ml-12">│  ├─ HttpRequestDetail</div>
-              <div className="ml-12">│  ├─ ControllerDetail</div>
-              <div className="ml-12">│  └─ [Other Detail Views...]</div>
+              <div className="ml-12">│ ├─ RecordingView</div>
+              <div className="ml-12">│ │ ├─ CertificateStatus</div>
+              <div className="ml-12">│ │ └─ InstallCertModal</div>
+              <div className="ml-12">│ ├─ HttpRequestDetail</div>
+              <div className="ml-12">│ ├─ ControllerDetail</div>
+              <div className="ml-12">│ └─ [Other Detail Views...]</div>
               <div className="ml-8">└─ RenameDialog (Modal)</div>
             </div>
           </div>
@@ -730,9 +757,7 @@ function MyComponent() {
 
       {/* Footer */}
       <div className="mt-16 pt-8 border-t-2 border-neutral-200 text-center text-neutral-600">
-        <p className="text-sm">
-          This documentation reflects the current state of Relampo's frontend implementation.
-        </p>
+        <p className="text-sm">This documentation reflects the current state of Relampo's frontend implementation.</p>
         <p className="text-xs mt-2">
           For questions or contributions, refer to the main README or contact the development team.
         </p>

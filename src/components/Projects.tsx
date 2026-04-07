@@ -3,22 +3,22 @@ import { useLanguage } from '../contexts/LanguageContext';
 
 export function Projects() {
   const { t } = useLanguage();
-  
+
   const projects = [
-    { 
-      name: 'E-Commerce Load Test', 
+    {
+      name: 'E-Commerce Load Test',
       description: 'Performance testing for checkout flow',
       tests: 12,
       lastRun: '2 hours ago',
     },
-    { 
-      name: 'API Gateway Performance', 
+    {
+      name: 'API Gateway Performance',
       description: 'Stress testing API endpoints',
       tests: 8,
       lastRun: '5 hours ago',
     },
-    { 
-      name: 'Mobile Backend Stress Test', 
+    {
+      name: 'Mobile Backend Stress Test',
       description: 'Backend capacity validation',
       tests: 15,
       lastRun: '1 day ago',
@@ -43,8 +43,8 @@ export function Projects() {
         {/* Projects Grid */}
         <div className="grid grid-cols-3 gap-4">
           {projects.map((project, index) => (
-            <div 
-              key={index} 
+            <div
+              key={index}
               className="bg-[#111111] border border-white/5 rounded-lg p-6 hover:border-yellow-400/30 hover:shadow-2xl hover:shadow-yellow-400/10 transition-all cursor-pointer group"
             >
               <div className="flex items-start justify-between mb-4">

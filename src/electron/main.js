@@ -9,9 +9,9 @@ ipcMain.handle('select-file', async (event, options) => {
     properties: ['openFile'],
     filters: [
       { name: 'Data Files', extensions: ['csv', 'txt'] },
-      { name: 'All Files', extensions: ['*'] }
+      { name: 'All Files', extensions: ['*'] },
     ],
-    ...options
+    ...options,
   });
 
   if (result.canceled) {
@@ -31,11 +31,11 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      sandbox: true
+      sandbox: true,
     },
     titleBarStyle: 'default',
     frame: true,
-    show: false
+    show: false,
   });
 
   // Cargar la app desde el build

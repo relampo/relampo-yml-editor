@@ -3,8 +3,8 @@ import { Plus, Trash2, Edit2, Check, X, CheckCircle2, Circle } from 'lucide-reac
 import { Input } from './ui/input';
 
 interface EditableListItem {
-  originalKey: string;  // The original key that doesn't change
-  key: string;          // The key being edited
+  originalKey: string; // The original key that doesn't change
+  key: string; // The key being edited
   value: string;
   checked?: boolean;
 }
@@ -39,7 +39,10 @@ export function EditableList({
   const [localItems, setLocalItems] = useState<EditableListItem[]>([]);
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
   const [editingKey, setEditingKey] = useState<string | null>(null);
-  const [editingValue, setEditingValue] = useState<{ key: string; value: string } | null>(null);
+  const [editingValue, setEditingValue] = useState<{
+    key: string;
+    value: string;
+  } | null>(null);
 
   // Synchronize external items with local state
   useEffect(() => {
@@ -92,9 +95,7 @@ export function EditableList({
     if (!newKey.trim()) {
       setEditingKey(null);
       // Restore original value
-      const newItems = localItems.map(i =>
-        i.originalKey === originalKey ? { ...i, key: originalKey } : i
-      );
+      const newItems = localItems.map(i => (i.originalKey === originalKey ? { ...i, key: originalKey } : i));
       setLocalItems(newItems);
       return;
     }
@@ -138,35 +139,37 @@ export function EditableList({
 
   const getItemStyles = (isCurrentItem: boolean) => {
     if (variant === 'minimal') {
-      return `py-3 px-1 border-b border-white/5 transition-all flex items-center gap-3 group ${isCurrentItem ? 'bg-purple-400/5' : 'hover:bg-white/[0.02]'
-        }`;
-    }
-    return `p-3 bg-white/5 border-2 rounded-lg transition-all ${isCurrentItem
-      ? 'border-purple-400/60 bg-purple-400/10 shadow-lg shadow-purple-500/10'
-      : 'border-white/10 hover:border-white/20 hover:bg-white/[0.07]'
+      return `py-3 px-1 border-b border-white/5 transition-all flex items-center gap-3 group ${
+        isCurrentItem ? 'bg-purple-400/5' : 'hover:bg-white/[0.02]'
       }`;
+    }
+    return `p-3 bg-white/5 border-2 rounded-lg transition-all ${
+      isCurrentItem
+        ? 'border-purple-400/60 bg-purple-400/10 shadow-lg shadow-purple-500/10'
+        : 'border-white/10 hover:border-white/20 hover:bg-white/[0.07]'
+    }`;
   };
 
-  const addButtonClass = addButtonVariant === 'pill'
-    ? 'flex items-center gap-1 rounded-full border border-current px-3 py-1.5 text-sm font-medium text-white transition-all duration-200'
-    : 'flex items-center gap-1 px-2 py-1 text-xs font-medium text-green-400 bg-green-400/10 hover:bg-green-400/20 border border-green-400/20 rounded transition-colors';
-  const addButtonStyle = addButtonVariant === 'pill'
-    ? {
-      backgroundColor: 'rgba(16, 185, 129, 0.22)',
-      color: '#6ee7b7',
-      borderColor: 'rgba(110, 231, 183, 0.55)',
-      boxShadow: '0 10px 22px rgba(16, 185, 129, 0.22)',
-    }
-    : undefined;
+  const addButtonClass =
+    addButtonVariant === 'pill'
+      ? 'flex items-center gap-1 rounded-full border border-current px-3 py-1.5 text-sm font-medium text-white transition-all duration-200'
+      : 'flex items-center gap-1 px-2 py-1 text-xs font-medium text-green-400 bg-green-400/10 hover:bg-green-400/20 border border-green-400/20 rounded transition-colors';
+  const addButtonStyle =
+    addButtonVariant === 'pill'
+      ? {
+          backgroundColor: 'rgba(16, 185, 129, 0.22)',
+          color: '#6ee7b7',
+          borderColor: 'rgba(110, 231, 183, 0.55)',
+          boxShadow: '0 10px 22px rgba(16, 185, 129, 0.22)',
+        }
+      : undefined;
 
   return (
     <div className="space-y-3">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-            {title}
-          </label>
+          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">{title}</label>
 
           {enableCheckboxes && Object.keys(items).length > 0 && (
             <button
@@ -202,7 +205,7 @@ export function EditableList({
 
       {/* Items List */}
       <div className={variant === 'minimal' ? 'divide-y divide-white/5' : 'space-y-2'}>
-        {localItems.map((item) => (
+        {localItems.map(item => (
           <div
             key={item.originalKey}
             className={getItemStyles(selectedKeys.has(item.originalKey))}
@@ -215,11 +218,7 @@ export function EditableList({
                   className="text-purple-400 hover:text-purple-300 transition-colors flex-shrink-0"
                   title={selectedKeys.has(item.key) ? 'Deselect' : 'Select'}
                 >
-                  {selectedKeys.has(item.key) ? (
-                    <CheckCircle2 className="w-5 h-5" />
-                  ) : (
-                    <Circle className="w-5 h-5" />
-                  )}
+                  {selectedKeys.has(item.key) ? <CheckCircle2 className="w-5 h-5" /> : <Circle className="w-5 h-5" />}
                 </button>
               )}
 
@@ -232,7 +231,7 @@ export function EditableList({
                       <div className="flex items-center gap-2 shrink-0 w-[70px]">
                         <Input
                           value={item.key}
-                          onChange={(e) => {
+                          onChange={e => {
                             // Instant update pattern for keys in minimal mode
                             const updatedItems = { ...items };
                             delete updatedItems[item.originalKey];
@@ -250,8 +249,11 @@ export function EditableList({
                       <div className="w-0 flex-1 min-w-0">
                         <Input
                           value={item.value}
-                          onChange={(e) => {
-                            const updatedItems = { ...items, [item.key]: e.target.value };
+                          onChange={e => {
+                            const updatedItems = {
+                              ...items,
+                              [item.key]: e.target.value,
+                            };
                             onUpdate(updatedItems);
                           }}
                           placeholder={valuePlaceholder}
@@ -274,22 +276,22 @@ export function EditableList({
                         <div className="flex items-center gap-2 flex-1 min-w-0">
                           <Input
                             value={item.key}
-                            onChange={(e) => {
+                            onChange={e => {
                               const newItems = localItems.map(i =>
-                                i.originalKey === item.originalKey ? { ...i, key: e.target.value } : i
+                                i.originalKey === item.originalKey ? { ...i, key: e.target.value } : i,
                               );
                               setLocalItems(newItems);
                             }}
                             onBlur={() => {
                               handleKeyChange(item.originalKey, item.key);
                             }}
-                            onKeyDown={(e) => {
+                            onKeyDown={e => {
                               if (e.key === 'Enter') {
                                 handleKeyChange(item.originalKey, item.key);
                               } else if (e.key === 'Escape') {
                                 setEditingKey(null);
                                 const newItems = localItems.map(i =>
-                                  i.originalKey === item.originalKey ? { ...i, key: item.originalKey } : i
+                                  i.originalKey === item.originalKey ? { ...i, key: item.originalKey } : i,
                                 );
                                 setLocalItems(newItems);
                               }
@@ -312,7 +314,7 @@ export function EditableList({
                               onClick={() => {
                                 setEditingKey(null);
                                 const newItems = localItems.map(i =>
-                                  i.originalKey === item.originalKey ? { ...i, key: item.originalKey } : i
+                                  i.originalKey === item.originalKey ? { ...i, key: item.originalKey } : i,
                                 );
                                 setLocalItems(newItems);
                               }}
@@ -341,9 +343,14 @@ export function EditableList({
                             <div className="flex-1 flex items-center gap-2 min-w-0">
                               <Input
                                 value={editingValue.value}
-                                onChange={(e) => setEditingValue({ key: item.originalKey, value: e.target.value })}
+                                onChange={e =>
+                                  setEditingValue({
+                                    key: item.originalKey,
+                                    value: e.target.value,
+                                  })
+                                }
                                 onBlur={handleValueSave}
-                                onKeyDown={(e) => {
+                                onKeyDown={e => {
                                   if (e.key === 'Enter') {
                                     handleValueSave();
                                   } else if (e.key === 'Escape') {
@@ -379,7 +386,12 @@ export function EditableList({
                               </div>
                               <div className="flex items-center gap-1 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <button
-                                  onClick={() => setEditingValue({ key: item.originalKey, value: item.value })}
+                                  onClick={() =>
+                                    setEditingValue({
+                                      key: item.originalKey,
+                                      value: item.value,
+                                    })
+                                  }
                                   className="p-1.5 text-blue-400 hover:bg-blue-400/20 hover:text-blue-300 rounded-md transition-all"
                                   title="Edit value"
                                 >

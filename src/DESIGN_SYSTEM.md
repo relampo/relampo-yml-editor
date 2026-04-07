@@ -7,15 +7,19 @@ Sistema de diseño completo para la plataforma de testing de performance Pulse.
 ## Principios de Diseño
 
 ### 1. Profesionalismo Enterprise
+
 Diseño limpio y minimalista para ingenieros senior, QA y SREs.
 
 ### 2. Claridad y Legibilidad
+
 Contraste apropiado, tipografía legible, estados visuales claros.
 
 ### 3. Eficiencia
+
 Densidad de información equilibrada, acciones accesibles, feedback inmediato.
 
 ### 4. Consistencia
+
 Patrones repetibles, espaciado predecible, comportamientos coherentes.
 
 ---
@@ -51,6 +55,7 @@ Blue 800: #1E40AF  /* Gradient end */
 ### Semantic Colors
 
 **Success Green:**
+
 ```css
 Green 500: #22C55E  /* Success indicators */
 Green 600: #16A34A  /* Success buttons */
@@ -58,6 +63,7 @@ Green 700: #15803D
 ```
 
 **Error Red:**
+
 ```css
 Red 500:  #EF4444  /* Error indicators */
 Red 600:  #DC2626  /* Destructive buttons */
@@ -65,11 +71,13 @@ Red 700:  #B91C1C
 ```
 
 **Warning Amber:**
+
 ```css
 Amber 600: #D97706
 ```
 
 **Special Purple:**
+
 ```css
 Purple 600: #9333EA
 ```
@@ -92,30 +100,37 @@ Failed:  #EF4444
 ## Tipografía
 
 ### Font Stack
+
 ```css
-font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+font-family:
+  system-ui,
+  -apple-system,
+  'Segoe UI',
+  Roboto,
+  sans-serif;
 ```
 
 ### Tamaños Base
+
 ```css
---font-size: 16px
+--font-size: 16px;
 ```
 
 ### Escalas
 
-| Clase | Tamaño | Uso |
-|-------|--------|-----|
-| text-xs | 12px | Labels pequeños, badges |
-| text-sm | 14px | Texto secundario, listas |
-| text-base | 16px | Texto principal |
-| text-lg | 18px | Subtítulos (h3) |
-| text-xl | 20px | Títulos sección (h2) |
-| text-2xl | 24px | Títulos principales (h1) |
+| Clase     | Tamaño | Uso                      |
+| --------- | ------ | ------------------------ |
+| text-xs   | 12px   | Labels pequeños, badges  |
+| text-sm   | 14px   | Texto secundario, listas |
+| text-base | 16px   | Texto principal          |
+| text-lg   | 18px   | Subtítulos (h3)          |
+| text-xl   | 20px   | Títulos sección (h2)     |
+| text-2xl  | 24px   | Títulos principales (h1) |
 
 ### Font Weights
+
 ```css
---font-weight-normal: 400
---font-weight-medium: 500
+--font-weight-normal: 400 --font-weight-medium: 500;
 ```
 
 ### Tipografía Semántica
@@ -137,34 +152,33 @@ input: text-base, font-normal
 
 ### Sistema (Tailwind)
 
-| Clase | Valor | Uso |
-|-------|-------|-----|
-| gap-1 | 4px | Mínimo entre icono y texto |
-| gap-2 | 8px | Elementos relacionados |
-| gap-3 | 12px | Formularios |
-| gap-4 | 16px | Secciones pequeñas |
-| gap-6 | 24px | Secciones principales |
-| p-2 | 8px | Padding mínimo |
-| p-3 | 12px | Padding cards pequeños |
-| p-4 | 16px | Padding estándar |
-| p-6 | 24px | Padding secciones |
+| Clase | Valor | Uso                        |
+| ----- | ----- | -------------------------- |
+| gap-1 | 4px   | Mínimo entre icono y texto |
+| gap-2 | 8px   | Elementos relacionados     |
+| gap-3 | 12px  | Formularios                |
+| gap-4 | 16px  | Secciones pequeñas         |
+| gap-6 | 24px  | Secciones principales      |
+| p-2   | 8px   | Padding mínimo             |
+| p-3   | 12px  | Padding cards pequeños     |
+| p-4   | 16px  | Padding estándar           |
+| p-6   | 24px  | Padding secciones          |
 
 ### Border Radius
+
 ```css
---radius: 0.625rem (10px)
---radius-sm: 6px
---radius-md: 8px
---radius-lg: 10px
---radius-xl: 14px
+--radius: 0.625rem (10px) --radius-sm: 6px --radius-md: 8px --radius-lg: 10px --radius-xl: 14px;
 ```
 
 **Aplicaciones:**
+
 - Botones: `rounded-lg` (10px)
 - Cards: `rounded-lg` (10px)
 - Inputs: `rounded-lg` (10px)
 - Badges: `rounded-full`
 
 ### Bordes
+
 ```css
 border: 1px solid rgba(0, 0, 0, 0.1)
 border-neutral-200: Estándar
@@ -178,34 +192,47 @@ border-neutral-300: Activos
 ### Buttons
 
 **Primary:**
+
 ```tsx
-<button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 
-                   text-white rounded-lg transition-colors">
+<button
+  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 
+                   text-white rounded-lg transition-colors"
+>
   Action
 </button>
 ```
 
 **Success:**
+
 ```tsx
-<button className="px-4 py-2 bg-green-600 hover:bg-green-700 
-                   text-white rounded-lg transition-colors">
+<button
+  className="px-4 py-2 bg-green-600 hover:bg-green-700 
+                   text-white rounded-lg transition-colors"
+>
   Start
 </button>
 ```
 
 **Destructive:**
+
 ```tsx
-<button className="px-4 py-2 bg-red-600 hover:bg-red-700 
-                   text-white rounded-lg transition-colors">
+<button
+  className="px-4 py-2 bg-red-600 hover:bg-red-700 
+                   text-white rounded-lg transition-colors"
+>
   Stop
 </button>
 ```
 
 **Disabled:**
+
 ```tsx
-<button disabled className="px-4 py-2 bg-neutral-200 
+<button
+  disabled
+  className="px-4 py-2 bg-neutral-200 
                              text-neutral-500 rounded-lg 
-                             cursor-not-allowed">
+                             cursor-not-allowed"
+>
   Disabled
 </button>
 ```
@@ -213,17 +240,23 @@ border-neutral-300: Activos
 ### Cards
 
 **Standard:**
+
 ```tsx
-<div className="bg-white border border-neutral-200 
-                rounded-lg p-4">
+<div
+  className="bg-white border border-neutral-200 
+                rounded-lg p-4"
+>
   Content
 </div>
 ```
 
 **Stat Card:**
+
 ```tsx
-<div className="bg-white border border-neutral-200 
-                rounded-lg p-4">
+<div
+  className="bg-white border border-neutral-200 
+                rounded-lg p-4"
+>
   <div className="flex items-center justify-between mb-3">
     <span className="text-sm text-neutral-600">Label</span>
     <div className="p-2 rounded-lg bg-blue-100 text-blue-600">
@@ -237,16 +270,21 @@ border-neutral-300: Activos
 ### Tabs
 
 **Primary (Workbench):**
+
 ```tsx
 <div className="bg-white border-b border-neutral-200">
   <div className="flex items-center px-6 gap-1">
     <button className="px-4 py-3 text-sm relative text-blue-700">
       Active Tab
-      <div className="absolute bottom-0 left-0 right-0 
-                      h-0.5 bg-blue-600" />
+      <div
+        className="absolute bottom-0 left-0 right-0 
+                      h-0.5 bg-blue-600"
+      />
     </button>
-    <button className="px-4 py-3 text-sm text-neutral-600 
-                       hover:text-neutral-900">
+    <button
+      className="px-4 py-3 text-sm text-neutral-600 
+                       hover:text-neutral-900"
+    >
       Inactive Tab
     </button>
   </div>
@@ -256,9 +294,11 @@ border-neutral-300: Activos
 ### Tree View
 
 ```tsx
-<div className="flex items-center gap-2 px-3 py-1.5 
+<div
+  className="flex items-center gap-2 px-3 py-1.5 
                 cursor-pointer rounded-md bg-blue-50 
-                text-blue-700">
+                text-blue-700"
+>
   <button className="p-0.5 hover:bg-neutral-200 rounded">
     <ChevronDown className="w-3 h-3" />
   </button>
@@ -268,6 +308,7 @@ border-neutral-300: Activos
 ```
 
 **Colores de íconos por tipo:**
+
 - Test Plan: `text-blue-600`
 - Scenario: `text-purple-600`
 - HTTP Request: `text-blue-500`
@@ -278,22 +319,29 @@ border-neutral-300: Activos
 ### Badges
 
 **Method:**
+
 ```tsx
-<div className="px-2 py-0.5 rounded text-xs 
-                bg-blue-100 text-blue-700">
+<div
+  className="px-2 py-0.5 rounded text-xs 
+                bg-blue-100 text-blue-700"
+>
   GET
 </div>
 ```
 
 **Status:**
+
 ```tsx
-<span className="px-3 py-1 rounded-full text-xs 
-                 bg-green-100 text-green-700">
+<span
+  className="px-3 py-1 rounded-full text-xs 
+                 bg-green-100 text-green-700"
+>
   passed
 </span>
 ```
 
 **Status Dot:**
+
 ```tsx
 <div className="w-2 h-2 rounded-full bg-green-500" />
 ```
@@ -301,6 +349,7 @@ border-neutral-300: Activos
 ### Inputs
 
 **Text:**
+
 ```tsx
 <input
   type="text"
@@ -313,6 +362,7 @@ border-neutral-300: Activos
 ```
 
 **Textarea:**
+
 ```tsx
 <textarea
   className="w-full h-32 px-3 py-2 border 
@@ -326,6 +376,7 @@ border-neutral-300: Activos
 ### Headers
 
 **Page:**
+
 ```tsx
 <div>
   <h1 className="text-neutral-900">Page Title</h1>
@@ -334,6 +385,7 @@ border-neutral-300: Activos
 ```
 
 **Section:**
+
 ```tsx
 <div className="px-6 py-4 border-b border-neutral-200">
   <h3 className="text-neutral-900">Section Title</h3>
@@ -343,15 +395,15 @@ border-neutral-300: Activos
 ### Code Display
 
 **Console:**
+
 ```tsx
 <div className="bg-neutral-900 p-4 rounded-lg">
-  <pre className="font-mono text-xs text-neutral-100">
-    {code}
-  </pre>
+  <pre className="font-mono text-xs text-neutral-100">{code}</pre>
 </div>
 ```
 
 **Colores de log:**
+
 - Success: `text-green-400`
 - Info: `text-blue-400`
 - Warning: `text-amber-400`
@@ -363,20 +415,20 @@ border-neutral-300: Activos
 <ResponsiveContainer width="100%" height="100%">
   <LineChart data={data}>
     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-    <XAxis 
-      dataKey="time" 
+    <XAxis
+      dataKey="time"
       tick={{ fontSize: 12 }}
       stroke="#9ca3af"
     />
-    <YAxis 
+    <YAxis
       tick={{ fontSize: 12 }}
       stroke="#9ca3af"
     />
     <Tooltip contentStyle={{...}} />
-    <Line 
-      type="monotone" 
-      dataKey="value" 
-      stroke="#3b82f6" 
+    <Line
+      type="monotone"
+      dataKey="value"
+      stroke="#3b82f6"
       strokeWidth={2}
       dot={{ r: 3 }}
     />
@@ -389,6 +441,7 @@ border-neutral-300: Activos
 ## Estados e Interacciones
 
 ### Hover
+
 ```css
 hover:bg-neutral-50    /* Lista, cells */
 hover:bg-neutral-100   /* Botones ghost */
@@ -396,29 +449,34 @@ hover:bg-blue-700      /* Botones primarios */
 ```
 
 ### Selección/Activo
+
 ```css
 bg-blue-50 text-blue-700  /* Seleccionado */
 bg-blue-600 text-white    /* Botón activo */
 ```
 
 ### Disabled
+
 ```css
 bg-neutral-200 text-neutral-500 cursor-not-allowed
 ```
 
 ### Focus
+
 ```css
-focus:outline-none 
-focus:ring-2 
+focus:outline-none
+focus:ring-2
 focus:ring-blue-500
 ```
 
 ### Transiciones
+
 ```css
 transition-colors
 ```
 
 ### Animaciones
+
 ```css
 animate-pulse  /* Live, recording */
 ```
@@ -441,6 +499,7 @@ animate-pulse  /* Live, recording */
 ```
 
 ### Dimensiones Fijas
+
 - TopBar Height: 56px (h-14)
 - Sidebar Width: 224px (w-56)
 - Script Tree Width: 320px (w-80)
@@ -450,21 +509,23 @@ animate-pulse  /* Live, recording */
 ## Iconografía
 
 ### Librería
+
 **Lucide React** - Iconos modernos y consistentes
 
 ### Tamaños
 
-| Contexto | Clase | Tamaño |
-|----------|-------|--------|
-| Navegación | w-4 h-4 | 16px |
-| Botones | w-4 h-4 | 16px |
-| Tree | w-4 h-4 | 16px |
-| Chevrons | w-3 h-3 | 12px |
-| Avatar | w-8 h-8 | 32px |
+| Contexto   | Clase   | Tamaño |
+| ---------- | ------- | ------ |
+| Navegación | w-4 h-4 | 16px   |
+| Botones    | w-4 h-4 | 16px   |
+| Tree       | w-4 h-4 | 16px   |
+| Chevrons   | w-3 h-3 | 12px   |
+| Avatar     | w-8 h-8 | 32px   |
 
 ### Iconos Principales
 
 **Navegación:**
+
 - LayoutDashboard - Dashboard
 - FlaskConical - Workbench
 - FolderKanban - Projects
@@ -472,12 +533,14 @@ animate-pulse  /* Live, recording */
 - HelpCircle - Help
 
 **Acciones:**
+
 - Play - Start
 - Square - Stop
 - ChevronDown/Right - Expand
 - Bell - Notifications
 
 **Script Tree:**
+
 - FileText - Test Plan
 - Folder - Scenario
 - Globe - HTTP Request
@@ -489,30 +552,33 @@ animate-pulse  /* Live, recording */
 ## Patrones de Uso
 
 ### Split View
+
 ```tsx
 <div className="flex flex-1 overflow-hidden">
-  <div className="w-80 bg-white border-r">
-    Tree
-  </div>
-  <div className="flex-1 bg-white">
-    Details
-  </div>
+  <div className="w-80 bg-white border-r">Tree</div>
+  <div className="flex-1 bg-white">Details</div>
 </div>
 ```
 
 ### Live Indicator
+
 ```tsx
 <div className="flex items-center gap-2">
-  <div className="w-2 h-2 bg-green-500 rounded-full 
-                  animate-pulse" />
+  <div
+    className="w-2 h-2 bg-green-500 rounded-full 
+                  animate-pulse"
+  />
   <span className="text-sm">Live</span>
 </div>
 ```
 
 ### Card Grid
+
 ```tsx
 <div className="grid grid-cols-4 gap-4">
-  {items.map(item => <Card {...item} />)}
+  {items.map(item => (
+    <Card {...item} />
+  ))}
 </div>
 ```
 
@@ -521,14 +587,17 @@ animate-pulse  /* Live, recording */
 ## Accesibilidad
 
 ### Contraste
+
 - Textos principales: ≥ 4.5:1 (AA)
 - Textos grandes: ≥ 3:1
 - Iconos funcionales: ≥ 3:1
 
 ### Focus
+
 Todos los elementos interactivos tienen `focus:ring-2`
 
 ### Semántica
+
 - Headers jerárquicos (h1 > h2 > h3)
 - Labels asociados a inputs
 - Botones con texto descriptivo
@@ -564,10 +633,7 @@ Todos los elementos interactivos tienen `focus:ring-2`
 import { Play, Square, ChevronDown } from 'lucide-react';
 
 // Charts
-import { 
-  LineChart, Line, XAxis, YAxis, 
-  CartesianGrid, Tooltip 
-} from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 ```
 
 ### Clases Utility Comunes
@@ -580,7 +646,7 @@ import {
 "bg-white border border-neutral-200 rounded-lg p-4"
 
 // Botones
-"px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white 
+"px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white
  rounded-lg transition-colors"
 
 // Grid stats

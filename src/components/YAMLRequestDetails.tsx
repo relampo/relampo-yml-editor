@@ -45,7 +45,6 @@ export function YAMLRequestDetails({ node, redirectSourceInfo = null, onNodeUpda
     }
   };
 
-
   const handleBodyChange = (value: string) => {
     try {
       const parsed = JSON.parse(value);
@@ -89,20 +88,22 @@ export function YAMLRequestDetails({ node, redirectSourceInfo = null, onNodeUpda
       <div className="flex items-center border-b border-white/5 bg-[#111111] flex-shrink-0">
         <button
           onClick={() => handleTabChange('request')}
-          className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${activeTab === 'request'
-            ? 'text-yellow-400 bg-yellow-400/10 border-b-2 border-yellow-400'
-            : 'text-zinc-400 hover:text-zinc-300 hover:bg-white/5'
-            }`}
+          className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${
+            activeTab === 'request'
+              ? 'text-yellow-400 bg-yellow-400/10 border-b-2 border-yellow-400'
+              : 'text-zinc-400 hover:text-zinc-300 hover:bg-white/5'
+          }`}
         >
           Request
         </button>
         {formData.response && (
           <button
             onClick={() => handleTabChange('response')}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${activeTab === 'response'
-              ? 'text-cyan-400 bg-cyan-400/10 border-b-2 border-cyan-400'
-              : 'text-zinc-400 hover:text-zinc-300 hover:bg-white/5'
-              }`}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${
+              activeTab === 'response'
+                ? 'text-cyan-400 bg-cyan-400/10 border-b-2 border-cyan-400'
+                : 'text-zinc-400 hover:text-zinc-300 hover:bg-white/5'
+            }`}
           >
             Response
           </button>
@@ -110,7 +111,10 @@ export function YAMLRequestDetails({ node, redirectSourceInfo = null, onNodeUpda
       </div>
 
       {/* Content */}
-      <div ref={contentRef} className="flex-1 overflow-y-auto p-6">
+      <div
+        ref={contentRef}
+        className="flex-1 overflow-y-auto p-6"
+      >
         {activeTab === 'request' ? (
           <RequestContent
             formData={formData}
@@ -131,7 +135,7 @@ export function YAMLRequestDetails({ node, redirectSourceInfo = null, onNodeUpda
         ) : (
           <YAMLResponseDetails
             response={formData.response}
-            onResponseUpdate={(updatedResponse) => handleFieldChange('response', updatedResponse)}
+            onResponseUpdate={updatedResponse => handleFieldChange('response', updatedResponse)}
             searchText={searchText}
             searchMode={searchMode}
             replaceValue={replaceValue}
@@ -180,7 +184,8 @@ function RequestContent({
   onReplaceValueChange,
   onNavigate,
 }: RequestContentProps) {
-  const compactInputClass = 'w-[14ch] max-w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono';
+  const compactInputClass =
+    'w-[14ch] max-w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono';
 
   const splitQuery = (fullUrl: string): { withoutQuery: string; query: string } => {
     const url = typeof fullUrl === 'string' ? fullUrl : String(fullUrl ?? '');
@@ -214,10 +219,7 @@ function RequestContent({
     };
   };
 
-  const buildUrl = (
-    currentFullUrl: string,
-    next: { protocol?: string; baseUrl?: string; path?: string }
-  ): string => {
+  const buildUrl = (currentFullUrl: string, next: { protocol?: string; baseUrl?: string; path?: string }): string => {
     const current = parseUrlParts(currentFullUrl || '');
     const { query } = splitQuery(currentFullUrl || '');
 
@@ -232,7 +234,9 @@ function RequestContent({
 
   const urlParts = parseUrlParts(formData.url || '');
   const requestBodyText = formData.body
-    ? (typeof formData.body === 'string' ? formData.body : JSON.stringify(formData.body, null, 2))
+    ? typeof formData.body === 'string'
+      ? formData.body
+      : JSON.stringify(formData.body, null, 2)
     : '';
 
   const buildSearchRegex = () => {
@@ -327,24 +331,30 @@ function RequestContent({
       <div>
         <div className="grid grid-cols-12 gap-3 items-end">
           <div className="col-span-2">
-            <label htmlFor="req-method" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+            <label
+              htmlFor="req-method"
+              className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
+            >
               Method
             </label>
             <MethodDropdown
               id="req-method"
               value={formData.method || 'GET'}
-              onChange={(method) => onFieldChange('method', method)}
+              onChange={method => onFieldChange('method', method)}
               className="w-full"
             />
           </div>
           <div className="col-span-2">
-            <label htmlFor="req-protocol" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+            <label
+              htmlFor="req-protocol"
+              className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
+            >
               Protocol
             </label>
             <select
               id="req-protocol"
               value={urlParts.protocol}
-              onChange={(e) => onFieldChange('url', buildUrl(formData.url || '', { protocol: e.target.value }))}
+              onChange={e => onFieldChange('url', buildUrl(formData.url || '', { protocol: e.target.value }))}
               className={`${compactInputClass} w-full`}
             >
               <option value="https">https</option>
@@ -352,25 +362,31 @@ function RequestContent({
             </select>
           </div>
           <div className="col-span-4">
-            <label htmlFor="req-base-url" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+            <label
+              htmlFor="req-base-url"
+              className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
+            >
               Base URL
             </label>
             <Input
               id="req-base-url"
               value={urlParts.baseUrl}
-              onChange={(e) => onFieldChange('url', buildUrl(formData.url || '', { baseUrl: e.target.value }))}
+              onChange={e => onFieldChange('url', buildUrl(formData.url || '', { baseUrl: e.target.value }))}
               placeholder="api.example.com"
               className="w-full h-[38px] bg-white/5 border border-white/10 text-zinc-300 text-sm font-mono"
             />
           </div>
           <div className="col-span-4">
-            <label htmlFor="req-path" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+            <label
+              htmlFor="req-path"
+              className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
+            >
               Path
             </label>
             <Input
               id="req-path"
               value={urlParts.path}
-              onChange={(e) => onFieldChange('url', buildUrl(formData.url || '', { path: e.target.value }))}
+              onChange={e => onFieldChange('url', buildUrl(formData.url || '', { path: e.target.value }))}
               placeholder="/endpoint"
               className="w-full h-[38px] bg-white/5 border border-white/10 text-zinc-300 text-sm font-mono"
             />
@@ -386,7 +402,7 @@ function RequestContent({
               type="checkbox"
               className="w-4 h-4 rounded border-white/10 bg-white/5 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-0"
               checked={!!formData.retrieve_embedded_resources}
-              onChange={(e) => onFieldChange('retrieve_embedded_resources', e.target.checked)}
+              onChange={e => onFieldChange('retrieve_embedded_resources', e.target.checked)}
             />
             <span>Retrieve all Embedded Resources</span>
           </label>
@@ -396,7 +412,7 @@ function RequestContent({
               className="w-4 h-4 rounded border-white/10 bg-white/5 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-0"
               checked={effectiveRedirectAutomatically}
               disabled={hasRecordedRedirectFollowUp}
-              onChange={(e) => onFieldChange('redirect_automatically', e.target.checked)}
+              onChange={e => onFieldChange('redirect_automatically', e.target.checked)}
             />
             <span>Redirect Automatically</span>
           </label>
@@ -406,7 +422,7 @@ function RequestContent({
               className="w-4 h-4 rounded border-white/10 bg-white/5 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-0"
               checked={effectiveFollowRedirects}
               disabled={hasRecordedRedirectFollowUp}
-              onChange={(e) => onFieldChange('follow_redirects', e.target.checked)}
+              onChange={e => onFieldChange('follow_redirects', e.target.checked)}
             />
             <span>Follow Redirects</span>
           </label>
@@ -421,105 +437,101 @@ function RequestContent({
       {/* URL with Query Parameters */}
       <QueryParamsEditor
         url={formData.url || ''}
-        onUrlChange={(url) => onFieldChange('url', url)}
+        onUrlChange={url => onFieldChange('url', url)}
         showBaseUrl={false}
       />
 
       {/* Body */}
       <div>
         <div className="flex items-center gap-2 mb-2">
-          <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-            Request Body
-          </p>
+          <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Request Body</p>
         </div>
         <div className="p-3 border border-white/10 rounded bg-[#0a0a0a]">
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-            <Input
-              value={searchText}
-              onChange={(e) => onSearchChange(e.target.value)}
-              placeholder="Search in request body..."
-              className="pl-9 pr-3 bg-white/5 border-white/10 text-zinc-300 text-sm focus-visible:border-yellow-400/60 focus-visible:ring-yellow-400/30"
-            />
-          </div>
-          <div className="flex items-center rounded-md border border-white/10 bg-white/5 p-0.5">
-            <button
-              onClick={() => onSearchModeChange('text')}
-              className={`px-2 py-1 text-xs rounded transition-colors ${searchMode === 'text'
-                ? 'bg-yellow-400/20 text-yellow-400 border border-yellow-400/40'
-                : 'text-zinc-400 hover:text-zinc-200'
-                }`}
-            >
-              Text
-            </button>
-            <button
-              onClick={() => onSearchModeChange('regex')}
-              className={`px-2 py-1 text-xs rounded transition-colors ${searchMode === 'regex'
-                ? 'bg-yellow-400/20 text-yellow-400 border border-yellow-400/40'
-                : 'text-zinc-400 hover:text-zinc-200'
-                }`}
-            >
-              Regex
-            </button>
-          </div>
-          <Input
-            value={replaceValue}
-            onChange={(e) => onReplaceValueChange(e.target.value)}
-            placeholder="Replace"
-            className="w-[18ch] bg-white/5 border-white/10 text-zinc-300 text-sm"
-          />
-          <button
-            onClick={handleReplaceCurrent}
-            disabled={totalMatches === 0}
-            className="px-2 py-1.5 text-xs rounded border border-white/10 text-zinc-300 disabled:opacity-40"
-          >
-            Replace
-          </button>
-          <button
-            onClick={handleReplaceAll}
-            disabled={totalMatches === 0}
-            className="px-2 py-1.5 text-xs rounded border border-white/10 text-zinc-300 disabled:opacity-40"
-          >
-            Replace All
-          </button>
-          {searchText && (
-            <div className="flex items-center gap-1">
-              <span className="text-xs text-zinc-400 px-2 min-w-[60px] text-center font-mono">
-                {totalMatches > 0 ? `${currentMatchIndex + 1}/${totalMatches}` : '0/0'}
-              </span>
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+              <Input
+                value={searchText}
+                onChange={e => onSearchChange(e.target.value)}
+                placeholder="Search in request body..."
+                className="pl-9 pr-3 bg-white/5 border-white/10 text-zinc-300 text-sm focus-visible:border-yellow-400/60 focus-visible:ring-yellow-400/30"
+              />
+            </div>
+            <div className="flex items-center rounded-md border border-white/10 bg-white/5 p-0.5">
               <button
-                onClick={handlePrevious}
-                disabled={totalMatches === 0}
-                className="p-1.5 hover:bg-white/10 rounded border border-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                title="Previous match"
+                onClick={() => onSearchModeChange('text')}
+                className={`px-2 py-1 text-xs rounded transition-colors ${
+                  searchMode === 'text'
+                    ? 'bg-yellow-400/20 text-yellow-400 border border-yellow-400/40'
+                    : 'text-zinc-400 hover:text-zinc-200'
+                }`}
               >
-                <ChevronUp className="w-4 h-4 text-zinc-400" />
+                Text
               </button>
               <button
-                onClick={handleNext}
-                disabled={totalMatches === 0}
-                className="p-1.5 hover:bg-white/10 rounded border border-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                title="Next match"
+                onClick={() => onSearchModeChange('regex')}
+                className={`px-2 py-1 text-xs rounded transition-colors ${
+                  searchMode === 'regex'
+                    ? 'bg-yellow-400/20 text-yellow-400 border border-yellow-400/40'
+                    : 'text-zinc-400 hover:text-zinc-200'
+                }`}
               >
-                <ChevronDown className="w-4 h-4 text-zinc-400" />
+                Regex
               </button>
             </div>
-          )}
-        </div>
-        {regexInvalid && (
-          <div className="mt-2 text-xs text-red-400">Invalid regex pattern</div>
-        )}
+            <Input
+              value={replaceValue}
+              onChange={e => onReplaceValueChange(e.target.value)}
+              placeholder="Replace"
+              className="w-[18ch] bg-white/5 border-white/10 text-zinc-300 text-sm"
+            />
+            <button
+              onClick={handleReplaceCurrent}
+              disabled={totalMatches === 0}
+              className="px-2 py-1.5 text-xs rounded border border-white/10 text-zinc-300 disabled:opacity-40"
+            >
+              Replace
+            </button>
+            <button
+              onClick={handleReplaceAll}
+              disabled={totalMatches === 0}
+              className="px-2 py-1.5 text-xs rounded border border-white/10 text-zinc-300 disabled:opacity-40"
+            >
+              Replace All
+            </button>
+            {searchText && (
+              <div className="flex items-center gap-1">
+                <span className="text-xs text-zinc-400 px-2 min-w-[60px] text-center font-mono">
+                  {totalMatches > 0 ? `${currentMatchIndex + 1}/${totalMatches}` : '0/0'}
+                </span>
+                <button
+                  onClick={handlePrevious}
+                  disabled={totalMatches === 0}
+                  className="p-1.5 hover:bg-white/10 rounded border border-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  title="Previous match"
+                >
+                  <ChevronUp className="w-4 h-4 text-zinc-400" />
+                </button>
+                <button
+                  onClick={handleNext}
+                  disabled={totalMatches === 0}
+                  className="p-1.5 hover:bg-white/10 rounded border border-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  title="Next match"
+                >
+                  <ChevronDown className="w-4 h-4 text-zinc-400" />
+                </button>
+              </div>
+            )}
+          </div>
+          {regexInvalid && <div className="mt-2 text-xs text-red-400">Invalid regex pattern</div>}
         </div>
       </div>
       <div className="flex items-center gap-2 mb-2 mt-3">
-        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-          Format / Body Type
-        </p>
+        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Format / Body Type</p>
       </div>
       <BodyTypeSelector
         body={formData.body}
-        onBodyChange={(body) => onFieldChange('body', body)}
+        onBodyChange={body => onFieldChange('body', body)}
         searchText={searchText}
         searchMode={searchMode}
         currentMatchIndex={currentMatchIndex}
@@ -530,9 +542,7 @@ function RequestContent({
       {formData.think_time && (
         <div>
           <div className="flex items-center gap-2 mb-2">
-            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-              ⏱ Think Time
-            </p>
+            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">⏱ Think Time</p>
           </div>
           <div className="px-3 py-2 bg-cyan-400/5 border border-cyan-400/20 rounded text-sm font-mono text-cyan-400">
             {String(formData.think_time)}
@@ -544,25 +554,31 @@ function RequestContent({
       <div>
         <div className="grid grid-cols-5 gap-3 items-start w-full">
           <div className="min-w-0">
-            <label htmlFor="req-timeout" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+            <label
+              htmlFor="req-timeout"
+              className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
+            >
               Timeout
             </label>
             <Input
               id="req-timeout"
-              value={formData.timeout === '30s' ? '' : (formData.timeout || '')}
-              onChange={(e) => onFieldChange('timeout', e.target.value)}
+              value={formData.timeout === '30s' ? '' : formData.timeout || ''}
+              onChange={e => onFieldChange('timeout', e.target.value)}
               placeholder=""
               className="w-full h-[38px] bg-white/5 border border-white/10 text-zinc-300 text-sm font-mono"
             />
           </div>
           <div className="min-w-0">
-            <label htmlFor="req-cookie-override" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+            <label
+              htmlFor="req-cookie-override"
+              className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
+            >
               Cookie Override
             </label>
             <select
               id="req-cookie-override"
               value={formData.cookie_override || 'inherit'}
-              onChange={(e) => onFieldChange('cookie_override', e.target.value)}
+              onChange={e => onFieldChange('cookie_override', e.target.value)}
               className="block w-full h-[38px] px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono"
             >
               <option value="inherit">inherit</option>
@@ -571,13 +587,16 @@ function RequestContent({
             </select>
           </div>
           <div className="min-w-0">
-            <label htmlFor="req-cache-override" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+            <label
+              htmlFor="req-cache-override"
+              className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
+            >
               Cache Override
             </label>
             <select
               id="req-cache-override"
               value={formData.cache_override || 'inherit'}
-              onChange={(e) => onFieldChange('cache_override', e.target.value)}
+              onChange={e => onFieldChange('cache_override', e.target.value)}
               className="block w-full h-[38px] px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono"
             >
               <option value="inherit">inherit</option>
@@ -586,13 +605,16 @@ function RequestContent({
             </select>
           </div>
           <div className="min-w-0">
-            <label htmlFor="req-throughput" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+            <label
+              htmlFor="req-throughput"
+              className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
+            >
               Throughput (Request)
             </label>
             <select
               id="req-throughput"
               value={formData.throughput?.enabled ? 'enabled' : 'disabled'}
-              onChange={(e) => {
+              onChange={e => {
                 if (e.target.value === 'enabled') {
                   const next = {
                     enabled: true,
@@ -610,7 +632,10 @@ function RequestContent({
             </select>
           </div>
           <div className={`min-w-0 ${formData.throughput?.enabled ? '' : 'opacity-55'}`}>
-            <label htmlFor="req-target-rps" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+            <label
+              htmlFor="req-target-rps"
+              className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
+            >
               Target RPS
             </label>
             <Input
@@ -620,7 +645,7 @@ function RequestContent({
               step="0.1"
               value={formData.throughput?.target_rps ?? ''}
               disabled={!formData.throughput?.enabled}
-              onChange={(e) => {
+              onChange={e => {
                 const raw = e.target.value;
                 const next = raw === '' ? undefined : Number(raw);
                 onFieldChange('throughput', {
@@ -632,7 +657,7 @@ function RequestContent({
               className="w-full h-[38px] bg-white/5 border border-white/10 text-zinc-300 text-sm font-mono"
             />
             <div className="mt-1 text-xs text-zinc-500">
-              Approx: {(((Number(formData.throughput?.target_rps) || 0) * 60)).toFixed(0)} req/min
+              Approx: {((Number(formData.throughput?.target_rps) || 0) * 60).toFixed(0)} req/min
             </div>
           </div>
         </div>

@@ -5,7 +5,7 @@ import JSZip from 'jszip';
 import html2canvas from 'html2canvas';
 
 export function YAMLEditorStandalone() {
-  const [yamlContent, setYamlContent] = useState("");
+  const [yamlContent, setYamlContent] = useState('');
 
   const [downloadMessage, setDownloadMessage] = useState<string | null>(null);
   const [fileName, setFileName] = useState('relampo-test.yaml');
@@ -23,7 +23,7 @@ export function YAMLEditorStandalone() {
       run: 'Run Test',
       download: 'Download Package',
       ready: 'Ready',
-      characters: 'characters'
+      characters: 'characters',
     },
     es: {
       title: 'RELAMPO',
@@ -36,8 +36,8 @@ export function YAMLEditorStandalone() {
       run: 'Ejecutar Test',
       download: 'Descargar Paquete',
       ready: 'Listo',
-      characters: 'caracteres'
-    }
+      characters: 'caracteres',
+    },
   };
 
   const t = translations[language];
@@ -46,11 +46,11 @@ export function YAMLEditorStandalone() {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.yaml,.yml';
-    input.onchange = (e) => {
+    input.onchange = e => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file) {
         const reader = new FileReader();
-        reader.onload = (event) => {
+        reader.onload = event => {
           const content = event.target?.result as string;
           setYamlContent(content);
           setFileName(file.name);
@@ -208,8 +208,8 @@ https://relampo.dev/docs/examples
             logging: false,
           });
 
-          const blob = await new Promise<Blob>((resolve) => {
-            canvas.toBlob((blob) => resolve(blob!), 'image/png');
+          const blob = await new Promise<Blob>(resolve => {
+            canvas.toBlob(blob => resolve(blob!), 'image/png');
           });
 
           zip.file('editor-screenshot.png', blob);
@@ -252,7 +252,10 @@ https://relampo.dev/docs/examples
   const lineCount = yamlContent.split('\n').length;
 
   return (
-    <div id="yaml-editor-capture" className="h-full w-full bg-[#0a0a0a] flex flex-col overflow-hidden">
+    <div
+      id="yaml-editor-capture"
+      className="h-full w-full bg-[#0a0a0a] flex flex-col overflow-hidden"
+    >
       {/* Header with Relampo Logo - Converter Style */}
       <div className="bg-[#111111] border-b border-white/5 px-8 py-4 flex-shrink-0">
         <div className="flex items-center justify-between">
@@ -260,33 +263,51 @@ https://relampo.dev/docs/examples
           <div className="flex items-center gap-3">
             {/* Relampo Logo */}
             <div className="relative w-10 h-10 bg-gradient-to-br from-yellow-300 via-yellow-400 to-yellow-500 rounded-xl flex items-center justify-center shadow-xl shadow-yellow-400/40">
-              <svg width="18" height="22" viewBox="0 0 18 22" fill="none">
-                <path d="M10.5 0L0 12.5H7.5L6 22L18 9H10.5V0Z" fill="white" className="drop-shadow-lg" />
+              <svg
+                width="18"
+                height="22"
+                viewBox="0 0 18 22"
+                fill="none"
+              >
+                <path
+                  d="M10.5 0L0 12.5H7.5L6 22L18 9H10.5V0Z"
+                  fill="white"
+                  className="drop-shadow-lg"
+                />
               </svg>
             </div>
             <div>
-              <h1 className="text-xl font-black text-zinc-100 tracking-tight">
-                {t.title}
-              </h1>
+              <h1 className="text-xl font-black text-zinc-100 tracking-tight">{t.title}</h1>
               <p className="text-xs text-zinc-500">{t.subtitle}</p>
             </div>
           </div>
 
           {/* Center: Language Toggle */}
           <div className="flex items-center gap-2">
-            <span className={`text-sm font-medium transition-colors ${language === 'en' ? 'text-yellow-400' : 'text-zinc-500'
-              }`}>EN</span>
+            <span
+              className={`text-sm font-medium transition-colors ${
+                language === 'en' ? 'text-yellow-400' : 'text-zinc-500'
+              }`}
+            >
+              EN
+            </span>
             <button
               onClick={() => setLanguage(language === 'en' ? 'es' : 'en')}
               className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 focus:ring-offset-[#111111] bg-zinc-700 hover:bg-zinc-600"
             >
               <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-yellow-400 transition-transform ${language === 'es' ? 'translate-x-6' : 'translate-x-1'
-                  }`}
+                className={`inline-block h-4 w-4 transform rounded-full bg-yellow-400 transition-transform ${
+                  language === 'es' ? 'translate-x-6' : 'translate-x-1'
+                }`}
               />
             </button>
-            <span className={`text-sm font-medium transition-colors ${language === 'es' ? 'text-yellow-400' : 'text-zinc-500'
-              }`}>ES</span>
+            <span
+              className={`text-sm font-medium transition-colors ${
+                language === 'es' ? 'text-yellow-400' : 'text-zinc-500'
+              }`}
+            >
+              ES
+            </span>
           </div>
 
           {/* Right: Action Buttons */}
@@ -362,7 +383,10 @@ https://relampo.dev/docs/examples
         <div className="bg-[#0a0a0a] border-r border-white/5 px-4 py-6 overflow-y-auto flex-shrink-0 select-none">
           <div className="font-mono text-sm text-zinc-600 text-right space-y-[4px]">
             {Array.from({ length: lineCount }, (_, i) => (
-              <div key={i + 1} className="leading-6">
+              <div
+                key={i + 1}
+                className="leading-6"
+              >
                 {i + 1}
               </div>
             ))}
@@ -393,8 +417,12 @@ https://relampo.dev/docs/examples
             <span>LF</span>
           </div>
           <div className="flex items-center gap-4">
-            <span>{lineCount} {t.lines}</span>
-            <span>{yamlContent.length} {t.characters}</span>
+            <span>
+              {lineCount} {t.lines}
+            </span>
+            <span>
+              {yamlContent.length} {t.characters}
+            </span>
             <span className="flex items-center gap-1.5">
               <div className="w-2 h-2 bg-green-400 rounded-full" />
               {t.ready}

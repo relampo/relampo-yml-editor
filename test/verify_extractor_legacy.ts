@@ -26,9 +26,9 @@ if (!tree) {
   throw new Error('parseYAMLToTree devolvió null');
 }
 
-const scenario = tree.children?.find((c) => c.type === 'scenarios')?.children?.[0];
-const request = scenario?.children?.find((c) => c.type === 'steps')?.children?.[0];
-const extractors = request?.children?.filter((c) => c.type === 'extractor') || [];
+const scenario = tree.children?.find(c => c.type === 'scenarios')?.children?.[0];
+const request = scenario?.children?.find(c => c.type === 'steps')?.children?.[0];
+const extractors = request?.children?.filter(c => c.type === 'extractor') || [];
 
 if (extractors.length !== 2) {
   throw new Error(`Se esperaban 2 extractors, recibidos: ${extractors.length}`);
@@ -58,9 +58,8 @@ console.log('\n--- Serialización para Engine ---');
 console.log(generated);
 
 if (!generated.includes('match_no: 2')) throw new Error('No conservó match_no: 2');
-if (!generated.includes("template: $1$")) throw new Error('No conservó template: $1$');
+if (!generated.includes('template: $1$')) throw new Error('No conservó template: $1$');
 if (!generated.includes('type: jsonpath')) throw new Error('No serializó jsonpath');
 if (!generated.includes('variable: session_id')) throw new Error('No conservó variable legacy');
 
 console.log('\nPASS: round-trip extractor legacy OK');
-

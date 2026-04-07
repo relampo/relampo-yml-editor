@@ -1,7 +1,9 @@
 export type LoadType = 'constant' | 'ramp' | 'ramp_up_down' | 'throughput' | 'intent';
 
 export function normalizeLoadType(rawType: unknown): LoadType {
-  const rawLoadType = String(rawType || 'constant').toLowerCase().trim();
+  const rawLoadType = String(rawType || 'constant')
+    .toLowerCase()
+    .trim();
 
   if (
     rawLoadType === 'rampupdown' ||
@@ -71,7 +73,20 @@ export const loadTypeAllowedKeys: Record<LoadType, string[]> = {
   ramp: ['type', 'start_users', 'end_users', 'duration', 'iterations'],
   ramp_up_down: ['type', 'users', 'duration', 'iterations', 'ramp_up', 'ramp_down'],
   throughput: ['type', 'target_rps', 'duration', 'iterations', 'ramp_up', 'ramp_down'],
-  intent: ['type', 'target_unit', 'target_value', 'duration', 'warmup', 'ramp_up', 'ramp_down', 'p95_max_ms', 'error_rate_max_pct', 'aggressiveness', 'min_vus', 'max_vus'],
+  intent: [
+    'type',
+    'target_unit',
+    'target_value',
+    'duration',
+    'warmup',
+    'ramp_up',
+    'ramp_down',
+    'p95_max_ms',
+    'error_rate_max_pct',
+    'aggressiveness',
+    'min_vus',
+    'max_vus',
+  ],
 };
 
 export const selectedLoadButtonStyle = {

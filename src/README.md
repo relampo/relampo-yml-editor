@@ -26,7 +26,8 @@ Este es el **YAML Editor standalone** de Relampo - una versión de escritorio qu
 
 **🔥 IMPORTANTE**: Esta versión contiene **TODAS** las funcionalidades del YAML Editor. Solo se removió la landing page, el workbench de proyectos y Relampo League. El editor en sí está 100% completo.
 
-📖 **Ver documentos completos**: 
+📖 **Ver documentos completos**:
+
 - [`FUNCIONALIDADES-YAML-EDITOR.md`](FUNCIONALIDADES-YAML-EDITOR.md) - Lista detallada de funcionalidades
 - [`VERIFICACION-FUNCIONALIDADES.md`](VERIFICACION-FUNCIONALIDADES.md) - Checklist completo de verificación
 
@@ -54,6 +55,7 @@ chmod +x build-yaml-editor-only.sh
 ```
 
 **Requisitos:**
+
 - macOS 10.13 o superior
 - Node.js v18+ (https://nodejs.org/)
 - ~2GB de espacio libre
@@ -114,7 +116,7 @@ Borders:      white/5
 ## 🚀 Uso
 
 1. **Abrir archivo:** Click en "Upload YAML" o arrastra un archivo
-2. **Editar:** 
+2. **Editar:**
    - Usa el panel de código para edición manual
    - Usa el árbol para navegación visual
    - Usa el panel de detalles para editar propiedades
@@ -160,15 +162,18 @@ O ve a: **Preferencias del Sistema** → **Seguridad y Privacidad** → **Abrir 
 ## 🐛 Troubleshooting
 
 ### "command not found: node"
+
 Instala Node.js: https://nodejs.org/
 
 ### Build falla
+
 ```bash
 rm -rf yaml-editor-project
 ./build-yaml-editor-only.sh
 ```
 
 ### App no abre
+
 ```bash
 xattr -cr /Applications/Relampo\ YAML\ Editor.app
 ```

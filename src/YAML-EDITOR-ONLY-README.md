@@ -3,6 +3,7 @@
 ## 🎯 ¿Qué incluye?
 
 Este build genera **SOLO el YAML Editor**, sin:
+
 - ❌ Landing page
 - ❌ Workbench
 - ❌ Dashboard
@@ -10,6 +11,7 @@ Este build genera **SOLO el YAML Editor**, sin:
 - ❌ Projects
 
 Solo incluye:
+
 - ✅ YAML Editor con vista de código y árbol
 - ✅ Drag & Drop para reorganizar nodos
 - ✅ Panel de detalles para cada nodo
@@ -121,12 +123,14 @@ ls -lh yaml-editor-releases/
 ```
 
 **En macOS:**
+
 ```
 Relampo-YAML-Editor-1.0.0.dmg       (~150 MB)
 Relampo-YAML-Editor-1.0.0-mac.zip  (~145 MB)
 ```
 
 **En Linux:**
+
 ```
 Relampo-YAML-Editor-1.0.0.AppImage  (~160 MB)
 relampo-yaml-editor-1.0.0.tar.gz    (~140 MB)
@@ -137,6 +141,7 @@ relampo-yaml-editor-1.0.0.tar.gz    (~140 MB)
 ### 7. Probar la App
 
 **macOS:**
+
 ```bash
 open yaml-editor-releases/Relampo-YAML-Editor-1.0.0.dmg
 # Arrastra a Applications
@@ -144,6 +149,7 @@ open yaml-editor-releases/Relampo-YAML-Editor-1.0.0.dmg
 ```
 
 **Linux:**
+
 ```bash
 cd yaml-editor-releases
 chmod +x Relampo-YAML-Editor-1.0.0.AppImage
@@ -189,8 +195,9 @@ yaml-editor-standalone/
 ```
 
 **NO incluye:**
+
 - ❌ LandingPage
-- ❌ Workbench  
+- ❌ Workbench
 - ❌ Dashboard
 - ❌ RelampoLeague
 - ❌ Projects
@@ -279,6 +286,7 @@ chmod +x build-yaml-editor-only.sh
 ### Error: "Node.js not found"
 
 Instala Node.js:
+
 ```bash
 # macOS:
 brew install node
@@ -336,8 +344,8 @@ Edita `electron/main.js`:
 
 ```javascript
 const mainWindow = new BrowserWindow({
-  width: 1600,   // Cambiar
-  height: 1000,  // Cambiar
+  width: 1600, // Cambiar
+  height: 1000, // Cambiar
   // ...
 });
 ```
@@ -346,15 +354,15 @@ const mainWindow = new BrowserWindow({
 
 ## 📊 Comparación: Web vs Desktop
 
-| Feature | Web Bundle | Desktop App |
-|---------|------------|-------------|
-| **Instalación** | Python + npm install | Solo descargar |
-| **Ejecución** | Terminal + Browser | Doble-click |
-| **Tamaño** | ~5 MB | ~150 MB |
-| **Offline** | Necesita servidor local | 100% offline |
-| **Actualizaciones** | Manual | Manual |
-| **Distribución** | .tar.gz con scripts | .dmg / .AppImage |
-| **User Experience** | Tab del navegador | Ventana nativa |
+| Feature             | Web Bundle              | Desktop App      |
+| ------------------- | ----------------------- | ---------------- |
+| **Instalación**     | Python + npm install    | Solo descargar   |
+| **Ejecución**       | Terminal + Browser      | Doble-click      |
+| **Tamaño**          | ~5 MB                   | ~150 MB          |
+| **Offline**         | Necesita servidor local | 100% offline     |
+| **Actualizaciones** | Manual                  | Manual           |
+| **Distribución**    | .tar.gz con scripts     | .dmg / .AppImage |
+| **User Experience** | Tab del navegador       | Ventana nativa   |
 
 ---
 
@@ -365,7 +373,7 @@ const mainWindow = new BrowserWindow({
 ✅ **100% offline** - No requiere servidor  
 ✅ **Multiplataforma** - Mac y Linux  
 ✅ **Distribución simple** - Un solo archivo  
-✅ **Look & feel nativo** - Como cualquier app de escritorio  
+✅ **Look & feel nativo** - Como cualquier app de escritorio
 
 ---
 

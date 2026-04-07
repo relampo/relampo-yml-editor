@@ -138,7 +138,7 @@ export function YAMLContextMenu({
     <div
       ref={menuRef}
       role="menu"
-      className='fixed z-50 min-w-[220px] max-h-[80vh] overflow-y-auto bg-[#111111] border border-white/10 rounded-lg shadow-2xl shadow-black/50 py-1'
+      className="fixed z-50 min-w-[220px] max-h-[80vh] overflow-y-auto bg-[#111111] border border-white/10 rounded-lg shadow-2xl shadow-black/50 py-1"
       style={{
         left: `${position.x}px`,
         top: `${position.y}px`,
@@ -148,9 +148,9 @@ export function YAMLContextMenu({
     >
       {canAddChildren && (
         <>
-          <div className='px-3 py-1.5 sticky top-0 bg-[#111111] z-10'>
-            <div className='flex items-center gap-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider'>
-              <Plus className='w-3 h-3' />
+          <div className="px-3 py-1.5 sticky top-0 bg-[#111111] z-10">
+            <div className="flex items-center gap-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+              <Plus className="w-3 h-3" />
               {t('yamlEditor.common.add')}
             </div>
           </div>
@@ -159,17 +159,17 @@ export function YAMLContextMenu({
             <button
               key={item.type}
               onClick={() => onAddNode(item.type)}
-              className='w-full px-3 py-2 flex items-center gap-3 hover:bg-white/5 text-left transition-colors'
+              className="w-full px-3 py-2 flex items-center gap-3 hover:bg-white/5 text-left transition-colors"
             >
               <div className={item.color}>{item.icon}</div>
-              <div className='flex-1'>
-                <div className='text-sm text-zinc-200'>{item.label}</div>
-                {item.description && <div className='text-xs text-zinc-500'>{item.description}</div>}
+              <div className="flex-1">
+                <div className="text-sm text-zinc-200">{item.label}</div>
+                {item.description && <div className="text-xs text-zinc-500">{item.description}</div>}
               </div>
             </button>
           ))}
 
-          <div className='h-px bg-white/5 my-1' />
+          <div className="h-px bg-white/5 my-1" />
         </>
       )}
 
@@ -185,17 +185,17 @@ export function YAMLContextMenu({
               onToggleEnabled(node.id, !isCurrentlyEnabled);
               onClose();
             }}
-            className='w-full px-3 py-2 flex items-center gap-3 hover:bg-white/5 text-left transition-colors text-zinc-300'
+            className="w-full px-3 py-2 flex items-center gap-3 hover:bg-white/5 text-left transition-colors text-zinc-300"
           >
             {node.data?.enabled === false ? (
               <>
-                <Eye className='w-4 h-4' />
-                <span className='text-sm'>{t('yamlEditor.common.enable')}</span>
+                <Eye className="w-4 h-4" />
+                <span className="text-sm">{t('yamlEditor.common.enable')}</span>
               </>
             ) : (
               <>
-                <EyeOff className='w-4 h-4' />
-                <span className='text-sm'>{t('yamlEditor.common.disable')}</span>
+                <EyeOff className="w-4 h-4" />
+                <span className="text-sm">{t('yamlEditor.common.disable')}</span>
               </>
             )}
           </button>
@@ -203,7 +203,7 @@ export function YAMLContextMenu({
 
       {node.type !== 'root' && node.type !== 'test' && node.type !== 'scenarios' && node.type !== 'steps' && (
         <>
-          <div className='h-px bg-white/5 my-1' />
+          <div className="h-px bg-white/5 my-1" />
 
           {onDuplicate && (
             <button
@@ -211,19 +211,19 @@ export function YAMLContextMenu({
                 onDuplicate(node.id);
                 onClose();
               }}
-              className='w-full px-3 py-2 flex items-center gap-3 hover:bg-white/5 text-left transition-colors text-zinc-300'
+              className="w-full px-3 py-2 flex items-center gap-3 hover:bg-white/5 text-left transition-colors text-zinc-300"
             >
-              <Copy className='w-4 h-4' />
-              <span className='text-sm'>{t('yamlEditor.common.duplicate') || 'Duplicate'}</span>
+              <Copy className="w-4 h-4" />
+              <span className="text-sm">{t('yamlEditor.common.duplicate') || 'Duplicate'}</span>
             </button>
           )}
 
           <button
             onClick={onRemove}
-            className='w-full px-3 py-2 flex items-center gap-3 hover:bg-red-500/10 text-left transition-colors text-red-400'
+            className="w-full px-3 py-2 flex items-center gap-3 hover:bg-red-500/10 text-left transition-colors text-red-400"
           >
-            <Trash2 className='w-4 h-4' />
-            <span className='text-sm'>{t('yamlEditor.common.delete')}</span>
+            <Trash2 className="w-4 h-4" />
+            <span className="text-sm">{t('yamlEditor.common.delete')}</span>
           </button>
         </>
       )}

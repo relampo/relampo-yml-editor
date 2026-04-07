@@ -39,7 +39,9 @@ describe('handleSave', () => {
       return useYAMLPersistence({ ...params, serializeDebounceRef });
     });
 
-    act(() => { result.current.handleSave(); });
+    act(() => {
+      result.current.handleSave();
+    });
 
     expect(localStorage.getItem('relampo-yaml-draft')).toBe('test:\n  name: t\n');
   });
@@ -51,7 +53,9 @@ describe('handleSave', () => {
       return useYAMLPersistence({ ...params, serializeDebounceRef });
     });
 
-    act(() => { result.current.handleSave(); });
+    act(() => {
+      result.current.handleSave();
+    });
 
     expect(localStorage.getItem('relampo-yaml-draft-filename')).toBe('smoke.yaml');
   });
@@ -63,7 +67,9 @@ describe('handleSave', () => {
       return useYAMLPersistence({ ...params, serializeDebounceRef });
     });
 
-    act(() => { result.current.handleSave(); });
+    act(() => {
+      result.current.handleSave();
+    });
 
     expect(result.current.lastSavedAt).not.toBeNull();
   });
@@ -76,7 +82,9 @@ describe('handleSave', () => {
       return useYAMLPersistence({ ...params, serializeDebounceRef });
     });
 
-    act(() => { result.current.handleSave(); });
+    act(() => {
+      result.current.handleSave();
+    });
 
     expect(setIsDirty).toHaveBeenCalledWith(false);
   });
@@ -88,7 +96,9 @@ describe('handleSave', () => {
       return useYAMLPersistence({ ...params, serializeDebounceRef });
     });
 
-    act(() => { result.current.handleSave(); });
+    act(() => {
+      result.current.handleSave();
+    });
 
     expect(result.current.actionMessage).toBe('Changes saved');
   });
@@ -100,7 +110,9 @@ describe('handleSave', () => {
       return useYAMLPersistence({ ...params, serializeDebounceRef });
     });
 
-    act(() => { result.current.handleSave(); });
+    act(() => {
+      result.current.handleSave();
+    });
 
     expect(result.current.actionMessage).toBe('Cambios guardados');
   });
@@ -112,10 +124,14 @@ describe('handleSave', () => {
       return useYAMLPersistence({ ...params, serializeDebounceRef });
     });
 
-    act(() => { result.current.handleSave(); });
+    act(() => {
+      result.current.handleSave();
+    });
     expect(result.current.actionMessage).not.toBe('');
 
-    act(() => { vi.advanceTimersByTime(1800); });
+    act(() => {
+      vi.advanceTimersByTime(1800);
+    });
     expect(result.current.actionMessage).toBe('');
   });
 
@@ -123,14 +139,18 @@ describe('handleSave', () => {
     const setError = vi.fn();
     const params = makeParams({
       setError,
-      getPersistableYaml: vi.fn(() => { throw new Error('boom'); }),
+      getPersistableYaml: vi.fn(() => {
+        throw new Error('boom');
+      }),
     });
     const { result } = renderHook(() => {
       const serializeDebounceRef = useRef<number | null>(null);
       return useYAMLPersistence({ ...params, serializeDebounceRef });
     });
 
-    act(() => { result.current.handleSave(); });
+    act(() => {
+      result.current.handleSave();
+    });
 
     expect(setError).toHaveBeenCalledWith('boom');
   });
@@ -170,7 +190,9 @@ describe('handleDownload', () => {
       return useYAMLPersistence({ ...params, serializeDebounceRef });
     });
 
-    act(() => { result.current.handleDownload(true); });
+    act(() => {
+      result.current.handleDownload(true);
+    });
 
     expect(result.current.actionMessage).toBe('YAML downloaded with responses');
   });
@@ -182,7 +204,9 @@ describe('handleDownload', () => {
       return useYAMLPersistence({ ...params, serializeDebounceRef });
     });
 
-    act(() => { result.current.handleDownload(false); });
+    act(() => {
+      result.current.handleDownload(false);
+    });
 
     expect(result.current.actionMessage).toBe('YAML downloaded without responses');
   });
@@ -195,7 +219,9 @@ describe('handleDownload', () => {
       return useYAMLPersistence({ ...params, serializeDebounceRef });
     });
 
-    act(() => { result.current.handleDownload(true); });
+    act(() => {
+      result.current.handleDownload(true);
+    });
 
     expect(setIsDirty).toHaveBeenCalledWith(false);
   });
@@ -204,14 +230,18 @@ describe('handleDownload', () => {
     const setError = vi.fn();
     const params = makeParams({
       setError,
-      getPersistableYaml: vi.fn(() => { throw new Error('parse error'); }),
+      getPersistableYaml: vi.fn(() => {
+        throw new Error('parse error');
+      }),
     });
     const { result } = renderHook(() => {
       const serializeDebounceRef = useRef<number | null>(null);
       return useYAMLPersistence({ ...params, serializeDebounceRef });
     });
 
-    act(() => { result.current.handleDownload(false); });
+    act(() => {
+      result.current.handleDownload(false);
+    });
 
     expect(setError).toHaveBeenCalledWith('parse error');
   });
@@ -224,7 +254,9 @@ describe('autosave', () => {
     localStorage.clear();
     vi.useFakeTimers();
   });
-  afterEach(() => { vi.useRealTimers(); });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
 
   it('auto-saves after 2000 ms when isDirty becomes true', () => {
     const getPersistableYaml = vi.fn(() => 'auto: saved\n');
@@ -237,11 +269,13 @@ describe('autosave', () => {
           serializeDebounceRef,
         });
       },
-      { initialProps: { isDirty: false } }
+      { initialProps: { isDirty: false } },
     );
 
     rerender({ isDirty: true });
-    act(() => { vi.advanceTimersByTime(2000); });
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
 
     expect(getPersistableYaml).toHaveBeenCalled();
     expect(localStorage.getItem('relampo-yaml-draft')).toBe('auto: saved\n');
@@ -258,11 +292,13 @@ describe('autosave', () => {
           serializeDebounceRef,
         });
       },
-      { initialProps: { isDirty: false } }
+      { initialProps: { isDirty: false } },
     );
 
     rerender({ isDirty: true });
-    act(() => { vi.advanceTimersByTime(2000); });
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
 
     expect(getPersistableYaml).not.toHaveBeenCalled();
   });
@@ -288,7 +324,10 @@ describe('keyboard shortcuts', () => {
     const getPersistableYaml = vi.fn(() => 'ctrl: s\n');
     renderHook(() => {
       const serializeDebounceRef = useRef<number | null>(null);
-      return useYAMLPersistence({ ...makeParams({ getPersistableYaml }), serializeDebounceRef });
+      return useYAMLPersistence({
+        ...makeParams({ getPersistableYaml }),
+        serializeDebounceRef,
+      });
     });
 
     act(() => {
@@ -303,7 +342,10 @@ describe('keyboard shortcuts', () => {
     const getPersistableYaml = vi.fn(() => 'meta: s\n');
     renderHook(() => {
       const serializeDebounceRef = useRef<number | null>(null);
-      return useYAMLPersistence({ ...makeParams({ getPersistableYaml }), serializeDebounceRef });
+      return useYAMLPersistence({
+        ...makeParams({ getPersistableYaml }),
+        serializeDebounceRef,
+      });
     });
 
     act(() => {

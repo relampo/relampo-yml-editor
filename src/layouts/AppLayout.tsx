@@ -3,7 +3,14 @@ import { Sidebar } from '../components/Sidebar';
 import { TopBar } from '../components/TopBar';
 import type { View } from '../App';
 
-export type NavigationItem = 'dashboard' | 'workbench' | 'cli' | 'projects' | 'settings' | 'design-doc' | 'brand-campaign';
+export type NavigationItem =
+  | 'dashboard'
+  | 'workbench'
+  | 'cli'
+  | 'projects'
+  | 'settings'
+  | 'design-doc'
+  | 'brand-campaign';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -28,10 +35,11 @@ export function AppLayout({ children, currentView, onViewChange }: AppLayoutProp
         onEnvironmentChange={setSelectedEnvironment}
       />
       <div className="flex flex-1 overflow-hidden min-h-0 min-w-0">
-        <Sidebar activeNav={currentView as NavigationItem} onNavigate={handleNavigate} />
-        <main className="flex-1 overflow-hidden min-w-0">
-          {children}
-        </main>
+        <Sidebar
+          activeNav={currentView as NavigationItem}
+          onNavigate={handleNavigate}
+        />
+        <main className="flex-1 overflow-hidden min-w-0">{children}</main>
       </div>
     </div>
   );

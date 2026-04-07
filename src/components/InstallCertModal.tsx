@@ -18,14 +18,14 @@ export function InstallCertModal({
   onDownload,
   onShowInstructions,
   isInstalling = false,
-  installError = null
+  installError = null,
 }: InstallCertModalProps) {
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
-      <div 
+      <div
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={onClose}
       ></div>
@@ -53,7 +53,8 @@ export function InstallCertModal({
         {/* Body */}
         <div className="px-6 py-5 space-y-4">
           <p className="text-sm text-neutral-700 leading-relaxed">
-            Relampo uses a local proxy to record HTTPS traffic. Install the Relampo CA certificate on this machine to capture encrypted requests.
+            Relampo uses a local proxy to record HTTPS traffic. Install the Relampo CA certificate on this machine to
+            capture encrypted requests.
           </p>
 
           {/* Info Box */}
@@ -62,8 +63,8 @@ export function InstallCertModal({
             <div className="text-xs text-blue-900 leading-relaxed">
               <p className="font-medium mb-1">Why is this needed?</p>
               <p className="text-blue-800">
-                To decrypt and inspect HTTPS traffic, Relampo acts as a "man-in-the-middle" proxy. 
-                Your system must trust the Relampo CA to allow this interception.
+                To decrypt and inspect HTTPS traffic, Relampo acts as a "man-in-the-middle" proxy. Your system must
+                trust the Relampo CA to allow this interception.
               </p>
             </div>
           </div>
@@ -93,14 +94,10 @@ export function InstallCertModal({
                   <div className="text-sm font-semibold">
                     {isInstalling ? 'Installing...' : 'Install CA (Recommended)'}
                   </div>
-                  <div className="text-xs text-blue-100">
-                    One-click automatic installation
-                  </div>
+                  <div className="text-xs text-blue-100">One-click automatic installation</div>
                 </div>
               </div>
-              {!isInstalling && (
-                <ChevronRight className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
-              )}
+              {!isInstalling && <ChevronRight className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />}
               {isInstalling && (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
               )}
@@ -116,9 +113,7 @@ export function InstallCertModal({
                 <Download className="w-5 h-5 text-neutral-600" />
                 <div className="text-left">
                   <div className="text-sm font-semibold">Download CA Cert</div>
-                  <div className="text-xs text-neutral-600">
-                    Install manually (for advanced users)
-                  </div>
+                  <div className="text-xs text-neutral-600">Install manually (for advanced users)</div>
                 </div>
               </div>
               <ChevronRight className="w-5 h-5 text-neutral-400 group-hover:translate-x-0.5 transition-transform" />
@@ -154,7 +149,7 @@ interface InstallInstructionsDrawerProps {
 export function InstallInstructionsDrawer({
   isOpen,
   onClose,
-  certPath = '/path/to/relampo-ca.crt'
+  certPath = '/path/to/relampo-ca.crt',
 }: InstallInstructionsDrawerProps) {
   const [activeOS, setActiveOS] = useState<'windows' | 'macos' | 'linux' | 'firefox'>('windows');
 
@@ -172,8 +167,8 @@ export function InstallInstructionsDrawer({
         'Click "Browse" and select "Trusted Root Certification Authorities"',
         'Click "Next", then "Finish"',
         'Click "Yes" on the security warning',
-        'Restart your browser'
-      ]
+        'Restart your browser',
+      ],
     },
     macos: {
       title: 'macOS',
@@ -186,8 +181,8 @@ export function InstallInstructionsDrawer({
         'Expand "Trust" section',
         'Set "When using this certificate" to "Always Trust"',
         'Close the window (it will ask for your password)',
-        'Restart your browser'
-      ]
+        'Restart your browser',
+      ],
     },
     linux: {
       title: 'Linux',
@@ -199,8 +194,8 @@ export function InstallInstructionsDrawer({
         '  sudo update-ca-certificates',
         'For Chrome/Chromium, also run:',
         '  certutil -d sql:$HOME/.pki/nssdb -A -t "C,," -n "Relampo CA" -i relampo-ca.crt',
-        'Restart your browser'
-      ]
+        'Restart your browser',
+      ],
     },
     firefox: {
       title: 'Firefox (All OS)',
@@ -214,9 +209,9 @@ export function InstallInstructionsDrawer({
         'Select the downloaded certificate file (relampo-ca.crt)',
         'Check "Trust this CA to identify websites"',
         'Click "OK"',
-        'Restart Firefox'
-      ]
-    }
+        'Restart Firefox',
+      ],
+    },
   };
 
   const current = instructions[activeOS];
@@ -225,7 +220,7 @@ export function InstallInstructionsDrawer({
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       {/* Backdrop */}
-      <div 
+      <div
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={onClose}
       ></div>
@@ -246,7 +241,7 @@ export function InstallInstructionsDrawer({
         {/* OS Tabs */}
         <div className="px-6 pt-4 border-b border-neutral-200 flex-shrink-0">
           <div className="flex gap-1">
-            {(['windows', 'macos', 'linux', 'firefox'] as const).map((os) => {
+            {(['windows', 'macos', 'linux', 'firefox'] as const).map(os => {
               const config = instructions[os];
               const TabIcon = config.icon;
               return (
@@ -273,9 +268,7 @@ export function InstallInstructionsDrawer({
             <Info className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
             <div className="text-xs text-amber-900">
               <p className="font-medium mb-1">Certificate Location</p>
-              <code className="text-xs bg-white px-2 py-1 rounded border border-amber-200 font-mono">
-                {certPath}
-              </code>
+              <code className="text-xs bg-white px-2 py-1 rounded border border-amber-200 font-mono">{certPath}</code>
             </div>
           </div>
 
@@ -286,13 +279,20 @@ export function InstallInstructionsDrawer({
             </h3>
             <ol className="space-y-3">
               {current.steps.map((step, index) => (
-                <li key={index} className="flex gap-3">
+                <li
+                  key={index}
+                  className="flex gap-3"
+                >
                   <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-xs font-semibold">
                     {index + 1}
                   </span>
-                  <p className={`text-sm text-neutral-700 pt-0.5 ${
-                    step.startsWith('  ') ? 'font-mono text-xs bg-neutral-50 px-3 py-2 rounded border border-neutral-200 -ml-9 pl-12' : ''
-                  }`}>
+                  <p
+                    className={`text-sm text-neutral-700 pt-0.5 ${
+                      step.startsWith('  ')
+                        ? 'font-mono text-xs bg-neutral-50 px-3 py-2 rounded border border-neutral-200 -ml-9 pl-12'
+                        : ''
+                    }`}
+                  >
                     {step}
                   </p>
                 </li>
@@ -302,7 +302,8 @@ export function InstallInstructionsDrawer({
 
           <div className="pt-4 border-t border-neutral-200">
             <p className="text-xs text-neutral-600">
-              <strong>Note:</strong> After installation, run <span className="font-semibold">Diagnostics</span> to verify the certificate is trusted.
+              <strong>Note:</strong> After installation, run <span className="font-semibold">Diagnostics</span> to
+              verify the certificate is trusted.
             </p>
           </div>
         </div>

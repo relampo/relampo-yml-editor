@@ -1,6 +1,6 @@
 export type PowerTier = 'Bolt' | 'Thunder' | 'Storm' | 'Hurricane';
 
-export type PointCategory = 
+export type PointCategory =
   | 'explorers' // Exploradores de Performance
   | 'contributors' // Contribuidores Relampo
   | 'detectors'; // Detectores de Issues
@@ -36,53 +36,53 @@ export interface PowerTierConfig {
 }
 
 export const POWER_TIERS: PowerTierConfig[] = [
-  { 
-    name: 'Bolt', 
+  {
+    name: 'Bolt',
     icon: '⚡', // Will be rendered as gray SVG
-    minPoints: 20, 
+    minPoints: 20,
     requirements: 'Solo ejecución de pruebas',
-    color: 'text-zinc-400', 
-    bgColor: 'bg-zinc-500/10', 
-    borderColor: 'border-zinc-400/30'
+    color: 'text-zinc-400',
+    bgColor: 'bg-zinc-500/10',
+    borderColor: 'border-zinc-400/30',
   },
-  { 
-    name: 'Thunder', 
-    icon: '🌩️', 
-    minPoints: 60, 
+  {
+    name: 'Thunder',
+    icon: '🌩️',
+    minPoints: 60,
     requirements: 'Ejecución consistente',
-    color: 'text-orange-400', 
-    bgColor: 'bg-orange-500/10', 
-    borderColor: 'border-orange-400/30'
+    color: 'text-orange-400',
+    bgColor: 'bg-orange-500/10',
+    borderColor: 'border-orange-400/30',
   },
-  { 
-    name: 'Storm', 
-    icon: '🌪️', 
-    minPoints: 150, 
+  {
+    name: 'Storm',
+    icon: '🌪️',
+    minPoints: 150,
     requirements: 'Calidad + Producto',
-    color: 'text-purple-400', 
-    bgColor: 'bg-purple-500/10', 
-    borderColor: 'border-purple-400/30'
+    color: 'text-purple-400',
+    bgColor: 'bg-purple-500/10',
+    borderColor: 'border-purple-400/30',
   },
-  { 
-    name: 'Hurricane', 
-    icon: '🌀', 
-    minPoints: 400, 
+  {
+    name: 'Hurricane',
+    icon: '🌀',
+    minPoints: 400,
     requirements: 'Impacto Elite',
-    color: 'text-cyan-400', 
-    bgColor: 'bg-cyan-500/10', 
-    borderColor: 'border-cyan-400/30'
+    color: 'text-cyan-400',
+    bgColor: 'bg-cyan-500/10',
+    borderColor: 'border-cyan-400/30',
   },
 ];
 
 export function calculatePowerTier(points: CategoryPoints, monthlyWins: string[]): PowerTier | null {
   const { explorers, contributors, detectors } = points;
   const total = explorers + contributors + detectors;
-  
+
   // Hurricane - Elite Impact
   if (total >= 400 && explorers > 0 && contributors > 0 && detectors > 0 && monthlyWins.length > 0) {
     return 'Hurricane';
   }
-  
+
   // Storm - Quality & Product Impact (dos caminos)
   if (total >= 150) {
     // Camino A: Pruebas + Issues
@@ -94,17 +94,17 @@ export function calculatePowerTier(points: CategoryPoints, monthlyWins: string[]
       return 'Storm';
     }
   }
-  
+
   // Thunder - Advanced Execution
   if (explorers >= 60) {
     return 'Thunder';
   }
-  
+
   // Bolt - Execution Level
   if (explorers >= 20) {
     return 'Bolt';
   }
-  
+
   return null;
 }
 

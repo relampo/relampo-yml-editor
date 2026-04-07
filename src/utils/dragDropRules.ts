@@ -35,11 +35,7 @@ export function canDropNode(draggedType: NodeType, targetType: NodeType): boolea
   }
 
   // Think Time, Assertion, Extractor: Only inside Requests
-  if (
-    draggedType === 'timer' ||
-    draggedType === 'assertion' ||
-    draggedType === 'extractor'
-  ) {
+  if (draggedType === 'timer' || draggedType === 'assertion' || draggedType === 'extractor') {
     return targetType === 'http-request';
   }
 
@@ -54,11 +50,7 @@ export function canDropNode(draggedType: NodeType, targetType: NodeType): boolea
   }
 
   // HTTP Defaults, Variables, Metrics: Only inside Test Plan
-  if (
-    draggedType === 'http-defaults' ||
-    draggedType === 'variables' ||
-    draggedType === 'metrics'
-  ) {
+  if (draggedType === 'http-defaults' || draggedType === 'variables' || draggedType === 'metrics') {
     return targetType === 'test-plan';
   }
 
@@ -80,15 +72,11 @@ export function canDropNode(draggedType: NodeType, targetType: NodeType): boolea
  * Determines if two nodes can be reordered as siblings (same parent)
  * This checks if both nodes can exist under the same parent type
  */
-export function canReorderNodes(
-  draggedType: NodeType,
-  siblingType: NodeType,
-  parentType: NodeType
-): boolean {
+export function canReorderNodes(draggedType: NodeType, siblingType: NodeType, parentType: NodeType): boolean {
   // Both nodes must be valid children of the parent
   const draggedCanBeChild = canDropNode(draggedType, parentType);
   const siblingIsChild = canDropNode(siblingType, parentType);
-  
+
   return draggedCanBeChild && siblingIsChild;
 }
 
@@ -98,7 +86,7 @@ export function canReorderNodes(
 export function getDropErrorMessage(draggedType: NodeType, targetType: NodeType): string {
   const typeNames: Record<NodeType, string> = {
     'test-plan': 'Test Plan',
-    'scenario': 'Scenario',
+    scenario: 'Scenario',
     'http-request': 'HTTP Request',
     'controller-group': 'Controller',
     'controller-if': 'If Controller',
@@ -106,16 +94,16 @@ export function getDropErrorMessage(draggedType: NodeType, targetType: NodeType)
     'controller-retry': 'Retry Controller',
     'controller-simple': 'Simple Controller',
     'controller-transaction': 'Transaction Controller',
-    'timer': 'Think Time',
-    'assertion': 'Assertion',
-    'extractor': 'Extractor',
+    timer: 'Think Time',
+    assertion: 'Assertion',
+    extractor: 'Extractor',
     'data-source': 'Data Source',
     'cookie-manager': 'Cookie Manager',
     'cache-manager': 'Cache Manager',
-    'load': 'Load Profile',
+    load: 'Load Profile',
     'http-defaults': 'HTTP Defaults',
-    'variables': 'Variables',
-    'metrics': 'Metrics',
+    variables: 'Variables',
+    metrics: 'Metrics',
     'header-manager': 'Header Manager',
   };
 

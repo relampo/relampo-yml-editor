@@ -15,9 +15,7 @@ export function TimerDetail({ node }: TimerDetailProps) {
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-neutral-900">{node.name}</h3>
-            <p className="text-sm text-neutral-600 mt-1">
-              Simulates user think time between requests
-            </p>
+            <p className="text-sm text-neutral-600 mt-1">Simulates user think time between requests</p>
           </div>
           <div className="flex items-center gap-2 px-3 py-1 rounded-md bg-cyan-100 text-cyan-700">
             <Clock className="w-4 h-4" />
@@ -38,9 +36,7 @@ export function TimerDetail({ node }: TimerDetailProps) {
               readOnly
               className="w-full px-3 py-2 border border-neutral-300 rounded-lg bg-neutral-50 text-sm"
             />
-            <p className="text-xs text-neutral-500 mt-1">
-              Base delay duration in milliseconds
-            </p>
+            <p className="text-xs text-neutral-500 mt-1">Base delay duration in milliseconds</p>
           </div>
 
           {/* Variance */}
@@ -53,7 +49,8 @@ export function TimerDetail({ node }: TimerDetailProps) {
               className="w-full px-3 py-2 border border-neutral-300 rounded-lg bg-neutral-50 text-sm"
             />
             <p className="text-xs text-neutral-500 mt-1">
-              Random variance added/subtracted from duration (±{data.variance}ms)
+              Random variance added/subtracted from duration (±{data.variance}
+              ms)
             </p>
           </div>
 
@@ -73,8 +70,8 @@ export function TimerDetail({ node }: TimerDetailProps) {
           {/* Info */}
           <div className="p-4 bg-neutral-50 border border-neutral-200 rounded-lg">
             <p className="text-xs text-neutral-700">
-              Timers help simulate realistic user behavior by introducing delays between requests.
-              The random variance makes the load pattern more natural and less predictable.
+              Timers help simulate realistic user behavior by introducing delays between requests. The random variance
+              makes the load pattern more natural and less predictable.
             </p>
           </div>
         </div>

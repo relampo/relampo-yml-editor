@@ -5,9 +5,9 @@ import type { YAMLNodeType } from '../types/yaml';
  * ║                    PULSE YAML EDITOR - DRAG & DROP RULES                  ║
  * ║                         (Inspired by JMeter hierarchy)                    ║
  * ╚═══════════════════════════════════════════════════════════════════════════╝
- * 
+ *
  * HIERARCHY (similar to JMeter):
- * 
+ *
  * 📁 ROOT (Test Plan)
  *    ├── 📋 test (Test metadata)
  *    ├── 📦 variables (User Defined Variables)
@@ -40,47 +40,37 @@ import type { YAMLNodeType } from '../types/yaml';
 
 /** Root level elements - can only exist at test plan level */
 const ROOT_LEVEL_ELEMENTS: YAMLNodeType[] = [
-  'test', 'variables', 'data_source', 'http_defaults', 'scenarios', 'metrics', 'error_policy'
+  'test',
+  'variables',
+  'data_source',
+  'http_defaults',
+  'scenarios',
+  'metrics',
+  'error_policy',
 ];
 
 /** Scenario configuration elements */
-const SCENARIO_CONFIG_ELEMENTS: YAMLNodeType[] = [
-  'load', 'cookies', 'cache_manager', 'error_policy'
-];
+const SCENARIO_CONFIG_ELEMENTS: YAMLNodeType[] = ['load', 'cookies', 'cache_manager', 'error_policy'];
 
 /** Logic Controllers - can contain other controllers and samplers */
-const LOGIC_CONTROLLERS: YAMLNodeType[] = [
-  'group', 'simple', 'transaction', 'if', 'loop', 'retry'
-];
+const LOGIC_CONTROLLERS: YAMLNodeType[] = ['group', 'simple', 'transaction', 'if', 'loop', 'retry'];
 
 /** HTTP Samplers - the actual requests */
-const HTTP_SAMPLERS: YAMLNodeType[] = [
-  'request', 'get', 'post', 'put', 'delete', 'patch', 'head', 'options'
-];
+const HTTP_SAMPLERS: YAMLNodeType[] = ['request', 'get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
 
-const SQL_SAMPLERS: YAMLNodeType[] = [
-  'sql',
-];
+const SQL_SAMPLERS: YAMLNodeType[] = ['sql'];
 
 /** Pre-Processors - execute before sampler */
-const PRE_PROCESSORS: YAMLNodeType[] = [
-  'spark_before'
-];
+const PRE_PROCESSORS: YAMLNodeType[] = ['spark_before'];
 
 /** Post-Processors - execute after sampler */
-const POST_PROCESSORS: YAMLNodeType[] = [
-  'spark_after', 'extractor', 'extract'
-];
+const POST_PROCESSORS: YAMLNodeType[] = ['spark_after', 'extractor', 'extract'];
 
 /** Assertions - validate responses */
-const ASSERTIONS: YAMLNodeType[] = [
-  'assertion', 'assert'
-];
+const ASSERTIONS: YAMLNodeType[] = ['assertion', 'assert'];
 
 /** Timers */
-const TIMERS: YAMLNodeType[] = [
-  'think_time'
-];
+const TIMERS: YAMLNodeType[] = ['think_time'];
 
 /** All step-level elements (can be inside steps or controllers) */
 const STEP_ELEMENTS: YAMLNodeType[] = [
@@ -89,7 +79,7 @@ const STEP_ELEMENTS: YAMLNodeType[] = [
   ...LOGIC_CONTROLLERS,
   ...TIMERS,
   'data_source',
-  'step'
+  'step',
 ];
 
 /** Elements that can be children of a request/sampler */
@@ -99,7 +89,7 @@ const SAMPLER_CHILDREN: YAMLNodeType[] = [
   ...ASSERTIONS,
   ...TIMERS,
   'error_policy',
-  'data_source'
+  'data_source',
 ];
 
 // ============================================================================
@@ -112,61 +102,61 @@ const SAMPLER_CHILDREN: YAMLNodeType[] = [
  */
 const containmentRules: Partial<Record<YAMLNodeType, YAMLNodeType[]>> = {
   // ROOT - Test Plan level
-  'root': ROOT_LEVEL_ELEMENTS,
+  root: ROOT_LEVEL_ELEMENTS,
 
   // Config elements (leaf nodes - no children)
-  'test': [],
-  'variables': [],
-  'data_source': [],
-  'http_defaults': [],
-  'metrics': [],
+  test: [],
+  variables: [],
+  data_source: [],
+  http_defaults: [],
+  metrics: [],
 
   // Scenarios container
-  'scenarios': ['scenario'],
+  scenarios: ['scenario'],
 
   // Single scenario (Thread Group)
-  'scenario': ['load', 'cookies', 'cache_manager', 'error_policy', 'steps'],
+  scenario: ['load', 'cookies', 'cache_manager', 'error_policy', 'steps'],
 
   // Scenario config (leaf nodes)
-  'load': [],
-  'cookies': [],
-  'cache_manager': [],
-  'error_policy': [],
+  load: [],
+  cookies: [],
+  cache_manager: [],
+  error_policy: [],
 
   // Steps container
-  'steps': STEP_ELEMENTS,
+  steps: STEP_ELEMENTS,
 
   // HTTP Samplers - can contain pre/post processors, assertions, timers
-  'request': SAMPLER_CHILDREN,
-  'get': SAMPLER_CHILDREN,
-  'post': SAMPLER_CHILDREN,
-  'put': SAMPLER_CHILDREN,
-  'delete': SAMPLER_CHILDREN,
-  'patch': SAMPLER_CHILDREN,
-  'head': SAMPLER_CHILDREN,
-  'options': SAMPLER_CHILDREN,
+  request: SAMPLER_CHILDREN,
+  get: SAMPLER_CHILDREN,
+  post: SAMPLER_CHILDREN,
+  put: SAMPLER_CHILDREN,
+  delete: SAMPLER_CHILDREN,
+  patch: SAMPLER_CHILDREN,
+  head: SAMPLER_CHILDREN,
+  options: SAMPLER_CHILDREN,
 
   // SQL steps are leaf executable steps
-  'sql': [],
+  sql: [],
 
   // Logic Controllers - can contain steps and other controllers
-  'group': STEP_ELEMENTS,
-  'simple': STEP_ELEMENTS,
-  'transaction': STEP_ELEMENTS,
-  'if': STEP_ELEMENTS,
-  'loop': STEP_ELEMENTS,
-  'retry': STEP_ELEMENTS,
+  group: STEP_ELEMENTS,
+  simple: STEP_ELEMENTS,
+  transaction: STEP_ELEMENTS,
+  if: STEP_ELEMENTS,
+  loop: STEP_ELEMENTS,
+  retry: STEP_ELEMENTS,
 
   // Leaf nodes (no children)
-  'step': [],
-  'think_time': [],
-  'spark': [],
-  'spark_before': [],
-  'spark_after': [],
-  'extract': [],
-  'extractor': [],
-  'assert': [],
-  'assertion': [],
+  step: [],
+  think_time: [],
+  spark: [],
+  spark_before: [],
+  spark_after: [],
+  extract: [],
+  extractor: [],
+  assert: [],
+  assertion: [],
 };
 
 // ============================================================================
@@ -198,9 +188,7 @@ const siblingGroups: YAMLNodeType[][] = [
  * Check if two types can be siblings
  */
 function canBeSiblings(type1: YAMLNodeType, type2: YAMLNodeType): boolean {
-  return siblingGroups.some(group =>
-    group.includes(type1) && group.includes(type2)
-  );
+  return siblingGroups.some(group => group.includes(type1) && group.includes(type2));
 }
 
 // ============================================================================
@@ -213,7 +201,7 @@ function canBeSiblings(type1: YAMLNodeType, type2: YAMLNodeType): boolean {
 export function canDrop(
   draggedType: YAMLNodeType,
   targetType: YAMLNodeType,
-  position: 'before' | 'after' | 'inside'
+  position: 'before' | 'after' | 'inside',
 ): boolean {
   // Cannot move root
   if (draggedType === 'root') {
@@ -297,7 +285,7 @@ export function getNodeCategory(nodeType: YAMLNodeType): string {
 export function getDropErrorMessage(
   draggedType: YAMLNodeType,
   targetType: YAMLNodeType,
-  position: 'before' | 'after' | 'inside'
+  position: 'before' | 'after' | 'inside',
 ): string {
   if (draggedType === 'root' || draggedType === 'test') {
     return 'This element cannot be moved';
@@ -339,8 +327,12 @@ export function getDropErrorMessage(
  */
 export function getInsertionHint(
   draggedType: YAMLNodeType,
-  targetType: YAMLNodeType
-): { canInsertBefore: boolean; canInsertAfter: boolean; canInsertInside: boolean } {
+  targetType: YAMLNodeType,
+): {
+  canInsertBefore: boolean;
+  canInsertAfter: boolean;
+  canInsertInside: boolean;
+} {
   return {
     canInsertBefore: canDrop(draggedType, targetType, 'before'),
     canInsertAfter: canDrop(draggedType, targetType, 'after'),

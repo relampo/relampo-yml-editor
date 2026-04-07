@@ -34,11 +34,7 @@ interface YAMLNodeDetailsProps {
 
 const REQUEST_NODE_TYPES = ['request', 'sql', 'get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
 
-export function YAMLNodeDetails({
-  node,
-  redirectSourceInfo = null,
-  onNodeUpdate,
-}: YAMLNodeDetailsProps) {
+export function YAMLNodeDetails({ node, redirectSourceInfo = null, onNodeUpdate }: YAMLNodeDetailsProps) {
   const { t } = useLanguage();
   const [nodeName, setNodeName] = useState(node?.name || '');
   const isRequestNode = REQUEST_NODE_TYPES.includes(node?.type || '');
@@ -89,14 +85,16 @@ export function YAMLNodeDetails({
             </label>
             <Input
               value={nodeName}
-              onChange={(event) => setNodeName(event.target.value)}
+              onChange={event => setNodeName(event.target.value)}
               maxLength={50}
               onBlur={() => {
                 if (onNodeUpdate && nodeName !== node.name) {
                   onNodeUpdate(node.id, { ...node.data, __name: nodeName });
                 }
               }}
-              style={{ width: `${Math.min(Math.max((nodeName || '').length + 2, 12), 48)}ch` }}
+              style={{
+                width: `${Math.min(Math.max((nodeName || '').length + 2, 12), 48)}ch`,
+              }}
               className="max-w-full shrink-0 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-semibold"
               placeholder="Node name"
             />
@@ -130,19 +128,60 @@ function NodeDetailsContent({
 }) {
   switch (node.type) {
     case 'test':
-      return <TestDetails node={node} onNodeUpdate={onNodeUpdate} nodeName={nodeName} setNodeName={setNodeName} />;
+      return (
+        <TestDetails
+          node={node}
+          onNodeUpdate={onNodeUpdate}
+          nodeName={nodeName}
+          setNodeName={setNodeName}
+        />
+      );
     case 'variables':
-      return <VariablesDetails node={node} onNodeUpdate={onNodeUpdate} />;
+      return (
+        <VariablesDetails
+          node={node}
+          onNodeUpdate={onNodeUpdate}
+        />
+      );
     case 'data_source':
-      return <DataSourceDetails node={node} onNodeUpdate={onNodeUpdate} nodeName={nodeName} setNodeName={setNodeName} />;
+      return (
+        <DataSourceDetails
+          node={node}
+          onNodeUpdate={onNodeUpdate}
+          nodeName={nodeName}
+          setNodeName={setNodeName}
+        />
+      );
     case 'http_defaults':
-      return <HttpDefaultsDetails node={node} onNodeUpdate={onNodeUpdate} />;
+      return (
+        <HttpDefaultsDetails
+          node={node}
+          onNodeUpdate={onNodeUpdate}
+        />
+      );
     case 'scenarios':
-      return <ScenariosContainerDetails node={node} onNodeUpdate={onNodeUpdate} />;
+      return (
+        <ScenariosContainerDetails
+          node={node}
+          onNodeUpdate={onNodeUpdate}
+        />
+      );
     case 'scenario':
-      return <ScenarioDetails node={node} onNodeUpdate={onNodeUpdate} nodeName={nodeName} setNodeName={setNodeName} />;
+      return (
+        <ScenarioDetails
+          node={node}
+          onNodeUpdate={onNodeUpdate}
+          nodeName={nodeName}
+          setNodeName={setNodeName}
+        />
+      );
     case 'load':
-      return <LoadDetails node={node} onNodeUpdate={onNodeUpdate} />;
+      return (
+        <LoadDetails
+          node={node}
+          onNodeUpdate={onNodeUpdate}
+        />
+      );
     case 'request':
     case 'sql':
     case 'get':
@@ -153,42 +192,135 @@ function NodeDetailsContent({
     case 'head':
     case 'options':
       if (node.type === 'sql') {
-        return <YAMLSQLDetails node={node} onNodeUpdate={onNodeUpdate} />;
+        return (
+          <YAMLSQLDetails
+            node={node}
+            onNodeUpdate={onNodeUpdate}
+          />
+        );
       }
-      return <YAMLRequestDetails node={node} redirectSourceInfo={redirectSourceInfo} onNodeUpdate={onNodeUpdate} />;
+      return (
+        <YAMLRequestDetails
+          node={node}
+          redirectSourceInfo={redirectSourceInfo}
+          onNodeUpdate={onNodeUpdate}
+        />
+      );
     case 'group':
     case 'transaction':
-      return <GroupDetails node={node} onNodeUpdate={onNodeUpdate} nodeName={nodeName} setNodeName={setNodeName} />;
+      return (
+        <GroupDetails
+          node={node}
+          onNodeUpdate={onNodeUpdate}
+          nodeName={nodeName}
+          setNodeName={setNodeName}
+        />
+      );
     case 'if':
-      return <IfDetails node={node} onNodeUpdate={onNodeUpdate} />;
+      return (
+        <IfDetails
+          node={node}
+          onNodeUpdate={onNodeUpdate}
+        />
+      );
     case 'loop':
-      return <LoopDetails node={node} onNodeUpdate={onNodeUpdate} />;
+      return (
+        <LoopDetails
+          node={node}
+          onNodeUpdate={onNodeUpdate}
+        />
+      );
     case 'retry':
-      return <RetryDetails node={node} onNodeUpdate={onNodeUpdate} />;
+      return (
+        <RetryDetails
+          node={node}
+          onNodeUpdate={onNodeUpdate}
+        />
+      );
     case 'think_time':
-      return <ThinkTimeDetails node={node} onNodeUpdate={onNodeUpdate} />;
+      return (
+        <ThinkTimeDetails
+          node={node}
+          onNodeUpdate={onNodeUpdate}
+        />
+      );
     case 'cookies':
-      return <CookiesDetails node={node} onNodeUpdate={onNodeUpdate} />;
+      return (
+        <CookiesDetails
+          node={node}
+          onNodeUpdate={onNodeUpdate}
+        />
+      );
     case 'cache_manager':
-      return <CacheManagerDetails node={node} onNodeUpdate={onNodeUpdate} />;
+      return (
+        <CacheManagerDetails
+          node={node}
+          onNodeUpdate={onNodeUpdate}
+        />
+      );
     case 'error_policy':
-      return <ErrorPolicyDetails node={node} onNodeUpdate={onNodeUpdate} />;
+      return (
+        <ErrorPolicyDetails
+          node={node}
+          onNodeUpdate={onNodeUpdate}
+        />
+      );
     case 'metrics':
-      return <MetricsDetails node={node} onNodeUpdate={onNodeUpdate} />;
+      return (
+        <MetricsDetails
+          node={node}
+          onNodeUpdate={onNodeUpdate}
+        />
+      );
     case 'spark_before':
     case 'spark_after':
-      return <SparkDetails node={node} onNodeUpdate={onNodeUpdate} />;
+      return (
+        <SparkDetails
+          node={node}
+          onNodeUpdate={onNodeUpdate}
+        />
+      );
     case 'assertion':
-      return <AssertionDetails node={node} onNodeUpdate={onNodeUpdate} />;
+      return (
+        <AssertionDetails
+          node={node}
+          onNodeUpdate={onNodeUpdate}
+        />
+      );
     case 'extractor':
-      return <ExtractorDetails node={node} onNodeUpdate={onNodeUpdate} />;
+      return (
+        <ExtractorDetails
+          node={node}
+          onNodeUpdate={onNodeUpdate}
+        />
+      );
     case 'file':
-      return <FileDetails node={node} onNodeUpdate={onNodeUpdate} />;
+      return (
+        <FileDetails
+          node={node}
+          onNodeUpdate={onNodeUpdate}
+        />
+      );
     case 'header':
-      return <HeaderDetails node={node} onNodeUpdate={onNodeUpdate} />;
+      return (
+        <HeaderDetails
+          node={node}
+          onNodeUpdate={onNodeUpdate}
+        />
+      );
     case 'headers':
-      return <HeadersDetails node={node} onNodeUpdate={onNodeUpdate} />;
+      return (
+        <HeadersDetails
+          node={node}
+          onNodeUpdate={onNodeUpdate}
+        />
+      );
     default:
-      return <GenericDetails node={node} onNodeUpdate={onNodeUpdate} />;
+      return (
+        <GenericDetails
+          node={node}
+          onNodeUpdate={onNodeUpdate}
+        />
+      );
   }
 }

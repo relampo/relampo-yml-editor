@@ -28,11 +28,15 @@ export function MethodDropdown({ value, onChange, className = '', id }: MethodDr
     <select
       id={id}
       value={currentMethod}
-      onChange={(e) => onChange(e.target.value)}
+      onChange={e => onChange(e.target.value)}
       className={`px-3 py-2 border rounded text-sm font-mono font-semibold uppercase cursor-pointer transition-colors ${colorClasses} ${className}`}
     >
-      {HTTP_METHODS.map((method) => (
-        <option key={method} value={method} className="bg-zinc-900">
+      {HTTP_METHODS.map(method => (
+        <option
+          key={method}
+          value={method}
+          className="bg-zinc-900"
+        >
           {method}
         </option>
       ))}

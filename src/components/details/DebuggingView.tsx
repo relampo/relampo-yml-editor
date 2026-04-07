@@ -47,9 +47,7 @@ export function DebuggingView({ selectedNode }: DebuggingViewProps) {
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-zinc-100">Debug Execution</h3>
-            <p className="text-sm mt-1 text-zinc-400">
-              Real-time execution samples with AI-powered insights
-            </p>
+            <p className="text-sm mt-1 text-zinc-400">Real-time execution samples with AI-powered insights</p>
           </div>
           <button className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-black font-semibold rounded-lg transition-colors shadow-lg shadow-green-400/30">
             <Play className="w-4 h-4" />
@@ -65,7 +63,7 @@ export function DebuggingView({ selectedNode }: DebuggingViewProps) {
           <div>
             <h4 className="text-sm mb-3 text-zinc-300">Execution Samples</h4>
             <div className="space-y-2">
-              {executionSamples.map((sample) => (
+              {executionSamples.map(sample => (
                 <div
                   key={sample.id}
                   className={`px-4 py-3 border rounded-lg transition-colors cursor-pointer ${
@@ -85,18 +83,18 @@ export function DebuggingView({ selectedNode }: DebuggingViewProps) {
                     <div className="flex-1">
                       <div className="flex items-center gap-3">
                         <span className="text-sm text-zinc-100">{sample.name}</span>
-                        <span className={`px-2 py-0.5 rounded text-xs ${
-                          sample.status === 'success'
-                            ? 'bg-green-500/10 text-green-400 border border-green-400/30'
-                            : 'bg-red-500/10 text-red-400 border border-red-400/30'
-                        }`}>
+                        <span
+                          className={`px-2 py-0.5 rounded text-xs ${
+                            sample.status === 'success'
+                              ? 'bg-green-500/10 text-green-400 border border-green-400/30'
+                              : 'bg-red-500/10 text-red-400 border border-red-400/30'
+                          }`}
+                        >
                           {sample.statusCode}
                         </span>
                         <span className="text-xs text-zinc-500">{sample.duration}ms</span>
                       </div>
-                      {sample.error && (
-                        <p className="text-xs text-red-400 mt-1">{sample.error}</p>
-                      )}
+                      {sample.error && <p className="text-xs text-red-400 mt-1">{sample.error}</p>}
                     </div>
                     <span className="text-xs text-zinc-500">{sample.timestamp}</span>
                   </div>

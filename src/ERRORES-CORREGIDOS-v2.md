@@ -1,6 +1,7 @@
 # ✅ ERRORES CORREGIDOS - Versión 2
 
 ## 🐛 Error Original
+
 ```
 The above error occurred in the <bI> component
 [Make] Blank preview detected: Your app rendered no content.
@@ -9,6 +10,7 @@ The above error occurred in the <bI> component
 ## 🔍 Causa del Error
 
 El componente **`Sidebar.tsx`** todavía estaba importando y usando `react-router-dom`:
+
 - ❌ `import { Link, useNavigate } from 'react-router-dom'`
 - ❌ `const navigate = useNavigate();`
 - ❌ `onClick={() => navigate('/')}`
@@ -18,6 +20,7 @@ Esto causaba que el componente fallara al renderizar, lo que a su vez provocaba 
 ## ✅ Correcciones Aplicadas
 
 ### 1. `/components/Sidebar.tsx`
+
 - ✅ Eliminado: `import { Link, useNavigate } from 'react-router-dom'`
 - ✅ Eliminado: `const navigate = useNavigate();`
 - ✅ Cambiado: `onClick={() => navigate('/')}` → `onClick={() => onNavigate('dashboard')}`
@@ -25,12 +28,15 @@ Esto causaba que el componente fallara al renderizar, lo que a su vez provocaba 
 - ✅ Actualizado: texto del botón "Back to Landing" → "Back to Home"
 
 ### 2. `/layouts/AppLayout.tsx`
+
 ✅ Ya estaba correcto (sin react-router-dom)
 
 ### 3. `/components/LandingPage.tsx`
+
 ✅ Ya estaba correcto (sin react-router-dom)
 
 ### 4. `/App.tsx`
+
 ✅ Ya estaba correcto (sin react-router-dom)
 
 ## 🎯 Estado Actual
@@ -59,8 +65,8 @@ La app usa **navegación basada en estado** (no react-router-dom):
 const [currentView, setCurrentView] = useState<View>('landing');
 
 // Los componentes llaman a:
-onViewChange('workbench')  // Cambia a workbench
-onViewChange('yaml-editor') // Cambia a YAML editor
+onViewChange('workbench'); // Cambia a workbench
+onViewChange('yaml-editor'); // Cambia a YAML editor
 // etc.
 ```
 

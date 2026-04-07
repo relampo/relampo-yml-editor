@@ -1,9 +1,4 @@
-import {
-  AlertTriangle,
-  BetweenHorizontalStart,
-  Binary,
-  Clock3,
-} from 'lucide-react';
+import { AlertTriangle, BetweenHorizontalStart, Binary, Clock3 } from 'lucide-react';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import type { NodeDetailProps } from './types';
@@ -23,19 +18,15 @@ export function IfDetails({ node, onNodeUpdate }: NodeDetailProps) {
         </label>
         <Textarea
           value={data.condition || ''}
-          onChange={(event) => handleChange('condition', event.target.value)}
+          onChange={event => handleChange('condition', event.target.value)}
           placeholder="${'{'}status${'}'} === 200\n${'{'}user_id${'}'} != null\n${'{'}count${'}'} > 10"
           className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono min-h-[100px]"
         />
-        <div className="mt-1 text-xs text-zinc-500">
-          Steps will only execute if this condition evaluates to true
-        </div>
+        <div className="mt-1 text-xs text-zinc-500">Steps will only execute if this condition evaluates to true</div>
       </div>
 
       <div className="p-3 bg-pink-400/10 border border-pink-400/20 rounded">
-        <div className="text-xs font-semibold text-pink-400 uppercase tracking-wider mb-1">
-          Conditional Steps
-        </div>
+        <div className="text-xs font-semibold text-pink-400 uppercase tracking-wider mb-1">Conditional Steps</div>
         <div className="text-2xl font-bold text-pink-300 font-mono">{node.children?.length || 0}</div>
       </div>
     </div>
@@ -54,13 +45,11 @@ export function LoopDetails({ node, onNodeUpdate }: NodeDetailProps) {
   return (
     <div className="space-y-6">
       <div>
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-          Loop Count
-        </label>
+        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Loop Count</label>
         <Input
           type="number"
           value={data.count !== undefined ? data.count : 1}
-          onChange={(event) => handleChange('count', parseInt(event.target.value, 10) || 1)}
+          onChange={event => handleChange('count', parseInt(event.target.value, 10) || 1)}
           placeholder="1"
           className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
         />
@@ -75,26 +64,20 @@ export function LoopDetails({ node, onNodeUpdate }: NodeDetailProps) {
         </label>
         <Input
           value={data.break_on || ''}
-          onChange={(event) => handleChange('break_on', event.target.value)}
+          onChange={event => handleChange('break_on', event.target.value)}
           placeholder="${'{'}error${'}'} || ${'{'}stop${'}'}"
           className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
         />
-        <div className="mt-1 text-xs text-zinc-500">
-          Exit loop early if condition is true
-        </div>
+        <div className="mt-1 text-xs text-zinc-500">Exit loop early if condition is true</div>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <div className="p-3 bg-purple-400/10 border border-purple-400/20 rounded">
-          <div className="text-xs font-semibold text-purple-400 uppercase tracking-wider mb-1">
-            Steps Inside
-          </div>
+          <div className="text-xs font-semibold text-purple-400 uppercase tracking-wider mb-1">Steps Inside</div>
           <div className="text-2xl font-bold text-purple-300 font-mono">{stepsCount}</div>
         </div>
         <div className="p-3 bg-purple-400/10 border border-purple-400/20 rounded">
-          <div className="text-xs font-semibold text-purple-400 uppercase tracking-wider mb-1">
-            Total Iterations
-          </div>
+          <div className="text-xs font-semibold text-purple-400 uppercase tracking-wider mb-1">Total Iterations</div>
           <div className="text-2xl font-bold text-purple-300 font-mono">{loopCount * stepsCount}</div>
         </div>
       </div>
@@ -113,13 +96,11 @@ export function RetryDetails({ node, onNodeUpdate }: NodeDetailProps) {
   return (
     <div className="space-y-6">
       <div>
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-          Max Attempts
-        </label>
+        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Max Attempts</label>
         <Input
           type="number"
           value={data.attempts !== undefined ? data.attempts : 3}
-          onChange={(event) => handleChange('attempts', parseInt(event.target.value, 10) || 3)}
+          onChange={event => handleChange('attempts', parseInt(event.target.value, 10) || 3)}
           placeholder="3"
           className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
         />
@@ -131,29 +112,40 @@ export function RetryDetails({ node, onNodeUpdate }: NodeDetailProps) {
         </label>
         <select
           value={backoffType}
-          onChange={(event) => handleChange('backoff', event.target.value)}
+          onChange={event => handleChange('backoff', event.target.value)}
           className="w-full h-[38px] px-3 py-2 bg-red-400/10 text-red-400 border border-red-400/20 rounded text-sm font-mono cursor-pointer"
         >
-          <option value="constant" className="bg-zinc-900">constant (same delay)</option>
-          <option value="linear" className="bg-zinc-900">linear (incremental)</option>
-          <option value="exponential" className="bg-zinc-900">exponential (2x each time)</option>
+          <option
+            value="constant"
+            className="bg-zinc-900"
+          >
+            constant (same delay)
+          </option>
+          <option
+            value="linear"
+            className="bg-zinc-900"
+          >
+            linear (incremental)
+          </option>
+          <option
+            value="exponential"
+            className="bg-zinc-900"
+          >
+            exponential (2x each time)
+          </option>
         </select>
       </div>
 
       {backoffType === 'constant' && (
         <div>
-          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-            Delay
-          </label>
+          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Delay</label>
           <Input
             value={data.initial_delay || data.delay || ''}
-            onChange={(event) => handleChange('initial_delay', event.target.value)}
+            onChange={event => handleChange('initial_delay', event.target.value)}
             placeholder="1s"
             className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
           />
-          <div className="mt-1 text-xs text-zinc-500">
-            Same delay between all retry attempts
-          </div>
+          <div className="mt-1 text-xs text-zinc-500">Same delay between all retry attempts</div>
         </div>
       )}
 
@@ -165,24 +157,20 @@ export function RetryDetails({ node, onNodeUpdate }: NodeDetailProps) {
             </label>
             <Input
               value={data.initial_delay || ''}
-              onChange={(event) => handleChange('initial_delay', event.target.value)}
+              onChange={event => handleChange('initial_delay', event.target.value)}
               placeholder="1s"
               className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
             />
           </div>
           <div className="mb-4">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              Increment
-            </label>
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Increment</label>
             <Input
               value={data.increment || ''}
-              onChange={(event) => handleChange('increment', event.target.value)}
+              onChange={event => handleChange('increment', event.target.value)}
               placeholder="1s"
               className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
             />
-            <div className="mt-1 text-xs text-zinc-500">
-              Delay increases by this amount each retry (1s, 2s, 3s...)
-            </div>
+            <div className="mt-1 text-xs text-zinc-500">Delay increases by this amount each retry (1s, 2s, 3s...)</div>
           </div>
         </>
       )}
@@ -195,7 +183,7 @@ export function RetryDetails({ node, onNodeUpdate }: NodeDetailProps) {
             </label>
             <Input
               value={data.initial_delay || ''}
-              onChange={(event) => handleChange('initial_delay', event.target.value)}
+              onChange={event => handleChange('initial_delay', event.target.value)}
               placeholder="1s"
               className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
             />
@@ -207,13 +195,11 @@ export function RetryDetails({ node, onNodeUpdate }: NodeDetailProps) {
             <Input
               type="number"
               value={data.multiplier !== undefined ? data.multiplier : 2}
-              onChange={(event) => handleChange('multiplier', parseFloat(event.target.value) || 2)}
+              onChange={event => handleChange('multiplier', parseFloat(event.target.value) || 2)}
               placeholder="2"
               className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
             />
-            <div className="mt-1 text-xs text-zinc-500">
-              Delay multiplied each retry (1s, 2s, 4s, 8s...)
-            </div>
+            <div className="mt-1 text-xs text-zinc-500">Delay multiplied each retry (1s, 2s, 4s, 8s...)</div>
           </div>
           <div className="mb-4">
             <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
@@ -221,21 +207,17 @@ export function RetryDetails({ node, onNodeUpdate }: NodeDetailProps) {
             </label>
             <Input
               value={data.max_delay || ''}
-              onChange={(event) => handleChange('max_delay', event.target.value)}
+              onChange={event => handleChange('max_delay', event.target.value)}
               placeholder="30s"
               className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
             />
-            <div className="mt-1 text-xs text-zinc-500">
-              Cap maximum delay to prevent very long waits
-            </div>
+            <div className="mt-1 text-xs text-zinc-500">Cap maximum delay to prevent very long waits</div>
           </div>
         </>
       )}
 
       <div className="p-3 bg-white/5 border border-white/10 rounded">
-        <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1">
-          Steps to Retry
-        </div>
+        <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1">Steps to Retry</div>
         <div className="text-2xl font-bold text-zinc-300 font-mono">{node.children?.length || 0}</div>
       </div>
     </div>
@@ -246,14 +228,8 @@ export function ThinkTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
   const data = node.data || {};
   const hasFixed = data.duration !== undefined && String(data.duration).trim() !== '';
   const hasDistributionHints =
-    data.mean !== undefined ||
-    data.std_dev !== undefined ||
-    String(data.distribution || '').toLowerCase() === 'normal';
-  const mode: 'fixed' | 'range' | 'distribution' = hasFixed
-    ? 'fixed'
-    : hasDistributionHints
-      ? 'distribution'
-      : 'range';
+    data.mean !== undefined || data.std_dev !== undefined || String(data.distribution || '').toLowerCase() === 'normal';
+  const mode: 'fixed' | 'range' | 'distribution' = hasFixed ? 'fixed' : hasDistributionHints ? 'distribution' : 'range';
   const fixedDuration = String(data.duration || '');
   const variableMin = String(data.min || '');
   const variableMax = String(data.max || '');
@@ -335,7 +311,7 @@ export function ThinkTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
           Think Time Mode
         </label>
         <div className="flex flex-wrap items-center gap-1">
-          {thinkTimeModes.map((modeItem) => {
+          {thinkTimeModes.map(modeItem => {
             const active = mode === modeItem.value;
             const Icon = modeItem.icon;
 
@@ -345,10 +321,11 @@ export function ThinkTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
                 type="button"
                 onClick={() => handleModeChange(modeItem.value)}
                 aria-pressed={active}
-                className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${active
-                  ? 'border-current text-white'
-                  : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/[0.06]'
-                  }`}
+                className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${
+                  active
+                    ? 'border-current text-white'
+                    : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/[0.06]'
+                }`}
                 style={active ? thinkTimeModeButtonStyle[modeItem.value] : undefined}
               >
                 <span className="inline-flex items-center gap-1.5">
@@ -370,7 +347,7 @@ export function ThinkTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
               </label>
               <Input
                 value={fixedDuration}
-                onChange={(event) => handleChange('duration', event.target.value)}
+                onChange={event => handleChange('duration', event.target.value)}
                 placeholder="2s"
                 className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
               />
@@ -387,7 +364,7 @@ export function ThinkTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
               </label>
               <Input
                 value={variableMin}
-                onChange={(event) => handleChange('min', event.target.value)}
+                onChange={event => handleChange('min', event.target.value)}
                 placeholder="1s"
                 className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
               />
@@ -398,7 +375,7 @@ export function ThinkTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
               </label>
               <Input
                 value={variableMax}
-                onChange={(event) => handleChange('max', event.target.value)}
+                onChange={event => handleChange('max', event.target.value)}
                 placeholder="3s"
                 className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
               />
@@ -413,23 +390,19 @@ export function ThinkTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-                Mean
-              </label>
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Mean</label>
               <Input
                 value={String(data.mean || '')}
-                onChange={(event) => handleChange('mean', event.target.value)}
+                onChange={event => handleChange('mean', event.target.value)}
                 placeholder="2s"
                 className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
               />
             </div>
             <div>
-              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-                Std Dev
-              </label>
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Std Dev</label>
               <Input
                 value={String(data.std_dev || '')}
-                onChange={(event) => handleChange('std_dev', event.target.value)}
+                onChange={event => handleChange('std_dev', event.target.value)}
                 placeholder="500ms"
                 className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
               />
@@ -442,7 +415,7 @@ export function ThinkTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
               </label>
               <Input
                 value={variableMin}
-                onChange={(event) => handleChange('min', event.target.value)}
+                onChange={event => handleChange('min', event.target.value)}
                 placeholder="1s"
                 className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
               />
@@ -453,7 +426,7 @@ export function ThinkTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
               </label>
               <Input
                 value={variableMax}
-                onChange={(event) => handleChange('max', event.target.value)}
+                onChange={event => handleChange('max', event.target.value)}
                 placeholder="3s"
                 className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
               />
@@ -466,11 +439,21 @@ export function ThinkTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
               </label>
               <select
                 value={String(data.distribution || 'normal')}
-                onChange={(event) => handleChange('distribution', event.target.value)}
+                onChange={event => handleChange('distribution', event.target.value)}
                 className="w-full h-[38px] px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono outline-none"
               >
-                <option value="normal" className="bg-[#1a1a1a]">normal</option>
-                <option value="uniform" className="bg-[#1a1a1a]">uniform</option>
+                <option
+                  value="normal"
+                  className="bg-[#1a1a1a]"
+                >
+                  normal
+                </option>
+                <option
+                  value="uniform"
+                  className="bg-[#1a1a1a]"
+                >
+                  uniform
+                </option>
               </select>
             </div>
           </div>

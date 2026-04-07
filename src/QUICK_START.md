@@ -186,9 +186,10 @@ du -h relampo-yaml-editor-standalone.tar.gz
 
 ---
 
-## 🚀 Ya está! 
+## 🚀 Ya está!
 
 Ahora tienes:
+
 - ✅ Script de build (`build-yaml-standalone.sh`)
 - ✅ Bundle distribuible (`.tar.gz`)
 - ✅ Ejecutable simple (`run.sh`)

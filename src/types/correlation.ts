@@ -1,7 +1,16 @@
 export interface CorrelationCandidate {
   id: string;
   variable: string;
-  type: 'session_id' | 'auth_token' | 'csrf_token' | 'cursor' | 'user_id' | 'api_key' | 'uuid' | 'timestamp' | 'dynamic_value';
+  type:
+    | 'session_id'
+    | 'auth_token'
+    | 'csrf_token'
+    | 'cursor'
+    | 'user_id'
+    | 'api_key'
+    | 'uuid'
+    | 'timestamp'
+    | 'dynamic_value';
   valueExample: string;
   source: string;
   usedIn: string[];

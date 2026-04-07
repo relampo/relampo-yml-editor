@@ -13,26 +13,66 @@ interface CommonHeader {
 }
 
 const COMMON_HEADERS: CommonHeader[] = [
-  { key: 'Content-Type', value: 'application/json', description: 'JSON content' },
+  {
+    key: 'Content-Type',
+    value: 'application/json',
+    description: 'JSON content',
+  },
   { key: 'Content-Type', value: 'application/xml', description: 'XML content' },
-  { key: 'Content-Type', value: 'application/x-www-form-urlencoded', description: 'Form data' },
+  {
+    key: 'Content-Type',
+    value: 'application/x-www-form-urlencoded',
+    description: 'Form data',
+  },
   { key: 'Content-Type', value: 'text/html', description: 'HTML content' },
   { key: 'Content-Type', value: 'text/plain', description: 'Plain text' },
   { key: 'Accept', value: 'application/json', description: 'Accept JSON' },
   { key: 'Accept', value: '*/*', description: 'Accept any' },
-  { key: 'Authorization', value: 'Bearer ${token}', description: 'Bearer token' },
-  { key: 'Authorization', value: 'Basic ${credentials}', description: 'Basic auth' },
-  { key: 'User-Agent', value: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', description: 'Chrome Windows' },
-  { key: 'User-Agent', value: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)', description: 'Safari macOS' },
-  { key: 'Accept-Language', value: 'en-US,en;q=0.9', description: 'English US' },
+  {
+    key: 'Authorization',
+    value: 'Bearer ${token}',
+    description: 'Bearer token',
+  },
+  {
+    key: 'Authorization',
+    value: 'Basic ${credentials}',
+    description: 'Basic auth',
+  },
+  {
+    key: 'User-Agent',
+    value: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+    description: 'Chrome Windows',
+  },
+  {
+    key: 'User-Agent',
+    value: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
+    description: 'Safari macOS',
+  },
+  {
+    key: 'Accept-Language',
+    value: 'en-US,en;q=0.9',
+    description: 'English US',
+  },
   { key: 'Accept-Language', value: 'es-ES,es;q=0.9', description: 'Spanish' },
-  { key: 'Accept-Encoding', value: 'gzip, deflate, br', description: 'Compressed content' },
+  {
+    key: 'Accept-Encoding',
+    value: 'gzip, deflate, br',
+    description: 'Compressed content',
+  },
   { key: 'Cache-Control', value: 'no-cache', description: 'No cache' },
   { key: 'Cache-Control', value: 'max-age=0', description: 'Max age 0' },
   { key: 'Connection', value: 'keep-alive', description: 'Keep connection' },
   { key: 'Origin', value: 'https://example.com', description: 'Origin domain' },
-  { key: 'Referer', value: 'https://example.com', description: 'Referring page' },
-  { key: 'X-Requested-With', value: 'XMLHttpRequest', description: 'AJAX request' },
+  {
+    key: 'Referer',
+    value: 'https://example.com',
+    description: 'Referring page',
+  },
+  {
+    key: 'X-Requested-With',
+    value: 'XMLHttpRequest',
+    description: 'AJAX request',
+  },
   { key: 'X-API-Key', value: '${api_key}', description: 'API key' },
 ];
 
@@ -41,10 +81,10 @@ export function HeaderCommonDropdown({ onAddHeader, className = '' }: HeaderComm
   const [searchTerm, setSearchTerm] = useState('');
 
   const filteredHeaders = COMMON_HEADERS.filter(
-    h => 
+    h =>
       h.key.toLowerCase().includes(searchTerm.toLowerCase()) ||
       h.value.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      h.description.toLowerCase().includes(searchTerm.toLowerCase())
+      h.description.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   const handleSelect = (header: CommonHeader) => {
@@ -66,8 +106,8 @@ export function HeaderCommonDropdown({ onAddHeader, className = '' }: HeaderComm
       {isOpen && (
         <>
           {/* Backdrop */}
-          <div 
-            className="fixed inset-0 z-40" 
+          <div
+            className="fixed inset-0 z-40"
             onClick={() => setIsOpen(false)}
           />
 
@@ -78,7 +118,7 @@ export function HeaderCommonDropdown({ onAddHeader, className = '' }: HeaderComm
               <input
                 type="text"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={e => setSearchTerm(e.target.value)}
                 placeholder="Search headers..."
                 className="w-full px-3 py-1.5 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 placeholder-zinc-500 focus:outline-none focus:border-emerald-400/30"
                 autoFocus
@@ -88,9 +128,7 @@ export function HeaderCommonDropdown({ onAddHeader, className = '' }: HeaderComm
             {/* Headers list */}
             <div className="p-1">
               {filteredHeaders.length === 0 ? (
-                <div className="p-4 text-center text-sm text-zinc-500">
-                  No headers found
-                </div>
+                <div className="p-4 text-center text-sm text-zinc-500">No headers found</div>
               ) : (
                 filteredHeaders.map((header, index) => (
                   <button
@@ -100,16 +138,10 @@ export function HeaderCommonDropdown({ onAddHeader, className = '' }: HeaderComm
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm font-mono text-indigo-400 truncate">
-                          {header.key}
-                        </div>
-                        <div className="text-xs font-mono text-zinc-400 truncate mt-0.5">
-                          {header.value}
-                        </div>
+                        <div className="text-sm font-mono text-indigo-400 truncate">{header.key}</div>
+                        <div className="text-xs font-mono text-zinc-400 truncate mt-0.5">{header.value}</div>
                       </div>
-                      <div className="text-xs text-zinc-500 flex-shrink-0">
-                        {header.description}
-                      </div>
+                      <div className="text-xs text-zinc-500 flex-shrink-0">{header.description}</div>
                     </div>
                   </button>
                 ))

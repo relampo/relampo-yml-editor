@@ -13,12 +13,14 @@ Los archivos ejecutables (.dmg, .AppImage, etc.) **se generan cuando ejecutas el
 Crea un ícono con un rayo amarillo para la app:
 
 **Para macOS:**
+
 ```bash
 # Coloca un archivo icon.icns en:
 /electron/icon.icns
 ```
 
 **Para Linux:**
+
 ```bash
 # Coloca un archivo icon.png en:
 /electron/icon.png
@@ -84,6 +86,7 @@ relampo-desktop-releases/
 ```
 
 **Nota:** Solo se generarán los binarios para tu sistema operativo actual:
+
 - En **macOS** → genera .dmg y .zip
 - En **Linux** → genera .AppImage y .tar.gz
 
@@ -137,6 +140,7 @@ gh release create v1.0.0 \
 ```
 
 Los usuarios descargan desde:
+
 ```
 https://github.com/tu-usuario/relampo/releases/download/v1.0.0/Relampo-YAML-Editor-1.0.0.dmg
 ```
@@ -164,6 +168,7 @@ scp relampo-desktop-releases/* user@server.com:/var/www/downloads/
 ### "Node.js not found"
 
 **Solución:**
+
 ```bash
 # Instalar Node.js
 # macOS:
@@ -177,6 +182,7 @@ sudo apt-get install -y nodejs
 ### "Build failed" en macOS
 
 **Solución:**
+
 ```bash
 # Instalar Xcode Command Line Tools
 xcode-select --install
@@ -185,6 +191,7 @@ xcode-select --install
 ### "Build failed" en Linux
 
 **Solución:**
+
 ```bash
 # Ubuntu/Debian
 sudo apt-get install build-essential libssl-dev
@@ -196,6 +203,7 @@ sudo dnf install gcc gcc-c++ make openssl-devel
 ### El build toma mucho tiempo (primera vez)
 
 **Es normal!** La primera vez descarga:
+
 - Electron binaries (~80 MB)
 - Node modules (~100 MB)
 
@@ -208,9 +216,10 @@ sudo dnf install gcc gcc-c++ make openssl-devel
 ### Cambiar la Versión
 
 Edita `/package.electron.json`:
+
 ```json
 {
-  "version": "2.0.0"  // Cambia esto
+  "version": "2.0.0" // Cambia esto
 }
 ```
 
@@ -219,6 +228,7 @@ Edita `/package.electron.json`:
 Por defecto genera para Intel (x64) y Apple Silicon (arm64).
 
 Para solo Apple Silicon:
+
 ```bash
 # Editar package.electron.json:
 "target": [
@@ -232,6 +242,7 @@ Para solo Apple Silicon:
 ### Habilitar DevTools en la App
 
 Edita `/electron/main.js`:
+
 ```javascript
 // Descomentar esta línea:
 mainWindow.webContents.openDevTools();
@@ -242,13 +253,15 @@ mainWindow.webContents.openDevTools();
 ## 📊 Tamaños de los Binarios
 
 Aproximadamente:
+
 - **macOS DMG:** ~150 MB
-- **macOS ZIP:** ~145 MB  
+- **macOS ZIP:** ~145 MB
 - **Linux AppImage:** ~160 MB
 - **Linux tar.gz:** ~140 MB
 
 **¿Por qué son tan grandes?**
 Incluyen Chromium completo + Node.js + tu app. Pero a cambio:
+
 - ✅ Los usuarios no necesitan instalar NADA
 - ✅ Funciona 100% offline
 - ✅ Es una app nativa de verdad

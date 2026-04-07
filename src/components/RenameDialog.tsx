@@ -10,7 +10,7 @@ interface RenameDialogProps {
 
 export function RenameDialog({ node, onConfirm, onCancel }: RenameDialogProps) {
   const inputRef = useRef<HTMLInputElement>(null);
-  
+
   // Extract method prefix for HTTP requests (GET, POST, etc.)
   const getHttpMethodPrefix = (name: string): string | null => {
     const httpMethods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'];
@@ -47,7 +47,7 @@ export function RenameDialog({ node, onConfirm, onCancel }: RenameDialogProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (newName.trim()) {
       const finalName = methodPrefix ? methodPrefix + newName.trim() : newName.trim();
       onConfirm(finalName);
@@ -74,28 +74,24 @@ export function RenameDialog({ node, onConfirm, onCancel }: RenameDialogProps) {
             <label className="block text-sm text-zinc-300 mb-2">
               New name
               {methodPrefix && (
-                <span className="text-xs text-zinc-500 ml-2">
-                  (Method prefix "{methodPrefix}" will be preserved)
-                </span>
+                <span className="text-xs text-zinc-500 ml-2">(Method prefix "{methodPrefix}" will be preserved)</span>
               )}
             </label>
-            
+
             <div className="flex items-center gap-2">
               {methodPrefix && (
-                <span className="text-sm font-medium text-zinc-400 bg-white/5 px-2 py-2 rounded">
-                  {methodPrefix}
-                </span>
+                <span className="text-sm font-medium text-zinc-400 bg-white/5 px-2 py-2 rounded">{methodPrefix}</span>
               )}
               <input
                 ref={inputRef}
                 type="text"
                 value={newName}
-                onChange={(e) => setNewName(e.target.value)}
+                onChange={e => setNewName(e.target.value)}
                 className="flex-1 px-3 py-2 bg-[#0a0a0a] border border-white/10 text-zinc-100 placeholder-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
                 placeholder="Enter new name..."
               />
             </div>
-            
+
             <p className="text-xs text-zinc-500 mt-2">
               Current: <span className="font-mono">{node.name}</span>
             </p>

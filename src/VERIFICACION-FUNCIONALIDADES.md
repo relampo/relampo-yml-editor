@@ -9,6 +9,7 @@ Este documento confirma que **TODAS** las funcionalidades están incluidas en el
 ## ✅ COMPONENTES INCLUIDOS
 
 ### Componentes Principales
+
 - [x] **YAMLEditor.tsx** - Componente principal con layout de 3 paneles
 - [x] **YAMLTreeView.tsx** - Panel izquierdo (árbol)
 - [x] **YAMLTreeNode.tsx** - Nodos individuales del árbol
@@ -20,6 +21,7 @@ Este documento confirma que **TODAS** las funcionalidades están incluidas en el
 - [x] **DetailPanel.tsx** - Panel auxiliar de detalles
 
 ### Componentes UI (shadcn/ui)
+
 - [x] **button.tsx** - Botones
 - [x] **input.tsx** - Inputs de texto
 - [x] **select.tsx** - Selects/dropdowns
@@ -32,12 +34,14 @@ Este documento confirma que **TODAS** las funcionalidades están incluidas en el
 ## ✅ FUNCIONALIDADES CORE
 
 ### 📂 Upload/Download
+
 - [x] Upload YAML desde archivos locales
 - [x] Download YAML editado
 - [x] Soporte para `.yaml` y `.yml`
 - [x] Validación al cargar archivos
 
 ### 💻 Editor de Código
+
 - [x] Edición manual de YAML
 - [x] Syntax highlighting básico
 - [x] Scroll vertical/horizontal
@@ -46,6 +50,7 @@ Este documento confirma que **TODAS** las funcionalidades están incluidas en el
 - [x] Theme dark
 
 ### 🌳 Vista de Árbol
+
 - [x] Representación jerárquica del YAML
 - [x] Expandir/colapsar nodos
 - [x] Iconos por tipo de nodo
@@ -58,6 +63,7 @@ Este documento confirma que **TODAS** las funcionalidades están incluidas en el
 ## ✅ DRAG & DROP
 
 ### Funcionalidad Básica
+
 - [x] **draggable** attribute en nodos
 - [x] **handleDragStart** - Iniciar arrastre
 - [x] **handleDragOver** - Validar drop zone
@@ -65,24 +71,28 @@ Este documento confirma que **TODAS** las funcionalidades están incluidas en el
 - [x] **handleDrop** - Ejecutar drop
 
 ### Indicadores Visuales
+
 - [x] **Línea amarilla arriba** (before)
 - [x] **Línea amarilla abajo** (after)
 - [x] **Fondo amarillo** (inside)
 - [x] **Cursor prohibido** para drops inválidos
 
 ### Auto-Expansión
+
 - [x] Timer de 800ms al hover sobre nodo cerrado
 - [x] Expansión automática de nodos con hijos
 - [x] Cancelación de timer al salir del nodo
 - [x] Logs de debug en consola
 
 ### Validación de Reglas
+
 - [x] **canDrop()** - Valida si se puede soltar
 - [x] **canContain()** - Valida si puede contener
 - [x] Reglas por tipo de nodo (request, group, if, loop, etc)
 - [x] Prevención de drops inválidos
 
 ### Reordenamiento
+
 - [x] **before** - Insertar antes del target
 - [x] **after** - Insertar después del target
 - [x] **inside** - Insertar dentro del target
@@ -94,6 +104,7 @@ Este documento confirma que **TODAS** las funcionalidades están incluidas en el
 ## ✅ CONTEXT MENU (Click Derecho)
 
 ### Funcionalidad Base
+
 - [x] **onContextMenu** event handler
 - [x] Posicionamiento en coordenadas del mouse
 - [x] Overlay para cerrar al hacer click fuera
@@ -102,9 +113,11 @@ Este documento confirma que **TODAS** las funcionalidades están incluidas en el
 ### Opciones por Tipo de Nodo
 
 #### En `scenarios`
+
 - [x] Add Scenario
 
 #### En `scenario.steps[]`
+
 - [x] Add Step → Request
 - [x] Add Step → Group
 - [x] Add Step → If/Else
@@ -113,22 +126,27 @@ Este documento confirma que **TODAS** las funcionalidades están incluidas en el
 - [x] Add Step → Think Time
 
 #### En `variables[]`
+
 - [x] Add Variable
 - [x] Remove Variable
 
 #### En `data_sources[]`
+
 - [x] Add Data Source
 - [x] Remove Data Source
 
 #### En `http_defaults.headers`
+
 - [x] Add Header
 - [x] Remove Header
 
 #### En Steps (Request, Group, etc)
+
 - [x] Remove
 - [x] Opciones contextuales según tipo
 
 ### Creación de Nodos
+
 - [x] **createNodeByType()** - Genera nodos nuevos
 - [x] IDs únicos (timestamp-based)
 - [x] Valores por defecto según tipo
@@ -136,6 +154,7 @@ Este documento confirma que **TODAS** las funcionalidades están incluidas en el
 - [x] Sincronización con código
 
 ### Eliminación de Nodos
+
 - [x] **removeNodeFromTree()** - Elimina nodo
 - [x] Búsqueda recursiva
 - [x] Actualización del árbol
@@ -146,6 +165,7 @@ Este documento confirma que **TODAS** las funcionalidades están incluidas en el
 ## ✅ PANEL DE DETALLES
 
 ### Edición de Propiedades
+
 - [x] Formulario dinámico por tipo de nodo
 - [x] Inputs de texto
 - [x] Selects/dropdowns
@@ -155,6 +175,7 @@ Este documento confirma que **TODAS** las funcionalidades están incluidas en el
 ### Tipos de Nodos Soportados
 
 #### Request
+
 - [x] Method (GET, POST, PUT, DELETE, etc)
 - [x] URL
 - [x] Headers (clave-valor)
@@ -163,29 +184,35 @@ Este documento confirma que **TODAS** las funcionalidades están incluidas en el
 - [x] Assertions
 
 #### Group
+
 - [x] Name
 - [x] Description
 
 #### If/Else
+
 - [x] Condition
 - [x] Then branch
 - [x] Else branch
 
 #### Loop
+
 - [x] Count (iteraciones)
 - [x] Over (array)
 - [x] While (condición)
 
 #### Retry
+
 - [x] Max attempts
 - [x] Delay
 - [x] Backoff strategy
 
 #### Think Time
+
 - [x] Duration (fijo)
 - [x] Min/Max (aleatorio)
 
 ### Sincronización
+
 - [x] **handleNodeUpdate()** - Actualiza nodo en árbol
 - [x] Búsqueda recursiva por ID
 - [x] Actualización del data del nodo
@@ -197,6 +224,7 @@ Este documento confirma que **TODAS** las funcionalidades están incluidas en el
 ## ✅ PARSER YAML
 
 ### YAML → Tree
+
 - [x] **parseYAMLToTree()** - Convierte YAML a árbol
 - [x] Soporte para `test_metadata`
 - [x] Soporte para `variables[]`
@@ -208,6 +236,7 @@ Este documento confirma que **TODAS** las funcionalidades están incluidas en el
 - [x] Preservación de estructura
 
 ### Tree → YAML
+
 - [x] **treeToYAML()** - Convierte árbol a YAML
 - [x] Formateo correcto con indentación
 - [x] Preservación de tipos
@@ -216,6 +245,7 @@ Este documento confirma que **TODAS** las funcionalidades están incluidas en el
 - [x] Comentarios opcionales
 
 ### Validación
+
 - [x] Try/catch en parsing
 - [x] Mensajes de error descriptivos
 - [x] Indicador visual de errores
@@ -226,10 +256,12 @@ Este documento confirma que **TODAS** las funcionalidades están incluidas en el
 ## ✅ INTERNACIONALIZACIÓN (i18n)
 
 ### Idiomas
+
 - [x] Inglés (EN)
 - [x] Español (ES)
 
 ### Traducciones Completas
+
 - [x] Barra de herramientas (Upload, Download, Validate)
 - [x] Vistas (Code View, Tree View)
 - [x] Context menu (Add, Remove, etc)
@@ -239,6 +271,7 @@ Este documento confirma que **TODAS** las funcionalidades están incluidas en el
 - [x] Placeholders
 
 ### Context Provider
+
 - [x] **LanguageContext** - Provider de idioma
 - [x] **useLanguage()** hook
 - [x] **t()** función de traducción
@@ -250,12 +283,14 @@ Este documento confirma que **TODAS** las funcionalidades están incluidas en el
 ## ✅ UTILS & HELPERS
 
 ### Drag & Drop Rules
+
 - [x] **canDrop()** - Valida drops
 - [x] **canContain()** - Valida contenedores
 - [x] Matriz de compatibilidad por tipos
 - [x] Logs de debug
 
 ### Tree Helpers
+
 - [x] **addNodeToTree()** - Agrega nodo
 - [x] **removeNodeFromTree()** - Elimina nodo
 - [x] **moveNodeInTree()** - Mueve nodo (before/after/inside)
@@ -263,6 +298,7 @@ Este documento confirma que **TODAS** las funcionalidades están incluidas en el
 - [x] Inmutabilidad (spread operators)
 
 ### Node Helpers
+
 - [x] **createNodeByType()** - Crea nodos nuevos
 - [x] IDs únicos con timestamp
 - [x] Valores por defecto
@@ -273,6 +309,7 @@ Este documento confirma que **TODAS** las funcionalidades están incluidas en el
 ## ✅ TYPES (TypeScript)
 
 ### Definiciones
+
 - [x] **YAMLNode** - Interfaz base
 - [x] **YAMLNodeType** - Union type de tipos
 - [x] **YAMLAddableNodeType** - Tipos que se pueden agregar
@@ -284,11 +321,13 @@ Este documento confirma que **TODAS** las funcionalidades están incluidas en el
 ## ✅ ESTILOS & THEME
 
 ### Tailwind CSS v4
+
 - [x] Configuración postcss
 - [x] Importación en globals.css
 - [x] Utility classes
 
 ### Paleta de Colores
+
 - [x] Backgrounds: `#0a0a0a`, `#111111`
 - [x] Text: `zinc-100`, `zinc-400`, `zinc-300`
 - [x] Primary: `#facc15` (yellow-400)
@@ -298,6 +337,7 @@ Este documento confirma que **TODAS** las funcionalidades están incluidas en el
 - [x] Selected: `yellow-400/10`
 
 ### Iconos (Lucide React)
+
 - [x] Importación correcta
 - [x] Iconos por tipo de nodo
 - [x] Iconos en barra de herramientas
@@ -308,12 +348,14 @@ Este documento confirma que **TODAS** las funcionalidades están incluidas en el
 ## ✅ ELECTRON SETUP
 
 ### Configuración
+
 - [x] **electron/** directory con main.js
 - [x] **package.electron.json** con scripts
 - [x] Electron builder config
 - [x] Icon assets (macOS/Linux)
 
 ### Build Process
+
 - [x] Vite build → dist/
 - [x] Electron packaging
 - [x] DMG generation (macOS)
@@ -324,6 +366,7 @@ Este documento confirma que **TODAS** las funcionalidades están incluidas en el
 ## ✅ SCRIPT DE BUILD
 
 ### Pasos Automatizados
+
 - [x] 1. Verificar Node.js
 - [x] 2. Crear directorio limpio
 - [x] 3. Copiar archivos del YAML Editor
@@ -335,6 +378,7 @@ Este documento confirma que **TODAS** las funcionalidades están incluidas en el
 - [x] 9. Mover binarios a releases/
 
 ### Archivos Copiados
+
 ```
 ✓ AppYAMLStandalone.tsx → App.tsx
 ✓ components/YAML*.tsx → components/
@@ -354,6 +398,7 @@ Este documento confirma que **TODAS** las funcionalidades están incluidas en el
 ## 🎯 RESUMEN FINAL
 
 ### ✅ TODO INCLUIDO
+
 - [x] **9 Componentes principales** del YAML Editor
 - [x] **6 Componentes UI** reutilizables
 - [x] **Context Provider** de idioma
@@ -368,6 +413,7 @@ Este documento confirma que **TODAS** las funcionalidades están incluidas en el
 - [x] **Electron setup** completo
 
 ### ❌ NO INCLUIDO (Por diseño)
+
 - ❌ Landing Page
 - ❌ Workbench (Dashboard, Projects, Settings)
 - ❌ Relampo League
@@ -383,6 +429,7 @@ Este documento confirma que **TODAS** las funcionalidades están incluidas en el
 El binario standalone **CONTIENE EL 100%** de las funcionalidades del YAML Editor.
 
 **NO SE ELIMINÓ NINGUNA FUNCIONALIDAD** relacionada con:
+
 - ✅ Drag & Drop
 - ✅ Context Menu
 - ✅ Edición de nodos

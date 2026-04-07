@@ -4,7 +4,7 @@ import { parseYAMLToTree, treeToYAML } from './yamlParser';
 
 const sqlE2EScenarioYAML = readFileSync(
   new URL('../../../relampo-backend/examples/sql-e2e-scenario.yaml', import.meta.url),
-  'utf8'
+  'utf8',
 );
 
 // ─── parseYAMLToTree ───────────────────────────────────────────────────────
@@ -46,7 +46,7 @@ variables:
   TOKEN: abc
 `;
     const tree = parseYAMLToTree(yaml)!;
-    const vars = tree.children!.find((c) => c.type === 'variables');
+    const vars = tree.children!.find(c => c.type === 'variables');
     expect(vars).toBeDefined();
     expect(vars!.data.BASE_URL).toBe('https://example.com');
   });
@@ -62,7 +62,7 @@ http_defaults:
     token: my-token
 `;
     const tree = parseYAMLToTree(yaml)!;
-    const defaults = tree.children!.find((c) => c.type === 'http_defaults');
+    const defaults = tree.children!.find(c => c.type === 'http_defaults');
     expect(defaults).toBeDefined();
     expect(defaults!.data.base_url).toBe('https://api.example.com');
     expect(defaults!.data.auth?.type).toBe('bearer');
@@ -79,7 +79,7 @@ http_defaults:
     token: x
 `;
     const tree = parseYAMLToTree(yaml)!;
-    const defaults = tree.children!.find((c) => c.type === 'http_defaults');
+    const defaults = tree.children!.find(c => c.type === 'http_defaults');
     expect(defaults!.data.auth).toBeUndefined();
   });
 
@@ -93,13 +93,13 @@ scenarios:
       - get: https://example.com/api
 `;
     const tree = parseYAMLToTree(yaml)!;
-    const scenariosNode = tree.children!.find((c) => c.type === 'scenarios');
+    const scenariosNode = tree.children!.find(c => c.type === 'scenarios');
     expect(scenariosNode).toBeDefined();
     const scenario = scenariosNode!.children![0];
     expect(scenario.type).toBe('scenario');
     expect(scenario.name).toBe('Smoke');
 
-    const stepsNode = scenario.children!.find((c) => c.type === 'steps');
+    const stepsNode = scenario.children!.find(c => c.type === 'steps');
     expect(stepsNode).toBeDefined();
     const step = stepsNode!.children![0];
     expect(step.type).toBe('get');
@@ -120,16 +120,12 @@ scenarios:
             user: admin
 `;
     const tree = parseYAMLToTree(yaml)!;
-    const step = tree
-      .children!.find((c) => c.type === 'scenarios')!
-      .children![0]
-      .children!.find((c) => c.type === 'steps')!
+    const step = tree.children!.find(c => c.type === 'scenarios')!.children![0].children!.find(c => c.type === 'steps')!
       .children![0];
     expect(step.type).toBe('request');
     expect(step.data.url).toBe('https://example.com/login');
     expect(step.data.method).toBe('POST');
   });
-
 
   it('parses sql steps', () => {
     const yaml = `
@@ -159,10 +155,7 @@ scenarios:
           allow_writes: false
 `;
     const tree = parseYAMLToTree(yaml)!;
-    const step = tree
-      .children!.find((c) => c.type === 'scenarios')!
-      .children![0]
-      .children!.find((c) => c.type === 'steps')!
+    const step = tree.children!.find(c => c.type === 'scenarios')!.children![0].children!.find(c => c.type === 'steps')!
       .children![0];
     expect(step.type).toBe('sql');
     expect(step.data.dialect).toBe('postgres');
@@ -176,18 +169,15 @@ scenarios:
 
   it('parses the backend sql e2e example with both dialects and extractor-rich query steps', () => {
     const tree = parseYAMLToTree(sqlE2EScenarioYAML)!;
-    const scenariosNode = tree.children!.find((c) => c.type === 'scenarios');
+    const scenariosNode = tree.children!.find(c => c.type === 'scenarios');
 
     expect(tree.name).toBe('SQL Database Operations E2E Test');
-    expect(tree.children!.find((c) => c.type === 'variables')?.data.db_host).toBe('localhost');
+    expect(tree.children!.find(c => c.type === 'variables')?.data.db_host).toBe('localhost');
     expect(scenariosNode?.children).toHaveLength(2);
 
     const scenarios = scenariosNode!.children!;
-    const allSqlSteps = scenarios.flatMap((scenario) =>
-      scenario.children!
-        .find((c) => c.type === 'steps')!
-        .children!
-        .filter((c) => c.type === 'sql')
+    const allSqlSteps = scenarios.flatMap(scenario =>
+      scenario.children!.find(c => c.type === 'steps')!.children!.filter(c => c.type === 'sql'),
     );
 
     expect(allSqlSteps).toHaveLength(7);
@@ -231,8 +221,8 @@ scenarios:
     steps: []
 `;
     const tree = parseYAMLToTree(yaml)!;
-    const scenario = tree.children!.find((c) => c.type === 'scenarios')!.children![0];
-    const load = scenario.children!.find((c) => c.type === 'load');
+    const scenario = tree.children!.find(c => c.type === 'scenarios')!.children![0];
+    const load = scenario.children!.find(c => c.type === 'load');
     expect(load).toBeDefined();
     expect(load!.data.users).toBe(10);
   });
@@ -246,7 +236,7 @@ data_source:
   type: csv
 `;
     const tree = parseYAMLToTree(yaml)!;
-    const ds = tree.children!.find((c) => c.type === 'data_source');
+    const ds = tree.children!.find(c => c.type === 'data_source');
     expect(ds).toBeDefined();
     expect(ds!.data.file).toBe('users.csv');
   });
@@ -260,7 +250,7 @@ metrics:
   percentiles: [50, 95, 99]
 `;
     const tree = parseYAMLToTree(yaml)!;
-    const metrics = tree.children!.find((c) => c.type === 'metrics');
+    const metrics = tree.children!.find(c => c.type === 'metrics');
     expect(metrics).toBeDefined();
     expect(metrics!.data.enabled).toBe(true);
     expect(metrics!.data.percentiles).toEqual([50, 95, 99]);
@@ -328,7 +318,7 @@ http_defaults:
     const tree = parseYAMLToTree(input)!;
     const output = treeToYAML(tree);
     const reparsed = parseYAMLToTree(output)!;
-    const defaults = reparsed.children!.find((c) => c.type === 'http_defaults');
+    const defaults = reparsed.children!.find(c => c.type === 'http_defaults');
     expect(defaults!.data.auth?.type).toBe('api_key');
     expect(defaults!.data.auth?.name).toBe('X-API-Key');
   });
@@ -345,7 +335,7 @@ http_defaults:
 `;
     const tree = parseYAMLToTree(input)!;
     const reparsed = parseYAMLToTree(treeToYAML(tree))!;
-    const defaults = reparsed.children!.find((c) => c.type === 'http_defaults');
+    const defaults = reparsed.children!.find(c => c.type === 'http_defaults');
     expect(defaults!.data.auth?.type).toBe('basic');
     expect(defaults!.data.auth?.username).toBe('admin');
   });
@@ -363,7 +353,6 @@ scenarios:
     const output = treeToYAML(tree);
     expect(output).toContain('Login Flow');
   });
-
 
   it('round-trips sql steps', () => {
     const input = `
@@ -393,10 +382,8 @@ scenarios:
     const output = treeToYAML(tree);
     const reparsed = parseYAMLToTree(output)!;
     const step = reparsed
-      .children!.find((c) => c.type === 'scenarios')!
-      .children![0]
-      .children!.find((c) => c.type === 'steps')!
-      .children![0];
+      .children!.find(c => c.type === 'scenarios')!
+      .children![0].children!.find(c => c.type === 'steps')!.children![0];
     expect(output).toContain('sql:');
     expect(output).toContain('kind: query');
     expect(output).toContain('allow_writes: false');
@@ -441,7 +428,7 @@ scenarios:
   it('round-trips the backend sql e2e example without losing canonical sql fields', () => {
     const output = treeToYAML(parseYAMLToTree(sqlE2EScenarioYAML)!);
     const reparsed = parseYAMLToTree(output)!;
-    const scenarios = reparsed.children!.find((c) => c.type === 'scenarios')!.children!;
+    const scenarios = reparsed.children!.find(c => c.type === 'scenarios')!.children!;
 
     expect(output).toContain('allow_writes: true');
     expect(output).toContain('validate_connectivity: true');
@@ -451,17 +438,14 @@ scenarios:
     expect(output).not.toContain('validate_connection:');
     expect(output).not.toContain('sslmode:');
 
-    const sqlSteps = scenarios.flatMap((scenario) =>
-      scenario.children!
-        .find((c) => c.type === 'steps')!
-        .children!
-        .filter((c) => c.type === 'sql')
+    const sqlSteps = scenarios.flatMap(scenario =>
+      scenario.children!.find(c => c.type === 'steps')!.children!.filter(c => c.type === 'sql'),
     );
 
     expect(sqlSteps).toHaveLength(7);
-    expect(sqlSteps.filter((step) => step.data.kind === 'exec')).toHaveLength(4);
-    expect(sqlSteps.filter((step) => step.data.kind === 'query')).toHaveLength(3);
-    expect(sqlSteps.filter((step) => step.data.allow_writes === true)).toHaveLength(4);
+    expect(sqlSteps.filter(step => step.data.kind === 'exec')).toHaveLength(4);
+    expect(sqlSteps.filter(step => step.data.kind === 'query')).toHaveLength(3);
+    expect(sqlSteps.filter(step => step.data.allow_writes === true)).toHaveLength(4);
   });
 });
 
@@ -513,11 +497,11 @@ metrics:
     const yaml2 = treeToYAML(tree2);
 
     // Variables survive the round-trip
-    const vars = tree2.children!.find((c) => c.type === 'variables');
+    const vars = tree2.children!.find(c => c.type === 'variables');
     expect(vars!.data.HOST).toBe('https://api.example.com');
 
     // Scenarios survive the round-trip
-    const scenarios = tree2.children!.find((c) => c.type === 'scenarios');
+    const scenarios = tree2.children!.find(c => c.type === 'scenarios');
     expect(scenarios!.children![0].name).toBe('Scenario A');
 
     // YAML output is stable (no runaway growth)
@@ -558,13 +542,10 @@ scenarios:
               match_no: 0
 `;
     const tree = parseYAMLToTree(yaml)!;
-    const step = tree
-      .children!.find((c) => c.type === 'scenarios')!
-      .children![0]
-      .children!.find((c) => c.type === 'steps')!
+    const step = tree.children!.find(c => c.type === 'scenarios')!.children![0].children!.find(c => c.type === 'steps')!
       .children![0];
 
-    const extractor = step.children?.find((c) => c.type === 'extractor');
+    const extractor = step.children?.find(c => c.type === 'extractor');
     expect(extractor?.data?.capture_mode).toBe('all');
   });
 
@@ -585,12 +566,9 @@ scenarios:
               match_no: -1
 `;
     const tree = parseYAMLToTree(yaml)!;
-    const step = tree
-      .children!.find((c) => c.type === 'scenarios')!
-      .children![0]
-      .children!.find((c) => c.type === 'steps')!
+    const step = tree.children!.find(c => c.type === 'scenarios')!.children![0].children!.find(c => c.type === 'steps')!
       .children![0];
-    const extractor = step.children?.find((c) => c.type === 'extractor');
+    const extractor = step.children?.find(c => c.type === 'extractor');
     expect(extractor?.data?.capture_mode).toBe('random');
   });
 });

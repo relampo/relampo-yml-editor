@@ -28,7 +28,7 @@ El Relampo YAML Editor es una herramienta visual inspirada en JMeter que te perm
 ✅ Validar respuestas con assertions  
 ✅ Controlar el flujo con loops, condiciones y reintentos  
 ✅ Ejecutar código JavaScript personalizado con Spark  
-✅ Configurar carga de usuarios y duración  
+✅ Configurar carga de usuarios y duración
 
 ---
 
@@ -48,15 +48,18 @@ La interfaz consta de 3 paneles principales:
 ```
 
 ### 1. **Tree View** (Izquierda)
+
 - Árbol jerárquico de tu prueba
 - Drag & drop para reorganizar elementos
 - Click derecho para menú contextual
 
 ### 2. **Canvas** (Centro)
+
 - Visualización gráfica del árbol
 - Vista general de la estructura
 
 ### 3. **Details Panel** (Derecha)
+
 - Edición de propiedades del elemento seleccionado
 - Campos específicos según el tipo de elemento
 
@@ -98,7 +101,9 @@ Cuando seleccionas un **Request**, verás el panel de detalles con dos tabs: **R
 #### Tab Request
 
 ##### 1. **Method**
+
 Dropdown con todos los métodos HTTP:
+
 - `GET` (verde)
 - `POST` (azul)
 - `PUT` (amarillo)
@@ -134,6 +139,7 @@ Accept: application/json
 ```
 
 **Botón "Add Common Header"**: dropdown con 21 headers comunes:
+
 - Content-Type
 - Authorization
 - Accept
@@ -148,23 +154,27 @@ Selector de tipo de body:
 **🔘 None** - Sin body (para GET, DELETE)
 
 **🔘 JSON** - Formato JSON con validación automática
+
 ```json
 {
   "username": "test@example.com",
   "password": "secret123"
 }
 ```
+
 - ✅ Validación en tiempo real
 - 🎨 Syntax highlighting
 - ⚠️ Alertas de errores
 
 **🔘 Form Data** - Datos de formulario
+
 ```
 username=test
 password=secret123
 ```
 
 **🔘 Raw Text** - Texto plano
+
 ```
 Plain text content
 ```
@@ -172,6 +182,7 @@ Plain text content
 ##### 5. **Buscador** 🔍
 
 El panel de Request tiene un buscador integrado:
+
 - Busca en todos los campos (URL, headers, body, etc.)
 - Highlighting amarillo en coincidencias
 - Navegación prev/next
@@ -182,26 +193,32 @@ El panel de Request tiene un buscador integrado:
 En este tab puedes **crear una respuesta esperada** o **editar respuestas grabadas**:
 
 ##### 1. **Status Code**
+
 ```
 Status Code: 200
 [✓ Success]  (visual con color verde/rojo según código)
 ```
 
 ##### 2. **Response Time**
+
 ```
 Response Time (ms): 150
 ⏱ 150ms
 ```
 
 ##### 3. **Response Headers**
+
 Lista editable de headers de respuesta:
+
 ```
 content-type: application/json
 x-request-id: abc-123
 ```
 
 ##### 4. **Response Body**
+
 Editor con formato JSON/Text:
+
 ```json
 {
   "data": {
@@ -210,6 +227,7 @@ Editor con formato JSON/Text:
   }
 }
 ```
+
 - Botones para cambiar formato (JSON/Text)
 - Validación JSON automática
 - ✓ Valid JSON / ⚠ Plain text
@@ -256,9 +274,11 @@ Default: NOT_FOUND
 Extrae usando grupos de captura `()`.
 
 **Ejemplo de respuesta:**
+
 ```json
-{"token":"abc123xyz"}
+{ "token": "abc123xyz" }
 ```
+
 **Variable creada:** `${TOKEN}` = `abc123xyz`
 
 ##### 2. **JSONPath** - Para respuestas JSON
@@ -271,6 +291,7 @@ Default: 0
 ```
 
 **Ejemplos de expresiones:**
+
 - `$.data.id` - Campo directo
 - `$.users[0].name` - Primer elemento de array
 - `$.data[*].id` - Todos los IDs
@@ -367,6 +388,7 @@ Match Number: (opcional)
 Type: response_time
 Max Time (ms): 500
 ```
+
 Falla si la respuesta tarda más de 500ms.
 
 #### 7. **Response Size** - Validar tamaño
@@ -417,18 +439,21 @@ Break Condition: ${STATUS} == "done"  (opcional)
 ```
 
 **Visual Stats:**
+
 ```
 📊 5 steps inside
 📊 Total: 25 iterations (5 × 5)
 ```
 
 **Ejemplo:**
+
 ```
 Loop (count: 3)
   ├─ Request: Get Page 1
   ├─ Request: Get Page 2
   └─ Request: Get Page 3
 ```
+
 Se ejecutan 9 requests en total (3 loops × 3 requests).
 
 ### 3. **If** - Ejecución condicional
@@ -440,6 +465,7 @@ Condition: ${STATUS_CODE} == 200
 ```
 
 **Expresiones soportadas:**
+
 ```javascript
 ${VAR} == "value"
 ${COUNT} > 10
@@ -448,6 +474,7 @@ ${TOKEN} != null
 ```
 
 **Visual Stats:**
+
 ```
 📊 3 conditional steps
 ```
@@ -465,6 +492,7 @@ Retry Count: 3
 ```
 
 **Visual Stats:**
+
 ```
 📊 Retries: 3
 📊 Steps: 1 → Max 4 attempts
@@ -503,6 +531,7 @@ Simula el tiempo que un usuario real espera entre acciones:
 Mode: Fixed
 Duration: 2s
 ```
+
 Pausa fija de 2 segundos.
 
 #### Modo Variable
@@ -512,9 +541,11 @@ Mode: Variable
 Min: 1s
 Max: 5s
 ```
+
 Pausa aleatoria entre 1 y 5 segundos.
 
 **Visual Stats:**
+
 ```
 ⏱ Fixed: 2s
 ⏱ Variable: 1s - 5s
@@ -535,6 +566,7 @@ Pausa aleatoria entre 1 y 5 segundos.
 ### Editor de Código
 
 El editor incluye:
+
 - ✅ Syntax highlighting para JavaScript
 - 📝 Monaco Editor (mismo de VS Code)
 - 🎨 Theme oscuro
@@ -547,25 +579,27 @@ Dentro de un Spark script tienes acceso a:
 
 ```javascript
 // Leer variables
-const token = vars.get("TOKEN");
-const userId = vars.get("USER_ID");
+const token = vars.get('TOKEN');
+const userId = vars.get('USER_ID');
 
 // Escribir variables
-vars.set("NEW_VAR", "value");
-vars.set("COUNTER", parseInt(vars.get("COUNTER") || 0) + 1);
+vars.set('NEW_VAR', 'value');
+vars.set('COUNTER', parseInt(vars.get('COUNTER') || 0) + 1);
 ```
 
 #### Props (propiedades del request)
 
 ```javascript
 // Modificar request antes de enviarlo (spark_before)
-props.setUrl("https://api.example.com/v2/users");
-props.setMethod("POST");
-props.setHeader("X-Custom-Header", "value");
-props.setBody(JSON.stringify({ 
-  user: userId,
-  timestamp: Date.now() 
-}));
+props.setUrl('https://api.example.com/v2/users');
+props.setMethod('POST');
+props.setHeader('X-Custom-Header', 'value');
+props.setBody(
+  JSON.stringify({
+    user: userId,
+    timestamp: Date.now(),
+  }),
+);
 ```
 
 #### Response (solo en spark_after)
@@ -579,7 +613,7 @@ const headers = response.headers;
 // Procesar respuesta JSON
 if (status === 200) {
   const data = JSON.parse(body);
-  vars.set("RESULT", data.result);
+  vars.set('RESULT', data.result);
 }
 ```
 
@@ -587,9 +621,9 @@ if (status === 200) {
 
 ```javascript
 // Logging
-log.info("Request completed successfully");
-log.warn("Unexpected status: " + status);
-log.error("Failed to parse response");
+log.info('Request completed successfully');
+log.warn('Unexpected status: ' + status);
+log.error('Failed to parse response');
 ```
 
 ### Ejemplos de Spark Scripts
@@ -599,20 +633,20 @@ log.error("Failed to parse response");
 ```javascript
 // spark_before
 const timestamp = Date.now();
-vars.set("TIMESTAMP", timestamp.toString());
-log.info("Generated timestamp: " + timestamp);
+vars.set('TIMESTAMP', timestamp.toString());
+log.info('Generated timestamp: ' + timestamp);
 ```
 
 #### 2. Modificar request basado en variables
 
 ```javascript
 // spark_before
-const userType = vars.get("USER_TYPE");
+const userType = vars.get('USER_TYPE');
 
-if (userType === "admin") {
-  props.setHeader("X-Admin-Token", vars.get("ADMIN_TOKEN"));
+if (userType === 'admin') {
+  props.setHeader('X-Admin-Token', vars.get('ADMIN_TOKEN'));
 } else {
-  props.setHeader("Authorization", "Bearer " + vars.get("USER_TOKEN"));
+  props.setHeader('Authorization', 'Bearer ' + vars.get('USER_TOKEN'));
 }
 ```
 
@@ -622,16 +656,16 @@ if (userType === "admin") {
 // spark_after
 const body = JSON.parse(response.body);
 
-if (body.status === "success" && body.data) {
+if (body.status === 'success' && body.data) {
   // Extraer múltiples valores
-  vars.set("USER_ID", body.data.userId);
-  vars.set("SESSION_ID", body.data.sessionId);
-  vars.set("EXPIRES_AT", body.data.expiresAt);
-  
-  log.info("User authenticated: " + body.data.userId);
+  vars.set('USER_ID', body.data.userId);
+  vars.set('SESSION_ID', body.data.sessionId);
+  vars.set('EXPIRES_AT', body.data.expiresAt);
+
+  log.info('User authenticated: ' + body.data.userId);
 } else {
-  log.error("Authentication failed");
-  vars.set("AUTH_FAILED", "true");
+  log.error('Authentication failed');
+  vars.set('AUTH_FAILED', 'true');
 }
 ```
 
@@ -639,15 +673,15 @@ if (body.status === "success" && body.data) {
 
 ```javascript
 // spark_before
-let counter = parseInt(vars.get("ITERATION") || "0");
+let counter = parseInt(vars.get('ITERATION') || '0');
 counter++;
-vars.set("ITERATION", counter.toString());
+vars.set('ITERATION', counter.toString());
 
-log.info("Iteration #" + counter);
+log.info('Iteration #' + counter);
 
 // Modificar URL con el contador
-const baseUrl = vars.get("BASE_URL");
-props.setUrl(baseUrl + "/page/" + counter);
+const baseUrl = vars.get('BASE_URL');
+props.setUrl(baseUrl + '/page/' + counter);
 ```
 
 #### 5. Generar UUID
@@ -655,16 +689,16 @@ props.setUrl(baseUrl + "/page/" + counter);
 ```javascript
 // spark_before
 function generateUUID() {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    const r = Math.random() * 16 | 0;
-    const v = c == 'x' ? r : (r & 0x3 | 0x8);
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+    const r = (Math.random() * 16) | 0;
+    const v = c == 'x' ? r : (r & 0x3) | 0x8;
     return v.toString(16);
   });
 }
 
 const requestId = generateUUID();
-vars.set("REQUEST_ID", requestId);
-props.setHeader("X-Request-ID", requestId);
+vars.set('REQUEST_ID', requestId);
+props.setHeader('X-Request-ID', requestId);
 ```
 
 ---
@@ -687,6 +721,7 @@ Ramp-up: 30s           # Tiempo para llegar al máximo de usuarios
 ```
 
 **Formatos soportados:**
+
 - `10s` - 10 segundos
 - `5m` - 5 minutos
 - `1h` - 1 hora
@@ -854,12 +889,12 @@ test: Conditional User Actions
 
 ## Atajos de Teclado
 
-| Acción | Atajo |
-|--------|-------|
-| Buscar en detalles | `Ctrl/Cmd + F` |
-| Guardar | `Ctrl/Cmd + S` |
-| Deshacer | `Ctrl/Cmd + Z` |
-| Rehacer | `Ctrl/Cmd + Shift + Z` |
+| Acción             | Atajo                  |
+| ------------------ | ---------------------- |
+| Buscar en detalles | `Ctrl/Cmd + F`         |
+| Guardar            | `Ctrl/Cmd + S`         |
+| Deshacer           | `Ctrl/Cmd + Z`         |
+| Rehacer            | `Ctrl/Cmd + Shift + Z` |
 
 ---
 
@@ -874,6 +909,7 @@ test: Conditional User Actions
 ## Soporte
 
 ¿Preguntas? ¿Encontraste un bug?
+
 - 📧 Email: support@relampo.io
 - 🐛 Issues: https://github.com/relampo/relampo-yml-editor/issues
 - 📚 Docs: https://docs.relampo.io

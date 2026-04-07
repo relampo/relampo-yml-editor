@@ -1,11 +1,13 @@
 # ✅ ERROR RESUELTO
 
 ## 🐛 Problema Original
+
 ```
 TypeError: Importing a module script failed.
 ```
 
 ## 🔧 Causa
+
 El proyecto estaba intentando usar `react-router-dom` que no está disponible en el entorno de Figma Make.
 
 ## ✅ Solución Aplicada
@@ -36,6 +38,7 @@ La aplicación ahora funciona completamente **sin react-router-dom**, usando un 
 ## 🚀 La app ya funciona
 
 Puedes navegar entre:
+
 - Landing Page
 - Dashboard
 - Workbench

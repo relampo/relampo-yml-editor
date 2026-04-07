@@ -36,7 +36,7 @@ export function Recorder() {
   const [includeResponses, setIncludeResponses] = useState(true); // Activado por defecto
   const [showExportModal, setShowExportModal] = useState(false);
   const [generatedYAML, setGeneratedYAML] = useState<string>(''); // Estado local para el YAML generado
-  
+
   // Mock data - 5 requests simulando un flujo de e-commerce con datos realistas
   const [requests] = useState<RecordedRequest[]>([
     {
@@ -50,21 +50,21 @@ export function Recorder() {
       duration: 189,
       size: 1456,
       group: '01_Authentication',
-      headers: { 
+      headers: {
         'Content-Type': 'application/json',
         'X-Requested-With': 'XMLHttpRequest',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
       },
       body: '{"email":"usuario@example.com","password":"***MASKED***","remember_me":true}',
       response: {
         status: 200,
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'Set-Cookie': 'session_id=abc123def456; Path=/; HttpOnly; Secure',
-          'X-Response-Time': '189ms'
+          'X-Response-Time': '189ms',
         },
-        body: '{"success":true,"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...","user":{"id":42,"email":"usuario@example.com","name":"Juan Pérez"},"expires_in":3600}'
-      }
+        body: '{"success":true,"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...","user":{"id":42,"email":"usuario@example.com","name":"Juan Pérez"},"expires_in":3600}',
+      },
     },
     {
       id: '2',
@@ -78,18 +78,18 @@ export function Recorder() {
       size: 2340,
       group: '02_Profile',
       headers: {
-        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+        Authorization: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
         'X-Requested-With': 'XMLHttpRequest',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
       },
       response: {
         status: 200,
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
-          'Cache-Control': 'private, no-cache'
+          'Cache-Control': 'private, no-cache',
         },
-        body: '{"user":{"id":42,"email":"usuario@example.com","name":"Juan Pérez","accountKey":"acc_9x8y7z6w5v4u","avatar":"https://cdn.example.com/avatars/42.jpg","tier":"premium"}}'
-      }
+        body: '{"user":{"id":42,"email":"usuario@example.com","name":"Juan Pérez","accountKey":"acc_9x8y7z6w5v4u","avatar":"https://cdn.example.com/avatars/42.jpg","tier":"premium"}}',
+      },
     },
     {
       id: '3',
@@ -103,17 +103,17 @@ export function Recorder() {
       size: 15678,
       group: '03_Browse',
       headers: {
-        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        Authorization: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
       },
       response: {
         status: 200,
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
-          'X-Total-Count': '42'
+          'X-Total-Count': '42',
         },
-        body: '{"products":[{"id":1,"name":"Laptop Pro","price":1299.99},{"id":2,"name":"Wireless Mouse","price":29.99}],"total":42,"page":1}'
-      }
+        body: '{"products":[{"id":1,"name":"Laptop Pro","price":1299.99},{"id":2,"name":"Wireless Mouse","price":29.99}],"total":42,"page":1}',
+      },
     },
     {
       id: '4',
@@ -126,21 +126,21 @@ export function Recorder() {
       duration: 178,
       size: 892,
       group: '04_Cart',
-      headers: { 
+      headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+        Authorization: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
         'X-Requested-With': 'XMLHttpRequest',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
       },
       body: '{"product_id":1,"quantity":2}',
       response: {
         status: 201,
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
-          'Location': '/api/v1/cart/items/123'
+          Location: '/api/v1/cart/items/123',
         },
-        body: '{"success":true,"cart_item_id":123,"cart":{"total_items":2,"total_price":2599.98}}'
-      }
+        body: '{"success":true,"cart_item_id":123,"cart":{"total_items":2,"total_price":2599.98}}',
+      },
     },
     {
       id: '5',
@@ -153,22 +153,22 @@ export function Recorder() {
       duration: 456,
       size: 3421,
       group: '05_Checkout',
-      headers: { 
+      headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+        Authorization: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
         'X-Requested-With': 'XMLHttpRequest',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
       },
       body: '{"payment_method":"credit_card","shipping_address":"123 Main St, City, 12345"}',
       response: {
         status: 201,
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
-          'Location': '/api/v1/orders/ord_xyz'
+          Location: '/api/v1/orders/ord_xyz',
         },
-        body: '{"success":true,"order_id":"ord_xyz","status":"confirmed","total":2599.98,"estimated_delivery":"2024-01-30"}'
-      }
-    }
+        body: '{"success":true,"order_id":"ord_xyz","status":"confirmed","total":2599.98,"estimated_delivery":"2024-01-30"}',
+      },
+    },
   ]);
 
   const handleStartRecording = () => {
@@ -193,7 +193,7 @@ export function Recorder() {
 
     const now = new Date();
     const recordedAt = now.toISOString();
-    
+
     // Extraer dominio del primer request
     let domain = 'example.com';
     let baseUrl = 'https://api.example.com';
@@ -206,10 +206,8 @@ export function Recorder() {
     }
 
     // Detectar headers comunes a TODOS los requests (para http_defaults)
-    const allHeaders = reqs
-      .filter(r => r.headers)
-      .map(r => r.headers!);
-    
+    const allHeaders = reqs.filter(r => r.headers).map(r => r.headers!);
+
     const commonHeaders: Record<string, string> = {};
     if (allHeaders.length > 0) {
       const firstHeaders = allHeaders[0];
@@ -273,19 +271,18 @@ scenarios:
     reqs.forEach((req, idx) => {
       const pathname = req.path || new URL(req.url).pathname;
       const method = req.method;
-      
+
       yaml += `      # =====================================================\n`;
       yaml += `      # Request ${idx + 1}: ${method} ${pathname}\n`;
       yaml += `      # =====================================================\n`;
       yaml += `      - request:\n`;
       yaml += `          method: ${method}\n`;
       yaml += `          url: ${pathname}\n`;
-      
+
       // Headers específicos (excluir los que ya están en http_defaults)
       if (req.headers && Object.keys(req.headers).length > 0) {
-        const specificHeaders = Object.entries(req.headers)
-          .filter(([key]) => !commonHeaders[key]);
-        
+        const specificHeaders = Object.entries(req.headers).filter(([key]) => !commonHeaders[key]);
+
         if (specificHeaders.length > 0) {
           yaml += `          headers:\n`;
           specificHeaders.forEach(([key, value]) => {
@@ -293,7 +290,7 @@ scenarios:
           });
         }
       }
-      
+
       // Body si existe
       if (req.body) {
         try {
@@ -311,23 +308,23 @@ scenarios:
           yaml += `            ${req.body.replace(/\n/g, '\n            ')}\n`;
         }
       }
-      
+
       // Timestamp de grabación
       const requestTime = new Date(req.timestamp).toISOString();
       yaml += `          recorded_at: "${requestTime}"\n`;
-      
+
       // Response si está habilitado
       if (includeResp && req.response) {
         yaml += `          response:\n`;
         yaml += `            status: ${req.response.status}\n`;
-        
+
         if (req.response.headers && Object.keys(req.response.headers).length > 0) {
           yaml += `            headers:\n`;
           Object.entries(req.response.headers).forEach(([key, value]) => {
             yaml += `              ${key}: "${value}"\n`;
           });
         }
-        
+
         if (req.response.body) {
           try {
             const respBody = JSON.parse(req.response.body);
@@ -342,10 +339,10 @@ scenarios:
             yaml += `              ${req.response.body.replace(/\n/g, '\n              ')}\n`;
           }
         }
-        
+
         yaml += `            time_ms: ${req.duration}\n`;
       }
-      
+
       yaml += `\n`;
     });
 
@@ -396,10 +393,10 @@ scenarios:
 
         <div className="flex items-center gap-3">
           {/* Status indicator */}
-          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium ${getStatusColor()}`}>
-            {status === 'recording' && (
-              <span className="w-2 h-2 bg-red-400 rounded-full animate-pulse" />
-            )}
+          <div
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium ${getStatusColor()}`}
+          >
+            {status === 'recording' && <span className="w-2 h-2 bg-red-400 rounded-full animate-pulse" />}
             {getStatusText()}
           </div>
 
@@ -412,11 +409,7 @@ scenarios:
                 : 'bg-zinc-500/5 text-zinc-400 border-zinc-500/20 hover:bg-zinc-500/10'
             }`}
           >
-            {includeResponses ? (
-              <CheckSquare className="w-3.5 h-3.5" />
-            ) : (
-              <SquareIcon className="w-3.5 h-3.5" />
-            )}
+            {includeResponses ? <CheckSquare className="w-3.5 h-3.5" /> : <SquareIcon className="w-3.5 h-3.5" />}
             Incluir Responses
           </button>
 
@@ -487,13 +480,13 @@ scenarios:
                 {requests.length} requests capturados • {includeResponses ? 'Con' : 'Sin'} responses
               </p>
             </div>
-            
+
             <div className="p-6">
               <div className="bg-[#0a0a0a] border border-white/10 rounded-lg p-4 max-h-[400px] overflow-auto">
                 <pre className="text-xs text-zinc-300 font-mono">{generatedYAML}</pre>
               </div>
             </div>
-            
+
             <div className="p-6 border-t border-white/5 flex gap-3">
               <Button
                 onClick={() => setShowExportModal(false)}

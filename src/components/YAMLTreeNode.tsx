@@ -184,12 +184,7 @@ export function YAMLTreeNode({
     const x = e.clientX;
     const y = e.clientY;
 
-    if (
-      x < rect.left ||
-      x > rect.right ||
-      y < rect.top ||
-      y > rect.bottom
-    ) {
+    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
       setDragOver(null);
 
       // Cancelar timer de auto-expand
@@ -220,9 +215,7 @@ export function YAMLTreeNode({
   const IconComponent = icon;
   const searchHitFlags = getNodeSearchHitFlags(node, searchQuery);
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
-  const hasDirectNameMatch = normalizedSearchQuery
-    ? node.name.toLowerCase().includes(normalizedSearchQuery)
-    : false;
+  const hasDirectNameMatch = normalizedSearchQuery ? node.name.toLowerCase().includes(normalizedSearchQuery) : false;
   const hasRequestHit = searchHitFlags.request || hasDirectNameMatch;
   const hasResponseHit = searchHitFlags.response;
 
@@ -239,39 +232,37 @@ export function YAMLTreeNode({
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        onClick={(e) => onNodeSelect(node, e)}
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onNodeSelect(node, e as any); }}
-        onContextMenu={(e) => onContextMenu(e, node)}
+        onClick={e => onNodeSelect(node, e)}
+        onKeyDown={e => {
+          if (e.key === 'Enter' || e.key === ' ') onNodeSelect(node, e as any);
+        }}
+        onContextMenu={e => onContextMenu(e, node)}
         className={`
           relative group flex items-center gap-2 px-2 py-1.5 pr-3 rounded cursor-pointer transition-colors overflow-visible
-          ${isSelected
-            ? 'bg-yellow-400/10 border border-yellow-400/20'
-            : isRedirectedFollowUp
-              ? 'bg-zinc-400/12 border border-zinc-300/30 hover:bg-zinc-400/16 ring-1 ring-zinc-300/15'
-              : 'hover:bg-white/5 border border-transparent'}
+          ${
+            isSelected
+              ? 'bg-yellow-400/10 border border-yellow-400/20'
+              : isRedirectedFollowUp
+                ? 'bg-zinc-400/12 border border-zinc-300/30 hover:bg-zinc-400/16 ring-1 ring-zinc-300/15'
+                : 'hover:bg-white/5 border border-transparent'
+          }
           ${dragOver === 'before' ? 'border-t-2 border-t-yellow-400' : ''}
           ${dragOver === 'after' ? 'border-b-2 border-b-yellow-400' : ''}
           ${dragOver === 'inside' ? 'bg-yellow-400/5 border-yellow-400/30' : ''}
         `}
         style={{ paddingLeft: `${depth * 16 + 8}px` }}
       >
-        {isRedirectedFollowUp && (
-          <div className="absolute left-0 top-1 bottom-1 w-1 rounded-full bg-zinc-300/80" />
-        )}
+        {isRedirectedFollowUp && <div className="absolute left-0 top-1 bottom-1 w-1 rounded-full bg-zinc-300/80" />}
         {/* Expand/Collapse */}
         {hasChildren && (
           <button
-            onClick={(e) => {
+            onClick={e => {
               e.stopPropagation();
               onNodeToggle(node.id);
             }}
             className="flex-shrink-0 w-4 h-4 flex items-center justify-center text-zinc-500 hover:text-zinc-300"
           >
-            {isExpanded ? (
-              <ChevronDown className="w-3 h-3" />
-            ) : (
-              <ChevronRight className="w-3 h-3" />
-            )}
+            {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
           </button>
         )}
 
@@ -283,8 +274,11 @@ export function YAMLTreeNode({
         </div>
 
         {/* Name */}
-        <span className={`text-sm truncate flex-1 ${node.data?.enabled === false ? 'text-zinc-400' : isRedirectedFollowUp ? 'text-zinc-100' : 'text-zinc-300'
-          }`}>
+        <span
+          className={`text-sm truncate flex-1 ${
+            node.data?.enabled === false ? 'text-zinc-400' : isRedirectedFollowUp ? 'text-zinc-100' : 'text-zinc-300'
+          }`}
+        >
           {node.name}
         </span>
 
@@ -310,7 +304,7 @@ export function YAMLTreeNode({
       {/* Children */}
       {hasChildren && isExpanded && (
         <div className="ml-2 border-l border-white/5">
-          {node.children!.map((child) => (
+          {node.children!.map(child => (
             <YAMLTreeNode
               key={child.id}
               node={child}
@@ -333,47 +327,47 @@ export function YAMLTreeNode({
 
 function getNodeIcon(type: YAMLNodeType): any {
   const iconMap: Record<string, any> = {
-    'root': FileText,
-    'test': FileText,
-    'variables': Braces,
-    'data_source': Database,
-    'http_defaults': Settings,
-    'scenarios': List,
-    'scenario': Zap,
-    'metrics': BarChart3,
-    'load': Gauge,
-    'steps': Package,
-    'step': Code,
-    'request': Globe,
-    'sql': Database,
-    'get': Globe,
-    'post': Globe,
-    'put': Globe,
-    'delete': Globe,
-    'patch': Globe,
-    'head': Globe,
-    'options': Globe,
-    'group': Folder,
-    'transaction': GitBranch,
-    'simple': FolderOpen,
-    'if': Folder,
-    'loop': Folder,
-    'retry': Folder,
-    'on_error': AlertTriangle,
-    'think_time': Clock,
-    'extract': Filter,
-    'extractor': Filter,
-    'assert': CheckCircle,
-    'assertion': CheckCircle,
-    'cookies': Cookie,
-    'cache_manager': HardDrive,
-    'error_policy': AlertTriangle,
-    'spark': CodeXml,
-    'spark_before': CodeXml,
-    'spark_after': CodeXml,
-    'file': Paperclip,
-    'header': Tag,
-    'headers': Tag,
+    root: FileText,
+    test: FileText,
+    variables: Braces,
+    data_source: Database,
+    http_defaults: Settings,
+    scenarios: List,
+    scenario: Zap,
+    metrics: BarChart3,
+    load: Gauge,
+    steps: Package,
+    step: Code,
+    request: Globe,
+    sql: Database,
+    get: Globe,
+    post: Globe,
+    put: Globe,
+    delete: Globe,
+    patch: Globe,
+    head: Globe,
+    options: Globe,
+    group: Folder,
+    transaction: GitBranch,
+    simple: FolderOpen,
+    if: Folder,
+    loop: Folder,
+    retry: Folder,
+    on_error: AlertTriangle,
+    think_time: Clock,
+    extract: Filter,
+    extractor: Filter,
+    assert: CheckCircle,
+    assertion: CheckCircle,
+    cookies: Cookie,
+    cache_manager: HardDrive,
+    error_policy: AlertTriangle,
+    spark: CodeXml,
+    spark_before: CodeXml,
+    spark_after: CodeXml,
+    file: Paperclip,
+    header: Tag,
+    headers: Tag,
   };
   return iconMap[type] || FileText;
 }
@@ -462,15 +456,15 @@ function getNodeColor(type: YAMLNodeType, node?: YAMLNode, isRedirectedFollowUp 
   }
 }
 
-function getNodeBadge(
-  node: YAMLNode,
-  options: { mutedMethod?: boolean } = {}
-): React.ReactNode {
+function getNodeBadge(node: YAMLNode, options: { mutedMethod?: boolean } = {}): React.ReactNode {
   const { mutedMethod = false } = options;
   const httpMethods = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
 
   // Badge DISABLED para requests deshabilitados
-  if (node.data?.enabled === false && (httpMethods.includes(node.type) || node.type === 'request' || node.type === 'sql')) {
+  if (
+    node.data?.enabled === false &&
+    (httpMethods.includes(node.type) || node.type === 'request' || node.type === 'sql')
+  ) {
     return (
       <span className="text-xs px-1.5 py-0.5 rounded bg-zinc-700/30 text-zinc-400 font-mono font-medium border border-zinc-600/30 uppercase">
         disabled
@@ -480,11 +474,13 @@ function getNodeBadge(
 
   if (httpMethods.includes(node.type)) {
     return (
-      <span className={`inline-flex h-5 items-center text-xs leading-none px-1.5 py-0.5 rounded font-mono font-medium border uppercase ${
-        mutedMethod
-          ? 'bg-zinc-400/15 text-zinc-300 border-zinc-400/30'
-          : 'bg-blue-400/15 text-blue-400 border-blue-400/30'
-      }`}>
+      <span
+        className={`inline-flex h-5 items-center text-xs leading-none px-1.5 py-0.5 rounded font-mono font-medium border uppercase ${
+          mutedMethod
+            ? 'bg-zinc-400/15 text-zinc-300 border-zinc-400/30'
+            : 'bg-blue-400/15 text-blue-400 border-blue-400/30'
+        }`}
+      >
         {node.type}
       </span>
     );
@@ -492,11 +488,13 @@ function getNodeBadge(
 
   if (node.type === 'request' && node.data?.method) {
     return (
-      <span className={`inline-flex h-5 items-center text-xs leading-none px-1.5 py-0.5 rounded font-mono font-medium border uppercase ${
-        mutedMethod
-          ? 'bg-zinc-400/15 text-zinc-300 border-zinc-400/30'
-          : 'bg-blue-400/15 text-blue-400 border-blue-400/30'
-      }`}>
+      <span
+        className={`inline-flex h-5 items-center text-xs leading-none px-1.5 py-0.5 rounded font-mono font-medium border uppercase ${
+          mutedMethod
+            ? 'bg-zinc-400/15 text-zinc-300 border-zinc-400/30'
+            : 'bg-blue-400/15 text-blue-400 border-blue-400/30'
+        }`}
+      >
         {node.data.method}
       </span>
     );

@@ -23,11 +23,7 @@
       "output": "release",
       "buildResources": "electron"
     },
-    "files": [
-      "dist/**/*",
-      "electron/**/*",
-      "package.json"
-    ],
+    "files": ["dist/**/*", "electron/**/*", "package.json"],
     "mac": {
       "category": "public.app-category.developer-tools",
       "target": [

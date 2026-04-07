@@ -40,42 +40,42 @@ export function ControllerDetail({ node }: ControllerDetailProps) {
   const iconClassName = isTransactionController ? 'text-white' : 'text-orange-600';
 
   return (
-    <div className='h-full flex flex-col'>
+    <div className="h-full flex flex-col">
       {/* Header */}
-      <div className='px-6 py-4 border-b border-neutral-200'>
-        <div className='flex items-center justify-between'>
+      <div className="px-6 py-4 border-b border-neutral-200">
+        <div className="flex items-center justify-between">
           <div>
-            <h3 className='text-neutral-900'>{node.name}</h3>
-            <p className='text-sm text-neutral-600 mt-1'>{getControllerDescription()}</p>
+            <h3 className="text-neutral-900">{node.name}</h3>
+            <p className="text-sm text-neutral-600 mt-1">{getControllerDescription()}</p>
           </div>
           <div className={`px-3 py-1 rounded-md text-xs ${badgeClassName}`}>{getControllerTypeLabel()}</div>
         </div>
       </div>
 
       {/* Content */}
-      <div className='flex-1 overflow-y-auto p-6'>
-        <div className='space-y-6'>
+      <div className="flex-1 overflow-y-auto p-6">
+        <div className="space-y-6">
           {/* Controller Type */}
           <div>
-            <label className='block text-sm text-neutral-700 mb-2'>Controller Type</label>
-            <div className='flex items-center gap-3 px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-lg'>
+            <label className="block text-sm text-neutral-700 mb-2">Controller Type</label>
+            <div className="flex items-center gap-3 px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-lg">
               {node.type === 'controller-if' ? (
                 <Code className={`w-5 h-5 ${iconClassName}`} />
               ) : (
                 <GitBranch className={`w-5 h-5 ${iconClassName}`} />
               )}
-              <span className='text-sm text-neutral-900'>{getControllerTypeLabel()}</span>
+              <span className="text-sm text-neutral-900">{getControllerTypeLabel()}</span>
             </div>
           </div>
 
           {/* Conditional Logic (for If Controller) */}
           {node.type === 'controller-if' && node.data?.condition && (
             <div>
-              <label className='block text-sm text-neutral-700 mb-2'>Condition</label>
-              <div className='px-3 py-2 border border-neutral-300 rounded-lg bg-neutral-50'>
-                <code className='text-sm text-neutral-900'>{node.data.condition}</code>
+              <label className="block text-sm text-neutral-700 mb-2">Condition</label>
+              <div className="px-3 py-2 border border-neutral-300 rounded-lg bg-neutral-50">
+                <code className="text-sm text-neutral-900">{node.data.condition}</code>
               </div>
-              <p className='text-xs text-neutral-500 mt-2'>
+              <p className="text-xs text-neutral-500 mt-2">
                 Child elements will only execute if this condition evaluates to true
               </p>
             </div>
@@ -83,10 +83,10 @@ export function ControllerDetail({ node }: ControllerDetailProps) {
 
           {/* Child Elements */}
           <div>
-            <label className='block text-sm text-neutral-700 mb-2'>Child Elements</label>
-            <div className='px-4 py-3 bg-blue-50 border border-blue-200 rounded-lg'>
-              <p className='text-sm text-blue-900'>{node.children?.length || 0} child element(s)</p>
-              <p className='text-xs text-blue-700 mt-1'>
+            <label className="block text-sm text-neutral-700 mb-2">Child Elements</label>
+            <div className="px-4 py-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-blue-900">{node.children?.length || 0} child element(s)</p>
+              <p className="text-xs text-blue-700 mt-1">
                 Expand this node in the Script Tree to view and configure child elements
               </p>
             </div>
@@ -95,32 +95,32 @@ export function ControllerDetail({ node }: ControllerDetailProps) {
           {/* Execution Flow */}
           {node.type === 'controller-transaction' && (
             <div>
-              <label className='block text-sm text-neutral-700 mb-2'>Transaction Settings</label>
-              <div className='space-y-3'>
-                <div className='flex items-center gap-3'>
+              <label className="block text-sm text-neutral-700 mb-2">Transaction Settings</label>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
                   <input
-                    type='checkbox'
-                    id='include-timers'
+                    type="checkbox"
+                    id="include-timers"
                     defaultChecked
-                    className='w-4 h-4 text-blue-600'
+                    className="w-4 h-4 text-blue-600"
                   />
                   <label
-                    htmlFor='include-timers'
-                    className='text-sm text-neutral-700'
+                    htmlFor="include-timers"
+                    className="text-sm text-neutral-700"
                   >
                     Include timer duration in transaction time
                   </label>
                 </div>
-                <div className='flex items-center gap-3'>
+                <div className="flex items-center gap-3">
                   <input
-                    type='checkbox'
-                    id='generate-parent'
+                    type="checkbox"
+                    id="generate-parent"
                     defaultChecked
-                    className='w-4 h-4 text-blue-600'
+                    className="w-4 h-4 text-blue-600"
                   />
                   <label
-                    htmlFor='generate-parent'
-                    className='text-sm text-neutral-700'
+                    htmlFor="generate-parent"
+                    className="text-sm text-neutral-700"
                   >
                     Generate parent sample
                   </label>

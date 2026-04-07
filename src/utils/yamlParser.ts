@@ -12,7 +12,7 @@ import { treeToObject } from './yamlTreeSerializer';
 
 // Parser: YAML string → Tree
 export function parseYAMLToTree(yamlString: string): YAMLNode | null {
-  if (!yamlString || yamlString.trim() === "") {
+  if (!yamlString || yamlString.trim() === '') {
     return null;
   }
   try {
@@ -357,7 +357,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       requestNode.children!.push({
         id: `${stepId}_think_time`,
         type: 'think_time',
-        name: 'Think Time',  // SOLO el nombre, duración va en el badge
+        name: 'Think Time', // SOLO el nombre, duración va en el badge
         data: { duration: req.think_time },
         path: [...path, 'think_time'],
       });
@@ -431,8 +431,8 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
     return {
       id: stepId,
       type: 'think_time',
-      name: 'Think Time',  // SOLO el nombre, duración va en el badge
-      data: { ...data, duration },  // Asegurar que duration esté en data para el badge
+      name: 'Think Time', // SOLO el nombre, duración va en el badge
+      data: { ...data, duration }, // Asegurar que duration esté en data para el badge
       path,
     };
   }
@@ -670,4 +670,3 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
     path,
   };
 }
-

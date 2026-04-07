@@ -1,7 +1,18 @@
 import { useState } from 'react';
 import {
-  Play, Square, Pause, Trash2, Flag, Copy, Check,
-  X, AlertTriangle, CheckCircle2, Filter, Search, Pin,
+  Play,
+  Square,
+  Pause,
+  Trash2,
+  Flag,
+  Copy,
+  Check,
+  X,
+  AlertTriangle,
+  CheckCircle2,
+  Filter,
+  Search,
+  Pin,
 } from 'lucide-react';
 import { CertificateStatus, type CertStatus } from '../CertificateStatus';
 import { InstallCertModal, InstallInstructionsDrawer } from '../InstallCertModal';
@@ -50,7 +61,7 @@ export function RecordingView() {
 
   // Certificate State (mock data - simulate different states)
   const [certData, setCertData] = useState<CertificateData>({
-    status: 'missing' // Start with missing certificate
+    status: 'missing', // Start with missing certificate
   });
   const [isLoadingCert, setIsLoadingCert] = useState(false);
 
@@ -97,15 +108,15 @@ export function RecordingView() {
       timestamp: '14:23:12.456',
       requestHeaders: {
         'User-Agent': 'Mozilla/5.0',
-        'Accept': 'application/json',
-        'Authorization': '[REDACTED]'
+        Accept: 'application/json',
+        Authorization: '[REDACTED]',
       },
       responseHeaders: {
         'Content-Type': 'application/json',
-        'Cache-Control': 'no-cache'
+        'Cache-Control': 'no-cache',
       },
       responseBody: '{"users": [{"id": 1, "name": "John Doe"}]}',
-      timing: { dns: 5, connect: 12, ssl: 23, send: 2, wait: 98, receive: 5 }
+      timing: { dns: 5, connect: 12, ssl: 23, send: 2, wait: 98, receive: 5 },
     },
     {
       id: 2,
@@ -119,15 +130,15 @@ export function RecordingView() {
       timestamp: '14:23:13.102',
       requestHeaders: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json'
+        Accept: 'application/json',
       },
       requestBody: '{"email": "user@example.com", "password": "[REDACTED]"}',
       responseHeaders: {
         'Content-Type': 'application/json',
-        'Set-Cookie': '[REDACTED]'
+        'Set-Cookie': '[REDACTED]',
       },
       responseBody: '{"token": "[REDACTED]", "user": {"id": 1}}',
-      timing: { dns: 2, connect: 8, ssl: 18, send: 3, wait: 195, receive: 8 }
+      timing: { dns: 2, connect: 8, ssl: 18, send: 3, wait: 195, receive: 8 },
     },
     {
       id: 3,
@@ -140,14 +151,14 @@ export function RecordingView() {
       size: '45.2 KB',
       timestamp: '14:23:13.289',
       requestHeaders: {
-        'Accept': 'text/css'
+        Accept: 'text/css',
       },
       responseHeaders: {
         'Content-Type': 'text/css',
-        'Cache-Control': 'max-age=3600'
+        'Cache-Control': 'max-age=3600',
       },
       responseBody: '[Binary content not displayed]',
-      timing: { dns: 1, connect: 5, ssl: 12, send: 1, wait: 42, receive: 6 }
+      timing: { dns: 1, connect: 5, ssl: 12, send: 1, wait: 42, receive: 6 },
     },
     {
       id: 4,
@@ -161,14 +172,14 @@ export function RecordingView() {
       timestamp: '14:23:14.012',
       isPinned: true,
       requestHeaders: {
-        'Accept': 'application/json'
+        Accept: 'application/json',
       },
       responseHeaders: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
       responseBody: '{"error": "Internal Server Error"}',
-      timing: { dns: 3, connect: 8, ssl: 15, send: 2, wait: 490, receive: 5 }
-    }
+      timing: { dns: 3, connect: 8, ssl: 15, send: 2, wait: 490, receive: 5 },
+    },
   ]);
 
   // MOCK API CALLS (simulating backend agent)
@@ -181,7 +192,7 @@ export function RecordingView() {
       trusted_os: false,
       trusted_firefox: false,
       expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-      fingerprint: 'A1:B2:C3:D4:E5:F6:G7:H8:I9:J0:K1:L2:M3:N4:O5:P6:Q7:R8:S9:T0'
+      fingerprint: 'A1:B2:C3:D4:E5:F6:G7:H8:I9:J0:K1:L2:M3:N4:O5:P6:Q7:R8:S9:T0',
     });
     setIsLoadingCert(false);
   };
@@ -191,13 +202,13 @@ export function RecordingView() {
     setInstallError(null);
     // Simulate API call: POST /cert/install?target=os
     await new Promise(resolve => setTimeout(resolve, 2000));
-    
+
     // Simulate 80% success rate
     if (Math.random() > 0.2) {
       setCertData(prev => ({
         ...prev,
         status: 'trusted',
-        trusted_os: true
+        trusted_os: true,
       }));
       setShowInstallModal(false);
       setIsLoadingCert(false);
@@ -218,7 +229,7 @@ export function RecordingView() {
     setShowDiagnostics(true);
     // Simulate: POST /diagnostics/run
     await new Promise(resolve => setTimeout(resolve, 2000));
-    
+
     // Re-check cert status
     const recheckStatus = await mockCheckCertStatus();
     setCertData(recheckStatus);
@@ -236,7 +247,7 @@ export function RecordingView() {
     try {
       // Step 1: Check certificate status
       const certStatus = await mockCheckCertStatus();
-      
+
       // Step 2: Handle certificate issues
       if (certStatus.status === 'missing' || certStatus.status === 'expired' || certStatus.status === 'invalid') {
         // Auto-generate certificate
@@ -245,23 +256,23 @@ export function RecordingView() {
         setShowInstallModal(true);
         return;
       }
-      
+
       if (certStatus.status === 'needs_install') {
         // Show install modal
         setShowInstallModal(true);
         return;
       }
-      
+
       // Step 3: Certificate is trusted - proceed with recording
       if (certStatus.status === 'trusted') {
         // Start proxy
         setProxyStatus('connected');
         await new Promise(resolve => setTimeout(resolve, 500));
-        
+
         // Set system proxy (simulated)
         console.log('🔧 Setting system proxy...');
         await new Promise(resolve => setTimeout(resolve, 500));
-        
+
         // Start recording
         setProxyStatus('capturing');
         setRecordingState('recording');
@@ -277,21 +288,21 @@ export function RecordingView() {
   const handleStopRecording = async () => {
     try {
       setProxyStatus('stopping');
-      
+
       // Stop recording
       console.log('⏹️ Stopping recording...');
       await new Promise(resolve => setTimeout(resolve, 500));
       setRecordingState('idle');
-      
+
       // Unset system proxy
       console.log('🔧 Unsetting system proxy...');
       await new Promise(resolve => setTimeout(resolve, 500));
-      
+
       // Stop proxy
       console.log('🛑 Stopping proxy...');
       await new Promise(resolve => setTimeout(resolve, 500));
       setProxyStatus('connected'); // Proxy stays on, just not capturing
-      
+
       setShowSaveModal(true);
     } catch (error) {
       console.error('Failed to stop recording:', error);
@@ -346,9 +357,7 @@ export function RecordingView() {
                 <div className="flex items-center gap-2 mb-2">
                   <h4 className="text-sm font-medium text-zinc-100">Proxy Status</h4>
                   {proxyStatus === 'disconnected' && (
-                    <span className="px-2 py-0.5 rounded-full text-xs bg-white/5 text-zinc-400">
-                      Disconnected
-                    </span>
+                    <span className="px-2 py-0.5 rounded-full text-xs bg-white/5 text-zinc-400">Disconnected</span>
                   )}
                   {proxyStatus === 'connected' && (
                     <span className="px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-700 flex items-center gap-1">
@@ -369,14 +378,19 @@ export function RecordingView() {
                     </span>
                   )}
                 </div>
-                
+
                 <div className="flex items-center gap-2">
-                  <label htmlFor="proxy-port" className="text-xs text-neutral-400">Port:</label>
+                  <label
+                    htmlFor="proxy-port"
+                    className="text-xs text-neutral-400"
+                  >
+                    Port:
+                  </label>
                   <input
                     id="proxy-port"
                     type="text"
                     value={port}
-                    onChange={(e) => setPort(e.target.value)}
+                    onChange={e => setPort(e.target.value)}
                     disabled={proxyStatus !== 'disconnected'}
                     className="w-20 px-2 py-1 bg-white border border-neutral-300 disabled:bg-neutral-50 rounded text-sm"
                   />
@@ -463,7 +477,9 @@ export function RecordingView() {
                   ) : (
                     <AlertTriangle className="w-4 h-4 text-amber-600" />
                   )}
-                  <span className="text-neutral-700">HTTPS interception {certData.status === 'trusted' ? 'working' : 'not configured'}</span>
+                  <span className="text-neutral-700">
+                    HTTPS interception {certData.status === 'trusted' ? 'working' : 'not configured'}
+                  </span>
                 </div>
               </div>
             </div>
@@ -542,9 +558,7 @@ export function RecordingView() {
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-xs text-neutral-600">
-              {capturedRequests.length} requests captured
-            </span>
+            <span className="text-xs text-neutral-600">{capturedRequests.length} requests captured</span>
             <button
               onClick={() => setShowFilters(!showFilters)}
               className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
@@ -568,7 +582,7 @@ export function RecordingView() {
             <div>
               <p className="text-xs font-medium text-neutral-700 mb-2 block">Presets</p>
               <div className="flex gap-2">
-                {(['full', 'web', 'api'] as const).map((preset) => (
+                {(['full', 'web', 'api'] as const).map(preset => (
                   <button
                     key={preset}
                     onClick={() => setFilterPreset(preset)}
@@ -591,21 +605,43 @@ export function RecordingView() {
               <p className="text-xs font-medium text-neutral-700 mb-2 block">Options</p>
               <div className="grid grid-cols-5 gap-3">
                 {[
-                  { label: 'Exclude Embedded', value: excludeEmbedded, setter: setExcludeEmbedded },
-                  { label: 'Exclude 3rd-party', value: excludeThirdParty, setter: setExcludeThirdParty },
-                  { label: 'Ignore OPTIONS', value: ignoreOptions, setter: setIgnoreOptions },
+                  {
+                    label: 'Exclude Embedded',
+                    value: excludeEmbedded,
+                    setter: setExcludeEmbedded,
+                  },
+                  {
+                    label: 'Exclude 3rd-party',
+                    value: excludeThirdParty,
+                    setter: setExcludeThirdParty,
+                  },
+                  {
+                    label: 'Ignore OPTIONS',
+                    value: ignoreOptions,
+                    setter: setIgnoreOptions,
+                  },
                   { label: 'Dedupe', value: dedupe, setter: setDedupe },
-                  { label: 'Collapse Redirects', value: collapseRedirects, setter: setCollapseRedirects }
-                ].map((toggle) => (
-                  <div key={toggle.label} className="flex items-center gap-2">
+                  {
+                    label: 'Collapse Redirects',
+                    value: collapseRedirects,
+                    setter: setCollapseRedirects,
+                  },
+                ].map(toggle => (
+                  <div
+                    key={toggle.label}
+                    className="flex items-center gap-2"
+                  >
                     <input
                       type="checkbox"
                       id={toggle.label}
                       checked={toggle.value}
-                      onChange={(e) => toggle.setter(e.target.checked)}
+                      onChange={e => toggle.setter(e.target.checked)}
                       className="w-4 h-4"
                     />
-                    <label htmlFor={toggle.label} className="text-sm text-neutral-700">
+                    <label
+                      htmlFor={toggle.label}
+                      className="text-sm text-neutral-700"
+                    >
                       {toggle.label}
                     </label>
                   </div>
@@ -647,15 +683,15 @@ export function RecordingView() {
                 <input
                   type="text"
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={e => setSearchQuery(e.target.value)}
                   placeholder="Search requests..."
                   className="w-full pl-9 pr-3 py-1.5 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-              
+
               <select
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
+                onChange={e => setStatusFilter(e.target.value)}
                 className="px-2 py-1.5 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="all">All Status</option>
@@ -666,7 +702,7 @@ export function RecordingView() {
 
               <select
                 value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value)}
+                onChange={e => setTypeFilter(e.target.value)}
                 className="px-2 py-1.5 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="all">All Types</option>
@@ -677,12 +713,17 @@ export function RecordingView() {
 
               <select
                 value={hostFilter}
-                onChange={(e) => setHostFilter(e.target.value)}
+                onChange={e => setHostFilter(e.target.value)}
                 className="px-2 py-1.5 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="all">All Hosts</option>
                 {uniqueHosts.map(host => (
-                  <option key={host} value={host}>{host}</option>
+                  <option
+                    key={host}
+                    value={host}
+                  >
+                    {host}
+                  </option>
                 ))}
               </select>
             </div>
@@ -711,26 +752,34 @@ export function RecordingView() {
                 </div>
               </div>
             ) : (
-              filteredRequests.map((request) => (
+              filteredRequests.map(request => (
                 <div
                   key={request.id}
                   role="button"
                   tabIndex={0}
                   onClick={() => setSelectedRequest(request)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedRequest(request); }}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' || e.key === ' ') setSelectedRequest(request);
+                  }}
                   className={`px-4 py-2.5 border-b border-neutral-200 cursor-pointer hover:bg-neutral-50 transition-colors ${
                     selectedRequest?.id === request.id ? 'bg-blue-50' : ''
                   }`}
                 >
                   <div className="grid grid-cols-12 gap-2 items-center">
                     <div className="col-span-1">
-                      <div className={`px-2 py-0.5 rounded text-xs font-medium text-center ${
-                        request.method === 'GET' ? 'bg-blue-100 text-blue-700' :
-                        request.method === 'POST' ? 'bg-green-100 text-green-700' :
-                        request.method === 'PUT' ? 'bg-amber-100 text-amber-700' :
-                        request.method === 'DELETE' ? 'bg-red-100 text-red-700' :
-                        'bg-neutral-100 text-neutral-700'
-                      }`}>
+                      <div
+                        className={`px-2 py-0.5 rounded text-xs font-medium text-center ${
+                          request.method === 'GET'
+                            ? 'bg-blue-100 text-blue-700'
+                            : request.method === 'POST'
+                              ? 'bg-green-100 text-green-700'
+                              : request.method === 'PUT'
+                                ? 'bg-amber-100 text-amber-700'
+                                : request.method === 'DELETE'
+                                  ? 'bg-red-100 text-red-700'
+                                  : 'bg-neutral-100 text-neutral-700'
+                        }`}
+                      >
                         {request.method}
                       </div>
                     </div>
@@ -742,12 +791,17 @@ export function RecordingView() {
                       <span className="text-xs text-neutral-600 truncate">{request.host}</span>
                     </div>
                     <div className="col-span-1">
-                      <div className={`px-2 py-0.5 rounded text-xs font-medium text-center ${
-                        request.status >= 200 && request.status < 300 ? 'bg-green-100 text-green-700' :
-                        request.status >= 400 && request.status < 500 ? 'bg-amber-100 text-amber-700' :
-                        request.status >= 500 ? 'bg-red-100 text-red-700' :
-                        'bg-neutral-100 text-neutral-700'
-                      }`}>
+                      <div
+                        className={`px-2 py-0.5 rounded text-xs font-medium text-center ${
+                          request.status >= 200 && request.status < 300
+                            ? 'bg-green-100 text-green-700'
+                            : request.status >= 400 && request.status < 500
+                              ? 'bg-amber-100 text-amber-700'
+                              : request.status >= 500
+                                ? 'bg-red-100 text-red-700'
+                                : 'bg-neutral-100 text-neutral-700'
+                        }`}
+                      >
                         {request.status}
                       </div>
                     </div>
@@ -789,7 +843,7 @@ export function RecordingView() {
             {/* Inspector Tabs */}
             <div className="border-b border-neutral-200">
               <div className="flex px-4">
-                {(['request', 'response', 'timing'] as const).map((tab) => (
+                {(['request', 'response', 'timing'] as const).map(tab => (
                   <button
                     key={tab}
                     onClick={() => setInspectorTab(tab)}
@@ -813,7 +867,10 @@ export function RecordingView() {
                     <h4 className="text-xs font-semibold text-neutral-700 mb-2">Headers</h4>
                     <div className="bg-neutral-50 rounded-lg p-3 space-y-1.5">
                       {Object.entries(selectedRequest.requestHeaders).map(([key, value]) => (
-                        <div key={key} className="flex gap-2 text-xs">
+                        <div
+                          key={key}
+                          className="flex gap-2 text-xs"
+                        >
                           <span className="font-medium text-neutral-700 min-w-[120px]">{key}:</span>
                           <span className="text-neutral-600 font-mono">{value}</span>
                         </div>
@@ -837,7 +894,10 @@ export function RecordingView() {
                     <h4 className="text-xs font-semibold text-neutral-700 mb-2">Headers</h4>
                     <div className="bg-neutral-50 rounded-lg p-3 space-y-1.5">
                       {Object.entries(selectedRequest.responseHeaders).map(([key, value]) => (
-                        <div key={key} className="flex gap-2 text-xs">
+                        <div
+                          key={key}
+                          className="flex gap-2 text-xs"
+                        >
                           <span className="font-medium text-neutral-700 min-w-[120px]">{key}:</span>
                           <span className="text-neutral-600 font-mono">{value}</span>
                         </div>
@@ -859,15 +919,20 @@ export function RecordingView() {
                 <div className="space-y-3">
                   <h4 className="text-xs font-semibold text-neutral-700 mb-2">Request Timing</h4>
                   {Object.entries(selectedRequest.timing).map(([phase, duration]) => (
-                    <div key={phase} className="space-y-1">
+                    <div
+                      key={phase}
+                      className="space-y-1"
+                    >
                       <div className="flex items-center justify-between text-xs">
                         <span className="text-neutral-700 capitalize">{phase}</span>
                         <span className="font-mono text-neutral-900">{duration}ms</span>
                       </div>
                       <div className="h-2 bg-neutral-100 rounded-full overflow-hidden">
-                        <div 
+                        <div
                           className="h-full bg-blue-500 rounded-full"
-                          style={{ width: `${(duration / selectedRequest.duration) * 100}%` }}
+                          style={{
+                            width: `${(duration / selectedRequest.duration) * 100}%`,
+                          }}
                         />
                       </div>
                     </div>
@@ -906,7 +971,12 @@ export function RecordingView() {
       {/* Save Modal (simple placeholder) */}
       {showSaveModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div role="presentation" className="absolute inset-0 bg-black/40" onClick={() => setShowSaveModal(false)} onKeyDown={() => {}}></div>
+          <div
+            role="presentation"
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setShowSaveModal(false)}
+            onKeyDown={() => {}}
+          ></div>
           <div className="relative bg-white rounded-xl shadow-2xl p-6 max-w-md">
             <h3 className="text-lg font-semibold text-neutral-900 mb-2">Save Recording?</h3>
             <p className="text-sm text-neutral-600 mb-4">

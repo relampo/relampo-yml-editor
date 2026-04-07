@@ -9,6 +9,7 @@ The **Relampo League** is a gamification system designed to drive adoption and r
 ## Components
 
 ### 1. `RelampoLeague` (Compact Widget)
+
 - **Location**: `/components/RelampoLeague.tsx`
 - **Purpose**: Compact leaderboard for dashboard display
 - **Features**:
@@ -20,6 +21,7 @@ The **Relampo League** is a gamification system designed to drive adoption and r
   - "View full leaderboard" CTA
 
 ### 2. `RelampoLeagueExpanded` (Full View)
+
 - **Location**: `/components/RelampoLeagueExpanded.tsx`
 - **Purpose**: Full-screen modal with complete leaderboard
 - **Features**:
@@ -30,6 +32,7 @@ The **Relampo League** is a gamification system designed to drive adoption and r
   - Rewards banner
 
 ### 3. State Components
+
 - **Location**: `/components/RelampoLeagueStates.tsx`
 - **Components**:
   - `RelampoLeagueLoading`: Skeleton UI while data loads
@@ -37,13 +40,13 @@ The **Relampo League** is a gamification system designed to drive adoption and r
 
 ## Levels System
 
-| Level | Hours Range | Bonus Hours | Visual |
-|-------|-------------|-------------|--------|
-| ⚡ Spark | 1-5h | - | Amber |
-| 🔥 Bolt | 6-20h | +2h | Orange |
-| ⛈️ Thunder | 21-50h | +5h | Purple |
-| 🌪️ Storm | 51-100h | +10h | Blue |
-| ⚡ Lightning | 100h+ | +20h | Cyan |
+| Level        | Hours Range | Bonus Hours | Visual |
+| ------------ | ----------- | ----------- | ------ |
+| ⚡ Spark     | 1-5h        | -           | Amber  |
+| 🔥 Bolt      | 6-20h       | +2h         | Orange |
+| ⛈️ Thunder   | 21-50h      | +5h         | Purple |
+| 🌪️ Storm     | 51-100h     | +10h        | Blue   |
+| ⚡ Lightning | 100h+       | +20h        | Cyan   |
 
 ## Badges
 
@@ -89,9 +92,7 @@ function Dashboard() {
       <RelampoLeague onViewFull={() => setShowExpanded(true)} />
 
       {/* Expanded modal */}
-      {showExpanded && (
-        <RelampoLeagueExpanded onClose={() => setShowExpanded(false)} />
-      )}
+      {showExpanded && <RelampoLeagueExpanded onClose={() => setShowExpanded(false)} />}
     </div>
   );
 }
@@ -145,10 +146,10 @@ Badge colors are defined in both components:
 
 ```typescript
 const BADGE_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  'Consistency': { 
-    bg: 'bg-green-50', 
-    text: 'text-green-700', 
-    border: 'border-green-200' 
+  Consistency: {
+    bg: 'bg-green-50',
+    text: 'text-green-700',
+    border: 'border-green-200',
   },
   // ... other badges
 };
@@ -160,13 +161,13 @@ Level colors are defined in `/types/league.ts`:
 
 ```typescript
 export const LEAGUE_LEVELS: LeagueLevelConfig[] = [
-  { 
-    name: 'Spark', 
-    minHours: 1, 
-    maxHours: 5, 
-    bonusHours: 0, 
-    color: 'text-amber-600', 
-    bgColor: 'bg-amber-50' 
+  {
+    name: 'Spark',
+    minHours: 1,
+    maxHours: 5,
+    bonusHours: 0,
+    color: 'text-amber-600',
+    bgColor: 'bg-amber-50',
   },
   // ... other levels
 ];
@@ -198,6 +199,7 @@ export const LEAGUE_LEVELS: LeagueLevelConfig[] = [
 ## Integration Points
 
 Currently integrated in:
+
 - ✅ **Dashboard** (`/components/Dashboard.tsx`) - Right column, compact widget
 - ✅ **Design Doc** (`/components/DesignDoc.tsx`) - "Relampo League" tab with showcase
 
@@ -210,6 +212,7 @@ To connect to real data:
    - `GET /api/league/user/:userId` (for individual stats)
 
 2. **Response Format**:
+
 ```json
 {
   "entries": [
@@ -230,6 +233,7 @@ To connect to real data:
 ```
 
 3. **Replace Mock Data**:
+
 ```tsx
 const { data, isLoading, error } = useLeagueData({
   timeRange,

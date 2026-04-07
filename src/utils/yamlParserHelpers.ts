@@ -268,7 +268,10 @@ export function normalizeRequestForEditor(request: any): any {
     if (!value || typeof value !== 'object') return { enabled: false };
     const enabled = value.enabled === true;
     return enabled
-      ? { enabled: true, target_rps: Number(value.target_rps) > 0 ? Number(value.target_rps) : 1 }
+      ? {
+          enabled: true,
+          target_rps: Number(value.target_rps) > 0 ? Number(value.target_rps) : 1,
+        }
       : { enabled: false };
   };
 

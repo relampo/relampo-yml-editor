@@ -27,17 +27,19 @@ export function HttpRequestDetail({ node }: HttpRequestDetailProps) {
             <h3 className="text-zinc-100 font-semibold tracking-tight">{node.name}</h3>
             <p className="text-sm text-zinc-400 mt-1.5 font-mono">{data.url}</p>
           </div>
-          <div className={`px-4 py-1.5 rounded-lg text-xs font-semibold tracking-wide ${
-            data.method === 'GET' 
-              ? 'bg-blue-500/10 text-blue-400 border border-blue-400/30'
-              : data.method === 'POST'
-              ? 'bg-green-500/10 text-green-400 border border-green-400/30'
-              : data.method === 'PUT'
-              ? 'bg-amber-500/10 text-amber-400 border border-amber-400/30'
-              : data.method === 'DELETE'
-              ? 'bg-red-500/10 text-red-400 border border-red-400/30'
-              : 'bg-white/5 text-zinc-400'
-          }`}>
+          <div
+            className={`px-4 py-1.5 rounded-lg text-xs font-semibold tracking-wide ${
+              data.method === 'GET'
+                ? 'bg-blue-500/10 text-blue-400 border border-blue-400/30'
+                : data.method === 'POST'
+                  ? 'bg-green-500/10 text-green-400 border border-green-400/30'
+                  : data.method === 'PUT'
+                    ? 'bg-amber-500/10 text-amber-400 border border-amber-400/30'
+                    : data.method === 'DELETE'
+                      ? 'bg-red-500/10 text-red-400 border border-red-400/30'
+                      : 'bg-white/5 text-zinc-400'
+            }`}
+          >
             {data.method}
           </div>
         </div>
@@ -50,10 +52,7 @@ export function HttpRequestDetail({ node }: HttpRequestDetailProps) {
             onClick={() => setActiveSection('request')}
             className={`
               px-4 py-3 text-sm font-medium relative transition-all duration-200
-              ${activeSection === 'request'
-                ? 'text-zinc-100'
-                : 'text-zinc-500 hover:text-zinc-300'
-              }
+              ${activeSection === 'request' ? 'text-zinc-100' : 'text-zinc-500 hover:text-zinc-300'}
             `}
           >
             Request
@@ -65,10 +64,7 @@ export function HttpRequestDetail({ node }: HttpRequestDetailProps) {
             onClick={() => setActiveSection('response')}
             className={`
               px-4 py-3 text-sm font-medium relative transition-all duration-200
-              ${activeSection === 'response'
-                ? 'text-zinc-100'
-                : 'text-zinc-500 hover:text-zinc-300'
-              }
+              ${activeSection === 'response' ? 'text-zinc-100' : 'text-zinc-500 hover:text-zinc-300'}
             `}
           >
             Response
@@ -99,13 +95,14 @@ export function HttpRequestDetail({ node }: HttpRequestDetailProps) {
               <label className="block text-sm font-semibold text-zinc-100 mb-3 tracking-tight">Headers</label>
               <div className="border border-white/10 rounded-lg overflow-hidden">
                 {Object.entries(data.headers).map(([key, value]) => (
-                  <div key={key} className="flex border-b border-white/5 last:border-b-0 hover:bg-white/5 transition-colors">
+                  <div
+                    key={key}
+                    className="flex border-b border-white/5 last:border-b-0 hover:bg-white/5 transition-colors"
+                  >
                     <div className="w-1/3 px-4 py-3 bg-white/5 text-sm font-medium text-zinc-300 border-r border-white/10">
                       {key}
                     </div>
-                    <div className="flex-1 px-4 py-3 text-sm text-zinc-400 font-mono">
-                      {value}
-                    </div>
+                    <div className="flex-1 px-4 py-3 text-sm text-zinc-400 font-mono">{value}</div>
                   </div>
                 ))}
               </div>
@@ -130,18 +127,22 @@ export function HttpRequestDetail({ node }: HttpRequestDetailProps) {
               <div className="flex items-center gap-8">
                 <div>
                   <label className="block text-xs font-medium text-zinc-500 mb-2 tracking-wide uppercase">Status</label>
-                  <div className={`px-4 py-1.5 rounded-lg text-sm font-semibold inline-block ${
-                    data.response.status >= 200 && data.response.status < 300
-                      ? 'bg-green-500/10 text-green-400 border border-green-400/30'
-                      : data.response.status >= 400
-                      ? 'bg-red-500/10 text-red-400 border border-red-400/30'
-                      : 'bg-white/5 text-zinc-400'
-                  }`}>
+                  <div
+                    className={`px-4 py-1.5 rounded-lg text-sm font-semibold inline-block ${
+                      data.response.status >= 200 && data.response.status < 300
+                        ? 'bg-green-500/10 text-green-400 border border-green-400/30'
+                        : data.response.status >= 400
+                          ? 'bg-red-500/10 text-red-400 border border-red-400/30'
+                          : 'bg-white/5 text-zinc-400'
+                    }`}
+                  >
                     {data.response.status} {data.response.statusText}
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-zinc-500 mb-2 tracking-wide uppercase">Duration</label>
+                  <label className="block text-xs font-medium text-zinc-500 mb-2 tracking-wide uppercase">
+                    Duration
+                  </label>
                   <div className="flex items-center gap-2 text-sm font-semibold text-zinc-300">
                     <Clock className="w-4 h-4 text-yellow-400" />
                     {data.response.duration}ms
@@ -162,13 +163,14 @@ export function HttpRequestDetail({ node }: HttpRequestDetailProps) {
               <label className="block text-sm font-semibold text-zinc-100 mb-3 tracking-tight">Response Headers</label>
               <div className="border border-white/10 rounded-lg overflow-hidden">
                 {Object.entries(data.response.headers).map(([key, value]) => (
-                  <div key={key} className="flex border-b border-white/5 last:border-b-0 hover:bg-white/5 transition-colors">
+                  <div
+                    key={key}
+                    className="flex border-b border-white/5 last:border-b-0 hover:bg-white/5 transition-colors"
+                  >
                     <div className="w-1/3 px-4 py-3 bg-white/5 text-sm font-medium text-zinc-300 border-r border-white/10">
                       {key}
                     </div>
-                    <div className="flex-1 px-4 py-3 text-sm text-zinc-400 font-mono">
-                      {value}
-                    </div>
+                    <div className="flex-1 px-4 py-3 text-sm text-zinc-400 font-mono">{value}</div>
                   </div>
                 ))}
               </div>

@@ -15,9 +15,7 @@ export function ExtractorDetail({ node }: ExtractorDetailProps) {
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-zinc-100">{node.name}</h3>
-            <p className="text-sm text-zinc-400 mt-1">
-              Extract values from responses for use in subsequent requests
-            </p>
+            <p className="text-sm text-zinc-400 mt-1">Extract values from responses for use in subsequent requests</p>
           </div>
           <div className="px-3 py-1 rounded-md bg-violet-500/10 text-violet-400 border border-violet-400/30 text-xs">
             {data.extractorType.toUpperCase()}
@@ -38,9 +36,7 @@ export function ExtractorDetail({ node }: ExtractorDetailProps) {
               className="w-[70px] shrink-0 px-3 py-2 border border-white/10 rounded-lg bg-[#111111] text-sm font-mono text-zinc-100"
               placeholder="e.g., user_id"
             />
-            <p className="text-xs text-zinc-500 mt-1">
-              Use as ${'{' + data.variableName + '}'} in subsequent requests
-            </p>
+            <p className="text-xs text-zinc-500 mt-1">Use as ${'{' + data.variableName + '}'} in subsequent requests</p>
           </div>
 
           {/* Extractor Type */}
@@ -96,9 +92,7 @@ export function ExtractorDetail({ node }: ExtractorDetailProps) {
                 readOnly
                 className="w-full px-3 py-2 border border-neutral-300 rounded-lg bg-neutral-50 text-sm"
               />
-              <p className="text-xs text-neutral-500 mt-1">
-                0 = random, 1 = first match, 2 = second match, etc.
-              </p>
+              <p className="text-xs text-neutral-500 mt-1">0 = random, 1 = first match, 2 = second match, etc.</p>
             </div>
           )}
 

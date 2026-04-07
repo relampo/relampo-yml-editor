@@ -5,6 +5,7 @@
 El binario de escritorio contiene **TODAS** las funcionalidades del YAML Editor:
 
 ### ✅ PANEL IZQUIERDO - Vista de Árbol
+
 - 🌳 Vista jerárquica navegable de todo el documento YAML
 - 🖱️ **Click derecho (Context Menu)** con opciones:
   - ➕ Agregar nuevo nodo (request, group, if, loop, etc)
@@ -20,6 +21,7 @@ El binario de escritorio contiene **TODAS** las funcionalidades del YAML Editor:
 - 🎨 Iconos específicos por tipo de nodo
 
 ### ✅ PANEL CENTRAL - Editor de Código YAML
+
 - 💻 Editor de código con syntax highlighting
 - ⚡ Edición manual directa del YAML
 - 🔄 Sincronización bidireccional con el árbol
@@ -28,6 +30,7 @@ El binario de escritorio contiene **TODAS** las funcionalidades del YAML Editor:
 - 🎨 Theme dark profesional
 
 ### ✅ PANEL DERECHO - Detalles del Nodo
+
 - 📋 Propiedades editables del nodo seleccionado
 - 🎛️ Formularios dinámicos según el tipo:
   - **Request**: method, URL, headers, body, assertions
@@ -40,6 +43,7 @@ El binario de escritorio contiene **TODAS** las funcionalidades del YAML Editor:
 - ✨ Validación de campos
 
 ### ✅ BARRA SUPERIOR - Herramientas
+
 - 📤 **Upload YAML**: Cargar archivo desde tu Mac
 - ⬇️ **Download YAML**: Guardar archivo editado
 - ✅ **Validate**: Validar sintaxis YAML
@@ -51,36 +55,38 @@ El binario de escritorio contiene **TODAS** las funcionalidades del YAML Editor:
 ## 🔧 Especificación YAML Soportada (Relampo v1)
 
 ### ✅ Elementos Top-Level
+
 ```yaml
-version: 1              # Versión de la spec
-test_metadata:          # Metadatos del test
-  name: "..."
-  description: "..."
-  author: "..."
+version: 1 # Versión de la spec
+test_metadata: # Metadatos del test
+  name: '...'
+  description: '...'
+  author: '...'
   tags: [...]
 
-variables:              # Variables globales
-  - name: "..."
-    value: "..."
+variables: # Variables globales
+  - name: '...'
+    value: '...'
 
-data_sources:           # CSV data sources
-  - name: "..."
-    path: "..."
-    delimiter: ","
+data_sources: # CSV data sources
+  - name: '...'
+    path: '...'
+    delimiter: ','
 
-http_defaults:          # Config HTTP por defecto
-  base_url: "..."
+http_defaults: # Config HTTP por defecto
+  base_url: '...'
   headers: { ... }
   timeout: 30s
   follow_redirects: true
 
-scenarios:              # Lista de escenarios
-  - name: "..."
+scenarios: # Lista de escenarios
+  - name: '...'
     load: { ... }
-    steps: [ ... ]
+    steps: [...]
 ```
 
 ### ✅ Tipos de Load (Carga)
+
 - `constant` - Carga constante
 - `ramp_up` - Rampa incremental
 - `steady` - Carga sostenida
@@ -89,6 +95,7 @@ scenarios:              # Lista de escenarios
 - `stress` - Prueba de estrés
 
 ### ✅ Tipos de Steps (Pasos)
+
 1. **request** - HTTP request con assertions
    - GET, POST, PUT, DELETE, PATCH, etc
    - Headers, body, query params
@@ -122,9 +129,11 @@ scenarios:              # Lista de escenarios
 ## 🎮 FUNCIONALIDADES DE DRAG & DROP
 
 ### ✅ Reglas Implementadas
+
 El drag & drop tiene validación completa según tipos:
 
 #### Puedes arrastrar:
+
 - ✅ **Steps** dentro de `scenarios.steps[]`
 - ✅ **Steps** dentro de `group.steps[]`
 - ✅ **Steps** dentro de `if.then[]` o `if.else[]`
@@ -135,17 +144,20 @@ El drag & drop tiene validación completa según tipos:
 - ✅ **Headers** dentro de `http_defaults.headers{}`
 
 #### No puedes arrastrar:
+
 - ❌ Un `scenario` dentro de otro `scenario`
 - ❌ Un step fuera de un contenedor válido
 - ❌ Metadata fields a lugares incorrectos
 - ❌ Tipos incompatibles
 
 ### ✅ Auto-Expansión
+
 - Mantén un nodo sobre un grupo cerrado por 800ms
 - Se expandirá automáticamente para mostrar sus hijos
 - Útil para drag & drop en estructuras anidadas
 
 ### ✅ Indicadores Visuales
+
 - 🟡 **Línea amarilla arriba** = Drop before
 - 🟡 **Línea amarilla abajo** = Drop after
 - 🟡 **Fondo amarillo** = Drop inside
@@ -158,9 +170,11 @@ El drag & drop tiene validación completa según tipos:
 ### ✅ Opciones Disponibles
 
 #### En `scenarios`:
+
 - ➕ Add Scenario
 
 #### En `scenario.steps[]`:
+
 - ➕ Add Step → Request
 - ➕ Add Step → Group
 - ➕ Add Step → If/Else
@@ -169,18 +183,22 @@ El drag & drop tiene validación completa según tipos:
 - ➕ Add Step → Think Time
 
 #### En `variables[]`:
+
 - ➕ Add Variable
 - ❌ Remove Variable
 
 #### En `data_sources[]`:
+
 - ➕ Add Data Source
 - ❌ Remove Data Source
 
 #### En `http_defaults.headers`:
+
 - ➕ Add Header
 - ❌ Remove Header
 
 #### En cualquier step:
+
 - 📋 Duplicate
 - ❌ Remove
 - 🔼 Move Up
@@ -191,10 +209,12 @@ El drag & drop tiene validación completa según tipos:
 ## 🌐 INTERNACIONALIZACIÓN (i18n)
 
 ### ✅ Idiomas Soportados
+
 - 🇺🇸 **English** (EN)
 - 🇪🇸 **Español** (ES)
 
 ### ✅ Traducción Completa
+
 - ✅ Todos los labels de la UI
 - ✅ Nombres de tipos de nodos
 - ✅ Mensajes de error
@@ -203,6 +223,7 @@ El drag & drop tiene validación completa según tipos:
 - ✅ Validaciones
 
 ### Cambiar Idioma
+
 Click en el botón de idioma en la barra superior (EN/ES)
 
 ---
@@ -210,12 +231,14 @@ Click en el botón de idioma en la barra superior (EN/ES)
 ## 💾 UPLOAD & DOWNLOAD
 
 ### ✅ Upload YAML
+
 1. Click en "Upload YAML"
 2. Selecciona archivo `.yaml` o `.yml`
 3. Se parsea y muestra en árbol + código
 4. Si hay errores, se muestra mensaje
 
 ### ✅ Download YAML
+
 1. Edita tu YAML (árbol o código)
 2. Click en "Download YAML"
 3. Se descarga como `relampo-script.yaml`
@@ -226,6 +249,7 @@ Click en el botón de idioma en la barra superior (EN/ES)
 ## 🎨 THEME & DISEÑO
 
 ### ✅ Paleta de Colores
+
 ```
 Backgrounds:  #0a0a0a, #111111
 Text:         zinc-100, zinc-400, zinc-300
@@ -237,6 +261,7 @@ Selected:     yellow-400/10
 ```
 
 ### ✅ Iconos (Lucide React)
+
 - ⚡ Bolt - Logo/marca
 - 📄 FileText - YAML files
 - 🌐 Globe - HTTP
@@ -260,9 +285,10 @@ El YAML Editor standalone NO es una versión recortada. Contiene:
 ✅ **TODO** el context menu  
 ✅ **TODOS** los tipos de nodos soportados  
 ✅ **TODA** la internacionalización  
-✅ **TODA** la validación  
+✅ **TODA** la validación
 
 Lo ÚNICO que NO incluye:
+
 - ❌ Landing page de Relampo
 - ❌ Workbench de proyectos
 - ❌ Relampo League
@@ -275,6 +301,7 @@ Es una **aplicación de escritorio focalizada 100% en editar YAML**.
 ## 📝 Notas Técnicas
 
 ### Stack Completo Incluido
+
 - React 18
 - TypeScript
 - Tailwind CSS v4
@@ -284,6 +311,7 @@ Es una **aplicación de escritorio focalizada 100% en editar YAML**.
 - Lucide React (icons)
 
 ### Archivos Copiados
+
 ```
 ✓ YAMLEditor.tsx           - Componente principal
 ✓ YAMLTreeView.tsx         - Vista de árbol

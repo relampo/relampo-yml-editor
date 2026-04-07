@@ -17,9 +17,10 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
     .map((cookie: any, index: number) => ({ cookie, index }))
     .filter(({ cookie }) => !String(cookie?.name || '').trim() || !String(cookie?.domain || '').trim())
     .map(({ index }) => index);
-  const summaryLine = normalizedMode === 'auto'
-    ? 'Auto + Standard + VU scope'
-    : `Manual + ${isIgnorePolicy ? 'Ignore Cookies' : 'Standard'} + ${String(data.jar_scope || 'vu').toUpperCase()} scope + Persist ${persistAcrossIterations ? 'ON' : 'OFF'}`;
+  const summaryLine =
+    normalizedMode === 'auto'
+      ? 'Auto + Standard + VU scope'
+      : `Manual + ${isIgnorePolicy ? 'Ignore Cookies' : 'Standard'} + ${String(data.jar_scope || 'vu').toUpperCase()} scope + Persist ${persistAcrossIterations ? 'ON' : 'OFF'}`;
   const cookieSelectorStyle = {
     auto: {
       backgroundColor: 'rgba(236, 72, 153, 0.20)',
@@ -57,7 +58,12 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
 
   const handleModeChange = (nextMode: 'auto' | 'manual') => {
     if (nextMode === 'auto') {
-      updateData({ ...data, mode: 'auto', policy: 'standard', jar_scope: 'vu' });
+      updateData({
+        ...data,
+        mode: 'auto',
+        policy: 'standard',
+        jar_scope: 'vu',
+      });
       return;
     }
     updateData({
@@ -72,7 +78,10 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
   };
 
   const handlePolicyChange = (nextPolicy: string) => {
-    updateData({ ...data, policy: nextPolicy === 'ignore_cookies' ? 'ignore_cookies' : 'standard' });
+    updateData({
+      ...data,
+      policy: nextPolicy === 'ignore_cookies' ? 'ignore_cookies' : 'standard',
+    });
   };
 
   const updateSeedCookie = (index: number, field: string, value: string) => {
@@ -139,11 +148,52 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
           </div>
 
           <div className="mb-2">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Quick Presets</label>
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+              Quick Presets
+            </label>
             <div className="flex flex-wrap items-center gap-1">
-              <button onClick={() => updateData({ ...data, mode: 'manual', policy: 'standard', jar_scope: 'vu', persist_across_iterations: true, clear_each_iteration: false })} className="px-3 py-1.5 text-sm font-medium rounded-full border border-transparent text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.06] transition-all duration-200">Default</button>
-              <button onClick={() => updateData({ ...data, mode: 'manual', policy: 'ignore_cookies' })} className="px-3 py-1.5 text-sm font-medium rounded-full border border-transparent text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.06] transition-all duration-200">Stateless</button>
-              <button onClick={() => updateData({ ...data, mode: 'manual', policy: 'standard', jar_scope: 'vu', persist_across_iterations: false, clear_each_iteration: true })} className="px-3 py-1.5 text-sm font-medium rounded-full border border-transparent text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.06] transition-all duration-200">Clean Iteration</button>
+              <button
+                onClick={() =>
+                  updateData({
+                    ...data,
+                    mode: 'manual',
+                    policy: 'standard',
+                    jar_scope: 'vu',
+                    persist_across_iterations: true,
+                    clear_each_iteration: false,
+                  })
+                }
+                className="px-3 py-1.5 text-sm font-medium rounded-full border border-transparent text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.06] transition-all duration-200"
+              >
+                Default
+              </button>
+              <button
+                onClick={() =>
+                  updateData({
+                    ...data,
+                    mode: 'manual',
+                    policy: 'ignore_cookies',
+                  })
+                }
+                className="px-3 py-1.5 text-sm font-medium rounded-full border border-transparent text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.06] transition-all duration-200"
+              >
+                Stateless
+              </button>
+              <button
+                onClick={() =>
+                  updateData({
+                    ...data,
+                    mode: 'manual',
+                    policy: 'standard',
+                    jar_scope: 'vu',
+                    persist_across_iterations: false,
+                    clear_each_iteration: true,
+                  })
+                }
+                className="px-3 py-1.5 text-sm font-medium rounded-full border border-transparent text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.06] transition-all duration-200"
+              >
+                Clean Iteration
+              </button>
             </div>
           </div>
 
@@ -154,19 +204,63 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
           )}
 
           <div className={`grid grid-cols-3 gap-4 ${isIgnorePolicy ? 'opacity-50' : ''}`}>
-            <SelectField label="Persist Across Iterations" value={persistAcrossIterations ? 'true' : 'false'} field="persist_across_iterations" onChange={(_, value) => handleChange('persist_across_iterations', value === 'true')} options={[{ label: 'true', value: 'true' }, { label: 'false', value: 'false' }]} disabled={isIgnorePolicy} noMargin />
-            <SelectField label="Clear Each Iteration" value={effectiveClearEachIteration ? 'true' : 'false'} field="clear_each_iteration" onChange={(_, value) => handleChange('clear_each_iteration', value === 'true')} options={[{ label: 'false', value: 'false' }, { label: 'true', value: 'true' }]} disabled={isIgnorePolicy} noMargin />
-            <SelectField label="Jar Scope" value={data.jar_scope || 'vu'} field="jar_scope" onChange={handleChange} options={[{ label: 'vu', value: 'vu' }, { label: 'scenario', value: 'scenario' }]} disabled={isIgnorePolicy} noMargin />
+            <SelectField
+              label="Persist Across Iterations"
+              value={persistAcrossIterations ? 'true' : 'false'}
+              field="persist_across_iterations"
+              onChange={(_, value) => handleChange('persist_across_iterations', value === 'true')}
+              options={[
+                { label: 'true', value: 'true' },
+                { label: 'false', value: 'false' },
+              ]}
+              disabled={isIgnorePolicy}
+              noMargin
+            />
+            <SelectField
+              label="Clear Each Iteration"
+              value={effectiveClearEachIteration ? 'true' : 'false'}
+              field="clear_each_iteration"
+              onChange={(_, value) => handleChange('clear_each_iteration', value === 'true')}
+              options={[
+                { label: 'false', value: 'false' },
+                { label: 'true', value: 'true' },
+              ]}
+              disabled={isIgnorePolicy}
+              noMargin
+            />
+            <SelectField
+              label="Jar Scope"
+              value={data.jar_scope || 'vu'}
+              field="jar_scope"
+              onChange={handleChange}
+              options={[
+                { label: 'vu', value: 'vu' },
+                { label: 'scenario', value: 'scenario' },
+              ]}
+              disabled={isIgnorePolicy}
+              noMargin
+            />
           </div>
 
           <div className={`rounded border border-white/10 bg-white/5 p-3 ${isIgnorePolicy ? 'opacity-50' : ''}`}>
             <div className="mb-2 flex items-center justify-between">
               <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Seed Cookies</span>
               <button
-                onClick={() => handleChange('cookies', [...seedCookies, { name: '', value: '', domain: '', path: '/' }])}
+                onClick={() =>
+                  handleChange('cookies', [...seedCookies, { name: '', value: '', domain: '', path: '/' }])
+                }
                 disabled={isIgnorePolicy}
                 className="flex items-center gap-1 rounded-full border border-current px-3 py-1.5 text-sm font-medium text-white transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50"
-                style={!isIgnorePolicy ? { backgroundColor: 'rgba(16, 185, 129, 0.22)', color: '#6ee7b7', borderColor: 'rgba(110, 231, 183, 0.55)', boxShadow: '0 10px 22px rgba(16, 185, 129, 0.22)' } : undefined}
+                style={
+                  !isIgnorePolicy
+                    ? {
+                        backgroundColor: 'rgba(16, 185, 129, 0.22)',
+                        color: '#6ee7b7',
+                        borderColor: 'rgba(110, 231, 183, 0.55)',
+                        boxShadow: '0 10px 22px rgba(16, 185, 129, 0.22)',
+                      }
+                    : undefined
+                }
               >
                 <Plus className="w-3 h-3" />
                 Add
@@ -178,19 +272,58 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
             ) : (
               <div className="space-y-2">
                 {seedCookies.map((cookie: any, index: number) => (
-                  <div key={`${index}-${cookie?.name || 'cookie'}`} className="grid grid-cols-12 gap-2">
-                    <Input value={cookie?.name || ''} disabled={isIgnorePolicy} onChange={(event) => updateSeedCookie(index, 'name', event.target.value)} placeholder="name" className="col-span-3 h-[34px] bg-[#1a1a1a] border-white/10 text-zinc-300 text-xs font-mono" />
-                    <Input value={cookie?.value || ''} disabled={isIgnorePolicy} onChange={(event) => updateSeedCookie(index, 'value', event.target.value)} placeholder="value" className="col-span-3 h-[34px] bg-[#1a1a1a] border-white/10 text-zinc-300 text-xs font-mono" />
-                    <Input value={cookie?.domain || ''} disabled={isIgnorePolicy} onChange={(event) => updateSeedCookie(index, 'domain', event.target.value)} placeholder="domain" className="col-span-3 h-[34px] bg-[#1a1a1a] border-white/10 text-zinc-300 text-xs font-mono" />
-                    <Input value={cookie?.path || '/'} disabled={isIgnorePolicy} onChange={(event) => updateSeedCookie(index, 'path', event.target.value)} placeholder="/" className="col-span-2 h-[34px] bg-[#1a1a1a] border-white/10 text-zinc-300 text-xs font-mono" />
-                    <button onClick={() => handleChange('cookies', seedCookies.filter((_: any, rowIndex: number) => rowIndex !== index))} disabled={isIgnorePolicy} className="col-span-1 rounded border border-red-400/30 bg-red-400/10 text-xs font-medium text-red-300 transition-colors hover:bg-red-400/20 disabled:cursor-not-allowed disabled:opacity-50">×</button>
+                  <div
+                    key={`${index}-${cookie?.name || 'cookie'}`}
+                    className="grid grid-cols-12 gap-2"
+                  >
+                    <Input
+                      value={cookie?.name || ''}
+                      disabled={isIgnorePolicy}
+                      onChange={event => updateSeedCookie(index, 'name', event.target.value)}
+                      placeholder="name"
+                      className="col-span-3 h-[34px] bg-[#1a1a1a] border-white/10 text-zinc-300 text-xs font-mono"
+                    />
+                    <Input
+                      value={cookie?.value || ''}
+                      disabled={isIgnorePolicy}
+                      onChange={event => updateSeedCookie(index, 'value', event.target.value)}
+                      placeholder="value"
+                      className="col-span-3 h-[34px] bg-[#1a1a1a] border-white/10 text-zinc-300 text-xs font-mono"
+                    />
+                    <Input
+                      value={cookie?.domain || ''}
+                      disabled={isIgnorePolicy}
+                      onChange={event => updateSeedCookie(index, 'domain', event.target.value)}
+                      placeholder="domain"
+                      className="col-span-3 h-[34px] bg-[#1a1a1a] border-white/10 text-zinc-300 text-xs font-mono"
+                    />
+                    <Input
+                      value={cookie?.path || '/'}
+                      disabled={isIgnorePolicy}
+                      onChange={event => updateSeedCookie(index, 'path', event.target.value)}
+                      placeholder="/"
+                      className="col-span-2 h-[34px] bg-[#1a1a1a] border-white/10 text-zinc-300 text-xs font-mono"
+                    />
+                    <button
+                      onClick={() =>
+                        handleChange(
+                          'cookies',
+                          seedCookies.filter((_: any, rowIndex: number) => rowIndex !== index),
+                        )
+                      }
+                      disabled={isIgnorePolicy}
+                      className="col-span-1 rounded border border-red-400/30 bg-red-400/10 text-xs font-medium text-red-300 transition-colors hover:bg-red-400/20 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      ×
+                    </button>
                   </div>
                 ))}
               </div>
             )}
             {invalidSeedRows.length > 0 && (
               <div className="mt-2 rounded border border-amber-400/30 bg-amber-400/10 px-2 py-1.5 text-xs text-amber-200">
-                Seed cookie validation: rows {invalidSeedRows.map((index) => index + 1).join(', ')} require both name and domain.
+                Seed cookie validation: rows {invalidSeedRows.map(index => index + 1).join(', ')} require both name and
+                domain.
               </div>
             )}
           </div>
@@ -217,15 +350,46 @@ export function CacheManagerDetails({ node, onNodeUpdate }: NodeDetailProps) {
       <div>
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">Cache</label>
         <div className="flex flex-wrap items-center gap-1">
-          <TogglePill active={enabled} label="Enabled" onClick={() => handleChange('enabled', true)} activeStyle={{ backgroundColor: 'rgba(16, 185, 129, 0.22)', color: '#6ee7b7', borderColor: 'rgba(110, 231, 183, 0.55)', boxShadow: '0 10px 22px rgba(16, 185, 129, 0.22)' }} />
-          <TogglePill active={!enabled} label="Disabled" onClick={() => handleChange('enabled', false)} activeStyle={{ backgroundColor: 'rgba(244, 63, 94, 0.20)', color: '#fda4af', borderColor: 'rgba(253, 164, 175, 0.55)', boxShadow: '0 10px 22px rgba(244, 63, 94, 0.20)' }} />
+          <TogglePill
+            active={enabled}
+            label="Enabled"
+            onClick={() => handleChange('enabled', true)}
+            activeStyle={{
+              backgroundColor: 'rgba(16, 185, 129, 0.22)',
+              color: '#6ee7b7',
+              borderColor: 'rgba(110, 231, 183, 0.55)',
+              boxShadow: '0 10px 22px rgba(16, 185, 129, 0.22)',
+            }}
+          />
+          <TogglePill
+            active={!enabled}
+            label="Disabled"
+            onClick={() => handleChange('enabled', false)}
+            activeStyle={{
+              backgroundColor: 'rgba(244, 63, 94, 0.20)',
+              color: '#fda4af',
+              borderColor: 'rgba(253, 164, 175, 0.55)',
+              boxShadow: '0 10px 22px rgba(244, 63, 94, 0.20)',
+            }}
+          />
         </div>
       </div>
       <div className="h-px bg-white/10" />
 
       <div className={!enabled ? 'opacity-60' : ''}>
         <div className="grid grid-cols-2 gap-4 mb-5">
-          <SelectField label="Clear Each Iteration" value={clearEachIteration ? 'true' : 'false'} field="clear_each_iteration" options={[{ label: 'true', value: 'true' }, { label: 'false', value: 'false' }]} disabled={!enabled} onChange={(_, value) => handleChange('clear_each_iteration', value === 'true')} noMargin />
+          <SelectField
+            label="Clear Each Iteration"
+            value={clearEachIteration ? 'true' : 'false'}
+            field="clear_each_iteration"
+            options={[
+              { label: 'true', value: 'true' },
+              { label: 'false', value: 'false' },
+            ]}
+            disabled={!enabled}
+            onChange={(_, value) => handleChange('clear_each_iteration', value === 'true')}
+            noMargin
+          />
           <div>
             <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
               Max Elements
@@ -234,7 +398,9 @@ export function CacheManagerDetails({ node, onNodeUpdate }: NodeDetailProps) {
               type="number"
               value={maxElements}
               disabled={!enabled}
-              onChange={(event) => handleChange('max_elements', Math.max(1, parseInt(event.target.value || '1', 10) || 1))}
+              onChange={event =>
+                handleChange('max_elements', Math.max(1, parseInt(event.target.value || '1', 10) || 1))
+              }
               className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono focus:border-white/30 transition-all"
             />
           </div>
@@ -256,9 +422,24 @@ export function ErrorPolicyDetails({ node, onNodeUpdate }: NodeDetailProps) {
   const currentValueForRule = (rule: 'on_4xx' | 'on_5xx' | 'on_timeout') =>
     String(data[rule] || (rule === 'on_4xx' ? 'continue' : 'stop'));
   const tabStyle = {
-    on_4xx: { backgroundColor: 'rgba(245, 158, 11, 0.20)', color: '#fcd34d', borderColor: 'rgba(252, 211, 77, 0.50)', boxShadow: '0 10px 22px rgba(245, 158, 11, 0.20)' },
-    on_5xx: { backgroundColor: 'rgba(244, 63, 94, 0.20)', color: '#fda4af', borderColor: 'rgba(253, 164, 175, 0.55)', boxShadow: '0 10px 22px rgba(244, 63, 94, 0.20)' },
-    on_timeout: { backgroundColor: 'rgba(56, 189, 248, 0.20)', color: '#7dd3fc', borderColor: 'rgba(125, 211, 252, 0.55)', boxShadow: '0 10px 22px rgba(56, 189, 248, 0.20)' },
+    on_4xx: {
+      backgroundColor: 'rgba(245, 158, 11, 0.20)',
+      color: '#fcd34d',
+      borderColor: 'rgba(252, 211, 77, 0.50)',
+      boxShadow: '0 10px 22px rgba(245, 158, 11, 0.20)',
+    },
+    on_5xx: {
+      backgroundColor: 'rgba(244, 63, 94, 0.20)',
+      color: '#fda4af',
+      borderColor: 'rgba(253, 164, 175, 0.55)',
+      boxShadow: '0 10px 22px rgba(244, 63, 94, 0.20)',
+    },
+    on_timeout: {
+      backgroundColor: 'rgba(56, 189, 248, 0.20)',
+      color: '#7dd3fc',
+      borderColor: 'rgba(125, 211, 252, 0.55)',
+      boxShadow: '0 10px 22px rgba(56, 189, 248, 0.20)',
+    },
   } as const;
 
   const updateData = (nextData: any) => {
@@ -279,19 +460,60 @@ export function ErrorPolicyDetails({ node, onNodeUpdate }: NodeDetailProps) {
       <div>
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">Rules</label>
         <div className="flex flex-wrap items-center gap-1">
-          <button onClick={() => toggleRule('on_4xx')} className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${activeRules.includes('on_4xx') ? 'border-current text-white ring-1 ring-white/30' : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/[0.06]'}`} style={activeRules.includes('on_4xx') ? tabStyle.on_4xx : undefined}><span className="inline-flex items-center gap-1.5"><AlertTriangle className="h-3.5 w-3.5" /><span>On 4xx</span></span></button>
-          <button onClick={() => toggleRule('on_5xx')} className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${activeRules.includes('on_5xx') ? 'border-current text-white ring-1 ring-white/30' : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/[0.06]'}`} style={activeRules.includes('on_5xx') ? tabStyle.on_5xx : undefined}><span className="inline-flex items-center gap-1.5"><ServerCrash className="h-3.5 w-3.5" /><span>On 5xx</span></span></button>
-          <button onClick={() => toggleRule('on_timeout')} className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${activeRules.includes('on_timeout') ? 'border-current text-white ring-1 ring-white/30' : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/[0.06]'}`} style={activeRules.includes('on_timeout') ? tabStyle.on_timeout : undefined}><span className="inline-flex items-center gap-1.5"><Clock3 className="h-3.5 w-3.5" /><span>On Timeout</span></span></button>
+          <button
+            onClick={() => toggleRule('on_4xx')}
+            className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${activeRules.includes('on_4xx') ? 'border-current text-white ring-1 ring-white/30' : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/[0.06]'}`}
+            style={activeRules.includes('on_4xx') ? tabStyle.on_4xx : undefined}
+          >
+            <span className="inline-flex items-center gap-1.5">
+              <AlertTriangle className="h-3.5 w-3.5" />
+              <span>On 4xx</span>
+            </span>
+          </button>
+          <button
+            onClick={() => toggleRule('on_5xx')}
+            className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${activeRules.includes('on_5xx') ? 'border-current text-white ring-1 ring-white/30' : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/[0.06]'}`}
+            style={activeRules.includes('on_5xx') ? tabStyle.on_5xx : undefined}
+          >
+            <span className="inline-flex items-center gap-1.5">
+              <ServerCrash className="h-3.5 w-3.5" />
+              <span>On 5xx</span>
+            </span>
+          </button>
+          <button
+            onClick={() => toggleRule('on_timeout')}
+            className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${activeRules.includes('on_timeout') ? 'border-current text-white ring-1 ring-white/30' : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/[0.06]'}`}
+            style={activeRules.includes('on_timeout') ? tabStyle.on_timeout : undefined}
+          >
+            <span className="inline-flex items-center gap-1.5">
+              <Clock3 className="h-3.5 w-3.5" />
+              <span>On Timeout</span>
+            </span>
+          </button>
         </div>
       </div>
       <div className="h-px bg-white/10" />
 
       <div className="grid grid-cols-3 gap-4">
-        {(['on_4xx', 'on_5xx', 'on_timeout'] as const).map((rule) => {
+        {(['on_4xx', 'on_5xx', 'on_timeout'] as const).map(rule => {
           const label = rule === 'on_4xx' ? 'On 4xx Action' : rule === 'on_5xx' ? 'On 5xx Action' : 'On Timeout Action';
           return (
-            <div key={rule} className={activeRules.includes(rule) ? '' : 'opacity-50'}>
-              <SelectField label={label} value={currentValueForRule(rule)} field={rule} onChange={(_, value) => updateData({ ...data, [rule]: value })} options={[{ label: 'continue', value: 'continue' }, { label: 'stop', value: 'stop' }]} disabled={!activeRules.includes(rule)} noMargin />
+            <div
+              key={rule}
+              className={activeRules.includes(rule) ? '' : 'opacity-50'}
+            >
+              <SelectField
+                label={label}
+                value={currentValueForRule(rule)}
+                field={rule}
+                onChange={(_, value) => updateData({ ...data, [rule]: value })}
+                options={[
+                  { label: 'continue', value: 'continue' },
+                  { label: 'stop', value: 'stop' },
+                ]}
+                disabled={!activeRules.includes(rule)}
+                noMargin
+              />
             </div>
           );
         })}

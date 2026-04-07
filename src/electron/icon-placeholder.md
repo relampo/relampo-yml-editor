@@ -5,12 +5,14 @@ Para que el build funcione, necesitas agregar íconos de la aplicación:
 ## Archivos Requeridos
 
 ### macOS
+
 - **File:** `/electron/icon.icns`
 - **Format:** ICNS (macOS icon format)
 - **Size:** 512x512px
 - **Tool:** Puedes usar https://cloudconvert.com/png-to-icns
 
 ### Linux
+
 - **File:** `/electron/icon.png`
 - **Format:** PNG
 - **Size:** 512x512px
@@ -18,6 +20,7 @@ Para que el build funcione, necesitas agregar íconos de la aplicación:
 ## Diseño Sugerido
 
 Crea un ícono con:
+
 - ⚡ Rayo amarillo (#facc15)
 - Fondo oscuro circular (#0a0a0a)
 - Estilo moderno y minimalista

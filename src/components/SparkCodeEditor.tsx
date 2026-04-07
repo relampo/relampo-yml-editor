@@ -24,11 +24,7 @@ interface ValidationResult {
  * - Editable
  * - Manual syntax validation using Monaco diagnostics
  */
-export function SparkCodeEditor({
-  value,
-  onChange,
-  minHeight = '250px',
-}: SparkCodeEditorProps) {
+export function SparkCodeEditor({ value, onChange, minHeight = '250px' }: SparkCodeEditorProps) {
   const { t } = useLanguage();
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [isValidating, setIsValidating] = useState(false);
@@ -44,7 +40,7 @@ export function SparkCodeEditor({
   // Validate JavaScript syntax using Monaco markers
   const validateSyntax = () => {
     setIsValidating(true);
-    
+
     setTimeout(() => {
       if (!value.trim()) {
         setValidationResult({
@@ -59,9 +55,11 @@ export function SparkCodeEditor({
       if (monacoRef.current && editorRef.current) {
         const model = editorRef.current.getModel();
         if (model) {
-          const markers = monacoRef.current.editor.getModelMarkers({ resource: model.uri });
+          const markers = monacoRef.current.editor.getModelMarkers({
+            resource: model.uri,
+          });
           const errors = markers.filter(m => m.severity === monacoRef.current!.MarkerSeverity.Error);
-          
+
           if (errors.length > 0) {
             const firstError = errors[0];
             setValidationResult({
@@ -83,16 +81,15 @@ export function SparkCodeEditor({
           message: 'Syntax OK - No errors found!',
         });
       } catch (error: any) {
-        const match = error.message.match(/line (\d+)/i) || 
-                      error.message.match(/position (\d+)/i);
-        
+        const match = error.message.match(/line (\d+)/i) || error.message.match(/position (\d+)/i);
+
         setValidationResult({
           isValid: false,
           message: error.message,
           line: match ? parseInt(match[1]) : undefined,
         });
       }
-      
+
       setIsValidating(false);
     }, 200);
   };
@@ -114,13 +111,13 @@ export function SparkCodeEditor({
           <div className="flex items-center gap-2 text-xs text-zinc-500">
             <span className="text-zinc-400">{lineCount} lines</span>
           </div>
-          
+
           {/* Validate Button */}
           <button
             onClick={validateSyntax}
             disabled={isValidating}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-all ${
-              isValidating 
+              isValidating
                 ? 'bg-zinc-700 text-zinc-400 cursor-wait'
                 : 'bg-green-500/20 text-green-400 hover:bg-green-500/30 border border-green-500/30'
             }`}
@@ -157,11 +154,13 @@ export function SparkCodeEditor({
 
       {/* Validation Result */}
       {validationResult && (
-        <div className={`mt-2 px-3 py-2 rounded-lg text-xs flex items-center gap-2 ${
-          validationResult.isValid 
-            ? 'bg-green-500/10 text-green-400 border border-green-500/20' 
-            : 'bg-red-500/10 text-red-400 border border-red-500/20'
-        }`}>
+        <div
+          className={`mt-2 px-3 py-2 rounded-lg text-xs flex items-center gap-2 ${
+            validationResult.isValid
+              ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+              : 'bg-red-500/10 text-red-400 border border-red-500/20'
+          }`}
+        >
           {validationResult.isValid ? (
             <>
               <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
@@ -171,9 +170,7 @@ export function SparkCodeEditor({
             <>
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
               <span className="flex-1">{validationResult.message}</span>
-              {validationResult.line && (
-                <span className="text-red-300 font-mono">Line {validationResult.line}</span>
-              )}
+              {validationResult.line && <span className="text-red-300 font-mono">Line {validationResult.line}</span>}
             </>
           )}
         </div>

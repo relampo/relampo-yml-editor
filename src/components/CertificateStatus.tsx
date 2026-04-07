@@ -28,7 +28,7 @@ export function CertificateStatus({
   onDownload,
   onShowInstructions,
   onRunDiagnostics,
-  isLoading = false
+  isLoading = false,
 }: CertificateStatusProps) {
   const [showDetails, setShowDetails] = useState(false);
 
@@ -44,7 +44,7 @@ export function CertificateStatus({
           borderColor: 'border-green-200',
           iconColor: 'text-green-600',
           description: 'Certificate is installed and trusted',
-          showActions: false
+          showActions: false,
         };
       case 'needs_install':
         return {
@@ -56,7 +56,7 @@ export function CertificateStatus({
           borderColor: 'border-amber-200',
           iconColor: 'text-amber-600',
           description: 'Certificate exists but is not in trust store',
-          showActions: true
+          showActions: true,
         };
       case 'expired':
       case 'invalid':
@@ -69,7 +69,7 @@ export function CertificateStatus({
           borderColor: 'border-red-200',
           iconColor: 'text-red-600',
           description: `Certificate is ${certData.status}. Rotate to continue.`,
-          showActions: true
+          showActions: true,
         };
       case 'missing':
       default:
@@ -82,7 +82,7 @@ export function CertificateStatus({
           borderColor: 'border-neutral-300',
           iconColor: 'text-neutral-500',
           description: 'No CA certificate found',
-          showActions: true
+          showActions: true,
         };
     }
   };
@@ -156,9 +156,7 @@ export function CertificateStatus({
             <div className="flex items-start gap-3">
               <StatusIcon className={`w-5 h-5 ${config.iconColor} flex-shrink-0 mt-0.5`} />
               <div className="flex-1 min-w-0">
-                <p className={`text-sm font-medium ${config.textColor}`}>
-                  {config.description}
-                </p>
+                <p className={`text-sm font-medium ${config.textColor}`}>{config.description}</p>
                 {certData.expires_at && (
                   <p className="text-xs text-neutral-600 mt-1">
                     Expires: {new Date(certData.expires_at).toLocaleDateString()}
@@ -172,13 +170,17 @@ export function CertificateStatus({
               <div className="flex flex-wrap gap-2 pt-2 border-t border-neutral-200">
                 {certData.trusted_os !== undefined && (
                   <div className="flex items-center gap-1.5 px-2 py-1 bg-white rounded text-xs">
-                    <div className={`w-1.5 h-1.5 rounded-full ${certData.trusted_os ? 'bg-green-500' : 'bg-neutral-300'}`}></div>
+                    <div
+                      className={`w-1.5 h-1.5 rounded-full ${certData.trusted_os ? 'bg-green-500' : 'bg-neutral-300'}`}
+                    ></div>
                     <span className="text-neutral-700">OS Trust Store</span>
                   </div>
                 )}
                 {certData.trusted_firefox !== undefined && (
                   <div className="flex items-center gap-1.5 px-2 py-1 bg-white rounded text-xs">
-                    <div className={`w-1.5 h-1.5 rounded-full ${certData.trusted_firefox ? 'bg-green-500' : 'bg-neutral-300'}`}></div>
+                    <div
+                      className={`w-1.5 h-1.5 rounded-full ${certData.trusted_firefox ? 'bg-green-500' : 'bg-neutral-300'}`}
+                    ></div>
                     <span className="text-neutral-700">Firefox</span>
                   </div>
                 )}

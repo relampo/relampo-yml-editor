@@ -23,14 +23,18 @@ function stripResponsesFromObject(value: unknown): unknown {
 function buildDownloadContent(
   includeResponses: boolean,
   sourceYaml: string,
-  language: string
+  language: string,
 ): { content: string | null; error?: string } {
   if (includeResponses) return { content: sourceYaml };
   try {
     const parsed = yaml.load(sourceYaml);
     const sanitized = stripResponsesFromObject(parsed);
     return {
-      content: yaml.dump(sanitized, { lineWidth: -1, noRefs: true, sortKeys: false }),
+      content: yaml.dump(sanitized, {
+        lineWidth: -1,
+        noRefs: true,
+        sortKeys: false,
+      }),
     };
   } catch {
     return {
@@ -143,7 +147,7 @@ export function useYAMLPersistence({
           : 'YAML downloaded with responses'
         : language === 'es'
           ? 'YAML descargado sin respuestas'
-          : 'YAML downloaded without responses'
+          : 'YAML downloaded without responses',
     );
   };
 
@@ -178,8 +182,7 @@ export function useYAMLPersistence({
   // Keyboard shortcuts
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      const isRefreshShortcut =
-        e.key === 'F5' || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'r');
+      const isRefreshShortcut = e.key === 'F5' || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'r');
       if (isRefreshShortcut && isDirty) {
         e.preventDefault();
         const confirmMessage =

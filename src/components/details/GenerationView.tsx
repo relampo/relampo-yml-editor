@@ -8,9 +8,7 @@ export function GenerationView() {
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-zinc-100">Load Test Generation</h3>
-            <p className="text-sm text-zinc-400 mt-1">
-              Configure and execute distributed performance tests
-            </p>
+            <p className="text-sm text-zinc-400 mt-1">Configure and execute distributed performance tests</p>
           </div>
           <button className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-300 hover:to-yellow-400 text-black font-semibold rounded-lg transition-colors shadow-lg shadow-yellow-400/30">
             <Play className="w-4 h-4" />
@@ -105,7 +103,11 @@ export function GenerationView() {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-zinc-400">50%</span>
-                  <input type="checkbox" defaultChecked className="w-4 h-4" />
+                  <input
+                    type="checkbox"
+                    defaultChecked
+                    className="w-4 h-4"
+                  />
                 </div>
               </div>
               <div className="flex items-center gap-3 px-4 py-3 bg-[#111111] border border-white/10 rounded-lg">
@@ -116,7 +118,11 @@ export function GenerationView() {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-zinc-400">30%</span>
-                  <input type="checkbox" defaultChecked className="w-4 h-4" />
+                  <input
+                    type="checkbox"
+                    defaultChecked
+                    className="w-4 h-4"
+                  />
                 </div>
               </div>
               <div className="flex items-center gap-3 px-4 py-3 bg-[#111111] border border-white/10 rounded-lg">
@@ -127,7 +133,10 @@ export function GenerationView() {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-zinc-400">20%</span>
-                  <input type="checkbox" className="w-4 h-4" />
+                  <input
+                    type="checkbox"
+                    className="w-4 h-4"
+                  />
                 </div>
               </div>
             </div>

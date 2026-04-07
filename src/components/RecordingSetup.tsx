@@ -2,15 +2,7 @@ import { useState } from 'react';
 import { RecordingStatus } from './Recorder';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
-import { 
-  Radio, 
-  Globe, 
-  Shield, 
-  Filter, 
-  Plus,
-  X,
-  Info
-} from 'lucide-react';
+import { Radio, Globe, Shield, Filter, Plus, X, Info } from 'lucide-react';
 
 interface RecordingSetupProps {
   status: RecordingStatus;
@@ -21,12 +13,10 @@ export function RecordingSetup({ status }: RecordingSetupProps) {
   const [baseUrl, setBaseUrl] = useState('https://api.example.com');
   const [scenarioName, setScenarioName] = useState('Recorded Scenario');
   const [yamlFileName, setYamlFileName] = useState('recording.yaml');
-  
+
   // Filtros estilo JMeter: include + exclude patterns
   const [includePatterns, setIncludePatterns] = useState<string[]>(['.*']);
-  const [excludePatterns, setExcludePatterns] = useState<string[]>([
-    '.*\\.(css|js|png|jpg|jpeg|gif|ico|woff|woff2)$'
-  ]);
+  const [excludePatterns, setExcludePatterns] = useState<string[]>(['.*\\.(css|js|png|jpg|jpeg|gif|ico|woff|woff2)$']);
 
   const disabled = status === 'recording';
 
@@ -38,14 +28,14 @@ export function RecordingSetup({ status }: RecordingSetupProps) {
           <Radio className="w-3.5 h-3.5" />
           HTTP Proxy
         </h3>
-        
+
         <div className="space-y-3">
           <div className="space-y-2">
             <label className="text-xs text-zinc-400">Listening Port</label>
             <Input
               type="number"
               value={port}
-              onChange={(e) => setPort(e.target.value)}
+              onChange={e => setPort(e.target.value)}
               disabled={disabled}
               className="bg-[#0a0a0a] border-white/10"
             />
@@ -58,7 +48,10 @@ export function RecordingSetup({ status }: RecordingSetupProps) {
                 Proxy Status: {status === 'recording' ? 'Listening' : 'Not started'}
               </p>
               {status === 'recording' && (
-                <p>Configure your browser to use proxy: <span className="text-yellow-400 font-mono">127.0.0.1:{port}</span></p>
+                <p>
+                  Configure your browser to use proxy:{' '}
+                  <span className="text-yellow-400 font-mono">127.0.0.1:{port}</span>
+                </p>
               )}
             </div>
           </div>
@@ -78,7 +71,7 @@ export function RecordingSetup({ status }: RecordingSetupProps) {
             <Input
               type="url"
               value={baseUrl}
-              onChange={(e) => setBaseUrl(e.target.value)}
+              onChange={e => setBaseUrl(e.target.value)}
               disabled={disabled}
               placeholder="https://api.example.com"
               className="bg-[#0a0a0a] border-white/10"
@@ -89,7 +82,7 @@ export function RecordingSetup({ status }: RecordingSetupProps) {
             <label className="text-xs text-zinc-400">Scenario Name</label>
             <Input
               value={scenarioName}
-              onChange={(e) => setScenarioName(e.target.value)}
+              onChange={e => setScenarioName(e.target.value)}
               disabled={disabled}
               placeholder="Recorded Scenario"
               className="bg-[#0a0a0a] border-white/10"
@@ -100,7 +93,7 @@ export function RecordingSetup({ status }: RecordingSetupProps) {
             <label className="text-xs text-zinc-400">YAML File Name</label>
             <Input
               value={yamlFileName}
-              onChange={(e) => setYamlFileName(e.target.value)}
+              onChange={e => setYamlFileName(e.target.value)}
               disabled={disabled}
               placeholder="recording.yaml"
               className="bg-[#0a0a0a] border-white/10"
@@ -122,10 +115,13 @@ export function RecordingSetup({ status }: RecordingSetupProps) {
             <label className="text-xs font-medium text-zinc-300">Include Patterns (regex)</label>
             <p className="text-xs text-zinc-500 mb-2">Only capture URLs matching these patterns</p>
             {includePatterns.map((pattern, idx) => (
-              <div key={`include-${idx}`} className="flex items-center gap-2">
+              <div
+                key={`include-${idx}`}
+                className="flex items-center gap-2"
+              >
                 <Input
                   value={pattern}
-                  onChange={(e) => {
+                  onChange={e => {
                     const newPatterns = [...includePatterns];
                     newPatterns[idx] = e.target.value;
                     setIncludePatterns(newPatterns);
@@ -145,7 +141,7 @@ export function RecordingSetup({ status }: RecordingSetupProps) {
                 </Button>
               </div>
             ))}
-            
+
             <Button
               size="sm"
               variant="outline"
@@ -163,10 +159,13 @@ export function RecordingSetup({ status }: RecordingSetupProps) {
             <label className="text-xs font-medium text-zinc-300">Exclude Patterns (regex)</label>
             <p className="text-xs text-zinc-500 mb-2">Skip URLs matching these patterns</p>
             {excludePatterns.map((pattern, idx) => (
-              <div key={`exclude-${idx}`} className="flex items-center gap-2">
+              <div
+                key={`exclude-${idx}`}
+                className="flex items-center gap-2"
+              >
                 <Input
                   value={pattern}
-                  onChange={(e) => {
+                  onChange={e => {
                     const newPatterns = [...excludePatterns];
                     newPatterns[idx] = e.target.value;
                     setExcludePatterns(newPatterns);
@@ -186,7 +185,7 @@ export function RecordingSetup({ status }: RecordingSetupProps) {
                 </Button>
               </div>
             ))}
-            
+
             <Button
               size="sm"
               variant="outline"

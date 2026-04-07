@@ -40,23 +40,32 @@ export function TopBar(_: TopBarProps) {
       <div className="flex items-center gap-3">
         {/* Relampo Logo */}
         <div className="relative w-8 h-8 bg-gradient-to-br from-yellow-300 via-yellow-400 to-yellow-500 rounded-lg flex items-center justify-center shadow-lg shadow-yellow-400/30">
-          <svg width="14" height="18" viewBox="0 0 18 22" fill="none">
-            <path d="M10.5 0L0 12.5H7.5L6 22L18 9H10.5V0Z" fill="white" className="drop-shadow-lg" />
+          <svg
+            width="14"
+            height="18"
+            viewBox="0 0 18 22"
+            fill="none"
+          >
+            <path
+              d="M10.5 0L0 12.5H7.5L6 22L18 9H10.5V0Z"
+              fill="white"
+              className="drop-shadow-lg"
+            />
           </svg>
         </div>
         <div>
-          <h1 className="text-base font-black text-zinc-100 tracking-tight">
-            RELAMPO
-          </h1>
+          <h1 className="text-base font-black text-zinc-100 tracking-tight">RELAMPO</h1>
           <p className="text-[10px] text-zinc-500 -mt-0.5">{language === 'es' ? 'Editor de YAML' : 'YAML Editor'}</p>
         </div>
       </div>
 
       {/* Right: Language Toggle */}
       <div className="flex items-center gap-2">
-        <span className={`text-sm font-medium transition-colors ${
-          language === 'en' ? 'text-yellow-400' : 'text-zinc-500'
-        }`}>EN</span>
+        <span
+          className={`text-sm font-medium transition-colors ${language === 'en' ? 'text-yellow-400' : 'text-zinc-500'}`}
+        >
+          EN
+        </span>
         <button
           onClick={() => setLanguage(language === 'en' ? 'es' : 'en')}
           className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 focus:ring-offset-[#0a0a0a] bg-zinc-700 hover:bg-zinc-600"
@@ -67,9 +76,11 @@ export function TopBar(_: TopBarProps) {
             }`}
           />
         </button>
-        <span className={`text-sm font-medium transition-colors ${
-          language === 'es' ? 'text-yellow-400' : 'text-zinc-500'
-        }`}>ES</span>
+        <span
+          className={`text-sm font-medium transition-colors ${language === 'es' ? 'text-yellow-400' : 'text-zinc-500'}`}
+        >
+          ES
+        </span>
       </div>
     </header>
   );

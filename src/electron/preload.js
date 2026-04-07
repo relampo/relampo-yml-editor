@@ -1,8 +1,8 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electron', {
-  selectFile: (options) => ipcRenderer.invoke('select-file', options),
-  platform: process.platform
+  selectFile: options => ipcRenderer.invoke('select-file', options),
+  platform: process.platform,
 });
 
 window.addEventListener('DOMContentLoaded', () => {

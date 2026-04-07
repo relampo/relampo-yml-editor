@@ -6,7 +6,8 @@ export function CertificateBackendGuide() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-neutral-900 mb-2">Certificate Backend Implementation Guide</h1>
         <p className="text-neutral-600">
-          Complete API specification for the local agent that handles certificate generation, installation, and proxy management.
+          Complete API specification for the local agent that handles certificate generation, installation, and proxy
+          management.
         </p>
       </div>
 
@@ -17,19 +18,24 @@ export function CertificateBackendGuide() {
           <div>
             <h2 className="text-xl font-bold text-blue-900 mb-2">Architecture Overview</h2>
             <p className="text-sm text-blue-800 mb-3">
-              The UI (web/Electron) should NOT touch the trust store directly. Instead, create a local agent (daemon/service) 
-              that runs on <code className="bg-blue-100 px-1 rounded">localhost</code> and exposes REST APIs.
+              The UI (web/Electron) should NOT touch the trust store directly. Instead, create a local agent
+              (daemon/service) that runs on <code className="bg-blue-100 px-1 rounded">localhost</code> and exposes REST
+              APIs.
             </p>
             <div className="bg-white rounded-lg p-4 text-sm text-neutral-700 space-y-1 font-mono">
-              <div>┌─ <span className="text-blue-600 font-semibold">UI (React App)</span></div>
-              <div>│  └─ calls localhost APIs</div>
+              <div>
+                ┌─ <span className="text-blue-600 font-semibold">UI (React App)</span>
+              </div>
+              <div>│ └─ calls localhost APIs</div>
               <div>│</div>
-              <div>└─ <span className="text-green-600 font-semibold">Local Agent (Node.js/Go/Rust)</span></div>
-              <div>   ├─ generates/stores CA certificate</div>
-              <div>   ├─ installs CA in OS trust store</div>
-              <div>   ├─ runs MITM proxy</div>
-              <div>   ├─ sets/unsets system proxy</div>
-              <div>   └─ runs diagnostics</div>
+              <div>
+                └─ <span className="text-green-600 font-semibold">Local Agent (Node.js/Go/Rust)</span>
+              </div>
+              <div> ├─ generates/stores CA certificate</div>
+              <div> ├─ installs CA in OS trust store</div>
+              <div> ├─ runs MITM proxy</div>
+              <div> ├─ sets/unsets system proxy</div>
+              <div> └─ runs diagnostics</div>
             </div>
           </div>
         </div>
@@ -61,7 +67,7 @@ export function CertificateBackendGuide() {
                 <div>
                   <p className="text-sm font-semibold text-neutral-700 mb-1">Response:</p>
                   <pre className="bg-neutral-900 text-green-400 rounded p-3 text-xs font-mono overflow-x-auto">
-{`{
+                    {`{
   "status": "trusted",           // missing | needs_install | trusted | expired | invalid
   "trusted_os": true,             // Is it in OS trust store?
   "trusted_firefox": false,       // Is it in Firefox NSS store?
@@ -95,7 +101,7 @@ export function CertificateBackendGuide() {
                 <div>
                   <p className="text-sm font-semibold text-neutral-700 mb-1">Response:</p>
                   <pre className="bg-neutral-900 text-green-400 rounded p-3 text-xs font-mono overflow-x-auto">
-{`{
+                    {`{
   "success": true,
   "fingerprint": "A1:B2:C3:D4:..."
 }`}
@@ -153,7 +159,9 @@ export function CertificateBackendGuide() {
                     </div>
                     <div className="flex items-start gap-2">
                       <span className="font-semibold min-w-[80px]">macOS:</span>
-                      <span>security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain cert.crt</span>
+                      <span>
+                        security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain cert.crt
+                      </span>
                     </div>
                     <div className="flex items-start gap-2">
                       <span className="font-semibold min-w-[80px]">Linux:</span>
@@ -161,14 +169,16 @@ export function CertificateBackendGuide() {
                     </div>
                     <div className="flex items-start gap-2">
                       <span className="font-semibold min-w-[80px]">Firefox:</span>
-                      <span>certutil -A -n "Relampo CA" -t "C,," -d sql:$HOME/.mozilla/firefox/*.default -i cert.crt</span>
+                      <span>
+                        certutil -A -n "Relampo CA" -t "C,," -d sql:$HOME/.mozilla/firefox/*.default -i cert.crt
+                      </span>
                     </div>
                   </div>
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-neutral-700 mb-1">Success Response:</p>
                   <pre className="bg-neutral-900 text-green-400 rounded p-3 text-xs font-mono">
-{`{
+                    {`{
   "success": true,
   "message": "Certificate installed successfully"
 }`}
@@ -177,7 +187,7 @@ export function CertificateBackendGuide() {
                 <div>
                   <p className="text-sm font-semibold text-neutral-700 mb-1">Error Response:</p>
                   <pre className="bg-neutral-900 text-red-400 rounded p-3 text-xs font-mono">
-{`{
+                    {`{
   "success": false,
   "error": "NEEDS_ADMIN" | "INSTALL_FAILED",
   "message": "Administrator privileges required"
@@ -222,7 +232,7 @@ export function CertificateBackendGuide() {
                 <div>
                   <p className="text-sm font-semibold text-neutral-700 mb-1">Request Body:</p>
                   <pre className="bg-neutral-900 text-green-400 rounded p-3 text-xs font-mono">
-{`{
+                    {`{
   "port": 8888
 }`}
                   </pre>
@@ -230,7 +240,7 @@ export function CertificateBackendGuide() {
                 <div>
                   <p className="text-sm font-semibold text-neutral-700 mb-1">Response:</p>
                   <pre className="bg-neutral-900 text-green-400 rounded p-3 text-xs font-mono">
-{`{
+                    {`{
   "success": true,
   "port": 8888,
   "recommended_port": 8888  // If port busy, suggest alternative
@@ -264,7 +274,7 @@ export function CertificateBackendGuide() {
                 <div>
                   <p className="text-sm font-semibold text-neutral-700 mb-1">Request Body:</p>
                   <pre className="bg-neutral-900 text-green-400 rounded p-3 text-xs font-mono">
-{`{
+                    {`{
   "host": "127.0.0.1",
   "port": 8888,
   "bypass": ["localhost", "127.0.0.1", "*.local"]
@@ -304,7 +314,7 @@ export function CertificateBackendGuide() {
               </div>
               <div className="p-4">
                 <pre className="bg-neutral-900 text-green-400 rounded p-3 text-xs font-mono">
-{`{
+                  {`{
   "running": true,
   "port": 8888,
   "system_proxy_set": true
@@ -343,7 +353,7 @@ export function CertificateBackendGuide() {
                 <div>
                   <p className="text-sm font-semibold text-neutral-700 mb-1">Response:</p>
                   <pre className="bg-neutral-900 text-green-400 rounded p-3 text-xs font-mono overflow-x-auto">
-{`{
+                    {`{
   "checks": [
     { "name": "CA exists", "passed": true },
     { "name": "CA trusted", "passed": true },
@@ -373,9 +383,15 @@ export function CertificateBackendGuide() {
               The CA private key must be stored securely and NEVER exported:
             </p>
             <ul className="list-disc list-inside text-sm text-amber-800 space-y-1 ml-3">
-              <li><strong>macOS:</strong> Store in Keychain with SecureEnclave if possible</li>
-              <li><strong>Windows:</strong> Use DPAPI (Data Protection API) to encrypt</li>
-              <li><strong>Linux:</strong> Encrypted file with restricted permissions (chmod 600)</li>
+              <li>
+                <strong>macOS:</strong> Store in Keychain with SecureEnclave if possible
+              </li>
+              <li>
+                <strong>Windows:</strong> Use DPAPI (Data Protection API) to encrypt
+              </li>
+              <li>
+                <strong>Linux:</strong> Encrypted file with restricted permissions (chmod 600)
+              </li>
             </ul>
           </div>
 
@@ -392,7 +408,10 @@ export function CertificateBackendGuide() {
           <div className="border-l-4 border-green-500 bg-green-50 p-4 rounded-r-lg">
             <h3 className="font-semibold text-green-900 mb-2">♻️ Recovery & Idempotency</h3>
             <ul className="list-disc list-inside text-sm text-green-800 space-y-1 ml-3">
-              <li><code>/proxy/start</code> and <code>/proxy/set_system</code> must be idempotent (safe to call multiple times)</li>
+              <li>
+                <code>/proxy/start</code> and <code>/proxy/set_system</code> must be idempotent (safe to call multiple
+                times)
+              </li>
               <li>On agent startup, check for "stale" system proxy settings and clean them up</li>
               <li>On agent crash, system proxy must be auto-restored (use OS shutdown hooks)</li>
             </ul>
@@ -405,7 +424,9 @@ export function CertificateBackendGuide() {
             </p>
             <ul className="list-disc list-inside text-sm text-purple-800 space-y-1 ml-3 mt-2">
               <li>Detect Firefox profile directories</li>
-              <li>Use <code>certutil</code> CLI to install certificate</li>
+              <li>
+                Use <code>certutil</code> CLI to install certificate
+              </li>
               <li>Provide manual instructions as fallback</li>
             </ul>
           </div>
@@ -432,10 +453,16 @@ export function CertificateBackendGuide() {
             'Private key stored securely (Keychain/DPAPI)',
             'Bypass list includes localhost to avoid loops',
             'System proxy auto-restored on agent crash',
-            'Firefox NSS store handled separately'
+            'Firefox NSS store handled separately',
           ].map((item, index) => (
-            <div key={index} className="flex items-start gap-2">
-              <input type="checkbox" className="mt-1 w-4 h-4" />
+            <div
+              key={index}
+              className="flex items-start gap-2"
+            >
+              <input
+                type="checkbox"
+                className="mt-1 w-4 h-4"
+              />
               <label className="text-sm text-green-900">{item}</label>
             </div>
           ))}

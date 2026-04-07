@@ -11,16 +11,19 @@ Instead of opening a browser, users get a **standalone desktop window** that wor
 ## 📋 Prerequisites
 
 ### Required
+
 - **Node.js** v18+ (with npm)
 - **Git** (optional, for cloning)
 
 ### Platform-Specific
 
 **macOS:**
+
 - macOS 10.13+ (High Sierra or later)
 - Xcode Command Line Tools: `xcode-select --install`
 
 **Linux:**
+
 - Ubuntu 18.04+ / Debian 10+ / Fedora 30+
 - Build tools: `sudo apt-get install build-essential` (Debian/Ubuntu)
 
@@ -59,12 +62,14 @@ relampo-desktop-releases/
 ### macOS
 
 **DMG Installer** (Recommended)
+
 ```bash
 # Users double-click the .dmg and drag to Applications
 Relampo-YAML-Editor-1.0.0.dmg
 ```
 
 **ZIP Archive**
+
 ```bash
 # Extract and move to Applications manually
 Relampo-YAML-Editor-1.0.0-mac.zip
@@ -73,6 +78,7 @@ Relampo-YAML-Editor-1.0.0-mac.zip
 ### Linux
 
 **AppImage** (Recommended - Universal)
+
 ```bash
 # Single executable, works on most Linux distros
 chmod +x Relampo-YAML-Editor-1.0.0.AppImage
@@ -80,6 +86,7 @@ chmod +x Relampo-YAML-Editor-1.0.0.AppImage
 ```
 
 **tar.gz Archive**
+
 ```bash
 # Extract and run
 tar -xzf relampo-yaml-editor-1.0.0.tar.gz
@@ -121,13 +128,13 @@ The `build-yaml-desktop.sh` script performs these steps:
 
 Approximate sizes (may vary):
 
-| Platform | Format | Size |
-|----------|--------|------|
-| macOS Intel | DMG | ~150 MB |
-| macOS Apple Silicon | DMG | ~150 MB |
-| macOS | ZIP | ~145 MB |
-| Linux | AppImage | ~160 MB |
-| Linux | tar.gz | ~140 MB |
+| Platform            | Format   | Size    |
+| ------------------- | -------- | ------- |
+| macOS Intel         | DMG      | ~150 MB |
+| macOS Apple Silicon | DMG      | ~150 MB |
+| macOS               | ZIP      | ~145 MB |
+| Linux               | AppImage | ~160 MB |
+| Linux               | tar.gz   | ~140 MB |
 
 ---
 
@@ -173,6 +180,7 @@ chmod +x Relampo-YAML-Editor-1.0.0.AppImage
 **Error:** "xcode-select: error: tool 'xcodebuild' requires Xcode"
 
 **Solution:**
+
 ```bash
 xcode-select --install
 ```
@@ -182,11 +190,13 @@ xcode-select --install
 **Error:** "error while loading shared libraries"
 
 **Solution (Ubuntu/Debian):**
+
 ```bash
 sudo apt-get install build-essential libssl-dev
 ```
 
 **Solution (Fedora):**
+
 ```bash
 sudo dnf install gcc gcc-c++ make openssl-devel
 ```
@@ -204,6 +214,7 @@ sudo dnf install gcc gcc-c++ make openssl-devel
 **Error:** "Permission denied"
 
 **Solution:**
+
 ```bash
 chmod +x Relampo-YAML-Editor-1.0.0.AppImage
 ```
@@ -229,6 +240,7 @@ export APPLE_TEAM_ID="XXXXXXXXXX"
 ### Linux Code Signing
 
 Linux doesn't require code signing, but you can:
+
 - Sign with GPG for verification
 - Distribute checksums (SHA256)
 
@@ -252,6 +264,7 @@ sha256sum Relampo-YAML-Editor-1.0.0.AppImage > checksums.txt
 ### For Linux Users
 
 **AppImage (Easiest):**
+
 ```bash
 wget https://yoursite.com/Relampo-YAML-Editor-1.0.0.AppImage
 chmod +x Relampo-YAML-Editor-1.0.0.AppImage
@@ -259,6 +272,7 @@ chmod +x Relampo-YAML-Editor-1.0.0.AppImage
 ```
 
 **Optional:** Integrate with desktop:
+
 ```bash
 # Makes it appear in applications menu
 ./Relampo-YAML-Editor-1.0.0.AppImage --appimage-extract
@@ -275,7 +289,7 @@ Edit `/electron/main.js`:
 
 ```javascript
 const mainWindow = new BrowserWindow({
-  width: 1600,  // Change this
+  width: 1600, // Change this
   height: 1000, // Change this
   // ...
 });
@@ -293,6 +307,7 @@ mainWindow.webContents.openDevTools();
 ### Custom App Icon
 
 Replace these files:
+
 - `/electron/icon.icns` (macOS - 512x512)
 - `/electron/icon.png` (Linux - 512x512)
 
@@ -322,14 +337,14 @@ After building, you can:
 
 ## 🔥 Benefits Over Web Version
 
-| Feature | Web Version | Desktop Version |
-|---------|-------------|-----------------|
-| Installation | Python required | Just download & run |
-| Browser | Opens in browser | Native window |
-| Offline | Requires local server | Fully offline |
-| Performance | Depends on browser | Optimized Chromium |
-| User Experience | Browser tabs | Dedicated app |
-| File Size | ~5 MB | ~150 MB |
+| Feature         | Web Version           | Desktop Version     |
+| --------------- | --------------------- | ------------------- |
+| Installation    | Python required       | Just download & run |
+| Browser         | Opens in browser      | Native window       |
+| Offline         | Requires local server | Fully offline       |
+| Performance     | Depends on browser    | Optimized Chromium  |
+| User Experience | Browser tabs          | Dedicated app       |
+| File Size       | ~5 MB                 | ~150 MB             |
 
 ---
 

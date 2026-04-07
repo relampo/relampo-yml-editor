@@ -35,7 +35,10 @@ export function LandingPageLeagueSection({ timeRange, setTimeRange }: LeagueSect
   };
 
   return (
-    <section id="league" className="py-12 md:py-16">
+    <section
+      id="league"
+      className="py-12 md:py-16"
+    >
       <div className="text-center mb-12">
         <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-zinc-300 mb-4">
           <Trophy className="h-4 w-4 text-[#facc15]" />
@@ -66,8 +69,17 @@ export function LandingPageLeagueSection({ timeRange, setTimeRange }: LeagueSect
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-yellow-300 via-yellow-400 to-yellow-500 flex items-center justify-center shadow-lg shadow-yellow-400/40">
-                  <svg width="18" height="22" viewBox="0 0 18 22" fill="none">
-                    <path d="M10.5 0L0 12.5H7.5L6 22L18 9H10.5V0Z" fill="white" className="drop-shadow-lg"/>
+                  <svg
+                    width="18"
+                    height="22"
+                    viewBox="0 0 18 22"
+                    fill="none"
+                  >
+                    <path
+                      d="M10.5 0L0 12.5H7.5L6 22L18 9H10.5V0Z"
+                      fill="white"
+                      className="drop-shadow-lg"
+                    />
                   </svg>
                 </div>
                 <div>
@@ -109,10 +121,10 @@ export function LandingPageLeagueSection({ timeRange, setTimeRange }: LeagueSect
 
           {/* Leaderboard */}
           <div className="divide-y divide-white/5">
-            {data.slice(0, 10).map((entry) => {
+            {data.slice(0, 10).map(entry => {
               const tierConfig = getTierConfig(entry.currentTier);
               const rankBadge = getRankBadge(entry.rank);
-              
+
               return (
                 <div
                   key={entry.userId}
@@ -124,9 +136,7 @@ export function LandingPageLeagueSection({ timeRange, setTimeRange }: LeagueSect
                       {rankBadge ? (
                         <span className="text-xl">{rankBadge}</span>
                       ) : (
-                        <span className={`font-bold text-sm ${getRankColor(entry.rank)}`}>
-                          #{entry.rank}
-                        </span>
+                        <span className={`font-bold text-sm ${getRankColor(entry.rank)}`}>#{entry.rank}</span>
                       )}
                     </div>
 
@@ -138,13 +148,13 @@ export function LandingPageLeagueSection({ timeRange, setTimeRange }: LeagueSect
                     {/* User Info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-sm font-medium text-zinc-100 truncate">
-                          {entry.userName}
-                        </span>
+                        <span className="text-sm font-medium text-zinc-100 truncate">{entry.userName}</span>
                         {entry.delta !== undefined && entry.delta !== 0 && (
-                          <span className={`flex items-center gap-0.5 text-xs ${
-                            entry.delta > 0 ? 'text-green-400' : 'text-red-400'
-                          }`}>
+                          <span
+                            className={`flex items-center gap-0.5 text-xs ${
+                              entry.delta > 0 ? 'text-green-400' : 'text-red-400'
+                            }`}
+                          >
                             {entry.delta > 0 ? (
                               <TrendingUp className="w-3 h-3" />
                             ) : (
@@ -161,7 +171,10 @@ export function LandingPageLeagueSection({ timeRange, setTimeRange }: LeagueSect
                           <span
                             className={`px-2 py-0.5 text-[10px] font-semibold rounded border ${tierConfig.bgColor} ${tierConfig.color} ${tierConfig.borderColor} flex items-center gap-1`}
                           >
-                            <PowerTierIcon tier={entry.currentTier!} className="w-2.5 h-2.5" />
+                            <PowerTierIcon
+                              tier={entry.currentTier!}
+                              className="w-2.5 h-2.5"
+                            />
                             {tierConfig.name}
                           </span>
                         )}
@@ -192,12 +205,8 @@ export function LandingPageLeagueSection({ timeRange, setTimeRange }: LeagueSect
 
                     {/* Total Points */}
                     <div className="text-right">
-                      <div className="text-lg font-bold text-zinc-100">
-                        {entry.totalPoints}
-                      </div>
-                      <div className="text-[10px] text-zinc-500 font-medium">
-                        points
-                      </div>
+                      <div className="text-lg font-bold text-zinc-100">{entry.totalPoints}</div>
+                      <div className="text-[10px] text-zinc-500 font-medium">points</div>
                     </div>
                   </div>
                 </div>
@@ -214,7 +223,8 @@ export function LandingPageLeagueSection({ timeRange, setTimeRange }: LeagueSect
             <div className="grid grid-cols-2 gap-2 text-[11px]">
               <div className="bg-white/5 border border-white/10 rounded-lg p-2 text-center">
                 <div className="text-yellow-400 font-bold mb-0.5">
-                  <span className="text-zinc-600 line-through mr-1">500</span>750
+                  <span className="text-zinc-600 line-through mr-1">500</span>
+                  750
                 </div>
                 <div className="text-zinc-500">Virtual Users</div>
               </div>
@@ -225,9 +235,7 @@ export function LandingPageLeagueSection({ timeRange, setTimeRange }: LeagueSect
                 <div className="text-zinc-500">Load Generators</div>
               </div>
             </div>
-            <p className="text-[10px] text-zinc-500 text-center mt-2">
-              Rewards applied automatically for 1 month
-            </p>
+            <p className="text-[10px] text-zinc-500 text-center mt-2">Rewards applied automatically for 1 month</p>
           </div>
 
           {/* CTA */}

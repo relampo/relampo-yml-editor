@@ -68,10 +68,13 @@ export default function App() {
   return (
     <ErrorBoundary>
       <LanguageProvider>
-        {(currentView === 'landing' || currentView === 'yaml-editor-standalone') ? (
+        {currentView === 'landing' || currentView === 'yaml-editor-standalone' ? (
           renderView()
         ) : (
-          <AppLayout currentView={currentView} onViewChange={setCurrentView}>
+          <AppLayout
+            currentView={currentView}
+            onViewChange={setCurrentView}
+          >
             {renderView()}
           </AppLayout>
         )}

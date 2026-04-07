@@ -1,5 +1,5 @@
-import { motion } from "motion/react";
-import { Language } from "../i18n/translations";
+import { motion } from 'motion/react';
+import { Language } from '../i18n/translations';
 
 interface LanguageToggleProps {
   language: Language;
@@ -17,12 +17,12 @@ export function LanguageToggle({ language, onLanguageChange }: LanguageTogglePro
           x: language === 'en' ? 4 : 'calc(100% + 4px)',
         }}
         transition={{
-          type: "spring",
+          type: 'spring',
           stiffness: 400,
           damping: 30,
         }}
       />
-      
+
       {/* EN Button */}
       <button
         onClick={() => onLanguageChange('en')}
@@ -33,7 +33,7 @@ export function LanguageToggle({ language, onLanguageChange }: LanguageTogglePro
       >
         EN
       </button>
-      
+
       {/* ES Button */}
       <button
         onClick={() => onLanguageChange('es')}

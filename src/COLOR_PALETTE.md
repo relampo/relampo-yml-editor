@@ -22,6 +22,7 @@ Neutral 900  #171717  Headers
 ```
 
 **Uso común:**
+
 - `bg-neutral-50` - Fondo de páginas
 - `border-neutral-200` - Bordes de cards
 - `text-neutral-900` - Headings
@@ -43,6 +44,7 @@ Blue 800  #1E40AF  Gradiente
 ```
 
 **Uso común:**
+
 - `bg-blue-50` - Item seleccionado
 - `bg-blue-600` - Botón primario
 - `text-blue-700` - Tab activo
@@ -63,6 +65,7 @@ Green 700  #15803D  Success text
 ```
 
 **Uso común:**
+
 - `bg-green-600` - Botón Start/Run
 - `bg-green-500` - Dot "success"
 - `bg-green-100` - Badge "passed"
@@ -82,6 +85,7 @@ Red 700  #B91C1C  Error text
 ```
 
 **Uso común:**
+
 - `bg-red-600` - Botón Stop/Delete
 - `bg-red-500` - Dot "error"
 - `bg-red-50` - Banner recording
@@ -112,6 +116,7 @@ Purple 700  #7E22CE  Purple text
 ```
 
 **Uso común:**
+
 - `bg-purple-600` - Botón Clear/Special
 - `text-purple-600` - Icono scenario
 
@@ -146,6 +151,7 @@ Orange 600  #EA580C  Controllers
 ## Status Indicators
 
 ### Test Status
+
 ```
 ✓ Passed   bg-green-500
 → Running  bg-blue-500 + animate-pulse
@@ -153,6 +159,7 @@ Orange 600  #EA580C  Controllers
 ```
 
 ### HTTP Methods
+
 ```
 GET     bg-blue-100 text-blue-700
 POST    bg-green-100 text-green-700
@@ -161,6 +168,7 @@ DELETE  bg-red-100 text-red-700
 ```
 
 ### HTTP Status Codes
+
 ```
 2xx  bg-green-100 text-green-700
 4xx  bg-amber-100 text-amber-700
@@ -168,6 +176,7 @@ DELETE  bg-red-100 text-red-700
 ```
 
 ### Recording States
+
 ```
 ● Live       bg-green-500 + pulse
 ● Recording  bg-red-600 + pulse
@@ -175,6 +184,7 @@ DELETE  bg-red-100 text-red-700
 ```
 
 ### Environment
+
 ```
 ● Production  bg-red-500
 ● Staging     bg-green-500
@@ -197,6 +207,7 @@ Default    text-neutral-100
 ## Combinaciones Recomendadas
 
 ### Cards
+
 ```
 Background:  bg-white
 Border:      border-neutral-200
@@ -205,6 +216,7 @@ Subtext:     text-neutral-600
 ```
 
 ### Button Primary
+
 ```
 Default:  bg-blue-600
 Hover:    bg-blue-700
@@ -212,6 +224,7 @@ Text:     text-white
 ```
 
 ### Selected Items
+
 ```
 Background:  bg-blue-50
 Text:        text-blue-700
@@ -219,6 +232,7 @@ Border:      border-blue-300
 ```
 
 ### Input Focus
+
 ```
 Default:  border-neutral-300
 Focus:    focus:ring-2 focus:ring-blue-500
@@ -229,18 +243,21 @@ Focus:    focus:ring-2 focus:ring-blue-500
 ## Cómo Elegir Color
 
 ### Para Texto
+
 - Heading → `text-neutral-900`
 - Body → `text-neutral-700`
 - Secondary → `text-neutral-600`
 - Disabled → `text-neutral-400`
 
 ### Para Fondos
+
 - Componente → `bg-white`
 - Página → `bg-neutral-50`
 - Hover → `bg-neutral-100`
 - Selección → `bg-blue-50`
 
 ### Para Acciones
+
 - Principal → `bg-blue-600`
 - Iniciar → `bg-green-600`
 - Detener → `bg-red-600`
@@ -291,18 +308,18 @@ Pulse/Semantic/Success
 
 ```css
 :root {
-  --color-primary: #2563EB;
-  --color-success: #16A34A;
-  --color-error: #DC2626;
-  --color-warning: #D97706;
-  
+  --color-primary: #2563eb;
+  --color-success: #16a34a;
+  --color-error: #dc2626;
+  --color-warning: #d97706;
+
   --color-text-primary: #171717;
   --color-text-secondary: #525252;
-  
-  --color-bg-page: #FAFAFA;
-  --color-bg-card: #FFFFFF;
-  
-  --color-border: #E5E5E5;
+
+  --color-bg-page: #fafafa;
+  --color-bg-card: #ffffff;
+
+  --color-border: #e5e5e5;
 }
 ```
 
