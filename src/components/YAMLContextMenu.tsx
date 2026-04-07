@@ -31,6 +31,7 @@ export type YAMLAddableNodeType =
   | 'scenarios'
   | 'scenario'
   | 'request'
+  | 'sql'
   | 'group'
   | 'transaction'
   | 'if'
@@ -409,6 +410,13 @@ function getAddableItems(parentType: string): AddableItem[] {
         description: 'Request HTTP',
         icon: <Globe className={iconClass} />,
         color: 'text-emerald-400',
+      },
+      {
+        type: 'sql',
+        label: 'SQL Step',
+        description: 'Execute parameterized SQL',
+        icon: <Database className={iconClass} />,
+        color: 'text-teal-400',
       },
       {
         type: 'group',
