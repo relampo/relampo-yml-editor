@@ -1,9 +1,10 @@
 import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, it, expect } from 'vitest';
 import { parseYAMLToTree, treeToYAML } from './yamlParser';
 
 const sqlE2EScenarioYAML = readFileSync(
-  new URL('../../../relampo-backend/examples/sql-e2e-scenario.yaml', import.meta.url),
+  resolve(process.cwd(), '../relampo-backend/examples/sql-e2e-scenario.yaml'),
   'utf8',
 );
 
@@ -227,6 +228,32 @@ scenarios:
     expect(load!.data.users).toBe(10);
   });
 
+  it('normalizes intent load nodes to the backend contract shape', () => {
+    const yaml = `
+test:
+  name: t
+scenarios:
+  - name: s
+    load:
+      type: intent
+      target_unit: rps
+      target_rps: 25
+      duration: 3s
+      warmup: 400ms
+    steps: []
+`;
+    const tree = parseYAMLToTree(yaml)!;
+    const scenario = tree.children!.find(c => c.type === 'scenarios')!.children![0];
+    const load = scenario.children!.find(c => c.type === 'load');
+    expect(load).toBeDefined();
+    expect(load!.data.target_value).toBe(25);
+    expect(load!.data.window).toBe('2s');
+    expect(load!.data.p95_max_ms).toBe('800');
+    expect(load!.data.error_rate_max_pct).toBe('1');
+    expect(load!.data.target_rps).toBeUndefined();
+    expect(load!.data.iterations).toBeUndefined();
+  });
+
   it('parses data_source node', () => {
     const yaml = `
 test:
@@ -352,6 +379,37 @@ scenarios:
     const tree = parseYAMLToTree(input)!;
     const output = treeToYAML(tree);
     expect(output).toContain('Login Flow');
+  });
+
+  it('upgrades legacy intent YAML to the backend-ready intent contract on save', () => {
+    const input = `
+test:
+  name: t
+scenarios:
+  - name: intent
+    load:
+      type: intent
+      target_unit: rps
+      target_rps: 25
+      duration: 3s
+      warmup: 400ms
+      iterations: 1
+    steps: []
+`;
+    const output = treeToYAML(parseYAMLToTree(input)!);
+    const reparsed = parseYAMLToTree(output)!;
+    const load = reparsed
+      .children!.find(c => c.type === 'scenarios')!
+      .children![0].children!.find(c => c.type === 'load');
+
+    expect(output).toContain('type: intent');
+    expect(output).toContain('target_value: 25');
+    expect(output).toContain('window: 2s');
+    expect(output).not.toContain('target_rps:');
+    expect(output).not.toContain('iterations:');
+    expect(load!.data.target_value).toBe(25);
+    expect(load!.data.window).toBe('2s');
+    expect(load!.data.p95_max_ms).toBe('800');
   });
 
   it('round-trips sql steps', () => {
