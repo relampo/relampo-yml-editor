@@ -170,17 +170,30 @@ export function limitedInputValue(value: string): string {
   return value.slice(0, 5);
 }
 
-export function buildLoadDataForType(loadType: LoadType, currentData: Record<string, any> = {}): Record<string, any> {
+interface LoadDataBuildOptions {
+  coerceIntentEnums?: boolean;
+  preserveExplicitEmpty?: boolean;
+}
+
+export function buildLoadDataForType(
+  loadType: LoadType,
+  currentData: Record<string, any> = {},
+  options: LoadDataBuildOptions = {},
+): Record<string, any> {
+  const { coerceIntentEnums = true, preserveExplicitEmpty = false } = options;
   const defaults = loadTypeDefaults[loadType] || {};
   const allowed = new Set(loadTypeAllowedKeys[loadType] || ['type']);
   const source: Record<string, any> = { ...currentData };
   const normalized: Record<string, any> = { type: loadType };
+  const explicitEmptyKeys = new Set<string>();
 
   if (loadType === 'intent') {
-    const requestedTargetUnit = String(source.target_unit || defaults.target_unit || 'rps')
-      .toLowerCase()
-      .trim();
-    source.target_unit = intentTargetUnits.has(requestedTargetUnit) ? requestedTargetUnit : defaults.target_unit;
+    const requestedTargetUnit = String(source.target_unit || defaults.target_unit || 'rps').toLowerCase().trim();
+    if (coerceIntentEnums) {
+      source.target_unit = intentTargetUnits.has(requestedTargetUnit) ? requestedTargetUnit : defaults.target_unit;
+    } else if (source.target_unit !== undefined) {
+      source.target_unit = String(source.target_unit).trim();
+    }
 
     if ((source.target_value === undefined || source.target_value === '') && source.target_rps !== undefined) {
       source.target_value = source.target_rps;
@@ -189,9 +202,13 @@ export function buildLoadDataForType(loadType: LoadType, currentData: Record<str
     const requestedAggressiveness = String(source.aggressiveness || defaults.aggressiveness || 'medium')
       .toLowerCase()
       .trim();
-    source.aggressiveness = intentAggressivenessLevels.has(requestedAggressiveness)
-      ? requestedAggressiveness
-      : defaults.aggressiveness;
+    if (coerceIntentEnums) {
+      source.aggressiveness = intentAggressivenessLevels.has(requestedAggressiveness)
+        ? requestedAggressiveness
+        : defaults.aggressiveness;
+    } else if (source.aggressiveness !== undefined) {
+      source.aggressiveness = String(source.aggressiveness).trim();
+    }
   } else if (source.users === undefined && source.vusers !== undefined) {
     source.users = source.vusers;
   }
@@ -200,13 +217,22 @@ export function buildLoadDataForType(loadType: LoadType, currentData: Record<str
     if (key === 'type') {
       continue;
     }
-    if (source[key] !== undefined && source[key] !== '') {
+    if (source[key] === '') {
+      if (preserveExplicitEmpty) {
+        explicitEmptyKeys.add(key);
+      }
+      continue;
+    }
+    if (source[key] !== undefined) {
       normalized[key] = source[key];
     }
   }
 
   for (const [key, defaultValue] of Object.entries(defaults)) {
     if (key === 'type' || !allowed.has(key)) {
+      continue;
+    }
+    if (explicitEmptyKeys.has(key)) {
       continue;
     }
     if (normalized[key] === undefined || normalized[key] === '') {
@@ -221,7 +247,13 @@ export function normalizeLoadDataForYaml(data: Record<string, any> = {}): Record
   const loadType = normalizeLoadType(data.type);
 
   if (loadType === 'intent') {
-    return buildLoadDataForType(loadType, data);
+    const normalizedIntent = buildLoadDataForType(loadType, data, {
+      coerceIntentEnums: false,
+      preserveExplicitEmpty: true,
+    });
+    delete normalizedIntent.target_rps;
+    delete normalizedIntent.iterations;
+    return normalizedIntent;
   }
 
   const normalized: Record<string, any> = {

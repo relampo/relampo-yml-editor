@@ -412,6 +412,55 @@ scenarios:
     expect(load!.data.p95_max_ms).toBe('800');
   });
 
+  it('preserves invalid intent target_unit values for validation on round-trip', () => {
+    const input = `
+test:
+  name: t
+scenarios:
+  - name: invalid-intent
+    load:
+      type: intent
+      target_unit: rpm
+      target_value: 10
+      min_vus: 1
+      max_vus: 5
+      window: 1s
+      p95_max_ms: 100
+    steps: []
+`;
+    const tree = parseYAMLToTree(input)!;
+    const load = tree.children!.find(c => c.type === 'scenarios')!.children![0].children!.find(c => c.type === 'load');
+    expect(load!.data.target_unit).toBe('rpm');
+
+    const output = treeToYAML(tree);
+    expect(output).toContain('target_unit: rpm');
+  });
+
+  it('does not restore cleared optional intent bounds on save', () => {
+    const input = `
+test:
+  name: t
+scenarios:
+  - name: intent
+    load:
+      type: intent
+      target_unit: rps
+      target_value: 10
+      min_vus: 1
+      max_vus: 5
+      window: 1s
+      error_rate_max_pct: 2
+    steps: []
+`;
+    const tree = parseYAMLToTree(input)!;
+    const load = tree.children!.find(c => c.type === 'scenarios')!.children![0].children!.find(c => c.type === 'load')!;
+    load.data.p95_max_ms = '';
+
+    const output = treeToYAML(tree);
+    expect(output).toContain('error_rate_max_pct: 2');
+    expect(output).not.toContain('p95_max_ms');
+  });
+
   it('round-trips sql steps', () => {
     const input = `
 test:
