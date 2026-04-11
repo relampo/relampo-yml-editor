@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Search, X, Plus } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import type { YAMLNode, RedirectedRequestInfo } from '../types/yaml';
+import { buildLoadDataForType } from './yaml-node-details/loadUtils';
 import { YAMLTreeNode } from './YAMLTreeNode';
 import { YAMLContextMenu, type YAMLAddableNodeType } from './YAMLContextMenu';
 
@@ -748,11 +749,12 @@ function createNodeByType(type: string | 'root_plan'): YAMLNode {
                   id: `${scenarioId}_load`,
                   type: 'load',
                   name: 'Load Config',
-                  data: {
-                    vusers: 1,
+                  data: buildLoadDataForType('constant', {
+                    users: 1,
                     duration: '1m',
                     ramp_up: '10s',
-                  },
+                    iterations: 0,
+                  }),
                 },
                 {
                   id: `${scenarioId}_steps`,
@@ -1020,11 +1022,12 @@ function createNodeByType(type: string | 'root_plan'): YAMLNode {
             id: `${id}_load`,
             type: 'load',
             name: 'Load Config',
-            data: {
-              vusers: 1,
+            data: buildLoadDataForType('constant', {
+              users: 1,
               duration: '1m',
               ramp_up: '10s',
-            },
+              iterations: 0,
+            }),
           },
           {
             id: `${id}_steps`,
@@ -1081,11 +1084,11 @@ function createNodeByType(type: string | 'root_plan'): YAMLNode {
         id,
         type: 'load',
         name: 'Load Config',
-        data: {
-          type: 'constant',
+        data: buildLoadDataForType('constant', {
           users: 10,
           duration: '1m',
-        },
+          iterations: 0,
+        }),
       };
     case 'cookies':
       return {
