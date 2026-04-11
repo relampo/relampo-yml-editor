@@ -1,4 +1,5 @@
 import type { YAMLNode } from '../types/yaml';
+import { normalizeLoadDataForYaml } from '../components/yaml-node-details/loadUtils';
 import {
   normalizeAssertionForEngine,
   normalizeAuthForYaml,
@@ -54,7 +55,7 @@ function scenarioNodeToObject(node: YAMLNode): any {
 
   for (const child of node.children) {
     if (child.type === 'load') {
-      scenario.load = child.data;
+      scenario.load = normalizeLoadDataForYaml(child.data);
     } else if (child.type === 'cookies') {
       scenario.cookies = child.data;
     } else if (child.type === 'cache_manager') {
