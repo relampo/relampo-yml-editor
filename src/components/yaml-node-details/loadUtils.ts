@@ -1,5 +1,8 @@
 export type LoadType = 'constant' | 'ramp' | 'ramp_up_down' | 'throughput' | 'intent';
 
+const intentTargetUnits = new Set(['rps', 'vus']);
+const intentAggressivenessLevels = new Set(['low', 'medium', 'high']);
+
 export function normalizeLoadType(rawType: unknown): LoadType {
   const rawLoadType = String(rawType || 'constant')
     .toLowerCase()
@@ -58,6 +61,7 @@ export const loadTypeDefaults: Record<LoadType, Record<string, any>> = {
     target_value: '3',
     duration: '10m',
     warmup: '30s',
+    window: '2s',
     ramp_up: '30s',
     ramp_down: '30s',
     p95_max_ms: '800',
@@ -79,10 +83,17 @@ export const loadTypeAllowedKeys: Record<LoadType, string[]> = {
     'target_value',
     'duration',
     'warmup',
+    'window',
     'ramp_up',
     'ramp_down',
+    'p50_max_ms',
+    'p75_max_ms',
     'p95_max_ms',
+    'p99_max_ms',
+    'p999_max_ms',
     'error_rate_max_pct',
+    'error_4xx_max_pct',
+    'error_5xx_max_pct',
     'aggressiveness',
     'min_vus',
     'max_vus',
@@ -114,6 +125,12 @@ export const selectedLoadButtonStyle = {
     borderColor: 'rgba(110, 231, 183, 0.55)',
     boxShadow: '0 10px 22px rgba(16, 185, 129, 0.22)',
   },
+  intent: {
+    backgroundColor: 'rgba(244, 63, 94, 0.22)',
+    color: '#fda4af',
+    borderColor: 'rgba(253, 164, 175, 0.55)',
+    boxShadow: '0 10px 22px rgba(244, 63, 94, 0.22)',
+  },
 } as const;
 
 export const loadColors = {
@@ -128,14 +145,16 @@ export function parseTimeToSeconds(timeStr: string): number {
   if (!timeStr) {
     return 0;
   }
-  const match = timeStr.match(/^(\d+)(s|m|h)$/);
+  const match = timeStr.trim().match(/^(\d+(?:\.\d+)?)(ms|s|m|h)$/);
   if (!match) {
     return 60;
   }
   const [, value, unit] = match;
-  const num = parseInt(value, 10);
+  const num = parseFloat(value);
 
   switch (unit) {
+    case 'ms':
+      return num / 1000;
     case 's':
       return num;
     case 'm':
