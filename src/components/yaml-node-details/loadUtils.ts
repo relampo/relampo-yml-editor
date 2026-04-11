@@ -169,3 +169,70 @@ export function parseTimeToSeconds(timeStr: string): number {
 export function limitedInputValue(value: string): string {
   return value.slice(0, 5);
 }
+
+export function buildLoadDataForType(loadType: LoadType, currentData: Record<string, any> = {}): Record<string, any> {
+  const defaults = loadTypeDefaults[loadType] || {};
+  const allowed = new Set(loadTypeAllowedKeys[loadType] || ['type']);
+  const source: Record<string, any> = { ...currentData };
+  const normalized: Record<string, any> = { type: loadType };
+
+  if (loadType === 'intent') {
+    const requestedTargetUnit = String(source.target_unit || defaults.target_unit || 'rps')
+      .toLowerCase()
+      .trim();
+    source.target_unit = intentTargetUnits.has(requestedTargetUnit) ? requestedTargetUnit : defaults.target_unit;
+
+    if ((source.target_value === undefined || source.target_value === '') && source.target_rps !== undefined) {
+      source.target_value = source.target_rps;
+    }
+
+    const requestedAggressiveness = String(source.aggressiveness || defaults.aggressiveness || 'medium')
+      .toLowerCase()
+      .trim();
+    source.aggressiveness = intentAggressivenessLevels.has(requestedAggressiveness)
+      ? requestedAggressiveness
+      : defaults.aggressiveness;
+  } else if (source.users === undefined && source.vusers !== undefined) {
+    source.users = source.vusers;
+  }
+
+  for (const key of allowed) {
+    if (key === 'type') {
+      continue;
+    }
+    if (source[key] !== undefined && source[key] !== '') {
+      normalized[key] = source[key];
+    }
+  }
+
+  for (const [key, defaultValue] of Object.entries(defaults)) {
+    if (key === 'type' || !allowed.has(key)) {
+      continue;
+    }
+    if (normalized[key] === undefined || normalized[key] === '') {
+      normalized[key] = defaultValue;
+    }
+  }
+
+  return normalized;
+}
+
+export function normalizeLoadDataForYaml(data: Record<string, any> = {}): Record<string, any> {
+  const loadType = normalizeLoadType(data.type);
+
+  if (loadType === 'intent') {
+    return buildLoadDataForType(loadType, data);
+  }
+
+  const normalized: Record<string, any> = {
+    ...data,
+    type: loadType,
+  };
+
+  if (normalized.users === undefined && normalized.vusers !== undefined) {
+    normalized.users = normalized.vusers;
+  }
+
+  delete normalized.vusers;
+  return normalized;
+}
