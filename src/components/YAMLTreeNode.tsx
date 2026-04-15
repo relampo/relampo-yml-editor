@@ -241,7 +241,7 @@ export function YAMLTreeNode({
           relative group flex items-center gap-2 px-2 py-1.5 pr-3 rounded cursor-pointer transition-colors overflow-visible
           ${
             isSelected
-              ? 'bg-yellow-400/10 border border-yellow-400/20'
+              ? 'bg-yellow-300/12 border border-yellow-300/35 ring-1 ring-yellow-300/25 shadow-[0_0_0_1px_rgba(250,204,21,0.14)]'
               : isRedirectedFollowUp
                 ? 'bg-zinc-400/12 border border-zinc-300/30 hover:bg-zinc-400/16 ring-1 ring-zinc-300/15'
                 : 'hover:bg-white/5 border border-transparent'
@@ -404,7 +404,6 @@ function getNodeColor(type: YAMLNodeType, node?: YAMLNode, isRedirectedFollowUp 
     case 'step':
       return 'text-amber-400';
     case 'request':
-    case 'sql':
     case 'get':
     case 'post':
     case 'put':
@@ -413,6 +412,8 @@ function getNodeColor(type: YAMLNodeType, node?: YAMLNode, isRedirectedFollowUp 
     case 'head':
     case 'options':
       return 'text-emerald-400';
+    case 'sql':
+      return 'text-teal-400';
     case 'group':
     case 'simple':
       return 'text-blue-400';
@@ -501,9 +502,11 @@ function getNodeBadge(node: YAMLNode, options: { mutedMethod?: boolean } = {}): 
   }
 
   if (node.type === 'sql') {
+    const dialect = typeof node.data?.dialect === 'string' ? node.data.dialect.toLowerCase() : 'sql';
+    const dialectLabel = dialect === 'postgres' ? 'Postgres' : dialect === 'mysql' ? 'MySQL' : 'SQL';
     return (
       <span className="inline-flex h-5 items-center text-xs leading-none px-1.5 py-0.5 rounded font-mono font-medium border uppercase bg-teal-400/15 text-teal-400 border-teal-400/30">
-        {node.data?.dialect || 'sql'}
+        {dialectLabel}
       </span>
     );
   }
