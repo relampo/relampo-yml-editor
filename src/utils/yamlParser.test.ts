@@ -271,6 +271,27 @@ scenarios:
     expect(step.children?.[0].type).toBe('post');
   });
 
+  it('preserves enabled state for disabled one_time controllers', () => {
+    const yaml = `
+test:
+  name: t
+scenarios:
+  - name: bootstrap
+    steps:
+      - one_time:
+          name: Shared bootstrap
+        enabled: false
+        steps:
+          - post: https://example.com/bootstrap
+`;
+    const tree = parseYAMLToTree(yaml)!;
+    const step = tree.children!.find(c => c.type === 'scenarios')!.children![0].children!.find(c => c.type === 'steps')!
+      .children![0];
+
+    expect(step.type).toBe('one_time');
+    expect(step.data.enabled).toBe(false);
+  });
+
   it('parses sql steps', () => {
     const yaml = `
 test:
@@ -672,6 +693,30 @@ scenarios:
     expect(step.type).toBe('one_time');
     expect(step.children?.[0].type).toBe('request');
     expect(step.data.description).toBe('Prepare common identifiers');
+  });
+
+  it('round-trips disabled one_time controllers', () => {
+    const input = `
+test:
+  name: t
+scenarios:
+  - name: shared init
+    steps:
+      - one_time:
+          name: Shared bootstrap
+        enabled: false
+        steps:
+          - request:
+              method: POST
+              url: https://example.com/bootstrap
+`;
+    const reparsed = parseYAMLToTree(treeToYAML(parseYAMLToTree(input)!))!;
+    const step = reparsed
+      .children!.find(c => c.type === 'scenarios')!
+      .children![0].children!.find(c => c.type === 'steps')!.children![0];
+
+    expect(step.type).toBe('one_time');
+    expect(step.data.enabled).toBe(false);
   });
 
   it('normalizes legacy sql aliases to spec field names on round-trip', () => {

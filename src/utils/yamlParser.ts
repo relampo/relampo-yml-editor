@@ -651,7 +651,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       name: oneTimeData.name || 'One Time Controller',
       children: [],
       expanded: true,
-      data: oneTimeData,
+      data: { ...oneTimeData, enabled: isEnabled },
       path,
     };
 
