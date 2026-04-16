@@ -145,6 +145,7 @@ const containmentRules: Partial<Record<YAMLNodeType, YAMLNodeType[]>> = {
   group: STEP_ELEMENTS,
   simple: STEP_ELEMENTS,
   transaction: STEP_ELEMENTS,
+  parallel: STEP_ELEMENTS,
   if: STEP_ELEMENTS,
   loop: STEP_ELEMENTS,
   retry: STEP_ELEMENTS,
