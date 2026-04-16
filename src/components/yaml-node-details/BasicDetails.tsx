@@ -739,3 +739,60 @@ export function GroupDetails({ node, onNodeUpdate }: NamedNodeDetailProps) {
     </div>
   );
 }
+
+export function TransactionDetails({ node, onNodeUpdate }: NamedNodeDetailProps) {
+  const data = node.data || {};
+
+  const handleChange = (field: string, value: any) => {
+    onNodeUpdate?.(node.id, { ...data, [field]: value });
+  };
+
+  const handleAuthUpdate = (auth?: AuthConfig) => {
+    if (!onNodeUpdate) {
+      return;
+    }
+    if (!auth) {
+      const { auth: _, ...rest } = data;
+      onNodeUpdate(node.id, rest);
+      return;
+    }
+    onNodeUpdate(node.id, { ...data, auth });
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="rounded-lg border border-teal-400/20 bg-teal-400/5 p-4 text-sm text-teal-100">
+        This controller measures the selected flow as one transaction while preserving the exact step order.
+      </div>
+
+      <EditableField
+        label="Transaction Name"
+        value={data.name || ''}
+        field="name"
+        onChange={handleChange}
+        maxLength={50}
+      />
+
+      <DetailField
+        label="Transaction Unit"
+        value="1 complete transaction"
+        editable={false}
+      />
+
+      <DetailField
+        label="Steps Count"
+        value={node.children?.length || 0}
+        mono
+        editable={false}
+      />
+
+      <div className="h-px bg-white/10" />
+
+      <AuthConfigEditor
+        auth={data.auth}
+        onChange={handleAuthUpdate}
+        scopeLabel="Transaction"
+      />
+    </div>
+  );
+}

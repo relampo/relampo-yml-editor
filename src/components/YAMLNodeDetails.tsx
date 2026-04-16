@@ -18,6 +18,7 @@ import {
   ScenariosContainerDetails,
   SparkDetails,
   TestDetails,
+  TransactionDetails,
   VariablesDetails,
 } from './yaml-node-details/BasicDetails';
 import { IfDetails, LoopDetails, OneTimeDetails, RetryDetails, ThinkTimeDetails } from './yaml-node-details/FlowDetails';
@@ -207,9 +208,17 @@ function NodeDetailsContent({
         />
       );
     case 'group':
-    case 'transaction':
       return (
         <GroupDetails
+          node={node}
+          onNodeUpdate={onNodeUpdate}
+          nodeName={nodeName}
+          setNodeName={setNodeName}
+        />
+      );
+    case 'transaction':
+      return (
+        <TransactionDetails
           node={node}
           onNodeUpdate={onNodeUpdate}
           nodeName={nodeName}
