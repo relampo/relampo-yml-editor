@@ -719,6 +719,53 @@ scenarios:
     expect(step.data.enabled).toBe(false);
   });
 
+  it('serializes one_time with current node name even when renamed back to default label', () => {
+    const input = `
+test:
+  name: t
+scenarios:
+  - name: shared init
+    steps:
+      - one_time:
+          name: Custom bootstrap
+        steps:
+          - request:
+              method: POST
+              url: https://example.com/bootstrap
+`;
+    const tree = parseYAMLToTree(input)!;
+    const scenarios = tree.children!.find(c => c.type === 'scenarios')!.children!;
+    const step = scenarios[0].children!.find(c => c.type === 'steps')!.children![0];
+
+    step.name = 'One Time Controller';
+
+    const output = treeToYAML(tree);
+    expect(output).toContain('name: One Time Controller');
+    expect(output).not.toContain('name: Custom bootstrap');
+  });
+
+  it('does not embed enabled inside one_time payload when serializing disabled controller', () => {
+    const input = `
+test:
+  name: t
+scenarios:
+  - name: shared init
+    steps:
+      - one_time:
+          name: Shared bootstrap
+        enabled: false
+        steps:
+          - request:
+              method: POST
+              url: https://example.com/bootstrap
+`;
+    const output = treeToYAML(parseYAMLToTree(input)!);
+
+    expect(output).toContain('enabled: false');
+    expect(output).toContain('one_time:');
+    expect(output).not.toContain('one_time:\n        enabled: false');
+  });
+
   it('normalizes legacy sql aliases to spec field names on round-trip', () => {
     const input = `
 test:

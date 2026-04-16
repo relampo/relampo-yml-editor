@@ -274,8 +274,12 @@ function stepNodeToObject(node: YAMLNode): any {
 
   if (node.type === 'one_time') {
     const oneTimeData = { ...(node.data || {}) };
-    if (node.name && node.name !== 'One Time Controller') {
+    delete oneTimeData.enabled;
+
+    if (node.name) {
       oneTimeData.name = node.name;
+    } else {
+      delete oneTimeData.name;
     }
 
     const res: any = {
