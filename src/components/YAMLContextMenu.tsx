@@ -414,8 +414,8 @@ function getAddableItems(parentType: string): AddableItem[] {
       },
       {
         type: 'sql',
-        label: 'SQL Step',
-        description: 'Execute parameterized SQL',
+        label: 'SQL Request',
+        description: 'Database request for PostgreSQL or MySQL',
         icon: <Database className={iconClass} />,
         color: 'text-teal-400',
       },

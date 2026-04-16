@@ -1,4 +1,5 @@
 import type { YAMLNode } from '../types/yaml';
+import { normalizeLoadDataForYaml } from '../components/yaml-node-details/loadUtils';
 import * as jsyaml from 'js-yaml';
 import {
   buildSQLStepName,
@@ -146,7 +147,7 @@ function convertScenarioToNode(scenario: any, index: number, path: any[]): YAMLN
       id: `${scenarioId}_load`,
       type: 'load',
       name: `Load: ${scenario.load.type || 'constant'}`,
-      data: scenario.load,
+      data: normalizeLoadDataForYaml(scenario.load),
       path: [...path, 'load'],
     });
   }
