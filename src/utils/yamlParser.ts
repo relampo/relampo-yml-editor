@@ -536,6 +536,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       data: {
         ...step.group,
         auth: normalizeAuthForEditor(step.group.auth),
+        enabled: isEnabled,
       },
       path,
     };
@@ -560,6 +561,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       data: {
         ...step.transaction,
         auth: normalizeAuthForEditor(step.transaction.auth),
+        enabled: isEnabled,
       },
       path,
     };
@@ -582,7 +584,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       name: `If: ${step.if}`,
       children: [],
       expanded: true,
-      data: { condition: step.if },
+      data: { condition: step.if, enabled: isEnabled },
       path,
     };
 
@@ -604,7 +606,10 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       name: 'Loop',
       children: [],
       expanded: true,
-      data: typeof step.loop === 'number' ? { count: step.loop } : step.loop,
+      data: {
+        ...(typeof step.loop === 'number' ? { count: step.loop } : step.loop),
+        enabled: isEnabled,
+      },
       path,
     };
 
@@ -626,7 +631,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       name: 'Retry',
       children: [],
       expanded: true,
-      data: step.retry,
+      data: { ...step.retry, enabled: isEnabled },
       path,
     };
 
