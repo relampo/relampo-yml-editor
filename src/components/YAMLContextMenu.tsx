@@ -458,8 +458,8 @@ function getAddableItems(parentType: string): AddableItem[] {
         type: 'one_time',
         label: 'One Time Controller',
         description: 'Initialize shared state once',
-        icon: <Zap className={iconClass} />,
-        color: 'text-yellow-300',
+        icon: <Folder className={iconClass} />,
+        color: 'text-white',
       },
       {
         type: 'think_time',

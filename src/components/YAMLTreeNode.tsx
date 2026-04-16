@@ -353,7 +353,7 @@ function getNodeIcon(type: YAMLNodeType): any {
     if: Folder,
     loop: Folder,
     retry: Folder,
-    one_time: Zap,
+    one_time: Folder,
     on_error: AlertTriangle,
     think_time: Clock,
     extract: Filter,
@@ -426,7 +426,7 @@ function getNodeColor(type: YAMLNodeType, node?: YAMLNode, isRedirectedFollowUp 
     case 'retry':
       return 'text-red-400';
     case 'one_time':
-      return 'text-yellow-300';
+      return 'text-white';
     case 'on_error':
     case 'error_policy':
       return 'text-orange-500';
@@ -521,7 +521,7 @@ function getNodeBadge(node: YAMLNode, options: { mutedMethod?: boolean } = {}): 
 
   if (node.type === 'one_time') {
     return (
-      <span className="text-xs px-1.5 py-0.5 rounded bg-yellow-300/15 text-yellow-200 font-mono font-medium border border-yellow-300/30">
+      <span className="text-xs px-1.5 py-0.5 rounded bg-white/10 text-white font-mono font-medium border border-white/15">
         once
       </span>
     );
