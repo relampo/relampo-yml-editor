@@ -137,6 +137,15 @@ export function createNodeByType(type: string | 'root_plan'): YAMLNode {
         data: { name: 'Transaction' },
         expanded: true,
       };
+    case 'parallel':
+      return {
+        id,
+        type: 'parallel',
+        name: 'Parallel Controller',
+        children: [],
+        data: { name: 'Parallel Controller' },
+        expanded: true,
+      };
     case 'if':
       return {
         id,
