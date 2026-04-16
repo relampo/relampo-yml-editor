@@ -4,6 +4,7 @@ import { Upload, Download, Code2, GitBranch } from 'lucide-react';
 import { YAMLCodeEditor } from './YAMLCodeEditor';
 import { YAMLTreeView } from './YAMLTreeView';
 import { YAMLNodeDetails } from './YAMLNodeDetails';
+import { applyNodeUpdateToTree } from '../utils/nodeUpdate';
 import { parseYAMLToTree, treeToYAML } from '../utils/yamlParser';
 import type { YAMLNode } from '../types/yaml';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -127,40 +128,20 @@ export function YAMLEditorStandaloneComplete() {
 
   const handleNodeUpdate = (nodeId: string, updatedData: any) => {
     if (!yamlTree) return;
-
-    let updatedSelectedNode: YAMLNode | null = null;
-
-    const updateNodeInTree = (node: YAMLNode): YAMLNode => {
-      if (node.id === nodeId) {
-        // Extraer el nombre si viene en __name
-        const newName = updatedData.__name;
-        const cleanData = { ...updatedData };
-        delete cleanData.__name;
-
-        const updated = {
-          ...node,
-          name: newName !== undefined ? newName : node.name,
-          data: cleanData,
-        };
-        if (selectedNode?.id === nodeId) {
-          updatedSelectedNode = updated;
-        }
-        return updated;
-      }
-      if (node.children) {
-        return {
-          ...node,
-          children: node.children.map(updateNodeInTree),
-        };
-      }
-      return node;
-    };
-
-    const updatedTree = updateNodeInTree(yamlTree);
+    const updatedTree = applyNodeUpdateToTree(yamlTree, nodeId, updatedData);
     setYamlTree(updatedTree);
 
-    if (updatedSelectedNode) {
-      setSelectedNode(updatedSelectedNode);
+    if (selectedNode) {
+      const refreshSelectedNode = (tree: YAMLNode, targetId: string): YAMLNode | null => {
+        if (tree.id === targetId) return tree;
+        for (const child of tree.children || []) {
+          const found = refreshSelectedNode(child, targetId);
+          if (found) return found;
+        }
+        return null;
+      };
+
+      setSelectedNode(refreshSelectedNode(updatedTree, selectedNode.id));
     }
 
     if (serializeDebounceRef.current) {

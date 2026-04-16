@@ -5,6 +5,7 @@ import type { RedirectSourceInfo, RedirectedRequestInfo, YAMLNode } from '../typ
 import { YAMLRequestDetails } from './YAMLRequestDetails';
 import { YAMLSQLDetails } from './YAMLSQLDetails';
 import { Input } from './ui/input';
+import { BalancedDetails } from './yaml-node-details/BalancedDetails';
 import {
   DataSourceDetails,
   FileDetails,
@@ -45,6 +46,7 @@ export function YAMLNodeDetails({ node, redirectSourceInfo = null, onNodeUpdate 
   const { t } = useLanguage();
   const [nodeName, setNodeName] = useState(node?.name || '');
   const isRequestNode = REQUEST_NODE_TYPES.includes(node?.type || '');
+  const isCompactDetailsNode = node?.type === 'balanced';
 
   useEffect(() => {
     setNodeName(node?.name || '');
@@ -84,9 +86,9 @@ export function YAMLNodeDetails({ node, redirectSourceInfo = null, onNodeUpdate 
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className={`flex-1 overflow-y-auto ${isCompactDetailsNode ? 'p-4' : 'p-6'}`}>
         {node.type !== 'test' && node.type !== 'data_source' && (
-          <div className="mb-6">
+          <div className={isCompactDetailsNode ? 'mb-4' : 'mb-6'}>
             <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
               {t('yamlEditor.common.name')}
             </label>
@@ -226,6 +228,13 @@ function NodeDetailsContent({
     case 'parallel':
       return (
         <ParallelDetails
+          node={node}
+          onNodeUpdate={onNodeUpdate}
+        />
+      );
+    case 'balanced':
+      return (
+        <BalancedDetails
           node={node}
           onNodeUpdate={onNodeUpdate}
         />

@@ -156,7 +156,7 @@ export function DataSourceDetails({ node, onNodeUpdate, nodeName, setNodeName }:
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-[120px_1fr] gap-4 items-end">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-[120px_1fr] md:items-start">
         <div>
           <SelectField
             label="Type"

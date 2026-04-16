@@ -35,6 +35,7 @@ export type YAMLAddableNodeType =
   | 'group'
   | 'transaction'
   | 'parallel'
+  | 'balanced'
   | 'if'
   | 'loop'
   | 'retry'
@@ -133,7 +134,7 @@ export function YAMLContextMenu({
     }
   }, [x, y]);
 
-  const addableItems = getAddableItems(node.type);
+  const addableItems = getAddableItems(node.type, t);
   const canAddChildren = addableItems.length > 0;
 
   return (
@@ -241,7 +242,7 @@ interface AddableItem {
   color: string;
 }
 
-function getAddableItems(parentType: string): AddableItem[] {
+function getAddableItems(parentType: string, t: (key: string) => string): AddableItem[] {
   const iconClass = 'w-4 h-4';
 
   // ROOT/TEST - Global configuration elements
@@ -402,8 +403,18 @@ function getAddableItems(parentType: string): AddableItem[] {
     ];
   }
 
-  // LOGIC CONTROLLERS (group, if, loop, retry, one_time, simple) and STEPS
-  const controllers = ['group', 'simple', 'transaction', 'parallel', 'if', 'loop', 'retry', 'one_time', 'steps'];
+  const controllers = [
+    'group',
+    'simple',
+    'transaction',
+    'parallel',
+    'balanced',
+    'if',
+    'loop',
+    'retry',
+    'one_time',
+    'steps',
+  ];
   if (controllers.includes(parentType)) {
     return [
       {
@@ -438,6 +449,13 @@ function getAddableItems(parentType: string): AddableItem[] {
         type: 'parallel',
         label: 'Parallel Controller',
         description: 'Run child steps concurrently',
+        icon: <Folder className={iconClass} />,
+        color: 'text-cyan-400',
+      },
+      {
+        type: 'balanced',
+        label: t('yamlEditor.balanced.name'),
+        description: t('yamlEditor.balanced.contextDescription'),
         icon: <Folder className={iconClass} />,
         color: 'text-cyan-400',
       },
