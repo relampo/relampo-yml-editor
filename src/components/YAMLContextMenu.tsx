@@ -13,7 +13,6 @@ import {
   Filter,
   Folder,
   Gauge,
-  GitMerge,
   GitBranch,
   Globe,
   HardDrive,
@@ -439,7 +438,7 @@ function getAddableItems(parentType: string): AddableItem[] {
         type: 'parallel',
         label: 'Parallel Controller',
         description: 'Run child steps concurrently',
-        icon: <GitMerge className={iconClass} />,
+        icon: <Folder className={iconClass} />,
         color: 'text-cyan-400',
       },
       {
