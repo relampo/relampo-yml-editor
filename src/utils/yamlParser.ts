@@ -581,7 +581,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       name: step.parallel.name || 'Parallel Controller',
       children: [],
       expanded: true,
-      data: { ...step.parallel },
+      data: { ...step.parallel, enabled: isEnabled },
       path,
     };
 

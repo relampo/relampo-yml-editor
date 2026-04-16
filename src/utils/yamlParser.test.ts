@@ -292,6 +292,27 @@ scenarios:
     expect(step.data.enabled).toBe(false);
   });
 
+  it('preserves enabled state for disabled parallel controllers', () => {
+    const yaml = `
+test:
+  name: t
+scenarios:
+  - name: s
+    steps:
+      - parallel:
+          name: Fan Out
+          steps:
+            - get: https://example.com/a
+        enabled: false
+`;
+    const tree = parseYAMLToTree(yaml)!;
+    const step = tree.children!.find(c => c.type === 'scenarios')!.children![0].children!.find(c => c.type === 'steps')!
+      .children![0];
+
+    expect(step.type).toBe('parallel');
+    expect(step.data.enabled).toBe(false);
+  });
+
   it('parses sql steps', () => {
     const yaml = `
 test:
@@ -693,6 +714,31 @@ scenarios:
     expect(step.type).toBe('one_time');
     expect(step.children?.[0].type).toBe('request');
     expect(step.data.description).toBe('Prepare common identifiers');
+  });
+
+  it('round-trips disabled parallel controllers', () => {
+    const input = `
+test:
+  name: t
+scenarios:
+  - name: s
+    steps:
+      - parallel:
+          name: Fan Out
+          steps:
+            - get: https://example.com/a
+        enabled: false
+`;
+    const output = treeToYAML(parseYAMLToTree(input)!);
+    const reparsed = parseYAMLToTree(output)!;
+    const step = reparsed
+      .children!.find(c => c.type === 'scenarios')!
+      .children![0].children!.find(c => c.type === 'steps')!.children![0];
+
+    expect(output).toContain('parallel:');
+    expect(output).toContain('enabled: false');
+    expect(step.type).toBe('parallel');
+    expect(step.data.enabled).toBe(false);
   });
 
   it('round-trips disabled one_time controllers', () => {
