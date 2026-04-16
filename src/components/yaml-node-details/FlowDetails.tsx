@@ -412,7 +412,7 @@ export function BalancedDetails({ node, onNodeUpdate }: NodeDetailProps) {
       {issues.length > 0 && validation.hasChildren ? (
         <div className="rounded-lg border border-[#FBBF2480] bg-[#F59E0B26] px-3 py-2.5 shadow-[0_0_12px_#FBBF241F]">
           <div className="flex items-start gap-2">
-            <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-300" />
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
             <div className="min-w-0 space-y-1">
               <div className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${warningAccentTextClass}`}>
                 {t('yamlEditor.balanced.alerts.attentionNeeded')}
