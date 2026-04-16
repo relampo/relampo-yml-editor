@@ -37,6 +37,7 @@ export type YAMLAddableNodeType =
   | 'if'
   | 'loop'
   | 'retry'
+  | 'one_time'
   | 'think_time'
   | 'assertion'
   | 'extractor'
@@ -400,8 +401,8 @@ function getAddableItems(parentType: string): AddableItem[] {
     ];
   }
 
-  // LOGIC CONTROLLERS (group, if, loop, retry, simple) and STEPS
-  const controllers = ['group', 'simple', 'transaction', 'if', 'loop', 'retry', 'steps'];
+  // LOGIC CONTROLLERS (group, if, loop, retry, one_time, simple) and STEPS
+  const controllers = ['group', 'simple', 'transaction', 'if', 'loop', 'retry', 'one_time', 'steps'];
   if (controllers.includes(parentType)) {
     return [
       {
@@ -452,6 +453,13 @@ function getAddableItems(parentType: string): AddableItem[] {
         description: 'Retry with backoff',
         icon: <Folder className={iconClass} />,
         color: 'text-red-400',
+      },
+      {
+        type: 'one_time',
+        label: 'One Time Controller',
+        description: 'Initialize shared state once',
+        icon: <Zap className={iconClass} />,
+        color: 'text-yellow-300',
       },
       {
         type: 'think_time',

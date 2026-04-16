@@ -31,6 +31,7 @@ import type { YAMLNodeType } from '../types/yaml';
  *                   ├── 🔄 loop (Loop Controller)
  *                   ├── ❓ if (If Controller)
  *                   ├── 🔁 retry (Retry Controller)
+ *                   ├── ⚡ one_time (One Time Controller)
  *                   └── ⏱️ think_time (Constant Timer)
  */
 
@@ -53,7 +54,7 @@ const ROOT_LEVEL_ELEMENTS: YAMLNodeType[] = [
 const SCENARIO_CONFIG_ELEMENTS: YAMLNodeType[] = ['load', 'cookies', 'cache_manager', 'error_policy'];
 
 /** Logic Controllers - can contain other controllers and samplers */
-const LOGIC_CONTROLLERS: YAMLNodeType[] = ['group', 'simple', 'transaction', 'if', 'loop', 'retry'];
+const LOGIC_CONTROLLERS: YAMLNodeType[] = ['group', 'simple', 'transaction', 'if', 'loop', 'retry', 'one_time'];
 
 /** HTTP Samplers - the actual requests */
 const HTTP_SAMPLERS: YAMLNodeType[] = ['request', 'get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
@@ -146,6 +147,7 @@ const containmentRules: Partial<Record<YAMLNodeType, YAMLNodeType[]>> = {
   if: STEP_ELEMENTS,
   loop: STEP_ELEMENTS,
   retry: STEP_ELEMENTS,
+  one_time: STEP_ELEMENTS,
 
   // Leaf nodes (no children)
   step: [],

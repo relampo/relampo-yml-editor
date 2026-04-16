@@ -906,6 +906,23 @@ function createNodeByType(type: string | 'root_plan'): YAMLNode {
         data: { attempts: 3, backoff: 'exponential' },
         expanded: true,
       };
+    case 'one_time':
+      return {
+        id,
+        type: 'one_time',
+        name: 'One Time Controller',
+        children: [
+          {
+            id: `${id}_request`,
+            type: 'request',
+            name: 'Initialization Request',
+            data: { method: 'GET', url: '/initialize' },
+            children: [],
+          },
+        ],
+        data: { description: '' },
+        expanded: true,
+      };
     case 'on_error':
       return {
         id,

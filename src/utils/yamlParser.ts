@@ -639,6 +639,31 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
     return retryNode;
   }
 
+  // One Time
+  if (step.one_time !== undefined) {
+    const rawOneTime = step.one_time;
+    const oneTimeData =
+      rawOneTime && typeof rawOneTime === 'object' && !Array.isArray(rawOneTime) ? rawOneTime : {};
+    const oneTimeNode: YAMLNode = {
+      id: stepId,
+      type: 'one_time',
+      name: oneTimeData.name || 'One Time Controller',
+      children: [],
+      expanded: true,
+      data: oneTimeData,
+      path,
+    };
+
+    if (step.steps && Array.isArray(step.steps)) {
+      step.steps.forEach((childStep: any, childIndex: number) => {
+        const childNode = convertStepToNode(childStep, stepId, childIndex, [...path, 'steps', childIndex]);
+        oneTimeNode.children!.push(childNode);
+      });
+    }
+
+    return oneTimeNode;
+  }
+
   // On Error (standalone)
   if (step.on_error !== undefined) {
     const onErrorNode: YAMLNode = {

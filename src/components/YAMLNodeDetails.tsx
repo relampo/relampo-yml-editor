@@ -20,7 +20,7 @@ import {
   TestDetails,
   VariablesDetails,
 } from './yaml-node-details/BasicDetails';
-import { IfDetails, LoopDetails, RetryDetails, ThinkTimeDetails } from './yaml-node-details/FlowDetails';
+import { IfDetails, LoopDetails, OneTimeDetails, RetryDetails, ThinkTimeDetails } from './yaml-node-details/FlowDetails';
 import { LoadDetails } from './yaml-node-details/LoadDetails';
 import { CacheManagerDetails, CookiesDetails, ErrorPolicyDetails } from './yaml-node-details/OpsDetails';
 import { AssertionDetails, ExtractorDetails } from './yaml-node-details/ValidationDetails';
@@ -233,6 +233,13 @@ function NodeDetailsContent({
     case 'retry':
       return (
         <RetryDetails
+          node={node}
+          onNodeUpdate={onNodeUpdate}
+        />
+      );
+    case 'one_time':
+      return (
+        <OneTimeDetails
           node={node}
           onNodeUpdate={onNodeUpdate}
         />
