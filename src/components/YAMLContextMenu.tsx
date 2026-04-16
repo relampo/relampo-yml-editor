@@ -13,7 +13,6 @@ import {
   Filter,
   Folder,
   Gauge,
-  GitBranch,
   Globe,
   HardDrive,
   Paperclip,
@@ -425,13 +424,6 @@ function getAddableItems(parentType: string): AddableItem[] {
         description: 'Group steps',
         icon: <Folder className={iconClass} />,
         color: 'text-blue-400',
-      },
-      {
-        type: 'transaction',
-        label: 'Transaction',
-        description: 'Measurable logical block',
-        icon: <GitBranch className={iconClass} />,
-        color: 'text-white',
       },
       {
         type: 'if',
