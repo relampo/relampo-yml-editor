@@ -11,6 +11,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useYAML } from '../contexts/YAMLContext';
 import { useResizePanel } from '../hooks/useResizePanel';
 import { useYAMLPersistence } from '../hooks/useYAMLPersistence';
+import { validateYAMLSemantics } from '../utils/yamlSemanticValidation';
 
 const LARGE_FILE_CHAR_THRESHOLD = 2_000_000;
 const LARGE_FILE_LINE_THRESHOLD = 50_000;
@@ -26,6 +27,11 @@ type DocumentMetrics = {
   chars: number;
   lines: number;
   large: boolean;
+};
+
+type TreeSelection = {
+  primaryId: string | null;
+  nodeIds: string[];
 };
 
 function getDocumentMetrics(text: string): DocumentMetrics {
@@ -104,6 +110,7 @@ export function YAMLEditor() {
   const [selectedNode, setSelectedNode] = useState<YAMLNode | null>(null);
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<'tree' | 'code'>('tree');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const parseDebounceRef = useRef<number | null>(null);
@@ -161,6 +168,10 @@ export function YAMLEditor() {
 
     setSelectedNode(null);
     selectedNodeRef.current = null;
+  };
+
+  const applySemanticValidation = (tree: YAMLNode | null) => {
+    setValidationErrors(validateYAMLSemantics(tree).map(issue => issue.message));
   };
 
   const lockTypedNodeSelectionForCurrentTree = (): YAMLNode | null => {
@@ -232,6 +243,7 @@ export function YAMLEditor() {
         setError(message.error || (language === 'es' ? 'Error al parsear YAML' : 'Error parsing YAML'));
         setYamlTree(null);
         syncSelectionWithTree(null);
+        setValidationErrors([]);
         setIsTreeOutdated(true);
         return;
       }
@@ -239,6 +251,7 @@ export function YAMLEditor() {
       setYamlTree(normalizedTree);
       syncSelectionWithTree(normalizedTree);
       setError(null);
+      applySemanticValidation(normalizedTree);
       setIsTreeOutdated(false);
     };
 
@@ -258,6 +271,7 @@ export function YAMLEditor() {
       setYamlTree(null);
       syncSelectionWithTree(null);
       setError(null);
+      setValidationErrors([]);
       setIsParsing(false);
       setIsTreeOutdated(false);
       return;
@@ -267,6 +281,7 @@ export function YAMLEditor() {
     if (shouldSkipAutoParse) {
       activeParseRequestIdRef.current = ++parseRequestIdRef.current;
       setError(null);
+      setValidationErrors([]);
       setIsParsing(false);
       setIsTreeOutdated(Boolean(code.trim()));
       return;
@@ -289,12 +304,14 @@ export function YAMLEditor() {
       setYamlTree(normalizedTree);
       syncSelectionWithTree(normalizedTree);
       setError(null);
+      applySemanticValidation(normalizedTree);
       setIsTreeOutdated(false);
     } catch (err) {
       if (activeParseRequestIdRef.current !== requestId) return;
       setError(err instanceof Error ? err.message : 'Error parsing YAML');
       setYamlTree(null);
       syncSelectionWithTree(null);
+      setValidationErrors([]);
       setIsTreeOutdated(true);
     } finally {
       if (activeParseRequestIdRef.current === requestId) setIsParsing(false);
@@ -350,6 +367,7 @@ export function YAMLEditor() {
       activeParseRequestIdRef.current = ++parseRequestIdRef.current;
       setIsTreeOutdated(Boolean(newCode.trim()));
       setError(null);
+      setValidationErrors([]);
       setIsParsing(false);
       return;
     }
@@ -359,9 +377,19 @@ export function YAMLEditor() {
     }, 350);
   };
 
-  const handleTreeChange = (newTree: YAMLNode) => {
+  const handleTreeChange = (newTree: YAMLNode, nextSelection?: TreeSelection) => {
     setYamlTree(newTree);
-    syncSelectionWithTree(newTree);
+    if (nextSelection) {
+      const nextSelectedIds = nextSelection.nodeIds.filter(Boolean);
+      const nextPrimary = nextSelection.primaryId ? findNodeById(newTree, nextSelection.primaryId) : null;
+      setSelectedNode(nextPrimary);
+      setSelectedNodeIds(nextSelectedIds);
+      selectedNodeRef.current = nextPrimary;
+      selectedNodeIdsRef.current = nextSelectedIds;
+    } else {
+      syncSelectionWithTree(newTree);
+    }
+    applySemanticValidation(newTree);
     syncTreeToCode(newTree);
     setHasDocumentActivity(true);
     setIsDirty(true);
@@ -407,6 +435,7 @@ export function YAMLEditor() {
 
     const updatedTree = updateNodeInTree(yamlTree);
     setYamlTree(updatedTree);
+    applySemanticValidation(updatedTree);
     setHasDocumentActivity(true);
     setIsDirty(true);
     if (updatedSelectedNode) setSelectedNode(updatedSelectedNode);
@@ -534,6 +563,18 @@ export function YAMLEditor() {
       {error && (
         <div className="px-6 py-3 bg-red-500/10 border-b border-red-500/20 flex-shrink-0">
           <p className="text-sm text-red-400">⚠️ {error}</p>
+        </div>
+      )}
+
+      {!error && validationErrors.length > 0 && (
+        <div className="px-6 py-3 bg-amber-500/10 border-b border-amber-500/20 flex-shrink-0">
+          <p className="text-sm font-medium text-amber-300">
+            {language === 'es' ? 'Problemas de validación semántica detectados.' : 'Semantic validation issues detected.'}
+          </p>
+          <p className="mt-1 text-xs text-amber-200/80">
+            {validationErrors[0]}
+            {validationErrors.length > 1 ? ` (+${validationErrors.length - 1})` : ''}
+          </p>
         </div>
       )}
 
