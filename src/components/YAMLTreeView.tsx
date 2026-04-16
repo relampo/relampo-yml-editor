@@ -4,18 +4,6 @@ import { useLanguage } from '../contexts/LanguageContext';
 import type { YAMLNode, RedirectedRequestInfo } from '../types/yaml';
 import { YAMLTreeNode } from './YAMLTreeNode';
 import { YAMLContextMenu, type YAMLAddableNodeType } from './YAMLContextMenu';
-import { createNodeByType } from './yaml-tree-view/nodeFactory';
-import {
-  addNodeToTree,
-  cloneNodeSnapshot,
-  cloneNodeWithNewIds,
-  duplicateNodeInTree,
-  insertNodesAfterTarget,
-  moveNodeInTree,
-  removeNodeFromTree,
-  toggleNodeInTree,
-  updateNodeEnabled,
-} from './yaml-tree-view/treeOperations';
 
 interface YAMLTreeViewProps {
   tree: YAMLNode | null;
@@ -242,7 +230,8 @@ export function YAMLTreeView({
 
     const targetIds = getContextActionTargetIds();
     const updatedTree = targetIds.reduce(
-      (currentTree, targetId) => addNodeToTree(currentTree, targetId, createNodeByType(nodeType)),
+      (currentTree, targetId) =>
+        addNodeToTree(currentTree, targetId, createNodeByType(nodeType, { balancedName: t('yamlEditor.balanced.name') })),
       tree,
     );
     onTreeChange(updatedTree);
@@ -376,7 +365,7 @@ export function YAMLTreeView({
 
           <button
             onClick={() => {
-              const rootPlan = createNodeByType('root_plan');
+              const rootPlan = createNodeByType('root_plan', { balancedName: t('yamlEditor.balanced.name') });
               onTreeChange(rootPlan);
             }}
             className="group relative px-6 py-3 bg-yellow-400 hover:bg-yellow-300 text-black font-bold rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 flex items-center gap-3 mx-auto shadow-xl shadow-yellow-400/10"
@@ -496,4 +485,684 @@ export function YAMLTreeView({
       )}
     </div>
   );
+}
+
+function toggleNodeInTree(tree: YAMLNode, nodeId: string): YAMLNode {
+  if (tree.id === nodeId) {
+    return { ...tree, expanded: !tree.expanded };
+  }
+
+  if (tree.children) {
+    return {
+      ...tree,
+      children: tree.children.map(child => toggleNodeInTree(child, nodeId)),
+    };
+  }
+
+  return tree;
+}
+
+function addNodeToTree(tree: YAMLNode, parentId: string, newNode: YAMLNode): YAMLNode {
+  if (tree.id === parentId) {
+    const children = tree.children || [];
+    return {
+      ...tree,
+      children: [...children, newNode],
+      expanded: true,
+    };
+  }
+
+  if (tree.children) {
+    return {
+      ...tree,
+      children: tree.children.map(child => addNodeToTree(child, parentId, newNode)),
+    };
+  }
+
+  return tree;
+}
+
+function removeNodeFromTree(tree: YAMLNode, nodeId: string): YAMLNode {
+  if (tree.children) {
+    return {
+      ...tree,
+      children: tree.children.filter(child => child.id !== nodeId).map(child => removeNodeFromTree(child, nodeId)),
+    };
+  }
+
+  return tree;
+}
+
+function duplicateNodeInTree(tree: YAMLNode, nodeId: string, copySuffix: string): YAMLNode {
+  let nodeToDuplicate: YAMLNode | null = null;
+
+  // Encontrar el nodo
+  const findNode = (node: YAMLNode) => {
+    if (node.id === nodeId) {
+      nodeToDuplicate = node;
+      return;
+    }
+    if (node.children) {
+      node.children.forEach(findNode);
+    }
+  };
+  findNode(tree);
+
+  if (!nodeToDuplicate) return tree;
+
+  // Clonar profundamente con nuevos IDs
+  const newNode = cloneNodeWithNewIds(nodeToDuplicate, copySuffix);
+
+  // Insertar después del original
+  const insertAfterOriginal = (node: YAMLNode): YAMLNode => {
+    if (node.children) {
+      const index = node.children.findIndex(c => c.id === nodeId);
+      if (index !== -1) {
+        const newChildren = [...node.children];
+        newChildren.splice(index + 1, 0, newNode);
+        return { ...node, children: newChildren };
+      }
+      return {
+        ...node,
+        children: node.children.map(insertAfterOriginal),
+      };
+    }
+    return node;
+  };
+
+  return insertAfterOriginal(tree);
+}
+
+function insertNodesAfterTarget(tree: YAMLNode, targetId: string, newNodes: YAMLNode[]): YAMLNode {
+  if (!newNodes.length) return tree;
+
+  if (tree.children) {
+    const index = tree.children.findIndex(child => child.id === targetId);
+    if (index !== -1) {
+      const newChildren = [...tree.children];
+      newChildren.splice(index + 1, 0, ...newNodes);
+      return { ...tree, children: newChildren };
+    }
+
+    return {
+      ...tree,
+      children: tree.children.map(child => insertNodesAfterTarget(child, targetId, newNodes)),
+    };
+  }
+
+  return tree;
+}
+
+function cloneNodeSnapshot(node: YAMLNode): YAMLNode {
+  return {
+    ...node,
+    children: node.children ? node.children.map(cloneNodeSnapshot) : undefined,
+  };
+}
+
+function cloneNodeWithNewIds(node: YAMLNode, copySuffix?: string): YAMLNode {
+  const newId = `node_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  return {
+    ...node,
+    id: newId,
+    name: copySuffix ? `${node.name} (${copySuffix})` : node.name,
+    children: node.children ? node.children.map(child => cloneNodeWithNewIds(child, copySuffix)) : undefined,
+  };
+}
+
+function updateNodeEnabled(tree: YAMLNode, nodeId: string, enabled: boolean): YAMLNode {
+  const setEnabledInSubtree = (node: YAMLNode, nextEnabled: boolean): YAMLNode => ({
+    ...node,
+    data: { ...node.data, enabled: nextEnabled },
+    children: node.children?.map(child => setEnabledInSubtree(child, nextEnabled)),
+  });
+
+  if (tree.id === nodeId) {
+    // Keep parent/children state consistent in YAML code:
+    // toggling parent enabled/disabled propagates to all descendants.
+    return setEnabledInSubtree(tree, enabled);
+  }
+
+  if (tree.children) {
+    return {
+      ...tree,
+      children: tree.children.map(child => updateNodeEnabled(child, nodeId, enabled)),
+    };
+  }
+
+  return tree;
+}
+
+function moveNodeInTree(
+  tree: YAMLNode,
+  nodeId: string,
+  targetId: string,
+  position: 'before' | 'after' | 'inside',
+): YAMLNode {
+  // No mover si es el mismo nodo
+  if (nodeId === targetId) return tree;
+
+  // Paso 1: Encontrar el nodo a mover (sin extraerlo aún)
+  let nodeToMove: YAMLNode | null = null;
+
+  const findNode = (node: YAMLNode): void => {
+    if (node.id === nodeId) {
+      nodeToMove = { ...node };
+      return;
+    }
+    if (node.children) {
+      node.children.forEach(findNode);
+    }
+  };
+  findNode(tree);
+
+  if (!nodeToMove) return tree;
+
+  // Paso 2: Remover el nodo de su posición original
+  const removeNode = (node: YAMLNode): YAMLNode => {
+    if (!node.children) return node;
+
+    return {
+      ...node,
+      children: node.children.filter(child => child.id !== nodeId).map(removeNode),
+    };
+  };
+
+  const treeWithoutNode = removeNode(tree);
+
+  // Paso 3: Insertar el nodo en la nueva posición
+  let inserted = false;
+
+  const insertNode = (node: YAMLNode): YAMLNode => {
+    if (inserted) return node;
+
+    // Insertar dentro del target
+    if (position === 'inside' && node.id === targetId) {
+      inserted = true;
+      const children = node.children || [];
+      return {
+        ...node,
+        children: [...children, nodeToMove!],
+        expanded: true,
+      };
+    }
+
+    // Buscar en los hijos para before/after
+    if (node.children && node.children.length > 0) {
+      const targetIndex = node.children.findIndex(c => c.id === targetId);
+
+      if (targetIndex !== -1 && (position === 'before' || position === 'after')) {
+        inserted = true;
+        const newChildren = [...node.children];
+        const insertIndex = position === 'before' ? targetIndex : targetIndex + 1;
+        newChildren.splice(insertIndex, 0, nodeToMove!);
+        return { ...node, children: newChildren };
+      }
+
+      // Continuar buscando recursivamente
+      return {
+        ...node,
+        children: node.children.map(insertNode),
+      };
+    }
+
+    return node;
+  };
+
+  const result = insertNode(treeWithoutNode);
+
+  // Si no se insertó, devolver el árbol original
+  if (!inserted) {
+    console.warn('[moveNodeInTree] No se pudo insertar el nodo');
+    return tree;
+  }
+
+  return result;
+}
+
+function createNodeByType(
+  type: string | 'root_plan',
+  options?: {
+    balancedName?: string;
+  },
+): YAMLNode {
+  const id = `node_${Math.random().toString(36).substr(2, 9)}`;
+  const balancedName = options?.balancedName || 'Balanced Controller';
+
+  // Root Plan Initialization
+  if (type === 'root_plan') {
+    const scenarioId = `node_${Math.random().toString(36).substr(2, 9)}`;
+    return {
+      id: 'root',
+      type: 'root',
+      name: 'Test Plan',
+      expanded: true,
+      children: [
+        {
+          id: 'node_scenarios',
+          type: 'scenarios',
+          name: 'Scenarios',
+          expanded: true,
+          children: [
+            {
+              id: scenarioId,
+              type: 'scenario',
+              name: 'New Scenario',
+              expanded: true,
+              data: { name: 'New Scenario' },
+              children: [
+                {
+                  id: `${scenarioId}_load`,
+                  type: 'load',
+                  name: 'Load Config',
+                  data: {
+                    vusers: 1,
+                    duration: '1m',
+                    ramp_up: '10s',
+                  },
+                },
+                {
+                  id: `${scenarioId}_steps`,
+                  type: 'steps',
+                  name: 'Steps',
+                  expanded: true,
+                  children: [],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+  }
+
+  switch (type) {
+    // HTTP Requests
+    case 'request':
+      return {
+        id,
+        type: 'get',
+        name: 'GET: /api/endpoint',
+        data: { url: '/api/endpoint' },
+        children: [],
+      };
+    case 'sql':
+      return {
+        id,
+        type: 'sql',
+        name: 'POSTGRES: SELECT',
+        data: {
+          dialect: 'postgres',
+          kind: 'query',
+          query: 'SELECT 1',
+          connection: {
+            host: '{{db_host}}',
+            port: 5432,
+            database: 'app',
+            user: '{{db_user}}',
+            password: '{{db_password}}',
+            validate_connectivity: true,
+            max_open_conns: 5,
+            max_idle_conns: 2,
+          },
+          params: [],
+          allow_writes: false,
+        },
+        children: [],
+      };
+    case 'get':
+      return {
+        id,
+        type: 'get',
+        name: 'GET: /api/endpoint',
+        data: { url: '/api/endpoint' },
+        children: [],
+      };
+    case 'post':
+      return {
+        id,
+        type: 'post',
+        name: 'POST: /api/endpoint',
+        data: { url: '/api/endpoint', body: '{}' },
+        children: [],
+      };
+    case 'put':
+      return {
+        id,
+        type: 'put',
+        name: 'PUT: /api/endpoint',
+        data: { url: '/api/endpoint', body: '{}' },
+        children: [],
+      };
+    case 'delete':
+      return {
+        id,
+        type: 'delete',
+        name: 'DELETE: /api/endpoint',
+        data: { url: '/api/endpoint' },
+        children: [],
+      };
+    case 'patch':
+      return {
+        id,
+        type: 'patch',
+        name: 'PATCH: /api/endpoint',
+        data: { url: '/api/endpoint', body: '{}' },
+        children: [],
+      };
+    case 'head':
+      return {
+        id,
+        type: 'head',
+        name: 'HEAD: /api/endpoint',
+        data: { url: '/api/endpoint' },
+        children: [],
+      };
+    case 'options':
+      return {
+        id,
+        type: 'options',
+        name: 'OPTIONS: /api/endpoint',
+        data: { url: '/api/endpoint' },
+        children: [],
+      };
+
+    // Logic Controllers
+    case 'group':
+      return {
+        id,
+        type: 'group',
+        name: 'Group',
+        children: [],
+        data: { name: 'Group' },
+        expanded: true,
+      };
+    case 'transaction':
+      return {
+        id,
+        type: 'transaction',
+        name: 'Transaction',
+        children: [],
+        data: { name: 'Transaction' },
+        expanded: true,
+      };
+    case 'balanced':
+      return {
+        id,
+        type: 'balanced',
+        name: balancedName,
+        children: [],
+        data: { name: balancedName, type: 'total', mode: 'iteraciones' },
+        expanded: true,
+      };
+    case 'if':
+      return {
+        id,
+        type: 'if',
+        name: 'If Controller',
+        children: [],
+        data: { condition: '{{variable}} == true' },
+        expanded: true,
+      };
+    case 'loop':
+      return {
+        id,
+        type: 'loop',
+        name: 'Loop Controller',
+        children: [],
+        data: { count: 3 },
+        expanded: true,
+      };
+    case 'retry':
+      return {
+        id,
+        type: 'retry',
+        name: 'Retry Controller',
+        children: [],
+        data: { attempts: 3, backoff: 'exponential' },
+        expanded: true,
+      };
+    case 'one_time':
+      return {
+        id,
+        type: 'one_time',
+        name: 'One Time Controller',
+        children: [
+          {
+            id: `${id}_request`,
+            type: 'request',
+            name: 'Initialization Request',
+            data: { method: 'GET', url: '/initialize' },
+            children: [],
+          },
+        ],
+        data: { description: '' },
+        expanded: true,
+      };
+    case 'on_error':
+      return {
+        id,
+        type: 'on_error',
+        name: 'On Error',
+        children: [],
+        data: { action: 'continue' },
+        expanded: true,
+      };
+    // Timers
+    case 'think_time':
+      return {
+        id,
+        type: 'think_time',
+        name: 'Think Time',
+        data: { duration: '1s' },
+      };
+
+    // Pre/Post Processors
+    case 'spark_before':
+      return {
+        id,
+        type: 'spark_before',
+        name: 'Spark Before',
+        data: { script: '// Pre-request script\n' },
+      };
+    case 'spark_after':
+      return {
+        id,
+        type: 'spark_after',
+        name: 'Spark After',
+        data: { script: '// Post-request script\n' },
+      };
+
+    // Assertions & Extractors
+    case 'assertion':
+      return {
+        id,
+        type: 'assertion',
+        name: 'Assertion',
+        data: {
+          type: 'status',
+          __allowTypeSelection: true,
+        },
+      };
+    case 'extractor':
+      return {
+        id,
+        type: 'extractor',
+        name: 'Extractor',
+        data: {
+          type: 'regex',
+          __allowTypeSelection: true,
+          from: 'body',
+          var: 'extracted_value',
+          variable: 'extracted_value',
+          pattern: 'token=([a-zA-Z0-9_-]+)',
+          capture_mode: 'first',
+          group: 1,
+          default: '',
+        },
+      };
+    case 'file':
+      return {
+        id,
+        type: 'file',
+        name: 'File Upload',
+        data: {
+          field: 'file',
+          path: '',
+          mime_type: 'application/octet-stream',
+        },
+      };
+    case 'header':
+      return {
+        id,
+        type: 'header',
+        name: 'Header',
+        data: {
+          name: 'Authorization',
+          value: '',
+        },
+      };
+    case 'headers':
+      return {
+        id,
+        type: 'headers',
+        name: 'Headers',
+        data: {
+          'Content-Type': 'application/json',
+        },
+      };
+
+    // Scenarios block
+    case 'scenarios':
+      return {
+        id,
+        type: 'scenarios',
+        name: 'Scenarios',
+        expanded: true,
+        children: [],
+      };
+
+    // Scenario
+    case 'scenario':
+      return {
+        id,
+        type: 'scenario',
+        name: 'New Scenario',
+        children: [
+          {
+            id: `${id}_load`,
+            type: 'load',
+            name: 'Load Config',
+            data: {
+              vusers: 1,
+              duration: '1m',
+              ramp_up: '10s',
+            },
+          },
+          {
+            id: `${id}_steps`,
+            type: 'steps',
+            name: 'Steps',
+            children: [],
+            expanded: true,
+          },
+        ],
+        data: { name: 'New Scenario' },
+        expanded: true,
+      };
+
+    // Root level config elements
+    case 'variables':
+      return {
+        id,
+        type: 'variables',
+        name: 'Variables',
+        data: { newVariable: 'value' },
+      };
+    case 'data_source':
+      return {
+        id,
+        type: 'data_source',
+        name: 'Data Source',
+        data: {
+          type: 'csv',
+          file: 'data.csv',
+          mode: 'sequential',
+        },
+      };
+    case 'http_defaults':
+      return {
+        id,
+        type: 'http_defaults',
+        name: 'HTTP Defaults',
+        data: {
+          base_url: 'https://api.example.com',
+          timeout: '',
+        },
+      };
+    case 'metrics':
+      return {
+        id,
+        type: 'metrics',
+        name: 'Metrics',
+        data: { enabled: true },
+      };
+
+    // Scenario config elements
+    case 'load':
+      return {
+        id,
+        type: 'load',
+        name: 'Load Config',
+        data: {
+          type: 'constant',
+          users: 10,
+          duration: '1m',
+        },
+      };
+    case 'cookies':
+      return {
+        id,
+        type: 'cookies',
+        name: 'Cookies',
+        data: {
+          mode: 'auto',
+          policy: 'standard',
+          jar_scope: 'vu',
+          persist_across_iterations: true,
+          clear_each_iteration: false,
+          cookies: [],
+        },
+      };
+    case 'cache_manager':
+      return {
+        id,
+        type: 'cache_manager',
+        name: 'Cache Manager',
+        data: {
+          enabled: true,
+          clear_each_iteration: true,
+          max_elements: 1000,
+        },
+      };
+    case 'error_policy':
+      return {
+        id,
+        type: 'error_policy',
+        name: 'Error Policy',
+        data: {
+          on_4xx: 'continue',
+          on_5xx: 'stop',
+          on_timeout: 'stop',
+        },
+      };
+
+    default:
+      return {
+        id,
+        type: 'step',
+        name: 'Step',
+        data: {},
+      };
+  }
 }
