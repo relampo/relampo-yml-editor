@@ -34,6 +34,7 @@ export type YAMLAddableNodeType =
   | 'sql'
   | 'group'
   | 'transaction'
+  | 'balanced'
   | 'if'
   | 'loop'
   | 'retry'
@@ -131,7 +132,7 @@ export function YAMLContextMenu({
     }
   }, [x, y]);
 
-  const addableItems = getAddableItems(node.type);
+  const addableItems = getAddableItems(node.type, t);
   const canAddChildren = addableItems.length > 0;
 
   return (
@@ -239,7 +240,7 @@ interface AddableItem {
   color: string;
 }
 
-function getAddableItems(parentType: string): AddableItem[] {
+function getAddableItems(parentType: string, t: (key: string) => string): AddableItem[] {
   const iconClass = 'w-4 h-4';
 
   // ROOT/TEST - Global configuration elements
@@ -400,8 +401,62 @@ function getAddableItems(parentType: string): AddableItem[] {
     ];
   }
 
-  // LOGIC CONTROLLERS (group, if, loop, retry, simple) and STEPS
-  const controllers = ['group', 'simple', 'transaction', 'if', 'loop', 'retry', 'steps'];
+  if (parentType === 'balanced') {
+    return [
+      {
+        type: 'request',
+        label: 'HTTP Request',
+        description: 'Request HTTP',
+        icon: <Globe className={iconClass} />,
+        color: 'text-emerald-400',
+      },
+      {
+        type: 'sql',
+        label: 'SQL Step',
+        description: 'Execute parameterized SQL',
+        icon: <Database className={iconClass} />,
+        color: 'text-teal-400',
+      },
+      {
+        type: 'group',
+        label: 'Group',
+        description: 'Group steps',
+        icon: <Folder className={iconClass} />,
+        color: 'text-blue-400',
+      },
+      {
+        type: 'transaction',
+        label: 'Transaction',
+        description: 'Measurable logical block',
+        icon: <GitBranch className={iconClass} />,
+        color: 'text-white',
+      },
+      {
+        type: 'if',
+        label: 'If Controller',
+        description: 'Conditional execution',
+        icon: <Folder className={iconClass} />,
+        color: 'text-pink-500',
+      },
+      {
+        type: 'loop',
+        label: 'Loop Controller',
+        description: 'Repeat steps',
+        icon: <Folder className={iconClass} />,
+        color: 'text-purple-400',
+      },
+      {
+        type: 'retry',
+        label: 'Retry Controller',
+        description: 'Retry with backoff',
+        icon: <Folder className={iconClass} />,
+        color: 'text-red-400',
+      },
+    ];
+  }
+
+  // LOGIC CONTROLLERS (group, if, loop, retry, balanced) and STEPS
+  const controllers = ['group', 'simple', 'transaction', 'balanced', 'if', 'loop', 'retry', 'steps'];
   if (controllers.includes(parentType)) {
     return [
       {
@@ -431,6 +486,13 @@ function getAddableItems(parentType: string): AddableItem[] {
         description: 'Measurable logical block',
         icon: <GitBranch className={iconClass} />,
         color: 'text-white',
+      },
+      {
+        type: 'balanced',
+        label: t('yamlEditor.balanced.name'),
+        description: t('yamlEditor.balanced.contextDescription'),
+        icon: <Folder className={iconClass} />,
+        color: 'text-cyan-400',
       },
       {
         type: 'if',
