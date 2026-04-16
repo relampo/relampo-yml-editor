@@ -230,7 +230,8 @@ export function YAMLTreeView({
 
     const targetIds = getContextActionTargetIds();
     const updatedTree = targetIds.reduce(
-      (currentTree, targetId) => addNodeToTree(currentTree, targetId, createNodeByType(nodeType)),
+      (currentTree, targetId) =>
+        addNodeToTree(currentTree, targetId, createNodeByType(nodeType, { balancedName: t('yamlEditor.balanced.name') })),
       tree,
     );
     onTreeChange(updatedTree);
@@ -364,7 +365,7 @@ export function YAMLTreeView({
 
           <button
             onClick={() => {
-              const rootPlan = createNodeByType('root_plan');
+              const rootPlan = createNodeByType('root_plan', { balancedName: t('yamlEditor.balanced.name') });
               onTreeChange(rootPlan);
             }}
             className="group relative px-6 py-3 bg-yellow-400 hover:bg-yellow-300 text-black font-bold rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 flex items-center gap-3 mx-auto shadow-xl shadow-yellow-400/10"
@@ -719,8 +720,14 @@ function moveNodeInTree(
   return result;
 }
 
-function createNodeByType(type: string | 'root_plan'): YAMLNode {
+function createNodeByType(
+  type: string | 'root_plan',
+  options?: {
+    balancedName?: string;
+  },
+): YAMLNode {
   const id = `node_${Math.random().toString(36).substr(2, 9)}`;
+  const balancedName = options?.balancedName || 'Balanced Controller';
 
   // Root Plan Initialization
   if (type === 'root_plan') {
@@ -877,6 +884,15 @@ function createNodeByType(type: string | 'root_plan'): YAMLNode {
         name: 'Transaction',
         children: [],
         data: { name: 'Transaction' },
+        expanded: true,
+      };
+    case 'balanced':
+      return {
+        id,
+        type: 'balanced',
+        name: balancedName,
+        children: [],
+        data: { name: balancedName, type: 'total', mode: 'iteraciones' },
         expanded: true,
       };
     case 'if':
