@@ -20,7 +20,8 @@ import {
   TestDetails,
   VariablesDetails,
 } from './yaml-node-details/BasicDetails';
-import { BalancedDetails, IfDetails, LoopDetails, OneTimeDetails, RetryDetails, ThinkTimeDetails } from './yaml-node-details/FlowDetails';
+import { BalancedDetails } from './yaml-node-details/BalancedDetails';
+import { IfDetails, LoopDetails, OneTimeDetails, RetryDetails, ThinkTimeDetails } from './yaml-node-details/FlowDetails';
 import { LoadDetails } from './yaml-node-details/LoadDetails';
 import { CacheManagerDetails, CookiesDetails, ErrorPolicyDetails } from './yaml-node-details/OpsDetails';
 import { AssertionDetails, ExtractorDetails } from './yaml-node-details/ValidationDetails';
