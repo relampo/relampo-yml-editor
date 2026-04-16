@@ -10,11 +10,13 @@ import {
   cloneNodeSnapshot,
   cloneNodeWithNewIds,
   duplicateNodeInTree,
+  getTransactionWrapValidation,
   insertNodesAfterTarget,
   moveNodeInTree,
   removeNodeFromTree,
   toggleNodeInTree,
   updateNodeEnabled,
+  wrapNodesInTransaction,
 } from './yaml-tree-view/treeOperations';
 
 interface YAMLTreeViewProps {
@@ -23,7 +25,7 @@ interface YAMLTreeViewProps {
   selectedNodeIds: string[];
   redirectedRequestMap: Record<string, RedirectedRequestInfo>;
   onSelectionChange: (primaryNode: YAMLNode | null, nodeIds: string[]) => void;
-  onTreeChange: (tree: YAMLNode) => void;
+  onTreeChange: (tree: YAMLNode, nextSelection?: { primaryId: string | null; nodeIds: string[] }) => void;
 }
 
 export function YAMLTreeView({
@@ -99,6 +101,10 @@ export function YAMLTreeView({
   }, [selectedNodeIds, parentMap, tree]);
 
   const allSelectedDisabled = selectedNodes.length > 0 && selectedNodes.every(node => node.data?.enabled === false);
+  const transactionWrapValidation = useMemo(
+    () => (tree ? getTransactionWrapValidation(tree, effectiveSelectedIds) : null),
+    [effectiveSelectedIds, tree],
+  );
 
   useEffect(() => {
     if (!selectedNode?.id || !treeContainerRef.current) return;
@@ -314,6 +320,41 @@ export function YAMLTreeView({
     onTreeChange(updatedTree);
   };
 
+  const getTransactionValidationMessage = () => {
+    if (!transactionWrapValidation || transactionWrapValidation.valid) {
+      return null;
+    }
+
+    switch (transactionWrapValidation.reason) {
+      case 'minimum_selection':
+        return 'Select at least 2 sibling steps';
+      case 'same_parent':
+        return 'Selection must share the same parent';
+      case 'contiguous':
+        return 'Selection must be contiguous in the current order';
+      case 'supported_parent':
+        return 'Selection must be inside a compatible steps container';
+      case 'supported_child':
+        return 'Only step elements can be wrapped in a transaction';
+      default:
+        return 'Selection is not valid for transaction grouping';
+    }
+  };
+
+  const handleCreateTransaction = () => {
+    if (!tree) return;
+
+    const result = wrapNodesInTransaction(tree, effectiveSelectedIds);
+    if (!result) {
+      return;
+    }
+
+    onTreeChange(result.tree, {
+      primaryId: result.transactionNode.id,
+      nodeIds: [result.transactionNode.id],
+    });
+  };
+
   const handleCopySelection = () => {
     if (effectiveSelectedIds.length === 0) return;
 
@@ -427,6 +468,13 @@ export function YAMLTreeView({
               {selectedNodeIds.length} selected
             </span>
             <button
+              onClick={handleCreateTransaction}
+              disabled={!transactionWrapValidation?.valid}
+              className="px-2.5 py-1.5 text-xs font-semibold rounded border border-teal-400/20 text-teal-200 hover:bg-teal-400/10 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Create Transaction
+            </button>
+            <button
               onClick={handleBulkDuplicate}
               disabled={effectiveSelectedIds.length === 0}
               className="px-2.5 py-1.5 text-xs font-semibold rounded border border-white/10 text-zinc-300 hover:bg-white/5 disabled:opacity-40 disabled:cursor-not-allowed"
@@ -447,6 +495,9 @@ export function YAMLTreeView({
             >
               Delete
             </button>
+            {!transactionWrapValidation?.valid && (
+              <span className="text-xs text-zinc-500">{getTransactionValidationMessage()}</span>
+            )}
           </div>
         </div>
       )}
