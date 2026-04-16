@@ -7,6 +7,8 @@ function normalizeYamlFileName(name: string): string {
   return /\.(ya?ml)$/i.test(trimmed) ? trimmed : `${trimmed}.yaml`;
 }
 
+const EMPTY_PARALLEL_ERROR = 'Parallel controller must contain at least one child step';
+
 function stripResponsesFromObject(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(stripResponsesFromObject);
   if (value && typeof value === 'object') {
@@ -94,7 +96,12 @@ export function useYAMLPersistence({
     try {
       yamlToPersist = getPersistableYaml();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error generating YAML');
+      const message = err instanceof Error ? err.message : 'Error generating YAML';
+      if (message.includes(EMPTY_PARALLEL_ERROR)) {
+        setError(null);
+        return;
+      }
+      setError(message);
       return;
     }
 

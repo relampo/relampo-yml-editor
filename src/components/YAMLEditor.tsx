@@ -14,6 +14,7 @@ import { useYAMLPersistence } from '../hooks/useYAMLPersistence';
 
 const LARGE_FILE_CHAR_THRESHOLD = 2_000_000;
 const LARGE_FILE_LINE_THRESHOLD = 50_000;
+const EMPTY_PARALLEL_ERROR = 'Parallel controller must contain at least one child step';
 
 type ParseWorkerRequest = {
   id: number;
@@ -309,7 +310,13 @@ export function YAMLEditor() {
       setError(null);
       setIsTreeOutdated(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error generating YAML');
+      const message = err instanceof Error ? err.message : 'Error generating YAML';
+      if (message.includes(EMPTY_PARALLEL_ERROR)) {
+        setError(null);
+        setIsTreeOutdated(true);
+        return;
+      }
+      setError(message);
     }
   };
 
