@@ -1,8 +1,14 @@
 import { buildLoadDataForType } from '../yaml-node-details/loadUtils';
 import type { YAMLNode } from '../../types/yaml';
 
-export function createNodeByType(type: string | 'root_plan'): YAMLNode {
+export function createNodeByType(
+  type: string | 'root_plan',
+  options?: {
+    balancedName?: string;
+  },
+): YAMLNode {
   const id = createNodeId();
+  const balancedName = options?.balancedName || 'Balanced Controller';
 
   if (type === 'root_plan') {
     const scenarioId = createNodeId();
@@ -144,6 +150,15 @@ export function createNodeByType(type: string | 'root_plan'): YAMLNode {
         name: 'Parallel Controller',
         children: [],
         data: { name: 'Parallel Controller' },
+        expanded: true,
+      };
+    case 'balanced':
+      return {
+        id,
+        type: 'balanced',
+        name: balancedName,
+        children: [],
+        data: { name: balancedName, type: 'total', mode: 'iteraciones' },
         expanded: true,
       };
     case 'if':
