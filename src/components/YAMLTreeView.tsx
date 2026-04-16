@@ -241,11 +241,16 @@ export function YAMLTreeView({
     if (!contextMenu || !tree) return;
 
     const targetIds = getContextActionTargetIds();
-    const updatedTree = targetIds.reduce(
-      (currentTree, targetId) => addNodeToTree(currentTree, targetId, createNodeByType(nodeType)),
-      tree,
-    );
+    const createdNodes: YAMLNode[] = [];
+    const updatedTree = targetIds.reduce((currentTree, targetId) => {
+      const newNode = createNodeByType(nodeType);
+      createdNodes.push(newNode);
+      return addNodeToTree(currentTree, targetId, newNode);
+    }, tree);
     onTreeChange(updatedTree);
+    if (createdNodes.length > 0) {
+      onSelectionChange(createdNodes[createdNodes.length - 1], createdNodes.map(node => node.id));
+    }
     handleCloseContextMenu();
   };
 
