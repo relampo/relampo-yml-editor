@@ -22,6 +22,7 @@ export type YAMLNodeType =
   | 'simple'
   | 'group'
   | 'transaction'
+  | 'balanced'
   | 'if'
   | 'loop'
   | 'retry'
@@ -237,6 +238,13 @@ export interface LoopStep {
 
 export interface IfStep {
   condition: string;
+  steps: any[];
+}
+
+export interface BalancedStep {
+  name?: string;
+  type?: 'total' | 'parcial';
+  mode?: 'iteraciones' | 'usuarios_virtuales';
   steps: any[];
 }
 
