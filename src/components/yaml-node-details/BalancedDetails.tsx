@@ -76,14 +76,21 @@ export function BalancedDetails({ node, onNodeUpdate }: NodeDetailProps) {
 
     const base = Math.floor(100 / children.length);
     let assigned = 0;
-
-    children.forEach((child, index) => {
+    const childUpdates = children.map((child, index) => {
       const nextValue = index === children.length - 1 ? 100 - assigned : base;
       assigned += nextValue;
-      onNodeUpdate(child.id, {
-        ...(child.data || {}),
-        __balancedPercentage: nextValue,
-      });
+      return {
+        nodeId: child.id,
+        data: {
+          ...(child.data || {}),
+          __balancedPercentage: nextValue,
+        },
+      };
+    });
+
+    onNodeUpdate(node.id, {
+      ...data,
+      __batchChildUpdates: childUpdates,
     });
   };
 

@@ -4,7 +4,7 @@ import { Upload, Download, Code2, GitBranch } from 'lucide-react';
 import { YAMLCodeEditor } from './YAMLCodeEditor';
 import { YAMLTreeView } from './YAMLTreeView';
 import { YAMLNodeDetails } from './YAMLNodeDetails';
-import { getUpdatedRequestNodePresentation, isHttpRequestNodeType } from '../utils/requestNodeDisplay';
+import { applyNodeUpdateToTree } from '../utils/nodeUpdate';
 import { parseYAMLToTree, treeToYAML } from '../utils/yamlParser';
 import type { YAMLNode } from '../types/yaml';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -128,45 +128,7 @@ export function YAMLEditorStandaloneComplete() {
 
   const handleNodeUpdate = (nodeId: string, updatedData: any) => {
     if (!yamlTree) return;
-
-    let updatedSelectedNode: YAMLNode | null = null;
-
-    const updateNodeInTree = (node: YAMLNode): YAMLNode => {
-      if (node.id === nodeId) {
-        const newName = updatedData.__name;
-        const cleanData = { ...updatedData };
-        delete cleanData.__name;
-        const requestPresentation = isHttpRequestNodeType(node.type)
-          ? getUpdatedRequestNodePresentation({
-              nodeType: node.type,
-              currentName: node.name,
-              currentData: node.data,
-              updatedData: cleanData,
-              explicitName: newName !== undefined ? String(newName) : undefined,
-            })
-          : null;
-
-        const updated = {
-          ...node,
-          type: requestPresentation?.type || node.type,
-          name: requestPresentation?.name || (newName !== undefined ? newName : node.name),
-          data: cleanData,
-        };
-        if (selectedNode?.id === nodeId) {
-          updatedSelectedNode = updated;
-        }
-        return updated;
-      }
-      if (node.children) {
-        return {
-          ...node,
-          children: node.children.map(updateNodeInTree),
-        };
-      }
-      return node;
-    };
-
-    const updatedTree = updateNodeInTree(yamlTree);
+    const updatedTree = applyNodeUpdateToTree(yamlTree, nodeId, updatedData);
     setYamlTree(updatedTree);
 
     if (selectedNode) {
@@ -179,9 +141,7 @@ export function YAMLEditorStandaloneComplete() {
         return null;
       };
 
-      setSelectedNode(refreshSelectedNode(updatedTree, selectedNode.id) ?? updatedSelectedNode);
-    } else if (updatedSelectedNode) {
-      setSelectedNode(updatedSelectedNode);
+      setSelectedNode(refreshSelectedNode(updatedTree, selectedNode.id));
     }
 
     if (serializeDebounceRef.current) {
