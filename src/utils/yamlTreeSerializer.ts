@@ -235,6 +235,27 @@ function stepNodeToObject(node: YAMLNode): any {
     return res;
   }
 
+  if (node.type === 'parallel') {
+    const childSteps = node.children?.map(stepNodeToObject) || [];
+    if (childSteps.length === 0) {
+      throw new Error('Parallel controller must contain at least one child step');
+    }
+
+    const { steps: _steps, ...parallelData } = node.data || {};
+    const res: any = {
+      parallel: {
+        ...parallelData,
+        name: node.name || node.data?.name || 'Parallel Controller',
+        steps: childSteps,
+      },
+    };
+
+    if (node.data?.enabled === false) {
+      res.enabled = false;
+    }
+    return res;
+  }
+
   if (node.type === 'if') {
     const res: any = {
       if: node.data?.condition || 'true',

@@ -574,6 +574,27 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
     return transactionNode;
   }
 
+  if (step.parallel) {
+    const parallelNode: YAMLNode = {
+      id: stepId,
+      type: 'parallel',
+      name: step.parallel.name || 'Parallel Controller',
+      children: [],
+      expanded: true,
+      data: { ...step.parallel },
+      path,
+    };
+
+    if (step.parallel.steps && Array.isArray(step.parallel.steps)) {
+      step.parallel.steps.forEach((childStep: any, childIndex: number) => {
+        const childNode = convertStepToNode(childStep, stepId, childIndex, [...path, 'steps', childIndex]);
+        parallelNode.children!.push(childNode);
+      });
+    }
+
+    return parallelNode;
+  }
+
   // If
   if (step.if !== undefined) {
     const ifNode: YAMLNode = {

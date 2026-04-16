@@ -29,6 +29,7 @@ import type { YAMLNodeType } from '../types/yaml';
  *                   │    └── ⏱️ think_time (Constant Timer)
  *                   ├── 📦 group (Transaction Controller)
  *                   ├── 🔄 loop (Loop Controller)
+ *                   ├── ⛓️ parallel (Parallel Controller)
  *                   ├── ❓ if (If Controller)
  *                   ├── 🔁 retry (Retry Controller)
  *                   ├── ⚡ one_time (One Time Controller)
@@ -54,7 +55,7 @@ const ROOT_LEVEL_ELEMENTS: YAMLNodeType[] = [
 const SCENARIO_CONFIG_ELEMENTS: YAMLNodeType[] = ['load', 'cookies', 'cache_manager', 'error_policy'];
 
 /** Logic Controllers - can contain other controllers and samplers */
-const LOGIC_CONTROLLERS: YAMLNodeType[] = ['group', 'simple', 'transaction', 'if', 'loop', 'retry', 'one_time'];
+const LOGIC_CONTROLLERS: YAMLNodeType[] = ['group', 'simple', 'transaction', 'parallel', 'if', 'loop', 'retry', 'one_time'];
 
 /** HTTP Samplers - the actual requests */
 const HTTP_SAMPLERS: YAMLNodeType[] = ['request', 'get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
@@ -356,6 +357,11 @@ export function validateTreeStructure(node: { type: YAMLNodeType; children?: any
   const errors: string[] = [];
 
   function validate(n: { type: YAMLNodeType; children?: any[] }, path: string = '') {
+    if (n.type === 'parallel' && (!n.children || n.children.length === 0)) {
+      const currentPath = path || 'parallel';
+      errors.push(`Invalid: "parallel" must contain at least one child step at ${currentPath}`);
+    }
+
     if (!n.children) return;
 
     const allowedChildren = containmentRules[n.type] || [];

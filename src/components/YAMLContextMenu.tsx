@@ -13,6 +13,7 @@ import {
   Filter,
   Folder,
   Gauge,
+  GitMerge,
   GitBranch,
   Globe,
   HardDrive,
@@ -34,6 +35,7 @@ export type YAMLAddableNodeType =
   | 'sql'
   | 'group'
   | 'transaction'
+  | 'parallel'
   | 'if'
   | 'loop'
   | 'retry'
@@ -402,7 +404,7 @@ function getAddableItems(parentType: string): AddableItem[] {
   }
 
   // LOGIC CONTROLLERS (group, if, loop, retry, one_time, simple) and STEPS
-  const controllers = ['group', 'simple', 'transaction', 'if', 'loop', 'retry', 'one_time', 'steps'];
+  const controllers = ['group', 'simple', 'transaction', 'parallel', 'if', 'loop', 'retry', 'one_time', 'steps'];
   if (controllers.includes(parentType)) {
     return [
       {
@@ -432,6 +434,13 @@ function getAddableItems(parentType: string): AddableItem[] {
         description: 'Measurable logical block',
         icon: <GitBranch className={iconClass} />,
         color: 'text-white',
+      },
+      {
+        type: 'parallel',
+        label: 'Parallel Controller',
+        description: 'Run child steps concurrently',
+        icon: <GitMerge className={iconClass} />,
+        color: 'text-cyan-400',
       },
       {
         type: 'if',

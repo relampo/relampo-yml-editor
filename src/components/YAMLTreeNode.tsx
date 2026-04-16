@@ -4,6 +4,7 @@ import {
   Folder,
   FolderOpen,
   GitBranch,
+  GitMerge,
   Code,
   Cookie,
   Clock,
@@ -349,6 +350,7 @@ function getNodeIcon(type: YAMLNodeType): any {
     options: Globe,
     group: Folder,
     transaction: GitBranch,
+    parallel: GitMerge,
     simple: FolderOpen,
     if: Folder,
     loop: Folder,
@@ -420,6 +422,8 @@ function getNodeColor(type: YAMLNodeType, node?: YAMLNode, isRedirectedFollowUp 
       return 'text-blue-400';
     case 'transaction':
       return 'text-white';
+    case 'parallel':
+      return 'text-cyan-400';
     case 'if':
       return 'text-pink-500';
     case 'loop':
