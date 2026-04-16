@@ -394,6 +394,30 @@ scenarios:
     expect(balanced.children?.[1].data.__balancedPercentage).toBe(10);
   });
 
+  it('preserves disabled balanced controllers during parsing', () => {
+    const yaml = `
+test:
+  name: t
+scenarios:
+  - name: s
+    steps:
+      - balanced:
+          name: Disabled Mix
+          type: total
+        enabled: false
+        steps:
+          - get: https://example.com/a
+            percentage: 100
+`;
+    const tree = parseYAMLToTree(yaml)!;
+    const balanced = tree.children!
+      .find(c => c.type === 'scenarios')!
+      .children![0].children!.find(c => c.type === 'steps')!.children![0];
+
+    expect(balanced.type).toBe('balanced');
+    expect(balanced.data.enabled).toBe(false);
+  });
+
   it('parses the backend sql e2e example with both dialects and extractor-rich query steps', () => {
     const tree = parseYAMLToTree(sqlE2EScenarioYAML)!;
     const scenariosNode = tree.children!.find(c => c.type === 'scenarios');

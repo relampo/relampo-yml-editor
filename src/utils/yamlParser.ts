@@ -585,6 +585,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       expanded: true,
       data: {
         ...balancedData,
+        enabled: isEnabled,
         type: normalizeBalancedDistributionType(balancedData.type),
         mode: normalizeBalancedExecutionMode(balancedData.mode),
       },
