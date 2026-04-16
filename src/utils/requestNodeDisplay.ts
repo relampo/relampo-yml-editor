@@ -4,8 +4,12 @@ const HTTP_METHOD_NODE_TYPES = new Set<YAMLNodeType>(['get', 'post', 'put', 'del
 
 type RequestNodeData = Record<string, unknown> | undefined;
 
+function readMethod(method: unknown): string | null {
+  return typeof method === 'string' && method.trim() !== '' ? method.trim().toUpperCase() : null;
+}
+
 function normalizeMethod(method: unknown): string {
-  return typeof method === 'string' && method.trim() !== '' ? method.trim().toUpperCase() : 'GET';
+  return readMethod(method) || 'GET';
 }
 
 function getMethodNodeType(nodeType: YAMLNodeType, data: RequestNodeData): YAMLNodeType {
@@ -13,7 +17,12 @@ function getMethodNodeType(nodeType: YAMLNodeType, data: RequestNodeData): YAMLN
     return 'request';
   }
 
-  const nextType = normalizeMethod(data?.method).toLowerCase();
+  const method = readMethod(data?.method);
+  if (!method) {
+    return nodeType;
+  }
+
+  const nextType = method.toLowerCase();
   return HTTP_METHOD_NODE_TYPES.has(nextType as YAMLNodeType) ? (nextType as YAMLNodeType) : nodeType;
 }
 
