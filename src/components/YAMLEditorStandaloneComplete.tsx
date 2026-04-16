@@ -4,6 +4,7 @@ import { Upload, Download, Code2, GitBranch } from 'lucide-react';
 import { YAMLCodeEditor } from './YAMLCodeEditor';
 import { YAMLTreeView } from './YAMLTreeView';
 import { YAMLNodeDetails } from './YAMLNodeDetails';
+import { getUpdatedRequestNodePresentation, isHttpRequestNodeType } from '../utils/requestNodeDisplay';
 import { parseYAMLToTree, treeToYAML } from '../utils/yamlParser';
 import type { YAMLNode } from '../types/yaml';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -132,14 +133,23 @@ export function YAMLEditorStandaloneComplete() {
 
     const updateNodeInTree = (node: YAMLNode): YAMLNode => {
       if (node.id === nodeId) {
-        // Extraer el nombre si viene en __name
         const newName = updatedData.__name;
         const cleanData = { ...updatedData };
         delete cleanData.__name;
+        const requestPresentation = isHttpRequestNodeType(node.type)
+          ? getUpdatedRequestNodePresentation({
+              nodeType: node.type,
+              currentName: node.name,
+              currentData: node.data,
+              updatedData: cleanData,
+              explicitName: newName !== undefined ? String(newName) : undefined,
+            })
+          : null;
 
         const updated = {
           ...node,
-          name: newName !== undefined ? newName : node.name,
+          type: requestPresentation?.type || node.type,
+          name: requestPresentation?.name || (newName !== undefined ? newName : node.name),
           data: cleanData,
         };
         if (selectedNode?.id === nodeId) {
@@ -159,7 +169,18 @@ export function YAMLEditorStandaloneComplete() {
     const updatedTree = updateNodeInTree(yamlTree);
     setYamlTree(updatedTree);
 
-    if (updatedSelectedNode) {
+    if (selectedNode) {
+      const refreshSelectedNode = (tree: YAMLNode, targetId: string): YAMLNode | null => {
+        if (tree.id === targetId) return tree;
+        for (const child of tree.children || []) {
+          const found = refreshSelectedNode(child, targetId);
+          if (found) return found;
+        }
+        return null;
+      };
+
+      setSelectedNode(refreshSelectedNode(updatedTree, selectedNode.id) ?? updatedSelectedNode);
+    } else if (updatedSelectedNode) {
       setSelectedNode(updatedSelectedNode);
     }
 

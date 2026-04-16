@@ -6,6 +6,7 @@ import { YAMLTreeView } from './YAMLTreeView';
 import { YAMLNodeDetails } from './YAMLNodeDetails';
 import { YAMLEditorHeader } from './YAMLEditorHeader';
 import { parseYAMLToTree, treeToYAML } from '../utils/yamlParser';
+import { getUpdatedRequestNodePresentation, isHttpRequestNodeType } from '../utils/requestNodeDisplay';
 import type { YAMLNode, RedirectSourceInfo, RedirectedRequestInfo } from '../types/yaml';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useYAML } from '../contexts/YAMLContext';
@@ -391,9 +392,19 @@ export function YAMLEditor() {
     const updateNodeInTree = (node: YAMLNode): YAMLNode => {
       if (node.id === nodeId) {
         const { __name, ...cleanData } = updatedData || {};
+        const requestPresentation = isHttpRequestNodeType(node.type)
+          ? getUpdatedRequestNodePresentation({
+              nodeType: node.type,
+              currentName: node.name,
+              currentData: node.data,
+              updatedData: cleanData,
+              explicitName: __name !== undefined ? String(__name) : undefined,
+            })
+          : null;
         const updated = {
           ...node,
-          name: __name !== undefined ? String(__name) : node.name,
+          type: requestPresentation?.type || node.type,
+          name: requestPresentation?.name || (__name !== undefined ? String(__name) : node.name),
           data: cleanData,
         };
         if (selectedNode?.id === nodeId) updatedSelectedNode = updated;
@@ -409,7 +420,14 @@ export function YAMLEditor() {
     setYamlTree(updatedTree);
     setHasDocumentActivity(true);
     setIsDirty(true);
-    if (updatedSelectedNode) setSelectedNode(updatedSelectedNode);
+    if (selectedNode) {
+      const refreshedSelectedNode = findNodeById(updatedTree, selectedNode.id);
+      setSelectedNode(refreshedSelectedNode ?? updatedSelectedNode);
+      selectedNodeRef.current = refreshedSelectedNode ?? updatedSelectedNode;
+    } else if (updatedSelectedNode) {
+      setSelectedNode(updatedSelectedNode);
+      selectedNodeRef.current = updatedSelectedNode;
+    }
 
     if (serializeDebounceRef.current) window.clearTimeout(serializeDebounceRef.current);
     serializeDebounceRef.current = window.setTimeout(() => {
