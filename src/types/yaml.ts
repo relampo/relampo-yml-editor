@@ -25,6 +25,7 @@ export type YAMLNodeType =
   | 'if'
   | 'loop'
   | 'retry'
+  | 'one_time'
   | 'think_time'
   | 'assertion'
   | 'extract'
@@ -244,6 +245,12 @@ export interface LoopStep {
 
 export interface IfStep {
   condition: string;
+  steps: any[];
+}
+
+export interface OneTimeStep {
+  name?: string;
+  description?: string;
   steps: any[];
 }
 

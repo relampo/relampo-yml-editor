@@ -272,6 +272,27 @@ function stepNodeToObject(node: YAMLNode): any {
     return res;
   }
 
+  if (node.type === 'one_time') {
+    const oneTimeData = { ...(node.data || {}) };
+    delete oneTimeData.enabled;
+
+    if (node.name) {
+      oneTimeData.name = node.name;
+    } else {
+      delete oneTimeData.name;
+    }
+
+    const res: any = {
+      one_time: oneTimeData,
+      steps: node.children?.map(stepNodeToObject) || [],
+    };
+
+    if (node.data?.enabled === false) {
+      res.enabled = false;
+    }
+    return res;
+  }
+
   if (node.type === 'on_error') {
     const res: any = {
       on_error: node.data?.action || node.data || 'continue',

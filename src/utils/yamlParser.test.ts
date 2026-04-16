@@ -1,12 +1,132 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { describe, it, expect } from 'vitest';
 import { parseYAMLToTree, treeToYAML } from './yamlParser';
 
-const sqlE2EScenarioYAML = readFileSync(
-  resolve(process.cwd(), '../relampo-backend/examples/sql-e2e-scenario.yaml'),
-  'utf8',
-);
+const sqlE2EScenarioYAML = `
+test:
+  name: SQL Database Operations E2E Test
+variables:
+  db_host: localhost
+  db_user: app_user
+  db_password: secret
+  mysql_port: "3306"
+  test_email: qa@example.com
+scenarios:
+  - name: Postgres Flow
+    steps:
+      - sql:
+          dialect: postgres
+          kind: exec
+          connection:
+            host: "{{db_host}}"
+            port: 5432
+            database: app
+            user: "{{db_user}}"
+            password: "{{db_password}}"
+            ssl_mode: disable
+            validate_connectivity: true
+            max_open_conns: 5
+          query: CREATE TABLE IF NOT EXISTS users(id serial primary key, email text)
+          allow_writes: true
+          on_error: continue
+      - sql:
+          dialect: postgres
+          kind: exec
+          connection:
+            host: "{{db_host}}"
+            port: 5432
+            database: app
+            user: "{{db_user}}"
+            password: "{{db_password}}"
+            ssl_mode: disable
+            validate_connectivity: true
+            max_open_conns: 5
+          query: INSERT INTO users(email) VALUES ($1)
+          params:
+            - "{{test_email}}"
+          allow_writes: true
+      - sql:
+          dialect: postgres
+          kind: query
+          connection:
+            host: "{{db_host}}"
+            port: 5432
+            database: app
+            user: "{{db_user}}"
+            password: "{{db_password}}"
+            ssl_mode: disable
+            validate_connectivity: true
+            max_open_conns: 5
+          query: SELECT id, email FROM users WHERE email = $1
+          params:
+            - "{{test_email}}"
+          extract:
+            user_id: "jsonpath('$[0].id')"
+            found_email: "jsonpath('$[0].email')"
+  - name: MySQL Flow
+    steps:
+      - sql:
+          dialect: mysql
+          kind: exec
+          connection:
+            host: "{{db_host}}"
+            port: "{{mysql_port}}"
+            database: analytics
+            user: "{{db_user}}"
+            password: "{{db_password}}"
+            ssl_mode: disable
+            validate_connectivity: true
+            max_open_conns: 4
+          query: CREATE TABLE IF NOT EXISTS runs(id int primary key auto_increment, status varchar(32))
+          allow_writes: true
+      - sql:
+          dialect: mysql
+          kind: exec
+          connection:
+            host: "{{db_host}}"
+            port: "{{mysql_port}}"
+            database: analytics
+            user: "{{db_user}}"
+            password: "{{db_password}}"
+            ssl_mode: disable
+            validate_connectivity: true
+            max_open_conns: 4
+          query: INSERT INTO runs(status) VALUES (?)
+          params:
+            - success
+          allow_writes: true
+      - sql:
+          dialect: mysql
+          kind: query
+          connection:
+            host: "{{db_host}}"
+            port: "{{mysql_port}}"
+            database: analytics
+            user: "{{db_user}}"
+            password: "{{db_password}}"
+            ssl_mode: disable
+            validate_connectivity: true
+            max_open_conns: 4
+          query: SELECT id, status FROM runs WHERE status = ?
+          params:
+            - success
+          extract:
+            run_id: "jsonpath('$[0].id')"
+      - sql:
+          dialect: mysql
+          kind: query
+          connection:
+            host: "{{db_host}}"
+            port: "{{mysql_port}}"
+            database: analytics
+            user: "{{db_user}}"
+            password: "{{db_password}}"
+            ssl_mode: disable
+            validate_connectivity: true
+            max_open_conns: 4
+          query: SELECT count(*) AS count FROM runs
+          extract:
+            user_count: "jsonpath('$[0].count')"
+`;
 
 // ─── parseYAMLToTree ───────────────────────────────────────────────────────
 
@@ -126,6 +246,50 @@ scenarios:
     expect(step.type).toBe('request');
     expect(step.data.url).toBe('https://example.com/login');
     expect(step.data.method).toBe('POST');
+  });
+
+  it('parses one_time controllers with nested steps', () => {
+    const yaml = `
+test:
+  name: t
+scenarios:
+  - name: bootstrap
+    steps:
+      - one_time:
+          name: Shared bootstrap
+          description: Prepare shared runtime state
+        steps:
+          - post: https://example.com/bootstrap
+`;
+    const tree = parseYAMLToTree(yaml)!;
+    const step = tree.children!.find(c => c.type === 'scenarios')!.children![0].children!.find(c => c.type === 'steps')!
+      .children![0];
+
+    expect(step.type).toBe('one_time');
+    expect(step.name).toBe('Shared bootstrap');
+    expect(step.data.description).toBe('Prepare shared runtime state');
+    expect(step.children?.[0].type).toBe('post');
+  });
+
+  it('preserves enabled state for disabled one_time controllers', () => {
+    const yaml = `
+test:
+  name: t
+scenarios:
+  - name: bootstrap
+    steps:
+      - one_time:
+          name: Shared bootstrap
+        enabled: false
+        steps:
+          - post: https://example.com/bootstrap
+`;
+    const tree = parseYAMLToTree(yaml)!;
+    const step = tree.children!.find(c => c.type === 'scenarios')!.children![0].children!.find(c => c.type === 'steps')!
+      .children![0];
+
+    expect(step.type).toBe('one_time');
+    expect(step.data.enabled).toBe(false);
   });
 
   it('parses sql steps', () => {
@@ -500,6 +664,106 @@ scenarios:
     expect(step.data.kind).toBe('query');
     expect(step.data.connection.max_open_conns).toBe(4);
     expect(step.data.params).toEqual(['success']);
+  });
+
+  it('round-trips one_time controllers', () => {
+    const input = `
+test:
+  name: t
+scenarios:
+  - name: shared init
+    steps:
+      - one_time:
+          name: Shared bootstrap
+          description: Prepare common identifiers
+        steps:
+          - request:
+              method: POST
+              url: https://example.com/bootstrap
+`;
+    const tree = parseYAMLToTree(input)!;
+    const output = treeToYAML(tree);
+    const reparsed = parseYAMLToTree(output)!;
+    const step = reparsed
+      .children!.find(c => c.type === 'scenarios')!
+      .children![0].children!.find(c => c.type === 'steps')!.children![0];
+
+    expect(output).toContain('one_time:');
+    expect(output).toContain('Shared bootstrap');
+    expect(step.type).toBe('one_time');
+    expect(step.children?.[0].type).toBe('request');
+    expect(step.data.description).toBe('Prepare common identifiers');
+  });
+
+  it('round-trips disabled one_time controllers', () => {
+    const input = `
+test:
+  name: t
+scenarios:
+  - name: shared init
+    steps:
+      - one_time:
+          name: Shared bootstrap
+        enabled: false
+        steps:
+          - request:
+              method: POST
+              url: https://example.com/bootstrap
+`;
+    const reparsed = parseYAMLToTree(treeToYAML(parseYAMLToTree(input)!))!;
+    const step = reparsed
+      .children!.find(c => c.type === 'scenarios')!
+      .children![0].children!.find(c => c.type === 'steps')!.children![0];
+
+    expect(step.type).toBe('one_time');
+    expect(step.data.enabled).toBe(false);
+  });
+
+  it('serializes one_time with current node name even when renamed back to default label', () => {
+    const input = `
+test:
+  name: t
+scenarios:
+  - name: shared init
+    steps:
+      - one_time:
+          name: Custom bootstrap
+        steps:
+          - request:
+              method: POST
+              url: https://example.com/bootstrap
+`;
+    const tree = parseYAMLToTree(input)!;
+    const scenarios = tree.children!.find(c => c.type === 'scenarios')!.children!;
+    const step = scenarios[0].children!.find(c => c.type === 'steps')!.children![0];
+
+    step.name = 'One Time Controller';
+
+    const output = treeToYAML(tree);
+    expect(output).toContain('name: One Time Controller');
+    expect(output).not.toContain('name: Custom bootstrap');
+  });
+
+  it('does not embed enabled inside one_time payload when serializing disabled controller', () => {
+    const input = `
+test:
+  name: t
+scenarios:
+  - name: shared init
+    steps:
+      - one_time:
+          name: Shared bootstrap
+        enabled: false
+        steps:
+          - request:
+              method: POST
+              url: https://example.com/bootstrap
+`;
+    const output = treeToYAML(parseYAMLToTree(input)!);
+
+    expect(output).toContain('enabled: false');
+    expect(output).toContain('one_time:');
+    expect(output).not.toContain('one_time:\n        enabled: false');
   });
 
   it('normalizes legacy sql aliases to spec field names on round-trip', () => {
