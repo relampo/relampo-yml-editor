@@ -26,6 +26,7 @@ export type YAMLNodeType =
   | 'if'
   | 'loop'
   | 'retry'
+  | 'one_time'
   | 'think_time'
   | 'assertion'
   | 'extract'
@@ -120,9 +121,16 @@ export interface Load {
   target_rps?: number;
   target_unit?: 'rps' | 'vus';
   target_value?: number;
+  p50_max_ms?: number;
+  p75_max_ms?: number;
   p95_max_ms?: number;
+  p99_max_ms?: number;
+  p999_max_ms?: number;
   error_rate_max_pct?: number;
+  error_4xx_max_pct?: number;
+  error_5xx_max_pct?: number;
   warmup?: string;
+  window?: string;
   min_vus?: number;
   max_vus?: number;
   aggressiveness?: 'low' | 'medium' | 'high';
@@ -245,6 +253,11 @@ export interface BalancedStep {
   name?: string;
   type?: 'total' | 'parcial';
   mode?: 'iteraciones' | 'usuarios_virtuales';
+}
+
+export interface OneTimeStep {
+  name?: string;
+  description?: string;
   steps: any[];
 }
 

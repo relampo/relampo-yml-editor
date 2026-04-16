@@ -1,14 +1,37 @@
 import { useEffect, useMemo, useState } from 'react';
+import MonacoEditor from '@monaco-editor/react';
 import * as jsyaml from 'js-yaml';
 import type { YAMLNode } from '../types/yaml';
 import { EditableList } from './EditableList';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
 interface YAMLSQLDetailsProps {
   node: YAMLNode;
   onNodeUpdate?: (nodeId: string, updatedData: any) => void;
 }
+
+const DIALECT_OPTIONS = [
+  { value: 'postgres', label: 'PostgreSQL' },
+  { value: 'mysql', label: 'MySQL' },
+];
+
+const KIND_OPTIONS = [
+  { value: 'query', label: 'Read Query' },
+  { value: 'exec', label: 'Exec Statement' },
+];
+
+const ON_ERROR_OPTIONS = [
+  { value: 'stop', label: 'Stop' },
+  { value: 'continue', label: 'Continue' },
+  { value: 'fail_iteration', label: 'Fail Iteration' },
+];
+
+const BOOLEAN_OPTIONS = [
+  { value: 'true', label: 'True' },
+  { value: 'false', label: 'False' },
+];
 
 function stringifyParams(params: any): string {
   if (params === undefined || params === null) {
@@ -24,10 +47,48 @@ function stringifyParams(params: any): string {
   }
 }
 
+interface SQLSelectFieldProps {
+  label: string;
+  value: string;
+  options: Array<{ value: string; label: string }>;
+  onValueChange: (value: string) => void;
+  helper?: string;
+  triggerClassName?: string;
+}
+
+function SQLSelectField({ label, value, options, onValueChange, helper, triggerClassName }: SQLSelectFieldProps) {
+  return (
+    <div>
+      <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{label}</label>
+      <Select
+        value={value}
+        onValueChange={onValueChange}
+      >
+        <SelectTrigger className={`w-full border-white/10 bg-white/5 font-mono text-zinc-200 ${triggerClassName || ''}`}>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent className="border-white/10 bg-[#161616] text-zinc-200">
+          {options.map(option => (
+            <SelectItem
+              key={option.value}
+              value={option.value}
+              className="font-mono"
+            >
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {helper && <p className="mt-1 text-xs text-zinc-500">{helper}</p>}
+    </div>
+  );
+}
+
 export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
   const data = useMemo(() => node.data || {}, [node.data]);
   const connection = data.connection || {};
   const options = connection.options || {};
+  const extract = data.extract || {};
   const kind = data.kind || 'query';
   const allowWrites = data.allow_writes === true || data.allow_write === true;
   const validateConnectivity = connection.validate_connectivity === true;
@@ -60,6 +121,13 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
         ...connection,
         options: updatedOptions,
       },
+    });
+  };
+
+  const handleExtractUpdate = (updatedExtract: Record<string, string>) => {
+    onNodeUpdate?.(node.id, {
+      ...data,
+      extract: updatedExtract,
     });
   };
 
@@ -100,50 +168,22 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div>
-          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Dialect</label>
-          <select
-            value={data.dialect || 'postgres'}
-            onChange={event => handleChange('dialect', event.target.value)}
-            className="w-full h-[38px] px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono outline-none"
-          >
-            <option
-              value="postgres"
-              className="bg-[#1a1a1a]"
-            >
-              postgres
-            </option>
-            <option
-              value="mysql"
-              className="bg-[#1a1a1a]"
-            >
-              mysql
-            </option>
-          </select>
-        </div>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <SQLSelectField
+          label="Database"
+          value={data.dialect || 'postgres'}
+          options={DIALECT_OPTIONS}
+          onValueChange={value => handleChange('dialect', value)}
+          helper="Choose the SQL engine used by this request."
+        />
 
-        <div>
-          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Kind</label>
-          <select
-            value={kind}
-            onChange={event => handleChange('kind', event.target.value)}
-            className="w-full h-[38px] px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono outline-none"
-          >
-            <option
-              value="query"
-              className="bg-[#1a1a1a]"
-            >
-              query
-            </option>
-            <option
-              value="exec"
-              className="bg-[#1a1a1a]"
-            >
-              exec
-            </option>
-          </select>
-        </div>
+        <SQLSelectField
+          label="Request Mode"
+          value={kind}
+          options={KIND_OPTIONS}
+          onValueChange={value => handleChange('kind', value)}
+          helper="Use `query` for reads and `exec` for writes or DDL statements."
+        />
 
         <div>
           <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
@@ -160,18 +200,39 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
 
       <div>
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Query</label>
-        <Textarea
-          value={data.query || ''}
-          onChange={event => handleChange('query', event.target.value)}
-          placeholder={'SELECT id, email\nFROM users\nWHERE status = $1\nLIMIT $2'}
-          className="w-full min-h-[180px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
-        />
+        <div className="overflow-hidden rounded-lg border border-white/10 bg-[#111111]">
+          <div className="flex items-center justify-between border-b border-white/10 bg-[#161616] px-3 py-2">
+            <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500">SQL Editor</span>
+            <span className="text-[11px] font-mono text-zinc-500">{(data.query || '').split('\n').length} lines</span>
+          </div>
+          <MonacoEditor
+            height="220px"
+            defaultLanguage="sql"
+            value={data.query || ''}
+            onChange={value => handleChange('query', value || '')}
+            theme="vs-dark"
+            options={{
+              minimap: { enabled: false },
+              fontSize: 13,
+              lineNumbers: 'on',
+              scrollBeyondLastLine: false,
+              automaticLayout: true,
+              tabSize: 2,
+              wordWrap: 'on',
+              padding: { top: 12 },
+              scrollbar: {
+                verticalScrollbarSize: 8,
+                horizontalScrollbarSize: 8,
+              },
+            }}
+          />
+        </div>
         <p className="mt-1 text-xs text-zinc-500">
           Keep variables in `params` instead of concatenating them into the query string.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
           <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Timeout</label>
           <Input
@@ -182,81 +243,33 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
           />
         </div>
 
-        <div>
-          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">On Error</label>
-          <select
-            value={data.on_error || data.error_policy?.on_error || 'stop'}
-            onChange={event => handleChange('on_error', event.target.value)}
-            className="w-full h-[38px] px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono outline-none"
-          >
-            <option
-              value="stop"
-              className="bg-[#1a1a1a]"
-            >
-              stop
-            </option>
-            <option
-              value="continue"
-              className="bg-[#1a1a1a]"
-            >
-              continue
-            </option>
-          </select>
-        </div>
+        <SQLSelectField
+          label="On Error"
+          value={data.on_error || data.error_policy?.on_error || 'stop'}
+          options={ON_ERROR_OPTIONS}
+          onValueChange={value => handleChange('on_error', value)}
+        />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-            Validate Connectivity
-          </label>
-          <select
-            value={validateConnectivity ? 'true' : 'false'}
-            onChange={event => handleConnectionChange('validate_connectivity', event.target.value === 'true')}
-            className="w-full h-[38px] px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono outline-none"
-          >
-            <option
-              value="true"
-              className="bg-[#1a1a1a]"
-            >
-              true
-            </option>
-            <option
-              value="false"
-              className="bg-[#1a1a1a]"
-            >
-              false
-            </option>
-          </select>
-        </div>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <SQLSelectField
+          label="Validate Connectivity"
+          value={validateConnectivity ? 'true' : 'false'}
+          options={BOOLEAN_OPTIONS}
+          onValueChange={value => handleConnectionChange('validate_connectivity', value === 'true')}
+        />
 
-        <div>
-          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-            Allow Writes
-          </label>
-          <select
-            value={allowWrites ? 'true' : 'false'}
-            onChange={event => handleBooleanChange('allow_writes', event.target.value)}
-            className={`w-full h-[38px] px-3 py-2 border rounded text-sm font-mono outline-none ${
-              allowWrites
-                ? 'bg-red-400/10 text-red-300 border-red-400/30'
-                : 'bg-emerald-400/10 text-emerald-300 border-emerald-400/30'
-            }`}
-          >
-            <option
-              value="false"
-              className="bg-[#1a1a1a]"
-            >
-              false
-            </option>
-            <option
-              value="true"
-              className="bg-[#1a1a1a]"
-            >
-              true
-            </option>
-          </select>
-        </div>
+        <SQLSelectField
+          label="Allow Writes"
+          value={allowWrites ? 'true' : 'false'}
+          options={BOOLEAN_OPTIONS}
+          onValueChange={value => handleBooleanChange('allow_writes', value)}
+          triggerClassName={
+            allowWrites
+              ? 'border-red-400/30 bg-red-400/10 text-red-200'
+              : 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200'
+          }
+        />
       </div>
 
       <div
@@ -267,17 +280,17 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
         }`}
       >
         {allowWrites
-          ? 'Write execution is enabled for this step. Keep credentials and query text tightly scoped.'
+          ? 'Write execution is enabled for this request. Keep credentials and query text tightly scoped.'
           : kind === 'exec'
-            ? 'Exec steps remain blocked for writes unless `allow_writes` is enabled.'
-            : 'This step is configured for safe read-only execution by default.'}
+            ? 'Exec requests remain blocked for writes unless `allow_writes` is enabled.'
+            : 'This request is configured for safe read-only execution by default.'}
       </div>
 
       <div className="h-px bg-white/10" />
 
       <div>
         <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">Connection</p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
             <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Host</label>
             <Input
@@ -406,8 +419,29 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
       <div className="h-px bg-white/10" />
 
       <div>
+        <EditableList
+          title="Result Mapping"
+          items={extract}
+          onUpdate={handleExtractUpdate}
+          keyPlaceholder="variable_name"
+          valuePlaceholder="jsonpath('$[0].id')"
+          keyLabel="Variable"
+          valueLabel="Extractor"
+          enableCheckboxes={false}
+          enableBulkActions={false}
+          variant="minimal"
+        />
+        <p className="mt-2 text-xs text-zinc-500">
+          Save SQL results into variables. For a single value use `jsonpath('$[0].id')`; for the full result set use
+          `jsonpath('$')`.
+        </p>
+      </div>
+
+      <div className="h-px bg-white/10" />
+
+      <div>
         <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">Pooling</p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
             <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
               Max Open Conns

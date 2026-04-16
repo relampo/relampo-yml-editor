@@ -1,4 +1,5 @@
 import type { YAMLNode } from '../types/yaml';
+import { normalizeLoadDataForYaml } from '../components/yaml-node-details/loadUtils';
 import {
   normalizeBalancedDistributionType,
   normalizeBalancedExecutionMode,
@@ -61,7 +62,7 @@ function scenarioNodeToObject(node: YAMLNode): any {
 
   for (const child of node.children) {
     if (child.type === 'load') {
-      scenario.load = child.data;
+      scenario.load = normalizeLoadDataForYaml(child.data);
     } else if (child.type === 'cookies') {
       scenario.cookies = child.data;
     } else if (child.type === 'cache_manager') {
@@ -299,6 +300,27 @@ function stepNodeToObject(node: YAMLNode): any {
     const retryData = sanitizeBalancedNodeData(node.data);
     const res: any = {
       retry: retryData,
+      steps: node.children?.map(stepNodeToObject) || [],
+    };
+
+    if (node.data?.enabled === false) {
+      res.enabled = false;
+    }
+    return res;
+  }
+
+  if (node.type === 'one_time') {
+    const oneTimeData = { ...(node.data || {}) };
+    delete oneTimeData.enabled;
+
+    if (node.name) {
+      oneTimeData.name = node.name;
+    } else {
+      delete oneTimeData.name;
+    }
+
+    const res: any = {
+      one_time: oneTimeData,
       steps: node.children?.map(stepNodeToObject) || [],
     };
 

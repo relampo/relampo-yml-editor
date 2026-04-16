@@ -1,5 +1,8 @@
 export type LoadType = 'constant' | 'ramp' | 'ramp_up_down' | 'throughput' | 'intent';
 
+const intentTargetUnits = new Set(['rps', 'vus']);
+const intentAggressivenessLevels = new Set(['low', 'medium', 'high']);
+
 export function normalizeLoadType(rawType: unknown): LoadType {
   const rawLoadType = String(rawType || 'constant')
     .toLowerCase()
@@ -58,6 +61,7 @@ export const loadTypeDefaults: Record<LoadType, Record<string, any>> = {
     target_value: '3',
     duration: '10m',
     warmup: '30s',
+    window: '2s',
     ramp_up: '30s',
     ramp_down: '30s',
     p95_max_ms: '800',
@@ -79,10 +83,17 @@ export const loadTypeAllowedKeys: Record<LoadType, string[]> = {
     'target_value',
     'duration',
     'warmup',
+    'window',
     'ramp_up',
     'ramp_down',
+    'p50_max_ms',
+    'p75_max_ms',
     'p95_max_ms',
+    'p99_max_ms',
+    'p999_max_ms',
     'error_rate_max_pct',
+    'error_4xx_max_pct',
+    'error_5xx_max_pct',
     'aggressiveness',
     'min_vus',
     'max_vus',
@@ -114,6 +125,12 @@ export const selectedLoadButtonStyle = {
     borderColor: 'rgba(110, 231, 183, 0.55)',
     boxShadow: '0 10px 22px rgba(16, 185, 129, 0.22)',
   },
+  intent: {
+    backgroundColor: 'rgba(244, 63, 94, 0.22)',
+    color: '#fda4af',
+    borderColor: 'rgba(253, 164, 175, 0.55)',
+    boxShadow: '0 10px 22px rgba(244, 63, 94, 0.22)',
+  },
 } as const;
 
 export const loadColors = {
@@ -128,14 +145,16 @@ export function parseTimeToSeconds(timeStr: string): number {
   if (!timeStr) {
     return 0;
   }
-  const match = timeStr.match(/^(\d+)(s|m|h)$/);
+  const match = timeStr.trim().match(/^(\d+(?:\.\d+)?)(ms|s|m|h)$/);
   if (!match) {
     return 60;
   }
   const [, value, unit] = match;
-  const num = parseInt(value, 10);
+  const num = parseFloat(value);
 
   switch (unit) {
+    case 'ms':
+      return num / 1000;
     case 's':
       return num;
     case 'm':
@@ -149,4 +168,103 @@ export function parseTimeToSeconds(timeStr: string): number {
 
 export function limitedInputValue(value: string): string {
   return value.slice(0, 5);
+}
+
+interface LoadDataBuildOptions {
+  coerceIntentEnums?: boolean;
+  preserveExplicitEmpty?: boolean;
+}
+
+export function buildLoadDataForType(
+  loadType: LoadType,
+  currentData: Record<string, any> = {},
+  options: LoadDataBuildOptions = {},
+): Record<string, any> {
+  const { coerceIntentEnums = true, preserveExplicitEmpty = false } = options;
+  const defaults = loadTypeDefaults[loadType] || {};
+  const allowed = new Set(loadTypeAllowedKeys[loadType] || ['type']);
+  const source: Record<string, any> = { ...currentData };
+  const normalized: Record<string, any> = { type: loadType };
+  const explicitEmptyKeys = new Set<string>();
+
+  if (loadType === 'intent') {
+    const requestedTargetUnit = String(source.target_unit || defaults.target_unit || 'rps').toLowerCase().trim();
+    if (coerceIntentEnums) {
+      source.target_unit = intentTargetUnits.has(requestedTargetUnit) ? requestedTargetUnit : defaults.target_unit;
+    } else if (source.target_unit !== undefined) {
+      source.target_unit = String(source.target_unit).trim();
+    }
+
+    if ((source.target_value === undefined || source.target_value === '') && source.target_rps !== undefined) {
+      source.target_value = source.target_rps;
+    }
+
+    const requestedAggressiveness = String(source.aggressiveness || defaults.aggressiveness || 'medium')
+      .toLowerCase()
+      .trim();
+    if (coerceIntentEnums) {
+      source.aggressiveness = intentAggressivenessLevels.has(requestedAggressiveness)
+        ? requestedAggressiveness
+        : defaults.aggressiveness;
+    } else if (source.aggressiveness !== undefined) {
+      source.aggressiveness = String(source.aggressiveness).trim();
+    }
+  } else if (source.users === undefined && source.vusers !== undefined) {
+    source.users = source.vusers;
+  }
+
+  for (const key of allowed) {
+    if (key === 'type') {
+      continue;
+    }
+    if (source[key] === '') {
+      if (preserveExplicitEmpty) {
+        explicitEmptyKeys.add(key);
+      }
+      continue;
+    }
+    if (source[key] !== undefined) {
+      normalized[key] = source[key];
+    }
+  }
+
+  for (const [key, defaultValue] of Object.entries(defaults)) {
+    if (key === 'type' || !allowed.has(key)) {
+      continue;
+    }
+    if (explicitEmptyKeys.has(key)) {
+      continue;
+    }
+    if (normalized[key] === undefined || normalized[key] === '') {
+      normalized[key] = defaultValue;
+    }
+  }
+
+  return normalized;
+}
+
+export function normalizeLoadDataForYaml(data: Record<string, any> = {}): Record<string, any> {
+  const loadType = normalizeLoadType(data.type);
+
+  if (loadType === 'intent') {
+    const normalizedIntent = buildLoadDataForType(loadType, data, {
+      coerceIntentEnums: false,
+      preserveExplicitEmpty: true,
+    });
+    delete normalizedIntent.target_rps;
+    delete normalizedIntent.iterations;
+    return normalizedIntent;
+  }
+
+  const normalized: Record<string, any> = {
+    ...data,
+    type: loadType,
+  };
+
+  if (normalized.users === undefined && normalized.vusers !== undefined) {
+    normalized.users = normalized.vusers;
+  }
+
+  delete normalized.vusers;
+  return normalized;
 }

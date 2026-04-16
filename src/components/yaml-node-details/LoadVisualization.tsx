@@ -46,6 +46,8 @@ export function LoadVisualization({ data, loadType }: LoadVisualizationProps) {
     x: 40 + (point.time / maxTime) * 340,
     y: 170 - (point.users / maxUsers) * 160,
   }));
+  const firstChartPoint = chartPoints[0] ?? { x: 40, y: 170 };
+  const secondChartPoint = chartPoints[1] ?? firstChartPoint;
   const linePoints = chartPoints.map(point => `${point.x},${point.y}`).join(' ');
   const areaPoints = [
     '40,170',
@@ -63,8 +65,8 @@ export function LoadVisualization({ data, loadType }: LoadVisualizationProps) {
     };
   });
   const angledRangeLabels = verticalRanges.map(range => {
-    let from = chartPoints[0];
-    let to = chartPoints[1] || chartPoints[0];
+    let from = firstChartPoint;
+    let to = secondChartPoint;
     if (range.label === 'Ramp Down' && chartPoints.length >= 4) {
       from = chartPoints[2];
       to = chartPoints[3];
@@ -541,6 +543,24 @@ function getVisualizationPoints(data: Record<string, any>, loadType: LoadType) {
       { time: holdEnd, users: targetRps },
       { time: duration, users: 0 },
     );
+  } else if (loadType === 'intent') {
+    const duration = Math.max(1, parseTimeToSeconds(String(data.duration || '60s')));
+    const warmup = Math.max(0, Math.min(duration, parseTimeToSeconds(String(data.warmup || '0s'))));
+    const targetUnit = String(data.target_unit || 'rps').toLowerCase();
+    const baselineUsers =
+      targetUnit === 'vus'
+        ? Math.max(1, parseFloat(String(data.target_value || data.min_vus || '1')) || 1)
+        : Math.max(1, parseFloat(String(data.target_value || '1')) || 1);
+    const guardrailFloor = Math.max(0, parseFloat(String(data.min_vus || '0')) || 0);
+    const steadyValue = targetUnit === 'vus' ? Math.max(baselineUsers, guardrailFloor) : baselineUsers;
+
+    if (warmup > 0) {
+      points.push({ time: 0, users: guardrailFloor }, { time: warmup, users: steadyValue });
+    } else {
+      points.push({ time: 0, users: steadyValue });
+    }
+
+    points.push({ time: duration, users: steadyValue });
   }
 
   return points;

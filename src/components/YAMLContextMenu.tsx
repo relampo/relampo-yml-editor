@@ -38,6 +38,7 @@ export type YAMLAddableNodeType =
   | 'if'
   | 'loop'
   | 'retry'
+  | 'one_time'
   | 'think_time'
   | 'assertion'
   | 'extractor'
@@ -412,8 +413,8 @@ function getAddableItems(parentType: string, t: (key: string) => string): Addabl
       },
       {
         type: 'sql',
-        label: 'SQL Step',
-        description: 'Execute parameterized SQL',
+        label: 'SQL Request',
+        description: 'Database request for PostgreSQL or MySQL',
         icon: <Database className={iconClass} />,
         color: 'text-teal-400',
       },
@@ -456,7 +457,7 @@ function getAddableItems(parentType: string, t: (key: string) => string): Addabl
   }
 
   // LOGIC CONTROLLERS (group, if, loop, retry, balanced) and STEPS
-  const controllers = ['group', 'simple', 'transaction', 'balanced', 'if', 'loop', 'retry', 'steps'];
+  const controllers = ['group', 'simple', 'transaction', 'balanced', 'if', 'loop', 'retry', 'one_time', 'steps'];
   if (controllers.includes(parentType)) {
     return [
       {
@@ -514,6 +515,13 @@ function getAddableItems(parentType: string, t: (key: string) => string): Addabl
         description: 'Retry with backoff',
         icon: <Folder className={iconClass} />,
         color: 'text-red-400',
+      },
+      {
+        type: 'one_time',
+        label: 'One Time Controller',
+        description: 'Initialize shared state once',
+        icon: <Folder className={iconClass} />,
+        color: 'text-white',
       },
       {
         type: 'think_time',
