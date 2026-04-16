@@ -237,9 +237,6 @@ function stepNodeToObject(node: YAMLNode): any {
 
   if (node.type === 'parallel') {
     const childSteps = node.children?.map(stepNodeToObject) || [];
-    if (childSteps.length === 0) {
-      throw new Error('Parallel controller must contain at least one child step');
-    }
 
     const { steps: _steps, enabled: _enabled, ...parallelData } = node.data || {};
     const res: any = {
