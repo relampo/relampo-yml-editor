@@ -21,9 +21,13 @@ import {
   VariablesDetails,
 } from './yaml-node-details/BasicDetails';
 import { BalancedDetails } from './yaml-node-details/BalancedDetails';
-import { IfDetails, LoopDetails, OneTimeDetails, RetryDetails, ThinkTimeDetails } from './yaml-node-details/FlowDetails';
+import { IfDetails } from './yaml-node-details/IfDetails';
 import { LoadDetails } from './yaml-node-details/LoadDetails';
+import { LoopDetails } from './yaml-node-details/LoopDetails';
+import { OneTimeDetails } from './yaml-node-details/OneTimeDetails';
 import { CacheManagerDetails, CookiesDetails, ErrorPolicyDetails } from './yaml-node-details/OpsDetails';
+import { RetryDetails } from './yaml-node-details/RetryDetails';
+import { ThinkTimeDetails } from './yaml-node-details/ThinkTimeDetails';
 import { AssertionDetails, ExtractorDetails } from './yaml-node-details/ValidationDetails';
 
 interface YAMLNodeDetailsProps {
