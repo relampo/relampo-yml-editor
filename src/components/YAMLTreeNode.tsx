@@ -349,6 +349,7 @@ function getNodeIcon(type: YAMLNodeType): any {
     options: Globe,
     group: Folder,
     transaction: GitBranch,
+    parallel: Folder,
     balanced: Folder,
     simple: FolderOpen,
     if: Folder,
@@ -421,6 +422,7 @@ function getNodeColor(type: YAMLNodeType, node?: YAMLNode, isRedirectedFollowUp 
       return 'text-blue-400';
     case 'transaction':
       return 'text-white';
+    case 'parallel':
     case 'balanced':
       return 'text-cyan-400';
     case 'if':

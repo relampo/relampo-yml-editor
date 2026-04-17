@@ -244,6 +244,24 @@ function stepNodeToObject(node: YAMLNode): any {
     return res;
   }
 
+  if (node.type === 'parallel') {
+    const childSteps = node.children?.map(stepNodeToObject) || [];
+
+    const { steps: _steps, enabled: _enabled, ...parallelData } = node.data || {};
+    const res: any = {
+      parallel: {
+        ...parallelData,
+        name: node.name || node.data?.name || 'Parallel Controller',
+        steps: childSteps,
+      },
+    };
+
+    if (node.data?.enabled === false) {
+      res.enabled = false;
+    }
+    return res;
+  }
+
   if (node.type === 'balanced') {
     const balancedData = sanitizeBalancedNodeData(node.data);
     const balancedType = normalizeBalancedDistributionType(balancedData?.type);

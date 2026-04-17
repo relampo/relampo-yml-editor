@@ -22,8 +22,9 @@ export type YAMLNodeType =
   | 'simple'
   | 'group'
   | 'transaction'
+  | 'parallel'
   | 'balanced'
-  | 'if'
+ | 'if'
   | 'loop'
   | 'retry'
   | 'one_time'
@@ -235,6 +236,11 @@ export interface ThinkTimeStep {
 export interface GroupStep {
   name?: string;
   auth?: AuthConfig;
+  steps: any[];
+}
+
+export interface ParallelStep {
+  name?: string;
   steps: any[];
 }
 
