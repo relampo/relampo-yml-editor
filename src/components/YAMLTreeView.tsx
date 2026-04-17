@@ -1,4 +1,4 @@
-import { Plus, Search, X } from 'lucide-react';
+import { BetweenHorizontalStart, Plus, Search, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import type { RedirectedRequestInfo, YAMLNode } from '../types/yaml';
@@ -480,8 +480,9 @@ export function YAMLTreeView({
             <button
               onClick={handleCreateTransaction}
               disabled={!transactionWrapValidation?.valid}
-              className="px-2.5 py-1.5 text-xs font-semibold rounded border border-teal-400/20 text-teal-200 hover:bg-teal-400/10 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="px-2.5 py-1.5 text-xs font-semibold rounded border border-teal-400/20 text-teal-200 hover:bg-teal-400/10 disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-1.5"
             >
+              <BetweenHorizontalStart className="w-3.5 h-3.5" />
               Create Transaction
             </button>
             <button
