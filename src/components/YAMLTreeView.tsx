@@ -1,8 +1,7 @@
 import { Plus, Search, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
-import type { RedirectedRequestInfo, YAMLNode, YAMLNodeType } from '../types/yaml';
-import { canContain } from '../utils/yamlDragDropRules';
+import type { RedirectedRequestInfo, YAMLNode } from '../types/yaml';
 import { createNodeByType } from './yaml-tree-view/nodeFactory';
 import {
   addNodeToTree,
@@ -242,22 +241,11 @@ export function YAMLTreeView({
     if (!contextMenu || !tree) return;
 
     const targetIds = getContextActionTargetIds();
-    const childType = nodeType as YAMLNodeType;
     const createdNodes: YAMLNode[] = [];
 
-    const validTargetIds = targetIds.filter(targetId => {
-      const target = findNodeById(tree, targetId);
-      return !!target && canContain(target.type, childType);
-    });
-
-    if (validTargetIds.length === 0) {
-      handleCloseContextMenu();
-      return;
-    }
-
-    const updatedTree = validTargetIds.reduce((currentTree, targetId) => {
+    const updatedTree = targetIds.reduce((currentTree, targetId) => {
       const target = findNodeById(currentTree, targetId);
-      if (!target || !canContain(target.type, childType)) return currentTree;
+      if (!target) return currentTree;
 
       const newNode = createNodeByType(nodeType, { balancedName: t('yamlEditor.balanced.name') });
       createdNodes.push(newNode);
@@ -389,8 +377,6 @@ export function YAMLTreeView({
     );
     onTreeChange(updatedTree);
   };
-
-  // No filtrar, solo pasar el searchQuery para señales visuales del nodo
 
   if (!tree) {
     return (
