@@ -1029,6 +1029,58 @@ scenarios:
     expect(step.data.enabled).toBe(false);
   });
 
+  it('round-trips disabled scalar loop controllers without rewriting shorthand values', () => {
+    const input = `
+test:
+  name: t
+scenarios:
+  - name: s
+    steps:
+      - loop: "{{iterations}}"
+        enabled: false
+        steps:
+          - get: https://example.com/a
+`;
+    const output = treeToYAML(parseYAMLToTree(input)!);
+    const reparsed = parseYAMLToTree(output)!;
+    const step = reparsed
+      .children!.find(c => c.type === 'scenarios')!
+      .children![0].children!.find(c => c.type === 'steps')!.children![0];
+
+    expect(output).toMatch(/loop:\s+['"]\{\{iterations\}\}['"]/);
+    expect(output).toContain('enabled: false');
+    expect(output).not.toContain('loop:\n          enabled: false');
+    expect(step.type).toBe('loop');
+    expect(step.data.count).toBe('{{iterations}}');
+    expect(step.data.enabled).toBe(false);
+  });
+
+  it('round-trips disabled scalar retry controllers without rewriting shorthand values', () => {
+    const input = `
+test:
+  name: t
+scenarios:
+  - name: s
+    steps:
+      - retry: 3
+        enabled: false
+        steps:
+          - get: https://example.com/a
+`;
+    const output = treeToYAML(parseYAMLToTree(input)!);
+    const reparsed = parseYAMLToTree(output)!;
+    const step = reparsed
+      .children!.find(c => c.type === 'scenarios')!
+      .children![0].children!.find(c => c.type === 'steps')!.children![0];
+
+    expect(output).toContain('retry: 3');
+    expect(output).toContain('enabled: false');
+    expect(output).not.toContain('retry:\n          enabled: false');
+    expect(step.type).toBe('retry');
+    expect(step.data.attempts).toBe(3);
+    expect(step.data.enabled).toBe(false);
+  });
+
   it('serializes one_time with current node name even when renamed back to default label', () => {
     const input = `
 test:

@@ -657,6 +657,12 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
 
   // Loop
   if (step.loop !== undefined) {
+    const rawLoop = step.loop;
+    const loopData =
+      rawLoop && typeof rawLoop === 'object' && !Array.isArray(rawLoop)
+        ? rawLoop
+        : { count: rawLoop, __scalarLoop: true };
+
     const loopNode: YAMLNode = {
       id: stepId,
       type: 'loop',
@@ -664,7 +670,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       children: [],
       expanded: true,
       data: {
-        ...(typeof step.loop === 'number' ? { count: step.loop } : step.loop),
+        ...loopData,
         enabled: isEnabled,
       },
       path,
@@ -681,14 +687,20 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
   }
 
   // Retry
-  if (step.retry) {
+  if (step.retry !== undefined) {
+    const rawRetry = step.retry;
+    const retryData =
+      rawRetry && typeof rawRetry === 'object' && !Array.isArray(rawRetry)
+        ? rawRetry
+        : { attempts: rawRetry, __scalarRetry: true };
+
     const retryNode: YAMLNode = {
       id: stepId,
       type: 'retry',
       name: 'Retry',
       children: [],
       expanded: true,
-      data: { ...step.retry, enabled: isEnabled },
+      data: { ...retryData, enabled: isEnabled },
       path,
     };
 

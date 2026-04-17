@@ -15,6 +15,26 @@ import {
   normalizeSQLForYaml,
 } from './yamlParserHelpers';
 
+function stripControllerSerializationMetadata<T>(data: T, internalKeys: string[] = []): T {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    return data;
+  }
+
+  const next = { ...(data as Record<string, unknown>) };
+  delete next.enabled;
+  internalKeys.forEach(key => delete next[key]);
+  return next as T;
+}
+
+function hasOnlyKeys(value: unknown, keys: string[]): value is Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return false;
+  }
+
+  const valueKeys = Object.keys(value);
+  return valueKeys.length > 0 && valueKeys.every(key => keys.includes(key));
+}
+
 export function treeToObject(tree: YAMLNode): any {
   const obj: any = {};
 
@@ -301,8 +321,11 @@ function stepNodeToObject(node: YAMLNode): any {
   }
 
   if (node.type === 'loop') {
-    const sanitizedLoopData = sanitizeBalancedNodeData(node.data);
-    const loopData = sanitizedLoopData?.count ? sanitizedLoopData.count : sanitizedLoopData;
+    const rawLoopData = stripControllerSerializationMetadata(sanitizeBalancedNodeData(node.data), ['__scalarLoop']);
+    const shouldSerializeScalar =
+      Boolean(node.data && typeof node.data === 'object' && !Array.isArray(node.data) && node.data.__scalarLoop) &&
+      hasOnlyKeys(rawLoopData, ['count']);
+    const loopData = shouldSerializeScalar ? rawLoopData.count : rawLoopData;
     const res: any = {
       loop: loopData,
       steps: node.children?.map(stepNodeToObject) || [],
@@ -315,7 +338,11 @@ function stepNodeToObject(node: YAMLNode): any {
   }
 
   if (node.type === 'retry') {
-    const retryData = sanitizeBalancedNodeData(node.data);
+    const rawRetryData = stripControllerSerializationMetadata(sanitizeBalancedNodeData(node.data), ['__scalarRetry']);
+    const shouldSerializeScalar =
+      Boolean(node.data && typeof node.data === 'object' && !Array.isArray(node.data) && node.data.__scalarRetry) &&
+      hasOnlyKeys(rawRetryData, ['attempts']);
+    const retryData = shouldSerializeScalar ? rawRetryData.attempts : rawRetryData;
     const res: any = {
       retry: retryData,
       steps: node.children?.map(stepNodeToObject) || [],
