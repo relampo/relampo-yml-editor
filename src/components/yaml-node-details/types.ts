@@ -1,6 +1,5 @@
 import type { YAMLNode } from '../../types/yaml';
-
-export type NodeUpdateHandler = (nodeId: string, updatedData: any) => void;
+import type { NodeUpdateHandler } from '../../types/shared';
 
 export interface NodeDetailProps {
   node: YAMLNode;

@@ -4,6 +4,7 @@ import type { RedirectSourceInfo, YAMLNode } from '../types/yaml';
 import { BodyTypeSelector } from './fields/BodyTypeSelector';
 import { MethodDropdown } from './fields/MethodDropdown';
 import { QueryParamsEditor } from './fields/QueryParamsEditor';
+import { buildRequestUrl, parseRequestUrl } from './fields/requestUrl';
 import { Input } from './ui/input';
 import { YAMLResponseDetails } from './YAMLResponseDetails';
 
@@ -32,7 +33,6 @@ export function YAMLRequestDetails({ node, redirectSourceInfo = null, onNodeUpda
   const effectiveRedirectAutomatically = hasRecordedRedirectFollowUp ? false : !!formData.redirect_automatically;
   const effectiveFollowRedirects = hasRecordedRedirectFollowUp ? true : formData.follow_redirects !== false;
 
-  // Update formData when node changes
   useEffect(() => {
     setFormData(node.data || {});
   }, [node.id, node.data]);
@@ -58,7 +58,6 @@ export function YAMLRequestDetails({ node, redirectSourceInfo = null, onNodeUpda
   const searchMode = activeTab === 'request' ? requestSearchMode : responseSearchMode;
   const replaceValue = activeTab === 'request' ? requestReplace : responseReplace;
 
-  // Reset match index when search changes or tab changes
   const handleSearchChange = (value: string) => {
     if (activeTab === 'request') {
       setRequestSearch(value);
@@ -84,8 +83,7 @@ export function YAMLRequestDetails({ node, redirectSourceInfo = null, onNodeUpda
 
   return (
     <div className="flex flex-col h-full">
-      {/* Tabs */}
-      <div className="flex items-center border-b border-white/5 bg-[#111111] flex-shrink-0">
+      <div className="flex items-center border-b border-white/5 bg-[#111111] shrink-0">
         <button
           onClick={() => handleTabChange('request')}
           className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${
@@ -110,7 +108,6 @@ export function YAMLRequestDetails({ node, redirectSourceInfo = null, onNodeUpda
         )}
       </div>
 
-      {/* Content */}
       <div
         ref={contentRef}
         className="flex-1 overflow-y-auto p-6"
@@ -185,54 +182,9 @@ function RequestContent({
   onNavigate,
 }: RequestContentProps) {
   const compactInputClass =
-    'w-[14ch] max-w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono';
+    'w-[14ch] max-w-full h-9.5 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono';
 
-  const splitQuery = (fullUrl: string): { withoutQuery: string; query: string } => {
-    const url = typeof fullUrl === 'string' ? fullUrl : String(fullUrl ?? '');
-    const idx = url.indexOf('?');
-    if (idx < 0) return { withoutQuery: url, query: '' };
-    return { withoutQuery: url.slice(0, idx), query: url.slice(idx) };
-  };
-
-  const parseUrlParts = (fullUrl: string): { protocol: 'http' | 'https'; baseUrl: string; path: string } => {
-    if (!fullUrl) return { protocol: 'https', baseUrl: '', path: '/' };
-    const { withoutQuery } = splitQuery(fullUrl);
-    const trimmed = withoutQuery.trim();
-
-    try {
-      if (/^https?:\/\//i.test(trimmed)) {
-        const u = new URL(trimmed);
-        return {
-          protocol: (u.protocol.replace(':', '').toLowerCase() as 'http' | 'https') || 'https',
-          baseUrl: u.host || '',
-          path: u.pathname || '/',
-        };
-      }
-    } catch {
-      // fallback to relative parsing below
-    }
-
-    return {
-      protocol: 'https',
-      baseUrl: '',
-      path: trimmed || '/',
-    };
-  };
-
-  const buildUrl = (currentFullUrl: string, next: { protocol?: string; baseUrl?: string; path?: string }): string => {
-    const current = parseUrlParts(currentFullUrl || '');
-    const { query } = splitQuery(currentFullUrl || '');
-
-    const protocol = (next.protocol ?? current.protocol ?? 'https').toLowerCase();
-    const baseUrl = (next.baseUrl ?? current.baseUrl ?? '').trim();
-    let path = (next.path ?? current.path ?? '/').trim();
-    if (!path.startsWith('/')) path = `/${path}`;
-
-    const base = baseUrl ? `${protocol}://${baseUrl}` : '';
-    return `${base}${path}${query}`;
-  };
-
-  const urlParts = parseUrlParts(formData.url || '');
+  const urlParts = parseRequestUrl(formData.url || '');
   const requestBodyText = formData.body
     ? typeof formData.body === 'string'
       ? formData.body
@@ -354,7 +306,7 @@ function RequestContent({
             <select
               id="req-protocol"
               value={urlParts.protocol}
-              onChange={e => onFieldChange('url', buildUrl(formData.url || '', { protocol: e.target.value }))}
+              onChange={e => onFieldChange('url', buildRequestUrl(formData.url || '', { protocol: e.target.value }))}
               className={`${compactInputClass} w-full`}
             >
               <option value="https">https</option>
@@ -371,9 +323,9 @@ function RequestContent({
             <Input
               id="req-base-url"
               value={urlParts.baseUrl}
-              onChange={e => onFieldChange('url', buildUrl(formData.url || '', { baseUrl: e.target.value }))}
+              onChange={e => onFieldChange('url', buildRequestUrl(formData.url || '', { baseUrl: e.target.value }))}
               placeholder="api.example.com"
-              className="w-full h-[38px] bg-white/5 border border-white/10 text-zinc-300 text-sm font-mono"
+              className="w-full h-9.5 bg-white/5 border border-white/10 text-zinc-300 text-sm font-mono"
             />
           </div>
           <div className="col-span-4">
@@ -386,15 +338,14 @@ function RequestContent({
             <Input
               id="req-path"
               value={urlParts.path}
-              onChange={e => onFieldChange('url', buildUrl(formData.url || '', { path: e.target.value }))}
+              onChange={e => onFieldChange('url', buildRequestUrl(formData.url || '', { path: e.target.value }))}
               placeholder="/endpoint"
-              className="w-full h-[38px] bg-white/5 border border-white/10 text-zinc-300 text-sm font-mono"
+              className="w-full h-9.5 bg-white/5 border border-white/10 text-zinc-300 text-sm font-mono"
             />
           </div>
         </div>
       </div>
 
-      {/* Advanced toggles */}
       <div>
         <div className="flex items-center gap-6 flex-wrap">
           <label className="inline-flex items-center gap-2 text-sm text-zinc-300 cursor-pointer">
@@ -434,14 +385,12 @@ function RequestContent({
         )}
       </div>
 
-      {/* URL with Query Parameters */}
       <QueryParamsEditor
         url={formData.url || ''}
         onUrlChange={url => onFieldChange('url', url)}
         showBaseUrl={false}
       />
 
-      {/* Body */}
       <div>
         <div className="flex items-center gap-2 mb-2">
           <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Request Body</p>
@@ -501,7 +450,7 @@ function RequestContent({
             </button>
             {searchText && (
               <div className="flex items-center gap-1">
-                <span className="text-xs text-zinc-400 px-2 min-w-[60px] text-center font-mono">
+                <span className="text-xs text-zinc-400 px-2 min-w-15 text-center font-mono">
                   {totalMatches > 0 ? `${currentMatchIndex + 1}/${totalMatches}` : '0/0'}
                 </span>
                 <button
@@ -538,7 +487,6 @@ function RequestContent({
         hideTypeLabel
       />
 
-      {/* THINK TIME inline */}
       {formData.think_time && (
         <div>
           <div className="flex items-center gap-2 mb-2">
@@ -550,7 +498,6 @@ function RequestContent({
         </div>
       )}
 
-      {/* Request execution settings */}
       <div>
         <div className="grid grid-cols-5 gap-3 items-start w-full">
           <div className="min-w-0">
@@ -565,7 +512,7 @@ function RequestContent({
               value={formData.timeout === '30s' ? '' : formData.timeout || ''}
               onChange={e => onFieldChange('timeout', e.target.value)}
               placeholder=""
-              className="w-full h-[38px] bg-white/5 border border-white/10 text-zinc-300 text-sm font-mono"
+              className="w-full h-9.5 bg-white/5 border border-white/10 text-zinc-300 text-sm font-mono"
             />
           </div>
           <div className="min-w-0">
@@ -579,7 +526,7 @@ function RequestContent({
               id="req-cookie-override"
               value={formData.cookie_override || 'inherit'}
               onChange={e => onFieldChange('cookie_override', e.target.value)}
-              className="block w-full h-[38px] px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono"
+              className="block w-full h-9.5 px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono"
             >
               <option value="inherit">inherit</option>
               <option value="enabled">enabled</option>
@@ -597,7 +544,7 @@ function RequestContent({
               id="req-cache-override"
               value={formData.cache_override || 'inherit'}
               onChange={e => onFieldChange('cache_override', e.target.value)}
-              className="block w-full h-[38px] px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono"
+              className="block w-full h-9.5 px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono"
             >
               <option value="inherit">inherit</option>
               <option value="enabled">enabled</option>
@@ -625,7 +572,7 @@ function RequestContent({
                   onFieldChange('throughput', undefined);
                 }
               }}
-              className="block w-full h-[38px] px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono"
+              className="block w-full h-9.5 px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono"
             >
               <option value="enabled">enabled</option>
               <option value="disabled">disabled</option>
@@ -654,7 +601,7 @@ function RequestContent({
                   target_rps: next,
                 });
               }}
-              className="w-full h-[38px] bg-white/5 border border-white/10 text-zinc-300 text-sm font-mono"
+              className="w-full h-9.5 bg-white/5 border border-white/10 text-zinc-300 text-sm font-mono"
             />
             <div className="mt-1 text-xs text-zinc-500">
               Approx: {((Number(formData.throughput?.target_rps) || 0) * 60).toFixed(0)} req/min

@@ -1,13 +1,10 @@
 import { Textarea } from '../../ui/textarea';
+import { createNodeDataUpdater } from '../nodeDetailHelpers';
 import type { NamedNodeDetailProps, NodeDetailProps } from '../types';
 
 export function ScenariosContainerDetails({ node, onNodeUpdate }: NodeDetailProps) {
-  const data = node.data || {};
+  const { data, updateField } = createNodeDataUpdater(node, onNodeUpdate);
   const scenarios = node.children || [];
-
-  const handleChange = (field: string, value: any) => {
-    onNodeUpdate?.(node.id, { ...data, [field]: value });
-  };
 
   return (
     <div className="space-y-4">
@@ -21,9 +18,9 @@ export function ScenariosContainerDetails({ node, onNodeUpdate }: NodeDetailProp
         <Textarea
           id="scenarios-container-description"
           value={data.description || ''}
-          onChange={event => handleChange('description', event.target.value)}
+          onChange={event => updateField('description', event.target.value)}
           placeholder="Add notes or description about your scenarios..."
-          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 min-h-[100px]"
+          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 min-h-25"
         />
       </div>
 
@@ -63,11 +60,7 @@ export function ScenariosContainerDetails({ node, onNodeUpdate }: NodeDetailProp
 }
 
 export function ScenarioDetails({ node, onNodeUpdate }: NamedNodeDetailProps) {
-  const data = node.data || {};
-
-  const handleChange = (field: string, value: any) => {
-    onNodeUpdate?.(node.id, { ...data, [field]: value });
-  };
+  const { data, updateField } = createNodeDataUpdater(node, onNodeUpdate);
 
   return (
     <div className="mb-4">
@@ -80,10 +73,10 @@ export function ScenarioDetails({ node, onNodeUpdate }: NamedNodeDetailProps) {
       <Textarea
         id="scenario-comments"
         value={data.comments || ''}
-        onChange={event => handleChange('comments', event.target.value.slice(0, 250))}
+        onChange={event => updateField('comments', event.target.value.slice(0, 250))}
         maxLength={250}
         placeholder="Add notes or comments about this scenario..."
-        className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 min-h-[80px]"
+        className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 min-h-20"
       />
     </div>
   );

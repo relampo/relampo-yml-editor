@@ -116,6 +116,11 @@ const SAMPLER_CHILDREN: YAMLNodeType[] = [
   'data_source',
 ];
 
+interface TreeNodeLike {
+  type: YAMLNodeType;
+  children?: TreeNodeLike[];
+}
+
 // ============================================================================
 // CONTAINMENT RULES
 // ============================================================================
@@ -257,14 +262,6 @@ export function canContain(containerType: YAMLNodeType, childType: YAMLNodeType)
 }
 
 /**
- * Validates if a node can be moved (not all nodes are movable)
- */
-export function canMove(nodeType: YAMLNodeType): boolean {
-  const immovableTypes: YAMLNodeType[] = ['root', 'steps'];
-  return !immovableTypes.includes(nodeType);
-}
-
-/**
  * Gets valid drop targets for a given node type
  */
 export function getValidDropTargets(draggedType: YAMLNodeType): {
@@ -291,82 +288,6 @@ export function getValidDropTargets(draggedType: YAMLNodeType): {
   return { containers, siblings: [...new Set(siblings)] };
 }
 
-/**
- * Gets the category of a node type
- */
-export function getNodeCategory(nodeType: YAMLNodeType): string {
-  if (ROOT_LEVEL_ELEMENTS.includes(nodeType)) return 'config';
-  if (SCENARIO_CONFIG_ELEMENTS.includes(nodeType)) return 'scenario-config';
-  if (LOGIC_CONTROLLERS.includes(nodeType)) return 'controller';
-  if (HTTP_SAMPLERS.includes(nodeType)) return 'sampler';
-  if (PRE_PROCESSORS.includes(nodeType)) return 'pre-processor';
-  if (POST_PROCESSORS.includes(nodeType)) return 'post-processor';
-  if (ASSERTIONS.includes(nodeType)) return 'assertion';
-  if (TIMERS.includes(nodeType)) return 'timer';
-  return 'other';
-}
-
-/**
- * Gets an error message when drop is not allowed
- */
-export function getDropErrorMessage(
-  draggedType: YAMLNodeType,
-  targetType: YAMLNodeType,
-  position: 'before' | 'after' | 'inside',
-): string {
-  if (draggedType === 'root' || draggedType === 'test') {
-    return 'This element cannot be moved';
-  }
-
-  const draggedCategory = getNodeCategory(draggedType);
-  const targetCategory = getNodeCategory(targetType);
-
-  if (position === 'inside') {
-    if (!canContain(targetType, draggedType)) {
-      // Provide specific error messages
-      if (HTTP_SAMPLERS.includes(targetType as any) && STEP_ELEMENTS.includes(draggedType as any)) {
-        return `Requests can only contain: Spark scripts, Extractors, Assertions, Think Time`;
-      }
-      if (targetType === 'scenario') {
-        return `Scenarios can only contain: Load config, Cookies, Cache, Error Policy, Steps`;
-      }
-      if (LOGIC_CONTROLLERS.includes(targetType as any)) {
-        return `${targetType} can contain: Requests, Controllers, Think Time`;
-      }
-      return `"${targetType}" cannot contain "${draggedType}"`;
-    }
-  }
-
-  if (position === 'before' || position === 'after') {
-    if (!canBeSiblings(draggedType, targetType)) {
-      if (draggedCategory !== targetCategory) {
-        return `"${draggedType}" (${draggedCategory}) cannot be placed next to "${targetType}" (${targetCategory})`;
-      }
-      return `"${draggedType}" cannot be placed next to "${targetType}"`;
-    }
-  }
-
-  return 'Cannot drop here';
-}
-
-/**
- * Gets insertion hints for UI feedback
- */
-export function getInsertionHint(
-  draggedType: YAMLNodeType,
-  targetType: YAMLNodeType,
-): {
-  canInsertBefore: boolean;
-  canInsertAfter: boolean;
-  canInsertInside: boolean;
-} {
-  return {
-    canInsertBefore: canDrop(draggedType, targetType, 'before'),
-    canInsertAfter: canDrop(draggedType, targetType, 'after'),
-    canInsertInside: canDrop(draggedType, targetType, 'inside'),
-  };
-}
-
 // ============================================================================
 // VALIDATION
 // ============================================================================
@@ -374,13 +295,13 @@ export function getInsertionHint(
 /**
  * Validates the entire tree structure
  */
-export function validateTreeStructure(node: { type: YAMLNodeType; children?: any[] }): {
+export function validateTreeStructure(node: TreeNodeLike): {
   valid: boolean;
   errors: string[];
 } {
   const errors: string[] = [];
 
-  function validate(n: { type: YAMLNodeType; children?: any[] }, path: string = '') {
+  function validate(n: TreeNodeLike, path: string = '') {
     if (n.type === 'parallel' && (!n.children || n.children.length === 0)) {
       const currentPath = path || 'parallel';
       errors.push(`Invalid: "parallel" must contain at least one child step at ${currentPath}`);
@@ -412,16 +333,3 @@ export function validateTreeStructure(node: { type: YAMLNodeType; children?: any
 // ============================================================================
 // EXPORTS FOR DOCUMENTATION
 // ============================================================================
-
-export const nodeCategories = {
-  ROOT_LEVEL_ELEMENTS,
-  SCENARIO_CONFIG_ELEMENTS,
-  LOGIC_CONTROLLERS,
-  HTTP_SAMPLERS,
-  PRE_PROCESSORS,
-  POST_PROCESSORS,
-  ASSERTIONS,
-  TIMERS,
-  STEP_ELEMENTS,
-  SAMPLER_CHILDREN,
-};

@@ -1,12 +1,17 @@
 test:
-  name: "Complete Relampo Test"
-  description: "Test with all elements of the v1 specification"
+  name: "Complete Relampo Editor Example"
+  description: "Covers every root section, load mode, request variant, controller, processor, and validator supported by the editor"
   version: "1.0"
 
 variables:
   base_url: "https://api.example.com"
   api_key: "test-key-123"
-  timeout: "30s"
+  upload_path: "fixtures/avatar.png"
+  db_host: "db.example.internal"
+  db_user: "reader"
+  db_password: "secret"
+  tenant_id: "tenant-001"
+  stop_loop: "false"
 
 data_source:
   type: csv
@@ -16,165 +21,396 @@ data_source:
   bind:
     username: username
     password: password
+    user_id: id
   on_exhausted: recycle
 
+error_policy:
+  active_rules:
+    - on_4xx
+    - on_5xx
+    - on_timeout
+  on_4xx: continue
+  on_5xx: stop
+  on_timeout: stop
+
 http_defaults:
-  base_url: "https://api.example.com"
+  base_url: "{{base_url}}"
   timeout: "30s"
   headers:
     Accept: "application/json"
-    User-Agent: "Relampo/1.0"
+    User-Agent: "Relampo YAML Editor Example"
+    X-Tenant-Id: "{{tenant_id}}"
+  auth:
+    type: api_key
+    name: X-API-Key
+    value: "{{api_key}}"
+    in: header
 
 scenarios:
-  - name: "User Flow Test"
+  - name: "Controller And Processor Coverage"
     load:
       type: constant
       users: 10
       duration: "5m"
+      iterations: 0
       ramp_up: "30s"
-    
     cookies:
-      mode: auto
+      mode: manual
+      policy: standard
+      jar_scope: scenario
       persist_across_iterations: true
-    
+      clear_each_iteration: false
+      cookies:
+        - name: bootstrap
+          value: "seed-cookie"
+          domain: "api.example.com"
+          path: "/"
     cache_manager:
       enabled: true
-      max_size_mb: 50
-    
+      clear_each_iteration: false
+      max_elements: 250
     error_policy:
+      active_rules:
+        - on_4xx
+        - on_5xx
+        - on_timeout
       on_4xx: continue
-      on_5xx: retry
-      on_timeout: stop
-    
+      on_5xx: stop
+      on_timeout: continue
     steps:
-      # Basic request
+      - one_time:
+          name: "Shared bootstrap"
+          description: "Load shared tokens and identifiers for later requests."
+        steps:
+          - request:
+              name: "Login"
+              method: POST
+              url: /auth/login
+              timeout: "45s"
+              cookie_override: enabled
+              cache_override: disabled
+              throughput:
+                enabled: true
+                target_rps: 3
+              retrieve_embedded_resources: true
+              redirect_automatically: false
+              follow_redirects: false
+              headers:
+                Content-Type: "application/json"
+                X-Request-Origin: "bootstrap"
+              body:
+                username: "{{username}}"
+                password: "{{password}}"
+              spark:
+                - when: before
+                  script: |
+                    vars.login_started_at = Date.now();
+                    vars.bootstrap_attempt = (vars.bootstrap_attempt || 0) + 1;
+                - when: after
+                  script: |
+                    vars.last_status = response.status;
+                    vars.last_login_payload = response.body;
+              extractors:
+                - type: regex
+                  var: csrf_token
+                  from: body
+                  pattern: "\"csrf\":\"([^\"]+)\""
+                  capture_mode: first
+                  group: 1
+                  default: ""
+                - type: jsonpath
+                  var: session_token
+                  from: body
+                  expression: $.data.token
+                  default: ""
+                - type: xpath
+                  var: login_title
+                  from: body
+                  expression: //title/text()
+                  default: ""
+                - type: boundary
+                  var: login_trace
+                  from: headers
+                  left_boundary: "x-trace-id: "
+                  right_boundary: "\n"
+                  default: "missing"
+              assertions:
+                - type: status
+                  value: 200
+                - type: status_in
+                  value: "200, 201"
+                - type: contains
+                  value: "success"
+                  ignore_case: true
+                - type: not_contains
+                  value: "error"
+                  ignore_case: true
+                - type: regex
+                  pattern: "\"token\":\"[^\"]+\""
+                  match_no: 1
+                - type: response_time
+                  max_ms: 1500
+                - type: response_size
+                  size: 256
+                - type: header
+                  name: Content-Type
+                  value: "application/json"
+                - type: json
+                  path: $.data.user.id
+                  value: "{{user_id}}"
+              think_time: "750ms"
+              error_policy:
+                active_rules:
+                  - on_5xx
+                  - on_timeout
+                on_5xx: stop
+                on_timeout: continue
+              files:
+                - field: avatar
+                  path: "{{upload_path}}"
+                  mime: "image/png"
       - get: /health
-      
-      # Request with extract and assert
-      - request:
-          method: POST
-          url: /api/login
-          headers:
-            Content-Type: "application/json"
-          body:
-            username: "{{username}}"
-            password: "{{password}}"
-          extractors:
-            - type: jsonpath
-              var: token
-              expression: $.data.token
-            - type: jsonpath
-              var: user_id
-              expression: $.data.user.id
-          assertions:
-            - type: status
-              value: 200
-            - type: response_time
-              max_ms: 1000
-            - type: contains
-              value: "success"
-          on_error: stop
-      
-      # Think time
-      - think_time: 2s
-
-      # Parameterized SQL step
+      - post: /catalog/items
+      - put: /catalog/items/{{user_id}}
+      - delete: /catalog/items/{{user_id}}
+      - patch: /catalog/items/{{user_id}}/metadata
+      - head: /catalog/items/{{user_id}}
+      - options: /catalog/items
       - sql:
           name: "Fetch active users"
           dialect: postgres
+          kind: query
+          driver: pgx
+          timeout: "10s"
+          allow_writes: false
+          on_error: continue
           connection:
             host: "{{db_host}}"
             port: 5432
             database: relampo
             user: "{{db_user}}"
             password: "{{db_password}}"
-            sslmode: require
-          validate_connection: true
-          allow_write: false
+            ssl_mode: require
+            validate_connectivity: true
+            max_open_conns: 5
+            max_idle_conns: 2
+            conn_max_lifetime: "5m"
+            conn_max_idle_time: "2m"
           query: |
             SELECT id, email
             FROM users
             WHERE status = $1
+            ORDER BY id
             LIMIT $2
           params:
             - active
             - 25
-          max_open_conns: 5
-          max_idle_conns: 2
-          conn_max_lifetime: 5m
-      
-      # Request with spark before/after
-      - request:
-          method: GET
-          url: /api/profile
-          headers:
-            Authorization: "Bearer {{token}}"
-          spark:
-            - when: before
-              script: |
-                vars.request_id = Date.now();
-                console.log("Request ID: " + vars.request_id);
-            - when: after
-              script: |
-                const data = JSON.parse(response.body);
-                vars.profile_loaded = true;
-                console.log("Profile loaded for user: " + data.name);
-      
-      # Group with multiple requests
       - group:
-          name: "Product Operations"
+          name: "Product API Group"
+          auth:
+            type: bearer
+            token: "{{session_token}}"
           steps:
-            - get: /api/products
-            
-            - post: /api/products
+            - request:
+                name: "Create product"
+                method: POST
+                url: /products
+                headers:
+                  Content-Type: "application/json"
+                body:
+                  name: "Editor Example Product"
+                  price: 99.99
+                  tags:
+                    - editor
+                    - complete
+            - think_time:
+                min: "500ms"
+                max: "1500ms"
+                distribution: uniform
+            - request:
+                name: "Read product"
+                method: GET
+                url: /products/{{user_id}}
+      - transaction:
+          name: "Checkout transaction"
+          auth:
+            type: basic
+            username: "checkout-user"
+            password: "checkout-pass"
+          steps:
+            - request:
+                name: "Start checkout"
+                method: POST
+                url: /checkout/start
+                headers:
+                  Content-Type: "application/json"
+                body:
+                  cart_id: "{{user_id}}"
+            - think_time:
+                mean: "1200ms"
+                std_dev: "200ms"
+                min: "700ms"
+                max: "2s"
+                distribution: normal
+            - request:
+                name: "Finish checkout"
+                method: POST
+                url: /checkout/finish
+                headers:
+                  Content-Type: "application/json"
+                body:
+                  cart_id: "{{user_id}}"
+      - parallel:
+          name: "Parallel reads"
+          steps:
+            - request:
+                name: "Summary"
+                method: GET
+                url: /dashboard/summary
+            - request:
+                name: "Notifications"
+                method: GET
+                url: /dashboard/notifications
+      - balanced:
+          name: "Traffic mix"
+          type: total
+          mode: iteraciones
+        steps:
+          - get: /landing
+            percentage: 60
+          - request:
+              name: "Submit lead"
+              method: POST
+              url: /leads
+              headers:
+                Content-Type: "application/json"
               body:
-                name: "Test Product"
-                price: 99.99
-            
-            - think_time: 1s
-      
-      # If controller
-      - if: "{{token}} != null"
+                email: "lead@example.com"
+                source: "complete-example"
+            percentage: 40
+      - if: "{{session_token}} != ''"
         steps:
-          - get: /api/dashboard
-            headers:
-              Authorization: "Bearer {{token}}"
-      
-      # Loop controller
-      - loop: 3
+          - request:
+              name: "Conditional dashboard"
+              method: GET
+              url: /dashboard
+      - loop:
+          count: 3
+          break_on: "{{stop_loop}}"
         steps:
-          - get: /api/items?page={{loop_index}}
-          - think_time: 500ms
-      
-      # Retry controller
+          - request:
+              name: "Poll order status"
+              method: GET
+              url: /orders/{{user_id}}/status
+          - think_time: "500ms"
       - retry:
-          attempts: 3
-          on: [500, 502, 503]
+          attempts: 4
           backoff: exponential
-          initial_delay: 1s
-          max_delay: 10s
+          initial_delay: "1s"
+          multiplier: 2
+          max_delay: "8s"
         steps:
-          - post: /api/payment
-            headers:
-              Authorization: "Bearer {{token}}"
-            body:
-              amount: 100
-      
-      # On Error controller
+          - request:
+              name: "Retryable payment"
+              method: POST
+              url: /payments
+              headers:
+                Content-Type: "application/json"
+              body:
+                amount: 100
+                currency: "USD"
       - on_error:
           action: continue
         steps:
-          - delete: /api/cleanup
-            headers:
-              Authorization: "Bearer {{token}}"
+          - request:
+              name: "Cleanup"
+              method: DELETE
+              url: /sessions/current
+      - assertion:
+          type: response_time
+          max_ms: 2500
+      - extractor:
+          type: boundary
+          var: final_banner
+          from: body
+          left_boundary: "<h1>"
+          right_boundary: "</h1>"
+          default: "missing"
+      - spark:
+          when: after
+          script: |
+            vars.scenario_complete = true;
+            vars.completed_at = new Date().toISOString();
+      - think_time: "2s"
+
+  - name: "Ramp Load Example"
+    load:
+      type: ramp
+      start_users: 1
+      end_users: 25
+      duration: "10m"
+      iterations: 0
+    steps:
+      - request:
+          name: "Ramp sample"
+          method: GET
+          url: /ramp/example
+
+  - name: "Ramp Up Down Example"
+    load:
+      type: ramp_up_down
+      users: 30
+      duration: "12m"
+      iterations: 0
+      ramp_up: "2m"
+      ramp_down: "90s"
+    steps:
+      - request:
+          name: "Ramp up down sample"
+          method: GET
+          url: /ramp-up-down/example
+
+  - name: "Throughput Load Example"
+    load:
+      type: throughput
+      target_rps: 40
+      duration: "8m"
+      iterations: 0
+      ramp_up: "1m"
+      ramp_down: "1m"
+    steps:
+      - request:
+          name: "Throughput sample"
+          method: GET
+          url: /throughput/example
+
+  - name: "Intent Load Example"
+    load:
+      type: intent
+      target_unit: rps
+      target_value: 12
+      duration: "15m"
+      warmup: "45s"
+      window: "3s"
+      ramp_up: "45s"
+      ramp_down: "45s"
+      p50_max_ms: 250
+      p75_max_ms: 400
+      p95_max_ms: 800
+      p99_max_ms: 1200
+      p999_max_ms: 1500
+      error_rate_max_pct: 1
+      error_4xx_max_pct: 0.5
+      error_5xx_max_pct: 0.25
+      aggressiveness: medium
+      min_vus: 1
+      max_vus: 80
+    steps:
+      - request:
+          name: "Intent sample"
+          method: GET
+          url: /intent/example
 
 metrics:
-  percentiles: [50, 90, 95, 99]
-  error_policy: continue
-  check_status: true
-  custom_metrics:
-    - name: login_success_rate
-      type: counter
-  thresholds:
-    response_time_p95: 1000
-    error_rate: 0.01
+  enabled: true
+  collect_interval: "5s"

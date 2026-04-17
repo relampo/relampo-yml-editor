@@ -1,5 +1,7 @@
+/// <reference types="vite/client" />
+
 import { createRoot } from 'react-dom/client';
-import AppYAMLStandalone from './AppYAMLStandalone.tsx';
+import App from './App';
 import './styles/globals.css';
 
-createRoot(document.getElementById('root')!).render(<AppYAMLStandalone />);
+createRoot(document.getElementById('root')!).render(<App />);

@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
 import Editor, { Monaco } from '@monaco-editor/react';
+import { ChevronDown, ChevronUp, Search, X } from 'lucide-react';
 import type { editor as MonacoEditorNS } from 'monaco-editor';
-import { Search, X, ChevronUp, ChevronDown } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 interface YAMLCodeEditorProps {
   value: string;
@@ -66,14 +66,14 @@ export function YAMLCodeEditor({
       return;
     }
 
-    const decos: MonacoEditorNS.IModelDeltaDecoration[] = matches.map((m, idx) => ({
+    const decorations: MonacoEditorNS.IModelDeltaDecoration[] = matches.map((m, idx) => ({
       range: m.range,
       options: {
         // inlineClassName highlights the exact matched text (className decorates line/container)
         inlineClassName: idx === currentMatchIndex ? 'relampo-find-current' : 'relampo-find-match',
       },
     }));
-    findDecorationsRef.current.set(decos);
+    findDecorationsRef.current.set(decorations);
   }, [matches, currentMatchIndex, searchQuery]);
 
   useEffect(() => {
@@ -228,7 +228,7 @@ export function YAMLCodeEditor({
 
   return (
     <div className="relative h-full w-full bg-[#0a0a0a] flex flex-col text-sm">
-      <div className="flex-shrink-0 px-3 pt-3 pb-2 bg-[#0a0a0a]">
+      <div className="shrink-0 px-3 pt-3 pb-2 bg-[#0a0a0a]">
         <div
           className={`flex items-center gap-2 p-3 bg-[#111111] border rounded-lg transition-colors ${
             searchQuery.trim() ? 'border-yellow-400/35' : 'border-white/10'
@@ -239,7 +239,7 @@ export function YAMLCodeEditor({
               searchQuery.trim() ? 'border-yellow-400/45' : 'border-white/10'
             }`}
           >
-            <Search className="w-4 h-4 text-zinc-500 flex-shrink-0" />
+            <Search className="w-4 h-4 text-zinc-500 shrink-0" />
             <input
               type="text"
               placeholder="Search in YAML..."
@@ -250,7 +250,7 @@ export function YAMLCodeEditor({
               }}
               className="flex-1 bg-transparent border-none text-sm text-zinc-300 placeholder-zinc-500 outline-none font-sans selection:bg-blue-500/40 selection:text-blue-100"
             />
-            <span className="text-xs text-zinc-500 font-semibold flex-shrink-0 font-mono">
+            <span className="text-xs text-zinc-500 font-semibold shrink-0 font-mono">
               {totalMatches > 0 ? `${currentMatchIndex + 1}/${totalMatches}` : '0/0'}
             </span>
           </div>

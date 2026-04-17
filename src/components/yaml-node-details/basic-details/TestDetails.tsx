@@ -1,13 +1,10 @@
 import { Input } from '../../ui/input';
 import { Textarea } from '../../ui/textarea';
+import { createNodeDataUpdater } from '../nodeDetailHelpers';
 import type { NamedNodeDetailProps } from '../types';
 
 export function TestDetails({ node, onNodeUpdate }: NamedNodeDetailProps) {
-  const data = node.data || {};
-
-  const handleChange = (field: string, value: string) => {
-    onNodeUpdate?.(node.id, { ...data, [field]: value });
-  };
+  const { data, updateField } = createNodeDataUpdater(node, onNodeUpdate);
 
   return (
     <div className="space-y-6">
@@ -23,9 +20,9 @@ export function TestDetails({ node, onNodeUpdate }: NamedNodeDetailProps) {
             id="test-detail-name"
             value={data.name || node.name || ''}
             maxLength={50}
-            onChange={event => handleChange('name', event.target.value.slice(0, 50))}
+            onChange={event => updateField('name', event.target.value.slice(0, 50))}
             placeholder="Test Plan Name"
-            className="w-[70px] shrink-0 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-semibold"
+            className="w-17.5 shrink-0 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-semibold"
           />
         </div>
         <div className="w-24 shrink-0">
@@ -39,7 +36,7 @@ export function TestDetails({ node, onNodeUpdate }: NamedNodeDetailProps) {
             id="test-detail-version"
             value={data.version || ''}
             maxLength={5}
-            onChange={event => handleChange('version', event.target.value.slice(0, 5))}
+            onChange={event => updateField('version', event.target.value.slice(0, 5))}
             placeholder="1.0"
             className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono text-center"
           />
@@ -57,9 +54,9 @@ export function TestDetails({ node, onNodeUpdate }: NamedNodeDetailProps) {
           id="test-detail-description"
           value={data.description || ''}
           maxLength={250}
-          onChange={event => handleChange('description', event.target.value.slice(0, 250))}
+          onChange={event => updateField('description', event.target.value.slice(0, 250))}
           placeholder="Test description..."
-          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 min-h-[100px] resize-none"
+          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 min-h-25 resize-none"
         />
       </div>
     </div>

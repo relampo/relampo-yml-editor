@@ -1,7 +1,7 @@
-import { useState, useRef } from 'react';
 import MonacoEditor, { Monaco } from '@monaco-editor/react';
-import { Play, CheckCircle2, AlertCircle } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Play } from 'lucide-react';
 import type { editor } from 'monaco-editor';
+import { useRef, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface SparkCodeEditorProps {
@@ -58,7 +58,7 @@ export function SparkCodeEditor({ value, onChange, minHeight = '250px' }: SparkC
           const markers = monacoRef.current.editor.getModelMarkers({
             resource: model.uri,
           });
-          const errors = markers.filter(m => m.severity === monacoRef.current!.MarkerSeverity.Error);
+          const errors = markers.filter((m: { severity: any; }) => m.severity === monacoRef.current!.MarkerSeverity.Error);
 
           if (errors.length > 0) {
             const firstError = errors[0];
@@ -163,12 +163,12 @@ export function SparkCodeEditor({ value, onChange, minHeight = '250px' }: SparkC
         >
           {validationResult.isValid ? (
             <>
-              <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
               <span>{validationResult.message}</span>
             </>
           ) : (
             <>
-              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              <AlertCircle className="w-4 h-4 shrink-0" />
               <span className="flex-1">{validationResult.message}</span>
               {validationResult.line && <span className="text-red-300 font-mono">Line {validationResult.line}</span>}
             </>

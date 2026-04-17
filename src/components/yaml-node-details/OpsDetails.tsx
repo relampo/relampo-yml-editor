@@ -1,10 +1,11 @@
 import { AlertTriangle, Clock3, Cookie, Cpu, Hand, Plus, ServerCrash } from 'lucide-react';
 import { Input } from '../ui/input';
 import { SelectField } from './SharedFields';
+import { createNodeDataUpdater } from './nodeDetailHelpers';
 import type { NodeDetailProps } from './types';
 
 export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
-  const data = node.data || {};
+  const { data, updateData, updateField } = createNodeDataUpdater(node, onNodeUpdate);
   const mode = String(data.mode || 'auto').toLowerCase();
   const normalizedMode = mode === 'manual' ? 'manual' : 'auto';
   const policy = String(data.policy || 'standard').toLowerCase();
@@ -15,8 +16,8 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
   const effectiveClearEachIteration = persistAcrossIterations ? false : clearEachIteration;
   const invalidSeedRows = seedCookies
     .map((cookie: any, index: number) => ({ cookie, index }))
-    .filter(({ cookie }) => !String(cookie?.name || '').trim() || !String(cookie?.domain || '').trim())
-    .map(({ index }) => index);
+    .filter(({ cookie }: { cookie: any }) => !String(cookie?.name || '').trim() || !String(cookie?.domain || '').trim())
+    .map(({ index }: { index: number }) => index);
   const summaryLine =
     normalizedMode === 'auto'
       ? 'Auto + Standard + VU scope'
@@ -48,12 +49,8 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
     },
   } as const;
 
-  const updateData = (nextData: any) => {
-    onNodeUpdate?.(node.id, nextData);
-  };
-
   const handleChange = (field: string, value: any) => {
-    updateData({ ...data, [field]: value });
+    updateField(field, value);
   };
 
   const handleModeChange = (nextMode: 'auto' | 'manual') => {
@@ -97,7 +94,7 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
         <div className="flex flex-wrap items-center gap-1">
           <button
             onClick={() => handleModeChange('auto')}
-            className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${normalizedMode === 'auto' ? 'border-current text-white' : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/[0.06]'}`}
+            className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${normalizedMode === 'auto' ? 'border-current text-white' : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/6'}`}
             style={normalizedMode === 'auto' ? cookieSelectorStyle.auto : undefined}
           >
             <span className="inline-flex items-center gap-1.5">
@@ -108,7 +105,7 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
           </button>
           <button
             onClick={() => handleModeChange('manual')}
-            className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${normalizedMode === 'manual' ? 'border-current text-white' : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/[0.06]'}`}
+            className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${normalizedMode === 'manual' ? 'border-current text-white' : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/6'}`}
             style={normalizedMode === 'manual' ? cookieSelectorStyle.manual : undefined}
           >
             <span className="inline-flex items-center gap-1.5">
@@ -132,14 +129,14 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
             <div className="flex flex-wrap items-center gap-1">
               <button
                 onClick={() => handlePolicyChange('standard')}
-                className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${!isIgnorePolicy ? 'border-current text-white' : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/[0.06]'}`}
+                className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${!isIgnorePolicy ? 'border-current text-white' : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/6'}`}
                 style={!isIgnorePolicy ? cookieSelectorStyle.standard : undefined}
               >
                 Standard
               </button>
               <button
                 onClick={() => handlePolicyChange('ignore_cookies')}
-                className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${isIgnorePolicy ? 'border-current text-white' : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/[0.06]'}`}
+                className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${isIgnorePolicy ? 'border-current text-white' : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/6'}`}
                 style={isIgnorePolicy ? cookieSelectorStyle.ignore_cookies : undefined}
               >
                 Ignore Cookies
@@ -163,7 +160,7 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
                     clear_each_iteration: false,
                   })
                 }
-                className="px-3 py-1.5 text-sm font-medium rounded-full border border-transparent text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.06] transition-all duration-200"
+                className="px-3 py-1.5 text-sm font-medium rounded-full border border-transparent text-zinc-400 hover:text-zinc-100 hover:bg-white/6 transition-all duration-200"
               >
                 Default
               </button>
@@ -175,7 +172,7 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
                     policy: 'ignore_cookies',
                   })
                 }
-                className="px-3 py-1.5 text-sm font-medium rounded-full border border-transparent text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.06] transition-all duration-200"
+                className="px-3 py-1.5 text-sm font-medium rounded-full border border-transparent text-zinc-400 hover:text-zinc-100 hover:bg-white/6 transition-all duration-200"
               >
                 Stateless
               </button>
@@ -190,7 +187,7 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
                     clear_each_iteration: true,
                   })
                 }
-                className="px-3 py-1.5 text-sm font-medium rounded-full border border-transparent text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.06] transition-all duration-200"
+                className="px-3 py-1.5 text-sm font-medium rounded-full border border-transparent text-zinc-400 hover:text-zinc-100 hover:bg-white/6 transition-all duration-200"
               >
                 Clean Iteration
               </button>
@@ -281,28 +278,28 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
                       disabled={isIgnorePolicy}
                       onChange={event => updateSeedCookie(index, 'name', event.target.value)}
                       placeholder="name"
-                      className="col-span-3 h-[34px] bg-[#1a1a1a] border-white/10 text-zinc-300 text-xs font-mono"
+                      className="col-span-3 h-8.5 bg-[#1a1a1a] border-white/10 text-zinc-300 text-xs font-mono"
                     />
                     <Input
                       value={cookie?.value || ''}
                       disabled={isIgnorePolicy}
                       onChange={event => updateSeedCookie(index, 'value', event.target.value)}
                       placeholder="value"
-                      className="col-span-3 h-[34px] bg-[#1a1a1a] border-white/10 text-zinc-300 text-xs font-mono"
+                      className="col-span-3 h-8.5 bg-[#1a1a1a] border-white/10 text-zinc-300 text-xs font-mono"
                     />
                     <Input
                       value={cookie?.domain || ''}
                       disabled={isIgnorePolicy}
                       onChange={event => updateSeedCookie(index, 'domain', event.target.value)}
                       placeholder="domain"
-                      className="col-span-3 h-[34px] bg-[#1a1a1a] border-white/10 text-zinc-300 text-xs font-mono"
+                      className="col-span-3 h-8.5 bg-[#1a1a1a] border-white/10 text-zinc-300 text-xs font-mono"
                     />
                     <Input
                       value={cookie?.path || '/'}
                       disabled={isIgnorePolicy}
                       onChange={event => updateSeedCookie(index, 'path', event.target.value)}
                       placeholder="/"
-                      className="col-span-2 h-[34px] bg-[#1a1a1a] border-white/10 text-zinc-300 text-xs font-mono"
+                      className="col-span-2 h-8.5 bg-[#1a1a1a] border-white/10 text-zinc-300 text-xs font-mono"
                     />
                     <button
                       onClick={() =>
@@ -322,8 +319,8 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
             )}
             {invalidSeedRows.length > 0 && (
               <div className="mt-2 rounded border border-amber-400/30 bg-amber-400/10 px-2 py-1.5 text-xs text-amber-200">
-                Seed cookie validation: rows {invalidSeedRows.map(index => index + 1).join(', ')} require both name and
-                domain.
+                Seed cookie validation: rows {invalidSeedRows.map((index: number) => index + 1).join(', ')} require both
+                name and domain.
               </div>
             )}
           </div>
@@ -336,14 +333,10 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
 }
 
 export function CacheManagerDetails({ node, onNodeUpdate }: NodeDetailProps) {
-  const data = node.data || {};
+  const { data, updateField } = createNodeDataUpdater(node, onNodeUpdate);
   const enabled = data.enabled !== false;
   const clearEachIteration = data.clear_each_iteration !== false;
   const maxElements = String(data.max_elements ?? (data.max_size_mb ? parseInt(String(data.max_size_mb), 10) : 1000));
-
-  const handleChange = (field: string, value: any) => {
-    onNodeUpdate?.(node.id, { ...data, [field]: value });
-  };
 
   return (
     <div className="space-y-6">
@@ -353,7 +346,7 @@ export function CacheManagerDetails({ node, onNodeUpdate }: NodeDetailProps) {
           <TogglePill
             active={enabled}
             label="Enabled"
-            onClick={() => handleChange('enabled', true)}
+            onClick={() => updateField('enabled', true)}
             activeStyle={{
               backgroundColor: 'rgba(16, 185, 129, 0.22)',
               color: '#6ee7b7',
@@ -364,7 +357,7 @@ export function CacheManagerDetails({ node, onNodeUpdate }: NodeDetailProps) {
           <TogglePill
             active={!enabled}
             label="Disabled"
-            onClick={() => handleChange('enabled', false)}
+            onClick={() => updateField('enabled', false)}
             activeStyle={{
               backgroundColor: 'rgba(244, 63, 94, 0.20)',
               color: '#fda4af',
@@ -387,7 +380,7 @@ export function CacheManagerDetails({ node, onNodeUpdate }: NodeDetailProps) {
               { label: 'false', value: 'false' },
             ]}
             disabled={!enabled}
-            onChange={(_, value) => handleChange('clear_each_iteration', value === 'true')}
+            onChange={(_, value) => updateField('clear_each_iteration', value === 'true')}
             noMargin
           />
           <div>
@@ -398,10 +391,8 @@ export function CacheManagerDetails({ node, onNodeUpdate }: NodeDetailProps) {
               type="number"
               value={maxElements}
               disabled={!enabled}
-              onChange={event =>
-                handleChange('max_elements', Math.max(1, parseInt(event.target.value || '1', 10) || 1))
-              }
-              className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono focus:border-white/30 transition-all"
+              onChange={event => updateField('max_elements', Math.max(1, parseInt(event.target.value || '1', 10) || 1))}
+              className="w-full h-9.5 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono focus:border-white/30 transition-all"
             />
           </div>
         </div>
@@ -415,7 +406,7 @@ export function CacheManagerDetails({ node, onNodeUpdate }: NodeDetailProps) {
 }
 
 export function ErrorPolicyDetails({ node, onNodeUpdate }: NodeDetailProps) {
-  const data = node.data || {};
+  const { data, updateData } = createNodeDataUpdater(node, onNodeUpdate);
   const activeRules = Array.isArray(data.active_rules)
     ? data.active_rules.filter((rule: string) => ['on_4xx', 'on_5xx', 'on_timeout'].includes(rule))
     : [];
@@ -442,10 +433,6 @@ export function ErrorPolicyDetails({ node, onNodeUpdate }: NodeDetailProps) {
     },
   } as const;
 
-  const updateData = (nextData: any) => {
-    onNodeUpdate?.(node.id, nextData);
-  };
-
   const toggleRule = (rule: 'on_4xx' | 'on_5xx' | 'on_timeout') => {
     updateData({
       ...data,
@@ -462,7 +449,7 @@ export function ErrorPolicyDetails({ node, onNodeUpdate }: NodeDetailProps) {
         <div className="flex flex-wrap items-center gap-1">
           <button
             onClick={() => toggleRule('on_4xx')}
-            className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${activeRules.includes('on_4xx') ? 'border-current text-white ring-1 ring-white/30' : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/[0.06]'}`}
+            className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${activeRules.includes('on_4xx') ? 'border-current text-white ring-1 ring-white/30' : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/6'}`}
             style={activeRules.includes('on_4xx') ? tabStyle.on_4xx : undefined}
           >
             <span className="inline-flex items-center gap-1.5">
@@ -472,7 +459,7 @@ export function ErrorPolicyDetails({ node, onNodeUpdate }: NodeDetailProps) {
           </button>
           <button
             onClick={() => toggleRule('on_5xx')}
-            className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${activeRules.includes('on_5xx') ? 'border-current text-white ring-1 ring-white/30' : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/[0.06]'}`}
+            className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${activeRules.includes('on_5xx') ? 'border-current text-white ring-1 ring-white/30' : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/6'}`}
             style={activeRules.includes('on_5xx') ? tabStyle.on_5xx : undefined}
           >
             <span className="inline-flex items-center gap-1.5">
@@ -482,7 +469,7 @@ export function ErrorPolicyDetails({ node, onNodeUpdate }: NodeDetailProps) {
           </button>
           <button
             onClick={() => toggleRule('on_timeout')}
-            className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${activeRules.includes('on_timeout') ? 'border-current text-white ring-1 ring-white/30' : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/[0.06]'}`}
+            className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${activeRules.includes('on_timeout') ? 'border-current text-white ring-1 ring-white/30' : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/6'}`}
             style={activeRules.includes('on_timeout') ? tabStyle.on_timeout : undefined}
           >
             <span className="inline-flex items-center gap-1.5">
@@ -536,7 +523,7 @@ function TogglePill({
   return (
     <button
       onClick={onClick}
-      className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${active ? 'border-current text-white' : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/[0.06]'}`}
+      className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${active ? 'border-current text-white' : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/6'}`}
       style={active ? activeStyle : undefined}
     >
       {label}

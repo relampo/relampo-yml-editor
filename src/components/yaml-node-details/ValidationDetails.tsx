@@ -11,10 +11,11 @@ import {
   TextSearch,
 } from 'lucide-react';
 import { Input } from '../ui/input';
+import { createNodeDataUpdater } from './nodeDetailHelpers';
 import type { NodeDetailProps } from './types';
 
 export function AssertionDetails({ node, onNodeUpdate }: NodeDetailProps) {
-  const data = node.data || {};
+  const { data, updateData, updateField } = createNodeDataUpdater(node, onNodeUpdate);
   const assertionType = data.type || 'status';
   const isAssertionTypeSelectionAllowed = data.__allowTypeSelection === true;
   const lockedAssertionType =
@@ -93,7 +94,11 @@ export function AssertionDetails({ node, onNodeUpdate }: NodeDetailProps) {
     if (field === 'type' && isAssertionTypeLocked && value !== effectiveAssertionLockedType) {
       return;
     }
-    onNodeUpdate?.(node.id, { ...data, [field]: value });
+    if (field === 'type') {
+      updateData({ ...data, [field]: value });
+      return;
+    }
+    updateField(field, value);
   };
 
   return (
@@ -114,7 +119,7 @@ export function AssertionDetails({ node, onNodeUpdate }: NodeDetailProps) {
                 disabled={disabled}
                 onClick={() => handleChange('type', type.value)}
                 aria-pressed={active}
-                className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${active ? 'border-current text-white' : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/[0.06]'}`}
+                className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${active ? 'border-current text-white' : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/6'}`}
                 style={active ? assertionTypeButtonStyle[type.value] : undefined}
                 aria-disabled={disabled}
               >
@@ -161,7 +166,7 @@ export function AssertionDetails({ node, onNodeUpdate }: NodeDetailProps) {
               className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono focus:border-white/30 transition-all"
             />
           </div>
-          <div className="h-[38px] flex items-center">
+          <div className="h-9.5 flex items-center">
             <label className="flex items-center gap-2 cursor-pointer whitespace-nowrap">
               <input
                 type="checkbox"
@@ -188,7 +193,7 @@ export function AssertionDetails({ node, onNodeUpdate }: NodeDetailProps) {
               className="bg-white/5 border-white/10 text-zinc-300 text-sm font-mono"
             />
           </div>
-          <div className="w-[150px] shrink-0">
+          <div className="w-37.5 shrink-0">
             <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
               Match Number
             </label>
@@ -267,7 +272,7 @@ export function AssertionDetails({ node, onNodeUpdate }: NodeDetailProps) {
 }
 
 export function ExtractorDetails({ node, onNodeUpdate }: NodeDetailProps) {
-  const data = node.data || {};
+  const { data, updateData, updateField } = createNodeDataUpdater(node, onNodeUpdate);
   const extractorType = data.type || 'regex';
   const isExtractorTypeSelectionAllowed = data.__allowTypeSelection === true;
   const lockedExtractorType =
@@ -349,14 +354,14 @@ export function ExtractorDetails({ node, onNodeUpdate }: NodeDetailProps) {
 
   const handleChange = (field: string, value: any) => {
     if (field === 'var') {
-      onNodeUpdate?.(node.id, { ...data, var: value, variable: value });
+      updateData({ ...data, var: value, variable: value });
       return;
     }
     if (field === 'type') {
       if (isExtractorTypeLocked && value !== effectiveExtractorLockedType) {
         return;
       }
-      onNodeUpdate?.(node.id, {
+      updateData({
         ...data,
         ...getExtractorDefaults(value),
         var: extractorVariableName,
@@ -364,7 +369,7 @@ export function ExtractorDetails({ node, onNodeUpdate }: NodeDetailProps) {
       });
       return;
     }
-    onNodeUpdate?.(node.id, { ...data, [field]: value });
+    updateField(field, value);
   };
 
   return (
@@ -385,7 +390,7 @@ export function ExtractorDetails({ node, onNodeUpdate }: NodeDetailProps) {
                 disabled={disabled}
                 onClick={() => handleChange('type', type.value)}
                 aria-pressed={active}
-                className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${active ? 'border-current text-white' : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/[0.06]'}`}
+                className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${active ? 'border-current text-white' : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/6'}`}
                 style={active ? extractorTypeButtonStyle[type.value] : undefined}
                 aria-disabled={disabled}
               >
@@ -414,7 +419,7 @@ export function ExtractorDetails({ node, onNodeUpdate }: NodeDetailProps) {
           onChange={event => handleChange('var', event.target.value)}
           placeholder="extracted_value"
           maxLength={50}
-          className="w-full max-w-[360px] px-3 py-2 bg-purple-400/5 border border-purple-400/20 text-purple-400 text-sm font-mono font-bold focus:border-purple-400/40"
+          className="w-full max-w-90 px-3 py-2 bg-purple-400/5 border border-purple-400/20 text-purple-400 text-sm font-mono font-bold focus:border-purple-400/40"
         />
       </div>
 
@@ -428,7 +433,7 @@ export function ExtractorDetails({ node, onNodeUpdate }: NodeDetailProps) {
             onSourceChange={value => handleChange('from', value)}
             onValueChange={value => handleChange('pattern', value)}
           />
-          <div className="mb-4 mt-[-4px] text-xs text-zinc-500">
+          <div className="mb-4 -mt-1 text-xs text-zinc-500">
             Variable: {'{{'}
             {extractorVariableName || 'VAR'}
             {'}'} | Use capture groups () in pattern
@@ -506,7 +511,7 @@ export function ExtractorDetails({ node, onNodeUpdate }: NodeDetailProps) {
             onSourceChange={value => handleChange('from', value)}
             onValueChange={value => handleChange('expression', value)}
           />
-          <div className="mb-4 mt-[-4px] text-xs text-zinc-500">Examples: $.users[0].name, $.data[*].id, $..price</div>
+          <div className="mb-4 -mt-1 text-xs text-zinc-500">Examples: $.users[0].name, $.data[*].id, $..price</div>
         </>
       )}
 
@@ -520,7 +525,7 @@ export function ExtractorDetails({ node, onNodeUpdate }: NodeDetailProps) {
             onSourceChange={value => handleChange('from', value)}
             onValueChange={value => handleChange('expression', value)}
           />
-          <div className="mb-4 mt-[-4px] text-xs text-zinc-500">Extract data from XML/HTML using XPath</div>
+          <div className="mb-4 -mt-1 text-xs text-zinc-500">Extract data from XML/HTML using XPath</div>
           <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-3 items-end">
             <TextField
               label="Namespace (optional)"
@@ -617,7 +622,7 @@ function ExtractorSourceAndPattern({
 
 function ExtractorSourceSelect({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   return (
-    <div className="w-[220px] shrink-0">
+    <div className="w-55 shrink-0">
       <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Extractor From</label>
       <select
         value={value}

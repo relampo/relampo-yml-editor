@@ -76,11 +76,11 @@ export function YAMLNodeDetails({ node, redirectSourceInfo = null, onNodeUpdate 
 
   return (
     <div className="h-full bg-[#0a0a0a] flex flex-col overflow-hidden">
-      <div className="px-6 py-3 border-b border-white/5 bg-[#111111] flex-shrink-0">
+      <div className="px-6 py-3 border-b border-white/5 bg-[#111111] shrink-0">
         <div className={`flex gap-2 ${isRequestNode ? 'items-start' : 'items-center'}`}>
           <div className={`w-1 rounded-full bg-yellow-400 ${isRequestNode ? 'h-6 mt-0.5' : 'h-4'}`} />
           <h3
-            className={`flex-1 ${isRequestNode ? 'text-base italic font-medium text-zinc-200 normal-case tracking-normal leading-snug whitespace-normal break-words' : 'text-xs font-semibold text-zinc-400 uppercase tracking-wider'}`}
+            className={`flex-1 ${isRequestNode ? 'text-base italic font-medium text-zinc-200 normal-case tracking-normal leading-snug whitespace-normal wrap-break-word' : 'text-xs font-semibold text-zinc-400 uppercase tracking-wider'}`}
           >
             {isRequestNode ? node.name : t('yamlEditor.details')}
           </h3>

@@ -1,43 +1,43 @@
-import { useState, useRef, useEffect } from 'react';
 import {
+  AlertTriangle,
+  BarChart3,
+  BetweenHorizontalStart,
+  Braces,
+  CheckCircle,
+  ChevronDown,
+  ChevronRight,
+  Clock,
+  Code,
+  CodeXml,
+  Cookie,
+  Database,
   FileText,
+  Filter,
   Folder,
   FolderOpen,
-  BetweenHorizontalStart,
-  Code,
-  Cookie,
-  Clock,
-  CheckCircle,
-  Filter,
-  Globe,
-  ChevronRight,
-  ChevronDown,
-  Package,
-  Settings,
-  BarChart3,
   Gauge,
-  Database,
+  Globe,
   HardDrive,
-  Zap,
-  Braces,
-  AlertTriangle,
-  CodeXml,
-  Paperclip,
-  Tag,
   List,
+  Package,
+  Paperclip,
+  Settings,
+  Tag,
+  Zap,
 } from 'lucide-react';
-import type { YAMLNode, YAMLNodeType, RedirectedRequestInfo } from '../types/yaml';
-import { canDrop, canContain } from '../utils/yamlDragDropRules';
+import { useEffect, useRef, useState } from 'react';
+import type { RedirectedRequestInfo, YAMLNode, YAMLNodeType } from '../types/yaml';
+import { canContain, canDrop } from '../utils/yamlDragDropRules';
 
-// Estado global para drag & drop (dataTransfer.getData no funciona en dragOver)
+// Track the dragged node outside React so dragOver can resolve it.
 let currentDraggedNode: { id: string; type: YAMLNodeType } | null = null;
 const DND_CLEAR_EVENT = 'yaml-tree-dnd-clear-indicators';
 
-export function setDraggedNode(node: { id: string; type: YAMLNodeType } | null) {
+function setDraggedNode(node: { id: string; type: YAMLNodeType } | null) {
   currentDraggedNode = node;
 }
 
-export function getDraggedNode() {
+function getDraggedNode() {
   return currentDraggedNode;
 }
 
@@ -79,7 +79,6 @@ export function YAMLTreeNode({
   const isRedirectedFollowUp = Boolean(redirectedInfo);
   const redirectedLabel = 'Redirected';
 
-  // Limpiar timer al desmontar
   useEffect(() => {
     const clearIndicator = () => {
       setDragOver(null);
@@ -102,8 +101,7 @@ export function YAMLTreeNode({
   const handleDragStart = (e: React.DragEvent) => {
     clearDragIndicatorsGlobally();
     e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', node.id); // Necesario para Firefox
-    // Guardar en estado global (dataTransfer.getData no funciona en dragOver)
+    e.dataTransfer.setData('text/plain', node.id);
     setDraggedNode({ id: node.id, type: node.type });
   };
 
@@ -141,7 +139,6 @@ export function YAMLTreeNode({
 
     const canContainResult = canContain(node.type, draggedNodeType);
 
-    // AUTO-EXPAND: Si puede contener y NO está expandido, iniciar timer
     if (canContainResult && hasChildren && !isExpanded) {
       if (!hoverTimerRef.current) {
         hoverTimerRef.current = window.setTimeout(() => {
@@ -156,7 +153,6 @@ export function YAMLTreeNode({
       }
     }
 
-    // Determinar posición basada en zonas
     let position: 'before' | 'after' | 'inside';
 
     if (percentage < 25) {
@@ -179,7 +175,6 @@ export function YAMLTreeNode({
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
-    // Solo limpiar si realmente salimos del nodo (no de un child)
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX;
     const y = e.clientY;
@@ -187,7 +182,6 @@ export function YAMLTreeNode({
     if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
       setDragOver(null);
 
-      // Cancelar timer de auto-expand
       if (hoverTimerRef.current) {
         clearTimeout(hoverTimerRef.current);
         hoverTimerRef.current = null;
@@ -260,7 +254,7 @@ export function YAMLTreeNode({
               e.stopPropagation();
               onNodeToggle(node.id);
             }}
-            className="flex-shrink-0 w-4 h-4 flex items-center justify-center text-zinc-500 hover:text-zinc-300"
+            className="shrink-0 w-4 h-4 flex items-center justify-center text-zinc-500 hover:text-zinc-300"
           >
             {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
           </button>
@@ -269,7 +263,7 @@ export function YAMLTreeNode({
         {!hasChildren && <div className="w-4" />}
 
         {/* Icon */}
-        <div className={`flex-shrink-0 ${color}`}>
+        <div className={`shrink-0 ${color}`}>
           <IconComponent className="w-4 h-4" />
         </div>
 
@@ -284,18 +278,18 @@ export function YAMLTreeNode({
 
         {/* Badge with extra info */}
         {isRedirectedFollowUp && (
-          <span className="inline-flex h-5 items-center flex-shrink-0 text-xs leading-none px-1.5 py-0.5 rounded bg-zinc-400/15 text-zinc-300 font-mono font-medium border border-zinc-400/30 uppercase">
+          <span className="inline-flex h-5 items-center shrink-0 text-xs leading-none px-1.5 py-0.5 rounded bg-zinc-400/15 text-zinc-300 font-mono font-medium border border-zinc-400/30 uppercase">
             {redirectedLabel}
           </span>
         )}
         {getNodeBadge(node, { mutedMethod: isRedirectedFollowUp })}
         {hasRequestHit && (
-          <span className="inline-flex h-5 items-center flex-shrink-0 text-xs leading-none px-1.5 py-0.5 rounded bg-yellow-400/15 text-yellow-400 font-mono font-medium border border-yellow-400/30 uppercase">
+          <span className="inline-flex h-5 items-center shrink-0 text-xs leading-none px-1.5 py-0.5 rounded bg-yellow-400/15 text-yellow-400 font-mono font-medium border border-yellow-400/30 uppercase">
             req
           </span>
         )}
         {hasResponseHit && (
-          <span className="inline-flex h-5 items-center flex-shrink-0 text-xs leading-none px-1.5 py-0.5 rounded bg-yellow-400/15 text-yellow-400 font-mono font-medium border border-yellow-400/30 uppercase">
+          <span className="inline-flex h-5 items-center shrink-0 text-xs leading-none px-1.5 py-0.5 rounded bg-yellow-400/15 text-yellow-400 font-mono font-medium border border-yellow-400/30 uppercase">
             res
           </span>
         )}
@@ -469,7 +463,6 @@ function getNodeBadge(node: YAMLNode, options: { mutedMethod?: boolean } = {}): 
   const { mutedMethod = false } = options;
   const httpMethods = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
 
-  // Badge DISABLED para requests deshabilitados
   if (
     node.data?.enabled === false &&
     (httpMethods.includes(node.type) || node.type === 'request' || node.type === 'sql')
@@ -543,7 +536,6 @@ function getNodeBadge(node: YAMLNode, options: { mutedMethod?: boolean } = {}): 
     );
   }
 
-  // Spark badges - colores brillantes para verse contra el fondo oscuro
   if (node.type === 'spark_before') {
     return (
       <span className="text-xs px-1.5 py-0.5 rounded bg-purple-400/15 text-purple-400 font-mono font-medium border border-purple-400/30">
@@ -560,7 +552,6 @@ function getNodeBadge(node: YAMLNode, options: { mutedMethod?: boolean } = {}): 
     );
   }
 
-  // Assertion badge
   if (node.type === 'assertion' && node.data?.type) {
     return (
       <span className="text-xs px-1.5 py-0.5 rounded bg-green-400/15 text-green-400 font-mono font-medium border border-green-400/30">
@@ -569,7 +560,6 @@ function getNodeBadge(node: YAMLNode, options: { mutedMethod?: boolean } = {}): 
     );
   }
 
-  // Extractor badge
   if (node.type === 'extractor' && node.data?.type) {
     return (
       <span className="text-xs px-1.5 py-0.5 rounded bg-blue-400/15 text-blue-400 font-mono font-medium border border-blue-400/30">
@@ -578,7 +568,6 @@ function getNodeBadge(node: YAMLNode, options: { mutedMethod?: boolean } = {}): 
     );
   }
 
-  // File badge - mostrar extensión del archivo o mime_type
   if (node.type === 'file') {
     const path = node.data?.path || '';
     const extension = path.split('.').pop()?.toUpperCase();
@@ -591,7 +580,6 @@ function getNodeBadge(node: YAMLNode, options: { mutedMethod?: boolean } = {}): 
     );
   }
 
-  // Header badge - mostrar nombre del header
   if (node.type === 'header' && node.data?.name) {
     return (
       <span className="text-xs px-1.5 py-0.5 rounded bg-red-400/15 text-red-400 font-mono font-medium border border-red-400/30">
@@ -600,7 +588,6 @@ function getNodeBadge(node: YAMLNode, options: { mutedMethod?: boolean } = {}): 
     );
   }
 
-  // Headers container badge - removed count as per user request
   if (node.type === 'headers' && node.data) {
     return null;
   }

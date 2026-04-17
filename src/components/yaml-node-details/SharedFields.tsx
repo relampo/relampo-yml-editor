@@ -50,7 +50,7 @@ export function EditableField({
           }
         }}
         maxLength={maxLength}
-        className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono focus:border-white/30 transition-all"
+        className="w-full h-9.5 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono focus:border-white/30 transition-all"
       />
     </div>
   );
@@ -82,7 +82,7 @@ export function SelectField({
         value={value}
         disabled={disabled}
         onChange={event => onChange(field, event.target.value)}
-        className={`w-full px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono focus:border-white/30 transition-all outline-none appearance-none h-[38px] ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
+        className={`w-full px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono focus:border-white/30 transition-all outline-none appearance-none h-9.5 ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
       >
         {options.map(option => (
           <option
@@ -145,13 +145,13 @@ export function FileField({ label, value, field, onChange, noMargin = false, sho
           value={String(value || '')}
           onChange={event => onChange(field, event.target.value)}
           placeholder="path/to/file.csv"
-          className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono h-[38px]"
+          className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono h-9.5"
           title={String(value || '')}
         />
         <button
           type="button"
           onClick={handleBrowseClick}
-          className="px-3 py-2 bg-yellow-400/10 border border-yellow-400/30 rounded text-yellow-400 hover:bg-yellow-400/20 text-sm font-medium transition-colors flex items-center gap-2 flex-shrink-0 h-[38px]"
+          className="px-3 py-2 bg-yellow-400/10 border border-yellow-400/30 rounded text-yellow-400 hover:bg-yellow-400/20 text-sm font-medium transition-colors flex items-center gap-2 shrink-0 h-9.5"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -310,7 +310,7 @@ export function AuthConfigEditor({ auth, onChange, scopeLabel }: AuthConfigEdito
         <select
           value={value.type}
           onChange={event => handleTypeChange(event.target.value)}
-          className="w-full px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono focus:border-white/30 transition-all outline-none appearance-none h-[38px]"
+          className="w-full px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono focus:border-white/30 transition-all outline-none appearance-none h-9.5"
         >
           <option
             value="none"
@@ -347,7 +347,7 @@ export function AuthConfigEditor({ auth, onChange, scopeLabel }: AuthConfigEdito
             value={value.token || ''}
             onChange={event => handleFieldChange('token', event.target.value)}
             placeholder="{{api_token}}"
-            className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+            className="w-full h-9.5 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
           />
         </div>
       )}
@@ -360,7 +360,7 @@ export function AuthConfigEditor({ auth, onChange, scopeLabel }: AuthConfigEdito
               value={value.name || ''}
               onChange={event => handleFieldChange('name', event.target.value)}
               placeholder="X-API-Key"
-              className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+              className="w-full h-9.5 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
             />
           </div>
           <div>
@@ -368,7 +368,7 @@ export function AuthConfigEditor({ auth, onChange, scopeLabel }: AuthConfigEdito
             <select
               value={value.in || 'header'}
               onChange={event => handleFieldChange('in', event.target.value)}
-              className="w-full px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono focus:border-white/30 transition-all outline-none appearance-none h-[38px]"
+              className="w-full px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono focus:border-white/30 transition-all outline-none appearance-none h-9.5"
             >
               <option
                 value="header"
@@ -391,7 +391,7 @@ export function AuthConfigEditor({ auth, onChange, scopeLabel }: AuthConfigEdito
               value={value.value || ''}
               onChange={event => handleFieldChange('value', event.target.value)}
               placeholder="{{api_key}}"
-              className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+              className="w-full h-9.5 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
             />
           </div>
         </div>
@@ -405,7 +405,7 @@ export function AuthConfigEditor({ auth, onChange, scopeLabel }: AuthConfigEdito
               value={value.username || ''}
               onChange={event => handleFieldChange('username', event.target.value)}
               placeholder="{{username}}"
-              className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+              className="w-full h-9.5 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
             />
           </div>
           <div>
@@ -415,7 +415,7 @@ export function AuthConfigEditor({ auth, onChange, scopeLabel }: AuthConfigEdito
               value={value.password || ''}
               onChange={event => handleFieldChange('password', event.target.value)}
               placeholder="{{password}}"
-              className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+              className="w-full h-9.5 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
             />
           </div>
         </div>
@@ -471,7 +471,7 @@ export function DetailField({
         <Textarea
           value={String(value)}
           onChange={event => onChange?.(event.target.value)}
-          className={`bg-white/5 border-white/10 text-zinc-300 ${small ? 'text-xs' : 'text-sm'} ${mono ? 'font-mono' : ''} min-h-[80px]`}
+          className={`bg-white/5 border-white/10 text-zinc-300 ${small ? 'text-xs' : 'text-sm'} ${mono ? 'font-mono' : ''} min-h-20`}
         />
       </div>
     );

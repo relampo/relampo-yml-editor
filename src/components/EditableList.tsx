@@ -1,18 +1,19 @@
-import { useState, useEffect } from 'react';
-import { Plus, Trash2, Edit2, Check, X, CheckCircle2, Circle } from 'lucide-react';
+import { Check, CheckCircle2, Circle, Edit2, Plus, Trash2, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import type { StringMap } from '../types/shared';
 import { Input } from './ui/input';
 
 interface EditableListItem {
-  originalKey: string; // The original key that doesn't change
-  key: string; // The key being edited
+  originalKey: string;
+  key: string;
   value: string;
   checked?: boolean;
 }
 
 interface EditableListProps {
   title: string;
-  items: Record<string, string>;
-  onUpdate: (items: Record<string, string>) => void;
+  items: StringMap;
+  onUpdate: (items: StringMap) => void;
   keyPlaceholder?: string;
   valuePlaceholder?: string;
   keyLabel?: string;
@@ -44,7 +45,6 @@ export function EditableList({
     value: string;
   } | null>(null);
 
-  // Synchronize external items with local state
   useEffect(() => {
     const newItems = Object.entries(items).map(([key, value]) => ({
       originalKey: key,
@@ -60,7 +60,6 @@ export function EditableList({
     const updatedItems = { ...items, [newKey]: '' };
     onUpdate(updatedItems);
 
-    // Auto-edit the new item
     setTimeout(() => {
       setEditingValue({ key: newKey, value: '' });
     }, 50);
@@ -71,7 +70,6 @@ export function EditableList({
     delete updatedItems[key];
     onUpdate(updatedItems);
 
-    // Remove from selected
     const newSelected = new Set(selectedKeys);
     newSelected.delete(key);
     setSelectedKeys(newSelected);
@@ -94,7 +92,6 @@ export function EditableList({
   const handleKeyChange = (originalKey: string, newKey: string) => {
     if (!newKey.trim()) {
       setEditingKey(null);
-      // Restore original value
       const newItems = localItems.map(i => (i.originalKey === originalKey ? { ...i, key: originalKey } : i));
       setLocalItems(newItems);
       return;
@@ -166,7 +163,6 @@ export function EditableList({
 
   return (
     <div className="space-y-3">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">{title}</label>
@@ -203,7 +199,6 @@ export function EditableList({
         </div>
       </div>
 
-      {/* Items List */}
       <div className={variant === 'minimal' ? 'divide-y divide-white/5' : 'space-y-2'}>
         {localItems.map(item => (
           <div
@@ -211,28 +206,24 @@ export function EditableList({
             className={getItemStyles(selectedKeys.has(item.originalKey))}
           >
             <div className="flex items-center gap-3 w-full min-w-0">
-              {/* Checkbox Visual */}
               {enableCheckboxes && (
                 <button
                   onClick={() => handleCheckToggle(item.key)}
-                  className="text-purple-400 hover:text-purple-300 transition-colors flex-shrink-0"
+                  className="text-purple-400 hover:text-purple-300 transition-colors shrink-0"
                   title={selectedKeys.has(item.key) ? 'Deselect' : 'Select'}
                 >
                   {selectedKeys.has(item.key) ? <CheckCircle2 className="w-5 h-5" /> : <Circle className="w-5 h-5" />}
                 </button>
               )}
 
-              {/* Content */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-3 w-full min-w-0">
                   {variant === 'minimal' ? (
-                    <div className="flex-1 flex items-center gap-3 min-w-0 max-w-[500px]">
-                      {/* Key Input */}
-                      <div className="flex items-center gap-2 shrink-0 w-[70px]">
+                    <div className="flex-1 flex items-center gap-3 min-w-0 max-w-125">
+                      <div className="flex items-center gap-2 shrink-0 w-17.5">
                         <Input
                           value={item.key}
                           onChange={e => {
-                            // Instant update pattern for keys in minimal mode
                             const updatedItems = { ...items };
                             delete updatedItems[item.originalKey];
                             updatedItems[e.target.value] = item.value;
@@ -245,7 +236,6 @@ export function EditableList({
                         <span className="text-zinc-500 font-bold shrink-0">=</span>
                       </div>
 
-                      {/* Value Input */}
                       <div className="w-0 flex-1 min-w-0">
                         <Input
                           value={item.value}
@@ -261,10 +251,9 @@ export function EditableList({
                         />
                       </div>
 
-                      {/* Delete Button (Minimal) */}
                       <button
                         onClick={() => handleDelete(item.originalKey)}
-                        className="p-1.5 text-zinc-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0"
+                        className="p-1.5 text-zinc-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all shrink-0"
                         title="Remove"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -296,7 +285,7 @@ export function EditableList({
                                 setLocalItems(newItems);
                               }
                             }}
-                            className="w-[70px] shrink-0 px-2 py-1 text-xs font-mono text-purple-400 bg-purple-400/5 border-purple-400/30"
+                            className="w-17.5 shrink-0 px-2 py-1 text-xs font-mono text-purple-400 bg-purple-400/5 border-purple-400/30"
                             placeholder={keyPlaceholder}
                             maxLength={50}
                           />
@@ -327,7 +316,7 @@ export function EditableList({
                         </div>
                       ) : (
                         <>
-                          <div className="flex items-center gap-2 shrink-0 w-[70px]">
+                          <div className="flex items-center gap-2 shrink-0 w-17.5">
                             <button
                               onClick={() => setEditingKey(item.originalKey)}
                               className="text-xs font-mono text-purple-400 font-bold bg-purple-400/10 hover:bg-purple-400/20 px-2 py-1 rounded transition-colors cursor-pointer truncate w-full"
@@ -338,7 +327,6 @@ export function EditableList({
                             <span className="text-zinc-500 font-bold shrink-0">=</span>
                           </div>
 
-                          {/* Value inline */}
                           {editingValue?.key === item.originalKey ? (
                             <div className="flex-1 flex items-center gap-2 min-w-0">
                               <Input
@@ -417,7 +405,6 @@ export function EditableList({
           </div>
         ))}
 
-        {/* Empty state */}
         {Object.keys(items).length === 0 && (
           <div className="p-6 text-center text-zinc-500 text-sm border border-dashed border-white/10 rounded">
             No {title.toLowerCase()} defined. Click "Add" to create one.

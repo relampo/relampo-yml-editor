@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
-import { Input } from './ui/input';
-import { ChevronUp, ChevronDown, Search } from 'lucide-react';
 import Editor from '@monaco-editor/react';
+import { ChevronDown, ChevronUp, Search } from 'lucide-react';
 import type { editor as MonacoEditorNS } from 'monaco-editor';
+import { JSX, useEffect, useMemo, useRef, useState } from 'react';
+import { Input } from './ui/input';
 
 interface YAMLResponseDetailsProps {
   response: any;
@@ -411,7 +411,7 @@ export function YAMLResponseDetails({
         </div>
         {searchText && (
           <div className="flex items-center gap-1">
-            <span className="text-xs text-zinc-400 px-2 min-w-[60px] text-center font-mono">
+            <span className="text-xs text-zinc-400 px-2 min-w-15 text-center font-mono">
               {totalMatches > 0 ? `${currentMatchIndex + 1}/${totalMatches}` : '0/0'}
             </span>
             <button
@@ -484,7 +484,7 @@ export function YAMLResponseDetails({
                 </div>
                 {headerSearchText && (
                   <div className="flex items-center gap-1">
-                    <span className="text-xs text-zinc-400 px-2 min-w-[60px] text-center font-mono">
+                    <span className="text-xs text-zinc-400 px-2 min-w-15 text-center font-mono">
                       {headerTotalMatches > 0 ? `${headerCurrentMatchIndex + 1}/${headerTotalMatches}` : '0/0'}
                     </span>
                     <button
@@ -509,14 +509,14 @@ export function YAMLResponseDetails({
               {headerRegexInvalid && <div className="mt-2 text-xs text-red-400">Invalid regex pattern</div>}
             </div>
             <div className="mt-2 rounded-md border border-white/10 bg-black/30 overflow-hidden">
-              <div className="px-3 py-2 border-b border-white/10 bg-white/[0.03]">
+              <div className="px-3 py-2 border-b border-white/10 bg-white/3">
                 <span className="text-[11px] uppercase tracking-wider text-zinc-500 font-semibold">
                   Raw HTTP Headers
                 </span>
               </div>
               <div
                 ref={headersContentRef}
-                className="max-h-[260px] overflow-auto px-3 py-2 font-mono text-xs leading-6"
+                className="max-h-65 overflow-auto px-3 py-2 font-mono text-xs leading-6"
               >
                 {(() => {
                   let globalMatchIndex = 0;
@@ -588,7 +588,7 @@ export function YAMLResponseDetails({
         <div className="space-y-2">
           {useMonacoForResponse ? (
             <div
-              className="w-full h-[300px] rounded-md border border-white/10 bg-white/5 overflow-hidden"
+              className="w-full h-75 rounded-md border border-white/10 bg-white/5 overflow-hidden"
               style={{
                 height: BODY_FIXED_HEIGHT,
                 minHeight: BODY_FIXED_HEIGHT,
@@ -603,7 +603,7 @@ export function YAMLResponseDetails({
             </div>
           ) : searchText ? (
             <div
-              className="relative w-full h-[300px] rounded-md border border-white/10 bg-white/5 overflow-hidden"
+              className="relative w-full h-75 rounded-md border border-white/10 bg-white/5 overflow-hidden"
               style={{
                 height: BODY_FIXED_HEIGHT,
                 minHeight: BODY_FIXED_HEIGHT,
@@ -639,7 +639,7 @@ export function YAMLResponseDetails({
                 height: BODY_FIXED_HEIGHT,
                 minHeight: BODY_FIXED_HEIGHT,
               }}
-              className="w-full bg-white/5 border border-white/10 rounded text-zinc-300 text-sm font-mono h-[300px] resize-none overflow-y-auto overflow-x-auto outline-none p-3"
+              className="w-full bg-white/5 border border-white/10 rounded text-zinc-300 text-sm font-mono h-75 resize-none overflow-y-auto overflow-x-auto outline-none p-3"
             />
           )}
         </div>

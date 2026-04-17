@@ -6,6 +6,7 @@ import { IntentLoadMode } from './load-modes/IntentLoadMode';
 import { RampLoadMode } from './load-modes/RampLoadMode';
 import { RampUpDownLoadMode } from './load-modes/RampUpDownLoadMode';
 import { ThroughputLoadMode } from './load-modes/ThroughputLoadMode';
+import { createNodeDataUpdater } from './nodeDetailHelpers';
 import type { NodeDetailProps } from './types';
 
 const LOAD_MODE_OPTIONS: Array<{
@@ -21,20 +22,17 @@ const LOAD_MODE_OPTIONS: Array<{
 ];
 
 export function LoadDetails({ node, onNodeUpdate }: NodeDetailProps) {
-  const data = node.data || {};
+  const { data, updateData, updateField } = createNodeDataUpdater(node, onNodeUpdate);
   const loadType = normalizeLoadType(data.type);
 
   const handleChange = (field: string, value: any) => {
-    if (!onNodeUpdate) {
-      return;
-    }
     if (field === 'type') {
       const selectedType = normalizeLoadType(value);
-      onNodeUpdate(node.id, buildLoadDataForType(selectedType, data));
+      updateData(buildLoadDataForType(selectedType, data));
       return;
     }
 
-    onNodeUpdate(node.id, { ...data, [field]: value });
+    updateField(field, value);
   };
 
   return (
@@ -51,7 +49,7 @@ export function LoadDetails({ node, onNodeUpdate }: NodeDetailProps) {
                 type="button"
                 onClick={() => handleChange('type', option.type)}
                 aria-pressed={isActive}
-                className={`flex min-w-[7.5rem] items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-all duration-200 ${isActive ? 'border-current text-white shadow-sm' : 'border-white/5 bg-white/[0.02] text-zinc-400 hover:border-white/10 hover:bg-white/[0.05] hover:text-zinc-100'}`}
+                className={`flex min-w-30 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-all duration-200 ${isActive ? 'border-current text-white shadow-sm' : 'border-white/5 bg-white/2 text-zinc-400 hover:border-white/10 hover:bg-white/5 hover:text-zinc-100'}`}
                 style={isActive ? selectedLoadButtonStyle[option.type] : undefined}
               >
                 <Icon className="h-3.5 w-3.5" />
