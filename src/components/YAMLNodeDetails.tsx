@@ -95,13 +95,12 @@ export function YAMLNodeDetails({ node, redirectSourceInfo = null, onNodeUpdate 
             </label>
             <Input
               value={nodeName}
-              onChange={event => setNodeName(event.target.value)}
-              maxLength={50}
-              onBlur={() => {
-                if (onNodeUpdate && nodeName !== node.name) {
-                  onNodeUpdate(node.id, { ...node.data, __name: nodeName });
-                }
+              onChange={event => {
+                const nextName = event.target.value;
+                setNodeName(nextName);
+                onNodeUpdate?.(node.id, { ...node.data, __name: nextName });
               }}
+              maxLength={50}
               style={{
                 width: `${Math.min(Math.max((nodeName || '').length + 2, 12), 48)}ch`,
               }}

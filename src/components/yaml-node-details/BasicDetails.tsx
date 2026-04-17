@@ -697,11 +697,16 @@ export function GenericDetails({ node }: NodeDetailProps) {
   );
 }
 
-export function GroupDetails({ node, onNodeUpdate }: NamedNodeDetailProps) {
+export function GroupDetails({ node, onNodeUpdate, nodeName, setNodeName }: NamedNodeDetailProps) {
   const data = node.data || {};
 
   const handleChange = (field: string, value: any) => {
     onNodeUpdate?.(node.id, { ...data, [field]: value });
+  };
+
+  const handleNameChange = (value: string) => {
+    setNodeName?.(value);
+    onNodeUpdate?.(node.id, { ...data, name: value, __name: value });
   };
 
   const handleAuthUpdate = (auth?: AuthConfig) => {
@@ -720,10 +725,11 @@ export function GroupDetails({ node, onNodeUpdate }: NamedNodeDetailProps) {
     <div className="space-y-6">
       <EditableField
         label="Group Name"
-        value={data.name || ''}
+        value={nodeName || data.name || node.name || ''}
         field="name"
-        onChange={handleChange}
+        onChange={(_, value) => handleNameChange(value)}
         maxLength={50}
+        commitMode="change"
       />
       <DetailField
         label="Steps Count"
@@ -740,12 +746,8 @@ export function GroupDetails({ node, onNodeUpdate }: NamedNodeDetailProps) {
   );
 }
 
-export function TransactionDetails({ node, onNodeUpdate }: NamedNodeDetailProps) {
+export function TransactionDetails({ node, onNodeUpdate, nodeName }: NamedNodeDetailProps) {
   const data = node.data || {};
-
-  const handleChange = (field: string, value: any) => {
-    onNodeUpdate?.(node.id, { ...data, [field]: value });
-  };
 
   const handleAuthUpdate = (auth?: AuthConfig) => {
     if (!onNodeUpdate) {
@@ -765,28 +767,29 @@ export function TransactionDetails({ node, onNodeUpdate }: NamedNodeDetailProps)
         This controller measures the selected flow as one transaction while preserving the exact step order.
       </div>
 
-      <EditableField
-        label="Transaction Name"
-        value={data.name || ''}
-        field="name"
-        onChange={handleChange}
-        maxLength={50}
-      />
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(200px,1fr)_minmax(160px,0.7fr)]">
+        <DetailField
+          label="Name"
+          value={nodeName || data.name || node.name || ''}
+          editable={false}
+          noMargin
+        />
 
-      <DetailField
-        label="Transaction Unit"
-        value="1 complete transaction"
-        editable={false}
-      />
+        <DetailField
+          label="Transaction Unit"
+          value="1 complete transaction"
+          editable={false}
+          noMargin
+        />
 
-      <DetailField
-        label="Steps Count"
-        value={node.children?.length || 0}
-        mono
-        editable={false}
-      />
-
-      <div className="h-px bg-white/10" />
+        <DetailField
+          label="Steps Count"
+          value={node.children?.length || 0}
+          mono
+          editable={false}
+          noMargin
+        />
+      </div>
 
       <AuthConfigEditor
         auth={data.auth}
