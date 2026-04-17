@@ -443,13 +443,6 @@ function getAddableItems(parentType: YAMLNodeType, t: (key: string) => string): 
         color: 'text-blue-400',
       },
       {
-        type: 'transaction',
-        label: 'Transaction',
-        description: 'Measurable logical block',
-        icon: <GitBranch className={iconClass} />,
-        color: 'text-white',
-      },
-      {
         type: 'parallel',
         label: 'Parallel Controller',
         description: 'Run child steps concurrently',
