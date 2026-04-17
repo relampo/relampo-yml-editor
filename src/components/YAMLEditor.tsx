@@ -6,6 +6,7 @@ import { YAMLTreeView } from './YAMLTreeView';
 import { YAMLNodeDetails } from './YAMLNodeDetails';
 import { YAMLEditorHeader } from './YAMLEditorHeader';
 import { parseYAMLToTree, treeToYAML } from '../utils/yamlParser';
+import { applyNodeUpdateToTree } from '../utils/nodeUpdate';
 import type { YAMLNode, RedirectSourceInfo, RedirectedRequestInfo } from '../types/yaml';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useYAML } from '../contexts/YAMLContext';
@@ -15,6 +16,7 @@ import { validateYAMLSemantics } from '../utils/yamlSemanticValidation';
 
 const LARGE_FILE_CHAR_THRESHOLD = 2_000_000;
 const LARGE_FILE_LINE_THRESHOLD = 50_000;
+const EMPTY_PARALLEL_ERROR = 'Parallel controller must contain at least one child step';
 
 type ParseWorkerRequest = {
   id: number;
@@ -326,7 +328,13 @@ export function YAMLEditor() {
       setError(null);
       setIsTreeOutdated(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error generating YAML');
+      const message = err instanceof Error ? err.message : 'Error generating YAML';
+      if (message.includes(EMPTY_PARALLEL_ERROR)) {
+        setError(null);
+        setIsTreeOutdated(true);
+        return;
+      }
+      setError(message);
     }
   };
 
@@ -413,32 +421,16 @@ export function YAMLEditor() {
 
   const handleNodeUpdate = (nodeId: string, updatedData: Record<string, unknown>) => {
     if (!yamlTree) return;
-
-    let updatedSelectedNode: YAMLNode | null = null;
-
-    const updateNodeInTree = (node: YAMLNode): YAMLNode => {
-      if (node.id === nodeId) {
-        const { __name, ...cleanData } = updatedData || {};
-        const updated = {
-          ...node,
-          name: __name !== undefined ? String(__name) : node.name,
-          data: cleanData,
-        };
-        if (selectedNode?.id === nodeId) updatedSelectedNode = updated;
-        return updated;
-      }
-      if (node.children) {
-        return { ...node, children: node.children.map(updateNodeInTree) };
-      }
-      return node;
-    };
-
-    const updatedTree = updateNodeInTree(yamlTree);
+    const updatedTree = applyNodeUpdateToTree(yamlTree, nodeId, updatedData);
     setYamlTree(updatedTree);
     applySemanticValidation(updatedTree);
     setHasDocumentActivity(true);
     setIsDirty(true);
-    if (updatedSelectedNode) setSelectedNode(updatedSelectedNode);
+    if (selectedNode) {
+      const refreshedSelectedNode = findNodeById(updatedTree, selectedNode.id);
+      setSelectedNode(refreshedSelectedNode);
+      selectedNodeRef.current = refreshedSelectedNode;
+    }
 
     if (serializeDebounceRef.current) window.clearTimeout(serializeDebounceRef.current);
     serializeDebounceRef.current = window.setTimeout(() => {

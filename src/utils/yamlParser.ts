@@ -1,6 +1,7 @@
 import type { YAMLNode } from '../types/yaml';
 import { normalizeLoadDataForYaml } from '../components/yaml-node-details/loadUtils';
 import * as jsyaml from 'js-yaml';
+import { normalizeBalancedDistributionType, normalizeBalancedExecutionMode } from './balancedController';
 import {
   buildSQLStepName,
   normalizeAssertionForEditor,
@@ -574,6 +575,62 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
     }
 
     return transactionNode;
+  }
+
+  if (step.parallel) {
+    const parallelNode: YAMLNode = {
+      id: stepId,
+      type: 'parallel',
+      name: step.parallel.name || 'Parallel Controller',
+      children: [],
+      expanded: true,
+      data: { ...step.parallel, enabled: isEnabled },
+      path,
+    };
+
+    if (step.parallel.steps && Array.isArray(step.parallel.steps)) {
+      step.parallel.steps.forEach((childStep: any, childIndex: number) => {
+        const childNode = convertStepToNode(childStep, stepId, childIndex, [...path, 'steps', childIndex]);
+        parallelNode.children!.push(childNode);
+      });
+    }
+
+    return parallelNode;
+  }
+
+  if (step.balanced) {
+    const balancedData = typeof step.balanced === 'object' && step.balanced !== null ? step.balanced : {};
+    const balancedNode: YAMLNode = {
+      id: stepId,
+      type: 'balanced',
+      name: balancedData.name || 'Balanced Controller',
+      children: [],
+      expanded: true,
+      data: {
+        ...balancedData,
+        enabled: isEnabled,
+        type: normalizeBalancedDistributionType(balancedData.type),
+        mode: normalizeBalancedExecutionMode(balancedData.mode),
+      },
+      path,
+    };
+
+    if (step.steps && Array.isArray(step.steps)) {
+      step.steps.forEach((childStep: any, childIndex: number) => {
+        const balancedPercentage = childStep?.percentage;
+        const normalizedChildStep = { ...childStep };
+        delete normalizedChildStep.percentage;
+
+        const childNode = convertStepToNode(normalizedChildStep, stepId, childIndex, [...path, 'steps', childIndex]);
+        childNode.data = {
+          ...(childNode.data || {}),
+          __balancedPercentage: balancedPercentage ?? '',
+        };
+        balancedNode.children!.push(childNode);
+      });
+    }
+
+    return balancedNode;
   }
 
   // If

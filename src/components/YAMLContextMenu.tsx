@@ -25,6 +25,8 @@ import {
 import { useEffect, useRef, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import type { YAMLNode } from '../types/yaml';
+import { canContain } from '../utils/yamlDragDropRules';
+import type { YAMLNodeType } from '../types/yaml';
 
 export type YAMLAddableNodeType =
   | 'scenarios'
@@ -33,6 +35,8 @@ export type YAMLAddableNodeType =
   | 'sql'
   | 'group'
   | 'transaction'
+  | 'parallel'
+  | 'balanced'
   | 'if'
   | 'loop'
   | 'retry'
@@ -131,7 +135,7 @@ export function YAMLContextMenu({
     }
   }, [x, y]);
 
-  const addableItems = getAddableItems(node.type);
+  const addableItems = getAddableItems(node.type, t);
   const canAddChildren = addableItems.length > 0;
 
   return (
@@ -239,7 +243,11 @@ interface AddableItem {
   color: string;
 }
 
-function getAddableItems(parentType: string): AddableItem[] {
+function filterAddableItemsByContainment(parentType: YAMLNodeType, items: AddableItem[]): AddableItem[] {
+  return items.filter(item => canContain(parentType, item.type as YAMLNodeType));
+}
+
+function getAddableItems(parentType: YAMLNodeType, t: (key: string) => string): AddableItem[] {
   const iconClass = 'w-4 h-4';
 
   // ROOT/TEST - Global configuration elements
@@ -400,10 +408,19 @@ function getAddableItems(parentType: string): AddableItem[] {
     ];
   }
 
-  // LOGIC CONTROLLERS (group, if, loop, retry, one_time, simple) and STEPS
-  const controllers = ['group', 'simple', 'transaction', 'if', 'loop', 'retry', 'one_time', 'steps'];
+  const controllers = [
+    'group',
+    'simple',
+    'transaction',
+    'parallel',
+    'if',
+    'loop',
+    'retry',
+    'one_time',
+    'steps',
+  ];
   if (controllers.includes(parentType)) {
-    return [
+    return filterAddableItemsByContainment(parentType, [
       {
         type: 'request',
         label: 'HTTP Request',
@@ -424,6 +441,27 @@ function getAddableItems(parentType: string): AddableItem[] {
         description: 'Group steps',
         icon: <Folder className={iconClass} />,
         color: 'text-blue-400',
+      },
+      {
+        type: 'transaction',
+        label: 'Transaction',
+        description: 'Measurable logical block',
+        icon: <GitBranch className={iconClass} />,
+        color: 'text-white',
+      },
+      {
+        type: 'parallel',
+        label: 'Parallel Controller',
+        description: 'Run child steps concurrently',
+        icon: <Folder className={iconClass} />,
+        color: 'text-cyan-400',
+      },
+      {
+        type: 'balanced',
+        label: t('yamlEditor.balanced.name'),
+        description: t('yamlEditor.balanced.contextDescription'),
+        icon: <Folder className={iconClass} />,
+        color: 'text-cyan-400',
       },
       {
         type: 'if',
@@ -467,7 +505,54 @@ function getAddableItems(parentType: string): AddableItem[] {
         icon: <Database className={iconClass} />,
         color: 'text-cyan-400',
       },
-    ];
+    ]);
+  }
+
+  if (parentType === 'balanced') {
+    return filterAddableItemsByContainment(parentType, [
+      {
+        type: 'request',
+        label: 'HTTP Request',
+        description: 'Request HTTP',
+        icon: <Globe className={iconClass} />,
+        color: 'text-emerald-400',
+      },
+      {
+        type: 'sql',
+        label: 'SQL Request',
+        description: 'Database request for PostgreSQL or MySQL',
+        icon: <Database className={iconClass} />,
+        color: 'text-teal-400',
+      },
+      {
+        type: 'group',
+        label: 'Group',
+        description: 'Group steps',
+        icon: <Folder className={iconClass} />,
+        color: 'text-blue-400',
+      },
+      {
+        type: 'if',
+        label: 'If Controller',
+        description: 'Conditional execution',
+        icon: <Folder className={iconClass} />,
+        color: 'text-pink-500',
+      },
+      {
+        type: 'loop',
+        label: 'Loop Controller',
+        description: 'Repeat steps',
+        icon: <Folder className={iconClass} />,
+        color: 'text-purple-400',
+      },
+      {
+        type: 'retry',
+        label: 'Retry Controller',
+        description: 'Retry with backoff',
+        icon: <Folder className={iconClass} />,
+        color: 'text-red-400',
+      },
+    ]);
   }
 
   return [];

@@ -1,9 +1,7 @@
+import { Plus, Search, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Search, X, Plus } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
-import type { YAMLNode, RedirectedRequestInfo } from '../types/yaml';
-import { YAMLTreeNode } from './YAMLTreeNode';
-import { YAMLContextMenu, type YAMLAddableNodeType } from './YAMLContextMenu';
+import type { RedirectedRequestInfo, YAMLNode } from '../types/yaml';
 import { createNodeByType } from './yaml-tree-view/nodeFactory';
 import {
   addNodeToTree,
@@ -18,6 +16,8 @@ import {
   updateNodeEnabled,
   wrapNodesInTransaction,
 } from './yaml-tree-view/treeOperations';
+import { YAMLContextMenu, type YAMLAddableNodeType } from './YAMLContextMenu';
+import { YAMLTreeNode } from './YAMLTreeNode';
 
 interface YAMLTreeViewProps {
   tree: YAMLNode | null;
@@ -247,11 +247,23 @@ export function YAMLTreeView({
     if (!contextMenu || !tree) return;
 
     const targetIds = getContextActionTargetIds();
-    const updatedTree = targetIds.reduce(
-      (currentTree, targetId) => addNodeToTree(currentTree, targetId, createNodeByType(nodeType)),
-      tree,
-    );
+    const createdNodes: YAMLNode[] = [];
+
+    const updatedTree = targetIds.reduce((currentTree, targetId) => {
+      const target = findNodeById(currentTree, targetId);
+      if (!target) return currentTree;
+
+      const newNode = createNodeByType(nodeType, { balancedName: t('yamlEditor.balanced.name') });
+      createdNodes.push(newNode);
+      return addNodeToTree(currentTree, targetId, newNode);
+    }, tree);
     onTreeChange(updatedTree);
+    if (createdNodes.length > 0) {
+      onSelectionChange(
+        createdNodes[createdNodes.length - 1],
+        createdNodes.map(node => node.id),
+      );
+    }
     handleCloseContextMenu();
   };
 
@@ -407,8 +419,6 @@ export function YAMLTreeView({
     onTreeChange(updatedTree);
   };
 
-  // No filtrar, solo pasar el searchQuery para señales visuales del nodo
-
   if (!tree) {
     return (
       <div className="h-full w-full bg-[#0a0a0a] flex items-center justify-center">
@@ -417,7 +427,7 @@ export function YAMLTreeView({
 
           <button
             onClick={() => {
-              const rootPlan = createNodeByType('root_plan');
+              const rootPlan = createNodeByType('root_plan', { balancedName: t('yamlEditor.balanced.name') });
               onTreeChange(rootPlan);
             }}
             className="group relative px-6 py-3 bg-yellow-400 hover:bg-yellow-300 text-black font-bold rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 flex items-center gap-3 mx-auto shadow-xl shadow-yellow-400/10"
@@ -547,4 +557,17 @@ export function YAMLTreeView({
       )}
     </div>
   );
+}
+
+function findNodeById(tree: YAMLNode, targetId: string): YAMLNode | null {
+  if (tree.id === targetId) return tree;
+
+  if (!tree.children) return null;
+
+  for (const child of tree.children) {
+    const found = findNodeById(child, targetId);
+    if (found) return found;
+  }
+
+  return null;
 }

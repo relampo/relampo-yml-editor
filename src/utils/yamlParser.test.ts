@@ -320,6 +320,27 @@ scenarios:
     expect(step.data.enabled).toBe(false);
   });
 
+  it('preserves enabled state for disabled parallel controllers', () => {
+    const yaml = `
+test:
+  name: t
+scenarios:
+  - name: s
+    steps:
+      - parallel:
+          name: Fan Out
+          steps:
+            - get: https://example.com/a
+        enabled: false
+`;
+    const tree = parseYAMLToTree(yaml)!;
+    const step = tree.children!.find(c => c.type === 'scenarios')!.children![0].children!.find(c => c.type === 'steps')!
+      .children![0];
+
+    expect(step.type).toBe('parallel');
+    expect(step.data.enabled).toBe(false);
+  });
+
   it('parses sql steps', () => {
     const yaml = `
 test:
@@ -358,6 +379,92 @@ scenarios:
     expect(step.data.connection.validate_connectivity).toBe(true);
     expect(step.data.connection.max_open_conns).toBe(6);
     expect(step.data.params).toEqual(['active']);
+  });
+
+  it('parses balanced controllers with per-child percentages', () => {
+    const yaml = `
+test:
+  name: t
+scenarios:
+  - name: s
+    steps:
+      - balanced:
+          name: Traffic Mix
+          type: total
+          mode: iteraciones
+        steps:
+          - get: https://example.com/a
+            percentage: 60
+          - transaction:
+              name: Checkout
+              steps:
+                - post: https://example.com/checkout
+            percentage: 40
+`;
+    const tree = parseYAMLToTree(yaml)!;
+    const balanced = tree.children!
+      .find(c => c.type === 'scenarios')!
+      .children![0].children!.find(c => c.type === 'steps')!.children![0];
+
+    expect(balanced.type).toBe('balanced');
+    expect(balanced.data.mode).toBe('iteraciones');
+    expect(balanced.children).toHaveLength(2);
+    expect(balanced.children?.[0].data.__balancedPercentage).toBe(60);
+    expect(balanced.children?.[1].type).toBe('transaction');
+    expect(balanced.children?.[1].data.__balancedPercentage).toBe(40);
+  });
+
+  it('parses partial balanced controllers without forcing total 100', () => {
+    const yaml = `
+test:
+  name: t
+scenarios:
+  - name: s
+    steps:
+      - balanced:
+          name: Partial Mix
+          type: parcial
+          mode: usuarios_virtuales
+        steps:
+          - get: https://example.com/a
+            percentage: 20
+          - get: https://example.com/b
+            percentage: 10
+`;
+    const tree = parseYAMLToTree(yaml)!;
+    const balanced = tree.children!
+      .find(c => c.type === 'scenarios')!
+      .children![0].children!.find(c => c.type === 'steps')!.children![0];
+
+    expect(balanced.type).toBe('balanced');
+    expect(balanced.data.type).toBe('parcial');
+    expect(balanced.data.mode).toBe('usuarios_virtuales');
+    expect(balanced.children?.[0].data.__balancedPercentage).toBe(20);
+    expect(balanced.children?.[1].data.__balancedPercentage).toBe(10);
+  });
+
+  it('preserves disabled balanced controllers during parsing', () => {
+    const yaml = `
+test:
+  name: t
+scenarios:
+  - name: s
+    steps:
+      - balanced:
+          name: Disabled Mix
+          type: total
+        enabled: false
+        steps:
+          - get: https://example.com/a
+            percentage: 100
+`;
+    const tree = parseYAMLToTree(yaml)!;
+    const balanced = tree.children!
+      .find(c => c.type === 'scenarios')!
+      .children![0].children!.find(c => c.type === 'steps')!.children![0];
+
+    expect(balanced.type).toBe('balanced');
+    expect(balanced.data.enabled).toBe(false);
   });
 
   it('parses the backend sql e2e example with both dialects and extractor-rich query steps', () => {
@@ -694,6 +801,120 @@ scenarios:
     expect(step.data.params).toEqual(['success']);
   });
 
+
+  it('round-trips balanced controllers', () => {
+    const input = `
+test:
+  name: t
+scenarios:
+  - name: s
+    steps:
+      - balanced:
+          name: Traffic Mix
+          type: total
+          mode: usuarios_virtuales
+        steps:
+          - get: https://example.com/a
+            percentage: 55
+          - request:
+              method: POST
+              url: https://example.com/b
+            percentage: 45
+`;
+    const tree = parseYAMLToTree(input)!;
+    const output = treeToYAML(tree);
+    const reparsed = parseYAMLToTree(output)!;
+    const balanced = reparsed
+      .children!.find(c => c.type === 'scenarios')!
+      .children![0].children!.find(c => c.type === 'steps')!.children![0];
+
+    expect(output).toContain('balanced:');
+    expect(output).toContain('mode: usuarios_virtuales');
+    expect(output).toContain('percentage: 55');
+    expect(output).toContain('percentage: 45');
+    expect(balanced.type).toBe('balanced');
+    expect(balanced.children?.[0].data.__balancedPercentage).toBe(55);
+    expect(balanced.children?.[1].data.__balancedPercentage).toBe(45);
+  });
+
+  it('serializes draft total balanced controllers without throwing while percentages are incomplete', () => {
+    const input = `
+test:
+  name: t
+scenarios:
+  - name: s
+    steps:
+      - balanced:
+          name: Traffic Mix
+          type: total
+          mode: iteraciones
+        steps:
+          - get: https://example.com/a
+            percentage: 70
+          - get: https://example.com/b
+            percentage: 20
+`;
+    const tree = parseYAMLToTree(input)!;
+    const output = treeToYAML(tree);
+    expect(output).toContain('type: total');
+    expect(output).toContain('percentage: 70');
+    expect(output).toContain('percentage: 20');
+  });
+
+  it('serializes empty balanced controllers as editable drafts', () => {
+    const input = `
+test:
+  name: t
+scenarios:
+  - name: s
+    steps:
+      - balanced:
+          name: Empty Mix
+          type: total
+          mode: iteraciones
+        steps: []
+`;
+    const tree = parseYAMLToTree(input)!;
+    const output = treeToYAML(tree);
+    expect(output).toContain('balanced:');
+    expect(output).toContain('name: Empty Mix');
+    expect(output).toContain('steps: []');
+  });
+
+  it('round-trips partial balanced controllers without requiring 100 total', () => {
+    const input = `
+test:
+  name: t
+scenarios:
+  - name: s
+    steps:
+      - balanced:
+          name: Partial Mix
+          type: parcial
+          mode: iteraciones
+        steps:
+          - get: https://example.com/a
+            percentage: 20
+          - request:
+              method: POST
+              url: https://example.com/b
+            percentage: 35
+`;
+    const tree = parseYAMLToTree(input)!;
+    const output = treeToYAML(tree);
+    const reparsed = parseYAMLToTree(output)!;
+    const balanced = reparsed
+      .children!.find(c => c.type === 'scenarios')!
+      .children![0].children!.find(c => c.type === 'steps')!.children![0];
+
+    expect(output).toContain('type: parcial');
+    expect(output).toContain('percentage: 20');
+    expect(output).toContain('percentage: 35');
+    expect(balanced.data.type).toBe('parcial');
+    expect(balanced.children?.[0].data.__balancedPercentage).toBe(20);
+    expect(balanced.children?.[1].data.__balancedPercentage).toBe(35);
+  });
+
   it('round-trips one_time controllers', () => {
     const input = `
 test:
@@ -757,6 +978,31 @@ scenarios:
       in: 'header',
     });
     expect(step.children?.map(child => child.name)).toEqual(['POST: /cart', 'POST: /address', 'POST: /payment']);
+  });
+
+  it('round-trips disabled parallel controllers', () => {
+    const input = `
+test:
+  name: t
+scenarios:
+  - name: s
+    steps:
+      - parallel:
+          name: Fan Out
+          steps:
+            - get: https://example.com/a
+        enabled: false
+`;
+    const output = treeToYAML(parseYAMLToTree(input)!);
+    const reparsed = parseYAMLToTree(output)!;
+    const step = reparsed
+      .children!.find(c => c.type === 'scenarios')!
+      .children![0].children!.find(c => c.type === 'steps')!.children![0];
+
+    expect(output).toContain('parallel:');
+    expect(output).toContain('enabled: false');
+    expect(step.type).toBe('parallel');
+    expect(step.data.enabled).toBe(false);
   });
 
   it('round-trips disabled one_time controllers', () => {
@@ -829,6 +1075,7 @@ scenarios:
     expect(output).toContain('one_time:');
     expect(output).not.toContain('one_time:\n        enabled: false');
   });
+
 
   it('normalizes legacy sql aliases to spec field names on round-trip', () => {
     const input = `
