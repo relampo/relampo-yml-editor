@@ -13,7 +13,6 @@ import {
   Filter,
   Folder,
   Gauge,
-  GitBranch,
   Globe,
   HardDrive,
   Paperclip,
@@ -444,13 +443,6 @@ function getAddableItems(parentType: YAMLNodeType, t: (key: string) => string): 
         color: 'text-blue-400',
       },
       {
-        type: 'transaction',
-        label: 'Transaction',
-        description: 'Measurable logical block',
-        icon: <GitBranch className={iconClass} />,
-        color: 'text-white',
-      },
-      {
         type: 'parallel',
         label: 'Parallel Controller',
         description: 'Run child steps concurrently',
@@ -531,13 +523,6 @@ function getAddableItems(parentType: YAMLNodeType, t: (key: string) => string): 
         description: 'Group steps',
         icon: <Folder className={iconClass} />,
         color: 'text-blue-400',
-      },
-      {
-        type: 'transaction',
-        label: 'Transaction',
-        description: 'Measurable logical block',
-        icon: <GitBranch className={iconClass} />,
-        color: 'text-white',
       },
       {
         type: 'if',

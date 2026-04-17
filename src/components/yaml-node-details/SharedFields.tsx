@@ -11,27 +11,46 @@ interface EditableFieldProps {
   onChange: (field: string, value: string) => void;
   type?: 'text' | 'number';
   maxLength?: number;
+  commitMode?: 'blur' | 'change';
+  noMargin?: boolean;
 }
 
-export function EditableField({ label, value, field, onChange, type = 'text', maxLength }: EditableFieldProps) {
+export function EditableField({
+  label,
+  value,
+  field,
+  onChange,
+  type = 'text',
+  maxLength,
+  commitMode = 'blur',
+  noMargin = false,
+}: EditableFieldProps) {
   const [localValue, setLocalValue] = useState(String(value || ''));
 
   useEffect(() => {
     setLocalValue(String(value || ''));
   }, [value]);
 
-  const isNameField = label.toLowerCase().includes('name');
-
   return (
-    <div className="mb-5">
+    <div className={noMargin ? '' : 'mb-5'}>
       <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{label}</label>
       <Input
         type={type}
         value={localValue}
-        onChange={event => setLocalValue(event.target.value)}
-        onBlur={() => onChange(field, localValue)}
+        onChange={event => {
+          const nextValue = event.target.value;
+          setLocalValue(nextValue);
+          if (commitMode === 'change') {
+            onChange(field, nextValue);
+          }
+        }}
+        onBlur={() => {
+          if (commitMode === 'blur') {
+            onChange(field, localValue);
+          }
+        }}
         maxLength={maxLength}
-        className={`${isNameField ? 'w-[70px] shrink-0' : 'w-full'} h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono focus:border-white/30 transition-all`}
+        className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono focus:border-white/30 transition-all"
       />
     </div>
   );
@@ -419,12 +438,22 @@ interface DetailFieldProps {
   editable?: boolean;
   onChange?: (value: any) => void;
   multiline?: boolean;
+  noMargin?: boolean;
 }
 
-export function DetailField({ label, value, mono, small, editable = true, onChange, multiline }: DetailFieldProps) {
+export function DetailField({
+  label,
+  value,
+  mono,
+  small,
+  editable = true,
+  onChange,
+  multiline,
+  noMargin = false,
+}: DetailFieldProps) {
   if (!editable) {
     return (
-      <div className="mb-4">
+      <div className={noMargin ? '' : 'mb-4'}>
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{label}</label>
         <div
           className={`px-3 py-2 bg-white/5 border border-white/10 rounded ${small ? 'text-xs' : 'text-sm'} text-zinc-300 ${mono ? 'font-mono' : ''}`}
@@ -437,7 +466,7 @@ export function DetailField({ label, value, mono, small, editable = true, onChan
 
   if (multiline) {
     return (
-      <div className="mb-4">
+      <div className={noMargin ? '' : 'mb-4'}>
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{label}</label>
         <Textarea
           value={String(value)}
@@ -449,7 +478,7 @@ export function DetailField({ label, value, mono, small, editable = true, onChan
   }
 
   return (
-    <div className="mb-4">
+    <div className={noMargin ? '' : 'mb-4'}>
       <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{label}</label>
       <Input
         value={String(value)}

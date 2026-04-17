@@ -271,6 +271,34 @@ scenarios:
     expect(step.children?.[0].type).toBe('post');
   });
 
+  it('parses transaction controllers with auth, enabled state, and ordered steps', () => {
+    const yaml = `
+test:
+  name: t
+scenarios:
+  - name: checkout
+    steps:
+      - transaction:
+          name: Checkout
+          auth:
+            type: bearer
+            token: "{{session_token}}"
+          steps:
+            - post: /cart
+            - post: /address
+        enabled: false
+`;
+    const tree = parseYAMLToTree(yaml)!;
+    const step = tree.children!.find(c => c.type === 'scenarios')!.children![0].children!.find(c => c.type === 'steps')!
+      .children![0];
+
+    expect(step.type).toBe('transaction');
+    expect(step.name).toBe('Checkout');
+    expect(step.data.auth?.type).toBe('bearer');
+    expect(step.data.enabled).toBe(false);
+    expect(step.children?.map(child => child.name)).toEqual(['POST: /cart', 'POST: /address']);
+  });
+
   it('preserves enabled state for disabled one_time controllers', () => {
     const yaml = `
 test:
@@ -916,6 +944,42 @@ scenarios:
     expect(step.data.description).toBe('Prepare common identifiers');
   });
 
+  it('round-trips transaction controllers preserving auth, enabled state, and step order', () => {
+    const input = `
+test:
+  name: t
+scenarios:
+  - name: checkout
+    steps:
+      - transaction:
+          name: Checkout
+          auth:
+            type: api_key
+            name: X-Flow-Key
+            value: "{{checkout_key}}"
+            in: header
+          steps:
+            - post: /cart
+            - post: /address
+            - post: /payment
+        enabled: false
+`;
+    const reparsed = parseYAMLToTree(treeToYAML(parseYAMLToTree(input)!))!;
+    const step = reparsed
+      .children!.find(c => c.type === 'scenarios')!
+      .children![0].children!.find(c => c.type === 'steps')!.children![0];
+
+    expect(step.type).toBe('transaction');
+    expect(step.data.enabled).toBe(false);
+    expect(step.data.auth).toEqual({
+      type: 'api_key',
+      name: 'X-Flow-Key',
+      value: '{{checkout_key}}',
+      in: 'header',
+    });
+    expect(step.children?.map(child => child.name)).toEqual(['POST: /cart', 'POST: /address', 'POST: /payment']);
+  });
+
   it('round-trips disabled parallel controllers', () => {
     const input = `
 test:
@@ -962,6 +1026,58 @@ scenarios:
       .children![0].children!.find(c => c.type === 'steps')!.children![0];
 
     expect(step.type).toBe('one_time');
+    expect(step.data.enabled).toBe(false);
+  });
+
+  it('round-trips disabled scalar loop controllers without rewriting shorthand values', () => {
+    const input = `
+test:
+  name: t
+scenarios:
+  - name: s
+    steps:
+      - loop: "{{iterations}}"
+        enabled: false
+        steps:
+          - get: https://example.com/a
+`;
+    const output = treeToYAML(parseYAMLToTree(input)!);
+    const reparsed = parseYAMLToTree(output)!;
+    const step = reparsed
+      .children!.find(c => c.type === 'scenarios')!
+      .children![0].children!.find(c => c.type === 'steps')!.children![0];
+
+    expect(output).toMatch(/loop:\s+['"]\{\{iterations\}\}['"]/);
+    expect(output).toContain('enabled: false');
+    expect(output).not.toContain('loop:\n          enabled: false');
+    expect(step.type).toBe('loop');
+    expect(step.data.count).toBe('{{iterations}}');
+    expect(step.data.enabled).toBe(false);
+  });
+
+  it('round-trips disabled scalar retry controllers without rewriting shorthand values', () => {
+    const input = `
+test:
+  name: t
+scenarios:
+  - name: s
+    steps:
+      - retry: 3
+        enabled: false
+        steps:
+          - get: https://example.com/a
+`;
+    const output = treeToYAML(parseYAMLToTree(input)!);
+    const reparsed = parseYAMLToTree(output)!;
+    const step = reparsed
+      .children!.find(c => c.type === 'scenarios')!
+      .children![0].children!.find(c => c.type === 'steps')!.children![0];
+
+    expect(output).toContain('retry: 3');
+    expect(output).toContain('enabled: false');
+    expect(output).not.toContain('retry:\n          enabled: false');
+    expect(step.type).toBe('retry');
+    expect(step.data.attempts).toBe(3);
     expect(step.data.enabled).toBe(false);
   });
 

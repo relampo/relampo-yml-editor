@@ -537,6 +537,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       data: {
         ...step.group,
         auth: normalizeAuthForEditor(step.group.auth),
+        enabled: isEnabled,
       },
       path,
     };
@@ -561,6 +562,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       data: {
         ...step.transaction,
         auth: normalizeAuthForEditor(step.transaction.auth),
+        enabled: isEnabled,
       },
       path,
     };
@@ -639,7 +641,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       name: `If: ${step.if}`,
       children: [],
       expanded: true,
-      data: { condition: step.if },
+      data: { condition: step.if, enabled: isEnabled },
       path,
     };
 
@@ -655,13 +657,22 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
 
   // Loop
   if (step.loop !== undefined) {
+    const rawLoop = step.loop;
+    const loopData =
+      rawLoop && typeof rawLoop === 'object' && !Array.isArray(rawLoop)
+        ? rawLoop
+        : { count: rawLoop, __scalarLoop: true };
+
     const loopNode: YAMLNode = {
       id: stepId,
       type: 'loop',
       name: 'Loop',
       children: [],
       expanded: true,
-      data: typeof step.loop === 'number' ? { count: step.loop } : step.loop,
+      data: {
+        ...loopData,
+        enabled: isEnabled,
+      },
       path,
     };
 
@@ -676,14 +687,20 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
   }
 
   // Retry
-  if (step.retry) {
+  if (step.retry !== undefined) {
+    const rawRetry = step.retry;
+    const retryData =
+      rawRetry && typeof rawRetry === 'object' && !Array.isArray(rawRetry)
+        ? rawRetry
+        : { attempts: rawRetry, __scalarRetry: true };
+
     const retryNode: YAMLNode = {
       id: stepId,
       type: 'retry',
       name: 'Retry',
       children: [],
       expanded: true,
-      data: step.retry,
+      data: { ...retryData, enabled: isEnabled },
       path,
     };
 
