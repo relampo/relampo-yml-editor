@@ -1,7 +1,7 @@
 import type { YAMLNode } from '../types/yaml';
 
-export type BalancedExecutionMode = 'iteraciones' | 'usuarios_virtuales';
-export type BalancedDistributionType = 'total' | 'parcial';
+type BalancedExecutionMode = 'iteraciones' | 'usuarios_virtuales';
+type BalancedDistributionType = 'total' | 'parcial';
 
 const BALANCED_MODE_ALIASES: Record<string, BalancedExecutionMode> = {
   iteraciones: 'iteraciones',
@@ -58,7 +58,7 @@ export function sanitizeBalancedNodeData<T>(data: T): T {
   return next as T;
 }
 
-export function validateBalancedChildren(children: YAMLNode[] = []) {
+function validateBalancedChildren(children: YAMLNode[] = []) {
   const items = children.map(child => {
     const percentage = readBalancedPercentage(child.data?.__balancedPercentage);
     return {

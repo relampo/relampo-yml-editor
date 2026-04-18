@@ -1,25 +1,23 @@
 import type { AuthConfig } from '../../../types/yaml';
 import { AuthConfigEditor, DetailField, EditableField } from '../SharedFields';
+import { createNodeDataUpdater } from '../nodeDetailHelpers';
 import type { NamedNodeDetailProps } from '../types';
 
 export function GroupDetails({ node, onNodeUpdate, nodeName, setNodeName }: NamedNodeDetailProps) {
-  const data = node.data || {};
+  const { data, updateData } = createNodeDataUpdater(node, onNodeUpdate);
 
   const handleNameChange = (value: string) => {
     setNodeName?.(value);
-    onNodeUpdate?.(node.id, { ...data, name: value, __name: value });
+    updateData({ ...data, name: value, __name: value });
   };
 
   const handleAuthUpdate = (auth?: AuthConfig) => {
-    if (!onNodeUpdate) {
-      return;
-    }
     if (!auth) {
       const { auth: _, ...rest } = data;
-      onNodeUpdate(node.id, rest);
+      updateData(rest);
       return;
     }
-    onNodeUpdate(node.id, { ...data, auth });
+    updateData({ ...data, auth });
   };
 
   return (
@@ -48,18 +46,15 @@ export function GroupDetails({ node, onNodeUpdate, nodeName, setNodeName }: Name
 }
 
 export function TransactionDetails({ node, onNodeUpdate, nodeName }: NamedNodeDetailProps) {
-  const data = node.data || {};
+  const { data, updateData } = createNodeDataUpdater(node, onNodeUpdate);
 
   const handleAuthUpdate = (auth?: AuthConfig) => {
-    if (!onNodeUpdate) {
-      return;
-    }
     if (!auth) {
       const { auth: _, ...rest } = data;
-      onNodeUpdate(node.id, rest);
+      updateData(rest);
       return;
     }
-    onNodeUpdate(node.id, { ...data, auth });
+    updateData({ ...data, auth });
   };
 
   return (

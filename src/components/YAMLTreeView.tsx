@@ -423,7 +423,7 @@ export function YAMLTreeView({
     return (
       <div className="h-full w-full bg-[#0a0a0a] flex items-center justify-center">
         <div className="text-center px-6">
-          <p className="text-sm text-zinc-500 mb-8 max-w-[280px] mx-auto">{t('yamlEditor.emptyState.description')}</p>
+          <p className="text-sm text-zinc-500 mb-8 max-w-70 mx-auto">{t('yamlEditor.emptyState.description')}</p>
 
           <button
             onClick={() => {
@@ -444,11 +444,11 @@ export function YAMLTreeView({
   return (
     <div className="h-full w-full bg-[#0a0a0a] flex flex-col">
       {/* Search Bar - Estilo exacto del converter */}
-      <div className="flex-shrink-0 px-3 pt-3 pb-2">
+      <div className="shrink-0 px-3 pt-3 pb-2">
         <div className="flex items-center gap-2 p-3 bg-[#111111] border border-white/10 rounded-lg">
           {/* Input container */}
           <div className="flex-1 flex items-center gap-2 bg-[#0a0a0a] border border-white/10 rounded px-3 py-1.5">
-            <Search className="w-4 h-4 text-zinc-500 flex-shrink-0" />
+            <Search className="w-4 h-4 text-zinc-500 shrink-0" />
             <input
               type="text"
               placeholder="Search nodes..."
@@ -472,7 +472,7 @@ export function YAMLTreeView({
       </div>
 
       {selectedNodeIds.length > 1 && (
-        <div className="flex-shrink-0 px-3 pb-2">
+        <div className="shrink-0 px-3 pb-2">
           <div className="flex flex-wrap items-center gap-2 p-3 bg-[#111111] border border-white/10 rounded-lg">
             <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
               {selectedNodeIds.length} selected

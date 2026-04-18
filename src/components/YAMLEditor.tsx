@@ -1,18 +1,18 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
-import { Button } from './ui/button';
 import { Code2, GitBranch } from 'lucide-react';
-import { YAMLCodeEditor } from './YAMLCodeEditor';
-import { YAMLTreeView } from './YAMLTreeView';
-import { YAMLNodeDetails } from './YAMLNodeDetails';
-import { YAMLEditorHeader } from './YAMLEditorHeader';
-import { parseYAMLToTree, treeToYAML } from '../utils/yamlParser';
-import { applyNodeUpdateToTree } from '../utils/nodeUpdate';
-import type { YAMLNode, RedirectSourceInfo, RedirectedRequestInfo } from '../types/yaml';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useYAML } from '../contexts/YAMLContext';
 import { useResizePanel } from '../hooks/useResizePanel';
 import { useYAMLPersistence } from '../hooks/useYAMLPersistence';
+import type { RedirectSourceInfo, RedirectedRequestInfo, YAMLNode } from '../types/yaml';
+import { applyNodeUpdateToTree } from '../utils/nodeUpdate';
+import { parseYAMLToTree, treeToYAML } from '../utils/yamlParser';
 import { validateYAMLSemantics } from '../utils/yamlSemanticValidation';
+import { Button } from './ui/button';
+import { YAMLCodeEditor } from './YAMLCodeEditor';
+import { YAMLEditorHeader } from './YAMLEditorHeader';
+import { YAMLNodeDetails } from './YAMLNodeDetails';
+import { YAMLTreeView } from './YAMLTreeView';
 
 const LARGE_FILE_CHAR_THRESHOLD = 2_000_000;
 const LARGE_FILE_LINE_THRESHOLD = 50_000;
@@ -188,7 +188,7 @@ export function YAMLEditor() {
     return lockedTree;
   };
 
-  const getPersistableYaml = (): string => {
+  const retrieveYamlForSaving = (): string => {
     const activeTree = lockTypedNodeSelectionForCurrentTree();
     if (!activeTree) return yamlCode;
     const serialized = treeToYAML(activeTree);
@@ -204,7 +204,7 @@ export function YAMLEditor() {
     yamlCode,
     currentFileName,
     language,
-    getPersistableYaml,
+    getPersistableYaml: retrieveYamlForSaving,
     setHasDocumentActivity,
     setError,
     serializeDebounceRef,
@@ -553,15 +553,17 @@ export function YAMLEditor() {
       />
 
       {error && (
-        <div className="px-6 py-3 bg-red-500/10 border-b border-red-500/20 flex-shrink-0">
+        <div className="px-6 py-3 bg-red-500/10 border-b border-red-500/20 shrink-0">
           <p className="text-sm text-red-400">⚠️ {error}</p>
         </div>
       )}
 
       {!error && validationErrors.length > 0 && (
-        <div className="px-6 py-3 bg-amber-500/10 border-b border-amber-500/20 flex-shrink-0">
+        <div className="px-6 py-3 bg-amber-500/10 border-b border-amber-500/20 shrink-0">
           <p className="text-sm font-medium text-amber-300">
-            {language === 'es' ? 'Problemas de validación semántica detectados.' : 'Semantic validation issues detected.'}
+            {language === 'es'
+              ? 'Problemas de validación semántica detectados.'
+              : 'Semantic validation issues detected.'}
           </p>
           <p className="mt-1 text-xs text-amber-200/80">
             {validationErrors[0]}
@@ -571,7 +573,7 @@ export function YAMLEditor() {
       )}
 
       {isLargeFileMode && (
-        <div className="px-6 py-3 bg-yellow-500/10 border-b border-yellow-500/20 flex-shrink-0">
+        <div className="px-6 py-3 bg-yellow-500/10 border-b border-yellow-500/20 shrink-0">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="min-w-0">
               <p className="text-sm text-yellow-300 font-semibold">
@@ -618,7 +620,7 @@ export function YAMLEditor() {
           className="min-w-0 flex flex-col bg-[#0a0a0a]"
           style={{ width: `${leftPanelWidth}%` }}
         >
-          <div className="flex items-center bg-[#111111] border-b border-white/5 flex-shrink-0">
+          <div className="flex items-center bg-[#111111] border-b border-white/5 shrink-0">
             <button
               onClick={() => setViewMode('tree')}
               className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 text-sm font-bold transition-all duration-200 ${
@@ -672,19 +674,19 @@ export function YAMLEditor() {
           aria-label="Resize panel"
           tabIndex={0}
           onMouseDown={() => setIsResizing(true)}
-          className="w-1 bg-white/5 hover:bg-yellow-400/40 flex-shrink-0 transition-colors relative active:bg-yellow-400/60 z-50 group"
+          className="w-1 bg-white/5 hover:bg-yellow-400/40 shrink-0 transition-colors relative active:bg-yellow-400/60 z-50 group"
           style={{ cursor: 'col-resize' }}
         >
           <div
             className="absolute inset-y-0 -left-4 -right-4 z-50"
             style={{ cursor: 'col-resize' }}
           />
-          <div className="absolute inset-y-0 left-1/2 -ml-[1px] w-[2px] bg-white/20 group-hover:bg-yellow-400/80 transition-colors" />
+          <div className="absolute inset-y-0 left-1/2 -ml-px w-0.5 bg-white/20 group-hover:bg-yellow-400/80 transition-colors" />
         </div>
 
         {/* Right Panel: Details */}
         <div className="flex-1 min-w-0 flex flex-col bg-[#0d0d0d]">
-          <div className="flex items-center border-b border-white/5 bg-[#111111] flex-shrink-0 px-6 py-3">
+          <div className="flex items-center border-b border-white/5 bg-[#111111] shrink-0 px-6 py-3">
             <span className="text-sm font-bold tracking-tight uppercase text-zinc-400">
               {language === 'es' ? 'Detalles del elemento' : 'Element details'}
             </span>

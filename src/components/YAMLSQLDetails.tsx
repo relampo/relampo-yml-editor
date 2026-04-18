@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
 import MonacoEditor from '@monaco-editor/react';
 import * as jsyaml from 'js-yaml';
+import { useEffect, useMemo, useState } from 'react';
+import type { StringMap } from '../types/shared';
 import type { YAMLNode } from '../types/yaml';
 import { EditableList } from './EditableList';
 import { Input } from './ui/input';
-import { Textarea } from './ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Textarea } from './ui/textarea';
 
 interface YAMLSQLDetailsProps {
   node: YAMLNode;
@@ -64,7 +65,9 @@ function SQLSelectField({ label, value, options, onValueChange, helper, triggerC
         value={value}
         onValueChange={onValueChange}
       >
-        <SelectTrigger className={`w-full border-white/10 bg-white/5 font-mono text-zinc-200 ${triggerClassName || ''}`}>
+        <SelectTrigger
+          className={`w-full border-white/10 bg-white/5 font-mono text-zinc-200 ${triggerClassName || ''}`}
+        >
           <SelectValue />
         </SelectTrigger>
         <SelectContent className="border-white/10 bg-[#161616] text-zinc-200">
@@ -114,7 +117,7 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
     });
   };
 
-  const handleOptionsUpdate = (updatedOptions: Record<string, string>) => {
+  const handleOptionsUpdate = (updatedOptions: StringMap) => {
     onNodeUpdate?.(node.id, {
       ...data,
       connection: {
@@ -124,7 +127,7 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
     });
   };
 
-  const handleExtractUpdate = (updatedExtract: Record<string, string>) => {
+  const handleExtractUpdate = (updatedExtract: StringMap) => {
     onNodeUpdate?.(node.id, {
       ...data,
       extract: updatedExtract,
@@ -193,7 +196,7 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
             value={data.driver || ''}
             onChange={event => handleChange('driver', event.target.value)}
             placeholder="Optional driver name"
-            className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+            className="w-full h-9.5 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
           />
         </div>
       </div>
@@ -239,7 +242,7 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
             value={data.timeout || ''}
             onChange={event => handleChange('timeout', event.target.value)}
             placeholder="30s"
-            className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+            className="w-full h-9.5 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
           />
         </div>
 
@@ -297,7 +300,7 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
               value={connection.host || ''}
               onChange={event => handleConnectionChange('host', event.target.value)}
               placeholder="{{db_host}}"
-              className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+              className="w-full h-9.5 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
             />
           </div>
 
@@ -307,7 +310,7 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
               value={connection.port ?? ''}
               onChange={event => handleConnectionChange('port', event.target.value)}
               placeholder={data.dialect === 'mysql' ? '3306' : '5432'}
-              className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+              className="w-full h-9.5 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
             />
           </div>
 
@@ -317,7 +320,7 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
               value={connection.database || ''}
               onChange={event => handleConnectionChange('database', event.target.value)}
               placeholder="app"
-              className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+              className="w-full h-9.5 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
             />
           </div>
 
@@ -327,7 +330,7 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
               value={connection.user || ''}
               onChange={event => handleConnectionChange('user', event.target.value)}
               placeholder="{{db_user}}"
-              className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+              className="w-full h-9.5 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
             />
           </div>
 
@@ -338,7 +341,7 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
               value={connection.password || ''}
               onChange={event => handleConnectionChange('password', event.target.value)}
               placeholder="{{db_password}}"
-              className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+              className="w-full h-9.5 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
             />
           </div>
 
@@ -350,7 +353,7 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
               value={connection.dsn || ''}
               onChange={event => handleConnectionChange('dsn', event.target.value)}
               placeholder="Optional DSN/connection string"
-              className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+              className="w-full h-9.5 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
             />
           </div>
 
@@ -360,7 +363,7 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
               value={connection.ssl_mode || ''}
               onChange={event => handleConnectionChange('ssl_mode', event.target.value)}
               placeholder="disable, require, verify-full"
-              className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+              className="w-full h-9.5 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
             />
           </div>
 
@@ -370,7 +373,7 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
               value={connection.charset || ''}
               onChange={event => handleConnectionChange('charset', event.target.value)}
               placeholder="utf8mb4"
-              className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+              className="w-full h-9.5 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
             />
           </div>
         </div>
@@ -403,7 +406,7 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
           }}
           onBlur={handleParamsBlur}
           placeholder={'- "{{user_id}}"\n- 100'}
-          className="w-full min-h-[120px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+          className="w-full min-h-30 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
         />
         <p className="mt-1 text-xs text-zinc-500">
           Use YAML for positional arrays or named maps. Scenario variables such as <code>{'{{user_id}}'}</code> are
@@ -451,7 +454,7 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
               value={connection.max_open_conns ?? ''}
               onChange={event => handleConnectionNumberChange('max_open_conns', event.target.value)}
               placeholder="5"
-              className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+              className="w-full h-9.5 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
             />
           </div>
 
@@ -464,7 +467,7 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
               value={connection.max_idle_conns ?? ''}
               onChange={event => handleConnectionNumberChange('max_idle_conns', event.target.value)}
               placeholder="2"
-              className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+              className="w-full h-9.5 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
             />
           </div>
 
@@ -476,7 +479,7 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
               value={connection.conn_max_lifetime || ''}
               onChange={event => handleConnectionChange('conn_max_lifetime', event.target.value)}
               placeholder="5m"
-              className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+              className="w-full h-9.5 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
             />
           </div>
 
@@ -488,7 +491,7 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
               value={connection.conn_max_idle_time || ''}
               onChange={event => handleConnectionChange('conn_max_idle_time', event.target.value)}
               placeholder="1m"
-              className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+              className="w-full h-9.5 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
             />
           </div>
         </div>

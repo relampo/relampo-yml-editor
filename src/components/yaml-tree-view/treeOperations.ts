@@ -1,7 +1,7 @@
 import { canContain } from '../../utils/yamlDragDropRules';
 import type { YAMLNode } from '../../types/yaml';
 
-export type TransactionWrapValidationReason =
+type TransactionWrapValidationReason =
   | 'minimum_selection'
   | 'missing_nodes'
   | 'same_parent'
@@ -9,7 +9,7 @@ export type TransactionWrapValidationReason =
   | 'supported_child'
   | 'contiguous';
 
-export interface TransactionWrapValidationResult {
+interface TransactionWrapValidationResult {
   valid: boolean;
   reason?: TransactionWrapValidationReason;
   orderedNodeIds: string[];

@@ -1,4 +1,4 @@
-import { Upload, Download, ChevronDown } from 'lucide-react';
+import { ChevronDown, Download, Upload } from 'lucide-react';
 import { Button } from './ui/button';
 import {
   DropdownMenu,
@@ -37,12 +37,12 @@ export function YAMLEditorHeader({
   onFileChange,
 }: YAMLEditorHeaderProps) {
   return (
-    <div className="bg-[#1a1a1a] border-b border-white/10 px-6 py-4 flex-shrink-0">
+    <div className="bg-[#1a1a1a] border-b border-white/10 px-6 py-4 shrink-0">
       <div className="flex items-center justify-between gap-4">
         {/* Left: Brand */}
         <div className="flex items-center gap-3">
           <div
-            className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#fde047] via-[#facc15] to-[#eab308] flex items-center justify-center"
+            className="w-10 h-10 rounded-xl bg-linear-to-br from-[#fde047] via-[#facc15] to-[#eab308] flex items-center justify-center"
             style={{ boxShadow: '0 14px 35px rgba(250, 204, 21, 0.40)' }}
           >
             <svg
@@ -114,7 +114,7 @@ export function YAMLEditorHeader({
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="end"
-                className="bg-[#111111] border border-white/10 text-zinc-200 min-w-[260px] p-1.5"
+                className="bg-[#111111] border border-white/10 text-zinc-200 min-w-65 p-1.5"
               >
                 <DropdownMenuLabel className="text-zinc-400 text-xs uppercase tracking-wide">
                   {language === 'es' ? 'Opciones de descarga' : 'Download options'}
@@ -122,7 +122,7 @@ export function YAMLEditorHeader({
                 <DropdownMenuSeparator className="bg-white/10" />
                 <DropdownMenuItem
                   onClick={() => onDownload(true)}
-                  className="rounded-md px-3 py-2 focus:bg-yellow-400/10 focus:text-white cursor-pointer data-[highlighted]:bg-yellow-400/10 data-[highlighted]:text-white"
+                  className="rounded-md px-3 py-2 focus:bg-yellow-400/10 focus:text-white cursor-pointer data-highlighted:bg-yellow-400/10 data-highlighted:text-white"
                 >
                   <div className="flex flex-col">
                     <span>{language === 'es' ? 'Descargar con respuestas' : 'Download with responses'}</span>
@@ -135,7 +135,7 @@ export function YAMLEditorHeader({
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => onDownload(false)}
-                  className="rounded-md px-3 py-2 focus:bg-yellow-400/10 focus:text-white cursor-pointer data-[highlighted]:bg-yellow-400/10 data-[highlighted]:text-white"
+                  className="rounded-md px-3 py-2 focus:bg-yellow-400/10 focus:text-white cursor-pointer data-highlighted:bg-yellow-400/10 data-highlighted:text-white"
                 >
                   <div className="flex flex-col">
                     <span>{language === 'es' ? 'Descargar sin respuestas' : 'Download without responses'}</span>

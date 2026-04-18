@@ -1,13 +1,17 @@
 import { EditableList } from '../../EditableList';
+import type { StringMap } from '../../../types/shared';
 import type { NodeDetailProps } from '../types';
 
 export function VariablesDetails({ node, onNodeUpdate }: NodeDetailProps) {
   const data = node.data || {};
-  const items = Array.isArray(data.variables)
-    ? data.variables.reduce((acc: any, curr: any) => ({ ...acc, [curr.name]: curr.value }), {})
-    : data;
+  const items: StringMap = Array.isArray(data.variables)
+    ? data.variables.reduce((acc: StringMap, curr: { name: string; value: string }) => {
+        acc[curr.name] = curr.value;
+        return acc;
+      }, {})
+    : (data as StringMap);
 
-  const handleUpdate = (updatedItems: Record<string, string>) => {
+  const handleUpdate = (updatedItems: StringMap) => {
     if (!onNodeUpdate) {
       return;
     }

@@ -1,37 +1,43 @@
-import type { AuthConfig } from '../../../types/yaml';
+import type { StringMap } from '../../../types/shared';
+import type { AuthConfig, HttpDefaults } from '../../../types/yaml';
 import { EditableList } from '../../EditableList';
 import { AuthConfigEditor } from '../SharedFields';
+import { createNodeDataUpdater } from '../nodeDetailHelpers';
 import type { NodeDetailProps } from '../types';
 
 export function HttpDefaultsDetails({ node, onNodeUpdate }: NodeDetailProps) {
-  const data = node.data || {};
-  const headers = data.headers || {};
-  const mainFields = { ...data };
-  delete mainFields.headers;
-  delete mainFields.auth;
+  const { data, updateData } = createNodeDataUpdater(node, onNodeUpdate);
+  const defaults = data as Partial<HttpDefaults>;
+  const headers = (defaults.headers || {}) as StringMap;
+  const preservedDefaults = Object.fromEntries(
+    Object.entries(defaults).filter(([key, value]) => key !== 'headers' && key !== 'auth' && typeof value !== 'string'),
+  ) as Partial<HttpDefaults>;
+  const mainFields = Object.fromEntries(
+    Object.entries(defaults)
+      .filter(([key, value]) => key !== 'headers' && key !== 'auth' && typeof value === 'string')
+      .map(([key, value]) => [key, value]),
+  ) as StringMap;
 
-  const handleMainFieldsUpdate = (fields: Record<string, string>) => {
-    onNodeUpdate?.(node.id, {
+  const handleMainFieldsUpdate = (fields: StringMap) => {
+    updateData({
+      ...preservedDefaults,
       ...fields,
-      headers: data.headers || {},
-      ...(data.auth ? { auth: data.auth } : {}),
+      headers: defaults.headers || {},
+      ...(defaults.auth ? { auth: defaults.auth } : {}),
     });
   };
 
-  const handleHeadersUpdate = (updatedHeaders: Record<string, string>) => {
-    onNodeUpdate?.(node.id, { ...data, headers: updatedHeaders });
+  const handleHeadersUpdate = (updatedHeaders: StringMap) => {
+    updateData({ ...defaults, headers: updatedHeaders });
   };
 
   const handleAuthUpdate = (auth?: AuthConfig) => {
-    if (!onNodeUpdate) {
-      return;
-    }
     if (!auth) {
-      const { auth: _, ...rest } = data;
-      onNodeUpdate(node.id, rest);
+      const { auth: _, ...rest } = defaults;
+      updateData(rest);
       return;
     }
-    onNodeUpdate(node.id, { ...data, auth });
+    updateData({ ...defaults, auth });
   };
 
   return (

@@ -1,6 +1,6 @@
 import type { YAMLNode } from '../types/yaml';
 
-export interface YAMLSemanticIssue {
+interface YAMLSemanticIssue {
   nodeId: string;
   message: string;
 }

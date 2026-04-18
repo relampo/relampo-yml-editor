@@ -1,6 +1,8 @@
 import type { YAMLNodeType } from '../types/yaml';
 
-const HTTP_METHOD_NODE_TYPES = new Set<YAMLNodeType>(['get', 'post', 'put', 'delete', 'patch', 'head', 'options']);
+const HTTP_METHOD_NODE_TYPE_LIST = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options'] as const;
+type HttpMethodNodeType = (typeof HTTP_METHOD_NODE_TYPE_LIST)[number];
+const HTTP_METHOD_NODE_TYPES = new Set<string>(HTTP_METHOD_NODE_TYPE_LIST);
 
 type RequestNodeData = Record<string, unknown> | undefined;
 
@@ -10,6 +12,10 @@ function readMethod(method: unknown): string | null {
 
 function normalizeMethod(method: unknown): string {
   return readMethod(method) || 'GET';
+}
+
+function isHttpMethodNodeType(value: string): value is HttpMethodNodeType {
+  return HTTP_METHOD_NODE_TYPES.has(value);
 }
 
 function getMethodNodeType(nodeType: YAMLNodeType, data: RequestNodeData): YAMLNodeType {
@@ -23,7 +29,7 @@ function getMethodNodeType(nodeType: YAMLNodeType, data: RequestNodeData): YAMLN
   }
 
   const nextType = method.toLowerCase();
-  return HTTP_METHOD_NODE_TYPES.has(nextType as YAMLNodeType) ? (nextType as YAMLNodeType) : nodeType;
+  return isHttpMethodNodeType(nextType) ? nextType : nodeType;
 }
 
 function normalizeUrlForLabel(url: unknown): string {
@@ -44,7 +50,7 @@ export function isHttpRequestNodeType(nodeType: YAMLNodeType): boolean {
   return nodeType === 'request' || HTTP_METHOD_NODE_TYPES.has(nodeType);
 }
 
-export function buildRequestNodeLabel(nodeType: YAMLNodeType, data: RequestNodeData): string {
+function buildRequestNodeLabel(nodeType: YAMLNodeType, data: RequestNodeData): string {
   const method = nodeType === 'request' ? normalizeMethod(data?.method) : nodeType.toUpperCase();
   return `${method}: ${normalizeUrlForLabel(data?.url)}`;
 }

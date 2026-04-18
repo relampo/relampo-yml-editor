@@ -54,9 +54,10 @@ export function treeToObject(tree: YAMLNode): any {
         obj.data_source.name = child.name;
       }
     } else if (child.type === 'http_defaults') {
+      const auth = normalizeAuthForYaml(child.data?.auth);
       obj.http_defaults = {
         ...child.data,
-        ...(normalizeAuthForYaml(child.data?.auth) ? { auth: normalizeAuthForYaml(child.data?.auth) } : {}),
+        ...(auth ? { auth } : {}),
       };
       if (!obj.http_defaults.auth) delete obj.http_defaults.auth;
     } else if (child.type === 'scenarios') {

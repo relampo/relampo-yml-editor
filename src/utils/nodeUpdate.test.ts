@@ -45,4 +45,28 @@ describe('applyNodeUpdateToTree', () => {
     expect(balanced?.children?.[0].data.__balancedPercentage).toBe(50);
     expect(balanced?.children?.[1].data.__balancedPercentage).toBe(50);
   });
+
+  it('preserves an explicit empty name when clearing a request label', () => {
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'root',
+      name: 'Root',
+      children: [
+        {
+          id: 'request-1',
+          type: 'request',
+          name: 'Custom request',
+          data: { method: 'GET', url: '/status' },
+        },
+      ],
+    };
+
+    const updatedTree = applyNodeUpdateToTree(tree, 'request-1', {
+      method: 'GET',
+      url: '/status',
+      __name: '',
+    });
+
+    expect(updatedTree.children?.[0].name).toBe('');
+  });
 });

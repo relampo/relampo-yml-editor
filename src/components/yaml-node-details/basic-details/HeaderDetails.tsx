@@ -1,9 +1,10 @@
 import { EditableList } from '../../EditableList';
 import { Input } from '../../ui/input';
+import { createNodeDataUpdater } from '../nodeDetailHelpers';
 import type { NodeDetailProps } from '../types';
 
 export function HeaderDetails({ node, onNodeUpdate }: NodeDetailProps) {
-  const data = node.data || {};
+  const { data, updateField } = createNodeDataUpdater(node, onNodeUpdate);
   const commonHeaders = [
     'Authorization',
     'Content-Type',
@@ -16,18 +17,14 @@ export function HeaderDetails({ node, onNodeUpdate }: NodeDetailProps) {
     'X-Requested-With',
   ];
 
-  const handleChange = (field: string, value: any) => {
-    onNodeUpdate?.(node.id, { ...data, [field]: value });
-  };
-
   return (
     <div className="space-y-4">
-      <div className="py-3 px-1 border-b border-white/5 flex items-center gap-3 w-full min-w-0 hover:bg-white/[0.02] transition-colors group">
+      <div className="py-3 px-1 border-b border-white/5 flex items-center gap-3 w-full min-w-0 hover:bg-white/2 transition-colors group">
         <div className="flex-1 flex items-center gap-3 min-w-0">
-          <div className="flex items-center gap-2 shrink-0 w-[70px]">
+          <div className="flex items-center gap-2 shrink-0 w-17.5">
             <Input
               value={data.name || ''}
-              onChange={event => handleChange('name', event.target.value)}
+              onChange={event => updateField('name', event.target.value)}
               placeholder="Content-Type"
               list="header-names-list"
               className="flex-1 px-2 py-1 text-xs font-mono text-purple-400 font-bold bg-purple-400/5 border-purple-400/20 focus:border-purple-400/40"
@@ -37,7 +34,7 @@ export function HeaderDetails({ node, onNodeUpdate }: NodeDetailProps) {
           <div className="w-0 flex-1 min-w-0">
             <Input
               value={data.value || ''}
-              onChange={event => handleChange('value', event.target.value)}
+              onChange={event => updateField('value', event.target.value)}
               placeholder="application/json"
               className="w-full px-2 py-1 text-sm font-mono text-zinc-300 bg-white/5 border-white/10 focus:border-white/30"
             />

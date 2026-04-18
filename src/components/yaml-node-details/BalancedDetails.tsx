@@ -222,7 +222,7 @@ export function BalancedDetails({ node, onNodeUpdate }: NodeDetailProps) {
         </div>
       ) : null}
 
-      <div className="space-y-2.5 rounded-2xl border border-sky-300/40 bg-sky-400/[0.15] px-3 py-3 shadow-[0_14px_40px_#0EA5E92E] backdrop-blur-[1px]">
+      <div className="space-y-2.5 rounded-2xl border border-sky-300/40 bg-sky-400/15 px-3 py-3 shadow-[0_14px_40px_#0EA5E92E] backdrop-blur-[1px]">
         <div className="flex items-center justify-between gap-3 mb-3">
           <div className="min-w-0">
             <label className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${labelTextClass}`}>
@@ -274,7 +274,7 @@ export function BalancedDetails({ node, onNodeUpdate }: NodeDetailProps) {
                     step="0.01"
                     value={currentPercentage}
                     onChange={event => handlePercentageChange(child.id, event.target.value)}
-                    className={`w-full h-[38px] px-3 py-2 rounded text-sm font-mono ${
+                    className={`w-full h-9.5 px-3 py-2 rounded text-sm font-mono ${
                       isInvalid
                         ? 'border border-red-400/60 bg-red-950/40 text-red-100 placeholder:text-red-200/55'
                         : 'bg-[#11161a] text-zinc-100 border border-white/10'

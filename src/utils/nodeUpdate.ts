@@ -1,42 +1,38 @@
 import type { YAMLNode } from '../types/yaml';
 import { getUpdatedRequestNodePresentation, isHttpRequestNodeType } from './requestNodeDisplay';
 
-type NodeUpdateData = Record<string, unknown>;
+type NodeUpdateData = Record<string, unknown> & {
+  __name?: string;
+  __batchChildUpdates?: BatchNodeUpdate[];
+};
 
 type BatchNodeUpdate = {
   nodeId: string;
   data: NodeUpdateData;
 };
 
-type NodeUpdatePayload = NodeUpdateData & {
-  __name?: unknown;
-  __batchChildUpdates?: BatchNodeUpdate[];
-};
-
-function buildUpdatedNode(node: YAMLNode, updatedData: NodeUpdatePayload | NodeUpdateData): YAMLNode {
-  const { __name, __batchChildUpdates, ...cleanData } = updatedData as NodeUpdatePayload;
+function buildUpdatedNode(node: YAMLNode, updatedData: NodeUpdateData): YAMLNode {
+  const { __name, __batchChildUpdates, ...cleanData } = updatedData;
   const requestPresentation = isHttpRequestNodeType(node.type)
     ? getUpdatedRequestNodePresentation({
         nodeType: node.type,
         currentName: node.name,
         currentData: node.data,
         updatedData: cleanData,
-        explicitName: __name !== undefined ? String(__name) : undefined,
+        explicitName: __name,
       })
     : null;
 
   return {
     ...node,
-    type: requestPresentation?.type || node.type,
-    name: requestPresentation?.name || (__name !== undefined ? String(__name) : node.name),
+    type: requestPresentation?.type ?? node.type,
+    name: requestPresentation?.name ?? __name ?? node.name,
     data: cleanData,
   };
 }
 
-export function applyNodeUpdateToTree(tree: YAMLNode, nodeId: string, updatedData: NodeUpdatePayload | NodeUpdateData): YAMLNode {
-  const batchUpdates = Array.isArray((updatedData as NodeUpdatePayload).__batchChildUpdates)
-    ? (updatedData as NodeUpdatePayload).__batchChildUpdates
-    : [];
+export function applyNodeUpdateToTree(tree: YAMLNode, nodeId: string, updatedData: NodeUpdateData): YAMLNode {
+  const batchUpdates = Array.isArray(updatedData.__batchChildUpdates) ? updatedData.__batchChildUpdates : [];
   const batchUpdatesById = new Map(batchUpdates.map(update => [update.nodeId, update.data]));
 
   const visit = (node: YAMLNode, withinTargetSubtree = false): YAMLNode => {

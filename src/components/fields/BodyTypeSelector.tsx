@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
-import { Input } from '../ui/input';
-import { Plus, Trash2, AlertCircle, CheckCircle } from 'lucide-react';
 import Editor from '@monaco-editor/react';
+import { AlertCircle, CheckCircle, Plus, Trash2 } from 'lucide-react';
 import type { editor as MonacoEditorNS } from 'monaco-editor';
+import { JSX, useEffect, useMemo, useRef, useState } from 'react';
+import type { StringMap } from '../../types/shared';
+import { Input } from '../ui/input';
 
 type BodyType = 'none' | 'json' | 'form' | 'raw';
 type SearchMode = 'text' | 'regex';
@@ -60,7 +61,7 @@ interface FormDataItem {
 }
 
 const MONACO_SWITCH_LINE_THRESHOLD = 2000;
-const MONACO_SWITCH_SIZE_THRESHOLD = 120 * 1024; // 120KB
+const MONACO_SWITCH_SIZE_THRESHOLD = 120 * 1024;
 const BODY_FIXED_HEIGHT = 300;
 
 export function BodyTypeSelector({
@@ -85,16 +86,13 @@ export function BodyTypeSelector({
   const jsonHighlightRef = useRef<HTMLPreElement | null>(null);
   const rawHighlightRef = useRef<HTMLPreElement | null>(null);
 
-  // Detect body type and initialize values
   useEffect(() => {
     if (!body || Object.keys(body).length === 0) {
       setBodyType('none');
       return;
     }
 
-    // Try to detect type
     if (typeof body === 'string') {
-      // Could be JSON string or raw text
       try {
         JSON.parse(body);
         setBodyType('json');
@@ -104,7 +102,6 @@ export function BodyTypeSelector({
         setRawValue(body);
       }
     } else if (typeof body === 'object') {
-      // Could be JSON object or form data
       const keys = Object.keys(body);
       const seemsLikeFormData = keys.every(k => typeof body[k] === 'string' || typeof body[k] === 'number');
 
@@ -141,15 +138,12 @@ export function BodyTypeSelector({
     setBodyType(newType);
     setTypeSwitchError('');
 
-    // Clear errors
     setJsonError('');
 
-    // Convert content if needed
     if (newType === 'none') {
       onBodyChange(null, newType);
     } else if (newType === 'json' && bodyType === 'form') {
-      // Convert form data to JSON
-      const obj: Record<string, string> = {};
+      const obj: StringMap = {};
       formData
         .filter(item => item.enabled && item.key)
         .forEach(item => {
@@ -158,7 +152,6 @@ export function BodyTypeSelector({
       setJsonValue(JSON.stringify(obj, null, 2));
       onBodyChange(obj, newType);
     } else if (newType === 'form' && bodyType === 'json') {
-      // Convert JSON to form data
       try {
         const obj = JSON.parse(jsonValue);
         const items: FormDataItem[] = Object.entries(obj).map(([k, v]) => ({
@@ -186,7 +179,6 @@ export function BodyTypeSelector({
       onBodyChange(parsed, 'json');
     } catch (e: any) {
       setJsonError(e.message);
-      // Still save it as string in case user wants to use variables
       onBodyChange(value, 'json');
     }
   };
@@ -215,8 +207,7 @@ export function BodyTypeSelector({
       if (!hasAny) setTypeSwitchError('');
     }
 
-    // Convert to object
-    const obj: Record<string, string> = {};
+    const obj: StringMap = {};
     newFormData
       .filter(item => item.enabled && item.key.trim())
       .forEach(item => {
@@ -238,7 +229,7 @@ export function BodyTypeSelector({
       if (!hasAny) setTypeSwitchError('');
     }
 
-    const obj: Record<string, string> = {};
+    const obj: StringMap = {};
     newFormData
       .filter(item => item.enabled && item.key.trim())
       .forEach(item => {
@@ -290,11 +281,7 @@ export function BodyTypeSelector({
     if (!textarea || !current) return;
 
     const raf = requestAnimationFrame(() => {
-      try {
-        textarea.setSelectionRange(current.start, current.end);
-      } catch {
-        // ignore
-      }
+      textarea.setSelectionRange(current.start, current.end);
     });
 
     return () => cancelAnimationFrame(raf);
@@ -302,7 +289,6 @@ export function BodyTypeSelector({
 
   return (
     <div className={className}>
-      {/* Body Type Selector */}
       <div className="mb-4">
         {!hideTypeLabel && (
           <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">Body Type</p>
@@ -334,7 +320,6 @@ export function BodyTypeSelector({
         )}
       </div>
 
-      {/* Body Content Editors */}
       {bodyType === 'json' && (
         <div>
           <div className="flex items-center justify-between mb-2">
@@ -355,7 +340,7 @@ export function BodyTypeSelector({
           </div>
           {useMonacoForJson ? (
             <div
-              className="w-full h-[300px] rounded-md border border-white/10 bg-white/5 overflow-hidden"
+              className="w-full h-75 rounded-md border border-white/10 bg-white/5 overflow-hidden"
               style={{
                 height: BODY_FIXED_HEIGHT,
                 minHeight: BODY_FIXED_HEIGHT,
@@ -372,7 +357,7 @@ export function BodyTypeSelector({
             </div>
           ) : searchText ? (
             <div
-              className="relative w-full h-[300px] rounded-md border border-white/10 bg-white/5 overflow-hidden"
+              className="relative w-full h-75 rounded-md border border-white/10 bg-white/5 overflow-hidden"
               style={{
                 height: BODY_FIXED_HEIGHT,
                 minHeight: BODY_FIXED_HEIGHT,
@@ -410,7 +395,7 @@ export function BodyTypeSelector({
                 height: BODY_FIXED_HEIGHT,
                 minHeight: BODY_FIXED_HEIGHT,
               }}
-              className="w-full bg-white/5 border border-white/10 rounded text-zinc-300 text-sm font-mono h-[300px] resize-none overflow-y-auto overflow-x-auto outline-none p-3"
+              className="w-full bg-white/5 border border-white/10 rounded text-zinc-300 text-sm font-mono h-75 resize-none overflow-y-auto overflow-x-auto outline-none p-3"
             />
           )}
           {jsonError && (
@@ -479,7 +464,7 @@ export function BodyTypeSelector({
           </p>
           {useMonacoForRaw ? (
             <div
-              className="w-full h-[300px] rounded-md border border-white/10 bg-white/5 overflow-hidden"
+              className="w-full h-75 rounded-md border border-white/10 bg-white/5 overflow-hidden"
               style={{
                 height: BODY_FIXED_HEIGHT,
                 minHeight: BODY_FIXED_HEIGHT,
@@ -496,7 +481,7 @@ export function BodyTypeSelector({
             </div>
           ) : searchText ? (
             <div
-              className="relative w-full h-[300px] rounded-md border border-white/10 bg-white/5 overflow-hidden"
+              className="relative w-full h-75 rounded-md border border-white/10 bg-white/5 overflow-hidden"
               style={{
                 height: BODY_FIXED_HEIGHT,
                 minHeight: BODY_FIXED_HEIGHT,
@@ -534,7 +519,7 @@ export function BodyTypeSelector({
                 height: BODY_FIXED_HEIGHT,
                 minHeight: BODY_FIXED_HEIGHT,
               }}
-              className="w-full bg-white/5 border border-white/10 rounded text-zinc-300 text-sm font-mono h-[300px] resize-none overflow-y-auto overflow-x-auto outline-none p-3"
+              className="w-full bg-white/5 border border-white/10 rounded text-zinc-300 text-sm font-mono h-75 resize-none overflow-y-auto overflow-x-auto outline-none p-3"
             />
           )}
         </div>
@@ -545,8 +530,6 @@ export function BodyTypeSelector({
           No body content
         </div>
       )}
-
-      {/* Search highlight is rendered inline in body editor area when searchText is active */}
     </div>
   );
 }

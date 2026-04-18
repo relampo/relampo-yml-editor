@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
-import { Plus, Trash2, AlertCircle, Info } from 'lucide-react';
+import { AlertCircle, Info, Plus, Trash2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { Input } from '../ui/input';
+import { buildRequestUrlWithQuery, parseRequestQueryParams, parseRequestUrl } from './requestUrl';
 
 interface QueryParam {
   key: string;
@@ -22,59 +23,34 @@ export function QueryParamsEditor({ url, onUrlChange, className = '', showBaseUr
     message: string;
   }>({ type: null, message: '' });
 
-  // Parse URL to extract base and params
   useEffect(() => {
-    try {
-      if (!url) {
-        setBaseUrl('');
-        setParams([]);
-        return;
-      }
-
-      const urlObj = new URL(url.startsWith('http') ? url : `http://placeholder${url}`);
-      const base = url.startsWith('http') ? `${urlObj.protocol}//${urlObj.host}${urlObj.pathname}` : urlObj.pathname;
-
-      setBaseUrl(base);
-
-      const parsedParams: QueryParam[] = [];
-      urlObj.searchParams.forEach((value, key) => {
-        parsedParams.push({ key, value });
-      });
-      setParams(parsedParams.length > 0 ? parsedParams : [{ key: '', value: '' }]);
-    } catch {
-      // If URL is invalid, just set it as base
-      setBaseUrl(url);
-      setParams([{ key: '', value: '' }]);
+    if (!url) {
+      setBaseUrl('');
+      setParams([]);
+      return;
     }
+
+    const parts = parseRequestUrl(url);
+    const base = parts.isAbsolute ? `${parts.protocol}://${parts.baseUrl}${parts.path}` : parts.path;
+
+    setBaseUrl(base);
+
+    const parsedParams = parseRequestQueryParams(url);
+    setParams(parsedParams.length > 0 ? parsedParams : [{ key: '', value: '' }]);
   }, [url]);
-
-  // Build URL from base and params
-  const buildUrl = (newBase: string, newParams: QueryParam[]) => {
-    const enabledParams = newParams.filter(p => p.key.trim());
-
-    if (enabledParams.length === 0) {
-      return newBase;
-    }
-
-    const queryString = enabledParams.map(p => `${encodeURIComponent(p.key)}=${encodeURIComponent(p.value)}`).join('&');
-
-    return `${newBase}${newBase.includes('?') ? '&' : '?'}${queryString}`;
-  };
 
   const handleBaseUrlChange = (newBase: string) => {
     setBaseUrl(newBase);
-    onUrlChange(buildUrl(newBase, params));
+    onUrlChange(buildRequestUrlWithQuery(newBase, params));
     validateUrl(newBase);
   };
 
-  // Soft validation - doesn't block, just provides hints
   const validateUrl = (urlToValidate: string) => {
     if (!urlToValidate || urlToValidate.trim() === '') {
       setUrlHint({ type: null, message: '' });
       return;
     }
 
-    // Check if contains variables - always valid
     if (urlToValidate.includes('${')) {
       setUrlHint({
         type: 'info',
@@ -83,14 +59,11 @@ export function QueryParamsEditor({ url, onUrlChange, className = '', showBaseUr
       return;
     }
 
-    // Try to parse as URL
     try {
-      // Add protocol if missing for validation
       const testUrl = urlToValidate.startsWith('http') ? urlToValidate : `http://${urlToValidate}`;
       new URL(testUrl);
-      setUrlHint({ type: null, message: '' }); // Valid!
+      setUrlHint({ type: null, message: '' });
     } catch {
-      // Check common mistakes
       if (urlToValidate.startsWith('htp://') || urlToValidate.startsWith('htps://')) {
         setUrlHint({
           type: 'error',
@@ -113,7 +86,7 @@ export function QueryParamsEditor({ url, onUrlChange, className = '', showBaseUr
     const newParams = [...params];
     newParams[index] = { ...newParams[index], [field]: value };
     setParams(newParams);
-    onUrlChange(buildUrl(baseUrl, newParams));
+    onUrlChange(buildRequestUrlWithQuery(baseUrl, newParams));
   };
 
   const handleAddParam = () => {
@@ -123,12 +96,11 @@ export function QueryParamsEditor({ url, onUrlChange, className = '', showBaseUr
   const handleRemoveParam = (index: number) => {
     const newParams = params.filter((_, i) => i !== index);
     setParams(newParams.length > 0 ? newParams : [{ key: '', value: '' }]);
-    onUrlChange(buildUrl(baseUrl, newParams.length > 0 ? newParams : []));
+    onUrlChange(buildRequestUrlWithQuery(baseUrl, newParams.length > 0 ? newParams : []));
   };
 
   return (
     <div className={className}>
-      {/* Base URL */}
       {showBaseUrl && (
         <div className="mb-4">
           <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Base URL</label>
@@ -157,9 +129,9 @@ export function QueryParamsEditor({ url, onUrlChange, className = '', showBaseUr
               }`}
             >
               {urlHint.type === 'error' ? (
-                <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
               ) : (
-                <Info className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
               )}
               <span>{urlHint.message}</span>
             </div>
@@ -167,7 +139,6 @@ export function QueryParamsEditor({ url, onUrlChange, className = '', showBaseUr
         </div>
       )}
 
-      {/* Query Parameters */}
       <div>
         <div className="flex items-center justify-between mb-2">
           <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Query Parameters</label>
@@ -184,10 +155,10 @@ export function QueryParamsEditor({ url, onUrlChange, className = '', showBaseUr
           {params.map((param, index) => (
             <div
               key={index}
-              className="py-2 px-1 border-b border-white/5 flex items-center gap-3 w-full min-w-0 hover:bg-white/[0.02] transition-colors group"
+              className="py-2 px-1 border-b border-white/5 flex items-center gap-3 w-full min-w-0 hover:bg-white/2 transition-colors group"
             >
               <div className="flex-1 flex items-center gap-3 min-w-0">
-                <div className="flex items-center gap-2 shrink-0 w-[70px]">
+                <div className="flex items-center gap-2 shrink-0 w-17.5">
                   <Input
                     value={param.key}
                     onChange={e => handleParamChange(index, 'key', e.target.value)}
@@ -207,7 +178,7 @@ export function QueryParamsEditor({ url, onUrlChange, className = '', showBaseUr
               </div>
               <button
                 onClick={() => handleRemoveParam(index)}
-                className="p-1 text-zinc-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0"
+                className="p-1 text-zinc-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all shrink-0"
                 title="Remove parameter"
               >
                 <Trash2 className="w-3.5 h-3.5" />

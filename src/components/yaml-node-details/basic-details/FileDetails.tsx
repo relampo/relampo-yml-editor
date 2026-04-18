@@ -1,8 +1,9 @@
 import { FileField } from '../SharedFields';
+import { createNodeDataUpdater } from '../nodeDetailHelpers';
 import type { NodeDetailProps } from '../types';
 
 export function FileDetails({ node, onNodeUpdate }: NodeDetailProps) {
-  const data = node.data || {};
+  const { data, updateData, updateField } = createNodeDataUpdater(node, onNodeUpdate);
   const pathValue = String(data.path || '').trim();
   const mimeValue = String(data.mime || data.mime_type || '').trim();
   const commonMimeTypes = [
@@ -22,9 +23,6 @@ export function FileDetails({ node, onNodeUpdate }: NodeDetailProps) {
   ];
 
   const handleChange = (field: string, value: any) => {
-    if (!onNodeUpdate) {
-      return;
-    }
     const raw = String(value ?? '');
 
     if (field === 'path') {
@@ -32,17 +30,17 @@ export function FileDetails({ node, onNodeUpdate }: NodeDetailProps) {
       if (!String(nextData.field || '').trim() && raw.trim()) {
         nextData.field = 'file';
       }
-      onNodeUpdate(node.id, nextData);
+      updateData(nextData);
       return;
     }
 
     if (field === 'mime' || field === 'mime_type') {
       const { mime_type: _, ...rest } = data;
-      onNodeUpdate(node.id, { ...rest, mime: raw });
+      updateData({ ...rest, mime: raw });
       return;
     }
 
-    onNodeUpdate(node.id, { ...data, [field]: raw });
+    updateField(field, raw);
   };
 
   return (
@@ -69,7 +67,7 @@ export function FileDetails({ node, onNodeUpdate }: NodeDetailProps) {
             id="file-detail-mime"
             value={mimeValue}
             onChange={event => handleChange('mime', event.target.value)}
-            className="w-full px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono h-[38px] outline-none"
+            className="w-full px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono h-9.5 outline-none"
           >
             <option
               value=""

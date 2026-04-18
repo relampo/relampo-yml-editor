@@ -1,12 +1,9 @@
 import { EditableField } from '../SharedFields';
+import { createNodeDataUpdater } from '../nodeDetailHelpers';
 import type { NodeDetailProps } from '../types';
 
 export function MetricsDetails({ node, onNodeUpdate }: NodeDetailProps) {
-  const data = node.data || {};
-
-  const handleChange = (field: string, value: any) => {
-    onNodeUpdate?.(node.id, { ...data, [field]: value });
-  };
+  const { data, updateField } = createNodeDataUpdater(node, onNodeUpdate);
 
   return (
     <div className="space-y-6">
@@ -20,8 +17,8 @@ export function MetricsDetails({ node, onNodeUpdate }: NodeDetailProps) {
         <select
           id="metrics-enabled"
           value={data.enabled ? 'true' : 'false'}
-          onChange={event => handleChange('enabled', event.target.value === 'true')}
-          className="w-full h-[38px] px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+          onChange={event => updateField('enabled', event.target.value === 'true')}
+          className="w-full h-9.5 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
         >
           <option value="true">true</option>
           <option value="false">false</option>
@@ -31,7 +28,7 @@ export function MetricsDetails({ node, onNodeUpdate }: NodeDetailProps) {
         label="Collect Interval"
         value={data.collect_interval || ''}
         field="collect_interval"
-        onChange={handleChange}
+        onChange={(field, value) => updateField(field, value)}
       />
     </div>
   );

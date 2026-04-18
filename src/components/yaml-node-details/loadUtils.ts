@@ -29,7 +29,7 @@ export function normalizeLoadType(rawType: unknown): LoadType {
   return 'constant';
 }
 
-export const loadTypeDefaults: Record<LoadType, Record<string, any>> = {
+const loadTypeDefaults: Record<LoadType, Record<string, any>> = {
   constant: {
     users: '10',
     duration: '5m',
@@ -72,7 +72,7 @@ export const loadTypeDefaults: Record<LoadType, Record<string, any>> = {
   },
 };
 
-export const loadTypeAllowedKeys: Record<LoadType, string[]> = {
+const loadTypeAllowedKeys: Record<LoadType, string[]> = {
   constant: ['type', 'users', 'duration', 'iterations', 'ramp_up'],
   ramp: ['type', 'start_users', 'end_users', 'duration', 'iterations'],
   ramp_up_down: ['type', 'users', 'duration', 'iterations', 'ramp_up', 'ramp_down'],
