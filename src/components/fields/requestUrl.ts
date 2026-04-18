@@ -31,6 +31,15 @@ function splitRequestQuery(url: string): { withoutQuery: string; query: string }
   };
 }
 
+function normalizeRelativeRequestPath(path: string): string {
+  const trimmed = path.trim();
+  if (!trimmed) {
+    return '/';
+  }
+
+  return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+}
+
 /**
  * Parse a request URL into normalized parts.
  *
@@ -53,7 +62,7 @@ export function parseRequestUrl(fullUrl: string): ParsedRequestUrl {
     };
   }
 
-  const { withoutQuery } = splitRequestQuery(trimmed);
+  const { withoutQuery, query } = splitRequestQuery(trimmed);
 
   try {
     if (ABSOLUTE_URL_PATTERN.test(trimmed)) {
@@ -67,12 +76,11 @@ export function parseRequestUrl(fullUrl: string): ParsedRequestUrl {
       };
     }
 
-    const parsed = new URL(trimmed, 'http://placeholder.local');
     return {
       protocol: 'https',
       baseUrl: '',
-      path: parsed.pathname || withoutQuery || '/',
-      query: parsed.search || '',
+      path: normalizeRelativeRequestPath(withoutQuery),
+      query,
       isAbsolute: false,
     };
   } catch {
