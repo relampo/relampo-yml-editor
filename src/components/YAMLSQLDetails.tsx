@@ -1,6 +1,7 @@
 import MonacoEditor from '@monaco-editor/react';
 import * as jsyaml from 'js-yaml';
 import { useEffect, useMemo, useState } from 'react';
+import { useLanguage } from '../contexts/LanguageContext';
 import type { StringMap } from '../types/shared';
 import type { YAMLNode } from '../types/yaml';
 import { EditableList } from './EditableList';
@@ -88,6 +89,7 @@ function SQLSelectField({ label, value, options, onValueChange, helper, triggerC
 }
 
 export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
+  const { t } = useLanguage();
   const data = useMemo(() => node.data || {}, [node.data]);
   const connection = data.connection || {};
   const options = connection.options || {};
@@ -177,7 +179,7 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
           value={data.dialect || 'postgres'}
           options={DIALECT_OPTIONS}
           onValueChange={value => handleChange('dialect', value)}
-          helper="Choose the SQL engine used by this request."
+          helper={t('yamlEditor.sql.helpers.database')}
         />
 
         <SQLSelectField
@@ -185,7 +187,7 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
           value={kind}
           options={KIND_OPTIONS}
           onValueChange={value => handleChange('kind', value)}
-          helper="Use `query` for reads and `exec` for writes or DDL statements."
+          helper={t('yamlEditor.sql.helpers.requestMode')}
         />
 
         <div>
@@ -231,7 +233,7 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
           />
         </div>
         <p className="mt-1 text-xs text-zinc-500">
-          Keep variables in `params` instead of concatenating them into the query string.
+          {t('yamlEditor.sql.helpers.query')}
         </p>
       </div>
 
@@ -409,8 +411,8 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
           className="w-full min-h-30 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
         />
         <p className="mt-1 text-xs text-zinc-500">
-          Use YAML for positional arrays or named maps. Scenario variables such as <code>{'{{user_id}}'}</code> are
-          supported.
+          {t('yamlEditor.sql.helpers.params.beforeVar')} <code>{'{{user_id}}'}</code>{' '}
+          {t('yamlEditor.sql.helpers.params.afterVar')}
         </p>
         {paramsError && (
           <div className="mt-2 p-3 bg-red-400/8 border border-red-400/20 rounded text-xs text-red-300">
@@ -435,8 +437,7 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
           variant="minimal"
         />
         <p className="mt-2 text-xs text-zinc-500">
-          Save SQL results into variables. For a single value use `jsonpath('$[0].id')`; for the full result set use
-          `jsonpath('$')`.
+          {t('yamlEditor.sql.helpers.resultMapping')}
         </p>
       </div>
 

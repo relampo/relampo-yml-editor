@@ -546,6 +546,20 @@ export const esTranslations = {
       },
     },
 
+    sql: {
+      helpers: {
+        database: 'Elige el motor SQL que usa este request.',
+        requestMode: 'Usa `query` para lecturas y `exec` para escrituras o sentencias DDL.',
+        query: 'Mantén las variables en `params` en lugar de concatenarlas en el string del query.',
+        params: {
+          beforeVar: 'Usa YAML para arrays posicionales o mapas nombrados. Se admiten variables del escenario como',
+          afterVar: '.',
+        },
+        resultMapping:
+          "Guarda los resultados SQL en variables. Para un solo valor usa `jsonpath('$[0].id')`; para el conjunto completo usa `jsonpath('$')`.",
+      },
+    },
+
     // Estado vacío
     emptyState: {
       description: 'Crea un plan de pruebas desde cero o carga un archivo existente.',

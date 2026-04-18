@@ -546,6 +546,20 @@ export const enTranslations = {
       },
     },
 
+    sql: {
+      helpers: {
+        database: 'Choose the SQL engine used by this request.',
+        requestMode: 'Use `query` for reads and `exec` for writes or DDL statements.',
+        query: 'Keep variables in `params` instead of concatenating them into the query string.',
+        params: {
+          beforeVar: 'Use YAML for positional arrays or named maps. Scenario variables such as',
+          afterVar: 'are supported.',
+        },
+        resultMapping:
+          "Save SQL results into variables. For a single value use `jsonpath('$[0].id')`; for the full result set use `jsonpath('$')`.",
+      },
+    },
+
     // Empty state
     emptyState: {
       description: 'Create a performance test plan from scratch or upload an existing file.',
