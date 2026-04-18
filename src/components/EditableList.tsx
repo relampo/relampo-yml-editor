@@ -106,6 +106,13 @@ export function EditableList({
     setEditingKey(null);
   };
 
+  const resetLocalKey = (originalKey: string) => {
+    setLocalItems(currentItems =>
+      currentItems.map(item => (item.originalKey === originalKey ? { ...item, key: originalKey } : item)),
+    );
+    setEditingKey(null);
+  };
+
   const handleValueSave = () => {
     if (editingValue) {
       const updatedItems = { ...items, [editingValue.key]: editingValue.value };
@@ -223,11 +230,23 @@ export function EditableList({
                       <div className="flex items-center gap-2 shrink-0 w-17.5">
                         <Input
                           value={item.key}
+                          onFocus={() => setEditingKey(item.originalKey)}
                           onChange={e => {
-                            const updatedItems = { ...items };
-                            delete updatedItems[item.originalKey];
-                            updatedItems[e.target.value] = item.value;
-                            onUpdate(updatedItems);
+                            setLocalItems(currentItems =>
+                              currentItems.map(currentItem =>
+                                currentItem.originalKey === item.originalKey
+                                  ? { ...currentItem, key: e.target.value }
+                                  : currentItem,
+                              ),
+                            );
+                          }}
+                          onBlur={() => handleKeyChange(item.originalKey, item.key)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') {
+                              handleKeyChange(item.originalKey, item.key);
+                            } else if (e.key === 'Escape') {
+                              resetLocalKey(item.originalKey);
+                            }
                           }}
                           placeholder={keyPlaceholder}
                           maxLength={50}
@@ -278,11 +297,7 @@ export function EditableList({
                               if (e.key === 'Enter') {
                                 handleKeyChange(item.originalKey, item.key);
                               } else if (e.key === 'Escape') {
-                                setEditingKey(null);
-                                const newItems = localItems.map(i =>
-                                  i.originalKey === item.originalKey ? { ...i, key: item.originalKey } : i,
-                                );
-                                setLocalItems(newItems);
+                                resetLocalKey(item.originalKey);
                               }
                             }}
                             className="w-17.5 shrink-0 px-2 py-1 text-xs font-mono text-purple-400 bg-purple-400/5 border-purple-400/30"
@@ -301,11 +316,7 @@ export function EditableList({
                             </button>
                             <button
                               onClick={() => {
-                                setEditingKey(null);
-                                const newItems = localItems.map(i =>
-                                  i.originalKey === item.originalKey ? { ...i, key: item.originalKey } : i,
-                                );
-                                setLocalItems(newItems);
+                                resetLocalKey(item.originalKey);
                               }}
                               className="p-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 hover:text-red-300 rounded-md transition-all"
                               title="Cancel"
