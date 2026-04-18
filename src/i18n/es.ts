@@ -546,6 +546,108 @@ export const esTranslations = {
       },
     },
 
+    intent: {
+      overview: {
+        title: 'Resumen',
+        description:
+          'El modo intent mapea directamente al contrato del controlador backend. Define el objetivo, elige la agresividad del controlador y el editor completará automáticamente los tiempos, guardrails y límites SLO.',
+      },
+      sections: {
+        contract: {
+          title: 'Contrato Intent',
+          description: 'Estos campos definen qué debe perseguir el controlador y qué tan rápido debe reaccionar.',
+        },
+        general: {
+          title: 'Configuración General',
+          description: 'Valores principales de tiempo de ejecución para el controlador intent.',
+        },
+        guardrails: {
+          title: 'Guardrails de Ejecución',
+          description: 'Limita el controlador para que sepa cuál es la concurrencia mínima y máxima que puede usar.',
+        },
+        slo: {
+          title: 'Límites SLO',
+          description: 'Estos valores se muestran como referencia y se generan automáticamente según el perfil intent seleccionado.',
+        },
+      },
+      fields: {
+        targetUnit: 'Unidad Objetivo',
+        targetValue: 'Valor Objetivo',
+        aggressiveness: 'Agresividad',
+        warmup: 'Warmup',
+        window: 'Ventana',
+        duration: 'Duración',
+        rampUp: 'Ramp Up',
+        rampDown: 'Ramp Down',
+        iteration: 'Iteración',
+        minVus: 'VUs Mínimos',
+        maxVus: 'VUs Máximos',
+        average: 'Promedio',
+        p95MaxMs: 'P95 Máx (ms)',
+        errorMaxPct: 'Error Máx (%)',
+        error4xxMaxPct: '4xx Máx (%)',
+        error5xxMaxPct: '5xx Máx (%)',
+      },
+      options: {
+        targetUnitRps: 'RPS',
+        targetUnitVus: 'VUs',
+        aggressivenessLow: 'Baja',
+        aggressivenessMedium: 'Media',
+        aggressivenessHigh: 'Alta',
+      },
+      placeholders: {
+        notApplicable: 'N/A',
+      },
+      helpers: {
+        targetReqPerMinute: '{value} req/min',
+        targetVuCount: 'Cantidad objetivo de VUs',
+        aggressiveness: 'Controla qué tan rápido reacciona el controlador y qué tan estrictos son los SLO por defecto.',
+        suggested: 'Sugerido: {value}',
+        iteration: 'El modo intent normalmente deja esto vacío.',
+        average: 'Guía visible para el tiempo de respuesta promedio esperado.',
+      },
+    },
+
+    loadVisualization: {
+      title: 'Visualización del Patrón de Carga',
+      preview: 'Vista previa visual',
+      summary: 'Pico {axis}: {peak} | Total: {total}',
+      reference: 'Los rangos de tiempo se muestran como referencia según la configuración actual de carga.',
+      throughputTarget: 'Throughput objetivo: {value} req/min.',
+      executionPhases: 'Fases de Ejecución',
+      warmupSummary: 'warmup {value}s',
+      durationSummary: 'duración {value}s',
+      labels: {
+        time: 'Tiempo',
+        users: 'Usuarios',
+        rps: 'RPS',
+      },
+      phases: {
+        warmup: 'warmup',
+        violating: 'violando',
+        recovering: 'recuperando',
+        stable: 'estable',
+      },
+      ranges: {
+        rampUp: 'Ramp Up',
+        steady: 'Estable',
+        ramp: 'Rampa',
+        target: 'Objetivo',
+        rampDown: 'Ramp Down',
+      },
+      intent: {
+        behaviorVus:
+          'Después del warmup, los VUs se ajustan alrededor del objetivo={target} dentro de {min}..{max} para mantener los SLOs.',
+        behaviorRps:
+          'Después del warmup, el RPS se ajusta alrededor del objetivo={target} respetando los SLOs y los guardrails de VU {min}..{max}.',
+        vuBand:
+          'Banda de control intent: el warmup es solo preparación (cian). Los ajustes comienzan en el marcador amarillo justo después del warmup.',
+        rpsBand:
+          'Banda RPS intent: el warmup es solo preparación y luego comienza la variabilidad controlada del RPS. Guardrails de VU: {min}..{max}.',
+        targetReqPerMinute: '{value} req/min objetivo',
+      },
+    },
+
     sql: {
       helpers: {
         database: 'Elige el motor SQL que usa este request.',

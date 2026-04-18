@@ -3,6 +3,21 @@ export type LoadType = 'constant' | 'ramp' | 'ramp_up_down' | 'throughput' | 'in
 const intentTargetUnits = new Set(['rps', 'vus']);
 const intentAggressivenessLevels = new Set(['low', 'medium', 'high']);
 
+export interface IntentAutoConfig {
+  warmup: string;
+  duration: string;
+  window: string;
+  ramp_up: string;
+  ramp_down: string;
+  min_vus: string;
+  max_vus: string;
+  average_ms: string;
+  p95_max_ms: string;
+  error_rate_max_pct: string;
+  error_4xx_max_pct: string;
+  error_5xx_max_pct: string;
+}
+
 export function normalizeLoadType(rawType: unknown): LoadType {
   const rawLoadType = String(rawType || 'constant')
     .toLowerCase()
@@ -166,6 +181,107 @@ export function parseTimeToSeconds(timeStr: string): number {
   }
 }
 
+function formatSeconds(seconds: number): string {
+  if (seconds < 1) {
+    return `${Math.max(100, Math.round(seconds * 1000))}ms`;
+  }
+  if (seconds % 3600 === 0) {
+    return `${seconds / 3600}h`;
+  }
+  if (seconds % 60 === 0) {
+    return `${seconds / 60}m`;
+  }
+  return `${seconds}s`;
+}
+
+function roundToStep(value: number, step: number): number {
+  return Math.round(value / step) * step;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function formatPercent(value: number): string {
+  const rounded = Math.round(value * 10) / 10;
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+}
+
+export function getIntentAutoConfig(data: Record<string, any> = {}): IntentAutoConfig {
+  const targetUnit = String(data.target_unit || 'rps').toLowerCase().trim() === 'vus' ? 'vus' : 'rps';
+  const aggressiveness = intentAggressivenessLevels.has(String(data.aggressiveness || '').toLowerCase())
+    ? String(data.aggressiveness).toLowerCase()
+    : 'medium';
+  const targetValue = Math.max(1, parseFloat(String(data.target_value || '0')) || 3);
+  const normalizedScale = targetUnit === 'vus' ? targetValue : targetValue / 8;
+
+  const durationMinutesByAggressiveness = {
+    low: 6,
+    medium: 10,
+    high: 14,
+  } as const;
+  const windowSecondsByAggressiveness = {
+    low: 5,
+    medium: 2,
+    high: 1,
+  } as const;
+  const averageMsByAggressiveness = {
+    low: 350,
+    medium: 250,
+    high: 180,
+  } as const;
+  const p95MsByAggressiveness = {
+    low: 900,
+    medium: 800,
+    high: 550,
+  } as const;
+  const errorMaxByAggressiveness = {
+    low: 2,
+    medium: 1,
+    high: 0.5,
+  } as const;
+
+  const durationMinutes = clamp(
+    durationMinutesByAggressiveness[aggressiveness as keyof typeof durationMinutesByAggressiveness] +
+      Math.floor(normalizedScale / 40) * 2,
+    4,
+    20,
+  );
+  const durationSeconds = durationMinutes * 60;
+  const warmupSeconds = clamp(roundToStep(durationSeconds * 0.05, 5), 15, 60);
+  const rampUpSeconds = clamp(roundToStep(durationSeconds * 0.1, 5), 20, 120);
+  const rampDownSeconds = clamp(roundToStep(durationSeconds * 0.1, 5), 20, 120);
+  const minVus =
+    targetUnit === 'vus'
+      ? Math.max(1, Math.floor(targetValue * 0.6))
+      : Math.max(1, Math.ceil(targetValue / 20));
+  const maxVus =
+    targetUnit === 'vus'
+      ? Math.max(minVus + 1, Math.ceil(targetValue * 1.4))
+      : Math.max(minVus + 2, Math.ceil(targetValue / 4));
+  const latencySlack = Math.min(250, Math.floor(normalizedScale / 30) * 50);
+  const averageMs = averageMsByAggressiveness[aggressiveness as keyof typeof averageMsByAggressiveness] + latencySlack;
+  const p95MaxMs = p95MsByAggressiveness[aggressiveness as keyof typeof p95MsByAggressiveness] + latencySlack;
+  const errorRateMaxPct = errorMaxByAggressiveness[aggressiveness as keyof typeof errorMaxByAggressiveness];
+  const error4xxMaxPct = Math.max(errorRateMaxPct, errorRateMaxPct * 2);
+  const error5xxMaxPct = Math.max(0.1, errorRateMaxPct / 2);
+
+  return {
+    warmup: formatSeconds(warmupSeconds),
+    duration: formatSeconds(durationSeconds),
+    window: formatSeconds(windowSecondsByAggressiveness[aggressiveness as keyof typeof windowSecondsByAggressiveness]),
+    ramp_up: formatSeconds(rampUpSeconds),
+    ramp_down: formatSeconds(rampDownSeconds),
+    min_vus: String(minVus),
+    max_vus: String(maxVus),
+    average_ms: String(averageMs),
+    p95_max_ms: String(p95MaxMs),
+    error_rate_max_pct: formatPercent(errorRateMaxPct),
+    error_4xx_max_pct: formatPercent(error4xxMaxPct),
+    error_5xx_max_pct: formatPercent(error5xxMaxPct),
+  };
+}
+
 export function limitedInputValue(value: string): string {
   return value.slice(0, 5);
 }
@@ -181,7 +297,10 @@ export function buildLoadDataForType(
   options: LoadDataBuildOptions = {},
 ): Record<string, any> {
   const { coerceIntentEnums = true, preserveExplicitEmpty = false } = options;
-  const defaults = loadTypeDefaults[loadType] || {};
+  const defaults =
+    loadType === 'intent'
+      ? { ...loadTypeDefaults.intent, ...getIntentAutoConfig(currentData) }
+      : loadTypeDefaults[loadType] || {};
   const allowed = new Set(loadTypeAllowedKeys[loadType] || ['type']);
   const source: Record<string, any> = { ...currentData };
   const normalized: Record<string, any> = { type: loadType };

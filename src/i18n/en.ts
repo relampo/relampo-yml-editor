@@ -546,6 +546,105 @@ export const enTranslations = {
       },
     },
 
+    intent: {
+      overview: {
+        title: 'Overview',
+        description:
+          'Intent mode maps directly to the backend controller contract. Define the target, choose controller aggressiveness, and the editor will fill the timing, guardrails, and SLO bounds automatically.',
+      },
+      sections: {
+        contract: {
+          title: 'Intent Contract',
+          description: 'These fields define what the controller should chase and how quickly it should react.',
+        },
+        general: {
+          title: 'General Setting',
+          description: 'Core execution timing values for the intent controller.',
+        },
+        guardrails: {
+          title: 'Execution Guardrails',
+          description: 'Bound the controller so it knows the minimum and maximum concurrency it can use.',
+        },
+        slo: {
+          title: 'SLO Bounds',
+          description: 'These values are shown for visibility and generated automatically from the selected intent profile.',
+        },
+      },
+      fields: {
+        targetUnit: 'Target Unit',
+        targetValue: 'Target Value',
+        aggressiveness: 'Aggressiveness',
+        warmup: 'Warmup',
+        window: 'Window',
+        duration: 'Duration',
+        rampUp: 'Ramp Up',
+        rampDown: 'Ramp Down',
+        iteration: 'Iteration',
+        minVus: 'Min VUs',
+        maxVus: 'Max VUs',
+        average: 'Average',
+        p95MaxMs: 'P95 Max (ms)',
+        errorMaxPct: 'Error Max (%)',
+        error4xxMaxPct: '4xx Max (%)',
+        error5xxMaxPct: '5xx Max (%)',
+      },
+      options: {
+        targetUnitRps: 'RPS',
+        targetUnitVus: 'VUs',
+        aggressivenessLow: 'Low',
+        aggressivenessMedium: 'Medium',
+        aggressivenessHigh: 'High',
+      },
+      placeholders: {
+        notApplicable: 'N/A',
+      },
+      helpers: {
+        targetReqPerMinute: '{value} req/min',
+        targetVuCount: 'Target VU count',
+        aggressiveness: 'Controls how quickly the controller reacts and how strict the default SLOs are.',
+        suggested: 'Suggested: {value}',
+        iteration: 'Intent mode usually leaves this empty.',
+        average: 'Displayed guidance for the expected average response time.',
+      },
+    },
+
+    loadVisualization: {
+      title: 'Load Pattern Visualization',
+      preview: 'Visual preview',
+      summary: 'Peak {axis}: {peak} | Total: {total}',
+      reference: 'Time ranges are shown for reference based on the current load configuration.',
+      throughputTarget: 'Target throughput: {value} req/min.',
+      executionPhases: 'Execution Phases',
+      warmupSummary: 'warmup {value}s',
+      durationSummary: 'duration {value}s',
+      labels: {
+        time: 'Time',
+        users: 'Users',
+        rps: 'RPS',
+      },
+      phases: {
+        warmup: 'warmup',
+        violating: 'violating',
+        recovering: 'recovering',
+        stable: 'stable',
+      },
+      ranges: {
+        rampUp: 'Ramp Up',
+        steady: 'Steady',
+        ramp: 'Ramp',
+        target: 'Target',
+        rampDown: 'Ramp Down',
+      },
+      intent: {
+        behaviorVus: 'After warmup, VUs are adjusted around target={target} within {min}..{max} to keep SLOs.',
+        behaviorRps:
+          'After warmup, RPS is adjusted around target={target} while respecting SLOs and VU guardrails {min}..{max}.',
+        vuBand: 'Intent control band: warmup is prep-only (cyan). Adjustments begin at the yellow marker right after warmup.',
+        rpsBand: 'Intent RPS band: warmup is prep-only, then controlled RPS variability. VU guardrails: {min}..{max}.',
+        targetReqPerMinute: '{value} req/min target',
+      },
+    },
+
     sql: {
       helpers: {
         database: 'Choose the SQL engine used by this request.',

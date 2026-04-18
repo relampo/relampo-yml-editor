@@ -1,6 +1,6 @@
 import { Gauge, Mountain, Target, TrendingUp, Users } from 'lucide-react';
 import { LoadVisualization } from './LoadVisualization';
-import { buildLoadDataForType, normalizeLoadType, selectedLoadButtonStyle, type LoadType } from './loadUtils';
+import { buildLoadDataForType, getIntentAutoConfig, normalizeLoadType, selectedLoadButtonStyle, type LoadType } from './loadUtils';
 import { ConstantLoadMode } from './load-modes/ConstantLoadMode';
 import { IntentLoadMode } from './load-modes/IntentLoadMode';
 import { RampLoadMode } from './load-modes/RampLoadMode';
@@ -29,6 +29,13 @@ export function LoadDetails({ node, onNodeUpdate }: NodeDetailProps) {
     if (field === 'type') {
       const selectedType = normalizeLoadType(value);
       updateData(buildLoadDataForType(selectedType, data));
+      return;
+    }
+
+    if (loadType === 'intent' && ['target_unit', 'target_value', 'aggressiveness'].includes(field)) {
+      const nextData = { ...data, [field]: value };
+      const { average_ms: _averageMs, ...autoConfig } = getIntentAutoConfig(nextData);
+      updateData({ ...nextData, ...autoConfig });
       return;
     }
 

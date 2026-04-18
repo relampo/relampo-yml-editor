@@ -65,6 +65,24 @@ export function LoadField({
   );
 }
 
+interface LoadDisplayFieldProps {
+  label: string;
+  value: string | number;
+  helpText?: string;
+}
+
+export function LoadDisplayField({ label, value, helpText }: LoadDisplayFieldProps) {
+  return (
+    <div className="space-y-2">
+      <label className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">{label}</label>
+      <div className="flex h-10 w-full items-center rounded-md border border-white/10 bg-[#151515] px-3 py-2 text-sm font-mono text-zinc-200">
+        {value}
+      </div>
+      {helpText && <p className="text-[11px] leading-relaxed text-zinc-500">{helpText}</p>}
+    </div>
+  );
+}
+
 interface LoadSelectFieldProps {
   label: string;
   value: string;

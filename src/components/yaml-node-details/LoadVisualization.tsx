@@ -1,4 +1,5 @@
-import { loadColors, parseTimeToSeconds, type LoadType } from './loadUtils';
+import { useLanguage } from '../../contexts/LanguageContext';
+import { getIntentAutoConfig, loadColors, parseTimeToSeconds, type LoadType } from './loadUtils';
 
 interface LoadVisualizationProps {
   data: Record<string, any>;
@@ -6,14 +7,27 @@ interface LoadVisualizationProps {
 }
 
 export function LoadVisualization({ data, loadType }: LoadVisualizationProps) {
-  const visualizationPoints = getVisualizationPoints(data, loadType);
-  const intentTargetUnit = String(data.target_unit || 'rps').toLowerCase();
-  const intentTargetValue = Math.max(0, parseFloat(String(data.target_value || '0')) || 0);
+  const { t } = useLanguage();
+  const effectiveData =
+    loadType === 'intent'
+      ? {
+          ...getIntentAutoConfig(data),
+          ...Object.fromEntries(Object.entries(data).filter(([, value]) => value !== '' && value !== undefined)),
+        }
+      : data;
+  const format = (key: string, values: Record<string, string | number> = {}) =>
+    Object.entries(values).reduce(
+      (text, [token, value]) => text.replace(new RegExp(`\\{${token}\\}`, 'g'), String(value)),
+      t(key),
+    );
+  const visualizationPoints = getVisualizationPoints(effectiveData, loadType);
+  const intentTargetUnit = String(effectiveData.target_unit || 'rps').toLowerCase();
+  const intentTargetValue = Math.max(0, parseFloat(String(effectiveData.target_value || '0')) || 0);
   const isIntent = loadType === 'intent';
   const isIntentVus = isIntent && intentTargetUnit === 'vus';
   const isIntentRps = isIntent && intentTargetUnit === 'rps';
-  const intentMinVus = Math.max(0, parseFloat(String(data.min_vus || '0')) || 0);
-  const intentMaxVus = Math.max(intentMinVus, parseFloat(String(data.max_vus || '0')) || intentMinVus);
+  const intentMinVus = Math.max(0, parseFloat(String(effectiveData.min_vus || '0')) || 0);
+  const intentMaxVus = Math.max(intentMinVus, parseFloat(String(effectiveData.max_vus || '0')) || intentMinVus);
   const showIntentVuBand = isIntentVus && intentMaxVus > intentMinVus;
   const intentRpsBandHalf = isIntentRps ? Math.max(0.3, intentTargetValue * 0.12) : 0;
   const intentRpsBandMin = Math.max(0, intentTargetValue - intentRpsBandHalf);
@@ -27,20 +41,33 @@ export function LoadVisualization({ data, loadType }: LoadVisualizationProps) {
   const maxTime = Math.max(...visualizationPoints.map(point => point.time), 60);
   const chartHeightPx = 184;
   const yAxisLabel =
-    loadType === 'throughput' || (loadType === 'intent' && intentTargetUnit === 'rps') ? 'RPS' : 'Users';
+    loadType === 'throughput' || (loadType === 'intent' && intentTargetUnit === 'rps')
+      ? t('yamlEditor.loadVisualization.labels.rps')
+      : t('yamlEditor.loadVisualization.labels.users');
   const vizColor = loadColors[loadType];
-  const throughputPerMinute = (parseFloat(String(data.target_rps || '0')) || 0) * 60;
-  const intentTargetPerMinute = (parseFloat(String(data.target_value || '0')) || 0) * 60;
+  const throughputPerMinute = (parseFloat(String(effectiveData.target_rps || '0')) || 0) * 60;
+  const intentTargetPerMinute = (parseFloat(String(effectiveData.target_value || '0')) || 0) * 60;
 
   const timeAxisTicks = [0, 1, 2, 3, 4].map(index => ({
     x: 40 + index * 85,
     label: formatTimeLabel(Math.round((maxTime / 4) * index)),
   }));
 
-  const timeRanges = getTimeRanges(data, loadType, maxTime);
-  const transitionMarkers = getTransitionMarkers(data, loadType, maxTime);
-  const horizontalRanges = timeRanges.filter(range => range.label === 'Steady' || range.label === 'Target');
-  const verticalRanges = timeRanges.filter(range => range.label !== 'Steady' && range.label !== 'Target');
+  const timeRanges = getTimeRanges(effectiveData, loadType, maxTime).map(range => ({
+    ...range,
+    label: t(`yamlEditor.loadVisualization.ranges.${range.key}`),
+  }));
+  const transitionMarkers = getTransitionMarkers(effectiveData, loadType, maxTime);
+  const horizontalRanges = timeRanges.filter(
+    range =>
+      range.key === 'steady' ||
+      range.key === 'target',
+  );
+  const verticalRanges = timeRanges.filter(
+    range =>
+      range.key !== 'steady' &&
+      range.key !== 'target',
+  );
   const chartPoints = visualizationPoints.map(point => ({
     ...point,
     x: 40 + (point.time / maxTime) * 340,
@@ -97,7 +124,7 @@ export function LoadVisualization({ data, loadType }: LoadVisualizationProps) {
     max: 170 - (intentRpsBandMax / maxUsers) * 160,
   };
   const intentRpsBandHeight = Math.max(0, intentRpsBandY.min - intentRpsBandY.max);
-  const intentWarmupSec = Math.max(0, parseTimeToSeconds(String(data.warmup || '0s')));
+  const intentWarmupSec = Math.max(0, parseTimeToSeconds(String(effectiveData.warmup || '0s')));
   const intentWarmupX = 40 + (340 * Math.min(intentWarmupSec, maxTime)) / maxTime;
   const intentMinY = 170 - (intentMinVus / maxUsers) * 160;
   const intentWarmupIdleLine =
@@ -124,65 +151,76 @@ export function LoadVisualization({ data, loadType }: LoadVisualizationProps) {
   const intentWarmupPct = (maxTime > 0 ? Math.max(0, Math.min(1, intentWarmupSec / maxTime)) : 0) * 100;
   const intentControlPct = Math.max(0, 100 - intentWarmupPct);
   const intentBehaviorHint = isIntentVus
-    ? `After warmup, VUs are adjusted around target=${intentTargetValue.toFixed(0)} within ${intentMinVus.toFixed(0)}..${intentMaxVus.toFixed(0)} to keep SLOs.`
-    : `After warmup, RPS is adjusted around target=${intentTargetValue.toFixed(2)} while respecting SLOs and VU guardrails ${intentMinVus.toFixed(0)}..${intentMaxVus.toFixed(0)}.`;
+    ? format('yamlEditor.loadVisualization.intent.behaviorVus', {
+        target: intentTargetValue.toFixed(0),
+        min: intentMinVus.toFixed(0),
+        max: intentMaxVus.toFixed(0),
+      })
+    : format('yamlEditor.loadVisualization.intent.behaviorRps', {
+        target: intentTargetValue.toFixed(2),
+        min: intentMinVus.toFixed(0),
+        max: intentMaxVus.toFixed(0),
+      });
 
   return (
     <div>
       <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
-        Load Pattern Visualization
+        {t('yamlEditor.loadVisualization.title')}
       </label>
       <div className="bg-zinc-900/50 border border-white/10 rounded-lg p-3">
         <div className="mb-2 flex items-center justify-between text-[11px] text-zinc-500">
-          <span>Visual preview</span>
+          <span>{t('yamlEditor.loadVisualization.preview')}</span>
           <span className="font-mono">
-            Peak {yAxisLabel}: {maxUsers.toFixed(0)} | Total:{' '}
-            {maxTime >= 60 ? `${Math.round(maxTime / 60)}m` : `${maxTime}s`}
+            {format('yamlEditor.loadVisualization.summary', {
+              axis: yAxisLabel,
+              peak: maxUsers.toFixed(0),
+              total: formatTimeLabel(maxTime),
+            })}
           </span>
         </div>
         <div className="mb-2 text-[11px] text-zinc-400">
-          Time ranges are shown for reference based on the current load configuration.
+          {t('yamlEditor.loadVisualization.reference')}
         </div>
         {loadType === 'throughput' && (
           <div className="mb-2 text-[11px] text-zinc-400">
-            Target throughput: {throughputPerMinute.toFixed(0)} req/min.
+            {format('yamlEditor.loadVisualization.throughputTarget', { value: throughputPerMinute.toFixed(0) })}
           </div>
         )}
         {showIntentVuBand && (
           <div className="mb-2 text-[11px] text-amber-300/90">
-            Intent control band: warmup is prep-only (cyan). Ajustes comienzan en el marcador amarillo, justo al
-            terminar warmup.
+            {t('yamlEditor.loadVisualization.intent.vuBand')}
           </div>
         )}
         {isIntentRps && (
           <div className="mb-2 text-[11px] text-emerald-300/90">
-            Intent RPS band: warmup is prep-only, then controlled RPS variability. VU guardrails:{' '}
-            {intentMinVus.toFixed(0)}..
-            {intentMaxVus.toFixed(0)}.
+            {format('yamlEditor.loadVisualization.intent.rpsBand', {
+              min: intentMinVus.toFixed(0),
+              max: intentMaxVus.toFixed(0),
+            })}
           </div>
         )}
         {isIntent && (
-          <div className="mb-3 rounded-lg border border-white/10 bg-white/[0.03] p-2.5">
+          <div className="mb-3 rounded-lg border border-white/10 bg-white/3 p-2.5">
             <div className="mb-2 flex items-center justify-between text-[10px] uppercase tracking-wider text-zinc-400">
-              <span>Execution Phases</span>
+              <span>{t('yamlEditor.loadVisualization.executionPhases')}</span>
               <span className="font-mono text-[10px] normal-case">{intentBehaviorHint}</span>
             </div>
             <div className="mb-2 flex flex-wrap items-center gap-1.5 text-[10px]">
               <span className="inline-flex items-center gap-1 rounded-full border border-cyan-300/40 bg-cyan-400/15 px-2 py-0.5 text-cyan-200">
                 <span className="h-1.5 w-1.5 rounded-full bg-cyan-300" />
-                warmup
+                {t('yamlEditor.loadVisualization.phases.warmup')}
               </span>
               <span className="inline-flex items-center gap-1 rounded-full border border-rose-300/40 bg-rose-400/15 px-2 py-0.5 text-rose-200">
                 <span className="h-1.5 w-1.5 rounded-full bg-rose-300" />
-                violating
+                {t('yamlEditor.loadVisualization.phases.violating')}
               </span>
               <span className="inline-flex items-center gap-1 rounded-full border border-amber-300/40 bg-amber-400/15 px-2 py-0.5 text-amber-200">
                 <span className="h-1.5 w-1.5 rounded-full bg-amber-300" />
-                recovering
+                {t('yamlEditor.loadVisualization.phases.recovering')}
               </span>
               <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300/40 bg-emerald-400/15 px-2 py-0.5 text-emerald-200">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
-                stable
+                {t('yamlEditor.loadVisualization.phases.stable')}
               </span>
             </div>
             <div className="relative h-2.5 rounded-full bg-zinc-800/80 overflow-hidden">
@@ -198,17 +236,25 @@ export function LoadVisualization({ data, loadType }: LoadVisualizationProps) {
                 }}
               />
               <div
-                className="absolute top-[-2px] h-[14px] w-[2px] bg-cyan-200/90"
+                className="absolute -top-0.5 h-3.5 w-0.5 bg-cyan-200/90"
                 style={{ left: `calc(${intentWarmupPct}% - 1px)` }}
               />
             </div>
             <div className="mt-2 grid grid-cols-3 text-[10px] text-zinc-400">
-              <div className="text-left">0s</div>
-              <div className="text-center font-mono">warmup {Math.round(intentWarmupSec)}s</div>
-              <div className="text-right font-mono">duration {Math.round(maxTime)}s</div>
+              <div className="text-left">{formatTimeLabel(0)}</div>
+              <div className="text-center font-mono">
+                {format('yamlEditor.loadVisualization.warmupSummary', { value: Math.round(intentWarmupSec) })}
+              </div>
+              <div className="text-right font-mono">
+                {format('yamlEditor.loadVisualization.durationSummary', { value: Math.round(maxTime) })}
+              </div>
             </div>
             {isIntentRps && (
-              <div className="mt-2 text-[10px] text-zinc-400">{intentTargetPerMinute.toFixed(0)} req/min target</div>
+              <div className="mt-2 text-[10px] text-zinc-400">
+                {format('yamlEditor.loadVisualization.intent.targetReqPerMinute', {
+                  value: intentTargetPerMinute.toFixed(0),
+                })}
+              </div>
             )}
           </div>
         )}
@@ -478,7 +524,7 @@ export function LoadVisualization({ data, loadType }: LoadVisualizationProps) {
             textAnchor="middle"
             fontWeight="600"
           >
-            Time
+            {t('yamlEditor.loadVisualization.labels.time')}
           </text>
           <text
             x="15"
@@ -571,26 +617,27 @@ function getTimeRanges(data: Record<string, any>, loadType: LoadType, maxTime: n
     const rampUp = Math.max(0, parseTimeToSeconds(String(data.ramp_up || '0s')));
     return rampUp > 0
       ? [
-          { label: 'Ramp Up', start: 0, end: Math.min(rampUp, maxTime) },
-          { label: 'Steady', start: Math.min(rampUp, maxTime), end: maxTime },
+          { key: 'rampUp', label: 'Ramp Up', start: 0, end: Math.min(rampUp, maxTime) },
+          { key: 'steady', label: 'Steady', start: Math.min(rampUp, maxTime), end: maxTime },
         ]
-      : [{ label: 'Steady', start: 0, end: maxTime }];
+      : [{ key: 'steady', label: 'Steady', start: 0, end: maxTime }];
   }
   if (loadType === 'ramp') {
-    return [{ label: 'Ramp', start: 0, end: maxTime }];
+    return [{ key: 'ramp', label: 'Ramp', start: 0, end: maxTime }];
   }
   const rampUp = Math.max(0, parseTimeToSeconds(String(data.ramp_up || '0s')));
   const rampDown = Math.max(0, parseTimeToSeconds(String(data.ramp_down || '0s')));
   const steadyStart = Math.min(rampUp, maxTime);
   const steadyEnd = Math.max(steadyStart, maxTime - rampDown);
   return [
-    { label: 'Ramp Up', start: 0, end: steadyStart },
+    { key: 'rampUp', label: 'Ramp Up', start: 0, end: steadyStart },
     {
+      key: loadType === 'throughput' ? 'target' : 'steady',
       label: loadType === 'throughput' ? 'Target' : 'Steady',
       start: steadyStart,
       end: steadyEnd,
     },
-    { label: 'Ramp Down', start: steadyEnd, end: maxTime },
+    { key: 'rampDown', label: 'Ramp Down', start: steadyEnd, end: maxTime },
   ].filter(range => range.end > range.start);
 }
 
