@@ -25,8 +25,8 @@ function buildUpdatedNode(node: YAMLNode, updatedData: NodeUpdateData): YAMLNode
 
   return {
     ...node,
-    type: requestPresentation?.type || node.type,
-    name: requestPresentation?.name || __name || node.name,
+    type: requestPresentation?.type ?? node.type,
+    name: requestPresentation?.name ?? __name ?? node.name,
     data: cleanData,
   };
 }

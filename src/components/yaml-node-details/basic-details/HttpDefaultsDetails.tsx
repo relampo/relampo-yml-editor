@@ -9,6 +9,9 @@ export function HttpDefaultsDetails({ node, onNodeUpdate }: NodeDetailProps) {
   const { data, updateData } = createNodeDataUpdater(node, onNodeUpdate);
   const defaults = data as Partial<HttpDefaults>;
   const headers = (defaults.headers || {}) as StringMap;
+  const preservedDefaults = Object.fromEntries(
+    Object.entries(defaults).filter(([key, value]) => key !== 'headers' && key !== 'auth' && typeof value !== 'string'),
+  ) as Partial<HttpDefaults>;
   const mainFields = Object.fromEntries(
     Object.entries(defaults)
       .filter(([key, value]) => key !== 'headers' && key !== 'auth' && typeof value === 'string')
@@ -17,6 +20,7 @@ export function HttpDefaultsDetails({ node, onNodeUpdate }: NodeDetailProps) {
 
   const handleMainFieldsUpdate = (fields: StringMap) => {
     updateData({
+      ...preservedDefaults,
       ...fields,
       headers: defaults.headers || {},
       ...(defaults.auth ? { auth: defaults.auth } : {}),
