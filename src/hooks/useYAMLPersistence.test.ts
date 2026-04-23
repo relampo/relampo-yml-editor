@@ -154,6 +154,31 @@ describe('handleSave', () => {
 
     expect(setError).toHaveBeenCalledWith('boom');
   });
+
+  it('reports browser storage quota failures without marking the draft saved', () => {
+    const setError = vi.fn();
+    const setIsDirty = vi.fn();
+    const storageSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('Quota exceeded', 'QuotaExceededError');
+    });
+    const params = makeParams({ setError, setIsDirty });
+    const { result } = renderHook(() => {
+      const serializeDebounceRef = useRef<number | null>(null);
+      return useYAMLPersistence({ ...params, serializeDebounceRef });
+    });
+
+    act(() => {
+      result.current.handleSave();
+    });
+
+    expect(setError).toHaveBeenCalledWith(
+      'This YAML is too large for browser autosave. Download the YAML to keep your changes.',
+    );
+    expect(setIsDirty).not.toHaveBeenCalledWith(false);
+    expect(result.current.lastSavedAt).toBeNull();
+
+    storageSpy.mockRestore();
+  });
 });
 
 // ─── handleDownload ───────────────────────────────────────────────────────

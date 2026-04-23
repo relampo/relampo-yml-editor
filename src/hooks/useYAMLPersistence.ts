@@ -9,6 +9,12 @@ function normalizeYamlFileName(name: string): string {
 
 const EMPTY_PARALLEL_ERROR = 'Parallel controller must contain at least one child step';
 
+function getDraftStorageError(language: string): string {
+  return language === 'es'
+    ? 'El YAML es demasiado grande para el autoguardado del navegador. Descarga el YAML para conservar los cambios.'
+    : 'This YAML is too large for browser autosave. Download the YAML to keep your changes.';
+}
+
 function stripResponsesFromObject(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(stripResponsesFromObject);
   if (value && typeof value === 'object') {
@@ -106,9 +112,16 @@ export function useYAMLPersistence({
     }
 
     const now = new Date();
-    localStorage.setItem('relampo-yaml-draft', yamlToPersist);
-    localStorage.setItem('relampo-yaml-draft-timestamp', now.toISOString());
-    localStorage.setItem('relampo-yaml-draft-filename', currentFileName);
+    try {
+      localStorage.setItem('relampo-yaml-draft', yamlToPersist);
+      localStorage.setItem('relampo-yaml-draft-timestamp', now.toISOString());
+      localStorage.setItem('relampo-yaml-draft-filename', currentFileName);
+    } catch {
+      setError(getDraftStorageError(language));
+      return;
+    }
+
+    setError(null);
     setHasDocumentActivity(true);
     setIsDirty(false);
     setLastSavedAt(now.toLocaleTimeString());
@@ -160,7 +173,13 @@ export function useYAMLPersistence({
 
   // Autosave
   useEffect(() => {
-    if (!isDirty || !isInitialized) return;
+    if (!isDirty || !isInitialized) {
+      if (autosaveDebounceRef.current) {
+        window.clearTimeout(autosaveDebounceRef.current);
+        autosaveDebounceRef.current = null;
+      }
+      return;
+    }
     if (autosaveDebounceRef.current) window.clearTimeout(autosaveDebounceRef.current);
     autosaveDebounceRef.current = window.setTimeout(() => {
       handleSave();
