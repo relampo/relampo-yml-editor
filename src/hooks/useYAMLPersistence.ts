@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import yaml from 'js-yaml';
+import { saveActiveDraft } from '../utils/yamlDraftStorage';
 
 function normalizeYamlFileName(name: string): string {
   const trimmed = (name || '').trim();
@@ -11,8 +12,8 @@ const EMPTY_PARALLEL_ERROR = 'Parallel controller must contain at least one chil
 
 function getDraftStorageError(language: string): string {
   return language === 'es'
-    ? 'El YAML es demasiado grande para el autoguardado del navegador. Descarga el YAML para conservar los cambios.'
-    : 'This YAML is too large for browser autosave. Download the YAML to keep your changes.';
+    ? 'No se pudo autoguardar el YAML en este navegador. Descarga el YAML para conservar los cambios.'
+    : 'Could not autosave this YAML in the browser. Download the YAML to keep your changes.';
 }
 
 function stripResponsesFromObject(value: unknown): unknown {
@@ -62,6 +63,7 @@ interface UseYAMLPersistenceParams {
   yamlCode: string;
   currentFileName: string;
   language: string;
+  restoredDraftUpdatedAt?: string | null;
   getPersistableYaml: () => string;
   setHasDocumentActivity: (v: boolean) => void;
   setError: (v: string | null) => void;
@@ -75,6 +77,7 @@ export function useYAMLPersistence({
   yamlCode,
   currentFileName,
   language,
+  restoredDraftUpdatedAt = null,
   getPersistableYaml,
   setHasDocumentActivity,
   setError,
@@ -92,7 +95,7 @@ export function useYAMLPersistence({
     actionMessageTimeoutRef.current = window.setTimeout(() => setActionMessage(''), 1800);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (serializeDebounceRef.current) {
       window.clearTimeout(serializeDebounceRef.current);
       serializeDebounceRef.current = null;
@@ -113,9 +116,11 @@ export function useYAMLPersistence({
 
     const now = new Date();
     try {
-      localStorage.setItem('relampo-yaml-draft', yamlToPersist);
-      localStorage.setItem('relampo-yaml-draft-timestamp', now.toISOString());
-      localStorage.setItem('relampo-yaml-draft-filename', currentFileName);
+      await saveActiveDraft({
+        yaml: yamlToPersist,
+        fileName: currentFileName,
+        updatedAt: now.toISOString(),
+      });
     } catch {
       setError(getDraftStorageError(language));
       return;
@@ -127,6 +132,13 @@ export function useYAMLPersistence({
     setLastSavedAt(now.toLocaleTimeString());
     showActionMessage(language === 'es' ? 'Cambios guardados' : 'Changes saved');
   };
+
+  useEffect(() => {
+    if (!restoredDraftUpdatedAt) return;
+    const restoredDate = new Date(restoredDraftUpdatedAt);
+    if (Number.isNaN(restoredDate.getTime())) return;
+    setLastSavedAt(restoredDate.toLocaleTimeString());
+  }, [restoredDraftUpdatedAt]);
 
   const handleDownload = (includeResponses: boolean) => {
     if (serializeDebounceRef.current) {
@@ -182,7 +194,7 @@ export function useYAMLPersistence({
     }
     if (autosaveDebounceRef.current) window.clearTimeout(autosaveDebounceRef.current);
     autosaveDebounceRef.current = window.setTimeout(() => {
-      handleSave();
+      void handleSave();
     }, 2000);
     return () => {
       if (autosaveDebounceRef.current) window.clearTimeout(autosaveDebounceRef.current);
@@ -227,7 +239,7 @@ export function useYAMLPersistence({
           handleDownload(true);
           return;
         }
-        handleSave();
+        void handleSave();
       }
     };
     window.addEventListener('keydown', onKeyDown);

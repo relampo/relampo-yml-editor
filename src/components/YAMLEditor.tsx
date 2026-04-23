@@ -6,6 +6,7 @@ import { useResizePanel } from '../hooks/useResizePanel';
 import { useYAMLPersistence } from '../hooks/useYAMLPersistence';
 import type { RedirectSourceInfo, RedirectedRequestInfo, YAMLNode } from '../types/yaml';
 import { applyNodeUpdateToTree } from '../utils/nodeUpdate';
+import { getActiveDraft } from '../utils/yamlDraftStorage';
 import { getDocumentMetrics } from '../utils/yamlDocumentLimits';
 import { parseYAMLToTree, treeToYAML } from '../utils/yamlParser';
 import { validateYAMLSemantics } from '../utils/yamlSemanticValidation';
@@ -16,6 +17,12 @@ import { YAMLNodeDetails } from './YAMLNodeDetails';
 import { YAMLTreeView } from './YAMLTreeView';
 
 const EMPTY_PARALLEL_ERROR = 'Parallel controller must contain at least one child step';
+
+function getDraftRestoreError(language: string): string {
+  return language === 'es'
+    ? 'No se pudo restaurar el autoguardado del navegador. Puedes seguir editando o cargar un YAML.'
+    : 'Could not restore the browser autosave. You can keep editing or upload a YAML file.';
+}
 
 type ParseWorkerRequest = {
   id: number;
@@ -108,6 +115,7 @@ export function YAMLEditor() {
   const [isParsing, setIsParsing] = useState(false);
   const [isFileLoading, setIsFileLoading] = useState(false);
   const [isTreeOutdated, setIsTreeOutdated] = useState(false);
+  const [restoredDraftUpdatedAt, setRestoredDraftUpdatedAt] = useState<string | null>(null);
   const selectedNodeRef = useRef<YAMLNode | null>(null);
   const selectedNodeIdsRef = useRef<string[]>([]);
 
@@ -188,6 +196,7 @@ export function YAMLEditor() {
     yamlCode,
     currentFileName,
     language,
+    restoredDraftUpdatedAt,
     getPersistableYaml: retrieveYamlForSaving,
     setHasDocumentActivity,
     setError,
@@ -330,13 +339,46 @@ export function YAMLEditor() {
 
   // Initialize on mount
   useEffect(() => {
-    if (!isInitialized) {
-      const defaultYaml = yamlContent || '';
-      setYamlCode(defaultYaml);
-      setYamlContent(defaultYaml);
-      syncCodeToTree(defaultYaml, { force: true });
+    if (isInitialized) return;
+
+    let isCancelled = false;
+
+    const initializeDocument = async () => {
+      let initialYaml = yamlContent || '';
+      let initialFileName = 'relampo-script.yaml';
+      let initialUpdatedAt: string | null = null;
+      let restoreError: string | null = null;
+
+      try {
+        const draft = await getActiveDraft();
+        if (draft) {
+          initialYaml = draft.yaml;
+          initialFileName = normalizeYamlFileName(draft.fileName);
+          initialUpdatedAt = draft.updatedAt;
+        }
+      } catch {
+        restoreError = getDraftRestoreError(language);
+      }
+
+      if (isCancelled) return;
+
+      if (initialYaml.trim()) setIsFileLoading(true);
+      setYamlCode(initialYaml);
+      setYamlContent(initialYaml);
+      setCurrentFileName(initialFileName);
+      setRestoredDraftUpdatedAt(initialUpdatedAt);
+      setHasDocumentActivity(Boolean(initialUpdatedAt));
+      setIsDirty(false);
+      syncCodeToTree(initialYaml, { force: true });
+      if (restoreError) setError(restoreError);
       setIsInitialized(true);
-    }
+    };
+
+    void initializeDocument();
+
+    return () => {
+      isCancelled = true;
+    };
   }, []);
 
   // Cleanup debounce timers

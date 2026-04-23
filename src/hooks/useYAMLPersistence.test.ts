@@ -2,6 +2,21 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useRef } from 'react';
 import { useYAMLPersistence } from './useYAMLPersistence';
+import { saveActiveDraft } from '../utils/yamlDraftStorage';
+
+vi.mock('../utils/yamlDraftStorage', () => ({
+  saveActiveDraft: vi.fn(),
+}));
+
+const saveActiveDraftMock = vi.mocked(saveActiveDraft);
+
+beforeEach(() => {
+  saveActiveDraftMock.mockImplementation(async draft => draft);
+});
+
+afterEach(() => {
+  saveActiveDraftMock.mockReset();
+});
 
 // ─── helpers ──────────────────────────────────────────────────────────────
 
@@ -25,56 +40,63 @@ function makeParams(overrides: Partial<Parameters<typeof useYAMLPersistence>[0]>
 
 describe('handleSave', () => {
   beforeEach(() => {
-    localStorage.clear();
     vi.useFakeTimers();
   });
   afterEach(() => {
     vi.useRealTimers();
   });
 
-  it('writes yaml draft to localStorage', () => {
+  it('writes yaml draft to IndexedDB storage', async () => {
     const params = makeParams();
     const { result } = renderHook(() => {
       const serializeDebounceRef = useRef<number | null>(null);
       return useYAMLPersistence({ ...params, serializeDebounceRef });
     });
 
-    act(() => {
-      result.current.handleSave();
+    await act(async () => {
+      await result.current.handleSave();
     });
 
-    expect(localStorage.getItem('relampo-yaml-draft')).toBe('test:\n  name: t\n');
+    expect(saveActiveDraftMock).toHaveBeenCalledWith({
+      yaml: 'test:\n  name: t\n',
+      fileName: 'my-script.yaml',
+      updatedAt: expect.any(String),
+    });
   });
 
-  it('stores the filename in localStorage', () => {
+  it('stores the filename in IndexedDB storage', async () => {
     const params = makeParams({ currentFileName: 'smoke.yaml' });
     const { result } = renderHook(() => {
       const serializeDebounceRef = useRef<number | null>(null);
       return useYAMLPersistence({ ...params, serializeDebounceRef });
     });
 
-    act(() => {
-      result.current.handleSave();
+    await act(async () => {
+      await result.current.handleSave();
     });
 
-    expect(localStorage.getItem('relampo-yaml-draft-filename')).toBe('smoke.yaml');
+    expect(saveActiveDraftMock).toHaveBeenCalledWith({
+      yaml: 'test:\n  name: t\n',
+      fileName: 'smoke.yaml',
+      updatedAt: expect.any(String),
+    });
   });
 
-  it('sets lastSavedAt after save', () => {
+  it('sets lastSavedAt after save', async () => {
     const params = makeParams();
     const { result } = renderHook(() => {
       const serializeDebounceRef = useRef<number | null>(null);
       return useYAMLPersistence({ ...params, serializeDebounceRef });
     });
 
-    act(() => {
-      result.current.handleSave();
+    await act(async () => {
+      await result.current.handleSave();
     });
 
     expect(result.current.lastSavedAt).not.toBeNull();
   });
 
-  it('calls setIsDirty(false) after save', () => {
+  it('calls setIsDirty(false) after save', async () => {
     const setIsDirty = vi.fn();
     const params = makeParams({ setIsDirty });
     const { result } = renderHook(() => {
@@ -82,50 +104,50 @@ describe('handleSave', () => {
       return useYAMLPersistence({ ...params, serializeDebounceRef });
     });
 
-    act(() => {
-      result.current.handleSave();
+    await act(async () => {
+      await result.current.handleSave();
     });
 
     expect(setIsDirty).toHaveBeenCalledWith(false);
   });
 
-  it('shows "Changes saved" action message in English', () => {
+  it('shows "Changes saved" action message in English', async () => {
     const params = makeParams({ language: 'en' });
     const { result } = renderHook(() => {
       const serializeDebounceRef = useRef<number | null>(null);
       return useYAMLPersistence({ ...params, serializeDebounceRef });
     });
 
-    act(() => {
-      result.current.handleSave();
+    await act(async () => {
+      await result.current.handleSave();
     });
 
     expect(result.current.actionMessage).toBe('Changes saved');
   });
 
-  it('shows "Cambios guardados" in Spanish', () => {
+  it('shows "Cambios guardados" in Spanish', async () => {
     const params = makeParams({ language: 'es' });
     const { result } = renderHook(() => {
       const serializeDebounceRef = useRef<number | null>(null);
       return useYAMLPersistence({ ...params, serializeDebounceRef });
     });
 
-    act(() => {
-      result.current.handleSave();
+    await act(async () => {
+      await result.current.handleSave();
     });
 
     expect(result.current.actionMessage).toBe('Cambios guardados');
   });
 
-  it('clears actionMessage after 1800 ms', () => {
+  it('clears actionMessage after 1800 ms', async () => {
     const params = makeParams();
     const { result } = renderHook(() => {
       const serializeDebounceRef = useRef<number | null>(null);
       return useYAMLPersistence({ ...params, serializeDebounceRef });
     });
 
-    act(() => {
-      result.current.handleSave();
+    await act(async () => {
+      await result.current.handleSave();
     });
     expect(result.current.actionMessage).not.toBe('');
 
@@ -135,7 +157,7 @@ describe('handleSave', () => {
     expect(result.current.actionMessage).toBe('');
   });
 
-  it('calls setError when getPersistableYaml throws', () => {
+  it('calls setError when getPersistableYaml throws', async () => {
     const setError = vi.fn();
     const params = makeParams({
       setError,
@@ -148,36 +170,32 @@ describe('handleSave', () => {
       return useYAMLPersistence({ ...params, serializeDebounceRef });
     });
 
-    act(() => {
-      result.current.handleSave();
+    await act(async () => {
+      await result.current.handleSave();
     });
 
     expect(setError).toHaveBeenCalledWith('boom');
   });
 
-  it('reports browser storage quota failures without marking the draft saved', () => {
+  it('reports browser storage failures without marking the draft saved', async () => {
     const setError = vi.fn();
     const setIsDirty = vi.fn();
-    const storageSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
-      throw new DOMException('Quota exceeded', 'QuotaExceededError');
-    });
+    saveActiveDraftMock.mockRejectedValueOnce(new DOMException('Quota exceeded', 'QuotaExceededError'));
     const params = makeParams({ setError, setIsDirty });
     const { result } = renderHook(() => {
       const serializeDebounceRef = useRef<number | null>(null);
       return useYAMLPersistence({ ...params, serializeDebounceRef });
     });
 
-    act(() => {
-      result.current.handleSave();
+    await act(async () => {
+      await result.current.handleSave();
     });
 
     expect(setError).toHaveBeenCalledWith(
-      'This YAML is too large for browser autosave. Download the YAML to keep your changes.',
+      'Could not autosave this YAML in the browser. Download the YAML to keep your changes.',
     );
     expect(setIsDirty).not.toHaveBeenCalledWith(false);
     expect(result.current.lastSavedAt).toBeNull();
-
-    storageSpy.mockRestore();
   });
 });
 
@@ -276,14 +294,13 @@ describe('handleDownload', () => {
 
 describe('autosave', () => {
   beforeEach(() => {
-    localStorage.clear();
     vi.useFakeTimers();
   });
   afterEach(() => {
     vi.useRealTimers();
   });
 
-  it('auto-saves after 2000 ms when isDirty becomes true', () => {
+  it('auto-saves after 2000 ms when isDirty becomes true', async () => {
     const getPersistableYaml = vi.fn(() => 'auto: saved\n');
     const { rerender } = renderHook(
       (props: { isDirty: boolean }) => {
@@ -298,12 +315,16 @@ describe('autosave', () => {
     );
 
     rerender({ isDirty: true });
-    act(() => {
-      vi.advanceTimersByTime(2000);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
     });
 
     expect(getPersistableYaml).toHaveBeenCalled();
-    expect(localStorage.getItem('relampo-yaml-draft')).toBe('auto: saved\n');
+    expect(saveActiveDraftMock).toHaveBeenCalledWith({
+      yaml: 'auto: saved\n',
+      fileName: 'my-script.yaml',
+      updatedAt: expect.any(String),
+    });
   });
 
   it('does not auto-save when isInitialized is false', () => {
@@ -338,14 +359,13 @@ describe('keyboard shortcuts', () => {
       createObjectURL: vi.fn(() => 'blob:fake'),
       revokeObjectURL: vi.fn(),
     });
-    localStorage.clear();
   });
   afterEach(() => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
   });
 
-  it('Ctrl+S triggers save', () => {
+  it('Ctrl+S triggers save', async () => {
     const getPersistableYaml = vi.fn(() => 'ctrl: s\n');
     renderHook(() => {
       const serializeDebounceRef = useRef<number | null>(null);
@@ -355,15 +375,20 @@ describe('keyboard shortcuts', () => {
       });
     });
 
-    act(() => {
+    await act(async () => {
       window.dispatchEvent(new KeyboardEvent('keydown', { key: 's', ctrlKey: true }));
+      await Promise.resolve();
     });
 
     expect(getPersistableYaml).toHaveBeenCalled();
-    expect(localStorage.getItem('relampo-yaml-draft')).toBe('ctrl: s\n');
+    expect(saveActiveDraftMock).toHaveBeenCalledWith({
+      yaml: 'ctrl: s\n',
+      fileName: 'my-script.yaml',
+      updatedAt: expect.any(String),
+    });
   });
 
-  it('Meta+S triggers save', () => {
+  it('Meta+S triggers save', async () => {
     const getPersistableYaml = vi.fn(() => 'meta: s\n');
     renderHook(() => {
       const serializeDebounceRef = useRef<number | null>(null);
@@ -373,8 +398,9 @@ describe('keyboard shortcuts', () => {
       });
     });
 
-    act(() => {
+    await act(async () => {
       window.dispatchEvent(new KeyboardEvent('keydown', { key: 's', metaKey: true }));
+      await Promise.resolve();
     });
 
     expect(getPersistableYaml).toHaveBeenCalled();
