@@ -20,6 +20,7 @@ import type { YAMLAddableNodeType } from './yaml-tree-view/addableItems';
 import { YAMLTreeView } from './YAMLTreeView';
 
 const EMPTY_PARALLEL_ERROR = 'Parallel controller must contain at least one child step';
+const TREE_SERIALIZE_DEBOUNCE_MS = 220;
 
 function getDraftRestoreError(language: string): string {
   return language === 'es'
@@ -37,6 +38,10 @@ type ParseWorkerResponse = { id: number; ok: true; tree: YAMLNode | null } | { i
 type TreeSelection = {
   primaryId: string | null;
   nodeIds: string[];
+};
+
+type CommitTreeChangeOptions = {
+  serialization?: 'immediate' | 'debounced';
 };
 
 function normalizeYamlFileName(name: string): string {
@@ -421,7 +426,28 @@ export function YAMLEditor() {
     }, 350);
   };
 
-  const commitTreeChange = (newTree: YAMLNode, nextSelection?: TreeSelection) => {
+  const scheduleTreeSerialization = (tree: YAMLNode, mode: CommitTreeChangeOptions['serialization'] = 'immediate') => {
+    if (serializeDebounceRef.current) {
+      window.clearTimeout(serializeDebounceRef.current);
+      serializeDebounceRef.current = null;
+    }
+
+    if (mode === 'debounced') {
+      serializeDebounceRef.current = window.setTimeout(() => {
+        serializeDebounceRef.current = null;
+        syncTreeToCode(tree);
+      }, TREE_SERIALIZE_DEBOUNCE_MS);
+      return;
+    }
+
+    syncTreeToCode(tree);
+  };
+
+  const commitTreeChange = (
+    newTree: YAMLNode,
+    nextSelection?: TreeSelection,
+    options: CommitTreeChangeOptions = {},
+  ) => {
     setYamlTree(newTree);
     if (nextSelection) {
       const nextSelectedIds = nextSelection.nodeIds.filter(Boolean);
@@ -434,11 +460,7 @@ export function YAMLEditor() {
       syncSelectionWithTree(newTree);
     }
     applySemanticValidation(newTree);
-    if (serializeDebounceRef.current) {
-      window.clearTimeout(serializeDebounceRef.current);
-      serializeDebounceRef.current = null;
-    }
-    syncTreeToCode(newTree);
+    scheduleTreeSerialization(newTree, options.serialization);
     setHasDocumentActivity(true);
     setIsDirty(true);
     setIsTreeOutdated(false);
@@ -466,7 +488,7 @@ export function YAMLEditor() {
   const handleNodeUpdate = (nodeId: string, updatedData: Record<string, unknown>) => {
     if (!yamlTree) return;
     const updatedTree = applyNodeUpdateToTree(yamlTree, nodeId, updatedData);
-    commitTreeChange(updatedTree);
+    commitTreeChange(updatedTree, undefined, { serialization: 'debounced' });
   };
 
   const handleAddChildNode = (parentId: string, nodeType: YAMLAddableNodeType) => {

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { LanguageProvider } from '../contexts/LanguageContext';
 import { YAMLProvider } from '../contexts/YAMLContext';
 import type { YAMLNode } from '../types/yaml';
@@ -127,6 +127,7 @@ describe('YAMLEditor draft restoration', () => {
 
   afterEach(() => {
     cleanup();
+    vi.useRealTimers();
     vi.clearAllMocks();
   });
 
@@ -210,7 +211,7 @@ describe('YAMLEditor draft restoration', () => {
     expect(screen.getByTestId('editor-header')).toHaveAttribute('data-dirty', 'true');
   });
 
-  it('serializes and refreshes details when the details panel updates a node', async () => {
+  it('refreshes details immediately and debounces serialization when the details panel updates a node', async () => {
     getActiveDraftMock.mockResolvedValueOnce({
       yaml: 'test:\n  name: restored\n',
       fileName: 'restored.yaml',
@@ -221,9 +222,18 @@ describe('YAMLEditor draft restoration', () => {
 
     await screen.findByText('Restored plan');
     fireEvent.click(screen.getByRole('button', { name: 'select tree root' }));
+
+    vi.useFakeTimers();
+    treeToYAMLMock.mockClear();
     fireEvent.click(screen.getByRole('button', { name: 'change from details' }));
 
-    await waitFor(() => expect(screen.getAllByText('Details changed plan')).toHaveLength(2));
+    expect(screen.getAllByText('Details changed plan')).toHaveLength(2);
+    expect(treeToYAMLMock).not.toHaveBeenCalled();
+
+    act(() => {
+      vi.advanceTimersByTime(220);
+    });
+
     expect(treeToYAMLMock).toHaveBeenLastCalledWith(
       expect.objectContaining({
         name: 'Details changed plan',
