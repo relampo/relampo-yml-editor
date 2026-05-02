@@ -641,9 +641,9 @@ export function YAMLEditor() {
         </div>
       )}
 
-      {isLargeFileMode && (
+      {isLargeFileMode && !isLargeFileBannerDismissed && (
         <div className="px-6 py-3 bg-yellow-500/10 border-b border-yellow-500/20 shrink-0">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="text-sm text-yellow-300 font-semibold">
                 {isTreeOutdated
@@ -692,6 +692,15 @@ export function YAMLEditor() {
                   {language === 'es' ? 'Árbol actualizado' : 'Tree current'}
                 </span>
               )}
+              <button
+                type="button"
+                onClick={() => setIsLargeFileBannerDismissed(true)}
+                className="inline-flex h-8 w-8 items-center justify-center rounded border border-yellow-300/20 bg-yellow-300/5 text-yellow-100/80 transition-colors hover:border-yellow-300/40 hover:bg-yellow-300/10 hover:text-yellow-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-300/60"
+                aria-label={language === 'es' ? 'Ocultar alerta de archivo grande' : 'Hide large file alert'}
+                title={language === 'es' ? 'Ocultar alerta' : 'Hide alert'}
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
           </div>
         </div>
@@ -758,11 +767,11 @@ export function YAMLEditor() {
           aria-label="Resize panel"
           tabIndex={0}
           onMouseDown={() => setIsResizing(true)}
-          className="w-1 bg-white/5 hover:bg-yellow-400/40 shrink-0 transition-colors relative active:bg-yellow-400/60 z-50 group"
+          className="w-1 bg-white/5 hover:bg-yellow-400/40 shrink-0 transition-colors relative active:bg-yellow-400/60 z-20 group"
           style={{ cursor: 'col-resize' }}
         >
           <div
-            className="absolute inset-y-0 -left-4 -right-4 z-50"
+            className="absolute inset-y-0 -left-1 -right-1 z-20"
             style={{ cursor: 'col-resize' }}
           />
           <div className="absolute inset-y-0 left-1/2 -ml-px w-0.5 bg-white/20 group-hover:bg-yellow-400/80 transition-colors" />
