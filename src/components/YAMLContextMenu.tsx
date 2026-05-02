@@ -81,7 +81,7 @@ export function YAMLContextMenu({
     <div
       ref={menuRef}
       role="menu"
-      className="fixed z-50 min-w-[220px] max-h-[80vh] overflow-y-auto bg-[#111111] border border-white/10 rounded-lg shadow-2xl shadow-black/50 py-1"
+      className="fixed z-100 min-w-55 max-h-[80vh] overflow-y-auto overscroll-contain bg-[#111111] border border-white/10 rounded-lg shadow-2xl shadow-black/50 py-1"
       style={{
         left: `${position.x}px`,
         top: `${position.y}px`,
