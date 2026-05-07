@@ -16,8 +16,11 @@ import {
   updateNodeEnabled,
   wrapNodesInTransaction,
 } from './yaml-tree-view/treeOperations';
-import { YAMLContextMenu, type YAMLAddableNodeType } from './YAMLContextMenu';
+import type { YAMLAddableNodeType } from './yaml-tree-view/addableItems';
+import { YAMLContextMenu } from './YAMLContextMenu';
 import { YAMLTreeNode } from './YAMLTreeNode';
+
+const MIN_CONTEXT_MENU_HEIGHT = 700;
 
 interface YAMLTreeViewProps {
   tree: YAMLNode | null;
@@ -209,6 +212,14 @@ export function YAMLTreeView({
     // If right-clicking an unselected node, target only that node for context actions.
     if (!selectedNodeIds.includes(node.id)) {
       onSelectionChange(node, [node.id]);
+    }
+
+    const hasCoarsePointer =
+      typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches === true;
+    const hasShortViewport = typeof window !== 'undefined' && window.innerHeight < MIN_CONTEXT_MENU_HEIGHT;
+    if (hasCoarsePointer || hasShortViewport) {
+      setContextMenu(null);
+      return;
     }
 
     setContextMenu({

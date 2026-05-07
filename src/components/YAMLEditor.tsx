@@ -1,4 +1,4 @@
-import { Code2, GitBranch, Loader2 } from 'lucide-react';
+import { Code2, GitBranch, Loader2, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useYAML } from '../contexts/YAMLContext';
@@ -14,9 +14,13 @@ import { Button } from './ui/button';
 import { YAMLCodeEditor } from './YAMLCodeEditor';
 import { YAMLEditorHeader } from './YAMLEditorHeader';
 import { YAMLNodeDetails } from './YAMLNodeDetails';
+import { createNodeByType } from './yaml-tree-view/nodeFactory';
+import { addNodeToTree } from './yaml-tree-view/treeOperations';
+import type { YAMLAddableNodeType } from './yaml-tree-view/addableItems';
 import { YAMLTreeView } from './YAMLTreeView';
 
 const EMPTY_PARALLEL_ERROR = 'Parallel controller must contain at least one child step';
+const TREE_SERIALIZE_DEBOUNCE_MS = 220;
 
 function getDraftRestoreError(language: string): string {
   return language === 'es'
@@ -34,6 +38,10 @@ type ParseWorkerResponse = { id: number; ok: true; tree: YAMLNode | null } | { i
 type TreeSelection = {
   primaryId: string | null;
   nodeIds: string[];
+};
+
+type CommitTreeChangeOptions = {
+  serialization?: 'immediate' | 'debounced';
 };
 
 function normalizeYamlFileName(name: string): string {
@@ -115,6 +123,7 @@ export function YAMLEditor() {
   const [isParsing, setIsParsing] = useState(false);
   const [isFileLoading, setIsFileLoading] = useState(false);
   const [isTreeOutdated, setIsTreeOutdated] = useState(false);
+  const [isLargeFileBannerDismissed, setIsLargeFileBannerDismissed] = useState(false);
   const [restoredDraftUpdatedAt, setRestoredDraftUpdatedAt] = useState<string | null>(null);
   const selectedNodeRef = useRef<YAMLNode | null>(null);
   const selectedNodeIdsRef = useRef<string[]>([]);
@@ -129,6 +138,10 @@ export function YAMLEditor() {
   useEffect(() => {
     selectedNodeIdsRef.current = selectedNodeIds;
   }, [selectedNodeIds]);
+
+  useEffect(() => {
+    if (!isLargeFileMode) setIsLargeFileBannerDismissed(false);
+  }, [isLargeFileMode]);
 
   const syncSelectionWithTree = (tree: YAMLNode | null) => {
     if (!tree) {
@@ -413,7 +426,28 @@ export function YAMLEditor() {
     }, 350);
   };
 
-  const handleTreeChange = (newTree: YAMLNode, nextSelection?: TreeSelection) => {
+  const scheduleTreeSerialization = (tree: YAMLNode, mode: CommitTreeChangeOptions['serialization'] = 'immediate') => {
+    if (serializeDebounceRef.current) {
+      window.clearTimeout(serializeDebounceRef.current);
+      serializeDebounceRef.current = null;
+    }
+
+    if (mode === 'debounced') {
+      serializeDebounceRef.current = window.setTimeout(() => {
+        serializeDebounceRef.current = null;
+        syncTreeToCode(tree);
+      }, TREE_SERIALIZE_DEBOUNCE_MS);
+      return;
+    }
+
+    syncTreeToCode(tree);
+  };
+
+  const commitTreeChange = (
+    newTree: YAMLNode,
+    nextSelection?: TreeSelection,
+    options: CommitTreeChangeOptions = {},
+  ) => {
     setYamlTree(newTree);
     if (nextSelection) {
       const nextSelectedIds = nextSelection.nodeIds.filter(Boolean);
@@ -426,10 +460,14 @@ export function YAMLEditor() {
       syncSelectionWithTree(newTree);
     }
     applySemanticValidation(newTree);
-    syncTreeToCode(newTree);
+    scheduleTreeSerialization(newTree, options.serialization);
     setHasDocumentActivity(true);
     setIsDirty(true);
     setIsTreeOutdated(false);
+  };
+
+  const handleTreeChange = (newTree: YAMLNode, nextSelection?: TreeSelection) => {
+    commitTreeChange(newTree, nextSelection);
   };
 
   const handleSelectionChange = (primaryNode: YAMLNode | null, nodeIds: string[]) => {
@@ -450,20 +488,20 @@ export function YAMLEditor() {
   const handleNodeUpdate = (nodeId: string, updatedData: Record<string, unknown>) => {
     if (!yamlTree) return;
     const updatedTree = applyNodeUpdateToTree(yamlTree, nodeId, updatedData);
-    setYamlTree(updatedTree);
-    applySemanticValidation(updatedTree);
-    setHasDocumentActivity(true);
-    setIsDirty(true);
-    if (selectedNode) {
-      const refreshedSelectedNode = findNodeById(updatedTree, selectedNode.id);
-      setSelectedNode(refreshedSelectedNode);
-      selectedNodeRef.current = refreshedSelectedNode;
-    }
+    commitTreeChange(updatedTree, undefined, { serialization: 'debounced' });
+  };
 
-    if (serializeDebounceRef.current) window.clearTimeout(serializeDebounceRef.current);
-    serializeDebounceRef.current = window.setTimeout(() => {
-      syncTreeToCode(updatedTree);
-    }, 220);
+  const handleAddChildNode = (parentId: string, nodeType: YAMLAddableNodeType) => {
+    if (!yamlTree) return;
+
+    const newNode = createNodeByType(nodeType, { balancedName: t('yamlEditor.balanced.name') });
+    const updatedTree = addNodeToTree(yamlTree, parentId, newNode);
+    if (!findNodeById(updatedTree, newNode.id)) return;
+
+    commitTreeChange(updatedTree, {
+      primaryId: newNode.id,
+      nodeIds: [newNode.id],
+    });
   };
 
   const handleUpload = () => {
@@ -625,9 +663,9 @@ export function YAMLEditor() {
         </div>
       )}
 
-      {isLargeFileMode && (
+      {isLargeFileMode && !isLargeFileBannerDismissed && (
         <div className="px-6 py-3 bg-yellow-500/10 border-b border-yellow-500/20 shrink-0">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="text-sm text-yellow-300 font-semibold">
                 {isTreeOutdated
@@ -676,6 +714,15 @@ export function YAMLEditor() {
                   {language === 'es' ? 'Árbol actualizado' : 'Tree current'}
                 </span>
               )}
+              <button
+                type="button"
+                onClick={() => setIsLargeFileBannerDismissed(true)}
+                className="inline-flex h-8 w-8 items-center justify-center rounded border border-yellow-300/20 bg-yellow-300/5 text-yellow-100/80 transition-colors hover:border-yellow-300/40 hover:bg-yellow-300/10 hover:text-yellow-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-300/60"
+                aria-label={language === 'es' ? 'Ocultar alerta de archivo grande' : 'Hide large file alert'}
+                title={language === 'es' ? 'Ocultar alerta' : 'Hide alert'}
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
           </div>
         </div>
@@ -742,11 +789,11 @@ export function YAMLEditor() {
           aria-label="Resize panel"
           tabIndex={0}
           onMouseDown={() => setIsResizing(true)}
-          className="w-1 bg-white/5 hover:bg-yellow-400/40 shrink-0 transition-colors relative active:bg-yellow-400/60 z-50 group"
+          className="w-1 bg-white/5 hover:bg-yellow-400/40 shrink-0 transition-colors relative active:bg-yellow-400/60 z-20 group"
           style={{ cursor: 'col-resize' }}
         >
           <div
-            className="absolute inset-y-0 -left-4 -right-4 z-50"
+            className="absolute inset-y-0 -left-1 -right-1 z-20"
             style={{ cursor: 'col-resize' }}
           />
           <div className="absolute inset-y-0 left-1/2 -ml-px w-0.5 bg-white/20 group-hover:bg-yellow-400/80 transition-colors" />
@@ -765,6 +812,7 @@ export function YAMLEditor() {
               redirectedInfo={selectedNode ? (redirectedRequestMap[selectedNode.id] ?? null) : null}
               redirectSourceInfo={selectedNode ? (redirectSourceMap[selectedNode.id] ?? null) : null}
               onNodeUpdate={handleNodeUpdate}
+              onAddChildNode={handleAddChildNode}
             />
           </div>
         </div>

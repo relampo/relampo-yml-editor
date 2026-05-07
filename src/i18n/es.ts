@@ -668,4 +668,15 @@ export const esTranslations = {
       addBtn: 'Añadir un plan de prueba de performance',
     },
   },
+
+  // Aviso de pantalla pequeña / bloqueo móvil
+  mobileBlock: {
+    eyebrow: 'Necesitas una pantalla mayor',
+    title: 'Este editor está pensado para pantallas grandes',
+    description:
+      'El Editor YAML de Relampo necesita el espacio de un iPad o un dispositivo mayor para mostrar el árbol, el código y los detalles lado a lado sin compromisos.',
+    requirement: 'Ábrelo en un iPad, laptop o escritorio (768px de ancho o más).',
+    currentWidth: 'Estás a {width}px de ancho.',
+    rotateHint: 'Si estás en una tableta, prueba a rotarla a horizontal.',
+  },
 } as const;

@@ -1,4 +1,4 @@
-import { FileText } from 'lucide-react';
+import { FileText, Plus } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import type { RedirectSourceInfo, RedirectedRequestInfo, YAMLNode } from '../types/yaml';
@@ -33,21 +33,24 @@ import {
 import { LoadDetails } from './yaml-node-details/LoadDetails';
 import { CacheManagerDetails, CookiesDetails, ErrorPolicyDetails } from './yaml-node-details/OpsDetails';
 import { AssertionDetails, ExtractorDetails } from './yaml-node-details/ValidationDetails';
+import { getAddableItems, type YAMLAddableNodeType } from './yaml-tree-view/addableItems';
 
 interface YAMLNodeDetailsProps {
   node: YAMLNode | null;
   redirectedInfo?: RedirectedRequestInfo | null;
   redirectSourceInfo?: RedirectSourceInfo | null;
   onNodeUpdate?: (nodeId: string, updatedData: any) => void;
+  onAddChildNode?: (parentId: string, nodeType: YAMLAddableNodeType) => void;
 }
 
 const REQUEST_NODE_TYPES = ['request', 'sql', 'get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
 
-export function YAMLNodeDetails({ node, redirectSourceInfo = null, onNodeUpdate }: YAMLNodeDetailsProps) {
+export function YAMLNodeDetails({ node, redirectSourceInfo = null, onNodeUpdate, onAddChildNode }: YAMLNodeDetailsProps) {
   const { t } = useLanguage();
   const [nodeName, setNodeName] = useState(node?.name || '');
   const isRequestNode = REQUEST_NODE_TYPES.includes(node?.type || '');
   const isCompactDetailsNode = node?.type === 'balanced';
+  const addableItems = node ? getAddableItems(node.type, t) : [];
 
   useEffect(() => {
     setNodeName(node?.name || '');
@@ -108,6 +111,16 @@ export function YAMLNodeDetails({ node, redirectSourceInfo = null, onNodeUpdate 
               placeholder="Node name"
             />
           </div>
+        )}
+
+        {addableItems.length > 0 && onAddChildNode && (
+          <AddChildActions
+            nodeId={node.id}
+            items={addableItems}
+            onAddChildNode={onAddChildNode}
+            title={t('yamlEditor.common.add')}
+            compact={isCompactDetailsNode}
+          />
         )}
 
         <NodeDetailsContent
@@ -191,6 +204,8 @@ function NodeDetailsContent({
           onNodeUpdate={onNodeUpdate}
         />
       );
+    case 'steps':
+      return null;
     case 'request':
     case 'sql':
     case 'get':
@@ -361,4 +376,46 @@ function NodeDetailsContent({
         />
       );
   }
+}
+
+function AddChildActions({
+  nodeId,
+  items,
+  onAddChildNode,
+  title,
+  compact,
+}: {
+  nodeId: string;
+  items: ReturnType<typeof getAddableItems>;
+  onAddChildNode: (parentId: string, nodeType: YAMLAddableNodeType) => void;
+  title: string;
+  compact: boolean;
+}) {
+  return (
+    <section className={compact ? 'mb-4' : 'mb-6'}>
+      <div className="flex items-center gap-2 mb-3">
+        <Plus className="w-3.5 h-3.5 text-yellow-400" />
+        <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">{title}</h4>
+      </div>
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-2">
+        {items.map(item => (
+          <button
+            key={item.type}
+            type="button"
+            onClick={() => onAddChildNode(nodeId, item.type)}
+            className="min-w-0 rounded-md border border-white/10 bg-white/5 px-3 py-2 text-left transition-colors hover:border-yellow-400/40 hover:bg-yellow-400/8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/60"
+            aria-label={`Add ${item.label}`}
+          >
+            <div className="flex min-w-0 items-start gap-2.5">
+              <div className={`mt-0.5 shrink-0 ${item.color}`}>{item.icon}</div>
+              <div className="min-w-0">
+                <div className="text-sm font-medium text-zinc-200 break-words">{item.label}</div>
+                {item.description && <div className="mt-0.5 text-xs leading-snug text-zinc-500 break-words">{item.description}</div>}
+              </div>
+            </div>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
 }
