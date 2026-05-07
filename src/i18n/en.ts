@@ -665,4 +665,15 @@ export const enTranslations = {
       addBtn: 'Add a performance test plan',
     },
   },
+
+  // Mobile / small-viewport block screen
+  mobileBlock: {
+    eyebrow: 'Bigger screen required',
+    title: 'This editor is built for larger screens',
+    description:
+      'The Relampo YAML Editor needs the room of an iPad or larger device to show the tree, code, and details side by side without compromise.',
+    requirement: 'Please open this on an iPad, laptop, or desktop (768px wide or more).',
+    currentWidth: 'You are currently at {width}px wide.',
+    rotateHint: 'If you are on a tablet, try rotating it to landscape.',
+  },
 } as const;
