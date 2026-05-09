@@ -49,8 +49,8 @@ export function createNodeByType(
       return {
         id,
         type: 'get',
-        name: 'GET: /api/endpoint',
-        data: { url: '/api/endpoint' },
+        name: 'GET: /',
+        data: { url: '' },
         children: [],
       };
     case 'sql':
@@ -81,48 +81,48 @@ export function createNodeByType(
       return {
         id,
         type: 'post',
-        name: 'POST: /api/endpoint',
-        data: { url: '/api/endpoint', body: '{}' },
+        name: 'POST: /',
+        data: { url: '', body: '{}' },
         children: [],
       };
     case 'put':
       return {
         id,
         type: 'put',
-        name: 'PUT: /api/endpoint',
-        data: { url: '/api/endpoint', body: '{}' },
+        name: 'PUT: /',
+        data: { url: '', body: '{}' },
         children: [],
       };
     case 'delete':
       return {
         id,
         type: 'delete',
-        name: 'DELETE: /api/endpoint',
-        data: { url: '/api/endpoint' },
+        name: 'DELETE: /',
+        data: { url: '' },
         children: [],
       };
     case 'patch':
       return {
         id,
         type: 'patch',
-        name: 'PATCH: /api/endpoint',
-        data: { url: '/api/endpoint', body: '{}' },
+        name: 'PATCH: /',
+        data: { url: '', body: '{}' },
         children: [],
       };
     case 'head':
       return {
         id,
         type: 'head',
-        name: 'HEAD: /api/endpoint',
-        data: { url: '/api/endpoint' },
+        name: 'HEAD: /',
+        data: { url: '' },
         children: [],
       };
     case 'options':
       return {
         id,
         type: 'options',
-        name: 'OPTIONS: /api/endpoint',
-        data: { url: '/api/endpoint' },
+        name: 'OPTIONS: /',
+        data: { url: '' },
         children: [],
       };
     case 'group':
@@ -256,7 +256,7 @@ export function createNodeByType(
           from: 'body',
           var: 'extracted_value',
           variable: 'extracted_value',
-          pattern: 'token=([a-zA-Z0-9_-]+)',
+          pattern: '',
           capture_mode: 'first',
           group: 1,
           default: '',
