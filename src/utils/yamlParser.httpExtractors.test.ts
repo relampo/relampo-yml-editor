@@ -1,3 +1,4 @@
+import yaml from 'js-yaml';
 import { describe, expect, it } from 'vitest';
 import { parseYAMLToTree, treeToYAML } from './yamlParser';
 
@@ -105,5 +106,145 @@ scenarios:
     expect(step.data.body).toBe('{}');
     expect(extractor?.data?.capture_mode).toBe('index');
     expect(extractor?.data?.capture_index).toBe(2);
+  });
+
+  it('preserves disabled state for short-form HTTP nodes across a round-trip', () => {
+    const tree = {
+      id: 'root',
+      type: 'root',
+      name: 'Test Plan',
+      children: [
+        {
+          id: 'scenarios',
+          type: 'scenarios',
+          name: 'Scenarios',
+          children: [
+            {
+              id: 'scenario',
+              type: 'scenario',
+              name: 'S',
+              children: [
+                {
+                  id: 'steps',
+                  type: 'steps',
+                  name: 'Steps',
+                  children: [
+                    {
+                      id: 'login',
+                      type: 'post',
+                      name: 'POST: /login',
+                      data: { url: '/login', enabled: false },
+                      children: [],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    } as any;
+
+    const exported = treeToYAML(tree);
+    const reparsed = parseYAMLToTree(exported)!;
+    const step = reparsed
+      .children!.find(c => c.type === 'scenarios')!
+      .children![0].children!.find(c => c.type === 'steps')!.children![0];
+
+    expect(step.data.enabled).toBe(false);
+  });
+
+  it('emits exported YAML in the canonical Pulse shape consumed by the CLI', () => {
+    const tree = {
+      id: 'root',
+      type: 'root',
+      name: 'Test Plan',
+      children: [
+        {
+          id: 'scenarios',
+          type: 'scenarios',
+          name: 'Scenarios',
+          children: [
+            {
+              id: 'scenario',
+              type: 'scenario',
+              name: 'Auth',
+              children: [
+                {
+                  id: 'steps',
+                  type: 'steps',
+                  name: 'Steps',
+                  children: [
+                    {
+                      id: 'login',
+                      type: 'post',
+                      name: 'POST: /authenticate',
+                      data: { url: 'https://example.com/authenticate', body: '{}' },
+                      children: [
+                        {
+                          id: 'token',
+                          type: 'extractor',
+                          name: 'token',
+                          data: {
+                            type: 'regex',
+                            from: 'body',
+                            var: 'token',
+                            pattern: 'token=(\\w+)',
+                            group: 1,
+                          },
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    } as any;
+
+    const exported = treeToYAML(tree);
+    const parsed = yaml.load(exported) as any;
+
+    const step = parsed.scenarios[0].steps[0];
+    // Promoted to long-form `request:` because it has children
+    expect(step).toHaveProperty('request');
+    expect(step.post).toBeUndefined();
+
+    const request = step.request;
+    expect(request.method).toBe('POST');
+    expect(request.url).toBe('https://example.com/authenticate');
+    expect(request.body).toBe('{}');
+
+    // Extractors must be a sibling array under `request:`, not nested deeper
+    expect(Array.isArray(request.extractors)).toBe(true);
+    expect(request.extractors).toHaveLength(1);
+
+    const extractor = request.extractors[0];
+    expect(extractor.type).toBe('regex');
+    expect(extractor.from).toBe('body');
+    expect(extractor.var).toBe('token');
+    expect(extractor.pattern).toBe('token=(\\w+)');
+    expect(extractor.group).toBe(1);
+
+    // The Pulse CLI keys `extractors` only once on the request — guard against duplication
+    expect(request.extract).toBeUndefined();
+    expect(step.extractors).toBeUndefined();
+  });
+
+  it('preserves the compact short-form `- post: /url` shape after a round-trip when no extras are present', () => {
+    const yamlIn = `
+scenarios:
+  - name: s
+    steps:
+      - post: /login
+`;
+    const tree = parseYAMLToTree(yamlIn)!;
+    const exported = treeToYAML(tree);
+    const parsed = yaml.load(exported) as any;
+    const step = parsed.scenarios[0].steps[0];
+
+    expect(step).toEqual({ post: '/login' });
   });
 });

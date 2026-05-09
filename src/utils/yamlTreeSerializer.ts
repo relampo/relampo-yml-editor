@@ -46,7 +46,17 @@ function hasOnlyShortHttpData(node: YAMLNode): boolean {
     return true;
   }
 
-  return Object.keys(node.data).every(key => key === 'url' || key === 'enabled' || key === 'method');
+  const data = { ...(node.data as Record<string, any>) };
+  pruneDefaultRequestFields(data);
+
+  if (typeof data.name === 'string') {
+    const method = (data.method || node.type).toString().toUpperCase();
+    if (data.name === `${method}: ${data.url || '/'}`) {
+      delete data.name;
+    }
+  }
+
+  return Object.keys(data).every(key => key === 'url' || key === 'enabled' || key === 'method');
 }
 
 function pruneDefaultRequestFields(request: Record<string, any>) {

@@ -618,11 +618,12 @@ function createRequestNode(
 ): YAMLNode {
   const req = normalizeRequestForEditor(requestData);
   const method = req.method || (type === 'request' ? 'GET' : type.toUpperCase());
+  const enabled = req.enabled !== undefined ? req.enabled : isEnabled;
   const requestNode: YAMLNode = {
     id: stepId,
     type,
     name: req.name || `${method}: ${req.url || '/'}`,
-    data: { ...req, method, enabled: isEnabled },
+    data: { ...req, method, enabled },
     path,
     children: [],
     expanded: false,
