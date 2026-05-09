@@ -79,4 +79,26 @@ describe('YAMLRequestDetails', () => {
       expect.objectContaining({ url: 'https://api.example.com/?x=1' }),
     );
   });
+
+  it('preserves the query string when the path is cleared on a relative URL', () => {
+    const onNodeUpdate = vi.fn();
+    const node: YAMLNode = {
+      id: 'get-4',
+      type: 'get',
+      name: 'GET: /login',
+      data: { url: '/login?x=1' },
+      children: [],
+    };
+
+    render(
+      <YAMLRequestDetails
+        node={node}
+        onNodeUpdate={onNodeUpdate}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText('Path'), { target: { value: '' } });
+
+    expect(onNodeUpdate).toHaveBeenLastCalledWith('get-4', expect.objectContaining({ url: '/?x=1' }));
+  });
 });

@@ -204,7 +204,7 @@ function RequestContent({
 
   const handlePathChange = (value: string) => {
     if (value.trim() === '') {
-      if (!urlParts.isAbsolute && !urlParts.baseUrl) {
+      if (!urlParts.isAbsolute && !urlParts.baseUrl && !urlParts.query) {
         onFieldChange('url', '');
         return;
       }
