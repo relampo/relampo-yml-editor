@@ -54,4 +54,29 @@ describe('YAMLRequestDetails', () => {
 
     expect(onNodeUpdate).toHaveBeenLastCalledWith('get-2', expect.objectContaining({ url: '' }));
   });
+
+  it('preserves protocol, host, and query when the path is cleared on an absolute URL', () => {
+    const onNodeUpdate = vi.fn();
+    const node: YAMLNode = {
+      id: 'get-3',
+      type: 'get',
+      name: 'GET: https://api.example.com/login',
+      data: { url: 'https://api.example.com/login?x=1' },
+      children: [],
+    };
+
+    render(
+      <YAMLRequestDetails
+        node={node}
+        onNodeUpdate={onNodeUpdate}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText('Path'), { target: { value: '' } });
+
+    expect(onNodeUpdate).toHaveBeenLastCalledWith(
+      'get-3',
+      expect.objectContaining({ url: 'https://api.example.com/?x=1' }),
+    );
+  });
 });

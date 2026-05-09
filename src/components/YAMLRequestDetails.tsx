@@ -204,7 +204,12 @@ function RequestContent({
 
   const handlePathChange = (value: string) => {
     if (value.trim() === '') {
-      onFieldChange('url', '');
+      if (!urlParts.isAbsolute && !urlParts.baseUrl) {
+        onFieldChange('url', '');
+        return;
+      }
+
+      onFieldChange('url', buildRequestUrl(formData.url || '', { path: '' }));
       return;
     }
 
