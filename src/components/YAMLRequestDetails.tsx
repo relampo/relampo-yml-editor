@@ -16,6 +16,11 @@ interface YAMLRequestDetailsProps {
 
 type Tab = 'request' | 'response';
 type SearchMode = 'text' | 'regex';
+const HTTP_METHOD_NODE_TYPES = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
+
+function getNodeMethodFallback(node: YAMLNode): string {
+  return HTTP_METHOD_NODE_TYPES.includes(node.type) ? node.type.toUpperCase() : 'GET';
+}
 
 export function YAMLRequestDetails({ node, redirectSourceInfo = null, onNodeUpdate }: YAMLRequestDetailsProps) {
   const data = node.data || {};
@@ -30,6 +35,7 @@ export function YAMLRequestDetails({ node, redirectSourceInfo = null, onNodeUpda
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
   const contentRef = useRef<HTMLDivElement>(null);
   const hasRecordedRedirectFollowUp = Boolean(redirectSourceInfo);
+  const requestMethod = formData.method || getNodeMethodFallback(node);
   const effectiveRedirectAutomatically = hasRecordedRedirectFollowUp ? false : !!formData.redirect_automatically;
   const effectiveFollowRedirects = hasRecordedRedirectFollowUp ? true : formData.follow_redirects !== false;
 
@@ -118,6 +124,7 @@ export function YAMLRequestDetails({ node, redirectSourceInfo = null, onNodeUpda
             hasRecordedRedirectFollowUp={hasRecordedRedirectFollowUp}
             effectiveRedirectAutomatically={effectiveRedirectAutomatically}
             effectiveFollowRedirects={effectiveFollowRedirects}
+            requestMethod={requestMethod}
             onFieldChange={handleFieldChange}
             onBodyChange={handleBodyChange}
             searchText={searchText}
@@ -153,6 +160,7 @@ interface RequestContentProps {
   hasRecordedRedirectFollowUp: boolean;
   effectiveRedirectAutomatically: boolean;
   effectiveFollowRedirects: boolean;
+  requestMethod: string;
   onFieldChange: (field: string, value: any) => void;
   onBodyChange: (value: string) => void;
   searchText: string;
@@ -170,6 +178,7 @@ function RequestContent({
   hasRecordedRedirectFollowUp,
   effectiveRedirectAutomatically,
   effectiveFollowRedirects,
+  requestMethod,
   onFieldChange,
   onBodyChange: _,
   searchText,
@@ -291,7 +300,7 @@ function RequestContent({
             </label>
             <MethodDropdown
               id="req-method"
-              value={formData.method || 'GET'}
+              value={requestMethod}
               onChange={method => onFieldChange('method', method)}
               className="w-full"
             />

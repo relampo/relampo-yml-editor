@@ -15,6 +15,8 @@ import {
   normalizeSQLForYaml,
 } from './yamlParserHelpers';
 
+const HTTP_METHODS = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
+
 function stripControllerSerializationMetadata<T>(data: T, internalKeys: string[] = []): T {
   if (!data || typeof data !== 'object' || Array.isArray(data)) {
     return data;
@@ -33,6 +35,28 @@ function hasOnlyKeys(value: unknown, keys: string[]): value is Record<string, un
 
   const valueKeys = Object.keys(value);
   return valueKeys.length > 0 && valueKeys.every(key => keys.includes(key));
+}
+
+function hasRequestChildren(node: YAMLNode): boolean {
+  return Array.isArray(node.children) && node.children.length > 0;
+}
+
+function hasOnlyShortHttpData(node: YAMLNode): boolean {
+  if (!node.data || typeof node.data !== 'object' || Array.isArray(node.data)) {
+    return true;
+  }
+
+  return Object.keys(node.data).every(key => key === 'url' || key === 'enabled' || key === 'method');
+}
+
+function pruneDefaultRequestFields(request: Record<string, any>) {
+  if (request.timeout === '') delete request.timeout;
+  if (request.cookie_override === 'inherit') delete request.cookie_override;
+  if (request.cache_override === 'inherit') delete request.cache_override;
+  if (request.retrieve_embedded_resources === false) delete request.retrieve_embedded_resources;
+  if (request.redirect_automatically === false) delete request.redirect_automatically;
+  if (request.follow_redirects === true) delete request.follow_redirects;
+  if (request.throughput && request.throughput.enabled !== true) delete request.throughput;
 }
 
 export function treeToObject(tree: YAMLNode): any {
@@ -99,116 +123,24 @@ function scenarioNodeToObject(node: YAMLNode): any {
 }
 
 function stepNodeToObject(node: YAMLNode): any {
-  const httpMethods = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
-
-  if (httpMethods.includes(node.type)) {
+  if (HTTP_METHODS.includes(node.type)) {
     const isEnabled = node.data?.enabled !== false;
-    if (isEnabled) {
+    if (!hasRequestChildren(node) && hasOnlyShortHttpData(node) && isEnabled) {
       return { [node.type]: node.data?.url || '/' };
     }
-    return {
-      [node.type]: {
-        url: node.data?.url || '/',
-        enabled: false,
-      },
-    };
+    if (!hasRequestChildren(node) && hasOnlyShortHttpData(node)) {
+      return {
+        [node.type]: {
+          url: node.data?.url || '/',
+          enabled: false,
+        },
+      };
+    }
+    return requestNodeToObject(node, node.type.toUpperCase());
   }
 
   if (node.type === 'request') {
-    const normalizedRequest = normalizeRequestForEditor(sanitizeBalancedNodeData(node.data));
-    const request: any = { request: { ...normalizedRequest } };
-    if (request.request.timeout === '') {
-      delete request.request.timeout;
-    }
-
-    if (node.name && node.name !== node.data?.name) {
-      request.request.name = node.name;
-    }
-
-    delete request.request.spark;
-    delete request.request.extractors;
-    delete request.request.assertions;
-    delete request.request.extract;
-    delete request.request.assert;
-    delete request.request.files;
-    delete request.request.headers;
-
-    if (node.data?.enabled === false) {
-      request.request.enabled = false;
-    }
-
-    if (node.children) {
-      const sparkNodes = node.children.filter(child => child.type === 'spark_before' || child.type === 'spark_after');
-      if (sparkNodes.length > 0) {
-        request.request.spark = sparkNodes.map(spark => spark.data);
-      }
-
-      const extractorNodes = node.children.filter(child => child.type === 'extractor');
-      if (extractorNodes.length > 0) {
-        request.request.extractors = extractorNodes.map(ext => normalizeExtractorForEngine(ext.data));
-      }
-
-      const extractNodes = node.children.filter(child => child.type === 'extract');
-      if (extractNodes.length > 0) {
-        if (extractNodes[0].data?.var || extractNodes[0].data?.name) {
-          request.request.extract = extractNodes.map(ext => ext.data);
-        } else {
-          request.request.extract = {};
-          extractNodes.forEach(extractor => {
-            request.request.extract[extractor.data.variable] = extractor.data.expression;
-          });
-        }
-      }
-
-      const assertionNodes = node.children.filter(child => child.type === 'assertion');
-      if (assertionNodes.length > 0) {
-        request.request.assertions = assertionNodes.map(assertion => normalizeAssertionForEngine(assertion.data));
-      }
-
-      const assertNodes = node.children.filter(child => child.type === 'assert');
-      if (assertNodes.length > 0) {
-        if (assertNodes[0].data?.type || assertNodes[0].data?.name) {
-          request.request.assert = assertNodes.map(assertion => assertion.data);
-        } else {
-          request.request.assert = {};
-          assertNodes.forEach(assertion => {
-            request.request.assert[assertion.data.assertion] = assertion.data.value;
-          });
-        }
-      }
-
-      const thinkTimeNode = node.children.find(child => child.type === 'think_time');
-      if (thinkTimeNode) {
-        request.request.think_time = thinkTimeNode.data?.duration || thinkTimeNode.data;
-      }
-
-      const errorPolicyNode = node.children.find(child => child.type === 'error_policy');
-      if (errorPolicyNode) {
-        request.request.error_policy = errorPolicyNode.data;
-      } else {
-        const onErrorNode = node.children.find(child => child.type === 'on_error');
-        if (onErrorNode) {
-          request.request.on_error = onErrorNode.data?.action || onErrorNode.data;
-        }
-      }
-
-      const fileNodes = node.children.filter(child => child.type === 'file');
-      if (fileNodes.length > 0) {
-        request.request.files = fileNodes.map(file => file.data);
-      }
-
-      const headersNode = node.children.find(child => child.type === 'headers');
-      if (headersNode && headersNode.data) {
-        request.request.headers = headersNode.data;
-      }
-
-      const dataSourceNode = node.children.find(child => child.type === 'data_source');
-      if (dataSourceNode) {
-        request.request.data_source = dataSourceNode.data;
-      }
-    }
-
-    return request;
+    return requestNodeToObject(node);
   }
 
   if (node.type === 'sql') {
@@ -442,4 +374,103 @@ function stepNodeToObject(node: YAMLNode): any {
   }
 
   return node.data || {};
+}
+
+function requestNodeToObject(node: YAMLNode, methodFallback?: string): any {
+  const requestData = sanitizeBalancedNodeData({
+    ...(node.data || {}),
+    method: node.data?.method || methodFallback,
+  });
+  const normalizedRequest = normalizeRequestForEditor(requestData);
+  const request: any = { request: { ...normalizedRequest } };
+  pruneDefaultRequestFields(request.request);
+
+  if (node.name && node.name !== node.data?.name) {
+    request.request.name = node.name;
+  }
+
+  delete request.request.spark;
+  delete request.request.extractors;
+  delete request.request.assertions;
+  delete request.request.extract;
+  delete request.request.assert;
+  delete request.request.files;
+  delete request.request.headers;
+
+  if (node.data?.enabled === false) {
+    request.request.enabled = false;
+  }
+
+  if (node.children) {
+    const sparkNodes = node.children.filter(child => child.type === 'spark_before' || child.type === 'spark_after');
+    if (sparkNodes.length > 0) {
+      request.request.spark = sparkNodes.map(spark => spark.data);
+    }
+
+    const extractorNodes = node.children.filter(child => child.type === 'extractor');
+    if (extractorNodes.length > 0) {
+      request.request.extractors = extractorNodes.map(ext => normalizeExtractorForEngine(ext.data));
+    }
+
+    const extractNodes = node.children.filter(child => child.type === 'extract');
+    if (extractNodes.length > 0) {
+      if (extractNodes[0].data?.var || extractNodes[0].data?.name) {
+        request.request.extract = extractNodes.map(ext => ext.data);
+      } else {
+        request.request.extract = {};
+        extractNodes.forEach(extractor => {
+          request.request.extract[extractor.data.variable] = extractor.data.expression;
+        });
+      }
+    }
+
+    const assertionNodes = node.children.filter(child => child.type === 'assertion');
+    if (assertionNodes.length > 0) {
+      request.request.assertions = assertionNodes.map(assertion => normalizeAssertionForEngine(assertion.data));
+    }
+
+    const assertNodes = node.children.filter(child => child.type === 'assert');
+    if (assertNodes.length > 0) {
+      if (assertNodes[0].data?.type || assertNodes[0].data?.name) {
+        request.request.assert = assertNodes.map(assertion => assertion.data);
+      } else {
+        request.request.assert = {};
+        assertNodes.forEach(assertion => {
+          request.request.assert[assertion.data.assertion] = assertion.data.value;
+        });
+      }
+    }
+
+    const thinkTimeNode = node.children.find(child => child.type === 'think_time');
+    if (thinkTimeNode) {
+      request.request.think_time = thinkTimeNode.data?.duration || thinkTimeNode.data;
+    }
+
+    const errorPolicyNode = node.children.find(child => child.type === 'error_policy');
+    if (errorPolicyNode) {
+      request.request.error_policy = errorPolicyNode.data;
+    } else {
+      const onErrorNode = node.children.find(child => child.type === 'on_error');
+      if (onErrorNode) {
+        request.request.on_error = onErrorNode.data?.action || onErrorNode.data;
+      }
+    }
+
+    const fileNodes = node.children.filter(child => child.type === 'file');
+    if (fileNodes.length > 0) {
+      request.request.files = fileNodes.map(file => file.data);
+    }
+
+    const headersNode = node.children.find(child => child.type === 'headers');
+    if (headersNode && headersNode.data) {
+      request.request.headers = headersNode.data;
+    }
+
+    const dataSourceNode = node.children.find(child => child.type === 'data_source');
+    if (dataSourceNode) {
+      request.request.data_source = dataSourceNode.data;
+    }
+  }
+
+  return request;
 }

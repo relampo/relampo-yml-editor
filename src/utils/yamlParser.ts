@@ -12,6 +12,10 @@ import {
 } from './yamlParserHelpers';
 import { treeToObject } from './yamlTreeSerializer';
 
+function isPlainRecord(value: unknown): value is Record<string, any> {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
 // Parser: YAML string → Tree
 export function parseYAMLToTree(yamlString: string): YAMLNode | null {
   if (!yamlString || yamlString.trim() === '') {
@@ -218,181 +222,15 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
   const httpMethods = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
   for (const method of httpMethods) {
     if (step[method] !== undefined) {
-      return {
-        id: stepId,
-        type: method as any,
-        name: `${method.toUpperCase()}: ${step[method]}`,
-        data: { url: step[method], ...step, enabled: isEnabled },
-        path,
-        children: [],
-        expanded: false,
-      };
+      const methodValue = step[method];
+      const requestData = isPlainRecord(methodValue) ? methodValue : { url: methodValue };
+      return createRequestNode(stepId, method as any, { ...requestData, method: method.toUpperCase() }, path, isEnabled);
     }
   }
 
   // Request (long form)
   if (step.request) {
-    const req = normalizeRequestForEditor(step.request);
-    const requestNode: YAMLNode = {
-      id: stepId,
-      type: 'request',
-      name: req.name || `${req.method || 'GET'}: ${req.url || '/'}`,
-      data: { ...req, enabled: isEnabled },
-      path,
-      children: [],
-      expanded: false,
-    };
-
-    // HEADERS (object format: {header_name: value}) - PRIMERO
-    if (req.headers && typeof req.headers === 'object' && !Array.isArray(req.headers)) {
-      const headerEntries = Object.entries(req.headers);
-      if (headerEntries.length > 0) {
-        requestNode.children!.push({
-          id: `${stepId}_headers`,
-          type: 'headers',
-          name: 'Headers',
-          data: req.headers,
-          path: [...path, 'request', 'headers'],
-        });
-      }
-    }
-
-    // 🔥 SPARK SCRIPTS (Pulse format)
-    if (req.spark && Array.isArray(req.spark)) {
-      req.spark.forEach((sparkItem: any, idx: number) => {
-        const when = sparkItem.when || 'before';
-        requestNode.children!.push({
-          id: `${stepId}_spark_${idx}`,
-          type: when === 'after' ? 'spark_after' : 'spark_before',
-          name: `Spark (${when})`,
-          data: sparkItem,
-          path: [...path, 'spark', idx],
-        });
-      });
-    }
-
-    // EXTRACTORS as array (Pulse format: extractors[])
-    if (req.extractors && Array.isArray(req.extractors)) {
-      req.extractors.forEach((extractor: any, idx: number) => {
-        const normalizedExtractor = normalizeExtractorForEditor(extractor);
-        requestNode.children!.push({
-          id: `${stepId}_extractor_${idx}`,
-          type: 'extractor',
-          name: `Extract: ${normalizedExtractor.var || normalizedExtractor.variable || 'unknown'}`,
-          data: normalizedExtractor,
-          path: [...path, 'extractors', idx],
-        });
-      });
-    }
-
-    // EXTRACT as array (JMX converter format: [{name, var, expression}])
-    if (req.extract && Array.isArray(req.extract)) {
-      req.extract.forEach((extractor: any, idx: number) => {
-        const varName = extractor.var || extractor.variable || 'unknown';
-        requestNode.children!.push({
-          id: `${stepId}_extract_${idx}`,
-          type: 'extract',
-          name: `Extract: ${varName}`,
-          data: extractor,
-          path: [...path, 'request', 'extract', idx],
-        });
-      });
-    }
-    // EXTRACT as object (spec format: {var: expression})
-    else if (req.extract && typeof req.extract === 'object' && !Array.isArray(req.extract)) {
-      Object.entries(req.extract).forEach(([key, value], idx) => {
-        requestNode.children!.push({
-          id: `${stepId}_extract_${idx}`,
-          type: 'extract',
-          name: `Extract: ${key}`,
-          data: { variable: key, expression: value },
-          path: [...path, 'request', 'extract', key],
-        });
-      });
-    }
-
-    // ASSERTIONS as array (Pulse format: assertions[])
-    if (req.assertions && Array.isArray(req.assertions)) {
-      req.assertions.forEach((assertion: any, idx: number) => {
-        const normalizedAssertion = normalizeAssertionForEditor(assertion);
-        const label = normalizedAssertion.type || 'check';
-        const detail = normalizedAssertion.value || normalizedAssertion.pattern || normalizedAssertion.name || '';
-        requestNode.children!.push({
-          id: `${stepId}_assertion_${idx}`,
-          type: 'assertion',
-          name: `Assert: ${label}${detail ? ' = ' + String(detail).substring(0, 20) : ''}`,
-          data: normalizedAssertion,
-          path: [...path, 'assertions', idx],
-        });
-      });
-    }
-
-    // ASSERT as array (JMX converter format: [{name, type, value}])
-    if (req.assert && Array.isArray(req.assert)) {
-      req.assert.forEach((assertion: any, idx: number) => {
-        const label = assertion.type || assertion.name || 'check';
-        const detail = assertion.value || '';
-        requestNode.children!.push({
-          id: `${stepId}_assert_${idx}`,
-          type: 'assert',
-          name: `Assert: ${label}${detail ? ' = ' + String(detail).substring(0, 20) : ''}`,
-          data: assertion,
-          path: [...path, 'request', 'assert', idx],
-        });
-      });
-    }
-    // ASSERT as object (spec format: {status: 200, ...})
-    else if (req.assert && typeof req.assert === 'object' && !Array.isArray(req.assert)) {
-      Object.entries(req.assert).forEach(([key, value], idx) => {
-        requestNode.children!.push({
-          id: `${stepId}_assert_${idx}`,
-          type: 'assert',
-          name: `Assert: ${key} = ${value}`,
-          data: { assertion: key, value },
-          path: [...path, 'request', 'assert', key],
-        });
-      });
-    }
-
-    // THINK_TIME inline (inside the request)
-    if (req.think_time) {
-      requestNode.children!.push({
-        id: `${stepId}_think_time`,
-        type: 'think_time',
-        name: 'Think Time', // SOLO el nombre, duración va en el badge
-        data: { duration: req.think_time },
-        path: [...path, 'think_time'],
-      });
-    }
-
-    // ERROR_POLICY inline (inside the request), keep on_error as legacy fallback
-    if (req.error_policy || req.on_error) {
-      const policy = req.error_policy || { on_error: req.on_error };
-      requestNode.children!.push({
-        id: `${stepId}_error_policy`,
-        type: 'error_policy',
-        name: 'Error Policy',
-        data: policy,
-        path: [...path, 'error_policy'],
-      });
-    }
-
-    // FILES (array format: files[])
-    if (req.files && Array.isArray(req.files)) {
-      req.files.forEach((file: any, idx: number) => {
-        const fieldName = file.field || 'file';
-        const fileName = file.path ? file.path.split('/').pop() : 'unknown';
-        requestNode.children!.push({
-          id: `${stepId}_file_${idx}`,
-          type: 'file',
-          name: `${fieldName}: ${fileName}`,
-          data: file,
-          path: [...path, 'files', idx],
-        });
-      });
-    }
-
-    return requestNode;
+    return createRequestNode(stepId, 'request', step.request, path, isEnabled);
   }
 
   if (step.sql) {
@@ -769,4 +607,175 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
     data: step,
     path,
   };
+}
+
+function createRequestNode(
+  stepId: string,
+  type: Extract<YAMLNode['type'], 'request' | 'get' | 'post' | 'put' | 'delete' | 'patch' | 'head' | 'options'>,
+  requestData: any,
+  path: any[],
+  isEnabled: boolean,
+): YAMLNode {
+  const req = normalizeRequestForEditor(requestData);
+  const method = req.method || (type === 'request' ? 'GET' : type.toUpperCase());
+  const requestNode: YAMLNode = {
+    id: stepId,
+    type,
+    name: req.name || `${method}: ${req.url || '/'}`,
+    data: { ...req, method, enabled: isEnabled },
+    path,
+    children: [],
+    expanded: false,
+  };
+
+  // HEADERS (object format: {header_name: value}) - PRIMERO
+  if (req.headers && typeof req.headers === 'object' && !Array.isArray(req.headers)) {
+    const headerEntries = Object.entries(req.headers);
+    if (headerEntries.length > 0) {
+      requestNode.children!.push({
+        id: `${stepId}_headers`,
+        type: 'headers',
+        name: 'Headers',
+        data: req.headers,
+        path: [...path, 'request', 'headers'],
+      });
+    }
+  }
+
+  // 🔥 SPARK SCRIPTS (Pulse format)
+  if (req.spark && Array.isArray(req.spark)) {
+    req.spark.forEach((sparkItem: any, idx: number) => {
+      const when = sparkItem.when || 'before';
+      requestNode.children!.push({
+        id: `${stepId}_spark_${idx}`,
+        type: when === 'after' ? 'spark_after' : 'spark_before',
+        name: `Spark (${when})`,
+        data: sparkItem,
+        path: [...path, 'spark', idx],
+      });
+    });
+  }
+
+  // EXTRACTORS as array (Pulse format: extractors[])
+  if (req.extractors && Array.isArray(req.extractors)) {
+    req.extractors.forEach((extractor: any, idx: number) => {
+      const normalizedExtractor = normalizeExtractorForEditor(extractor);
+      requestNode.children!.push({
+        id: `${stepId}_extractor_${idx}`,
+        type: 'extractor',
+        name: `Extract: ${normalizedExtractor.var || normalizedExtractor.variable || 'unknown'}`,
+        data: normalizedExtractor,
+        path: [...path, 'extractors', idx],
+      });
+    });
+  }
+
+  // EXTRACT as array (JMX converter format: [{name, var, expression}])
+  if (req.extract && Array.isArray(req.extract)) {
+    req.extract.forEach((extractor: any, idx: number) => {
+      const varName = extractor.var || extractor.variable || 'unknown';
+      requestNode.children!.push({
+        id: `${stepId}_extract_${idx}`,
+        type: 'extract',
+        name: `Extract: ${varName}`,
+        data: extractor,
+        path: [...path, 'request', 'extract', idx],
+      });
+    });
+  }
+  // EXTRACT as object (spec format: {var: expression})
+  else if (req.extract && typeof req.extract === 'object' && !Array.isArray(req.extract)) {
+    Object.entries(req.extract).forEach(([key, value], idx) => {
+      requestNode.children!.push({
+        id: `${stepId}_extract_${idx}`,
+        type: 'extract',
+        name: `Extract: ${key}`,
+        data: { variable: key, expression: value },
+        path: [...path, 'request', 'extract', key],
+      });
+    });
+  }
+
+  // ASSERTIONS as array (Pulse format: assertions[])
+  if (req.assertions && Array.isArray(req.assertions)) {
+    req.assertions.forEach((assertion: any, idx: number) => {
+      const normalizedAssertion = normalizeAssertionForEditor(assertion);
+      const label = normalizedAssertion.type || 'check';
+      const detail = normalizedAssertion.value || normalizedAssertion.pattern || normalizedAssertion.name || '';
+      requestNode.children!.push({
+        id: `${stepId}_assertion_${idx}`,
+        type: 'assertion',
+        name: `Assert: ${label}${detail ? ' = ' + String(detail).substring(0, 20) : ''}`,
+        data: normalizedAssertion,
+        path: [...path, 'assertions', idx],
+      });
+    });
+  }
+
+  // ASSERT as array (JMX converter format: [{name, type, value}])
+  if (req.assert && Array.isArray(req.assert)) {
+    req.assert.forEach((assertion: any, idx: number) => {
+      const label = assertion.type || assertion.name || 'check';
+      const detail = assertion.value || '';
+      requestNode.children!.push({
+        id: `${stepId}_assert_${idx}`,
+        type: 'assert',
+        name: `Assert: ${label}${detail ? ' = ' + String(detail).substring(0, 20) : ''}`,
+        data: assertion,
+        path: [...path, 'request', 'assert', idx],
+      });
+    });
+  }
+  // ASSERT as object (spec format: {status: 200, ...})
+  else if (req.assert && typeof req.assert === 'object' && !Array.isArray(req.assert)) {
+    Object.entries(req.assert).forEach(([key, value], idx) => {
+      requestNode.children!.push({
+        id: `${stepId}_assert_${idx}`,
+        type: 'assert',
+        name: `Assert: ${key} = ${value}`,
+        data: { assertion: key, value },
+        path: [...path, 'request', 'assert', key],
+      });
+    });
+  }
+
+  // THINK_TIME inline (inside the request)
+  if (req.think_time) {
+    requestNode.children!.push({
+      id: `${stepId}_think_time`,
+      type: 'think_time',
+      name: 'Think Time', // SOLO el nombre, duración va en el badge
+      data: { duration: req.think_time },
+      path: [...path, 'think_time'],
+    });
+  }
+
+  // ERROR_POLICY inline (inside the request), keep on_error as legacy fallback
+  if (req.error_policy || req.on_error) {
+    const policy = req.error_policy || { on_error: req.on_error };
+    requestNode.children!.push({
+      id: `${stepId}_error_policy`,
+      type: 'error_policy',
+      name: 'Error Policy',
+      data: policy,
+      path: [...path, 'error_policy'],
+    });
+  }
+
+  // FILES (array format: files[])
+  if (req.files && Array.isArray(req.files)) {
+    req.files.forEach((file: any, idx: number) => {
+      const fieldName = file.field || 'file';
+      const fileName = file.path ? file.path.split('/').pop() : 'unknown';
+      requestNode.children!.push({
+        id: `${stepId}_file_${idx}`,
+        type: 'file',
+        name: `${fieldName}: ${fileName}`,
+        data: file,
+        path: [...path, 'files', idx],
+      });
+    });
+  }
+
+  return requestNode;
 }
