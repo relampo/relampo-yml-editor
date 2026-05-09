@@ -194,11 +194,27 @@ function RequestContent({
     'w-[14ch] max-w-full h-9.5 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono';
 
   const urlParts = parseRequestUrl(formData.url || '');
+  const rawUrl = String(formData.url ?? '').trim();
+  const pathInputValue = rawUrl === '' ? '' : urlParts.path;
   const requestBodyText = formData.body
     ? typeof formData.body === 'string'
       ? formData.body
       : JSON.stringify(formData.body, null, 2)
     : '';
+
+  const handlePathChange = (value: string) => {
+    if (value.trim() === '') {
+      if (!urlParts.isAbsolute && !urlParts.baseUrl && !urlParts.query) {
+        onFieldChange('url', '');
+        return;
+      }
+
+      onFieldChange('url', buildRequestUrl(formData.url || '', { path: '' }));
+      return;
+    }
+
+    onFieldChange('url', buildRequestUrl(formData.url || '', { path: value }));
+  };
 
   const buildSearchRegex = () => {
     if (!searchText || searchMode !== 'regex') return null;
@@ -346,9 +362,9 @@ function RequestContent({
             </label>
             <Input
               id="req-path"
-              value={urlParts.path}
-              onChange={e => onFieldChange('url', buildRequestUrl(formData.url || '', { path: e.target.value }))}
-              placeholder="/endpoint"
+              value={pathInputValue}
+              onChange={e => handlePathChange(e.target.value)}
+              placeholder="/api/endpoint"
               className="w-full h-9.5 bg-white/5 border border-white/10 text-zinc-300 text-sm font-mono"
             />
           </div>

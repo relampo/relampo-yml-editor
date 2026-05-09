@@ -480,6 +480,7 @@ export function ExtractorDetails({ node, onNodeUpdate }: NodeDetailProps) {
               placeholder="1"
               onChange={value => handleChange('group', parseInt(value, 10) || 1)}
               min={1}
+              noMargin
             />
             <TextField
               label="Default Value (if not found)"
@@ -682,15 +683,17 @@ function SimpleNumberField({
   placeholder,
   onChange,
   min,
+  noMargin = false,
 }: {
   label: string;
   value: string | number;
   placeholder: string;
   onChange: (value: string) => void;
   min?: number;
+  noMargin?: boolean;
 }) {
   return (
-    <div className="mb-4">
+    <div className={noMargin ? '' : 'mb-4'}>
       <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{label}</label>
       <Input
         type="number"
