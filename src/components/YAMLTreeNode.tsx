@@ -213,6 +213,11 @@ export function YAMLTreeNode({
   const hasRequestHit = searchHitFlags.request || hasDirectNameMatch;
   const hasResponseHit = searchHitFlags.response;
 
+  const selectionClass = 'bg-yellow-300/12 border border-yellow-300/35 ring-1 ring-yellow-300/25 shadow-[0_0_0_1px_rgba(250,204,21,0.14)]';
+  const redirectedClass = 'bg-zinc-400/12 border border-zinc-300/30 hover:bg-zinc-400/16 ring-1 ring-zinc-300/15';
+  const defaultVisual = isSelected ? selectionClass : isRedirectedFollowUp ? redirectedClass : 'hover:bg-white/5 border border-transparent';
+  const requestVisual = isSelected ? selectionClass : 'hover:bg-transparent border border-transparent';
+
   return (
     <div className="select-none">
       <div
@@ -231,22 +236,16 @@ export function YAMLTreeNode({
           if (e.key === 'Enter' || e.key === ' ') onNodeSelect(node, e as any);
         }}
         onContextMenu={e => onContextMenu(e, node)}
-        className={`
-          relative group flex items-center gap-2 px-2 py-1.5 pr-3 rounded cursor-pointer transition-colors overflow-visible
-          ${
-            isSelected
-              ? 'bg-yellow-300/12 border border-yellow-300/35 ring-1 ring-yellow-300/25 shadow-[0_0_0_1px_rgba(250,204,21,0.14)]'
-              : isRedirectedFollowUp
-                ? 'bg-zinc-400/12 border border-zinc-300/30 hover:bg-zinc-400/16 ring-1 ring-zinc-300/15'
-                : 'hover:bg-white/5 border border-transparent'
-          }
-          ${dragOver === 'before' ? 'border-t-2 border-t-yellow-400' : ''}
-          ${dragOver === 'after' ? 'border-b-2 border-b-yellow-400' : ''}
-          ${dragOver === 'inside' ? 'bg-yellow-400/5 border-yellow-400/30' : ''}
-        `}
+        className={
+          `relative group flex items-center gap-2 px-2 py-1.5 pr-3 rounded cursor-pointer transition-colors overflow-visible ` +
+          `${node.type === 'request' ? requestVisual : defaultVisual} ` +
+          `${dragOver === 'before' ? 'border-t-2 border-t-yellow-400' : ''} ` +
+          `${dragOver === 'after' ? 'border-b-2 border-b-yellow-400' : ''} ` +
+          `${dragOver === 'inside' ? 'bg-yellow-400/5 border-yellow-400/30' : ''}`
+        }
         style={{ paddingLeft: `${depth * 16 + 8}px` }}
       >
-        {isRedirectedFollowUp && <div className="absolute left-0 top-1 bottom-1 w-1 rounded-full bg-zinc-300/80" />}
+        {/* Left indicator removed to avoid visible corner artifact */}
         {/* Expand/Collapse */}
         {hasChildren && (
           <button
