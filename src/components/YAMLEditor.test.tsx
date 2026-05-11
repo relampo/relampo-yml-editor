@@ -3,9 +3,14 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import { LanguageProvider } from '../contexts/LanguageContext';
 import { YAMLProvider } from '../contexts/YAMLContext';
 import type { YAMLNode } from '../types/yaml';
+import { logStatsigEvent } from '../utils/analytics';
 import { getActiveDraft } from '../utils/yamlDraftStorage';
 import { parseYAMLToTree, treeToYAML } from '../utils/yamlParser';
 import { YAMLEditor } from './YAMLEditor';
+
+vi.mock('../utils/analytics', () => ({
+  logStatsigEvent: vi.fn(),
+}));
 
 vi.mock('../utils/yamlDraftStorage', () => ({
   getActiveDraft: vi.fn(),
@@ -61,6 +66,7 @@ vi.mock('./YAMLTreeView', () => ({
     tree: YAMLNode | null;
     onSelectionChange: (primaryNode: YAMLNode | null, nodeIds: string[]) => void;
     onTreeChange: (tree: YAMLNode, nextSelection?: { primaryId: string | null; nodeIds: string[] }) => void;
+    onContextMenuOpened?: (metadata: { nodeType: string; selectionCount: number; hasMultiSelection: boolean }) => void;
   }) => {
     const tree = props.tree;
     return (
@@ -79,6 +85,17 @@ vi.mock('./YAMLTreeView', () => ({
             >
               change from tree
             </button>
+            <button
+              onClick={() =>
+                props.onContextMenuOpened?.({
+                  nodeType: tree.type,
+                  selectionCount: 1,
+                  hasMultiSelection: false,
+                })
+              }
+            >
+              open context menu
+            </button>
           </>
         )}
       </div>
@@ -91,6 +108,7 @@ vi.mock('./YAMLNodeDetails', () => ({
     node: YAMLNode | null;
     onNodeUpdate?: (nodeId: string, updatedData: Record<string, unknown>) => void;
     onAddChildNode?: (parentId: string, nodeType: 'variables') => void;
+    onAddChildAction?: (metadata: { parentNodeType: string; childNodeType: 'variables' }) => void;
   }) => (
     <div data-testid="node-details">
       <span>{props.node?.name ?? 'no selected node'}</span>
@@ -99,12 +117,22 @@ vi.mock('./YAMLNodeDetails', () => ({
           change from details
         </button>
       )}
-      <button onClick={() => props.onAddChildNode?.('root', 'variables')}>add from details</button>
+      {props.node && (
+        <button
+          onClick={() => {
+            props.onAddChildAction?.({ parentNodeType: props.node!.type, childNodeType: 'variables' });
+            props.onAddChildNode?.(props.node!.id, 'variables');
+          }}
+        >
+          add from details
+        </button>
+      )}
     </div>
   ),
 }));
 
 const getActiveDraftMock = vi.mocked(getActiveDraft);
+const logStatsigEventMock = vi.mocked(logStatsigEvent);
 const parseYAMLToTreeMock = vi.mocked(parseYAMLToTree);
 const treeToYAMLMock = vi.mocked(treeToYAML);
 
@@ -121,6 +149,7 @@ function renderEditor() {
 describe('YAMLEditor draft restoration', () => {
   beforeEach(() => {
     getActiveDraftMock.mockResolvedValue(null);
+    logStatsigEventMock.mockClear();
     parseYAMLToTreeMock.mockClear();
     treeToYAMLMock.mockClear();
   });
@@ -252,6 +281,7 @@ describe('YAMLEditor draft restoration', () => {
     renderEditor();
 
     await screen.findByText('Restored plan');
+    fireEvent.click(screen.getByRole('button', { name: 'select tree root' }));
     fireEvent.click(screen.getByRole('button', { name: 'add from details' }));
 
     expect(await screen.findByText('Variables')).toBeInTheDocument();
@@ -265,5 +295,53 @@ describe('YAMLEditor draft restoration', () => {
       }),
     );
     expect(screen.getByTestId('editor-header')).toHaveAttribute('data-dirty', 'true');
+  });
+
+  it('logs detail-panel add as discovery friction before the tree context menu is opened', async () => {
+    getActiveDraftMock.mockResolvedValueOnce({
+      yaml: 'test:\n  name: restored\n',
+      fileName: 'restored.yaml',
+      updatedAt: '2026-04-23T10:00:00.000Z',
+    });
+
+    renderEditor();
+
+    await screen.findByText('Restored plan');
+    fireEvent.click(screen.getByRole('button', { name: 'select tree root' }));
+    fireEvent.click(screen.getByRole('button', { name: 'add from details' }));
+
+    expect(logStatsigEventMock).toHaveBeenCalledWith('detail_panel_add_clicked', {
+      parent_node_type: 'root',
+      child_node_type: 'variables',
+      context_menu_discovered: false,
+      is_discovery_friction: true,
+    });
+  });
+
+  it('logs detail-panel add without friction after the tree context menu is opened', async () => {
+    getActiveDraftMock.mockResolvedValueOnce({
+      yaml: 'test:\n  name: restored\n',
+      fileName: 'restored.yaml',
+      updatedAt: '2026-04-23T10:00:00.000Z',
+    });
+
+    renderEditor();
+
+    await screen.findByText('Restored plan');
+    fireEvent.click(screen.getByRole('button', { name: 'select tree root' }));
+    fireEvent.click(screen.getByRole('button', { name: 'open context menu' }));
+    fireEvent.click(screen.getByRole('button', { name: 'add from details' }));
+
+    expect(logStatsigEventMock).toHaveBeenCalledWith('tree_context_menu_opened', {
+      node_type: 'root',
+      selection_count: 1,
+      has_multi_selection: false,
+    });
+    expect(logStatsigEventMock).toHaveBeenCalledWith('detail_panel_add_clicked', {
+      parent_node_type: 'root',
+      child_node_type: 'variables',
+      context_menu_discovered: true,
+      is_discovery_friction: false,
+    });
   });
 });

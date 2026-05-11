@@ -41,11 +41,18 @@ interface YAMLNodeDetailsProps {
   redirectSourceInfo?: RedirectSourceInfo | null;
   onNodeUpdate?: (nodeId: string, updatedData: any) => void;
   onAddChildNode?: (parentId: string, nodeType: YAMLAddableNodeType) => void;
+  onAddChildAction?: (metadata: { parentNodeType: string; childNodeType: YAMLAddableNodeType }) => void;
 }
 
 const REQUEST_NODE_TYPES = ['request', 'sql', 'get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
 
-export function YAMLNodeDetails({ node, redirectSourceInfo = null, onNodeUpdate, onAddChildNode }: YAMLNodeDetailsProps) {
+export function YAMLNodeDetails({
+  node,
+  redirectSourceInfo = null,
+  onNodeUpdate,
+  onAddChildNode,
+  onAddChildAction,
+}: YAMLNodeDetailsProps) {
   const { t } = useLanguage();
   const [nodeName, setNodeName] = useState(node?.name || '');
   const isRequestNode = REQUEST_NODE_TYPES.includes(node?.type || '');
@@ -116,8 +123,10 @@ export function YAMLNodeDetails({ node, redirectSourceInfo = null, onNodeUpdate,
         {addableItems.length > 0 && onAddChildNode && (
           <AddChildActions
             nodeId={node.id}
+            parentNodeType={node.type}
             items={addableItems}
             onAddChildNode={onAddChildNode}
+            onAddChildAction={onAddChildAction}
             title={t('yamlEditor.common.add')}
             compact={isCompactDetailsNode}
           />
@@ -380,14 +389,18 @@ function NodeDetailsContent({
 
 function AddChildActions({
   nodeId,
+  parentNodeType,
   items,
   onAddChildNode,
+  onAddChildAction,
   title,
   compact,
 }: {
   nodeId: string;
+  parentNodeType: string;
   items: ReturnType<typeof getAddableItems>;
   onAddChildNode: (parentId: string, nodeType: YAMLAddableNodeType) => void;
+  onAddChildAction?: (metadata: { parentNodeType: string; childNodeType: YAMLAddableNodeType }) => void;
   title: string;
   compact: boolean;
 }) {
@@ -402,7 +415,10 @@ function AddChildActions({
           <button
             key={item.type}
             type="button"
-            onClick={() => onAddChildNode(nodeId, item.type)}
+            onClick={() => {
+              onAddChildAction?.({ parentNodeType, childNodeType: item.type });
+              onAddChildNode(nodeId, item.type);
+            }}
             className="min-w-0 rounded-md border border-white/10 bg-white/5 px-3 py-2 text-left transition-colors hover:border-yellow-400/40 hover:bg-yellow-400/8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/60"
             aria-label={`Add ${item.label}`}
           >

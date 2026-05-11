@@ -5,6 +5,7 @@ import { useYAML } from '../contexts/YAMLContext';
 import { useResizePanel } from '../hooks/useResizePanel';
 import { useYAMLPersistence } from '../hooks/useYAMLPersistence';
 import type { RedirectSourceInfo, RedirectedRequestInfo, YAMLNode } from '../types/yaml';
+import { logStatsigEvent } from '../utils/analytics';
 import { applyNodeUpdateToTree } from '../utils/nodeUpdate';
 import { getActiveDraft } from '../utils/yamlDraftStorage';
 import { getDocumentMetrics } from '../utils/yamlDocumentLimits';
@@ -127,6 +128,7 @@ export function YAMLEditor() {
   const [restoredDraftUpdatedAt, setRestoredDraftUpdatedAt] = useState<string | null>(null);
   const selectedNodeRef = useRef<YAMLNode | null>(null);
   const selectedNodeIdsRef = useRef<string[]>([]);
+  const hasDiscoveredTreeContextMenuRef = useRef(false);
 
   const documentMetrics = useMemo(() => getDocumentMetrics(yamlCode), [yamlCode]);
   const isLargeFileMode = documentMetrics.large;
@@ -504,6 +506,39 @@ export function YAMLEditor() {
     });
   };
 
+  const handleTreeContextMenuOpened = ({
+    nodeType,
+    selectionCount,
+    hasMultiSelection,
+  }: {
+    nodeType: string;
+    selectionCount: number;
+    hasMultiSelection: boolean;
+  }) => {
+    hasDiscoveredTreeContextMenuRef.current = true;
+    logStatsigEvent('tree_context_menu_opened', {
+      node_type: nodeType,
+      selection_count: selectionCount,
+      has_multi_selection: hasMultiSelection,
+    });
+  };
+
+  const handleDetailPanelAddClicked = ({
+    parentNodeType,
+    childNodeType,
+  }: {
+    parentNodeType: string;
+    childNodeType: YAMLAddableNodeType;
+  }) => {
+    const contextMenuDiscovered = hasDiscoveredTreeContextMenuRef.current;
+    logStatsigEvent('detail_panel_add_clicked', {
+      parent_node_type: parentNodeType,
+      child_node_type: childNodeType,
+      context_menu_discovered: contextMenuDiscovered,
+      is_discovery_friction: !contextMenuDiscovered,
+    });
+  };
+
   const handleUpload = () => {
     fileInputRef.current?.click();
   };
@@ -769,6 +804,7 @@ export function YAMLEditor() {
                 redirectedRequestMap={redirectedRequestMap}
                 onSelectionChange={handleSelectionChange}
                 onTreeChange={handleTreeChange}
+                onContextMenuOpened={handleTreeContextMenuOpened}
               />
             ) : (
               <YAMLCodeEditor
@@ -813,6 +849,7 @@ export function YAMLEditor() {
               redirectSourceInfo={selectedNode ? (redirectSourceMap[selectedNode.id] ?? null) : null}
               onNodeUpdate={handleNodeUpdate}
               onAddChildNode={handleAddChildNode}
+              onAddChildAction={handleDetailPanelAddClicked}
             />
           </div>
         </div>

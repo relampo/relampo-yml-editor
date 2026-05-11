@@ -4,16 +4,17 @@ import { LanguageProvider } from '../contexts/LanguageContext';
 import type { YAMLNode } from '../types/yaml';
 import { YAMLNodeDetails } from './YAMLNodeDetails';
 
-function renderDetails(node: YAMLNode, onAddChildNode = vi.fn()) {
+function renderDetails(node: YAMLNode, onAddChildNode = vi.fn(), onAddChildAction = vi.fn()) {
   render(
     <LanguageProvider>
       <YAMLNodeDetails
         node={node}
         onAddChildNode={onAddChildNode}
+        onAddChildAction={onAddChildAction}
       />
     </LanguageProvider>,
   );
-  return { onAddChildNode };
+  return { onAddChildNode, onAddChildAction };
 }
 
 describe('YAMLNodeDetails add actions', () => {
@@ -32,7 +33,7 @@ describe('YAMLNodeDetails add actions', () => {
   });
 
   it('adds a child node to the selected parent from details', () => {
-    const { onAddChildNode } = renderDetails({
+    const { onAddChildNode, onAddChildAction } = renderDetails({
       id: 'scenario_steps',
       type: 'steps',
       name: 'Steps',
@@ -42,5 +43,9 @@ describe('YAMLNodeDetails add actions', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add HTTP Request' }));
 
     expect(onAddChildNode).toHaveBeenCalledWith('scenario_steps', 'request');
+    expect(onAddChildAction).toHaveBeenCalledWith({
+      parentNodeType: 'steps',
+      childNodeType: 'request',
+    });
   });
 });

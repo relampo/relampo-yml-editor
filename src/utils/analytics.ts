@@ -4,6 +4,8 @@ import { StatsigAutoCapturePlugin } from '@statsig/web-analytics';
 const VISITOR_ID_STORAGE_KEY = 'relampo_yml_editor_visitor_id';
 const APP_NAME = 'relampo-yml-editor';
 
+type StatsigEventMetadata = Record<string, string | number | boolean | null | undefined>;
+
 let statsigClient: StatsigClient | null = null;
 let isInitializing = false;
 let hasLifecycleFlushHandlers = false;
@@ -23,6 +25,14 @@ function getOrCreateVisitorId(): string {
   const nextId = window.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   window.localStorage.setItem(VISITOR_ID_STORAGE_KEY, nextId);
   return nextId;
+}
+
+function sanitizeMetadata(metadata: StatsigEventMetadata = {}): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(metadata)
+      .filter(([, value]) => value !== null && value !== undefined)
+      .map(([key, value]) => [key, String(value)]),
+  );
 }
 
 function registerLifecycleFlushHandlers(client: StatsigClient) {
@@ -68,4 +78,11 @@ export function initializeAnalytics(): StatsigClient | null {
   }
 
   return statsigClient;
+}
+
+export function logStatsigEvent(eventName: string, metadata?: StatsigEventMetadata) {
+  const client = statsigClient ?? initializeAnalytics();
+  if (!client) return;
+
+  client.logEvent(eventName, undefined, sanitizeMetadata(metadata));
 }

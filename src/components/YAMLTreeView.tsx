@@ -29,6 +29,7 @@ interface YAMLTreeViewProps {
   redirectedRequestMap: Record<string, RedirectedRequestInfo>;
   onSelectionChange: (primaryNode: YAMLNode | null, nodeIds: string[]) => void;
   onTreeChange: (tree: YAMLNode, nextSelection?: { primaryId: string | null; nodeIds: string[] }) => void;
+  onContextMenuOpened?: (metadata: { nodeType: string; selectionCount: number; hasMultiSelection: boolean }) => void;
 }
 
 export function YAMLTreeView({
@@ -38,6 +39,7 @@ export function YAMLTreeView({
   redirectedRequestMap,
   onSelectionChange,
   onTreeChange,
+  onContextMenuOpened,
 }: YAMLTreeViewProps) {
   const { t } = useLanguage();
   const [contextMenu, setContextMenu] = useState<{
@@ -226,6 +228,16 @@ export function YAMLTreeView({
       x: e.clientX,
       y: e.clientY,
       node,
+    });
+
+    const contextSelectionIds =
+      selectedNodeIds.includes(node.id) && effectiveSelectedIds.includes(node.id) && effectiveSelectedIds.length > 1
+        ? effectiveSelectedIds
+        : [node.id];
+    onContextMenuOpened?.({
+      nodeType: node.type,
+      selectionCount: contextSelectionIds.length,
+      hasMultiSelection: contextSelectionIds.length > 1,
     });
   };
 

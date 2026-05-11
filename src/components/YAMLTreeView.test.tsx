@@ -5,7 +5,11 @@ import { YAMLTreeView } from './YAMLTreeView';
 
 const originalInnerHeight = window.innerHeight;
 
-function renderTreeView() {
+function renderTreeView({
+  onContextMenuOpened = vi.fn(),
+}: {
+  onContextMenuOpened?: (metadata: { nodeType: string; selectionCount: number; hasMultiSelection: boolean }) => void;
+} = {}) {
   return render(
     <LanguageProvider>
       <YAMLTreeView
@@ -21,6 +25,7 @@ function renderTreeView() {
         redirectedRequestMap={{}}
         onSelectionChange={vi.fn()}
         onTreeChange={vi.fn()}
+        onContextMenuOpened={onContextMenuOpened}
       />
     </LanguageProvider>,
   );
@@ -35,14 +40,34 @@ describe('YAMLTreeView context menu', () => {
   });
 
   it('does not open the context menu on short viewports', () => {
+    const onContextMenuOpened = vi.fn();
     Object.defineProperty(window, 'innerHeight', {
       configurable: true,
       value: 640,
     });
 
-    renderTreeView();
+    renderTreeView({ onContextMenuOpened });
     fireEvent.contextMenu(screen.getByRole('treeitem', { name: /Steps/i }));
 
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    expect(onContextMenuOpened).not.toHaveBeenCalled();
+  });
+
+  it('tracks when the context menu opens', () => {
+    const onContextMenuOpened = vi.fn();
+    Object.defineProperty(window, 'innerHeight', {
+      configurable: true,
+      value: 900,
+    });
+
+    renderTreeView({ onContextMenuOpened });
+    fireEvent.contextMenu(screen.getByRole('treeitem', { name: /Steps/i }));
+
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+    expect(onContextMenuOpened).toHaveBeenCalledWith({
+      nodeType: 'steps',
+      selectionCount: 1,
+      hasMultiSelection: false,
+    });
   });
 });
