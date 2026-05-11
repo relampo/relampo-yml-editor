@@ -28,3 +28,12 @@ Precedence:
 Run `bun install` to install the dependencies.
 
 Run `bun run dev` to start the development server.
+
+## Statsig Analytics
+
+Set a browser-safe Statsig client SDK key before building or running the app:
+
+```bash
+VITE_STATSIG_CLIENT_KEY=client-your-key
+VITE_STATSIG_ENVIRONMENT=development
+```
