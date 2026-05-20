@@ -11,6 +11,7 @@ import {
   TextSearch,
 } from 'lucide-react';
 import { Input } from '../ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { createNodeDataUpdater } from './nodeDetailHelpers';
 import type { NodeDetailProps } from './types';
 
@@ -625,30 +626,19 @@ function ExtractorSourceSelect({ value, onChange }: { value: string; onChange: (
   return (
     <div className="w-55 shrink-0">
       <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Extractor From</label>
-      <select
+      <Select
         value={value}
-        onChange={event => onChange(event.target.value)}
-        className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+        onValueChange={onChange}
       >
-        <option
-          value="body"
-          className="bg-zinc-900"
-        >
-          body
-        </option>
-        <option
-          value="headers"
-          className="bg-zinc-900"
-        >
-          headers
-        </option>
-        <option
-          value="status_line"
-          className="bg-zinc-900"
-        >
-          status_line
-        </option>
-      </select>
+        <SelectTrigger className="w-full border-white/10 bg-white/5 text-zinc-300 font-mono">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent className="border-white/10">
+          <SelectItem value="body" className="font-mono">body</SelectItem>
+          <SelectItem value="headers" className="font-mono">headers</SelectItem>
+          <SelectItem value="status_line" className="font-mono">status_line</SelectItem>
+        </SelectContent>
+      </Select>
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { MethodDropdown } from './fields/MethodDropdown';
 import { QueryParamsEditor } from './fields/QueryParamsEditor';
 import { buildRequestUrl, parseRequestUrl } from './fields/requestUrl';
 import { Input } from './ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { YAMLResponseDetails } from './YAMLResponseDetails';
 
 interface YAMLRequestDetailsProps {
@@ -328,15 +329,18 @@ function RequestContent({
             >
               Protocol
             </label>
-            <select
-              id="req-protocol"
+            <Select
               value={urlParts.protocol}
-              onChange={e => onFieldChange('url', buildRequestUrl(formData.url || '', { protocol: e.target.value }))}
-              className={`${compactInputClass} w-full`}
+              onValueChange={value => onFieldChange('url', buildRequestUrl(formData.url || '', { protocol: value }))}
             >
-              <option value="https">https</option>
-              <option value="http">http</option>
-            </select>
+              <SelectTrigger className={`${compactInputClass} w-full`}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="border-white/10">
+                <SelectItem value="https" className="font-mono">https</SelectItem>
+                <SelectItem value="http" className="font-mono">http</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="col-span-4">
             <label

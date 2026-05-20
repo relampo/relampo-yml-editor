@@ -1,3 +1,5 @@
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+
 interface MethodDropdownProps {
   value: string;
   onChange: (method: string) => void;
@@ -25,21 +27,27 @@ export function MethodDropdown({ value, onChange, className = '', id }: MethodDr
   const colorClasses = METHOD_COLORS[currentMethod] || METHOD_COLORS.GET;
 
   return (
-    <select
-      id={id}
+    <Select
       value={currentMethod}
-      onChange={e => onChange(e.target.value)}
-      className={`px-3 py-2 border rounded text-sm font-mono font-semibold uppercase cursor-pointer transition-colors ${colorClasses} ${className}`}
+      onValueChange={onChange}
     >
-      {HTTP_METHODS.map(method => (
-        <option
-          key={method}
-          value={method}
-          className="bg-zinc-900"
-        >
-          {method}
-        </option>
-      ))}
-    </select>
+      <SelectTrigger
+        id={id}
+        className={`px-3 py-2 border rounded text-sm font-mono font-semibold uppercase cursor-pointer transition-colors ${colorClasses} ${className}`}
+      >
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent className="border-white/10">
+        {HTTP_METHODS.map(method => (
+          <SelectItem
+            key={method}
+            value={method}
+            className="font-mono font-semibold uppercase"
+          >
+            {method}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
