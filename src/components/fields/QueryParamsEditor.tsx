@@ -163,7 +163,7 @@ export function QueryParamsEditor({ url, onUrlChange, className = '', showBaseUr
                     value={param.key}
                     onChange={e => handleParamChange(index, 'key', e.target.value)}
                     placeholder="name"
-                    className="flex-1 px-2 py-1 text-xs font-mono text-purple-400 bg-purple-400/5 border-purple-400/20"
+                    className="flex-1 px-2 py-1 text-xs font-mono text-yellow-400 bg-yellow-400/5 border-yellow-400/20 focus:border-yellow-400 focus-visible:ring-yellow-400/30"
                   />
                   <span className="text-zinc-500 font-bold shrink-0">=</span>
                 </div>
