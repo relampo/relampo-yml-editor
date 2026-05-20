@@ -144,7 +144,7 @@ export function QueryParamsEditor({ url, onUrlChange, className = '', showBaseUr
           <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Query Parameters</label>
           <button
             onClick={handleAddParam}
-            className="flex items-center gap-1 px-2 py-1 text-xs text-emerald-400 hover:text-emerald-300 hover:bg-emerald-400/10 rounded transition-colors"
+            className="flex items-center gap-1 px-2 py-1 text-xs text-amber-500 hover:text-amber-400 hover:bg-amber-500/10 rounded transition-colors"
           >
             <Plus className="w-3 h-3" />
             Add
