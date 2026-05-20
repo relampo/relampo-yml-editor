@@ -336,7 +336,7 @@ function RequestContent({
               <SelectTrigger className={`${compactInputClass} w-full`}>
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="border-white/10">
+              <SelectContent className="border-white/10 use-accent-yellow">
                 <SelectItem value="https" className="font-mono">https</SelectItem>
                 <SelectItem value="http" className="font-mono">http</SelectItem>
               </SelectContent>
@@ -551,16 +551,19 @@ function RequestContent({
             >
               Cookie Override
             </label>
-            <select
-              id="req-cookie-override"
+            <Select
               value={formData.cookie_override || 'inherit'}
-              onChange={e => onFieldChange('cookie_override', e.target.value)}
-              className="block w-full h-9.5 px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono"
+              onValueChange={value => onFieldChange('cookie_override', value)}
             >
-              <option value="inherit">inherit</option>
-              <option value="enabled">enabled</option>
-              <option value="disabled">disabled</option>
-            </select>
+              <SelectTrigger className={`${compactInputClass} w-full`}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="border-white/10 use-accent-yellow">
+                <SelectItem value="inherit">inherit</SelectItem>
+                <SelectItem value="enabled">enabled</SelectItem>
+                <SelectItem value="disabled">disabled</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="min-w-0">
             <label
@@ -569,16 +572,19 @@ function RequestContent({
             >
               Cache Override
             </label>
-            <select
-              id="req-cache-override"
+            <Select
               value={formData.cache_override || 'inherit'}
-              onChange={e => onFieldChange('cache_override', e.target.value)}
-              className="block w-full h-9.5 px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono"
+              onValueChange={value => onFieldChange('cache_override', value)}
             >
-              <option value="inherit">inherit</option>
-              <option value="enabled">enabled</option>
-              <option value="disabled">disabled</option>
-            </select>
+              <SelectTrigger className={`${compactInputClass} w-full`}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="border-white/10 use-accent-yellow">
+                <SelectItem value="inherit">inherit</SelectItem>
+                <SelectItem value="enabled">enabled</SelectItem>
+                <SelectItem value="disabled">disabled</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="min-w-0">
             <label
@@ -587,11 +593,10 @@ function RequestContent({
             >
               Throughput (Request)
             </label>
-            <select
-              id="req-throughput"
+            <Select
               value={formData.throughput?.enabled ? 'enabled' : 'disabled'}
-              onChange={e => {
-                if (e.target.value === 'enabled') {
+              onValueChange={value => {
+                if (value === 'enabled') {
                   const next = {
                     enabled: true,
                     target_rps: formData.throughput?.target_rps || 1,
@@ -601,11 +606,15 @@ function RequestContent({
                   onFieldChange('throughput', undefined);
                 }
               }}
-              className="block w-full h-9.5 px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono"
             >
-              <option value="enabled">enabled</option>
-              <option value="disabled">disabled</option>
-            </select>
+              <SelectTrigger className={`${compactInputClass} w-full`}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="border-white/10">
+                <SelectItem value="enabled">enabled</SelectItem>
+                <SelectItem value="disabled">disabled</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className={`min-w-0 ${formData.throughput?.enabled ? '' : 'opacity-55'}`}>
             <label

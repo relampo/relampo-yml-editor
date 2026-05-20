@@ -37,7 +37,7 @@ export function MethodDropdown({ value, onChange, className = '', id }: MethodDr
       >
         <SelectValue />
       </SelectTrigger>
-      <SelectContent className="border-white/10">
+      <SelectContent className="border-white/10 use-accent-yellow">
         {HTTP_METHODS.map(method => (
           <SelectItem
             key={method}
