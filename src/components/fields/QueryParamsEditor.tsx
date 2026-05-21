@@ -158,7 +158,7 @@ export function QueryParamsEditor({ url, onUrlChange, className = '', showBaseUr
               className="py-2 px-1 border-b border-white/5 flex items-center gap-3 w-full min-w-0 hover:bg-white/2 transition-colors group"
             >
               <div className="flex-1 flex items-center gap-3 min-w-0">
-                <div className="flex items-center gap-2 shrink-0 w-17.5">
+                <div className="flex items-center gap-2 shrink-0 w-40">
                   <Input
                     value={param.key}
                     onChange={e => handleParamChange(index, 'key', e.target.value)}
