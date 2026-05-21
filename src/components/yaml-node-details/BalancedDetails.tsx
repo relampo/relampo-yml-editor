@@ -1,9 +1,8 @@
-import { AlertTriangle, CheckCircle2, CircleDashed } from 'lucide-react';
+import { AlertTriangle, ArrowLeftRight, CheckCircle2, CircleDashed, Database, Globe, Folder, GitBranch, Repeat, RotateCcw } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import {
   normalizeBalancedDistributionType,
   normalizeBalancedExecutionMode,
-  readBalancedPercentage,
   validateBalancedController,
 } from '../../utils/balancedController';
 import { Input } from '../ui/input';
@@ -12,6 +11,10 @@ import type { NodeDetailProps } from './types';
 
 type TranslateFn = (key: string) => string;
 function getBalancedItemLabel(type: string, t: TranslateFn) {
+  const httpMethods = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
+  if (httpMethods.includes(type)) {
+    return t('yamlEditor.balanced.itemLabels.request');
+  }
   switch (type) {
     case 'request':
       return t('yamlEditor.balanced.itemLabels.request');
@@ -29,6 +32,29 @@ function getBalancedItemLabel(type: string, t: TranslateFn) {
       return t('yamlEditor.balanced.itemLabels.retry');
     default:
       return type;
+  }
+}
+
+function getBalancedItemIcon(type: string) {
+  const httpMethods = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options', 'request'];
+  if (httpMethods.includes(type)) {
+    return <Globe className="w-5 h-5" />;
+  }
+  switch (type) {
+    case 'sql':
+      return <Database className="w-5 h-5" />;
+    case 'group':
+      return <Folder className="w-5 h-5" />;
+    case 'transaction':
+      return <ArrowLeftRight className="w-5 h-5" />;
+    case 'if':
+      return <GitBranch className="w-5 h-5" />;
+    case 'loop':
+      return <Repeat className="w-5 h-5" />;
+    case 'retry':
+      return <RotateCcw className="w-5 h-5" />;
+    default:
+      return null;
   }
 }
 
@@ -223,9 +249,8 @@ export function BalancedDetails({ node, onNodeUpdate }: NodeDetailProps) {
         </div>
       ) : null}
 
-      <div className="rounded-xl border border-white/10 bg-transparent p-3.5">
-        <div className="grid gap-2 md:grid-cols-2">
-          <div className="rounded-lg border border-white/7 bg-black/20 px-3 py-2.5">
+      <div className="grid gap-2 md:grid-cols-2">
+        <div className="rounded-lg border border-white/7 bg-black/20 px-3 py-2.5">
             <div className={`text-[10px] font-semibold uppercase tracking-[0.18em] ${warningAccentTextClass}`}>
               {t('yamlEditor.balanced.fields.balanceType')}
             </div>
@@ -275,9 +300,8 @@ export function BalancedDetails({ node, onNodeUpdate }: NodeDetailProps) {
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="space-y-2.5 rounded-xl border border-white/10 bg-[#0d0d0d] p-3.5">
+      <div className="space-y-2.5 rounded-xl border border-white/10 bg-[#101010] p-3.5">
         <div className="flex items-center justify-between gap-3 mb-3">
           <div className="min-w-0">
             <label className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${labelTextClass}`}>
@@ -295,25 +319,26 @@ export function BalancedDetails({ node, onNodeUpdate }: NodeDetailProps) {
         {node.children && node.children.length > 0 ? (
           node.children.map(child => {
             const currentPercentage = child.data?.__balancedPercentage ?? '';
-            const parsedPercentage = readBalancedPercentage(currentPercentage);
-            const isInvalid = parsedPercentage === null || parsedPercentage <= 0 || parsedPercentage > 100;
 
             return (
               <div
                 key={child.id}
-                className="grid grid-cols-1 mb-2 items-center gap-3 rounded-xl border border-white/20 bg-[#0d0d0d] p-3 lg:grid-cols-[minmax(0,1fr)_148px]"
+                className="grid grid-cols-1 mb-2 items-center gap-3 rounded-xl border border-white/20 bg-[#080808] p-3 lg:grid-cols-[minmax(0,1fr)_148px]"
               >
-                <div className="min-w-0 space-y-1.5">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <div className={`truncate text-sm font-semibold ${titleTextClass}`}>{child.name}</div>
-                    <span className="inline-flex items-center rounded-full border border-sky-300/40 bg-sky-300/15 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-200">
-                      {getBalancedItemLabel(child.type, t)}
-                    </span>
-                  </div>
-                  <div className={`text-xs leading-5 ${bodyTextClass}`}>
-                    {balancedType === 'total'
-                      ? t('yamlEditor.balanced.included.childDescriptionTotal')
-                      : t('yamlEditor.balanced.included.childDescriptionParcial')}
+                <div className="min-w-0 flex gap-2">
+                  <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-yellow-400/5 shrink-0 text-yellow-400 mr-2">{getBalancedItemIcon(child.type)}</div>
+                  <div className="min-w-0 space-y-1.5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className={`truncate text-sm font-semibold ${titleTextClass}`}>{child.name}</div>
+                      <span className="inline-flex items-center bg-white/5 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-200 rounded">
+                        {getBalancedItemLabel(child.type, t)}
+                      </span>
+                    </div>
+                    <div className={`text-xs leading-5 ${bodyTextClass}`}>
+                      {balancedType === 'total'
+                        ? t('yamlEditor.balanced.included.childDescriptionTotal')
+                        : t('yamlEditor.balanced.included.childDescriptionParcial')}
+                    </div>
                   </div>
                 </div>
                 <div>
@@ -329,21 +354,15 @@ export function BalancedDetails({ node, onNodeUpdate }: NodeDetailProps) {
                     step="0.01"
                     value={currentPercentage}
                     onChange={event => handlePercentageChange(child.id, event.target.value)}
-                    className={`w-full h-9.5 px-3 py-2 rounded text-sm font-mono ${
-                      isInvalid
-                        ? 'border border-red-400/60 bg-red-950/40 text-red-100 placeholder:text-red-200/55'
-                        : 'bg-[#11161a] text-zinc-100 border border-white/10'
-                    }`}
+                    className="w-full h-9.5 px-3 py-2 rounded text-sm font-mono bg-[#101010] text-zinc-100 border border-white/10"
                     placeholder="0"
                   />
                   <div
-                    className={`mt-1.5 text-[11px] leading-4 ${isInvalid ? 'font-medium text-red-200' : mutedTextClass}`}
+                    className={`mt-1.5 text-[11px] leading-4 ${mutedTextClass}`}
                   >
-                    {isInvalid
-                      ? t('yamlEditor.balanced.included.invalidPercentage')
-                      : mode === 'iteraciones'
-                        ? t('yamlEditor.balanced.included.appliedIterations')
-                        : t('yamlEditor.balanced.included.appliedVirtualUsers')}
+                    {mode === 'iteraciones'
+                      ? t('yamlEditor.balanced.included.appliedIterations')
+                      : t('yamlEditor.balanced.included.appliedVirtualUsers')}
                   </div>
                 </div>
               </div>
@@ -379,7 +398,7 @@ export function BalancedDetails({ node, onNodeUpdate }: NodeDetailProps) {
         )}
       </div>
 
-      <div className="rounded-xl border border-white/10 bg-[#0d0d0d] p-3.5">
+      <div className="rounded-xl border border-white/10 bg-[#101010] p-3.5">
         <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0 max-w-3xl">
@@ -420,7 +439,7 @@ export function BalancedDetails({ node, onNodeUpdate }: NodeDetailProps) {
           </div>
 
           {validation.hasChildren ? (
-            <div className="rounded-lg border border-white/10 bg-[#101418] px-3 py-2.5">
+            <div className="rounded-lg border border-white/10 bg-[#080808] px-3 py-2.5">
               <div
                 className={`flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.18em] ${labelTextClass}`}
               >
@@ -437,7 +456,7 @@ export function BalancedDetails({ node, onNodeUpdate }: NodeDetailProps) {
                 {summaryItems.map(item => (
                   <div
                     key={item.label}
-                    className="rounded-lg border border-white/10 bg-[#0d0d0d] px-2.5 py-2"
+                    className="rounded-lg border border-white/10 bg-[#101010] px-2.5 py-2"
                   >
                     <div className={`text-[10px] font-semibold uppercase tracking-[0.16em] ${warningAccentTextClass}`}>
                       {item.label}
@@ -453,7 +472,7 @@ export function BalancedDetails({ node, onNodeUpdate }: NodeDetailProps) {
               {summaryItems.map(item => (
                 <div
                   key={item.label}
-                  className="rounded-lg border border-white/10 bg-[#0d0d0d] px-2.5 py-2"
+                  className="rounded-lg border border-white/10 bg-[#101010] px-2.5 py-2"
                 >
                   <div className={`text-[10px] font-semibold uppercase tracking-[0.16em] ${warningAccentTextClass}`}>
                     {item.label}
