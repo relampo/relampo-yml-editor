@@ -76,7 +76,7 @@ export function YAMLTreeNode({
   const isExpanded = node.expanded ?? true;
   const hoverTimerRef = useRef<number | null>(null);
   const redirectedInfo = redirectedRequestMap[node.id];
-  const isRedirectedFollowUp = Boolean(redirectedInfo);
+  const isRedirectedFollowUp = Boolean(redirectedInfo) || Boolean(node.data?._redirectSourceNodeId);
   const redirectedLabel = 'Redirected';
 
   useEffect(() => {

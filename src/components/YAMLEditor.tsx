@@ -218,9 +218,32 @@ export function YAMLEditor() {
     serializeDebounceRef,
   });
 
+  const prevRedirectedMapRef = useRef<Record<string, RedirectedRequestInfo>>({});
+
   const redirectedRequestMap = useMemo<Record<string, RedirectedRequestInfo>>(() => {
     if (!yamlTree) return {};
-    return detectRedirectFollowUps(yamlTree);
+    const freshMap = detectRedirectFollowUps(yamlTree);
+    const merged = { ...freshMap };
+
+    for (const [id, info] of Object.entries(prevRedirectedMapRef.current)) {
+      if (!merged[id]) {
+        const targetStillExists = findNodeById(yamlTree, id);
+        const sourceIsGone = !findNodeById(yamlTree, info.sourceNodeId);
+        if (targetStillExists && sourceIsGone) {
+          merged[id] = info;
+        }
+      }
+    }
+
+    for (const [id, info] of Object.entries(merged)) {
+      const node = findNodeById(yamlTree, id);
+      if (node) {
+        (node.data ??= {})._redirectSourceNodeId = info.sourceNodeId;
+      }
+    }
+
+    prevRedirectedMapRef.current = merged;
+    return merged;
   }, [yamlTree]);
 
   const redirectSourceMap = useMemo<Record<string, RedirectSourceInfo>>(() => {
