@@ -7,6 +7,7 @@ import {
   validateBalancedController,
 } from '../../utils/balancedController';
 import { Input } from '../ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import type { NodeDetailProps } from './types';
 
 type TranslateFn = (key: string) => string;
@@ -222,7 +223,61 @@ export function BalancedDetails({ node, onNodeUpdate }: NodeDetailProps) {
         </div>
       ) : null}
 
-      <div className="space-y-2.5 rounded-2xl border border-sky-300/40 bg-sky-400/15 px-3 py-3 shadow-[0_14px_40px_#0EA5E92E] backdrop-blur-[1px]">
+      <div className="rounded-xl border border-white/10 bg-transparent p-3.5">
+        <div className="grid gap-2 md:grid-cols-2">
+          <div className="rounded-lg border border-white/7 bg-black/20 px-3 py-2.5">
+            <div className={`text-[10px] font-semibold uppercase tracking-[0.18em] ${warningAccentTextClass}`}>
+              {t('yamlEditor.balanced.fields.balanceType')}
+            </div>
+            <Select
+              value={balancedType}
+              onValueChange={value => handleControllerChange('type', value)}
+            >
+              <SelectTrigger className="mt-2 h-9 w-full text-sm font-mono text-zinc-100 cursor-pointer">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="total">
+                  {t('yamlEditor.balanced.fields.optionTotal')}
+                </SelectItem>
+                <SelectItem value="parcial">
+                  {t('yamlEditor.balanced.fields.optionParcial')}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            <div className={`mt-1.5 text-[11px] leading-4 ${mutedTextClass}`}>
+              {getBalancedTypeDescription(balancedType, t)}
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-white/7 bg-black/20 px-3 py-2.5">
+            <div className={`text-[10px] font-semibold uppercase tracking-[0.18em] ${warningAccentTextClass}`}>
+              {t('yamlEditor.balanced.fields.executionMode')}
+            </div>
+            <Select
+              value={mode}
+              onValueChange={value => handleControllerChange('mode', value)}
+            >
+              <SelectTrigger className="mt-2 h-9 w-full text-sm font-mono text-zinc-100 cursor-pointer">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="iteraciones">
+                  {t('yamlEditor.balanced.fields.optionIterations')}
+                </SelectItem>
+                <SelectItem value="usuarios_virtuales">
+                  {t('yamlEditor.balanced.fields.optionVirtualUsers')}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            <div className={`mt-1.5 text-[11px] leading-4 ${mutedTextClass}`}>
+              {getBalancedModeDescription(mode, t)}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-2.5 rounded-xl border border-white/10 bg-[#0d0d0d] p-3.5">
         <div className="flex items-center justify-between gap-3 mb-3">
           <div className="min-w-0">
             <label className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${labelTextClass}`}>
@@ -246,7 +301,7 @@ export function BalancedDetails({ node, onNodeUpdate }: NodeDetailProps) {
             return (
               <div
                 key={child.id}
-                className="grid grid-cols-1 mb-2 items-center gap-3 rounded-xl border border-white/20 bg-[#0d1114] p-3 lg:grid-cols-[minmax(0,1fr)_148px]"
+                className="grid grid-cols-1 mb-2 items-center gap-3 rounded-xl border border-white/20 bg-[#0d0d0d] p-3 lg:grid-cols-[minmax(0,1fr)_148px]"
               >
                 <div className="min-w-0 space-y-1.5">
                   <div className="flex flex-wrap items-center gap-2">
@@ -263,7 +318,7 @@ export function BalancedDetails({ node, onNodeUpdate }: NodeDetailProps) {
                 </div>
                 <div>
                   <label
-                    className={`block mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] ${labelTextClass}`}
+                    className={`block mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] ${warningAccentTextClass}`}
                   >
                     {t('yamlEditor.balanced.fields.percentage')}
                   </label>
@@ -295,7 +350,7 @@ export function BalancedDetails({ node, onNodeUpdate }: NodeDetailProps) {
             );
           })
         ) : (
-          <div className="rounded-xl border border-dashed border-sky-300/18 bg-[#0d1114] px-3 py-3">
+          <>
             <div className={`text-sm font-semibold ${titleTextClass}`}>
               {t('yamlEditor.balanced.included.emptyTitle')}
             </div>
@@ -320,10 +375,11 @@ export function BalancedDetails({ node, onNodeUpdate }: NodeDetailProps) {
                 </span>
               </div>
             </div>
-          </div>
+          </>
         )}
       </div>
-      <div className="rounded-xl border border-sky-300/18 bg-[#0d1114] p-3.5 shadow-[0_0_0_1px_#7DD3FC08]">
+
+      <div className="rounded-xl border border-white/10 bg-[#0d0d0d] p-3.5">
         <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0 max-w-3xl">
@@ -356,7 +412,7 @@ export function BalancedDetails({ node, onNodeUpdate }: NodeDetailProps) {
                 type="button"
                 onClick={handleDistributeEvenly}
                 disabled={!node.children || node.children.length === 0}
-                className="inline-flex h-9 items-center justify-center rounded-lg border border-sky-300/20 bg-sky-300/10 px-3 text-sm font-semibold text-sky-100 hover:bg-sky-300/14 disabled:cursor-not-allowed disabled:opacity-40"
+                className="inline-flex h-8 items-center justify-center gap-2 rounded-md border border-yellow-400/20 bg-yellow-400/5 px-3 text-sm font-medium text-yellow-400 shadow-sm transition-all duration-200 hover:bg-yellow-400/10 hover:border-yellow-400/35 hover:shadow-yellow-400/10 focus:outline-none focus:ring-2 focus:ring-yellow-400/40 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {t('yamlEditor.balanced.actions.distributeEvenly')}
               </button>
@@ -364,81 +420,26 @@ export function BalancedDetails({ node, onNodeUpdate }: NodeDetailProps) {
           </div>
 
           {validation.hasChildren ? (
-            <div className="grid gap-2.5 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-              <div className="rounded-lg border border-white/10 bg-[#101418] px-3 py-2.5">
+            <div className="rounded-lg border border-white/10 bg-[#101418] px-3 py-2.5">
+              <div
+                className={`flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.18em] ${labelTextClass}`}
+              >
+                <span className={labelTextClass}>{t('yamlEditor.balanced.summary.coverageSnapshot')}</span>
+                <span className={`font-mono ${titleTextClass}`}>{validation.total}%</span>
+              </div>
+              <div className="mt-2 h-2 rounded-full border border-white/8 bg-black/40 overflow-hidden">
                 <div
-                  className={`flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.18em] ${labelTextClass}`}
-                >
-                  <span className={labelTextClass}>{t('yamlEditor.balanced.summary.coverageSnapshot')}</span>
-                  <span className={`font-mono ${titleTextClass}`}>{validation.total}%</span>
-                </div>
-                <div className="mt-2 h-2 rounded-full border border-white/8 bg-black/40 overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all ${
-                      balancedType === 'total'
-                        ? validation.validTotal
-                          ? 'bg-emerald-300'
-                          : 'bg-amber-300'
-                        : 'bg-sky-300'
-                    }`}
-                    style={{ width: `${coverageWidth}%` }}
-                  />
-                </div>
-                <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-3">
-                  {summaryItems.map(item => (
-                    <div
-                      key={item.label}
-                      className="rounded-lg border border-sky-300/20 bg-[#141b21] px-2.5 py-2"
-                    >
-                      <div className={`text-[10px] font-semibold uppercase tracking-[0.16em] ${accentTextClass}`}>
-                        {item.label}
-                      </div>
-                      <div className={`mt-1 text-sm font-semibold ${titleTextClass}`}>{item.value}</div>
-                      <div className={`mt-0.5 text-[11px] leading-4 ${mutedTextClass}`}>{item.helper}</div>
-                    </div>
-                  ))}
-                </div>
+                  className="h-full rounded-full transition-all bg-yellow-400"
+                  style={{ width: `${coverageWidth}%` }}
+                />
               </div>
-
-              <div className="rounded-lg border border-white/10 bg-[#101418] px-3 py-2.5">
-                <div className={`text-[10px] font-semibold uppercase tracking-[0.18em] ${labelTextClass}`}>
-                  {t('yamlEditor.balanced.checklist.title')}
-                </div>
-                <div className="mt-2 space-y-1.5">
-                  {checklist.map(item => (
-                    <div
-                      key={item.label}
-                      className="grid grid-cols-[10px_minmax(0,1fr)] gap-2"
-                    >
-                      <div
-                        className={`mt-1.5 h-2.5 w-2.5 rounded-full ${
-                          item.done
-                            ? 'bg-emerald-300 shadow-[0_0_0_3px_#6EE7B714]'
-                            : 'bg-amber-300 shadow-[0_0_0_3px_#FCD34D14]'
-                        }`}
-                      />
-                      <div className="min-w-0">
-                        <div
-                          className={`text-[12px] font-medium leading-4 ${item.done ? titleTextClass : warningTextClass}`}
-                        >
-                          {item.label}
-                        </div>
-                        <div className={`mt-0.5 text-[11px] leading-4 ${mutedTextClass}`}>{item.helper}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="grid gap-2.5 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-3">
                 {summaryItems.map(item => (
                   <div
                     key={item.label}
-                    className="rounded-lg border border-sky-300/20 bg-[#141b21] px-2.5 py-2"
+                    className="rounded-lg border border-white/10 bg-[#0d0d0d] px-2.5 py-2"
                   >
-                    <div className={`text-[10px] font-semibold uppercase tracking-[0.16em] ${accentTextClass}`}>
+                    <div className={`text-[10px] font-semibold uppercase tracking-[0.16em] ${warningAccentTextClass}`}>
                       {item.label}
                     </div>
                     <div className={`mt-1 text-sm font-semibold ${titleTextClass}`}>{item.value}</div>
@@ -446,82 +447,23 @@ export function BalancedDetails({ node, onNodeUpdate }: NodeDetailProps) {
                   </div>
                 ))}
               </div>
-
-              <div className="rounded-lg border border-amber-300/20 bg-amber-400/10 px-3 py-2.5">
-                <div className={`text-[10px] font-semibold uppercase tracking-[0.18em] ${warningAccentTextClass}`}>
-                  {t('yamlEditor.balanced.nextStep.title')}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              {summaryItems.map(item => (
+                <div
+                  key={item.label}
+                  className="rounded-lg border border-white/10 bg-[#0d0d0d] px-2.5 py-2"
+                >
+                  <div className={`text-[10px] font-semibold uppercase tracking-[0.16em] ${warningAccentTextClass}`}>
+                    {item.label}
+                  </div>
+                  <div className={`mt-1 text-sm font-semibold ${titleTextClass}`}>{item.value}</div>
+                  <div className={`mt-0.5 text-[11px] leading-4 ${mutedTextClass}`}>{item.helper}</div>
                 </div>
-                <div className={`mt-1 text-sm font-medium ${warningTextClass}`}>
-                  {t('yamlEditor.balanced.nextStep.heading')}
-                </div>
-                <div className={`mt-1.5 flex flex-wrap gap-x-3 gap-y-1.5 text-[11px] leading-4 ${warningTextClass}`}>
-                  <span className={warningTextClass}>{t('yamlEditor.balanced.nextStep.step1')}</span>
-                  <span className={warningTextClass}>{t('yamlEditor.balanced.nextStep.step2')}</span>
-                  <span className={warningTextClass}>
-                    {balancedType === 'total'
-                      ? t('yamlEditor.balanced.nextStep.step3Total')
-                      : t('yamlEditor.balanced.nextStep.step3Parcial')}
-                  </span>
-                </div>
-              </div>
+              ))}
             </div>
           )}
-
-          <div className="grid gap-2 md:grid-cols-2">
-            <div className="rounded-lg border border-white/7 bg-black/20 px-3 py-2.5">
-              <div className={`text-[10px] font-semibold uppercase tracking-[0.18em] ${labelTextClass}`}>
-                {t('yamlEditor.balanced.fields.balanceType')}
-              </div>
-              <select
-                value={balancedType}
-                onChange={event => handleControllerChange('type', event.target.value)}
-                className="mt-2 h-9 w-full rounded-lg border border-sky-300/35 bg-[#11161a] px-3 py-2 text-sm font-mono text-zinc-100 cursor-pointer focus:border-sky-300/60 focus:outline-none"
-              >
-                <option
-                  value="total"
-                  className="bg-zinc-900 text-zinc-50"
-                >
-                  {t('yamlEditor.balanced.fields.optionTotal')}
-                </option>
-                <option
-                  value="parcial"
-                  className="bg-zinc-900 text-zinc-50"
-                >
-                  {t('yamlEditor.balanced.fields.optionParcial')}
-                </option>
-              </select>
-              <div className={`mt-1.5 text-[11px] leading-4 ${mutedTextClass}`}>
-                {getBalancedTypeDescription(balancedType, t)}
-              </div>
-            </div>
-
-            <div className="rounded-lg border border-white/7 bg-black/20 px-3 py-2.5">
-              <div className={`text-[10px] font-semibold uppercase tracking-[0.18em] ${labelTextClass}`}>
-                {t('yamlEditor.balanced.fields.executionMode')}
-              </div>
-              <select
-                value={mode}
-                onChange={event => handleControllerChange('mode', event.target.value)}
-                className="mt-2 h-9 w-full rounded-lg border border-sky-300/35 bg-[#11161a] px-3 py-2 text-sm font-mono text-zinc-100 cursor-pointer focus:border-sky-300/60 focus:outline-none"
-              >
-                <option
-                  value="iteraciones"
-                  className="bg-zinc-900 text-zinc-50"
-                >
-                  {t('yamlEditor.balanced.fields.optionIterations')}
-                </option>
-                <option
-                  value="usuarios_virtuales"
-                  className="bg-zinc-900 text-zinc-50"
-                >
-                  {t('yamlEditor.balanced.fields.optionVirtualUsers')}
-                </option>
-              </select>
-              <div className={`mt-1.5 text-[11px] leading-4 ${mutedTextClass}`}>
-                {getBalancedModeDescription(mode, t)}
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>
