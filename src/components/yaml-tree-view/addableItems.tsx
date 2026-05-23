@@ -158,6 +158,74 @@ export function getAddableItems(parentType: YAMLNodeType, t: (key: string) => st
     ];
   }
 
+  const httpMethods = ['request', 'get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
+  if (httpMethods.includes(parentType)) {
+    return [
+      {
+        type: 'spark_before',
+        label: 'Spark Before',
+        description: 'Script before the request',
+        icon: <CodeXml className={iconClass} />,
+        color: 'text-purple-500',
+      },
+      {
+        type: 'spark_after',
+        label: 'Spark After',
+        description: 'Script after the request',
+        icon: <CodeXml className={iconClass} />,
+        color: 'text-violet-500',
+      },
+      {
+        type: 'assertion',
+        label: 'Assertion',
+        description: 'Response validation',
+        icon: <CheckCircle className={iconClass} />,
+        color: 'text-green-400',
+      },
+      {
+        type: 'extractor',
+        label: 'Extractor',
+        description: 'Data extraction',
+        icon: <Filter className={iconClass} />,
+        color: 'text-blue-400',
+      },
+      {
+        type: 'file',
+        label: 'File Upload',
+        description: 'Attach file',
+        icon: <Paperclip className={iconClass} />,
+        color: 'text-amber-400',
+      },
+      {
+        type: 'headers',
+        label: 'Headers',
+        description: 'HTTP headers manager',
+        icon: <Tag className={iconClass} />,
+        color: 'text-red-500',
+      },
+      {
+        type: 'think_time',
+        label: 'Think Time',
+        description: 'Pause after the request',
+        icon: <Clock className={iconClass} />,
+        color: 'text-orange-400',
+      },
+      {
+        type: 'error_policy',
+        label: 'Error Policy',
+        description: 'Error policy for this request',
+        icon: <AlertTriangle className={iconClass} />,
+        color: 'text-orange-500',
+      },
+      {
+        type: 'data_source',
+        label: 'Data Source',
+        description: 'Local data source',
+        icon: <Database className={iconClass} />,
+        color: 'text-cyan-400',
+      },
+    ];
+  }
 
   const controllers = ['group', 'simple', 'transaction', 'parallel', 'if', 'loop', 'retry', 'one_time', 'steps'];
   if (controllers.includes(parentType)) {
