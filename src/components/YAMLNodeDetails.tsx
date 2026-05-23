@@ -120,7 +120,7 @@ export function YAMLNodeDetails({
           </div>
         )}
 
-        {addableItems.length > 0 && onAddChildNode && node.type !== 'loop' && (
+        {addableItems.length > 0 && onAddChildNode && !isRequestNode && node.type !== 'loop' && (
           <AddChildActions
             nodeId={node.id}
             parentNodeType={node.type}
