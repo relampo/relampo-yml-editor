@@ -120,7 +120,7 @@ export function YAMLNodeDetails({
           </div>
         )}
 
-        {addableItems.length > 0 && onAddChildNode && node.type !== 'parallel' && node.type !== 'group' && node.type !== 'if' && (
+        {addableItems.length > 0 && onAddChildNode && !isRequestNode && node.type !== 'parallel' && node.type !== 'group' && node.type !== 'if' && (
           <AddChildActions
             nodeId={node.id}
             parentNodeType={node.type}
