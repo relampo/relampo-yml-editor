@@ -120,7 +120,7 @@ export function YAMLNodeDetails({
           </div>
         )}
 
-        {addableItems.length > 0 && onAddChildNode && (
+        {addableItems.length > 0 && onAddChildNode && !isRequestNode && (
           <AddChildActions
             nodeId={node.id}
             parentNodeType={node.type}
@@ -408,7 +408,7 @@ function AddChildActions({
     <section className={compact ? 'mb-4' : 'mb-6'}>
       <div className="flex items-center gap-2 mb-3">
         <Plus className="w-3.5 h-3.5 text-yellow-400" />
-        <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">{title}</h4>
+          <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">{title}</h4>
       </div>
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-2">
         {items.map(item => (

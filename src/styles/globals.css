@@ -151,6 +151,40 @@ html {
   font-size: var(--font-size);
 }
 
+/* Global checkbox styling: use site yellow for checked/hover instead of system blue */
+input[type="checkbox"] {
+  accent-color: var(--color-amber-500) !important;
+  border-color: var(--border) !important;
+}
+
+input[type="checkbox"]:checked {
+  background-color: var(--color-amber-500) !important;
+  border-color: var(--color-amber-500) !important;
+}
+
+input[type="checkbox"]:hover,
+input[type="checkbox"]:active {
+  filter: brightness(0.95);
+}
+
+
+/* Global checkbox styling: use site yellow for checked/hover instead of system blue */
+input[type="checkbox"] {
+  accent-color: var(--color-amber-500) !important;
+  border-color: var(--border) !important;
+}
+
+input[type="checkbox"]:checked {
+  background-color: var(--color-amber-500) !important;
+  border-color: var(--color-amber-500) !important;
+}
+
+input[type="checkbox"]:hover,
+input[type="checkbox"]:active {
+  filter: brightness(0.95);
+}
+
+
 /* Use yellow for selected/hover items when requested via class */
 .use-accent-yellow [data-slot="select-item"][data-state="checked"],
 .use-accent-yellow [data-slot="select-item"][aria-selected="true"],

@@ -440,6 +440,14 @@ export function ExtractorDetails({ node, onNodeUpdate }: NodeDetailProps) {
             {'}'} | Use capture groups () in pattern
           </div>
           <div className="mb-4 grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+            <SimpleNumberField
+              label="Capture Group"
+              value={data.group !== undefined ? data.group : 1}
+              placeholder="1"
+              onChange={value => handleChange('group', parseInt(value, 10) || 1)}
+              min={1}
+              noMargin
+            />
             <div>
               <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
                 Capture Mode
@@ -475,14 +483,6 @@ export function ExtractorDetails({ node, onNodeUpdate }: NodeDetailProps) {
                 </option>
               </select>
             </div>
-            <SimpleNumberField
-              label="Capture Group"
-              value={data.group !== undefined ? data.group : 1}
-              placeholder="1"
-              onChange={value => handleChange('group', parseInt(value, 10) || 1)}
-              min={1}
-              noMargin
-            />
             <TextField
               label="Default Value (if not found)"
               value={data.default || ''}
