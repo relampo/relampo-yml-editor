@@ -227,7 +227,7 @@ export function EditableList({
                 <div className="flex items-center gap-3 w-full min-w-0">
                   {variant === 'minimal' ? (
                     <div className="flex-1 flex items-center gap-3 min-w-0 max-w-125">
-                      <div className="flex items-center gap-2 shrink-0 w-17.5">
+                      <div className="flex items-center gap-2 shrink-0 w-40">
                         <Input
                           value={item.key}
                           onFocus={() => setEditingKey(item.originalKey)}
@@ -300,7 +300,7 @@ export function EditableList({
                                 resetLocalKey(item.originalKey);
                               }
                             }}
-                            className="w-17.5 shrink-0 px-2 py-1 text-xs font-mono text-purple-400 bg-purple-400/5 border-purple-400/30"
+                            className="w-40 shrink-0 px-2 py-1 text-xs font-mono text-purple-400 bg-purple-400/5 border-purple-400/30"
                             placeholder={keyPlaceholder}
                             maxLength={50}
                           />
@@ -327,7 +327,7 @@ export function EditableList({
                         </div>
                       ) : (
                         <>
-                          <div className="flex items-center gap-2 shrink-0 w-17.5">
+                          <div className="flex items-center gap-2 shrink-0 w-40">
                             <button
                               onClick={() => setEditingKey(item.originalKey)}
                               className="text-xs font-mono text-purple-400 font-bold bg-purple-400/10 hover:bg-purple-400/20 px-2 py-1 rounded transition-colors cursor-pointer truncate w-full"
