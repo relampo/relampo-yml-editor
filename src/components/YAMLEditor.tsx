@@ -235,13 +235,6 @@ export function YAMLEditor() {
       }
     }
 
-    for (const [id, info] of Object.entries(merged)) {
-      const node = findNodeById(yamlTree, id);
-      if (node) {
-        (node.data ??= {})._redirectSourceNodeId = info.sourceNodeId;
-      }
-    }
-
     prevRedirectedMapRef.current = merged;
     return merged;
   }, [yamlTree]);
