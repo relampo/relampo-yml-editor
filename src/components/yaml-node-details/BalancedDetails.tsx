@@ -173,35 +173,6 @@ export function BalancedDetails({ node, onNodeUpdate }: NodeDetailProps) {
     },
   ];
 
-  const checklist = [
-    {
-      label: t('yamlEditor.balanced.checklist.selectLabel'),
-      done: validation.hasChildren,
-      helper: validation.hasChildren
-        ? format('yamlEditor.balanced.checklist.selectHelperFilled', { count: selectedCount })
-        : t('yamlEditor.balanced.checklist.selectHelperEmpty'),
-    },
-    {
-      label: t('yamlEditor.balanced.checklist.assignLabel'),
-      done: validation.hasChildren && validation.invalidItems.length === 0,
-      helper:
-        validation.invalidItems.length === 0
-          ? t('yamlEditor.balanced.checklist.assignHelperValid')
-          : format('yamlEditor.balanced.checklist.assignHelperInvalid', { count: validation.invalidItems.length }),
-    },
-    {
-      label:
-        balancedType === 'total'
-          ? t('yamlEditor.balanced.checklist.totalLabel')
-          : t('yamlEditor.balanced.checklist.partialLabel'),
-      done: balancedType === 'total' ? validation.validTotal && validation.hasChildren : validation.hasChildren,
-      helper:
-        balancedType === 'total'
-          ? format('yamlEditor.balanced.checklist.totalHelper', { total: validation.total })
-          : format('yamlEditor.balanced.checklist.partialHelper', { total: validation.total }),
-    },
-  ];
-
   const statusClasses =
     statusTone === 'emerald'
       ? 'border-emerald-400/50 bg-emerald-500/20 text-emerald-300 shadow-[0_0_10px_#34D39926]'
@@ -213,7 +184,6 @@ export function BalancedDetails({ node, onNodeUpdate }: NodeDetailProps) {
   const mutedTextClass = 'text-zinc-400';
   const labelTextClass = 'text-zinc-400';
   const accentTextClass = 'text-sky-300';
-  const accentStrongTextClass = 'text-sky-200';
   const warningTextClass = 'text-amber-100';
   const warningAccentTextClass = 'text-amber-200';
   const successTextClass = 'text-emerald-100';
@@ -403,7 +373,7 @@ export function BalancedDetails({ node, onNodeUpdate }: NodeDetailProps) {
           <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0 max-w-3xl">
               <div className="flex flex-wrap items-center gap-2">
-                <div className={`text-[10px] font-semibold uppercase tracking-[0.22em] ${accentStrongTextClass}`}>
+                <div className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${labelTextClass}`}>
                   {t('yamlEditor.balanced.summary.heading')}
                 </div>
                 <div
