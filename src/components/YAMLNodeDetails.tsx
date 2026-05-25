@@ -120,7 +120,8 @@ export function YAMLNodeDetails({
           </div>
         )}
 
-        {addableItems.length > 0 && onAddChildNode && !isRequestNode && (
+
+        {addableItems.length > 0 && onAddChildNode && !isRequestNode && node.type !== 'retry' && (
           <AddChildActions
             nodeId={node.id}
             parentNodeType={node.type}
