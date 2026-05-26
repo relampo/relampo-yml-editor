@@ -120,8 +120,9 @@ export function YAMLNodeDetails({
           </div>
         )}
 
-        //TODO Add Section was removed from Details. We will improve this later.
-        {addableItems.length > 0 && onAddChildNode && !isRequestNode && node.type !== 'retry' && (
+        {/* TODO Add Section was removed from Details. We will improve this later. */}
+        
+        {/* {addableItems.length > 0 && onAddChildNode && !isRequestNode && node.type !== 'retry' && (
           <AddChildActions
             nodeId={node.id}
             parentNodeType={node.type}
@@ -131,7 +132,7 @@ export function YAMLNodeDetails({
             title={t('yamlEditor.common.add')}
             compact={isCompactDetailsNode}
           />
-        )}
+        )} */}
 
         <NodeDetailsContent
           node={node}
