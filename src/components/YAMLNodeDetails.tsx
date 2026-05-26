@@ -120,7 +120,9 @@ export function YAMLNodeDetails({
           </div>
         )}
 
-        {addableItems.length > 0 && onAddChildNode && !isRequestNode && node.type !== 'one_time' && (
+        {/* TODO:Removed the Add Child Actions component for now */}
+
+        {/* {addableItems.length > 0 && onAddChildNode && !isRequestNode && node.type !== 'one_time' && (
           <AddChildActions
             nodeId={node.id}
             parentNodeType={node.type}
@@ -130,7 +132,7 @@ export function YAMLNodeDetails({
             title={t('yamlEditor.common.add')}
             compact={isCompactDetailsNode}
           />
-        )}
+        )} */}
 
         <NodeDetailsContent
           node={node}
