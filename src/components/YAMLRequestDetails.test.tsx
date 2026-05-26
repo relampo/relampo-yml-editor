@@ -15,7 +15,7 @@ describe('YAMLRequestDetails', () => {
 
     render(<YAMLRequestDetails node={node} />);
 
-    expect(screen.getByLabelText('Method')).toHaveValue('POST');
+    expect(screen.getByLabelText('Method')).toHaveTextContent('POST');
   });
 
   it('shows the path example as a placeholder for a new blank request', () => {

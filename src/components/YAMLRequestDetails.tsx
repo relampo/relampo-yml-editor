@@ -333,7 +333,7 @@ function RequestContent({
               value={urlParts.protocol}
               onValueChange={value => onFieldChange('url', buildRequestUrl(formData.url || '', { protocol: value }))}
             >
-              <SelectTrigger className={`${compactInputClass} w-full`}>
+              <SelectTrigger id="req-protocol" className={`${compactInputClass} w-full`}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="border-white/10 use-accent-yellow">
@@ -555,7 +555,7 @@ function RequestContent({
               value={formData.cookie_override || 'inherit'}
               onValueChange={value => onFieldChange('cookie_override', value)}
             >
-              <SelectTrigger className={`${compactInputClass} w-full`}>
+              <SelectTrigger id="req-cookie-override" className={`${compactInputClass} w-full`}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="border-white/10 use-accent-yellow">
@@ -576,7 +576,7 @@ function RequestContent({
               value={formData.cache_override || 'inherit'}
               onValueChange={value => onFieldChange('cache_override', value)}
             >
-              <SelectTrigger className={`${compactInputClass} w-full`}>
+              <SelectTrigger id="req-cache-override" className={`${compactInputClass} w-full`}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="border-white/10 use-accent-yellow">
@@ -607,7 +607,7 @@ function RequestContent({
                 }
               }}
             >
-              <SelectTrigger className={`${compactInputClass} w-full`}>
+              <SelectTrigger id="req-throughput" className={`${compactInputClass} w-full`}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="border-white/10">
