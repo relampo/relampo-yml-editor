@@ -120,7 +120,10 @@ export function YAMLNodeDetails({
           </div>
         )}
 
-        {addableItems.length > 0 && onAddChildNode && !isRequestNode && node.type !== 'loop' && (
+        {/* TODO: Enable this when ready */}
+        
+
+        {/* {addableItems.length > 0 && onAddChildNode && !isRequestNode && node.type !== 'loop' && (
           <AddChildActions
             nodeId={node.id}
             parentNodeType={node.type}
@@ -130,7 +133,7 @@ export function YAMLNodeDetails({
             title={t('yamlEditor.common.add')}
             compact={isCompactDetailsNode}
           />
-        )}
+        )} */}
 
         <NodeDetailsContent
           node={node}
