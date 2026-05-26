@@ -120,7 +120,7 @@ export function YAMLNodeDetails({
           </div>
         )}
 
-
+        //TODO Add Section was removed from Details. We will improve this later.
         {addableItems.length > 0 && onAddChildNode && !isRequestNode && node.type !== 'retry' && (
           <AddChildActions
             nodeId={node.id}
