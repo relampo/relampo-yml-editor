@@ -120,9 +120,9 @@ export function YAMLNodeDetails({
           </div>
         )}
 
-        {/* TODO: Enable add child actions when needed */}
+        {/* TODO Add Section was removed from Details. We will improve this later. */}
         
-        {/* {!isCompactDetailsNode && addableItems.length > 0 && onAddChildNode && !isRequestNode && (
+        {/* {addableItems.length > 0 && onAddChildNode && !isRequestNode && node.type !== 'retry' && (
           <AddChildActions
             nodeId={node.id}
             parentNodeType={node.type}
