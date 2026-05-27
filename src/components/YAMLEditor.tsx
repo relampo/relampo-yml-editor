@@ -7,11 +7,19 @@ import { useYAMLPersistence } from '../hooks/useYAMLPersistence';
 import type { RedirectSourceInfo, RedirectedRequestInfo, YAMLNode } from '../types/yaml';
 import { logStatsigEvent } from '../utils/analytics';
 import { applyNodeUpdateToTree } from '../utils/nodeUpdate';
-import { getActiveDraft } from '../utils/yamlDraftStorage';
+import { clearActiveDraft, getActiveDraft } from '../utils/yamlDraftStorage';
 import { getDocumentMetrics } from '../utils/yamlDocumentLimits';
 import { parseYAMLToTree, treeToYAML } from '../utils/yamlParser';
 import { validateYAMLSemantics } from '../utils/yamlSemanticValidation';
 import { Button } from './ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from './ui/dialog';
 import { YAMLCodeEditor } from './YAMLCodeEditor';
 import { YAMLEditorHeader } from './YAMLEditorHeader';
 import { YAMLNodeDetails } from './YAMLNodeDetails';
@@ -126,6 +134,7 @@ export function YAMLEditor() {
   const [isTreeOutdated, setIsTreeOutdated] = useState(false);
   const [isLargeFileBannerDismissed, setIsLargeFileBannerDismissed] = useState(false);
   const [restoredDraftUpdatedAt, setRestoredDraftUpdatedAt] = useState<string | null>(null);
+  const [isNewDialogOpen, setIsNewDialogOpen] = useState(false);
   const selectedNodeRef = useRef<YAMLNode | null>(null);
   const selectedNodeIdsRef = useRef<string[]>([]);
   const hasDiscoveredTreeContextMenuRef = useRef(false);
@@ -539,6 +548,46 @@ export function YAMLEditor() {
     });
   };
 
+  const handleNewOpen = () => {
+    setIsNewDialogOpen(true);
+  };
+
+  const handleNewConfirm = () => {
+    setIsNewDialogOpen(false);
+
+    if (parseDebounceRef.current) {
+      window.clearTimeout(parseDebounceRef.current);
+      parseDebounceRef.current = null;
+    }
+    if (serializeDebounceRef.current) {
+      window.clearTimeout(serializeDebounceRef.current);
+      serializeDebounceRef.current = null;
+    }
+
+    setYamlCode('');
+    setYamlContent('');
+    setYamlTree(null);
+    setSelectedNode(null);
+    setSelectedNodeIds([]);
+    selectedNodeRef.current = null;
+    selectedNodeIdsRef.current = [];
+    setError(null);
+    setValidationErrors([]);
+    setCurrentFileName('relampo-script.yaml');
+    setIsDirty(false);
+    setHasDocumentActivity(false);
+    setIsTreeOutdated(false);
+    setIsLargeFileBannerDismissed(false);
+    setRestoredDraftUpdatedAt(null);
+    setViewMode('tree');
+
+    activeParseRequestIdRef.current = ++parseRequestIdRef.current;
+    setIsParsing(false);
+    setIsFileLoading(false);
+
+    void clearActiveDraft();
+  };
+
   const handleUpload = () => {
     fileInputRef.current?.click();
   };
@@ -643,11 +692,45 @@ export function YAMLEditor() {
         isDirty={isDirty}
         lastSavedAt={lastSavedAt}
         actionMessage={actionMessage}
+        isDocumentEmpty={!yamlTree && !yamlCode.trim()}
+        onNew={handleNewOpen}
         onUpload={handleUpload}
         onDownload={handleDownload}
         fileInputRef={fileInputRef}
         onFileChange={handleFileChange}
       />
+
+      <Dialog open={isNewDialogOpen} onOpenChange={setIsNewDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {language === 'es' ? 'Nuevo documento' : 'New document'}
+            </DialogTitle>
+            <DialogDescription>
+              {language === 'es'
+                ? '¿Estás seguro de que deseas crear un nuevo documento? Se perderán todos los cambios no guardados.'
+                : 'Are you sure you want to create a new document? All unsaved changes will be lost.'}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsNewDialogOpen(false)}
+              className="border-white/10 bg-white/5 hover:bg-white/10 text-zinc-300"
+            >
+              {language === 'es' ? 'Cancelar' : 'Cancel'}
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleNewConfirm}
+              className="bg-yellow-400 hover:bg-yellow-300 text-black font-bold"
+            >
+              {language === 'es' ? 'Confirmar' : 'Confirm'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {isEditorBusy && (
         <div
