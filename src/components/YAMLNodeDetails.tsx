@@ -120,9 +120,9 @@ export function YAMLNodeDetails({
           </div>
         )}
 
-        {/* TODO: Enable add child actions in the future */}
-
-        {/* {addableItems.length > 0 && onAddChildNode && !isRequestNode && node.type !== 'parallel' && node.type !== 'group' && (
+        {/* TODO: Enable add child actions when needed */}
+        
+        {/* {!isCompactDetailsNode && addableItems.length > 0 && onAddChildNode && !isRequestNode && (
           <AddChildActions
             nodeId={node.id}
             parentNodeType={node.type}
