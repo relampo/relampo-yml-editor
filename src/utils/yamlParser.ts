@@ -224,7 +224,16 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
     if (step[method] !== undefined) {
       const methodValue = step[method];
       const requestData = isPlainRecord(methodValue) ? methodValue : { url: methodValue };
-      return createRequestNode(stepId, method as any, { ...requestData, method: method.toUpperCase() }, path, isEnabled);
+      const extraFields = { ...step };
+      delete extraFields[method];
+      delete extraFields.enabled;
+      return createRequestNode(
+        stepId,
+        method as any,
+        { ...requestData, ...extraFields, method: method.toUpperCase() },
+        path,
+        isEnabled,
+      );
     }
   }
 

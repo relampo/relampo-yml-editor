@@ -167,3 +167,51 @@ input[type="checkbox"]:active {
   filter: brightness(0.95);
 }
 
+
+/* Global checkbox styling: use site yellow for checked/hover instead of system blue */
+input[type="checkbox"] {
+  accent-color: var(--color-amber-500) !important;
+  border-color: var(--border) !important;
+}
+
+input[type="checkbox"]:checked {
+  background-color: var(--color-amber-500) !important;
+  border-color: var(--color-amber-500) !important;
+}
+
+input[type="checkbox"]:hover,
+input[type="checkbox"]:active {
+  filter: brightness(0.95);
+}
+
+
+/* Use yellow for selected/hover items when requested via class */
+.use-accent-yellow [data-slot="select-item"][data-state="checked"],
+.use-accent-yellow [data-slot="select-item"][aria-selected="true"],
+.use-accent-yellow [data-slot="select-item"][data-highlighted],
+.use-accent-yellow [data-slot="select-item"]:hover,
+.use-accent-yellow [data-slot="select-item"]:focus {
+  /* Keep dark background, but make text the site yellow */
+  background-color: var(--popover) !important;
+  color: var(--color-amber-500) !important;
+}
+
+.use-accent-yellow [data-slot="select-trigger"] {
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-amber-500) 20%, transparent) !important;
+}
+
+.use-accent-yellow [data-slot="select-trigger"] [data-slot="select-value"] {
+  color: var(--color-amber-500) !important;
+}
+
+/* Also target option role elements that Radix or browsers might use */
+.use-accent-yellow [role="option"][aria-selected="true"],
+.use-accent-yellow [role="option"][data-highlighted],
+.use-accent-yellow [role="option"]:hover {
+  background-color: var(--popover) !important;
+  color: var(--color-amber-500) !important;
+}
+
+.use-accent-yellow [role="option"][aria-selected="true"] * {
+  color: var(--color-amber-500) !important;
+}

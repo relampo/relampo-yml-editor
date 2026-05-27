@@ -79,22 +79,29 @@ export function SelectField({
   return (
     <div className={noMargin ? '' : 'mb-5'}>
       <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{label}</label>
-      <select
+      <Select
         value={value}
+        onValueChange={value => onChange(field, value)}
         disabled={disabled}
-        onChange={event => onChange(field, event.target.value)}
-        className={`w-full px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono focus:border-white/30 transition-all outline-none appearance-none h-9.5 ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
       >
-        {options.map(option => (
-          <option
-            key={option.value}
-            value={option.value}
-            className="bg-[#1a1a1a]"
-          >
-            {option.label}
-          </option>
-        ))}
-      </select>
+        <SelectTrigger
+          disabled={disabled}
+          className="w-full h-9.5 border-white/10 bg-[#1a1a1a] text-zinc-300 font-mono data-[disabled]:opacity-60 data-[disabled]:cursor-not-allowed"
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent className="border-white/10">
+          {options.map(option => (
+            <SelectItem
+              key={option.value}
+              value={option.value}
+              className="font-mono"
+            >
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 }
@@ -308,15 +315,18 @@ export function AuthConfigEditor({ auth, onChange, scopeLabel }: AuthConfigEdito
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
           {scopeLabel} Authentication
         </label>
-        <Select value={value.type} onValueChange={handleTypeChange}>
-          <SelectTrigger className="w-full border-white/10 bg-[#1a1a1a] font-mono text-zinc-300 h-9.5">
+        <Select
+          value={value.type}
+          onValueChange={handleTypeChange}
+        >
+          <SelectTrigger className="w-full h-9.5 border-white/10 bg-[#1a1a1a] text-zinc-300 font-mono">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent className="border-white/10 bg-[#161616] text-zinc-200">
-            <SelectItem value="none" className="font-mono data-[state=checked]:text-yellow-400 focus:bg-yellow-400/10 data-[highlighted]:bg-yellow-400/10">None</SelectItem>
-            <SelectItem value="bearer" className="font-mono data-[state=checked]:text-yellow-400 focus:bg-yellow-400/10 data-[highlighted]:bg-yellow-400/10">Bearer</SelectItem>
-            <SelectItem value="api_key" className="font-mono data-[state=checked]:text-yellow-400 focus:bg-yellow-400/10 data-[highlighted]:bg-yellow-400/10">API Key</SelectItem>
-            <SelectItem value="basic" className="font-mono data-[state=checked]:text-yellow-400 focus:bg-yellow-400/10 data-[highlighted]:bg-yellow-400/10">Basic Auth</SelectItem>
+          <SelectContent className="border-white/10">
+            <SelectItem value="none" className="font-mono">None</SelectItem>
+            <SelectItem value="bearer" className="font-mono">Bearer</SelectItem>
+            <SelectItem value="api_key" className="font-mono">API Key</SelectItem>
+            <SelectItem value="basic" className="font-mono">Basic Auth</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -347,13 +357,16 @@ export function AuthConfigEditor({ auth, onChange, scopeLabel }: AuthConfigEdito
           </div>
           <div>
             <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Send In</label>
-            <Select value={value.in || 'header'} onValueChange={next => handleFieldChange('in', next)}>
-              <SelectTrigger className="w-full border-white/10 bg-[#1a1a1a] font-mono text-zinc-300 h-9.5">
+            <Select
+              value={value.in || 'header'}
+              onValueChange={value => handleFieldChange('in', value)}
+            >
+              <SelectTrigger className="w-full h-9.5 border-white/10 bg-[#1a1a1a] text-zinc-300 font-mono">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="border-white/10 bg-[#161616] text-zinc-200">
-                <SelectItem value="header" className="font-mono data-[state=checked]:text-yellow-400 focus:bg-yellow-400/10 data-[highlighted]:bg-yellow-400/10">Header</SelectItem>
-                <SelectItem value="query" className="font-mono data-[state=checked]:text-yellow-400 focus:bg-yellow-400/10 data-[highlighted]:bg-yellow-400/10">Query Param</SelectItem>
+              <SelectContent className="border-white/10">
+                <SelectItem value="header" className="font-mono">Header</SelectItem>
+                <SelectItem value="query" className="font-mono">Query Param</SelectItem>
               </SelectContent>
             </Select>
           </div>
