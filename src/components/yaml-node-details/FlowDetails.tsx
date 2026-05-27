@@ -1,4 +1,4 @@
-import { AlertTriangle, BetweenHorizontalStart, Binary, Clock3, Zap } from 'lucide-react';
+import { AlertTriangle, BetweenHorizontalStart, Binary, Clock3, GitFork, Hourglass, Layers, Zap } from 'lucide-react';
 import type { RetryEditorConfig } from '../../types/shared';
 import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
@@ -270,48 +270,57 @@ export function ParallelDetails({ node }: NodeDetailProps) {
       className="space-y-6 text-zinc-50"
       style={{ color: '#f8fafc' }}
     >
-      <div className="rounded-xl border border-cyan-300/25 bg-white/[0.04] px-5 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-        <div
-          className="mb-2 text-xs font-bold uppercase tracking-[0.2em]"
-          style={{ color: '#67e8f9' }}
-        >
-          Execution Model
+      <div className="rounded-xl border border-white/10 bg-white/[0.04] px-5 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+        <div className="flex items-start gap-3">
+          <div className="inline-flex items-center justify-center rounded-full bg-yellow-400/10 p-2.5 text-yellow-400 shadow-sm shrink-0 mt-0.5">
+            <GitFork className="w-6 h-6" />
+          </div>
+          <div className="space-y-2">
+            <div className="text-xs font-bold uppercase tracking-[0.2em] text-yellow-400">
+              Execution Model
+            </div>
+            <p className="text-sm leading-6" style={{ color: '#f8fafc' }}>
+              All child steps start together and this controller finishes only when every child step completes.
+            </p>
+          </div>
         </div>
-        <p
-          className="text-sm leading-6"
-          style={{ color: '#f8fafc' }}
-        >
-          All child steps start together and this controller finishes only when every child step completes.
-        </p>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <div className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-          <div
-            className="mb-2 text-xs font-bold uppercase tracking-[0.2em]"
-            style={{ color: '#67e8f9' }}
-          >
-            Parallel Steps
-          </div>
-          <div
-            className="text-3xl font-black font-mono"
-            style={{ color: '#ffffff' }}
-          >
-            {stepsCount}
+          <div className="flex items-start gap-3">
+            <div className="inline-flex items-center justify-center rounded-xs bg-yellow-400/10 p-2.5 text-yellow-400 shadow-sm shrink-0">
+              <Layers className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="text-xs font-bold uppercase tracking-[0.2em] text-yellow-400">
+                Parallel Steps
+              </div>
+              <div
+                className="text-3xl font-black font-mono mt-1"
+                style={{ color: '#ffffff' }}
+              >
+                {stepsCount}
+              </div>
+            </div>
           </div>
         </div>
         <div className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-          <div
-            className="mb-2 text-xs font-bold uppercase tracking-[0.2em]"
-            style={{ color: '#67e8f9' }}
-          >
-            Completion
-          </div>
-          <div
-            className="text-base font-semibold"
-            style={{ color: isEmpty ? '#fde68a' : '#f8fafc' }}
-          >
-            {isEmpty ? 'Blocked' : 'Waits for all'}
+          <div className="flex items-start gap-3">
+            <div className="inline-flex items-center justify-center rounded-xs bg-yellow-400/10 p-2.5 text-yellow-400 shadow-sm shrink-0">
+              <Hourglass className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="text-xs font-bold uppercase tracking-[0.2em] text-yellow-400">
+                Completion
+              </div>
+              <div
+                className="text-base font-semibold mt-1"
+                style={{ color: isEmpty ? '#fde68a' : '#f8fafc' }}
+              >
+                {isEmpty ? 'Blocked' : 'Waits for all'}
+              </div>
+            </div>
           </div>
         </div>
       </div>
