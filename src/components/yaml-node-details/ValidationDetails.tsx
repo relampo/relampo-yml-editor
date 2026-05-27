@@ -11,6 +11,7 @@ import {
   TextSearch,
 } from 'lucide-react';
 import { Input } from '../ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { createNodeDataUpdater } from './nodeDetailHelpers';
 import type { NodeDetailProps } from './types';
 
@@ -419,7 +420,7 @@ export function ExtractorDetails({ node, onNodeUpdate }: NodeDetailProps) {
           onChange={event => handleChange('var', event.target.value)}
           placeholder="extracted_value"
           maxLength={50}
-          className="w-full max-w-90 px-3 py-2 bg-purple-400/5 border border-purple-400/20 text-purple-400 text-sm font-mono font-bold focus:border-purple-400/40"
+          className="w-full max-w-90 px-3 py-2 bg-yellow-400/5 border border-yellow-400/20 text-yellow-400 text-sm font-mono font-bold focus:border-yellow-400/40"
         />
       </div>
 
@@ -451,36 +452,20 @@ export function ExtractorDetails({ node, onNodeUpdate }: NodeDetailProps) {
               <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
                 Capture Mode
               </label>
-              <select
+              <Select
                 value={data.capture_mode || 'first'}
-                onChange={event => handleChange('capture_mode', event.target.value)}
-                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+                onValueChange={value => handleChange('capture_mode', value)}
               >
-                <option
-                  value="first"
-                  className="bg-zinc-900"
-                >
-                  first match
-                </option>
-                <option
-                  value="all"
-                  className="bg-zinc-900"
-                >
-                  all matches
-                </option>
-                <option
-                  value="index"
-                  className="bg-zinc-900"
-                >
-                  specific match index
-                </option>
-                <option
-                  value="random"
-                  className="bg-zinc-900"
-                >
-                  random match
-                </option>
-              </select>
+                <SelectTrigger className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="border-white/10 bg-[#111111]">
+                  <SelectItem value="first">first match</SelectItem>
+                  <SelectItem value="all">all matches</SelectItem>
+                  <SelectItem value="index">specific match index</SelectItem>
+                  <SelectItem value="random">random match</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <TextField
               label="Default Value (if not found)"
@@ -625,30 +610,18 @@ function ExtractorSourceSelect({ value, onChange }: { value: string; onChange: (
   return (
     <div className="w-55 shrink-0">
       <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Extractor From</label>
-      <select
-        value={value}
-        onChange={event => onChange(event.target.value)}
-        className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
-      >
-        <option
-          value="body"
-          className="bg-zinc-900"
-        >
-          body
-        </option>
-        <option
-          value="headers"
-          className="bg-zinc-900"
-        >
-          headers
-        </option>
-        <option
-          value="status_line"
-          className="bg-zinc-900"
-        >
-          status_line
-        </option>
-      </select>
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono h-9">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent className="border-white/10 bg-[#111111]">
+          <SelectItem value="body">Response Body</SelectItem>
+          <SelectItem value="headers">Response Headers</SelectItem>
+          <SelectItem value="status_line">Response Status Line</SelectItem>
+          <SelectItem value="request_url">Request URL</SelectItem>
+          <SelectItem value="request_headers">Request Headers</SelectItem>
+        </SelectContent>
+      </Select>
     </div>
   );
 }
