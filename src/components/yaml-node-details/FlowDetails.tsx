@@ -402,7 +402,11 @@ export function ThinkTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center border-b border-white/5 bg-[#111111] shrink-0 rounded-t-md">
+      <div
+        role="tablist"
+        aria-label="Think time mode"
+        className="flex items-center border-b border-white/5 bg-[#111111] shrink-0 rounded-t-md"
+      >
         {thinkTimeModes.map(modeItem => {
           const active = mode === modeItem.value;
           const Icon = modeItem.icon;
@@ -411,6 +415,8 @@ export function ThinkTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
             <button
               key={modeItem.value}
               type="button"
+              role="tab"
+              aria-selected={active}
               onClick={() => handleModeChange(modeItem.value)}
               className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${
                 active
