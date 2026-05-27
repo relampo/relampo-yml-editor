@@ -1,6 +1,7 @@
 import { AlertTriangle, BetweenHorizontalStart, Binary, Box, Clock3, GitFork, Hourglass, Layers, Zap } from 'lucide-react';
 import type { RetryEditorConfig } from '../../types/shared';
 import { Input } from '../ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Textarea } from '../ui/textarea';
 import { createNodeDataUpdater } from './nodeDetailHelpers';
 import type { NodeDetailProps } from './types';
@@ -76,13 +77,13 @@ export function LoopDetails({ node, onNodeUpdate }: NodeDetailProps) {
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <div className="p-3 bg-purple-400/10 border border-purple-400/20 rounded">
-          <div className="text-xs font-semibold text-purple-400 uppercase tracking-wider mb-1">Steps Inside</div>
-          <div className="text-2xl font-bold text-purple-300 font-mono">{stepsCount}</div>
+        <div className="p-3 bg-white/5 border border-white/10 rounded">
+          <div className="text-xs font-semibold text-yellow-400 uppercase tracking-wider mb-1">Steps Inside</div>
+          <div className="text-2xl font-bold text-zinc-300 font-mono">{stepsCount}</div>
         </div>
-        <div className="p-3 bg-purple-400/10 border border-purple-400/20 rounded">
-          <div className="text-xs font-semibold text-purple-400 uppercase tracking-wider mb-1">Total Iterations</div>
-          <div className="text-2xl font-bold text-purple-300 font-mono">{loopCount * stepsCount}</div>
+        <div className="p-3 bg-white/5 border border-white/10 rounded">
+          <div className="text-xs font-semibold text-yellow-400 uppercase tracking-wider mb-1">Total Iterations</div>
+          <div className="text-2xl font-bold text-zinc-300 font-mono">{loopCount * stepsCount}</div>
         </div>
       </div>
     </div>
@@ -111,30 +112,19 @@ export function RetryDetails({ node, onNodeUpdate }: NodeDetailProps) {
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
           Backoff Strategy
         </label>
-        <select
+        <Select
           value={backoffType}
-          onChange={event => updateField('backoff', event.target.value)}
-          className="w-full h-9.5 px-3 py-2 bg-red-400/10 text-red-400 border border-red-400/20 rounded text-sm font-mono cursor-pointer"
+          onValueChange={value => updateField('backoff', value)}
         >
-          <option
-            value="constant"
-            className="bg-zinc-900"
-          >
-            constant (same delay)
-          </option>
-          <option
-            value="linear"
-            className="bg-zinc-900"
-          >
-            linear (incremental)
-          </option>
-          <option
-            value="exponential"
-            className="bg-zinc-900"
-          >
-            exponential (2x each time)
-          </option>
-        </select>
+          <SelectTrigger className="w-full h-9.5 px-3 py-2 bg-yellow-400/10 text-yellow-400 border border-yellow-400/20 rounded text-sm font-mono">
+            <SelectValue placeholder="Select strategy" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="constant">constant (same delay)</SelectItem>
+            <SelectItem value="linear">linear (incremental)</SelectItem>
+            <SelectItem value="exponential">exponential (2x each time)</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {backoffType === 'constant' && (
@@ -231,19 +221,6 @@ export function OneTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-lg border border-white/10 bg-white/5 p-4">
-        <div className="flex items-start gap-3">
-          <div className="mt-0.5 rounded-md bg-white/10 p-2 text-white">
-            <Zap className="h-4 w-4" />
-          </div>
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-wider text-white">One-time execution</div>
-            <p className="mt-1 text-sm text-zinc-300">
-              This controller runs once before dependent steps and keeps its generated data available for reuse.
-            </p>
-          </div>
-        </div>
-      </div>
 
       <div>
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
@@ -261,13 +238,25 @@ export function OneTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <div className="rounded border border-white/10 bg-white/5 p-3">
-          <div className="text-xs font-semibold uppercase tracking-wider text-zinc-300 mb-1">Init Steps</div>
-          <div className="text-2xl font-bold font-mono text-white">{stepsCount}</div>
+        <div className="rounded border border-white/10 bg-white/5 p-3 flex items-start gap-3">
+          <div className="rounded-full bg-yellow-400/10 p-2 shrink-0 mt-0.5">
+            <List className="h-6 w-6 text-yellow-400" />
+          </div>
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-wider text-yellow-400">Init Steps</div>
+            <div className="text-2xl font-bold font-mono text-white">{stepsCount}</div>
+            <div className="text-xs text-zinc-500 mt-1">Number of steps to run during initialization.</div>
+          </div>
         </div>
-        <div className="rounded border border-white/10 bg-white/5 p-3">
-          <div className="text-xs font-semibold uppercase tracking-wider text-zinc-300 mb-1">Execution</div>
-          <div className="text-2xl font-bold font-mono text-white">1x</div>
+        <div className="rounded border border-white/10 bg-white/5 p-3 flex items-start gap-3">
+          <div className="rounded-full bg-yellow-400/10 p-2 shrink-0 mt-0.5">
+            <Play className="h-6 w-6 text-yellow-400" />
+          </div>
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-wider text-yellow-400">Execution</div>
+            <div className="text-2xl font-bold font-mono text-white">1x</div>
+            <div className="text-xs text-zinc-500 mt-1">This controller will execute exactly once.</div>
+          </div>
         </div>
       </div>
 
@@ -379,26 +368,7 @@ export function ThinkTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
     { value: 'range', label: 'Range', icon: BetweenHorizontalStart },
     { value: 'distribution', label: 'Distribution', icon: Binary },
   ] as const;
-  const thinkTimeModeButtonStyle: Record<'fixed' | 'range' | 'distribution', React.CSSProperties> = {
-    fixed: {
-      backgroundColor: 'rgba(249, 115, 22, 0.20)',
-      color: '#fdba74',
-      borderColor: 'rgba(253, 186, 116, 0.50)',
-      boxShadow: '0 10px 22px rgba(249, 115, 22, 0.20)',
-    },
-    range: {
-      backgroundColor: 'rgba(6, 182, 212, 0.20)',
-      color: '#67e8f9',
-      borderColor: 'rgba(103, 232, 249, 0.50)',
-      boxShadow: '0 10px 22px rgba(6, 182, 212, 0.20)',
-    },
-    distribution: {
-      backgroundColor: 'rgba(168, 85, 247, 0.20)',
-      color: '#d8b4fe',
-      borderColor: 'rgba(216, 180, 254, 0.50)',
-      boxShadow: '0 10px 22px rgba(168, 85, 247, 0.20)',
-    },
-  };
+  const thinkTimeActiveTabColor = 'text-yellow-400 bg-yellow-400/10 border-b-2 border-yellow-400';
 
   const handleModeChange = (newMode: 'fixed' | 'range' | 'distribution') => {
     if (newMode === 'fixed') {
@@ -439,36 +409,33 @@ export function ThinkTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
-          Think Time Mode
-        </label>
-        <div className="flex flex-wrap items-center gap-1">
-          {thinkTimeModes.map(modeItem => {
-            const active = mode === modeItem.value;
-            const Icon = modeItem.icon;
+      <div
+        role="tablist"
+        aria-label="Think time mode"
+        className="flex items-center border-b border-white/5 bg-[#111111] shrink-0 rounded-t-md"
+      >
+        {thinkTimeModes.map(modeItem => {
+          const active = mode === modeItem.value;
+          const Icon = modeItem.icon;
 
-            return (
-              <button
-                key={modeItem.value}
-                type="button"
-                onClick={() => handleModeChange(modeItem.value)}
-                aria-pressed={active}
-                className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${
-                  active
-                    ? 'border-current text-white'
-                    : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/6'
-                }`}
-                style={active ? thinkTimeModeButtonStyle[modeItem.value] : undefined}
-              >
-                <span className="inline-flex items-center gap-1.5">
-                  <Icon className="h-3.5 w-3.5" />
-                  <span>{modeItem.label}</span>
-                </span>
-              </button>
-            );
-          })}
-        </div>
+          return (
+            <button
+              key={modeItem.value}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => handleModeChange(modeItem.value)}
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${
+                active
+                  ? thinkTimeActiveTabColor
+                  : 'text-zinc-400 hover:text-zinc-300 hover:bg-white/5'
+              }`}
+            >
+              <Icon className="h-4 w-4" />
+              {modeItem.label}
+            </button>
+          );
+        })}
       </div>
 
       {mode === 'fixed' ? (
@@ -514,7 +481,7 @@ export function ThinkTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
               />
             </div>
           </div>
-          <div className="p-3 bg-blue-400/5 border border-blue-400/20 rounded text-xs text-zinc-400">
+          <div className="p-3 bg-yellow-400/5 border border-yellow-400/20 rounded text-xs text-zinc-400">
             <AlertTriangle className="inline-block h-3 w-3 mr-1" />
             Random delay is chosen between min and max on each execution.
           </div>
@@ -570,27 +537,21 @@ export function ThinkTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
               <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
                 Distribution
               </label>
-              <select
+              <Select
                 value={String(data.distribution || 'normal')}
-                onChange={event => updateField('distribution', event.target.value)}
-                className="w-full h-9.5 px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono outline-none"
+                onValueChange={value => updateField('distribution', value)}
               >
-                <option
-                  value="normal"
-                  className="bg-[#1a1a1a]"
-                >
-                  normal
-                </option>
-                <option
-                  value="uniform"
-                  className="bg-[#1a1a1a]"
-                >
-                  uniform
-                </option>
-              </select>
+                <SelectTrigger className="w-full h-9.5 px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono">
+                  <SelectValue placeholder="Select distribution" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="normal">normal</SelectItem>
+                  <SelectItem value="uniform">uniform</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
-          <div className="p-3 bg-blue-400/5 border border-blue-400/20 rounded text-xs text-zinc-400">
+          <div className="p-3 bg-yellow-400/5 border border-yellow-400/20 rounded text-xs text-zinc-400">
             <AlertTriangle className="inline-block h-3 w-3 mr-1" />
             Distribution mode applies normal(mean/std_dev) in runtime, bounded by min/max guardrails.
           </div>
