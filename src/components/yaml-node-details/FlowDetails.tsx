@@ -358,6 +358,8 @@ export function ThinkTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
     { value: 'range', label: 'Range', icon: BetweenHorizontalStart },
     { value: 'distribution', label: 'Distribution', icon: Binary },
   ] as const;
+  const thinkTimeActiveTabColor = 'text-yellow-400 bg-yellow-400/10 border-b-2 border-yellow-400';
+
   const handleModeChange = (newMode: 'fixed' | 'range' | 'distribution') => {
     if (newMode === 'fixed') {
       const nextData = { ...data };
@@ -415,7 +417,7 @@ export function ThinkTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
               onClick={() => handleModeChange(modeItem.value)}
               className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${
                 active
-                  ? 'text-yellow-400 bg-yellow-400/10 border-b-2 border-yellow-400'
+                  ? thinkTimeActiveTabColor
                   : 'text-zinc-400 hover:text-zinc-300 hover:bg-white/5'
               }`}
             >
