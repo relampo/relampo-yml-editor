@@ -1,4 +1,4 @@
-import { AlertTriangle, BetweenHorizontalStart, Binary, Box, Clock3, GitFork, Hourglass, Layers, Zap } from 'lucide-react';
+import { AlertTriangle, BetweenHorizontalStart, Binary, Box, Clock3, GitFork, Hourglass, Layers, List, Play, Zap } from 'lucide-react';
 import type { RetryEditorConfig } from '../../types/shared';
 import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
