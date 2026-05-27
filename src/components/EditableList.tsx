@@ -157,14 +157,14 @@ export function EditableList({
   const addButtonClass =
     addButtonVariant === 'pill'
       ? 'flex items-center gap-1 rounded-full border border-current px-3 py-1.5 text-sm font-medium text-white transition-all duration-200'
-      : 'flex items-center gap-1 px-2 py-1 text-xs font-medium text-green-400 bg-green-400/10 hover:bg-green-400/20 border border-green-400/20 rounded transition-colors';
+      : 'flex items-center gap-1 px-2 py-1 text-xs font-medium text-yellow-400 bg-yellow-400/10 hover:bg-yellow-400/20 border border-yellow-400/20 rounded transition-colors';
   const addButtonStyle =
     addButtonVariant === 'pill'
       ? {
-          backgroundColor: 'rgba(16, 185, 129, 0.22)',
-          color: '#6ee7b7',
-          borderColor: 'rgba(110, 231, 183, 0.55)',
-          boxShadow: '0 10px 22px rgba(16, 185, 129, 0.22)',
+          backgroundColor: 'rgba(250, 204, 21, 0.22)',
+          color: '#facc15',
+          borderColor: 'rgba(250, 204, 21, 0.55)',
+          boxShadow: '0 10px 22px rgba(250, 204, 21, 0.22)',
         }
       : undefined;
 
@@ -227,7 +227,7 @@ export function EditableList({
                 <div className="flex items-center gap-3 w-full min-w-0">
                   {variant === 'minimal' ? (
                     <div className="flex-1 flex items-center gap-3 min-w-0 max-w-125">
-                      <div className="flex items-center gap-2 shrink-0 w-17.5">
+                      <div className="flex items-center gap-2 shrink-0 w-40">
                         <Input
                           value={item.key}
                           onFocus={() => setEditingKey(item.originalKey)}
@@ -300,7 +300,7 @@ export function EditableList({
                                 resetLocalKey(item.originalKey);
                               }
                             }}
-                            className="w-17.5 shrink-0 px-2 py-1 text-xs font-mono text-purple-400 bg-purple-400/5 border-purple-400/30"
+                            className="w-40 shrink-0 px-2 py-1 text-xs font-mono text-purple-400 bg-purple-400/5 border-purple-400/30"
                             placeholder={keyPlaceholder}
                             maxLength={50}
                           />
@@ -327,7 +327,7 @@ export function EditableList({
                         </div>
                       ) : (
                         <>
-                          <div className="flex items-center gap-2 shrink-0 w-17.5">
+                          <div className="flex items-center gap-2 shrink-0 w-40">
                             <button
                               onClick={() => setEditingKey(item.originalKey)}
                               className="text-xs font-mono text-purple-400 font-bold bg-purple-400/10 hover:bg-purple-400/20 px-2 py-1 rounded transition-colors cursor-pointer truncate w-full"

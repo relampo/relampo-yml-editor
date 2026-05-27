@@ -1,4 +1,4 @@
-import { AlertTriangle, BetweenHorizontalStart, Binary, Clock3, Zap } from 'lucide-react';
+import { AlertTriangle, BetweenHorizontalStart, Binary, Clock3, GitFork, Hourglass, Layers, Zap } from 'lucide-react';
 import type { RetryEditorConfig } from '../../types/shared';
 import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
@@ -67,13 +67,13 @@ export function LoopDetails({ node, onNodeUpdate }: NodeDetailProps) {
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <div className="p-3 bg-purple-400/10 border border-purple-400/20 rounded">
-          <div className="text-xs font-semibold text-purple-400 uppercase tracking-wider mb-1">Steps Inside</div>
-          <div className="text-2xl font-bold text-purple-300 font-mono">{stepsCount}</div>
+        <div className="p-3 bg-white/5 border border-white/10 rounded">
+          <div className="text-xs font-semibold text-yellow-400 uppercase tracking-wider mb-1">Steps Inside</div>
+          <div className="text-2xl font-bold text-zinc-300 font-mono">{stepsCount}</div>
         </div>
-        <div className="p-3 bg-purple-400/10 border border-purple-400/20 rounded">
-          <div className="text-xs font-semibold text-purple-400 uppercase tracking-wider mb-1">Total Iterations</div>
-          <div className="text-2xl font-bold text-purple-300 font-mono">{loopCount * stepsCount}</div>
+        <div className="p-3 bg-white/5 border border-white/10 rounded">
+          <div className="text-xs font-semibold text-yellow-400 uppercase tracking-wider mb-1">Total Iterations</div>
+          <div className="text-2xl font-bold text-zinc-300 font-mono">{loopCount * stepsCount}</div>
         </div>
       </div>
     </div>
@@ -102,30 +102,19 @@ export function RetryDetails({ node, onNodeUpdate }: NodeDetailProps) {
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
           Backoff Strategy
         </label>
-        <select
+        <Select
           value={backoffType}
-          onChange={event => updateField('backoff', event.target.value)}
-          className="w-full h-9.5 px-3 py-2 bg-red-400/10 text-red-400 border border-red-400/20 rounded text-sm font-mono cursor-pointer"
+          onValueChange={value => updateField('backoff', value)}
         >
-          <option
-            value="constant"
-            className="bg-zinc-900"
-          >
-            constant (same delay)
-          </option>
-          <option
-            value="linear"
-            className="bg-zinc-900"
-          >
-            linear (incremental)
-          </option>
-          <option
-            value="exponential"
-            className="bg-zinc-900"
-          >
-            exponential (2x each time)
-          </option>
-        </select>
+          <SelectTrigger className="w-full h-9.5 px-3 py-2 bg-yellow-400/10 text-yellow-400 border border-yellow-400/20 rounded text-sm font-mono">
+            <SelectValue placeholder="Select strategy" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="constant">constant (same delay)</SelectItem>
+            <SelectItem value="linear">linear (incremental)</SelectItem>
+            <SelectItem value="exponential">exponential (2x each time)</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {backoffType === 'constant' && (
@@ -222,19 +211,6 @@ export function OneTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-lg border border-white/10 bg-white/5 p-4">
-        <div className="flex items-start gap-3">
-          <div className="mt-0.5 rounded-md bg-white/10 p-2 text-white">
-            <Zap className="h-4 w-4" />
-          </div>
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-wider text-white">One-time execution</div>
-            <p className="mt-1 text-sm text-zinc-300">
-              This controller runs once before dependent steps and keeps its generated data available for reuse.
-            </p>
-          </div>
-        </div>
-      </div>
 
       <div>
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
@@ -252,13 +228,25 @@ export function OneTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <div className="rounded border border-white/10 bg-white/5 p-3">
-          <div className="text-xs font-semibold uppercase tracking-wider text-zinc-300 mb-1">Init Steps</div>
-          <div className="text-2xl font-bold font-mono text-white">{stepsCount}</div>
+        <div className="rounded border border-white/10 bg-white/5 p-3 flex items-start gap-3">
+          <div className="rounded-full bg-yellow-400/10 p-2 shrink-0 mt-0.5">
+            <List className="h-6 w-6 text-yellow-400" />
+          </div>
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-wider text-yellow-400">Init Steps</div>
+            <div className="text-2xl font-bold font-mono text-white">{stepsCount}</div>
+            <div className="text-xs text-zinc-500 mt-1">Number of steps to run during initialization.</div>
+          </div>
         </div>
-        <div className="rounded border border-white/10 bg-white/5 p-3">
-          <div className="text-xs font-semibold uppercase tracking-wider text-zinc-300 mb-1">Execution</div>
-          <div className="text-2xl font-bold font-mono text-white">1x</div>
+        <div className="rounded border border-white/10 bg-white/5 p-3 flex items-start gap-3">
+          <div className="rounded-full bg-yellow-400/10 p-2 shrink-0 mt-0.5">
+            <Play className="h-6 w-6 text-yellow-400" />
+          </div>
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-wider text-yellow-400">Execution</div>
+            <div className="text-2xl font-bold font-mono text-white">1x</div>
+            <div className="text-xs text-zinc-500 mt-1">This controller will execute exactly once.</div>
+          </div>
         </div>
       </div>
 
@@ -281,48 +269,57 @@ export function ParallelDetails({ node }: NodeDetailProps) {
       className="space-y-6 text-zinc-50"
       style={{ color: '#f8fafc' }}
     >
-      <div className="rounded-xl border border-cyan-300/25 bg-white/[0.04] px-5 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-        <div
-          className="mb-2 text-xs font-bold uppercase tracking-[0.2em]"
-          style={{ color: '#67e8f9' }}
-        >
-          Execution Model
+      <div className="rounded-xl border border-white/10 bg-white/[0.04] px-5 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+        <div className="flex items-start gap-3">
+          <div className="inline-flex items-center justify-center rounded-full bg-yellow-400/10 p-2.5 text-yellow-400 shadow-sm shrink-0 mt-0.5">
+            <GitFork className="w-6 h-6" />
+          </div>
+          <div className="space-y-2">
+            <div className="text-xs font-bold uppercase tracking-[0.2em] text-yellow-400">
+              Execution Model
+            </div>
+            <p className="text-sm leading-6" style={{ color: '#f8fafc' }}>
+              All child steps start together and this controller finishes only when every child step completes.
+            </p>
+          </div>
         </div>
-        <p
-          className="text-sm leading-6"
-          style={{ color: '#f8fafc' }}
-        >
-          All child steps start together and this controller finishes only when every child step completes.
-        </p>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <div className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-          <div
-            className="mb-2 text-xs font-bold uppercase tracking-[0.2em]"
-            style={{ color: '#67e8f9' }}
-          >
-            Parallel Steps
-          </div>
-          <div
-            className="text-3xl font-black font-mono"
-            style={{ color: '#ffffff' }}
-          >
-            {stepsCount}
+          <div className="flex items-start gap-3">
+            <div className="inline-flex items-center justify-center rounded-xs bg-yellow-400/10 p-2.5 text-yellow-400 shadow-sm shrink-0">
+              <Layers className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="text-xs font-bold uppercase tracking-[0.2em] text-yellow-400">
+                Parallel Steps
+              </div>
+              <div
+                className="text-3xl font-black font-mono mt-1"
+                style={{ color: '#ffffff' }}
+              >
+                {stepsCount}
+              </div>
+            </div>
           </div>
         </div>
         <div className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-          <div
-            className="mb-2 text-xs font-bold uppercase tracking-[0.2em]"
-            style={{ color: '#67e8f9' }}
-          >
-            Completion
-          </div>
-          <div
-            className="text-base font-semibold"
-            style={{ color: isEmpty ? '#fde68a' : '#f8fafc' }}
-          >
-            {isEmpty ? 'Blocked' : 'Waits for all'}
+          <div className="flex items-start gap-3">
+            <div className="inline-flex items-center justify-center rounded-xs bg-yellow-400/10 p-2.5 text-yellow-400 shadow-sm shrink-0">
+              <Hourglass className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="text-xs font-bold uppercase tracking-[0.2em] text-yellow-400">
+                Completion
+              </div>
+              <div
+                className="text-base font-semibold mt-1"
+                style={{ color: isEmpty ? '#fde68a' : '#f8fafc' }}
+              >
+                {isEmpty ? 'Blocked' : 'Waits for all'}
+              </div>
+            </div>
           </div>
         </div>
       </div>
