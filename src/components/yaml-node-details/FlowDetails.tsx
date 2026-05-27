@@ -67,13 +67,13 @@ export function LoopDetails({ node, onNodeUpdate }: NodeDetailProps) {
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <div className="p-3 bg-purple-400/10 border border-purple-400/20 rounded">
-          <div className="text-xs font-semibold text-purple-400 uppercase tracking-wider mb-1">Steps Inside</div>
-          <div className="text-2xl font-bold text-purple-300 font-mono">{stepsCount}</div>
+        <div className="p-3 bg-white/5 border border-white/10 rounded">
+          <div className="text-xs font-semibold text-yellow-400 uppercase tracking-wider mb-1">Steps Inside</div>
+          <div className="text-2xl font-bold text-zinc-300 font-mono">{stepsCount}</div>
         </div>
-        <div className="p-3 bg-purple-400/10 border border-purple-400/20 rounded">
-          <div className="text-xs font-semibold text-purple-400 uppercase tracking-wider mb-1">Total Iterations</div>
-          <div className="text-2xl font-bold text-purple-300 font-mono">{loopCount * stepsCount}</div>
+        <div className="p-3 bg-white/5 border border-white/10 rounded">
+          <div className="text-xs font-semibold text-yellow-400 uppercase tracking-wider mb-1">Total Iterations</div>
+          <div className="text-2xl font-bold text-zinc-300 font-mono">{loopCount * stepsCount}</div>
         </div>
       </div>
     </div>
