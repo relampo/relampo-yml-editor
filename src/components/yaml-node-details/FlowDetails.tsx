@@ -1,4 +1,4 @@
-import { AlertTriangle, BetweenHorizontalStart, Binary, Clock3, GitFork, Hourglass, Layers, Zap } from 'lucide-react';
+import { AlertTriangle, BetweenHorizontalStart, Binary, Box, Clock3, GitFork, Hourglass, Layers, List, Play, Zap } from 'lucide-react';
 import type { RetryEditorConfig } from '../../types/shared';
 import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
@@ -24,9 +24,19 @@ export function IfDetails({ node, onNodeUpdate }: NodeDetailProps) {
         <div className="mt-1 text-xs text-zinc-500">Steps will only execute if this condition evaluates to true</div>
       </div>
 
-      <div className="p-3 bg-pink-400/10 border border-pink-400/20 rounded">
-        <div className="text-xs font-semibold text-pink-400 uppercase tracking-wider mb-1">Conditional Steps</div>
-        <div className="text-2xl font-bold text-pink-300 font-mono">{node.children?.length || 0}</div>
+      <div className="rounded-l-md rounded-r-2xl border border-white/10 bg-white/[0.04] px-5 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] border-l-4 border-l-yellow-400">
+        <div className="text-xs font-bold uppercase tracking-[0.2em] text-white mb-4">
+          Conditional Steps
+        </div>
+        <div className="flex items-center gap-4">
+          <Box className="w-10 h-10 text-yellow-400 shrink-0" />
+          <div className="border-l border-white/10 pl-4">
+            <div className="text-3xl font-black font-mono text-white">{node.children?.length || 0}</div>
+            <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
+              Steps inside this controller that will run if the condition is true
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );

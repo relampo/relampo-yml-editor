@@ -120,9 +120,9 @@ export function YAMLNodeDetails({
           </div>
         )}
 
-        {/* TODO Add Section was removed from Details. We will improve this later. */}
-        
-        {/* {addableItems.length > 0 && onAddChildNode && !isRequestNode && node.type !== 'retry' && (
+        {/* TODO: Enable this when ready */}
+
+        {/* {addableItems.length > 0 && onAddChildNode && !isRequestNode && node.type !== 'parallel' && node.type !== 'group' && node.type !== 'if' && (
           <AddChildActions
             nodeId={node.id}
             parentNodeType={node.type}
