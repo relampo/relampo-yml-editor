@@ -112,7 +112,7 @@ export function YAMLNodeDetails({
               }}
               maxLength={50}
               style={{
-                width: `${Math.min(Math.max((nodeName || '').length + 2, 12), 48)}ch`,
+                width: node.type === 'think_time' ? '100px' : `${Math.min(Math.max((nodeName || '').length + 2, 12), 48)}ch`,
               }}
               className="max-w-full shrink-0 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-semibold"
               placeholder="Node name"
@@ -120,8 +120,9 @@ export function YAMLNodeDetails({
           </div>
         )}
 
-        {/* TODO: Enable add child actions when needed */}
-        {/* {addableItems.length > 0 && onAddChildNode && !isRequestNode && (
+        {/* TODO: Enable this when ready */}
+
+        {/* {addableItems.length > 0 && onAddChildNode && !isRequestNode && node.type !== 'parallel' && node.type !== 'group' && node.type !== 'if' && (
           <AddChildActions
             nodeId={node.id}
             parentNodeType={node.type}
