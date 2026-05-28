@@ -32,6 +32,7 @@ function getDraftRestoreError(language: string): string {
 type ParseWorkerRequest = {
   id: number;
   yaml: string;
+  rootName?: string;
 };
 
 type ParseWorkerResponse = { id: number; ok: true; tree: YAMLNode | null } | { id: number; ok: false; error: string };
@@ -293,7 +294,7 @@ export function YAMLEditor() {
     };
   }, [language]);
 
-  const syncCodeToTree = (code: string, options?: { force?: boolean }) => {
+  const syncCodeToTree = (code: string, options?: { force?: boolean; defaultRootName?: string }) => {
     if (!code || code.trim() === '') {
       activeParseRequestIdRef.current = ++parseRequestIdRef.current;
       setYamlTree(null);
@@ -324,12 +325,12 @@ export function YAMLEditor() {
 
     const worker = parseWorkerRef.current;
     if (worker) {
-      worker.postMessage({ id: requestId, yaml: code } as ParseWorkerRequest);
+      worker.postMessage({ id: requestId, yaml: code, rootName: options?.defaultRootName } as ParseWorkerRequest);
       return;
     }
 
     try {
-      const parsedTree = parseYAMLToTree(code);
+      const parsedTree = parseYAMLToTree(code, options?.defaultRootName);
       if (activeParseRequestIdRef.current !== requestId) return;
       const [normalizedTree] = parsedTree ? lockTypedNodeSelectionInNode(parsedTree) : [parsedTree, false];
       setYamlTree(normalizedTree);
@@ -400,7 +401,8 @@ export function YAMLEditor() {
       setRestoredDraftUpdatedAt(initialUpdatedAt);
       setHasDocumentActivity(Boolean(initialUpdatedAt));
       setIsDirty(false);
-      syncCodeToTree(initialYaml, { force: true });
+      const restoredDisplayName = initialFileName.replace(/\.(ya?ml)$/i, '');
+      syncCodeToTree(initialYaml, { force: true, defaultRootName: restoredDisplayName });
       if (restoreError) setError(restoreError);
       setIsInitialized(true);
     };
@@ -576,7 +578,8 @@ export function YAMLEditor() {
       setYamlCode(content);
       setYamlContent(content);
       setViewMode('tree');
-      syncCodeToTree(content, { force: true });
+      const displayName = file.name.replace(/\.(ya?ml)$/i, '');
+      syncCodeToTree(content, { force: true, defaultRootName: displayName });
       setCurrentFileName(normalizeYamlFileName(file.name));
       setHasDocumentActivity(true);
       setIsDirty(false);

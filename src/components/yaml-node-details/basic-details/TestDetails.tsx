@@ -20,9 +20,12 @@ export function TestDetails({ node, onNodeUpdate }: NamedNodeDetailProps) {
             id="test-detail-name"
             value={data.name || node.name || ''}
             maxLength={50}
-            onChange={event => updateField('name', event.target.value.slice(0, 50))}
+            onChange={event => {
+              const value = event.target.value.slice(0, 50);
+              onNodeUpdate?.(node.id, { ...node.data, name: value, __name: value });
+            }}
             placeholder="Test Plan Name"
-            className="w-17.5 shrink-0 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-semibold"
+            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-semibold"
           />
         </div>
         <div className="w-24 shrink-0">

@@ -72,15 +72,17 @@ function pruneDefaultRequestFields(request: Record<string, any>) {
 export function treeToObject(tree: YAMLNode): any {
   const obj: any = {};
 
+  if (tree.type === 'test') {
+    obj.test = { ...tree.data };
+    if (tree.name && tree.name !== tree.data?.name) {
+      obj.test.name = tree.name;
+    }
+  }
+
   if (!tree.children) return obj;
 
   for (const child of tree.children) {
-    if (child.type === 'test') {
-      obj.test = { ...child.data };
-      if (child.name && child.name !== child.data?.name) {
-        obj.test.name = child.name;
-      }
-    } else if (child.type === 'variables') {
+    if (child.type === 'variables') {
       obj.variables = child.data;
     } else if (child.type === 'data_source') {
       obj.data_source = { ...child.data };
