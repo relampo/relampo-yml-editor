@@ -515,6 +515,8 @@ export const esTranslations = {
         issueMissingChildren: 'Agrega al menos un request o controlador dentro de este controlador balanceado.',
         issueInvalidPercentage: 'Cada elemento hijo debe definir un porcentaje mayor que 0 y menor o igual que 100.',
         issueInvalidTotal: 'El porcentaje total asignado debe ser exactamente 100. Total actual: {total}%.',
+        issueThinkTimeChild: 'think_time no puede ser hijo de un balanced controller — consume un porcentaje de carga sin emitir ningún request.',
+        issueNoRequestsChild: '"{name}" no contiene requests: todos los VUs asignados a él ejecutarán cero carga.',
       },
       included: {
         title: 'Elementos incluidos',
