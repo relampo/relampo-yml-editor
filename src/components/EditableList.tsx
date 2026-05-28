@@ -239,7 +239,7 @@ export function EditableList({
                         }}
                         placeholder={keyPlaceholder}
                         maxLength={50}
-                        className="flex-1 px-2 py-1 text-xs font-mono text-yellow-400 bg-white/5 border-white/10 focus:border-white/30"
+                        className="flex-1 px-2 py-1 text-xs font-mono text-yellow-400 bg-yellow-400/5 border-yellow-400/20 focus:border-yellow-400/40"
                       />
                       <span className="text-zinc-500 font-bold shrink-0">=</span>
                     </div>
