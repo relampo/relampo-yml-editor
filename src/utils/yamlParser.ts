@@ -11,6 +11,7 @@ import {
   normalizeSQLForEditor,
 } from './yamlParserHelpers';
 import { treeToObject } from './yamlTreeSerializer';
+import { buildRequestNodeLabel } from './requestNodeDisplay';
 
 function isPlainRecord(value: unknown): value is Record<string, any> {
   return !!value && typeof value === 'object' && !Array.isArray(value);
@@ -631,7 +632,7 @@ function createRequestNode(
   const requestNode: YAMLNode = {
     id: stepId,
     type,
-    name: req.name || `${method}: ${req.url || '/'}`,
+    name: req.name || buildRequestNodeLabel(type, { ...req, method }),
     data: { ...req, method, enabled },
     path,
     children: [],
