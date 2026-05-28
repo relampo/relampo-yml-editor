@@ -155,18 +155,8 @@ export function EditableList({
   };
 
   const addButtonClass =
-    addButtonVariant === 'pill'
-      ? 'flex items-center gap-1 rounded-full border border-current px-3 py-1.5 text-sm font-medium text-white transition-all duration-200'
-      : 'flex items-center gap-1 px-2 py-1 text-xs font-medium text-yellow-400 bg-yellow-400/10 hover:bg-yellow-400/20 border border-yellow-400/20 rounded transition-colors';
-  const addButtonStyle =
-    addButtonVariant === 'pill'
-      ? {
-          backgroundColor: 'rgba(250, 204, 21, 0.22)',
-          color: '#facc15',
-          borderColor: 'rgba(250, 204, 21, 0.55)',
-          boxShadow: '0 10px 22px rgba(250, 204, 21, 0.22)',
-        }
-      : undefined;
+    'flex items-center gap-1 px-2 py-1 text-xs text-amber-500 hover:text-amber-400 hover:bg-amber-500/10 rounded transition-colors';
+  const addButtonStyle = undefined;
 
   return (
     <div className="space-y-3">
@@ -223,62 +213,62 @@ export function EditableList({
                 </button>
               )}
 
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-3 w-full min-w-0">
-                  {variant === 'minimal' ? (
-                    <div className="flex-1 flex items-center gap-3 min-w-0 max-w-125">
-                      <div className="flex items-center gap-2 shrink-0 w-40">
-                        <Input
-                          value={item.key}
-                          onFocus={() => setEditingKey(item.originalKey)}
-                          onChange={e => {
-                            setLocalItems(currentItems =>
-                              currentItems.map(currentItem =>
-                                currentItem.originalKey === item.originalKey
-                                  ? { ...currentItem, key: e.target.value }
-                                  : currentItem,
-                              ),
-                            );
-                          }}
-                          onBlur={() => handleKeyChange(item.originalKey, item.key)}
-                          onKeyDown={e => {
-                            if (e.key === 'Enter') {
-                              handleKeyChange(item.originalKey, item.key);
-                            } else if (e.key === 'Escape') {
-                              resetLocalKey(item.originalKey);
-                            }
-                          }}
-                          placeholder={keyPlaceholder}
-                          maxLength={50}
-                          className="flex-1 px-2 py-1 text-xs font-mono text-purple-400 bg-purple-400/5 border-purple-400/20 focus:border-purple-400/50"
-                        />
-                        <span className="text-zinc-500 font-bold shrink-0">=</span>
-                      </div>
-
-                      <div className="w-0 flex-1 min-w-0">
-                        <Input
-                          value={item.value}
-                          onChange={e => {
-                            const updatedItems = {
-                              ...items,
-                              [item.key]: e.target.value,
-                            };
-                            onUpdate(updatedItems);
-                          }}
-                          placeholder={valuePlaceholder}
-                          className="w-full px-2 py-1 text-sm font-mono text-zinc-300 bg-white/5 border-white/10 focus:border-white/30"
-                        />
-                      </div>
-
-                      <button
-                        onClick={() => handleDelete(item.originalKey)}
-                        className="p-1.5 text-zinc-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all shrink-0"
-                        title="Remove"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+              {variant === 'minimal' ? (
+                <>
+                  <div className="flex-1 flex items-center gap-3 min-w-0">
+                    <div className="flex items-center gap-2 shrink-0 w-[200px]">
+                      <Input
+                        value={item.key}
+                        onFocus={() => setEditingKey(item.originalKey)}
+                        onChange={e => {
+                          setLocalItems(currentItems =>
+                            currentItems.map(currentItem =>
+                              currentItem.originalKey === item.originalKey
+                                ? { ...currentItem, key: e.target.value }
+                                : currentItem,
+                            ),
+                          );
+                        }}
+                        onBlur={() => handleKeyChange(item.originalKey, item.key)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') {
+                            handleKeyChange(item.originalKey, item.key);
+                          } else if (e.key === 'Escape') {
+                            resetLocalKey(item.originalKey);
+                          }
+                        }}
+                        placeholder={keyPlaceholder}
+                        maxLength={50}
+                        className="flex-1 px-2 py-1 text-xs font-mono text-zinc-300 bg-white/5 border-white/10 focus:border-white/30"
+                      />
+                      <span className="text-zinc-500 font-bold shrink-0">=</span>
                     </div>
-                  ) : (
+
+                    <div className="w-0 flex-1 min-w-0 overflow-x-auto scrollbar-none">
+                      <Input
+                        value={item.value}
+                        onChange={e => {
+                          const updatedItems = {
+                            ...items,
+                            [item.key]: e.target.value,
+                          };
+                          onUpdate(updatedItems);
+                        }}
+                        placeholder={valuePlaceholder}
+                        className="w-full px-2 py-1 text-sm font-mono text-zinc-300 bg-white/5 border-white/10 focus:border-white/30"
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => handleDelete(item.originalKey)}
+                    className="p-1.5 text-zinc-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all shrink-0"
+                    title="Remove"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </>
+              ) : (
                     <>
                       {editingKey === item.originalKey ? (
                         <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -410,8 +400,6 @@ export function EditableList({
                       )}
                     </>
                   )}
-                </div>
-              </div>
             </div>
           </div>
         ))}

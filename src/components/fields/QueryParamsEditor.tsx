@@ -158,12 +158,12 @@ export function QueryParamsEditor({ url, onUrlChange, className = '', showBaseUr
               className="py-2 px-1 border-b border-white/5 flex items-center gap-3 w-full min-w-0 hover:bg-white/2 transition-colors group"
             >
               <div className="flex-1 flex items-center gap-3 min-w-0">
-                <div className="flex items-center gap-2 shrink-0 w-40">
+                <div className="flex items-center gap-2 shrink-0 w-[200px]">
                   <Input
                     value={param.key}
                     onChange={e => handleParamChange(index, 'key', e.target.value)}
                     placeholder="name"
-                    className="flex-1 px-2 py-1 text-xs font-mono text-yellow-400 bg-yellow-400/5 border-yellow-400/20 focus:border-yellow-400 focus-visible:ring-yellow-400/30"
+                    className="flex-1 px-2 py-1 text-xs font-mono text-zinc-300 bg-white/5 border-white/10"
                   />
                   <span className="text-zinc-500 font-bold shrink-0">=</span>
                 </div>
