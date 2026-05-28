@@ -124,8 +124,11 @@ export function BalancedDetails({ node, onNodeUpdate }: NodeDetailProps) {
   const REQUEST_TYPES = new Set([
     'request', 'get', 'post', 'put', 'delete', 'patch', 'head', 'options', 'sql',
   ]);
-  function subtreeHasRequest(n: { type: string; children?: Array<{ type: string; children?: unknown[] }> }): boolean {
-    if (REQUEST_TYPES.has(n.type)) return true;
+  function subtreeHasRequest(n: { type: string; data?: any; children?: Array<{ type: string; data?: any; children?: unknown[] }> }): boolean {
+    if (REQUEST_TYPES.has(n.type)) {
+      // Disabled samplers (data.enabled === false) produce no load at runtime.
+      return n.data?.enabled !== false;
+    }
     return (n.children ?? []).some((c: any) => subtreeHasRequest(c));
   }
 

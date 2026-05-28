@@ -5,23 +5,25 @@ interface YAMLSemanticIssue {
   message: string;
 }
 
-/** Returns true when the step type can issue HTTP or SQL requests. */
-function stepTypeIssuesRequests(type: string): boolean {
-  const requestTypes = new Set([
-    'request', 'get', 'post', 'put', 'delete', 'patch', 'head', 'options', 'sql',
-  ]);
-  return requestTypes.has(type);
-}
+const REQUEST_SAMPLER_TYPES = new Set([
+  'request', 'get', 'post', 'put', 'delete', 'patch', 'head', 'options', 'sql',
+]);
 
 /**
- * Returns true when the node subtree contains at least one enabled request/SQL
- * step. think_time and purely-timer-only subtrees return false.
+ * Returns true when the node subtree contains at least one **enabled**
+ * request/SQL step. Disabled nodes (`data.enabled === false`) are ignored
+ * because the serializer emits `enabled: false` and the runtime skips them,
+ * so they produce no load — identical to the backend `StepTreeHasRequest`
+ * behaviour for `RequestStep.Enabled`.
  *
  * Note: this is a structural check only — runtime conditions (e.g. `if`
  * branches) are not evaluated.
  */
 function subtreeHasRequest(node: YAMLNode): boolean {
-  if (stepTypeIssuesRequests(node.type)) return true;
+  if (REQUEST_SAMPLER_TYPES.has(node.type)) {
+    // A sampler with enabled:false is skipped at runtime — not load-bearing.
+    return node.data?.enabled !== false;
+  }
   return (node.children ?? []).some(subtreeHasRequest);
 }
 
