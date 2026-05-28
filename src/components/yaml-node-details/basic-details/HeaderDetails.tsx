@@ -27,7 +27,7 @@ export function HeaderDetails({ node, onNodeUpdate }: NodeDetailProps) {
               onChange={event => updateField('name', event.target.value)}
               placeholder="Content-Type"
               list="header-names-list"
-              className="flex-1 px-2 py-1 text-xs font-mono text-zinc-300 bg-white/5 border-white/10"
+              className="flex-1 px-2 py-1 text-xs font-mono text-yellow-400 bg-white/5 border-white/10"
             />
             <span className="text-zinc-500 font-bold shrink-0">=</span>
           </div>
