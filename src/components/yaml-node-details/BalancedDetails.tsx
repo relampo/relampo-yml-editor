@@ -121,6 +121,17 @@ export function BalancedDetails({ node, onNodeUpdate }: NodeDetailProps) {
     });
   };
 
+  const REQUEST_TYPES = new Set([
+    'request', 'get', 'post', 'put', 'delete', 'patch', 'head', 'options', 'sql',
+  ]);
+  function subtreeHasRequest(n: { type: string; data?: any; children?: Array<{ type: string; data?: any; children?: unknown[] }> }): boolean {
+    if (REQUEST_TYPES.has(n.type)) {
+      // Disabled samplers (data.enabled === false) produce no load at runtime.
+      return n.data?.enabled !== false;
+    }
+    return (n.children ?? []).some((c: any) => subtreeHasRequest(c));
+  }
+
   const issues: string[] = [];
   if (!validation.hasChildren) {
     issues.push(t('yamlEditor.balanced.alerts.issueMissingChildren'));
@@ -131,6 +142,13 @@ export function BalancedDetails({ node, onNodeUpdate }: NodeDetailProps) {
   if (balancedType === 'total' && validation.hasChildren && !validation.validTotal) {
     issues.push(format('yamlEditor.balanced.alerts.issueInvalidTotal', { total: validation.total }));
   }
+  (node.children ?? []).forEach(child => {
+    if (child.type === 'think_time') {
+      issues.push(t('yamlEditor.balanced.alerts.issueThinkTimeChild'));
+    } else if (!subtreeHasRequest(child as any)) {
+      issues.push(format('yamlEditor.balanced.alerts.issueNoRequestsChild', { name: child.name || child.type }));
+    }
+  });
 
   const statusTone =
     issues.length === 0 ? 'emerald' : !validation.hasChildren ? 'amber' : balancedType === 'total' ? 'amber' : 'sky';
