@@ -33,6 +33,35 @@ describe('YAMLRequestDetails', () => {
     expect(screen.getByPlaceholderText('/api/endpoint')).toBeInTheDocument();
   });
 
+  it('hints the inherited base host in the Base URL placeholder for relative requests', () => {
+    const node: YAMLNode = {
+      id: 'get-base',
+      type: 'get',
+      name: 'GET: /assets/intro.mp4',
+      data: { url: '/assets/intro.mp4' },
+      children: [],
+    };
+
+    render(<YAMLRequestDetails node={node} baseUrl="https://video-cdn.example.net" />);
+
+    expect(screen.getByLabelText('Base URL')).toHaveValue('');
+    expect(screen.getByPlaceholderText('video-cdn.example.net')).toBeInTheDocument();
+  });
+
+  it('falls back to the generic Base URL placeholder when no base_url is configured', () => {
+    const node: YAMLNode = {
+      id: 'get-nobase',
+      type: 'get',
+      name: 'GET: /',
+      data: { url: '' },
+      children: [],
+    };
+
+    render(<YAMLRequestDetails node={node} />);
+
+    expect(screen.getByPlaceholderText('api.example.com')).toBeInTheDocument();
+  });
+
   it('keeps blank path edits empty in editor state so export can normalize to slash', () => {
     const onNodeUpdate = vi.fn();
     const node: YAMLNode = {

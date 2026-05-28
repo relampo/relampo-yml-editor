@@ -255,6 +255,14 @@ export function YAMLEditor() {
     return result;
   }, [yamlTree, redirectedRequestMap]);
 
+  // Base URL inherited from http_defaults, used as the placeholder hint for
+  // requests that target the base host (relative URLs).
+  const httpDefaultsBaseUrl = useMemo<string>(() => {
+    const defaultsNode = yamlTree?.children?.find(child => child.type === 'http_defaults');
+    const rawBaseUrl = defaultsNode?.data?.base_url;
+    return typeof rawBaseUrl === 'string' ? rawBaseUrl : '';
+  }, [yamlTree]);
+
   // Worker setup
   useEffect(() => {
     if (typeof Worker === 'undefined') return;
@@ -867,6 +875,7 @@ export function YAMLEditor() {
           <div className="flex-1 overflow-hidden">
             <YAMLNodeDetails
               node={selectedNode}
+              baseUrl={httpDefaultsBaseUrl}
               redirectedInfo={selectedNode ? (redirectedRequestMap[selectedNode.id] ?? null) : null}
               redirectSourceInfo={selectedNode ? (redirectSourceMap[selectedNode.id] ?? null) : null}
               onNodeUpdate={handleNodeUpdate}

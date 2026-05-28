@@ -227,6 +227,35 @@ scenarios:
     expect(step.data.url).toBe('https://example.com/api');
   });
 
+  it('keeps secondary-host requests visible with a host-stripped name (RLP-365)', () => {
+    const yaml = `
+test:
+  name: t
+http_defaults:
+  base_url: https://video-cdn.example.net
+scenarios:
+  - name: Multi host
+    steps:
+      - get: https://host1.example.com/home
+      - get: https://api-business.example.org/v1/profile
+      - get: /assets/player/intro.mp4
+`;
+    const tree = parseYAMLToTree(yaml)!;
+    const steps = tree
+      .children!.find(c => c.type === 'scenarios')!
+      .children![0].children!.find(c => c.type === 'steps')!.children!;
+
+    // All hosts are preserved as steps (not collapsed into a single host).
+    expect(steps).toHaveLength(3);
+
+    // Auto-generated names are host-stripped paths; the absolute URL stays in data.url
+    // so the tree can surface the host separately as a badge.
+    expect(steps.map(s => s.name)).toEqual(['GET: /home', 'GET: /v1/profile', 'GET: /assets/player/intro.mp4']);
+    expect(steps[0].data.url).toBe('https://host1.example.com/home');
+    expect(steps[1].data.url).toBe('https://api-business.example.org/v1/profile');
+    expect(steps[2].data.url).toBe('/assets/player/intro.mp4');
+  });
+
   it('parses request (long form)', () => {
     const yaml = `
 test:

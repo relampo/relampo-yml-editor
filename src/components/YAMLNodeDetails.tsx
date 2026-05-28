@@ -37,6 +37,7 @@ import { getAddableItems, type YAMLAddableNodeType } from './yaml-tree-view/adda
 
 interface YAMLNodeDetailsProps {
   node: YAMLNode | null;
+  baseUrl?: string;
   redirectedInfo?: RedirectedRequestInfo | null;
   redirectSourceInfo?: RedirectSourceInfo | null;
   onNodeUpdate?: (nodeId: string, updatedData: any) => void;
@@ -48,6 +49,7 @@ const REQUEST_NODE_TYPES = ['request', 'sql', 'get', 'post', 'put', 'delete', 'p
 
 export function YAMLNodeDetails({
   node,
+  baseUrl = '',
   redirectSourceInfo = null,
   onNodeUpdate,
   onAddChildNode,
@@ -138,6 +140,7 @@ export function YAMLNodeDetails({
           node={node}
           nodeName={nodeName}
           setNodeName={setNodeName}
+          baseUrl={baseUrl}
           redirectSourceInfo={redirectSourceInfo}
           onNodeUpdate={onNodeUpdate}
         />
@@ -150,12 +153,14 @@ function NodeDetailsContent({
   node,
   nodeName,
   setNodeName,
+  baseUrl,
   redirectSourceInfo,
   onNodeUpdate,
 }: {
   node: YAMLNode;
   nodeName: string;
   setNodeName: (name: string) => void;
+  baseUrl: string;
   redirectSourceInfo: RedirectSourceInfo | null;
   onNodeUpdate?: (nodeId: string, updatedData: any) => void;
 }) {
@@ -237,6 +242,7 @@ function NodeDetailsContent({
       return (
         <YAMLRequestDetails
           node={node}
+          baseUrl={baseUrl}
           redirectSourceInfo={redirectSourceInfo}
           onNodeUpdate={onNodeUpdate}
         />

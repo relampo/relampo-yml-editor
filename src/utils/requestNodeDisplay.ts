@@ -50,7 +50,39 @@ export function isHttpRequestNodeType(nodeType: YAMLNodeType): boolean {
   return nodeType === 'request' || HTTP_METHOD_NODE_TYPES.has(nodeType);
 }
 
-function buildRequestNodeLabel(nodeType: YAMLNodeType, data: RequestNodeData): string {
+/**
+ * Extract the host (authority) from a request URL when it is absolute.
+ *
+ * Recorded requests that target a host other than `http_defaults.base_url`
+ * are written with an absolute URL by the recorder, while requests against the
+ * base host stay relative. Returning the host for absolute URLs lets the tree
+ * surface every host involved in a multi-host recording instead of collapsing
+ * them into a single implicit host.
+ *
+ * @param url - Raw request URL (absolute or relative).
+ * @returns The host (e.g. `api.example.com`) for absolute URLs, or `''` for relative ones.
+ */
+export function getRequestNodeHost(url: unknown): string {
+  const trimmed = String(url || '').trim();
+  if (!trimmed || !/^https?:\/\//i.test(trimmed)) return '';
+
+  try {
+    return new URL(trimmed).host || '';
+  } catch {
+    const match = trimmed.match(/^[a-z]+:\/\/([^/?#]+)/i);
+    return match ? match[1] : '';
+  }
+}
+
+/**
+ * Build the auto-generated label for an HTTP request node.
+ *
+ * The label is host-stripped (`METHOD: /path?query`) so that the tree name stays
+ * compact and consistent regardless of whether the request URL is absolute (a
+ * secondary host) or relative (the base host). The host itself is surfaced
+ * separately as a badge in the tree, keeping every host visible.
+ */
+export function buildRequestNodeLabel(nodeType: YAMLNodeType, data: RequestNodeData): string {
   const method = nodeType === 'request' ? normalizeMethod(data?.method) : nodeType.toUpperCase();
   return `${method}: ${normalizeUrlForLabel(data?.url)}`;
 }

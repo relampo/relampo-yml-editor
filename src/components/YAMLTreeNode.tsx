@@ -28,6 +28,7 @@ import {
 import { useEffect, useRef, useState } from 'react';
 import type { RedirectedRequestInfo, YAMLNode, YAMLNodeType } from '../types/yaml';
 import { canContain, canDrop } from '../utils/yamlDragDropRules';
+import { getRequestNodeHost, isHttpRequestNodeType } from '../utils/requestNodeDisplay';
 
 // Track the dragged node outside React so dragOver can resolve it.
 let currentDraggedNode: { id: string; type: YAMLNodeType } | null = null;
@@ -281,6 +282,7 @@ export function YAMLTreeNode({
             {redirectedLabel}
           </span>
         )}
+        {getNodeHostBadge(node)}
         {getNodeBadge(node, { mutedMethod: isRedirectedFollowUp })}
         {hasRequestHit && (
           <span className="inline-flex h-5 items-center shrink-0 text-xs leading-none px-1.5 py-0.5 rounded bg-yellow-400/15 text-yellow-400 font-mono font-medium border border-yellow-400/30 uppercase">
@@ -456,6 +458,26 @@ function getNodeColor(type: YAMLNodeType, node?: YAMLNode, isRedirectedFollowUp 
     default:
       return 'text-zinc-400';
   }
+}
+
+function getNodeHostBadge(node: YAMLNode): React.ReactNode {
+  if (!isHttpRequestNodeType(node.type)) return null;
+
+  // The recorder writes requests against the base host as relative URLs and
+  // requests to any other host as absolute URLs. Surfacing that host keeps
+  // every host of a multi-host recording visible instead of looking like a
+  // single host. Base-host (relative) requests get no badge.
+  const host = getRequestNodeHost(node.data?.url);
+  if (!host) return null;
+
+  return (
+    <span
+      className="inline-flex h-5 max-w-[10rem] items-center shrink-0 truncate text-xs leading-none px-1.5 py-0.5 rounded bg-amber-400/15 text-amber-400 font-mono font-medium border border-amber-400/30 lowercase"
+      title={host}
+    >
+      {host}
+    </span>
+  );
 }
 
 function getNodeBadge(node: YAMLNode, options: { mutedMethod?: boolean } = {}): React.ReactNode {
