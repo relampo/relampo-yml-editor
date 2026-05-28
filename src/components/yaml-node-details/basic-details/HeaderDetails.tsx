@@ -21,7 +21,7 @@ export function HeaderDetails({ node, onNodeUpdate }: NodeDetailProps) {
     <div className="space-y-4">
       <div className="py-3 px-1 border-b border-white/5 flex items-center gap-3 w-full min-w-0 hover:bg-white/2 transition-colors group">
         <div className="flex-1 flex items-center gap-3 min-w-0">
-          <div className="flex items-center gap-2 shrink-0 w-[200px]">
+          <div className="flex items-center gap-2 shrink-0 w-[250px]">
             <Input
               value={data.name || ''}
               onChange={event => updateField('name', event.target.value)}

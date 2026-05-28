@@ -155,7 +155,7 @@ export function EditableList({
   };
 
   const addButtonClass =
-    'flex items-center gap-1 px-2 py-1 text-xs text-amber-500 hover:text-amber-400 hover:bg-amber-500/10 rounded transition-colors';
+    'flex items-center gap-1 px-2 py-1 text-xs text-amber-500 hover:text-amber-400 border border-yellow-400/20 bg-yellow-400/5 hover:bg-yellow-400/10 hover:border-yellow-400/35 rounded transition-colors';
   const addButtonStyle = undefined;
 
   return (
@@ -216,7 +216,7 @@ export function EditableList({
               {variant === 'minimal' ? (
                 <>
                   <div className="flex-1 flex items-center gap-3 min-w-0">
-                    <div className="flex items-center gap-2 shrink-0 w-[200px]">
+                    <div className="flex items-center gap-2 shrink-0 w-[250px]">
                       <Input
                         value={item.key}
                         onFocus={() => setEditingKey(item.originalKey)}
@@ -262,7 +262,7 @@ export function EditableList({
 
                   <button
                     onClick={() => handleDelete(item.originalKey)}
-                    className="p-1.5 text-zinc-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all shrink-0"
+                    className="p-2 h-9 text-zinc-500 hover:text-red-400 bg-white/5 hover:bg-white/10 rounded shrink-0 transition-colors"
                     title="Remove"
                   >
                     <Trash2 className="w-4 h-4" />
