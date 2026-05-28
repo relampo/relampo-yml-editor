@@ -14,6 +14,7 @@ vi.mock('../utils/analytics', () => ({
 
 vi.mock('../utils/yamlDraftStorage', () => ({
   getActiveDraft: vi.fn(),
+  clearActiveDraft: vi.fn(),
 }));
 
 vi.mock('../utils/yamlDocumentLimits', () => ({
