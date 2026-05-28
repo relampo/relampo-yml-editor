@@ -193,15 +193,7 @@ export function createNodeByType(
         id,
         type: 'one_time',
         name: 'One Time Controller',
-        children: [
-          {
-            id: `${id}_request`,
-            type: 'request',
-            name: 'Initialization Request',
-            data: { method: 'GET', url: '/initialize' },
-            children: [],
-          },
-        ],
+        children: [],
         data: { description: '' },
         expanded: true,
       };
