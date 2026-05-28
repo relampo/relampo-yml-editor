@@ -128,6 +128,7 @@ export function YAMLEditor() {
   const [isLargeFileBannerDismissed, setIsLargeFileBannerDismissed] = useState(false);
   const [restoredDraftUpdatedAt, setRestoredDraftUpdatedAt] = useState<string | null>(null);
   const selectedNodeRef = useRef<YAMLNode | null>(null);
+  const fallbackRootNameRef = useRef<string | null>(null);
   const selectedNodeIdsRef = useRef<string[]>([]);
   const hasDiscoveredTreeContextMenuRef = useRef(false);
 
@@ -402,6 +403,7 @@ export function YAMLEditor() {
       setHasDocumentActivity(Boolean(initialUpdatedAt));
       setIsDirty(false);
       const restoredDisplayName = initialFileName.replace(/\.(ya?ml)$/i, '');
+      fallbackRootNameRef.current = restoredDisplayName;
       syncCodeToTree(initialYaml, { force: true, defaultRootName: restoredDisplayName });
       if (restoreError) setError(restoreError);
       setIsInitialized(true);
@@ -442,7 +444,7 @@ export function YAMLEditor() {
     }
 
     parseDebounceRef.current = window.setTimeout(() => {
-      syncCodeToTree(newCode);
+      syncCodeToTree(newCode, fallbackRootNameRef.current ? { defaultRootName: fallbackRootNameRef.current } : undefined);
     }, 350);
   };
 
@@ -579,6 +581,7 @@ export function YAMLEditor() {
       setYamlContent(content);
       setViewMode('tree');
       const displayName = file.name.replace(/\.(ya?ml)$/i, '');
+      fallbackRootNameRef.current = displayName;
       syncCodeToTree(content, { force: true, defaultRootName: displayName });
       setCurrentFileName(normalizeYamlFileName(file.name));
       setHasDocumentActivity(true);
