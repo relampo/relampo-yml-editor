@@ -5,12 +5,16 @@ import { BodyTypeSelector } from './fields/BodyTypeSelector';
 import { MethodDropdown } from './fields/MethodDropdown';
 import { QueryParamsEditor } from './fields/QueryParamsEditor';
 import { buildRequestUrl, parseRequestUrl } from './fields/requestUrl';
+import { getRequestNodeHost } from '../utils/requestNodeDisplay';
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { YAMLResponseDetails } from './YAMLResponseDetails';
 
+const FALLBACK_BASE_URL_PLACEHOLDER = 'api.example.com';
+
 interface YAMLRequestDetailsProps {
   node: YAMLNode;
+  baseUrl?: string;
   redirectSourceInfo?: RedirectSourceInfo | null;
   onNodeUpdate?: (nodeId: string, updatedData: any) => void;
 }
@@ -23,7 +27,12 @@ function getNodeMethodFallback(node: YAMLNode): string {
   return HTTP_METHOD_NODE_TYPES.includes(node.type) ? node.type.toUpperCase() : 'GET';
 }
 
-export function YAMLRequestDetails({ node, redirectSourceInfo = null, onNodeUpdate }: YAMLRequestDetailsProps) {
+export function YAMLRequestDetails({
+  node,
+  baseUrl = '',
+  redirectSourceInfo = null,
+  onNodeUpdate,
+}: YAMLRequestDetailsProps) {
   const data = node.data || {};
   const [formData, setFormData] = useState(data);
   const [activeTab, setActiveTab] = useState<Tab>('request');
@@ -122,6 +131,7 @@ export function YAMLRequestDetails({ node, redirectSourceInfo = null, onNodeUpda
         {activeTab === 'request' ? (
           <RequestContent
             formData={formData}
+            baseUrl={baseUrl}
             hasRecordedRedirectFollowUp={hasRecordedRedirectFollowUp}
             effectiveRedirectAutomatically={effectiveRedirectAutomatically}
             effectiveFollowRedirects={effectiveFollowRedirects}
@@ -158,6 +168,7 @@ export function YAMLRequestDetails({ node, redirectSourceInfo = null, onNodeUpda
 
 interface RequestContentProps {
   formData: any;
+  baseUrl: string;
   hasRecordedRedirectFollowUp: boolean;
   effectiveRedirectAutomatically: boolean;
   effectiveFollowRedirects: boolean;
@@ -176,6 +187,7 @@ interface RequestContentProps {
 
 function RequestContent({
   formData,
+  baseUrl,
   hasRecordedRedirectFollowUp,
   effectiveRedirectAutomatically,
   effectiveFollowRedirects,
@@ -195,6 +207,10 @@ function RequestContent({
     'w-[14ch] max-w-full h-9.5 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono';
 
   const urlParts = parseRequestUrl(formData.url || '');
+  // Hint the inherited base host (from http_defaults.base_url) so it is clear
+  // that an empty Base URL means "inherit this host". Falls back to a generic
+  // example when no base_url is configured.
+  const baseUrlPlaceholder = getRequestNodeHost(baseUrl) || baseUrl.trim() || FALLBACK_BASE_URL_PLACEHOLDER;
   const rawUrl = String(formData.url ?? '').trim();
   const pathInputValue = rawUrl === '' ? '' : urlParts.path;
   const requestBodyText = formData.body
@@ -353,7 +369,7 @@ function RequestContent({
               id="req-base-url"
               value={urlParts.baseUrl}
               onChange={e => onFieldChange('url', buildRequestUrl(formData.url || '', { baseUrl: e.target.value }))}
-              placeholder="api.example.com"
+              placeholder={baseUrlPlaceholder}
               className="w-full h-9.5 bg-white/5 border border-white/10 text-zinc-300 text-sm font-mono"
             />
           </div>
