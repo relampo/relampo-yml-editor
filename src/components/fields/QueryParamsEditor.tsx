@@ -144,7 +144,7 @@ export function QueryParamsEditor({ url, onUrlChange, className = '', showBaseUr
           <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Query Parameters</label>
           <button
             onClick={handleAddParam}
-            className="flex items-center gap-1 px-2 py-1 text-xs text-emerald-400 hover:text-emerald-300 hover:bg-emerald-400/10 rounded transition-colors"
+            className="flex items-center gap-1 px-2 py-1 text-xs text-amber-500 hover:text-amber-400 border border-yellow-400/20 bg-yellow-400/5 hover:bg-yellow-400/10 hover:border-yellow-400/35 rounded transition-colors"
           >
             <Plus className="w-3 h-3" />
             Add
@@ -158,12 +158,12 @@ export function QueryParamsEditor({ url, onUrlChange, className = '', showBaseUr
               className="py-2 px-1 border-b border-white/5 flex items-center gap-3 w-full min-w-0 hover:bg-white/2 transition-colors group"
             >
               <div className="flex-1 flex items-center gap-3 min-w-0">
-                <div className="flex items-center gap-2 shrink-0 w-17.5">
+                <div className="flex items-center gap-2 shrink-0 w-[250px]">
                   <Input
                     value={param.key}
                     onChange={e => handleParamChange(index, 'key', e.target.value)}
                     placeholder="name"
-                    className="flex-1 px-2 py-1 text-xs font-mono text-purple-400 bg-purple-400/5 border-purple-400/20"
+                    className="flex-1 px-2 py-1 text-xs font-mono text-yellow-400 bg-yellow-400/5 border-yellow-400/20"
                   />
                   <span className="text-zinc-500 font-bold shrink-0">=</span>
                 </div>
@@ -178,7 +178,7 @@ export function QueryParamsEditor({ url, onUrlChange, className = '', showBaseUr
               </div>
               <button
                 onClick={() => handleRemoveParam(index)}
-                className="p-1 text-zinc-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all shrink-0"
+                className="p-2 h-9 text-zinc-500 hover:text-red-400 bg-white/5 hover:bg-white/10 rounded shrink-0 transition-colors"
                 title="Remove parameter"
               >
                 <Trash2 className="w-3.5 h-3.5" />

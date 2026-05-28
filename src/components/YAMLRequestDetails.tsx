@@ -6,6 +6,7 @@ import { MethodDropdown } from './fields/MethodDropdown';
 import { QueryParamsEditor } from './fields/QueryParamsEditor';
 import { buildRequestUrl, parseRequestUrl } from './fields/requestUrl';
 import { Input } from './ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { YAMLResponseDetails } from './YAMLResponseDetails';
 
 interface YAMLRequestDetailsProps {
@@ -105,7 +106,7 @@ export function YAMLRequestDetails({ node, redirectSourceInfo = null, onNodeUpda
             onClick={() => handleTabChange('response')}
             className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${
               activeTab === 'response'
-                ? 'text-cyan-400 bg-cyan-400/10 border-b-2 border-cyan-400'
+                ? 'text-yellow-400 bg-yellow-400/10 border-b-2 border-yellow-400'
                 : 'text-zinc-400 hover:text-zinc-300 hover:bg-white/5'
             }`}
           >
@@ -328,15 +329,18 @@ function RequestContent({
             >
               Protocol
             </label>
-            <select
-              id="req-protocol"
+            <Select
               value={urlParts.protocol}
-              onChange={e => onFieldChange('url', buildRequestUrl(formData.url || '', { protocol: e.target.value }))}
-              className={`${compactInputClass} w-full`}
+              onValueChange={value => onFieldChange('url', buildRequestUrl(formData.url || '', { protocol: value }))}
             >
-              <option value="https">https</option>
-              <option value="http">http</option>
-            </select>
+              <SelectTrigger id="req-protocol" className={`${compactInputClass} w-full`}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="border-white/10 use-accent-yellow">
+                <SelectItem value="https" className="font-mono">https</SelectItem>
+                <SelectItem value="http" className="font-mono">http</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="col-span-4">
             <label
@@ -547,16 +551,19 @@ function RequestContent({
             >
               Cookie Override
             </label>
-            <select
-              id="req-cookie-override"
+            <Select
               value={formData.cookie_override || 'inherit'}
-              onChange={e => onFieldChange('cookie_override', e.target.value)}
-              className="block w-full h-9.5 px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono"
+              onValueChange={value => onFieldChange('cookie_override', value)}
             >
-              <option value="inherit">inherit</option>
-              <option value="enabled">enabled</option>
-              <option value="disabled">disabled</option>
-            </select>
+              <SelectTrigger id="req-cookie-override" className={`${compactInputClass} w-full`}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="border-white/10 use-accent-yellow">
+                <SelectItem value="inherit">inherit</SelectItem>
+                <SelectItem value="enabled">enabled</SelectItem>
+                <SelectItem value="disabled">disabled</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="min-w-0">
             <label
@@ -565,16 +572,19 @@ function RequestContent({
             >
               Cache Override
             </label>
-            <select
-              id="req-cache-override"
+            <Select
               value={formData.cache_override || 'inherit'}
-              onChange={e => onFieldChange('cache_override', e.target.value)}
-              className="block w-full h-9.5 px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono"
+              onValueChange={value => onFieldChange('cache_override', value)}
             >
-              <option value="inherit">inherit</option>
-              <option value="enabled">enabled</option>
-              <option value="disabled">disabled</option>
-            </select>
+              <SelectTrigger id="req-cache-override" className={`${compactInputClass} w-full`}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="border-white/10 use-accent-yellow">
+                <SelectItem value="inherit">inherit</SelectItem>
+                <SelectItem value="enabled">enabled</SelectItem>
+                <SelectItem value="disabled">disabled</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="min-w-0">
             <label
@@ -583,11 +593,10 @@ function RequestContent({
             >
               Throughput (Request)
             </label>
-            <select
-              id="req-throughput"
+            <Select
               value={formData.throughput?.enabled ? 'enabled' : 'disabled'}
-              onChange={e => {
-                if (e.target.value === 'enabled') {
+              onValueChange={value => {
+                if (value === 'enabled') {
                   const next = {
                     enabled: true,
                     target_rps: formData.throughput?.target_rps || 1,
@@ -597,11 +606,15 @@ function RequestContent({
                   onFieldChange('throughput', undefined);
                 }
               }}
-              className="block w-full h-9.5 px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono"
             >
-              <option value="enabled">enabled</option>
-              <option value="disabled">disabled</option>
-            </select>
+              <SelectTrigger id="req-throughput" className={`${compactInputClass} w-full`}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="border-white/10">
+                <SelectItem value="enabled">enabled</SelectItem>
+                <SelectItem value="disabled">disabled</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className={`min-w-0 ${formData.throughput?.enabled ? '' : 'opacity-55'}`}>
             <label

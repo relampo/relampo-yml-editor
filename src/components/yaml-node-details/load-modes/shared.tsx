@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Input } from '../../ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
 
 export interface LoadModeProps {
   data: Record<string, any>;
@@ -95,21 +96,25 @@ export function LoadSelectField({ label, value, onChange, options, helpText }: L
   return (
     <div className="space-y-2">
       <label className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">{label}</label>
-      <select
+      <Select
         value={value}
-        onChange={event => onChange(event.target.value)}
-        className="h-10 w-full rounded-md border border-white/10 bg-[#151515] px-3 py-2 text-sm font-mono text-zinc-200 outline-none transition-all focus:border-white/20"
+        onValueChange={onChange}
       >
-        {options.map(option => (
-          <option
-            key={option.value}
-            value={option.value}
-            className="bg-[#151515]"
-          >
-            {option.label}
-          </option>
-        ))}
-      </select>
+        <SelectTrigger className="h-10 w-full rounded-md border border-white/10 bg-[#151515] px-3 py-2 text-sm font-mono text-zinc-200">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent className="border-white/10">
+          {options.map(option => (
+            <SelectItem
+              key={option.value}
+              value={option.value}
+              className="font-mono"
+            >
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
       {helpText && <p className="text-[11px] leading-relaxed text-zinc-500">{helpText}</p>}
     </div>
   );

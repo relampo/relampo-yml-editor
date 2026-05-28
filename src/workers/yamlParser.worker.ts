@@ -5,6 +5,7 @@ import { parseYAMLToTree } from '../utils/yamlParser';
 type ParseWorkerRequest = {
   id: number;
   yaml: string;
+  rootName?: string;
 };
 
 type ParseWorkerResponse =
@@ -18,7 +19,7 @@ ctx.onmessage = (event: MessageEvent<ParseWorkerRequest>) => {
   if (!payload || typeof payload.id !== 'number') return;
 
   try {
-    const tree = parseYAMLToTree(payload.yaml || '');
+    const tree = parseYAMLToTree(payload.yaml || '', payload.rootName);
     const response: ParseWorkerResponse = {
       id: payload.id,
       ok: true,

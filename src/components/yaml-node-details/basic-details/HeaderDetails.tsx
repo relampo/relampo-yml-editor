@@ -21,17 +21,17 @@ export function HeaderDetails({ node, onNodeUpdate }: NodeDetailProps) {
     <div className="space-y-4">
       <div className="py-3 px-1 border-b border-white/5 flex items-center gap-3 w-full min-w-0 hover:bg-white/2 transition-colors group">
         <div className="flex-1 flex items-center gap-3 min-w-0">
-          <div className="flex items-center gap-2 shrink-0 w-17.5">
+          <div className="flex items-center gap-2 shrink-0 w-[250px]">
             <Input
               value={data.name || ''}
               onChange={event => updateField('name', event.target.value)}
               placeholder="Content-Type"
               list="header-names-list"
-              className="flex-1 px-2 py-1 text-xs font-mono text-purple-400 font-bold bg-purple-400/5 border-purple-400/20 focus:border-purple-400/40"
+              className="flex-1 px-2 py-1 text-xs font-mono text-yellow-400 bg-yellow-400/5 border-yellow-400/20"
             />
             <span className="text-zinc-500 font-bold shrink-0">=</span>
           </div>
-          <div className="w-0 flex-1 min-w-0">
+          <div className="w-0 flex-1 min-w-0 overflow-x-auto scrollbar-none">
             <Input
               value={data.value || ''}
               onChange={event => updateField('value', event.target.value)}

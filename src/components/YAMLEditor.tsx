@@ -32,6 +32,7 @@ function getDraftRestoreError(language: string): string {
 type ParseWorkerRequest = {
   id: number;
   yaml: string;
+  rootName?: string;
 };
 
 type ParseWorkerResponse = { id: number; ok: true; tree: YAMLNode | null } | { id: number; ok: false; error: string };
@@ -127,6 +128,7 @@ export function YAMLEditor() {
   const [isLargeFileBannerDismissed, setIsLargeFileBannerDismissed] = useState(false);
   const [restoredDraftUpdatedAt, setRestoredDraftUpdatedAt] = useState<string | null>(null);
   const selectedNodeRef = useRef<YAMLNode | null>(null);
+  const fallbackRootNameRef = useRef<string | null>(null);
   const selectedNodeIdsRef = useRef<string[]>([]);
   const hasDiscoveredTreeContextMenuRef = useRef(false);
 
@@ -218,9 +220,25 @@ export function YAMLEditor() {
     serializeDebounceRef,
   });
 
+  const prevRedirectedMapRef = useRef<Record<string, RedirectedRequestInfo>>({});
+
   const redirectedRequestMap = useMemo<Record<string, RedirectedRequestInfo>>(() => {
     if (!yamlTree) return {};
-    return detectRedirectFollowUps(yamlTree);
+    const freshMap = detectRedirectFollowUps(yamlTree);
+    const merged = { ...freshMap };
+
+    for (const [id, info] of Object.entries(prevRedirectedMapRef.current)) {
+      if (!merged[id]) {
+        const targetStillExists = findNodeById(yamlTree, id);
+        const sourceIsGone = !findNodeById(yamlTree, info.sourceNodeId);
+        if (targetStillExists && sourceIsGone) {
+          merged[id] = info;
+        }
+      }
+    }
+
+    prevRedirectedMapRef.current = merged;
+    return merged;
   }, [yamlTree]);
 
   const redirectSourceMap = useMemo<Record<string, RedirectSourceInfo>>(() => {
@@ -277,7 +295,7 @@ export function YAMLEditor() {
     };
   }, [language]);
 
-  const syncCodeToTree = (code: string, options?: { force?: boolean }) => {
+  const syncCodeToTree = (code: string, options?: { force?: boolean; defaultRootName?: string }) => {
     if (!code || code.trim() === '') {
       activeParseRequestIdRef.current = ++parseRequestIdRef.current;
       setYamlTree(null);
@@ -308,12 +326,12 @@ export function YAMLEditor() {
 
     const worker = parseWorkerRef.current;
     if (worker) {
-      worker.postMessage({ id: requestId, yaml: code } as ParseWorkerRequest);
+      worker.postMessage({ id: requestId, yaml: code, rootName: options?.defaultRootName } as ParseWorkerRequest);
       return;
     }
 
     try {
-      const parsedTree = parseYAMLToTree(code);
+      const parsedTree = parseYAMLToTree(code, options?.defaultRootName);
       if (activeParseRequestIdRef.current !== requestId) return;
       const [normalizedTree] = parsedTree ? lockTypedNodeSelectionInNode(parsedTree) : [parsedTree, false];
       setYamlTree(normalizedTree);
@@ -384,7 +402,9 @@ export function YAMLEditor() {
       setRestoredDraftUpdatedAt(initialUpdatedAt);
       setHasDocumentActivity(Boolean(initialUpdatedAt));
       setIsDirty(false);
-      syncCodeToTree(initialYaml, { force: true });
+      const restoredDisplayName = initialFileName.replace(/\.(ya?ml)$/i, '');
+      fallbackRootNameRef.current = restoredDisplayName;
+      syncCodeToTree(initialYaml, { force: true, defaultRootName: restoredDisplayName });
       if (restoreError) setError(restoreError);
       setIsInitialized(true);
     };
@@ -424,7 +444,7 @@ export function YAMLEditor() {
     }
 
     parseDebounceRef.current = window.setTimeout(() => {
-      syncCodeToTree(newCode);
+      syncCodeToTree(newCode, fallbackRootNameRef.current ? { defaultRootName: fallbackRootNameRef.current } : undefined);
     }, 350);
   };
 
@@ -560,7 +580,9 @@ export function YAMLEditor() {
       setYamlCode(content);
       setYamlContent(content);
       setViewMode('tree');
-      syncCodeToTree(content, { force: true });
+      const displayName = file.name.replace(/\.(ya?ml)$/i, '');
+      fallbackRootNameRef.current = displayName;
+      syncCodeToTree(content, { force: true, defaultRootName: displayName });
       setCurrentFileName(normalizeYamlFileName(file.name));
       setHasDocumentActivity(true);
       setIsDirty(false);

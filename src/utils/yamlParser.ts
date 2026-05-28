@@ -17,14 +17,14 @@ function isPlainRecord(value: unknown): value is Record<string, any> {
 }
 
 // Parser: YAML string → Tree
-export function parseYAMLToTree(yamlString: string): YAMLNode | null {
+export function parseYAMLToTree(yamlString: string, defaultRootName?: string): YAMLNode | null {
   if (!yamlString || yamlString.trim() === '') {
     return null;
   }
   try {
     const parsed = jsyaml.load(yamlString);
     if (!parsed) return null;
-    return convertToTree(parsed);
+    return convertToTree(parsed, undefined, defaultRootName);
   } catch (error) {
     throw new Error(`Error parsing YAML: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
@@ -41,17 +41,17 @@ export function treeToYAML(tree: YAMLNode): string {
 }
 
 // Convert parsed object to tree structure
-function convertToTree(obj: any, _: string[] = []): YAMLNode {
+function convertToTree(obj: any, _: string[] = [], defaultRootName?: string): YAMLNode {
   const rootId = 'root';
 
   const root: YAMLNode = {
     id: rootId,
     type: 'test',
-    name: obj.test?.name || 'Relampo Test',
+    name: obj.test?.name || defaultRootName || 'Relampo Test',
     children: [],
     expanded: true,
     path: [],
-    data: obj.test || { name: 'Relampo Test', description: '', version: '1.0' },
+    data: obj.test || { name: defaultRootName || 'Relampo Test', description: '', version: '1.0' },
   };
 
   // Variables
@@ -224,7 +224,16 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
     if (step[method] !== undefined) {
       const methodValue = step[method];
       const requestData = isPlainRecord(methodValue) ? methodValue : { url: methodValue };
-      return createRequestNode(stepId, method as any, { ...requestData, method: method.toUpperCase() }, path, isEnabled);
+      const extraFields = { ...step };
+      delete extraFields[method];
+      delete extraFields.enabled;
+      return createRequestNode(
+        stepId,
+        method as any,
+        { ...requestData, ...extraFields, method: method.toUpperCase() },
+        path,
+        isEnabled,
+      );
     }
   }
 

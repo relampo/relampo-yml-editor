@@ -170,7 +170,7 @@ describe('YAMLEditor draft restoration', () => {
     renderEditor();
 
     expect(await screen.findByText('Restored plan')).toBeInTheDocument();
-    expect(parseYAMLToTreeMock).toHaveBeenCalledWith('test:\n  name: restored\n');
+    expect(parseYAMLToTreeMock).toHaveBeenCalledWith('test:\n  name: restored\n', 'restored');
     expect(screen.getByTestId('editor-header')).toHaveAttribute('data-activity', 'true');
     expect(screen.getByTestId('editor-header')).toHaveAttribute('data-dirty', 'false');
     await waitFor(() => expect(screen.getByTestId('editor-header').getAttribute('data-saved-at')).not.toBe(''));

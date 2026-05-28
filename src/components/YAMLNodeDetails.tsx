@@ -112,7 +112,7 @@ export function YAMLNodeDetails({
               }}
               maxLength={50}
               style={{
-                width: `${Math.min(Math.max((nodeName || '').length + 2, 12), 48)}ch`,
+                width: node.type === 'think_time' ? '100px' : `${Math.min(Math.max((nodeName || '').length + 2, 12), 48)}ch`,
               }}
               className="max-w-full shrink-0 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-semibold"
               placeholder="Node name"
@@ -120,7 +120,9 @@ export function YAMLNodeDetails({
           </div>
         )}
 
-        {addableItems.length > 0 && onAddChildNode && !isRequestNode && (
+        {/* TODO: Enable this when ready */}
+
+        {/* {addableItems.length > 0 && onAddChildNode && !isRequestNode && node.type !== 'parallel' && node.type !== 'group' && node.type !== 'if' && (
           <AddChildActions
             nodeId={node.id}
             parentNodeType={node.type}
@@ -130,7 +132,7 @@ export function YAMLNodeDetails({
             title={t('yamlEditor.common.add')}
             compact={isCompactDetailsNode}
           />
-        )}
+        )} */}
 
         <NodeDetailsContent
           node={node}
@@ -408,7 +410,7 @@ function AddChildActions({
     <section className={compact ? 'mb-4' : 'mb-6'}>
       <div className="flex items-center gap-2 mb-3">
         <Plus className="w-3.5 h-3.5 text-yellow-400" />
-        <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">{title}</h4>
+          <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">{title}</h4>
       </div>
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-2">
         {items.map(item => (
