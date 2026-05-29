@@ -395,6 +395,8 @@ export const esTranslations = {
     downloadProject: 'Descargar ZIP',
     validYaml: '✅ YAML válido según la especificación de Relampo v1',
     codeView: 'Código',
+    newDocumentTitle: 'Nuevo documento',
+    newDocumentConfirm: 'Confirmar',
     confirmNewDocument: '¿Estás seguro de que deseas crear un nuevo documento? Se perderán todos los cambios no guardados.',
     cancel: 'Cancelar',
     treeView: 'Árbol',

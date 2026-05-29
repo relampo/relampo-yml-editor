@@ -254,5 +254,7 @@ export function useYAMLPersistence({
     };
   }, []);
 
-  return { lastSavedAt, actionMessage, handleSave, handleDownload };
+  const resetSavedAt = () => setLastSavedAt(null);
+
+  return { lastSavedAt, actionMessage, handleSave, handleDownload, resetSavedAt };
 }

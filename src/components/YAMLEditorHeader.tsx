@@ -101,13 +101,14 @@ export function YAMLEditorHeader({
           {/* Action Buttons */}
           <div className="flex items-center gap-2">
             {!isDocumentEmpty && (
-              <button
+              <Button
                 onClick={onNew}
-                className="inline-flex h-8 items-center justify-center gap-2 rounded-md bg-yellow-400 px-3 text-sm font-bold text-black shadow-sm transition-all duration-200 hover:bg-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
+                size="sm"
+                className="bg-yellow-400 hover:bg-yellow-300 text-black font-bold gap-2"
               >
                 <FilePlus className="w-4 h-4" />
                 {t('yamlEditor.newDocument')}
-              </button>
+              </Button>
             )}
 
             <Button

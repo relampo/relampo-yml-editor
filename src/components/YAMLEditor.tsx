@@ -213,7 +213,7 @@ export function YAMLEditor() {
     return serialized;
   };
 
-  const { lastSavedAt, actionMessage, handleDownload } = useYAMLPersistence({
+  const { lastSavedAt, actionMessage, handleDownload, resetSavedAt } = useYAMLPersistence({
     isDirty,
     setIsDirty,
     isInitialized,
@@ -584,6 +584,7 @@ export function YAMLEditor() {
     activeParseRequestIdRef.current = ++parseRequestIdRef.current;
     setIsParsing(false);
     setIsFileLoading(false);
+    resetSavedAt();
 
     void clearActiveDraft();
   };
@@ -703,14 +704,8 @@ export function YAMLEditor() {
       <Dialog open={isNewDialogOpen} onOpenChange={setIsNewDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>
-              {language === 'es' ? 'Nuevo documento' : 'New document'}
-            </DialogTitle>
-            <DialogDescription>
-              {language === 'es'
-                ? '¿Estás seguro de que deseas crear un nuevo documento? Se perderán todos los cambios no guardados.'
-                : 'Are you sure you want to create a new document? All unsaved changes will be lost.'}
-            </DialogDescription>
+            <DialogTitle>{t('yamlEditor.newDocumentTitle')}</DialogTitle>
+            <DialogDescription>{t('yamlEditor.confirmNewDocument')}</DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button
@@ -719,14 +714,14 @@ export function YAMLEditor() {
               onClick={() => setIsNewDialogOpen(false)}
               className="border-white/10 bg-white/5 hover:bg-white/10 text-zinc-300"
             >
-              {language === 'es' ? 'Cancelar' : 'Cancel'}
+              {t('yamlEditor.cancel')}
             </Button>
             <Button
               size="sm"
               onClick={handleNewConfirm}
               className="bg-yellow-400 hover:bg-yellow-300 text-black font-bold"
             >
-              {language === 'es' ? 'Confirmar' : 'Confirm'}
+              {t('yamlEditor.newDocumentConfirm')}
             </Button>
           </DialogFooter>
         </DialogContent>
