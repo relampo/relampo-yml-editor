@@ -167,16 +167,42 @@ function setNodeFollowRedirects(tree: YAMLNode, nodeId: string, value: boolean):
   return tree;
 }
 
+function collectSubtreeIds(tree: YAMLNode, rootId: string): Set<string> {
+  const ids = new Set<string>();
+
+  const collect = (node: YAMLNode) => {
+    ids.add(node.id);
+    node.children?.forEach(collect);
+  };
+
+  const findRoot = (node: YAMLNode): YAMLNode | null => {
+    if (node.id === rootId) return node;
+    for (const child of node.children ?? []) {
+      const found = findRoot(child);
+      if (found) return found;
+    }
+    return null;
+  };
+
+  const rootNode = findRoot(tree);
+  if (rootNode) collect(rootNode);
+  return ids;
+}
+
 /**
- * Keeps a redirect source request consistent when its recorded follow-up
- * (redirect target) request is enabled/disabled.
+ * Keeps redirect source requests consistent when their recorded follow-up
+ * (redirect target) requests are enabled/disabled.
  *
- * When the follow-up is disabled, the source must follow redirects
- * automatically — otherwise the redirect is neither auto-followed nor handled
- * by the now-disabled explicit step. Re-enabling the follow-up restores the
- * recorded behavior (the source does not auto-follow; the explicit step does).
+ * When a follow-up is disabled, its source must follow redirects automatically
+ * — otherwise the redirect is neither auto-followed nor handled by the now
+ * disabled explicit step. Re-enabling the follow-up restores the recorded
+ * behavior (the source does not auto-follow; the explicit step does).
  *
- * No-op when the toggled node is not a recorded redirect follow-up.
+ * `updateNodeEnabled` cascades through the whole subtree, so toggling a
+ * container (group/transaction/scenario/…) flips every descendant. We therefore
+ * sync the source of *any* recorded redirect follow-up found within the toggled
+ * subtree, not just the node whose toggle was clicked. No-op when the subtree
+ * contains no recorded redirect follow-ups.
  */
 export function syncRedirectSourceFollowRedirects(
   tree: YAMLNode,
@@ -184,9 +210,14 @@ export function syncRedirectSourceFollowRedirects(
   enabled: boolean,
   redirectedRequestMap: Record<string, RedirectedRequestInfo>,
 ): YAMLNode {
-  const info = redirectedRequestMap[toggledNodeId];
-  if (!info) return tree;
-  return setNodeFollowRedirects(tree, info.sourceNodeId, !enabled);
+  const toggledIds = collectSubtreeIds(tree, toggledNodeId);
+  let result = tree;
+  for (const [targetId, info] of Object.entries(redirectedRequestMap)) {
+    if (toggledIds.has(targetId)) {
+      result = setNodeFollowRedirects(result, info.sourceNodeId, !enabled);
+    }
+  }
+  return result;
 }
 
 export function moveNodeInTree(

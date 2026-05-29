@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { YAMLNode } from '../../types/yaml';
-import { getTransactionWrapValidation, wrapNodesInTransaction } from './treeOperations';
+import type { RedirectedRequestInfo } from '../../types/yaml';
+import {
+  getTransactionWrapValidation,
+  syncRedirectSourceFollowRedirects,
+  updateNodeEnabled,
+  wrapNodesInTransaction,
+} from './treeOperations';
 
 function createBaseTree(): YAMLNode {
   return {
@@ -122,5 +128,57 @@ describe('transaction grouping operations', () => {
 
     expect(validation.valid).toBe(false);
     expect(validation.reason).toBe('supported_child');
+  });
+});
+
+describe('syncRedirectSourceFollowRedirects', () => {
+  // source (302) -> target follow-up, with the target nested in a group.
+  function createRedirectTree(): YAMLNode {
+    return {
+      id: 'root',
+      type: 'test',
+      name: 'Test',
+      children: [
+        { id: 'source', type: 'post', name: 'POST /login', children: [], data: { url: '/login', follow_redirects: false } },
+        {
+          id: 'group-1',
+          type: 'group',
+          name: 'Group',
+          children: [
+            { id: 'target', type: 'get', name: 'GET /home', children: [], data: { url: '/home' } },
+          ],
+        },
+      ],
+    };
+  }
+
+  const redirectedRequestMap: Record<string, RedirectedRequestInfo> = {
+    target: { sourceNodeId: 'source', sourceRequestLabel: 'POST /login', matchedLocation: '/home' },
+  };
+
+  it('sets the source to follow redirects when the follow-up is disabled directly', () => {
+    const tree = updateNodeEnabled(createRedirectTree(), 'target', false);
+    const result = syncRedirectSourceFollowRedirects(tree, 'target', false, redirectedRequestMap);
+    expect(findNodeById(result, 'source')?.data.follow_redirects).toBe(true);
+  });
+
+  it('restores the recorded behavior when the follow-up is re-enabled', () => {
+    const tree = updateNodeEnabled(createRedirectTree(), 'target', true);
+    const result = syncRedirectSourceFollowRedirects(tree, 'target', true, redirectedRequestMap);
+    expect(findNodeById(result, 'source')?.data.follow_redirects).toBe(false);
+  });
+
+  it('syncs the source when a container holding the follow-up is toggled', () => {
+    // Toggling the group cascades enabled:false onto its descendant target.
+    const tree = updateNodeEnabled(createRedirectTree(), 'group-1', false);
+    const result = syncRedirectSourceFollowRedirects(tree, 'group-1', false, redirectedRequestMap);
+    expect(findNodeById(result, 'target')?.data.enabled).toBe(false);
+    expect(findNodeById(result, 'source')?.data.follow_redirects).toBe(true);
+  });
+
+  it('is a no-op when the toggled subtree contains no recorded follow-up', () => {
+    const tree = createRedirectTree();
+    const result = syncRedirectSourceFollowRedirects(tree, 'source', false, redirectedRequestMap);
+    expect(findNodeById(result, 'source')?.data.follow_redirects).toBe(false);
   });
 });
