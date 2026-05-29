@@ -1,4 +1,4 @@
-import { AlertTriangle, Clock3, Cookie, Cpu, Hand, Plus, ServerCrash } from 'lucide-react';
+import { AlertTriangle, Clock3, Cookie, Cpu, Hand, Plus, ServerCrash, Trash2 } from 'lucide-react';
 import { Input } from '../ui/input';
 import { SelectField } from './SharedFields';
 import { createNodeDataUpdater } from './nodeDetailHelpers';
@@ -22,32 +22,10 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
     normalizedMode === 'auto'
       ? 'Auto + Standard + VU scope'
       : `Manual + ${isIgnorePolicy ? 'Ignore Cookies' : 'Standard'} + ${String(data.jar_scope || 'vu').toUpperCase()} scope + Persist ${persistAcrossIterations ? 'ON' : 'OFF'}`;
-  const cookieSelectorStyle = {
-    auto: {
-      backgroundColor: 'rgba(236, 72, 153, 0.20)',
-      color: '#f9a8d4',
-      borderColor: 'rgba(249, 168, 212, 0.50)',
-      boxShadow: '0 10px 22px rgba(236, 72, 153, 0.20)',
-    },
-    manual: {
-      backgroundColor: 'rgba(168, 85, 247, 0.20)',
-      color: '#d8b4fe',
-      borderColor: 'rgba(216, 180, 254, 0.50)',
-      boxShadow: '0 10px 22px rgba(168, 85, 247, 0.20)',
-    },
-    standard: {
-      backgroundColor: 'rgba(59, 130, 246, 0.20)',
-      color: '#93c5fd',
-      borderColor: 'rgba(147, 197, 253, 0.50)',
-      boxShadow: '0 10px 22px rgba(59, 130, 246, 0.20)',
-    },
-    ignore_cookies: {
-      backgroundColor: 'rgba(239, 68, 68, 0.20)',
-      color: '#fca5a5',
-      borderColor: 'rgba(252, 165, 165, 0.50)',
-      boxShadow: '0 10px 22px rgba(239, 68, 68, 0.20)',
-    },
-  } as const;
+  const activePillClass =
+    'rounded-full border border-yellow-400/20 bg-yellow-400/5 text-yellow-400 shadow-sm transition-all duration-200 hover:bg-yellow-400/10 hover:border-yellow-400/35';
+  const inactivePillClass =
+    'rounded-full border border-transparent text-zinc-400 transition-all duration-200 hover:text-zinc-100 hover:bg-white/6';
 
   const handleChange = (field: string, value: any) => {
     updateField(field, value);
@@ -94,8 +72,7 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
         <div className="flex flex-wrap items-center gap-1">
           <button
             onClick={() => handleModeChange('auto')}
-            className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${normalizedMode === 'auto' ? 'border-current text-white' : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/6'}`}
-            style={normalizedMode === 'auto' ? cookieSelectorStyle.auto : undefined}
+            className={`px-3 py-1.5 text-sm font-medium ${normalizedMode === 'auto' ? activePillClass : inactivePillClass}`}
           >
             <span className="inline-flex items-center gap-1.5">
               <Cookie className="h-3.5 w-3.5" />
@@ -105,8 +82,7 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
           </button>
           <button
             onClick={() => handleModeChange('manual')}
-            className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${normalizedMode === 'manual' ? 'border-current text-white' : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/6'}`}
-            style={normalizedMode === 'manual' ? cookieSelectorStyle.manual : undefined}
+            className={`px-3 py-1.5 text-sm font-medium ${normalizedMode === 'manual' ? activePillClass : inactivePillClass}`}
           >
             <span className="inline-flex items-center gap-1.5">
               <Cookie className="h-3.5 w-3.5" />
@@ -119,7 +95,7 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
       <div className="h-px bg-white/10" />
 
       {normalizedMode === 'auto' ? (
-        <div className="rounded border border-blue-400/20 bg-blue-400/5 px-3 py-2 text-xs text-zinc-300">
+        <div className="rounded border border-yellow-400/20 bg-yellow-400/5 px-3 py-2 text-xs text-zinc-300">
           Auto applies the recommended cookie behavior automatically.
         </div>
       ) : (
@@ -129,15 +105,13 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
             <div className="flex flex-wrap items-center gap-1">
               <button
                 onClick={() => handlePolicyChange('standard')}
-                className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${!isIgnorePolicy ? 'border-current text-white' : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/6'}`}
-                style={!isIgnorePolicy ? cookieSelectorStyle.standard : undefined}
+                className={`px-3 py-1.5 text-sm font-medium ${!isIgnorePolicy ? activePillClass : inactivePillClass}`}
               >
                 Standard
               </button>
               <button
                 onClick={() => handlePolicyChange('ignore_cookies')}
-                className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${isIgnorePolicy ? 'border-current text-white' : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/6'}`}
-                style={isIgnorePolicy ? cookieSelectorStyle.ignore_cookies : undefined}
+                className={`px-3 py-1.5 text-sm font-medium ${isIgnorePolicy ? activePillClass : inactivePillClass}`}
               >
                 Ignore Cookies
               </button>
@@ -195,7 +169,7 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
           </div>
 
           {isIgnorePolicy && (
-            <div className="rounded border border-blue-400/20 bg-blue-400/5 px-3 py-2 text-xs text-zinc-300">
+            <div className="rounded border border-yellow-400/20 bg-yellow-400/5 px-3 py-2 text-xs text-zinc-300">
               Ignore Cookies is active: persistence, jar scope and seed cookies are disabled.
             </div>
           )}
@@ -247,17 +221,7 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
                   handleChange('cookies', [...seedCookies, { name: '', value: '', domain: '', path: '/' }])
                 }
                 disabled={isIgnorePolicy}
-                className="flex items-center gap-1 rounded-full border border-current px-3 py-1.5 text-sm font-medium text-white transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50"
-                style={
-                  !isIgnorePolicy
-                    ? {
-                        backgroundColor: 'rgba(16, 185, 129, 0.22)',
-                        color: '#6ee7b7',
-                        borderColor: 'rgba(110, 231, 183, 0.55)',
-                        boxShadow: '0 10px 22px rgba(16, 185, 129, 0.22)',
-                      }
-                    : undefined
-                }
+                className="flex items-center gap-1 px-2 py-1 text-xs text-amber-500 hover:text-amber-400 border border-yellow-400/20 bg-yellow-400/5 hover:bg-yellow-400/10 hover:border-yellow-400/35 rounded transition-colors disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Plus className="w-3 h-3" />
                 Add
@@ -309,9 +273,10 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
                         )
                       }
                       disabled={isIgnorePolicy}
-                      className="col-span-1 rounded border border-red-400/30 bg-red-400/10 text-xs font-medium text-red-300 transition-colors hover:bg-red-400/20 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="col-span-1 flex items-center justify-center rounded text-zinc-500 hover:text-zinc-300 hover:bg-white/10 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                      title="Remove cookie"
                     >
-                      ×
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 ))}
