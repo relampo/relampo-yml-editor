@@ -1,4 +1,4 @@
-import { Code2, GitBranch, Loader2, X } from 'lucide-react';
+import { Bug, Code2, GitBranch, Loader2, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useYAML } from '../contexts/YAMLContext';
@@ -13,6 +13,7 @@ import { parseYAMLToTree, treeToYAML } from '../utils/yamlParser';
 import { validateYAMLSemantics } from '../utils/yamlSemanticValidation';
 import { Button } from './ui/button';
 import { YAMLCodeEditor } from './YAMLCodeEditor';
+import { YAMLDebugSession } from './YAMLDebugView';
 import { YAMLEditorHeader } from './YAMLEditorHeader';
 import { YAMLNodeDetails } from './YAMLNodeDetails';
 import { createNodeByType } from './yaml-tree-view/nodeFactory';
@@ -110,7 +111,7 @@ export function YAMLEditor() {
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
-  const [viewMode, setViewMode] = useState<'tree' | 'code'>('tree');
+  const [viewMode, setViewMode] = useState<'tree' | 'code' | 'debug'>('tree');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const parseDebounceRef = useRef<number | null>(null);
   const serializeDebounceRef = useRef<number | null>(null);
@@ -831,6 +832,17 @@ export function YAMLEditor() {
               <Code2 className="w-4 h-4" />
               {language === 'es' ? 'Código' : 'Code'}
             </button>
+            <button
+              onClick={() => setViewMode('debug')}
+              className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 text-sm font-bold transition-all duration-200 ${
+                viewMode === 'debug'
+                  ? 'text-yellow-400 bg-yellow-400/10 border-b-2 border-yellow-400 shadow-[inset_0_-2px_0_rgba(250,204,21,0.5)]'
+                  : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'
+              }`}
+            >
+              <Bug className="w-4 h-4" />
+              Debug
+            </button>
           </div>
 
           <div className="flex-1 overflow-hidden min-h-0 bg-[#0a0a0a]">
@@ -844,13 +856,26 @@ export function YAMLEditor() {
                 onTreeChange={handleTreeChange}
                 onContextMenuOpened={handleTreeContextMenuOpened}
               />
-            ) : (
+            ) : viewMode === 'code' ? (
               <YAMLCodeEditor
                 value={yamlCode}
                 onChange={handleCodeChange}
                 readOnly={true}
                 active={viewMode === 'code'}
                 largeFileMode={isLargeFileMode}
+              />
+            ) : (
+              <YAMLTreeView
+                tree={yamlTree}
+                selectedNode={selectedNode}
+                selectedNodeIds={selectedNodeIds}
+                redirectedRequestMap={redirectedRequestMap}
+                onSelectionChange={(node, nodeIds) => {
+                  handleSelectionChange(node, nodeIds);
+                  setViewMode('tree');
+                }}
+                onTreeChange={handleTreeChange}
+                onContextMenuOpened={handleTreeContextMenuOpened}
               />
             )}
           </div>
@@ -877,20 +902,37 @@ export function YAMLEditor() {
         <div className="flex-1 min-w-0 flex flex-col bg-[#0d0d0d]">
           <div className="flex items-center border-b border-white/5 bg-[#111111] shrink-0 px-6 py-3">
             <span className="text-sm font-bold tracking-tight uppercase text-zinc-400">
-              {language === 'es' ? 'Detalles del elemento' : 'Element details'}
+              {viewMode === 'debug'
+                ? 'Debug Session'
+                : language === 'es'
+                  ? 'Detalles del elemento'
+                  : 'Element details'}
             </span>
           </div>
           <div className="flex-1 overflow-hidden">
-            <YAMLNodeDetails
-              node={selectedNode}
-              baseUrl={httpDefaultsBaseUrl}
-              redirectedInfo={selectedNode ? (redirectedRequestMap[selectedNode.id] ?? null) : null}
-              redirectSourceInfo={selectedNode ? (redirectSourceMap[selectedNode.id] ?? null) : null}
-              onNodeUpdate={handleNodeUpdate}
-              onToggleEnabled={handleToggleNodeEnabled}
-              onAddChildNode={handleAddChildNode}
-              onAddChildAction={handleDetailPanelAddClicked}
-            />
+            {viewMode === 'debug' ? (
+              <YAMLDebugSession
+                tree={yamlTree}
+                selectedNode={selectedNode}
+                validationErrors={validationErrors}
+                onSelectNode={node => handleSelectionChange(node, [node.id])}
+                onEditNode={node => {
+                  handleSelectionChange(node, [node.id]);
+                  setViewMode('tree');
+                }}
+              />
+            ) : (
+              <YAMLNodeDetails
+                node={selectedNode}
+                baseUrl={httpDefaultsBaseUrl}
+                redirectedInfo={selectedNode ? (redirectedRequestMap[selectedNode.id] ?? null) : null}
+                redirectSourceInfo={selectedNode ? (redirectSourceMap[selectedNode.id] ?? null) : null}
+                onNodeUpdate={handleNodeUpdate}
+                onToggleEnabled={handleToggleNodeEnabled}
+                onAddChildNode={handleAddChildNode}
+                onAddChildAction={handleDetailPanelAddClicked}
+              />
+            )}
           </div>
         </div>
       </div>
