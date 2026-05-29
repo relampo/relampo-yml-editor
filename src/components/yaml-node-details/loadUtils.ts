@@ -117,42 +117,42 @@ const loadTypeAllowedKeys: Record<LoadType, string[]> = {
 
 export const selectedLoadButtonStyle = {
   constant: {
-    backgroundColor: 'rgba(59, 130, 246, 0.22)',
-    color: '#93c5fd',
-    borderColor: 'rgba(147, 197, 253, 0.55)',
-    boxShadow: '0 10px 22px rgba(59, 130, 246, 0.22)',
+    backgroundColor: 'rgba(250, 204, 21, 0.10)',
+    color: '#facc15',
+    borderColor: 'rgba(250, 204, 21, 0.35)',
+    boxShadow: '0 10px 22px rgba(250, 204, 21, 0.15)',
   },
   ramp: {
-    backgroundColor: 'rgba(168, 85, 247, 0.22)',
-    color: '#d8b4fe',
-    borderColor: 'rgba(216, 180, 254, 0.55)',
-    boxShadow: '0 10px 22px rgba(168, 85, 247, 0.22)',
+    backgroundColor: 'rgba(250, 204, 21, 0.10)',
+    color: '#facc15',
+    borderColor: 'rgba(250, 204, 21, 0.35)',
+    boxShadow: '0 10px 22px rgba(250, 204, 21, 0.15)',
   },
   ramp_up_down: {
-    backgroundColor: 'rgba(245, 158, 11, 0.22)',
-    color: '#fcd34d',
-    borderColor: 'rgba(252, 211, 77, 0.55)',
-    boxShadow: '0 10px 22px rgba(245, 158, 11, 0.22)',
+    backgroundColor: 'rgba(250, 204, 21, 0.10)',
+    color: '#facc15',
+    borderColor: 'rgba(250, 204, 21, 0.35)',
+    boxShadow: '0 10px 22px rgba(250, 204, 21, 0.15)',
   },
   throughput: {
-    backgroundColor: 'rgba(16, 185, 129, 0.22)',
-    color: '#6ee7b7',
-    borderColor: 'rgba(110, 231, 183, 0.55)',
-    boxShadow: '0 10px 22px rgba(16, 185, 129, 0.22)',
+    backgroundColor: 'rgba(250, 204, 21, 0.10)',
+    color: '#facc15',
+    borderColor: 'rgba(250, 204, 21, 0.35)',
+    boxShadow: '0 10px 22px rgba(250, 204, 21, 0.15)',
   },
   intent: {
-    backgroundColor: 'rgba(244, 63, 94, 0.22)',
-    color: '#fda4af',
-    borderColor: 'rgba(253, 164, 175, 0.55)',
-    boxShadow: '0 10px 22px rgba(244, 63, 94, 0.22)',
+    backgroundColor: 'rgba(250, 204, 21, 0.10)',
+    color: '#facc15',
+    borderColor: 'rgba(250, 204, 21, 0.35)',
+    boxShadow: '0 10px 22px rgba(250, 204, 21, 0.15)',
   },
 } as const;
 
 export const loadColors = {
-  constant: { stroke: '#60a5fa', fill: '#3b82f620' },
-  ramp: { stroke: '#a78bfa', fill: '#a78bfa20' },
+  constant: { stroke: '#f59e0b', fill: '#f59e0b20' },
+  ramp: { stroke: '#f59e0b', fill: '#f59e0b20' },
   ramp_up_down: { stroke: '#f59e0b', fill: '#f59e0b20' },
-  throughput: { stroke: '#10b981', fill: '#10b98120' },
+  throughput: { stroke: '#f59e0b', fill: '#f59e0b20' },
   intent: { stroke: '#fb7185', fill: '#fb718520' },
 } as const;
 
