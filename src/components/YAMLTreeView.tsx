@@ -12,6 +12,7 @@ import {
   insertNodesAfterTarget,
   moveNodeInTree,
   removeNodeFromTree,
+  syncRedirectSourceFollowRedirects,
   toggleNodeInTree,
   updateNodeEnabled,
   wrapNodesInTransaction,
@@ -338,7 +339,13 @@ export function YAMLTreeView({
 
     const targetIds = getContextActionTargetIds(nodeId);
     const updatedTree = targetIds.reduce(
-      (currentTree, targetId) => updateNodeEnabled(currentTree, targetId, enabled),
+      (currentTree, targetId) =>
+        syncRedirectSourceFollowRedirects(
+          updateNodeEnabled(currentTree, targetId, enabled),
+          targetId,
+          enabled,
+          redirectedRequestMap,
+        ),
       tree,
     );
     onTreeChange(updatedTree);
@@ -436,7 +443,13 @@ export function YAMLTreeView({
 
     const nextEnabled = allSelectedDisabled;
     const updatedTree = effectiveSelectedIds.reduce(
-      (currentTree, nodeId) => updateNodeEnabled(currentTree, nodeId, nextEnabled),
+      (currentTree, nodeId) =>
+        syncRedirectSourceFollowRedirects(
+          updateNodeEnabled(currentTree, nodeId, nextEnabled),
+          nodeId,
+          nextEnabled,
+          redirectedRequestMap,
+        ),
       tree,
     );
     onTreeChange(updatedTree);

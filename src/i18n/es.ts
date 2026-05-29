@@ -410,6 +410,8 @@ export const esTranslations = {
       delete: 'Eliminar',
       enable: 'Habilitar',
       disable: 'Deshabilitar',
+      enabled: 'Habilitado',
+      disabled: 'Deshabilitado',
       duplicate: 'Duplicar',
       copy: 'Copia',
       browse: 'Buscar',

@@ -44,7 +44,13 @@ export function YAMLRequestDetails({
   const [responseReplace, setResponseReplace] = useState('');
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
   const contentRef = useRef<HTMLDivElement>(null);
-  const hasRecordedRedirectFollowUp = Boolean(redirectSourceInfo);
+  // When the recorded follow-up (redirect target) is disabled, the redirect
+  // linkage no longer applies, so the source request's redirect options behave
+  // like normal editable checkboxes again.
+  const hasRecordedRedirectFollowUp = Boolean(redirectSourceInfo) && redirectSourceInfo?.targetDisabled !== true;
+  // The selected request itself is disabled: keep all fields visible but
+  // non-editable so users can inspect without accidentally editing dead data.
+  const isRequestDisabled = node.data?.enabled === false;
   const requestMethod = formData.method || getNodeMethodFallback(node);
   const effectiveRedirectAutomatically = hasRecordedRedirectFollowUp ? false : !!formData.redirect_automatically;
   const effectiveFollowRedirects = hasRecordedRedirectFollowUp ? true : formData.follow_redirects !== false;
@@ -128,6 +134,10 @@ export function YAMLRequestDetails({
         ref={contentRef}
         className="flex-1 overflow-y-auto p-6"
       >
+        <fieldset
+          disabled={isRequestDisabled}
+          className={`min-w-0 border-0 p-0 m-0 ${isRequestDisabled ? 'opacity-60' : ''}`}
+        >
         {activeTab === 'request' ? (
           <RequestContent
             formData={formData}
@@ -161,6 +171,7 @@ export function YAMLRequestDetails({
             onNavigate={setCurrentMatchIndex}
           />
         )}
+        </fieldset>
       </div>
     </div>
   );
