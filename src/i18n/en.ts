@@ -409,6 +409,8 @@ export const enTranslations = {
       delete: 'Delete',
       enable: 'Enable',
       disable: 'Disable',
+      enabled: 'Enabled',
+      disabled: 'Disabled',
       duplicate: 'Duplicate',
       copy: 'Copy',
       browse: 'Browse',

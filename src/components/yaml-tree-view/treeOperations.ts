@@ -1,5 +1,5 @@
 import { canContain } from '../../utils/yamlDragDropRules';
-import type { YAMLNode } from '../../types/yaml';
+import type { RedirectedRequestInfo, YAMLNode } from '../../types/yaml';
 
 type TransactionWrapValidationReason =
   | 'minimum_selection'
@@ -150,6 +150,43 @@ export function updateNodeEnabled(tree: YAMLNode, nodeId: string, enabled: boole
   }
 
   return tree;
+}
+
+function setNodeFollowRedirects(tree: YAMLNode, nodeId: string, value: boolean): YAMLNode {
+  if (tree.id === nodeId) {
+    return { ...tree, data: { ...tree.data, follow_redirects: value } };
+  }
+
+  if (tree.children) {
+    return {
+      ...tree,
+      children: tree.children.map(child => setNodeFollowRedirects(child, nodeId, value)),
+    };
+  }
+
+  return tree;
+}
+
+/**
+ * Keeps a redirect source request consistent when its recorded follow-up
+ * (redirect target) request is enabled/disabled.
+ *
+ * When the follow-up is disabled, the source must follow redirects
+ * automatically — otherwise the redirect is neither auto-followed nor handled
+ * by the now-disabled explicit step. Re-enabling the follow-up restores the
+ * recorded behavior (the source does not auto-follow; the explicit step does).
+ *
+ * No-op when the toggled node is not a recorded redirect follow-up.
+ */
+export function syncRedirectSourceFollowRedirects(
+  tree: YAMLNode,
+  toggledNodeId: string,
+  enabled: boolean,
+  redirectedRequestMap: Record<string, RedirectedRequestInfo>,
+): YAMLNode {
+  const info = redirectedRequestMap[toggledNodeId];
+  if (!info) return tree;
+  return setNodeFollowRedirects(tree, info.sourceNodeId, !enabled);
 }
 
 export function moveNodeInTree(

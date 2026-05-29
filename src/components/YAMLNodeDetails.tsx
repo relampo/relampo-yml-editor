@@ -1,4 +1,4 @@
-import { FileText, Plus } from 'lucide-react';
+import { Eye, EyeOff, FileText, Plus } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import type { RedirectSourceInfo, RedirectedRequestInfo, YAMLNode } from '../types/yaml';
@@ -41,23 +41,29 @@ interface YAMLNodeDetailsProps {
   redirectedInfo?: RedirectedRequestInfo | null;
   redirectSourceInfo?: RedirectSourceInfo | null;
   onNodeUpdate?: (nodeId: string, updatedData: any) => void;
+  onToggleEnabled?: (nodeId: string, enabled: boolean) => void;
   onAddChildNode?: (parentId: string, nodeType: YAMLAddableNodeType) => void;
   onAddChildAction?: (metadata: { parentNodeType: string; childNodeType: YAMLAddableNodeType }) => void;
 }
 
 const REQUEST_NODE_TYPES = ['request', 'sql', 'get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
+// Node types that cannot be toggled on/off (mirrors the tree context menu).
+const NON_TOGGLEABLE_NODE_TYPES = ['root', 'test', 'scenarios', 'steps'];
 
 export function YAMLNodeDetails({
   node,
   baseUrl = '',
   redirectSourceInfo = null,
   onNodeUpdate,
+  onToggleEnabled,
   onAddChildNode,
   onAddChildAction,
 }: YAMLNodeDetailsProps) {
   const { t } = useLanguage();
   const [nodeName, setNodeName] = useState(node?.name || '');
   const isRequestNode = REQUEST_NODE_TYPES.includes(node?.type || '');
+  const isNodeEnabled = node?.data?.enabled !== false;
+  const canToggleEnabled = Boolean(onToggleEnabled) && !!node && !NON_TOGGLEABLE_NODE_TYPES.includes(node.type);
   const isCompactDetailsNode = node?.type === 'balanced';
   const addableItems = node ? getAddableItems(node.type, t) : [];
 
@@ -96,6 +102,22 @@ export function YAMLNodeDetails({
           >
             {isRequestNode ? node.name : t('yamlEditor.details')}
           </h3>
+          {canToggleEnabled && (
+            <button
+              type="button"
+              onClick={() => onToggleEnabled?.(node.id, !isNodeEnabled)}
+              aria-pressed={isNodeEnabled}
+              title={isNodeEnabled ? t('yamlEditor.common.disable') : t('yamlEditor.common.enable')}
+              className={`shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium transition-colors ${
+                isNodeEnabled
+                  ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
+                  : 'border-zinc-600/40 bg-zinc-700/30 text-zinc-400 hover:bg-zinc-700/50'
+              }`}
+            >
+              {isNodeEnabled ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+              <span>{isNodeEnabled ? t('yamlEditor.common.enabled') : t('yamlEditor.common.disabled')}</span>
+            </button>
+          )}
         </div>
       </div>
 

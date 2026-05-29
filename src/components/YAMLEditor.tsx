@@ -16,7 +16,7 @@ import { YAMLCodeEditor } from './YAMLCodeEditor';
 import { YAMLEditorHeader } from './YAMLEditorHeader';
 import { YAMLNodeDetails } from './YAMLNodeDetails';
 import { createNodeByType } from './yaml-tree-view/nodeFactory';
-import { addNodeToTree } from './yaml-tree-view/treeOperations';
+import { addNodeToTree, syncRedirectSourceFollowRedirects, updateNodeEnabled } from './yaml-tree-view/treeOperations';
 import type { YAMLAddableNodeType } from './yaml-tree-view/addableItems';
 import { YAMLTreeView } from './YAMLTreeView';
 
@@ -250,6 +250,7 @@ export function YAMLEditor() {
         targetNodeId,
         targetRequestLabel: targetNode?.name || '',
         matchedLocation: info.matchedLocation,
+        targetDisabled: targetNode?.data?.enabled === false,
       };
     }
     return result;
@@ -518,6 +519,13 @@ export function YAMLEditor() {
   const handleNodeUpdate = (nodeId: string, updatedData: Record<string, unknown>) => {
     if (!yamlTree) return;
     const updatedTree = applyNodeUpdateToTree(yamlTree, nodeId, updatedData);
+    commitTreeChange(updatedTree, undefined, { serialization: 'debounced' });
+  };
+
+  const handleToggleNodeEnabled = (nodeId: string, enabled: boolean) => {
+    if (!yamlTree) return;
+    const toggledTree = updateNodeEnabled(yamlTree, nodeId, enabled);
+    const updatedTree = syncRedirectSourceFollowRedirects(toggledTree, nodeId, enabled, redirectedRequestMap);
     commitTreeChange(updatedTree, undefined, { serialization: 'debounced' });
   };
 
@@ -879,6 +887,7 @@ export function YAMLEditor() {
               redirectedInfo={selectedNode ? (redirectedRequestMap[selectedNode.id] ?? null) : null}
               redirectSourceInfo={selectedNode ? (redirectSourceMap[selectedNode.id] ?? null) : null}
               onNodeUpdate={handleNodeUpdate}
+              onToggleEnabled={handleToggleNodeEnabled}
               onAddChildNode={handleAddChildNode}
               onAddChildAction={handleDetailPanelAddClicked}
             />
