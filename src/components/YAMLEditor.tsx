@@ -7,7 +7,7 @@ import { useYAMLPersistence } from '../hooks/useYAMLPersistence';
 import type { RedirectSourceInfo, RedirectedRequestInfo, YAMLNode } from '../types/yaml';
 import { logStatsigEvent } from '../utils/analytics';
 import { applyNodeUpdateToTree } from '../utils/nodeUpdate';
-import { collectScenarioHosts } from '../utils/requestNodeDisplay';
+import { collectScenarioHosts, getRequestNodeHost } from '../utils/requestNodeDisplay';
 import { getActiveDraft } from '../utils/yamlDraftStorage';
 import { getDocumentMetrics } from '../utils/yamlDocumentLimits';
 import { parseYAMLToTree, treeToYAML } from '../utils/yamlParser';
@@ -271,6 +271,13 @@ export function YAMLEditor() {
   const scenarioHosts = useMemo<string[]>(
     () => collectScenarioHosts(yamlTree, httpDefaultsBaseUrl),
     [yamlTree, httpDefaultsBaseUrl],
+  );
+
+  // Host inherited from http_defaults.base_url, used so the tree shows a host badge
+  // on base-host (relative) requests too — uniformly with secondary hosts. RLP-414.
+  const httpDefaultsBaseHost = useMemo<string>(
+    () => getRequestNodeHost(httpDefaultsBaseUrl) || httpDefaultsBaseUrl.trim(),
+    [httpDefaultsBaseUrl],
   );
 
   // Worker setup
@@ -849,6 +856,7 @@ export function YAMLEditor() {
                 selectedNode={selectedNode}
                 selectedNodeIds={selectedNodeIds}
                 redirectedRequestMap={redirectedRequestMap}
+                baseHost={httpDefaultsBaseHost}
                 onSelectionChange={handleSelectionChange}
                 onTreeChange={handleTreeChange}
                 onContextMenuOpened={handleTreeContextMenuOpened}
