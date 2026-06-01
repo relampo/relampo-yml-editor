@@ -313,10 +313,10 @@ export function CacheManagerDetails({ node, onNodeUpdate }: NodeDetailProps) {
             label="Enabled"
             onClick={() => updateField('enabled', true)}
             activeStyle={{
-              backgroundColor: 'rgba(16, 185, 129, 0.22)',
-              color: '#6ee7b7',
-              borderColor: 'rgba(110, 231, 183, 0.55)',
-              boxShadow: '0 10px 22px rgba(16, 185, 129, 0.22)',
+              backgroundColor: 'rgba(250, 204, 21, 0.10)',
+              color: '#facc15',
+              borderColor: 'rgba(250, 204, 21, 0.35)',
+              boxShadow: '0 10px 22px rgba(250, 204, 21, 0.15)',
             }}
           />
           <TogglePill
@@ -324,10 +324,10 @@ export function CacheManagerDetails({ node, onNodeUpdate }: NodeDetailProps) {
             label="Disabled"
             onClick={() => updateField('enabled', false)}
             activeStyle={{
-              backgroundColor: 'rgba(244, 63, 94, 0.20)',
-              color: '#fda4af',
-              borderColor: 'rgba(253, 164, 175, 0.55)',
-              boxShadow: '0 10px 22px rgba(244, 63, 94, 0.20)',
+              backgroundColor: 'rgba(250, 204, 21, 0.10)',
+              color: '#facc15',
+              borderColor: 'rgba(250, 204, 21, 0.35)',
+              boxShadow: '0 10px 22px rgba(250, 204, 21, 0.15)',
             }}
           />
         </div>
