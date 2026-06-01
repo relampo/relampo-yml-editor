@@ -59,7 +59,7 @@ export function TransactionDetails({ node, onNodeUpdate, nodeName }: NamedNodeDe
 
   return (
     <div className="space-y-6">
-      <div className="rounded-lg border border-teal-400/20 bg-teal-400/5 p-4 text-sm text-teal-100">
+      <div className="rounded-lg border border-yellow-400/20 bg-yellow-400/5 p-4 text-sm text-yellow-400">
         This controller measures the selected flow as one transaction while preserving the exact step order.
       </div>
 
