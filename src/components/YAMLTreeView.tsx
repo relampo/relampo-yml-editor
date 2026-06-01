@@ -28,6 +28,7 @@ interface YAMLTreeViewProps {
   selectedNode: YAMLNode | null;
   selectedNodeIds: string[];
   redirectedRequestMap: Record<string, RedirectedRequestInfo>;
+  baseHost?: string;
   onSelectionChange: (primaryNode: YAMLNode | null, nodeIds: string[]) => void;
   onTreeChange: (tree: YAMLNode, nextSelection?: { primaryId: string | null; nodeIds: string[] }) => void;
   onContextMenuOpened?: (metadata: { nodeType: string; selectionCount: number; hasMultiSelection: boolean }) => void;
@@ -38,6 +39,7 @@ export function YAMLTreeView({
   selectedNode,
   selectedNodeIds,
   redirectedRequestMap,
+  baseHost = '',
   onSelectionChange,
   onTreeChange,
   onContextMenuOpened,
@@ -566,6 +568,7 @@ export function YAMLTreeView({
             isSelected={selectedNodeIds.includes(tree.id)}
             selectedNodeIds={selectedNodeIds}
             redirectedRequestMap={redirectedRequestMap}
+            baseHost={baseHost}
             onNodeSelect={handleNodeSelect}
             onNodeToggle={handleNodeToggle}
             onContextMenu={handleContextMenu}

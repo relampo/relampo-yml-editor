@@ -1,6 +1,7 @@
 import type { YAMLNode } from '../types/yaml';
 import { normalizeLoadDataForYaml } from '../components/yaml-node-details/loadUtils';
 import {
+  isBalancedLoadBearingChild,
   normalizeBalancedDistributionType,
   normalizeBalancedExecutionMode,
   readBalancedPercentage,
@@ -241,7 +242,11 @@ function stepNodeToObject(node: YAMLNode): any {
       steps:
         node.children?.map(child => {
           const step = stepNodeToObject(child);
-          const percentage = readBalancedPercentage(child.data?.__balancedPercentage);
+          // Non-load-bearing children (think_time, request-less subtrees) never
+          // carry a balance percentage, even if one lingers in state. See RLP-475.
+          const percentage = isBalancedLoadBearingChild(child)
+            ? readBalancedPercentage(child.data?.__balancedPercentage)
+            : null;
           return percentage === null ? step : { ...step, percentage };
         }) || [],
     };

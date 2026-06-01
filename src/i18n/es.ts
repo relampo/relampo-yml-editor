@@ -524,6 +524,8 @@ export const esTranslations = {
         title: 'Elementos incluidos',
         description: 'Estos son los únicos elementos que gestionará este controlador balanceado.',
         count: '{count} elemento(s)',
+        excludedNote:
+          'No balanceados (sin requests): {names}. Estos elementos no emiten requests, por lo que no reciben porcentaje de carga.',
         childDescriptionTotal:
           'Este elemento comparte todo el alcance con los demás elementos seleccionados. Su porcentaje contribuye al 100% requerido.',
         childDescriptionParcial:
