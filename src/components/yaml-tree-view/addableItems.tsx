@@ -1,6 +1,7 @@
 import {
   AlertTriangle,
   BarChart3,
+  BetweenHorizontalStart,
   Braces,
   CheckCircle,
   Clock,
@@ -236,6 +237,13 @@ export function getAddableItems(parentType: YAMLNodeType, t: (key: string) => st
   const controllers = ['group', 'simple', 'transaction', 'parallel', 'if', 'loop', 'retry', 'one_time', 'steps'];
   if (controllers.includes(parentType)) {
     return filterAddableItemsByContainment(parentType, [
+      {
+        type: 'transaction',
+        label: 'Transaction',
+        description: 'Measures selected flow as one transaction',
+        icon: <BetweenHorizontalStart className={iconClass} />,
+        color: 'text-white',
+      },
       {
         type: 'request',
         label: 'HTTP Request',

@@ -230,8 +230,7 @@ export function YAMLEditor() {
     for (const [id, info] of Object.entries(prevRedirectedMapRef.current)) {
       if (!merged[id]) {
         const targetStillExists = findNodeById(yamlTree, id);
-        const sourceIsGone = !findNodeById(yamlTree, info.sourceNodeId);
-        if (targetStillExists && sourceIsGone) {
+        if (targetStillExists) {
           merged[id] = info;
         }
       }
@@ -956,6 +955,25 @@ function detectRedirectFollowUps(tree: YAMLNode): Record<string, RedirectedReque
       sourceRequestLabel: source.name,
       matchedLocation: normalizedLocation,
     };
+  }
+
+  let propagated = true;
+  while (propagated) {
+    propagated = false;
+    for (const [targetId, info] of Object.entries(result)) {
+      const targetIndex = requestNodes.findIndex(n => n.id === targetId);
+      if (targetIndex === -1) continue;
+
+      const nextNode = requestNodes[targetIndex + 1];
+      if (!nextNode || result[nextNode.id]) continue;
+
+      const currentUrl = String(requestNodes[targetIndex].data?.url || '');
+      const nextUrl = String(nextNode.data?.url || '');
+      if (currentUrl && nextUrl && currentUrl === nextUrl) {
+        result[nextNode.id] = { ...info };
+        propagated = true;
+      }
+    }
   }
 
   return result;
