@@ -388,12 +388,17 @@ export const esTranslations = {
   // YAML Editor
   yamlEditor: {
     title: 'Editor YAML',
+    newDocument: 'Nuevo',
     uploadYaml: 'Subir YAML',
     validate: 'Validar',
     downloadYaml: 'Descargar YAML',
     downloadProject: 'Descargar ZIP',
     validYaml: '✅ YAML válido según la especificación de Relampo v1',
     codeView: 'Código',
+    newDocumentTitle: 'Nuevo documento',
+    newDocumentConfirm: 'Confirmar',
+    confirmNewDocument: '¿Estás seguro de que deseas crear un nuevo documento? Se perderán todos los cambios no guardados.',
+    cancel: 'Cancelar',
     treeView: 'Árbol',
     details: 'Detalles',
     noNodeSelected: 'Selecciona un nodo para ver detalles',
@@ -524,6 +529,8 @@ export const esTranslations = {
         title: 'Elementos incluidos',
         description: 'Estos son los únicos elementos que gestionará este controlador balanceado.',
         count: '{count} elemento(s)',
+        excludedNote:
+          'No balanceados (sin requests): {names}. Estos elementos no emiten requests, por lo que no reciben porcentaje de carga.',
         childDescriptionTotal:
           'Este elemento comparte todo el alcance con los demás elementos seleccionados. Su porcentaje contribuye al 100% requerido.',
         childDescriptionParcial:

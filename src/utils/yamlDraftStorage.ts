@@ -99,3 +99,7 @@ export async function getActiveDraft(): Promise<YAMLDraft | null> {
     updatedAt: record.updatedAt,
   };
 }
+
+export async function clearActiveDraft(): Promise<void> {
+  await runDraftTransaction('readwrite', store => store.delete(ACTIVE_YAML_DRAFT_KEY));
+}

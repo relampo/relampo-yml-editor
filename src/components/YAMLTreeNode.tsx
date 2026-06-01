@@ -13,16 +13,22 @@ import {
   Database,
   FileText,
   Filter,
-  Folder,
   FolderOpen,
   Gauge,
+  GitBranch,
   Globe,
   HardDrive,
+  Layers,
   List,
   Package,
   Paperclip,
+  Play,
+  Repeat,
+  RotateCcw,
+  Scale,
   Settings,
   Tag,
+  Waves,
   Zap,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -53,6 +59,7 @@ interface YAMLTreeNodeProps {
   isSelected: boolean;
   selectedNodeIds: string[];
   redirectedRequestMap: Record<string, RedirectedRequestInfo>;
+  baseHost?: string;
   onNodeSelect: (node: YAMLNode, event: React.MouseEvent) => void;
   onNodeToggle: (nodeId: string) => void;
   onContextMenu: (event: React.MouseEvent, node: YAMLNode) => void;
@@ -66,6 +73,7 @@ export function YAMLTreeNode({
   isSelected,
   selectedNodeIds,
   redirectedRequestMap,
+  baseHost = '',
   onNodeSelect,
   onNodeToggle,
   onContextMenu,
@@ -282,7 +290,7 @@ export function YAMLTreeNode({
             {redirectedLabel}
           </span>
         )}
-        {getNodeHostBadge(node)}
+        {getNodeHostBadge(node, baseHost)}
         {getNodeBadge(node, { mutedMethod: isRedirectedFollowUp })}
         {hasRequestHit && (
           <span className="inline-flex h-5 items-center shrink-0 text-xs leading-none px-1.5 py-0.5 rounded bg-yellow-400/15 text-yellow-400 font-mono font-medium border border-yellow-400/30 uppercase">
@@ -307,6 +315,7 @@ export function YAMLTreeNode({
               isSelected={selectedNodeIds.includes(child.id)}
               selectedNodeIds={selectedNodeIds}
               redirectedRequestMap={redirectedRequestMap}
+              baseHost={baseHost}
               onNodeSelect={onNodeSelect}
               onNodeToggle={onNodeToggle}
               onContextMenu={onContextMenu}
@@ -342,15 +351,15 @@ function getNodeIcon(type: YAMLNodeType): any {
     patch: Globe,
     head: Globe,
     options: Globe,
-    group: Folder,
+    group: Layers,
     transaction: BetweenHorizontalStart,
-    parallel: Folder,
-    balanced: Folder,
+    parallel: Waves,
+    balanced: Scale,
     simple: FolderOpen,
-    if: Folder,
-    loop: Folder,
-    retry: Folder,
-    one_time: Folder,
+    if: GitBranch,
+    loop: Repeat,
+    retry: RotateCcw,
+    one_time: Play,
     on_error: AlertTriangle,
     think_time: Clock,
     extract: Filter,
@@ -460,14 +469,15 @@ function getNodeColor(type: YAMLNodeType, node?: YAMLNode, isRedirectedFollowUp 
   }
 }
 
-function getNodeHostBadge(node: YAMLNode): React.ReactNode {
+function getNodeHostBadge(node: YAMLNode, baseHost = ''): React.ReactNode {
   if (!isHttpRequestNodeType(node.type)) return null;
 
   // The recorder writes requests against the base host as relative URLs and
-  // requests to any other host as absolute URLs. Surfacing that host keeps
-  // every host of a multi-host recording visible instead of looking like a
-  // single host. Base-host (relative) requests get no badge.
-  const host = getRequestNodeHost(node.data?.url);
+  // requests to any other host as absolute URLs. Surface the host for every
+  // request — absolute ones carry it inline, base-host (relative) ones fall back
+  // to the inherited http_defaults.base_url host — so the badge is uniform across
+  // all requests instead of only the secondary hosts. See RLP-414.
+  const host = getRequestNodeHost(node.data?.url) || baseHost;
   if (!host) return null;
 
   return (

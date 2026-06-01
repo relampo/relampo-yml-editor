@@ -7,11 +7,20 @@ import { useYAMLPersistence } from '../hooks/useYAMLPersistence';
 import type { RedirectSourceInfo, RedirectedRequestInfo, YAMLNode } from '../types/yaml';
 import { logStatsigEvent } from '../utils/analytics';
 import { applyNodeUpdateToTree } from '../utils/nodeUpdate';
+import { collectScenarioHosts, getRequestNodeHost } from '../utils/requestNodeDisplay';
 import { getActiveDraft } from '../utils/yamlDraftStorage';
 import { getDocumentMetrics } from '../utils/yamlDocumentLimits';
 import { parseYAMLToTree, treeToYAML } from '../utils/yamlParser';
 import { validateYAMLSemantics } from '../utils/yamlSemanticValidation';
 import { Button } from './ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from './ui/dialog';
 import { YAMLCodeEditor } from './YAMLCodeEditor';
 import { YAMLDebugSession } from './YAMLDebugView';
 import { YAMLEditorHeader } from './YAMLEditorHeader';
@@ -62,6 +71,49 @@ function findNodeById(node: YAMLNode, id: string): YAMLNode | null {
     }
   }
   return null;
+}
+
+const REDIRECT_STATUS_CODES = [301, 302, 303, 307, 308];
+
+function getRedirectLocationHeader(node: YAMLNode): string {
+  const headers = node.data?.response?.headers;
+  if (!headers || typeof headers !== 'object') return '';
+  return String(
+    (headers as Record<string, unknown>).Location || (headers as Record<string, unknown>).location || '',
+  ).trim();
+}
+
+function getResponseStatusCode(node: YAMLNode): number {
+  const status = Number(node.data?.response?.status);
+  return Number.isFinite(status) ? status : 0;
+}
+
+function normalizeUrlForCompare(value: string): string {
+  const trimmed = String(value || '').trim();
+  if (!trimmed) return '';
+  try {
+    const parsed = /^https?:\/\//i.test(trimmed) ? new URL(trimmed) : new URL(trimmed, 'http://relampo.local');
+    const normalized = `${parsed.pathname || '/'}${parsed.search || ''}`;
+    return normalized.replace(/\/+$/, '') || '/';
+  } catch {
+    const normalized = trimmed.replace(/^[a-z]+:\/\/[^/]+/i, '');
+    return (normalized || '/').replace(/\/+$/, '') || '/';
+  }
+}
+
+// True when `source` still describes a redirect whose Location resolves to
+// `target`'s current URL. Used to decide whether a previously-detected
+// redirect should survive a tree restructure (e.g. the source dragged into a
+// transaction breaks document adjacency) versus a genuine change that should
+// drop the badge (status edited away from 3xx, Location changed, or the
+// target URL edited).
+export function nodesStillFormRedirect(source: YAMLNode, target: YAMLNode): boolean {
+  if (!REDIRECT_STATUS_CODES.includes(getResponseStatusCode(source))) return false;
+  const location = getRedirectLocationHeader(source);
+  if (!location) return false;
+  const normalizedLocation = normalizeUrlForCompare(location);
+  const normalizedTarget = normalizeUrlForCompare(String(target.data?.url || ''));
+  return Boolean(normalizedLocation && normalizedTarget && normalizedLocation === normalizedTarget);
 }
 
 function lockTypedNodeSelectionInNode(node: YAMLNode): [YAMLNode, boolean] {
@@ -128,6 +180,7 @@ export function YAMLEditor() {
   const [isTreeOutdated, setIsTreeOutdated] = useState(false);
   const [isLargeFileBannerDismissed, setIsLargeFileBannerDismissed] = useState(false);
   const [restoredDraftUpdatedAt, setRestoredDraftUpdatedAt] = useState<string | null>(null);
+  const [isNewDialogOpen, setIsNewDialogOpen] = useState(false);
   const selectedNodeRef = useRef<YAMLNode | null>(null);
   const fallbackRootNameRef = useRef<string | null>(null);
   const selectedNodeIdsRef = useRef<string[]>([]);
@@ -207,7 +260,7 @@ export function YAMLEditor() {
     return serialized;
   };
 
-  const { lastSavedAt, actionMessage, handleDownload } = useYAMLPersistence({
+  const { lastSavedAt, actionMessage, handleDownload, resetForNewDocument } = useYAMLPersistence({
     isDirty,
     setIsDirty,
     isInitialized,
@@ -230,9 +283,17 @@ export function YAMLEditor() {
 
     for (const [id, info] of Object.entries(prevRedirectedMapRef.current)) {
       if (!merged[id]) {
-        const targetStillExists = findNodeById(yamlTree, id);
-        const sourceIsGone = !findNodeById(yamlTree, info.sourceNodeId);
-        if (targetStillExists && sourceIsGone) {
+        const targetNode = findNodeById(yamlTree, id);
+        if (!targetNode) continue;
+
+        // Fresh detection missed this entry. Only preserve it when the
+        // redirect relationship is genuinely still intact — either the source
+        // moved/was deleted (so adjacency-based detection can't see it), or it
+        // still exists and continues to redirect to this target. If the source
+        // is present but no longer redirects here (status changed off 3xx,
+        // Location edited, or the target URL changed), let the badge drop.
+        const sourceNode = findNodeById(yamlTree, info.sourceNodeId);
+        if (!sourceNode || nodesStillFormRedirect(sourceNode, targetNode)) {
           merged[id] = info;
         }
       }
@@ -264,6 +325,21 @@ export function YAMLEditor() {
     const rawBaseUrl = defaultsNode?.data?.base_url;
     return typeof rawBaseUrl === 'string' ? rawBaseUrl : '';
   }, [yamlTree]);
+
+  // Every distinct host the recording drives (primary first), surfaced in the
+  // HTTP Defaults panel so multi-host recordings show all hosts, not just the
+  // base one. See RLP-365.
+  const scenarioHosts = useMemo<string[]>(
+    () => collectScenarioHosts(yamlTree, httpDefaultsBaseUrl),
+    [yamlTree, httpDefaultsBaseUrl],
+  );
+
+  // Host inherited from http_defaults.base_url, used so the tree shows a host badge
+  // on base-host (relative) requests too — uniformly with secondary hosts. RLP-414.
+  const httpDefaultsBaseHost = useMemo<string>(
+    () => getRequestNodeHost(httpDefaultsBaseUrl) || httpDefaultsBaseUrl.trim(),
+    [httpDefaultsBaseUrl],
+  );
 
   // Worker setup
   useEffect(() => {
@@ -576,6 +652,48 @@ export function YAMLEditor() {
     });
   };
 
+  const handleNewOpen = () => {
+    setIsNewDialogOpen(true);
+  };
+
+  const handleNewConfirm = () => {
+    setIsNewDialogOpen(false);
+
+    if (parseDebounceRef.current) {
+      window.clearTimeout(parseDebounceRef.current);
+      parseDebounceRef.current = null;
+    }
+    if (serializeDebounceRef.current) {
+      window.clearTimeout(serializeDebounceRef.current);
+      serializeDebounceRef.current = null;
+    }
+
+    setYamlCode('');
+    setYamlContent('');
+    setYamlTree(null);
+    setSelectedNode(null);
+    setSelectedNodeIds([]);
+    selectedNodeRef.current = null;
+    selectedNodeIdsRef.current = [];
+    setError(null);
+    setValidationErrors([]);
+    setCurrentFileName('relampo-script.yaml');
+    setIsDirty(false);
+    setHasDocumentActivity(false);
+    setIsTreeOutdated(false);
+    setIsLargeFileBannerDismissed(false);
+    setRestoredDraftUpdatedAt(null);
+    setViewMode('tree');
+
+    activeParseRequestIdRef.current = ++parseRequestIdRef.current;
+    setIsParsing(false);
+    setIsFileLoading(false);
+
+    // Bumps the save generation, cancels any pending autosave, and clears the
+    // stored draft so an in-flight save can't resurrect the discarded content.
+    void resetForNewDocument();
+  };
+
   const handleUpload = () => {
     fileInputRef.current?.click();
   };
@@ -682,11 +800,39 @@ export function YAMLEditor() {
         isDirty={isDirty}
         lastSavedAt={lastSavedAt}
         actionMessage={actionMessage}
+        isDocumentEmpty={!yamlTree && !yamlCode.trim()}
+        onNew={handleNewOpen}
         onUpload={handleUpload}
         onDownload={handleDownload}
         fileInputRef={fileInputRef}
         onFileChange={handleFileChange}
       />
+
+      <Dialog open={isNewDialogOpen} onOpenChange={setIsNewDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('yamlEditor.newDocumentTitle')}</DialogTitle>
+            <DialogDescription>{t('yamlEditor.confirmNewDocument')}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsNewDialogOpen(false)}
+              className="border-white/10 bg-white/5 hover:bg-white/10 text-zinc-300"
+            >
+              {t('yamlEditor.cancel')}
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleNewConfirm}
+              className="bg-yellow-400 hover:bg-yellow-300 text-black font-bold"
+            >
+              {t('yamlEditor.newDocumentConfirm')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {isEditorBusy && (
         <div
@@ -852,6 +998,7 @@ export function YAMLEditor() {
                 selectedNode={selectedNode}
                 selectedNodeIds={selectedNodeIds}
                 redirectedRequestMap={redirectedRequestMap}
+                baseHost={httpDefaultsBaseHost}
                 onSelectionChange={handleSelectionChange}
                 onTreeChange={handleTreeChange}
                 onContextMenuOpened={handleTreeContextMenuOpened}
@@ -925,6 +1072,7 @@ export function YAMLEditor() {
               <YAMLNodeDetails
                 node={selectedNode}
                 baseUrl={httpDefaultsBaseUrl}
+                hosts={scenarioHosts}
                 redirectedInfo={selectedNode ? (redirectedRequestMap[selectedNode.id] ?? null) : null}
                 redirectSourceInfo={selectedNode ? (redirectSourceMap[selectedNode.id] ?? null) : null}
                 onNodeUpdate={handleNodeUpdate}
@@ -940,40 +1088,13 @@ export function YAMLEditor() {
   );
 }
 
-function detectRedirectFollowUps(tree: YAMLNode): Record<string, RedirectedRequestInfo> {
+export function detectRedirectFollowUps(tree: YAMLNode): Record<string, RedirectedRequestInfo> {
   const requestNodes: YAMLNode[] = [];
   const requestTypes = new Set(['request', 'get', 'post', 'put', 'delete', 'patch', 'head', 'options']);
 
   const walk = (node: YAMLNode) => {
     if (requestTypes.has(node.type)) requestNodes.push(node);
     node.children?.forEach(walk);
-  };
-
-  const getLocationHeader = (node: YAMLNode): string => {
-    const headers = node.data?.response?.headers;
-    if (!headers || typeof headers !== 'object') return '';
-    return String(
-      (headers as Record<string, unknown>).Location || (headers as Record<string, unknown>).location || '',
-    ).trim();
-  };
-
-  const getStatusCode = (node: YAMLNode): number => {
-    const rawStatus = node.data?.response?.status;
-    const status = Number(rawStatus);
-    return Number.isFinite(status) ? status : 0;
-  };
-
-  const normalizeUrlForCompare = (value: string): string => {
-    const trimmed = String(value || '').trim();
-    if (!trimmed) return '';
-    try {
-      const parsed = /^https?:\/\//i.test(trimmed) ? new URL(trimmed) : new URL(trimmed, 'http://relampo.local');
-      const normalized = `${parsed.pathname || '/'}${parsed.search || ''}`;
-      return normalized.replace(/\/+$/, '') || '/';
-    } catch {
-      const normalized = trimmed.replace(/^[a-z]+:\/\/[^/]+/i, '');
-      return (normalized || '/').replace(/\/+$/, '') || '/';
-    }
   };
 
   walk(tree);
@@ -983,20 +1104,12 @@ function detectRedirectFollowUps(tree: YAMLNode): Record<string, RedirectedReque
   for (let i = 0; i < requestNodes.length - 1; i += 1) {
     const source = requestNodes[i];
     const target = requestNodes[i + 1];
-    const status = getStatusCode(source);
-    if (![301, 302, 303, 307, 308].includes(status)) continue;
-
-    const location = getLocationHeader(source);
-    if (!location) continue;
-
-    const normalizedLocation = normalizeUrlForCompare(location);
-    const normalizedTarget = normalizeUrlForCompare(String(target.data?.url || ''));
-    if (!normalizedLocation || !normalizedTarget || normalizedLocation !== normalizedTarget) continue;
+    if (!nodesStillFormRedirect(source, target)) continue;
 
     result[target.id] = {
       sourceNodeId: source.id,
       sourceRequestLabel: source.name,
-      matchedLocation: normalizedLocation,
+      matchedLocation: normalizeUrlForCompare(getRedirectLocationHeader(source)),
     };
   }
 

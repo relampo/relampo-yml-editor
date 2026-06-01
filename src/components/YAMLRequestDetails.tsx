@@ -218,10 +218,13 @@ function RequestContent({
     'w-[14ch] max-w-full h-9.5 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono';
 
   const urlParts = parseRequestUrl(formData.url || '');
-  // Hint the inherited base host (from http_defaults.base_url) so it is clear
-  // that an empty Base URL means "inherit this host". Falls back to a generic
-  // example when no base_url is configured.
-  const baseUrlPlaceholder = getRequestNodeHost(baseUrl) || baseUrl.trim() || FALLBACK_BASE_URL_PLACEHOLDER;
+  // Host inherited from http_defaults.base_url. Base-host (relative) requests now
+  // surface it as the field value too — not just as a placeholder — so every
+  // request shows its host uniformly and editably, matching the secondary-host
+  // (absolute) requests instead of looking empty/non-editable. See RLP-414.
+  const inheritedHost = getRequestNodeHost(baseUrl) || baseUrl.trim();
+  const baseUrlPlaceholder = inheritedHost || FALLBACK_BASE_URL_PLACEHOLDER;
+  const displayBaseUrl = urlParts.baseUrl || inheritedHost;
   const rawUrl = String(formData.url ?? '').trim();
   const pathInputValue = rawUrl === '' ? '' : urlParts.path;
   const requestBodyText = formData.body
@@ -242,6 +245,15 @@ function RequestContent({
     }
 
     onFieldChange('url', buildRequestUrl(formData.url || '', { path: value }));
+  };
+
+  const handleBaseUrlChange = (value: string) => {
+    const trimmed = value.trim();
+    // Leaving the field at the inherited host keeps the URL relative so a base-host
+    // request inherits from http_defaults instead of being pinned to an absolute
+    // URL. A different (or empty) host writes it explicitly.
+    const nextBaseUrl = trimmed === inheritedHost ? '' : trimmed;
+    onFieldChange('url', buildRequestUrl(formData.url || '', { baseUrl: nextBaseUrl }));
   };
 
   const buildSearchRegex = () => {
@@ -378,8 +390,8 @@ function RequestContent({
             </label>
             <Input
               id="req-base-url"
-              value={urlParts.baseUrl}
-              onChange={e => onFieldChange('url', buildRequestUrl(formData.url || '', { baseUrl: e.target.value }))}
+              value={displayBaseUrl}
+              onChange={e => handleBaseUrlChange(e.target.value)}
               placeholder={baseUrlPlaceholder}
               className="w-full h-9.5 bg-white/5 border border-white/10 text-zinc-300 text-sm font-mono"
             />

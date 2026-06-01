@@ -38,6 +38,7 @@ import { getAddableItems, type YAMLAddableNodeType } from './yaml-tree-view/adda
 interface YAMLNodeDetailsProps {
   node: YAMLNode | null;
   baseUrl?: string;
+  hosts?: string[];
   redirectedInfo?: RedirectedRequestInfo | null;
   redirectSourceInfo?: RedirectSourceInfo | null;
   onNodeUpdate?: (nodeId: string, updatedData: any) => void;
@@ -53,6 +54,7 @@ const NON_TOGGLEABLE_NODE_TYPES = ['root', 'test', 'scenarios', 'steps'];
 export function YAMLNodeDetails({
   node,
   baseUrl = '',
+  hosts = [],
   redirectSourceInfo = null,
   onNodeUpdate,
   onToggleEnabled,
@@ -110,8 +112,8 @@ export function YAMLNodeDetails({
               title={isNodeEnabled ? t('yamlEditor.common.disable') : t('yamlEditor.common.enable')}
               className={`shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium transition-colors ${
                 isNodeEnabled
-                  ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
-                  : 'border-zinc-600/40 bg-zinc-700/30 text-zinc-400 hover:bg-zinc-700/50'
+                  ? 'border-yellow-400/20 bg-yellow-400/5 text-yellow-400 hover:bg-yellow-400/10'
+                  : 'border-white/10 bg-white/5 text-zinc-300 hover:bg-white/10 hover:border-white/20'
               }`}
             >
               {isNodeEnabled ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
@@ -136,7 +138,7 @@ export function YAMLNodeDetails({
               }}
               maxLength={50}
               style={{
-                width: node.type === 'think_time' ? '100px' : `${Math.min(Math.max((nodeName || '').length + 2, 12), 48)}ch`,
+                width: node.type === 'think_time' ? '100px' : `${Math.min(Math.max((nodeName || '').length + 4, 12), 48)}ch`,
               }}
               className="max-w-full shrink-0 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-semibold"
               placeholder="Node name"
@@ -163,6 +165,7 @@ export function YAMLNodeDetails({
           nodeName={nodeName}
           setNodeName={setNodeName}
           baseUrl={baseUrl}
+          hosts={hosts}
           redirectSourceInfo={redirectSourceInfo}
           onNodeUpdate={onNodeUpdate}
         />
@@ -176,6 +179,7 @@ function NodeDetailsContent({
   nodeName,
   setNodeName,
   baseUrl,
+  hosts,
   redirectSourceInfo,
   onNodeUpdate,
 }: {
@@ -183,6 +187,7 @@ function NodeDetailsContent({
   nodeName: string;
   setNodeName: (name: string) => void;
   baseUrl: string;
+  hosts: string[];
   redirectSourceInfo: RedirectSourceInfo | null;
   onNodeUpdate?: (nodeId: string, updatedData: any) => void;
 }) {
@@ -217,6 +222,7 @@ function NodeDetailsContent({
         <HttpDefaultsDetails
           node={node}
           onNodeUpdate={onNodeUpdate}
+          hosts={hosts}
         />
       );
     case 'scenarios':
