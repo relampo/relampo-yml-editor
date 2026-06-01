@@ -387,12 +387,17 @@ export const enTranslations = {
   // YAML Editor
   yamlEditor: {
     title: 'YAML Editor',
+    newDocument: 'New',
     uploadYaml: 'Upload YAML',
     validate: 'Validate',
     downloadYaml: 'Download YAML',
     downloadProject: 'Download ZIP',
     validYaml: '✅ Valid YAML according to Relampo v1 specification',
     codeView: 'Code',
+    newDocumentTitle: 'New document',
+    newDocumentConfirm: 'Confirm',
+    confirmNewDocument: 'Are you sure you want to create a new document? All unsaved changes will be lost.',
+    cancel: 'Cancel',
     treeView: 'Tree',
     details: 'Details',
     noNodeSelected: 'Select a node to view details',

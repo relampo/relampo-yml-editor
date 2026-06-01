@@ -4,7 +4,7 @@ import { LanguageProvider } from '../contexts/LanguageContext';
 import { YAMLProvider } from '../contexts/YAMLContext';
 import type { YAMLNode } from '../types/yaml';
 import { logStatsigEvent } from '../utils/analytics';
-import { getActiveDraft } from '../utils/yamlDraftStorage';
+import { clearActiveDraft, getActiveDraft } from '../utils/yamlDraftStorage';
 import { parseYAMLToTree, treeToYAML } from '../utils/yamlParser';
 import { YAMLEditor } from './YAMLEditor';
 
@@ -14,6 +14,7 @@ vi.mock('../utils/analytics', () => ({
 
 vi.mock('../utils/yamlDraftStorage', () => ({
   getActiveDraft: vi.fn(),
+  clearActiveDraft: vi.fn(),
 }));
 
 vi.mock('../utils/yamlDocumentLimits', () => ({
@@ -40,13 +41,23 @@ vi.mock('../utils/yamlSemanticValidation', () => ({
 }));
 
 vi.mock('./YAMLEditorHeader', () => ({
-  YAMLEditorHeader: (props: { hasDocumentActivity: boolean; isDirty: boolean; lastSavedAt: string | null }) => (
+  YAMLEditorHeader: (props: {
+    hasDocumentActivity: boolean;
+    isDirty: boolean;
+    lastSavedAt: string | null;
+    isDocumentEmpty: boolean;
+    onNew: () => void;
+  }) => (
     <div
       data-testid="editor-header"
       data-activity={String(props.hasDocumentActivity)}
       data-dirty={String(props.isDirty)}
       data-saved-at={props.lastSavedAt ?? ''}
-    />
+    >
+      {!props.isDocumentEmpty && (
+        <button onClick={props.onNew}>New</button>
+      )}
+    </div>
   ),
 }));
 
@@ -132,6 +143,7 @@ vi.mock('./YAMLNodeDetails', () => ({
 }));
 
 const getActiveDraftMock = vi.mocked(getActiveDraft);
+const clearActiveDraftMock = vi.mocked(clearActiveDraft);
 const logStatsigEventMock = vi.mocked(logStatsigEvent);
 const parseYAMLToTreeMock = vi.mocked(parseYAMLToTree);
 const treeToYAMLMock = vi.mocked(treeToYAML);
@@ -315,6 +327,36 @@ describe('YAMLEditor draft restoration', () => {
       child_node_type: 'variables',
       context_menu_discovered: false,
       is_discovery_friction: true,
+    });
+  });
+
+  describe('new document dialog', () => {
+    it('clears the document and calls clearActiveDraft when New is confirmed', async () => {
+      getActiveDraftMock.mockResolvedValueOnce({
+        yaml: 'test:\n  name: restored\n',
+        fileName: 'restored.yaml',
+        updatedAt: '2026-04-23T10:00:00.000Z',
+      });
+
+      renderEditor();
+
+      await screen.findByText('Restored plan');
+
+      fireEvent.click(screen.getByRole('button', { name: 'New' }));
+      fireEvent.click(await screen.findByRole('button', { name: 'Confirm' }));
+
+      expect(screen.getByTestId('tree-view')).toHaveTextContent('empty tree');
+      expect(clearActiveDraftMock).toHaveBeenCalled();
+      expect(screen.getByTestId('editor-header')).toHaveAttribute('data-saved-at', '');
+      expect(screen.getByTestId('editor-header')).toHaveAttribute('data-activity', 'false');
+    });
+
+    it('hides the New button when the document is empty', async () => {
+      renderEditor();
+
+      await waitFor(() => expect(getActiveDraftMock).toHaveBeenCalled());
+
+      expect(screen.queryByRole('button', { name: 'New' })).not.toBeInTheDocument();
     });
   });
 
