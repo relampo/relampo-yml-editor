@@ -7,7 +7,7 @@ import { useYAMLPersistence } from '../hooks/useYAMLPersistence';
 import type { RedirectSourceInfo, RedirectedRequestInfo, YAMLNode } from '../types/yaml';
 import { logStatsigEvent } from '../utils/analytics';
 import { applyNodeUpdateToTree } from '../utils/nodeUpdate';
-import { clearActiveDraft, getActiveDraft } from '../utils/yamlDraftStorage';
+import { getActiveDraft } from '../utils/yamlDraftStorage';
 import { getDocumentMetrics } from '../utils/yamlDocumentLimits';
 import { parseYAMLToTree, treeToYAML } from '../utils/yamlParser';
 import { validateYAMLSemantics } from '../utils/yamlSemanticValidation';
@@ -213,7 +213,7 @@ export function YAMLEditor() {
     return serialized;
   };
 
-  const { lastSavedAt, actionMessage, handleDownload, resetSavedAt } = useYAMLPersistence({
+  const { lastSavedAt, actionMessage, handleDownload, resetForNewDocument } = useYAMLPersistence({
     isDirty,
     setIsDirty,
     isInitialized,
@@ -584,9 +584,10 @@ export function YAMLEditor() {
     activeParseRequestIdRef.current = ++parseRequestIdRef.current;
     setIsParsing(false);
     setIsFileLoading(false);
-    resetSavedAt();
 
-    void clearActiveDraft();
+    // Bumps the save generation, cancels any pending autosave, and clears the
+    // stored draft so an in-flight save can't resurrect the discarded content.
+    void resetForNewDocument();
   };
 
   const handleUpload = () => {

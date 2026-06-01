@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import yaml from 'js-yaml';
-import { saveActiveDraft } from '../utils/yamlDraftStorage';
+import { clearActiveDraft, saveActiveDraft } from '../utils/yamlDraftStorage';
 
 function normalizeYamlFileName(name: string): string {
   const trimmed = (name || '').trim();
@@ -88,6 +88,10 @@ export function useYAMLPersistence({
   const actionMessageTimeoutRef = useRef<number | null>(null);
   const autosaveDebounceRef = useRef<number | null>(null);
   const bypassUnloadWarningRef = useRef(false);
+  // Bumped whenever the document is reset (New document). A save that was
+  // already in flight when the reset happened compares against this and bails
+  // out instead of resurrecting the discarded draft / stale "saved" status.
+  const saveGenerationRef = useRef(0);
 
   const showActionMessage = (message: string) => {
     setActionMessage(message);
@@ -114,6 +118,7 @@ export function useYAMLPersistence({
       return;
     }
 
+    const saveGeneration = saveGenerationRef.current;
     const now = new Date();
     try {
       await saveActiveDraft({
@@ -122,7 +127,16 @@ export function useYAMLPersistence({
         updatedAt: now.toISOString(),
       });
     } catch {
+      if (saveGenerationRef.current !== saveGeneration) return;
       setError(getDraftStorageError(language));
+      return;
+    }
+
+    // The document was reset (New) while this save was in flight: undo the
+    // draft we just wrote and skip the stale UI updates so a reload doesn't
+    // restore the discarded content.
+    if (saveGenerationRef.current !== saveGeneration) {
+      void clearActiveDraft();
       return;
     }
 
@@ -254,7 +268,18 @@ export function useYAMLPersistence({
     };
   }, []);
 
-  const resetSavedAt = () => setLastSavedAt(null);
+  // Reset persistence state for a brand-new document. Bumping the generation
+  // invalidates any in-flight save, and cancelling the pending autosave timer
+  // stops a queued save from firing against the now-cleared editor.
+  const resetForNewDocument = () => {
+    saveGenerationRef.current += 1;
+    if (autosaveDebounceRef.current) {
+      window.clearTimeout(autosaveDebounceRef.current);
+      autosaveDebounceRef.current = null;
+    }
+    setLastSavedAt(null);
+    return clearActiveDraft();
+  };
 
-  return { lastSavedAt, actionMessage, handleSave, handleDownload, resetSavedAt };
+  return { lastSavedAt, actionMessage, handleSave, handleDownload, resetForNewDocument };
 }
