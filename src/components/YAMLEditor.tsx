@@ -7,6 +7,7 @@ import { useYAMLPersistence } from '../hooks/useYAMLPersistence';
 import type { RedirectSourceInfo, RedirectedRequestInfo, YAMLNode } from '../types/yaml';
 import { logStatsigEvent } from '../utils/analytics';
 import { applyNodeUpdateToTree } from '../utils/nodeUpdate';
+import { collectScenarioHosts } from '../utils/requestNodeDisplay';
 import { getActiveDraft } from '../utils/yamlDraftStorage';
 import { getDocumentMetrics } from '../utils/yamlDocumentLimits';
 import { parseYAMLToTree, treeToYAML } from '../utils/yamlParser';
@@ -263,6 +264,14 @@ export function YAMLEditor() {
     const rawBaseUrl = defaultsNode?.data?.base_url;
     return typeof rawBaseUrl === 'string' ? rawBaseUrl : '';
   }, [yamlTree]);
+
+  // Every distinct host the recording drives (primary first), surfaced in the
+  // HTTP Defaults panel so multi-host recordings show all hosts, not just the
+  // base one. See RLP-365.
+  const scenarioHosts = useMemo<string[]>(
+    () => collectScenarioHosts(yamlTree, httpDefaultsBaseUrl),
+    [yamlTree, httpDefaultsBaseUrl],
+  );
 
   // Worker setup
   useEffect(() => {
@@ -884,6 +893,7 @@ export function YAMLEditor() {
             <YAMLNodeDetails
               node={selectedNode}
               baseUrl={httpDefaultsBaseUrl}
+              hosts={scenarioHosts}
               redirectedInfo={selectedNode ? (redirectedRequestMap[selectedNode.id] ?? null) : null}
               redirectSourceInfo={selectedNode ? (redirectSourceMap[selectedNode.id] ?? null) : null}
               onNodeUpdate={handleNodeUpdate}

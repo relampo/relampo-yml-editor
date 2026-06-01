@@ -38,6 +38,7 @@ import { getAddableItems, type YAMLAddableNodeType } from './yaml-tree-view/adda
 interface YAMLNodeDetailsProps {
   node: YAMLNode | null;
   baseUrl?: string;
+  hosts?: string[];
   redirectedInfo?: RedirectedRequestInfo | null;
   redirectSourceInfo?: RedirectSourceInfo | null;
   onNodeUpdate?: (nodeId: string, updatedData: any) => void;
@@ -53,6 +54,7 @@ const NON_TOGGLEABLE_NODE_TYPES = ['root', 'test', 'scenarios', 'steps'];
 export function YAMLNodeDetails({
   node,
   baseUrl = '',
+  hosts = [],
   redirectSourceInfo = null,
   onNodeUpdate,
   onToggleEnabled,
@@ -163,6 +165,7 @@ export function YAMLNodeDetails({
           nodeName={nodeName}
           setNodeName={setNodeName}
           baseUrl={baseUrl}
+          hosts={hosts}
           redirectSourceInfo={redirectSourceInfo}
           onNodeUpdate={onNodeUpdate}
         />
@@ -176,6 +179,7 @@ function NodeDetailsContent({
   nodeName,
   setNodeName,
   baseUrl,
+  hosts,
   redirectSourceInfo,
   onNodeUpdate,
 }: {
@@ -183,6 +187,7 @@ function NodeDetailsContent({
   nodeName: string;
   setNodeName: (name: string) => void;
   baseUrl: string;
+  hosts: string[];
   redirectSourceInfo: RedirectSourceInfo | null;
   onNodeUpdate?: (nodeId: string, updatedData: any) => void;
 }) {
@@ -217,6 +222,7 @@ function NodeDetailsContent({
         <HttpDefaultsDetails
           node={node}
           onNodeUpdate={onNodeUpdate}
+          hosts={hosts}
         />
       );
     case 'scenarios':
