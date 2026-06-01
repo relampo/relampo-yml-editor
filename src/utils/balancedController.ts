@@ -48,6 +48,37 @@ export function readBalancedPercentage(value: unknown): number | null {
   return null;
 }
 
+const BALANCED_REQUEST_NODE_TYPES = new Set<string>([
+  'request',
+  'get',
+  'post',
+  'put',
+  'delete',
+  'patch',
+  'head',
+  'options',
+  'sql',
+]);
+
+/**
+ * Whether a balanced child actually contributes load.
+ *
+ * A child is load-bearing when it is a request/SQL sampler, or a container
+ * (group, transaction, if, loop, retry…) that transitively holds at least one
+ * enabled request. think_time steps, empty containers, and request-less subtrees
+ * are NOT load-bearing: assigning them a percentage of a Balanced Controller
+ * routes virtual users to zero work, silently lowering the real load. They are
+ * therefore excluded from the controller's included elements, its distribution,
+ * and the percentage total. See RLP-475.
+ */
+export function isBalancedLoadBearingChild(node: YAMLNode): boolean {
+  if (BALANCED_REQUEST_NODE_TYPES.has(node.type)) {
+    // Disabled samplers (data.enabled === false) produce no load at runtime.
+    return node.data?.enabled !== false;
+  }
+  return (node.children ?? []).some(isBalancedLoadBearingChild);
+}
+
 export function sanitizeBalancedNodeData<T>(data: T): T {
   if (!data || typeof data !== 'object' || Array.isArray(data)) {
     return data;
@@ -59,7 +90,10 @@ export function sanitizeBalancedNodeData<T>(data: T): T {
 }
 
 function validateBalancedChildren(children: YAMLNode[] = []) {
-  const items = children.map(child => {
+  // Only load-bearing children participate in the balance: think_time and
+  // request-less subtrees never consume a percentage. See RLP-475.
+  const loadBearing = children.filter(isBalancedLoadBearingChild);
+  const items = loadBearing.map(child => {
     const percentage = readBalancedPercentage(child.data?.__balancedPercentage);
     return {
       id: child.id,
