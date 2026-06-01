@@ -153,7 +153,7 @@ export const loadColors = {
   ramp: { stroke: '#f59e0b', fill: '#f59e0b20' },
   ramp_up_down: { stroke: '#f59e0b', fill: '#f59e0b20' },
   throughput: { stroke: '#f59e0b', fill: '#f59e0b20' },
-  intent: { stroke: '#fb7185', fill: '#fb718520' },
+  intent: { stroke: '#f59e0b', fill: '#f59e0b20' },
 } as const;
 
 export function parseTimeToSeconds(timeStr: string): number {
