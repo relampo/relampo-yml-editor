@@ -112,8 +112,8 @@ export function YAMLNodeDetails({
               title={isNodeEnabled ? t('yamlEditor.common.disable') : t('yamlEditor.common.enable')}
               className={`shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium transition-colors ${
                 isNodeEnabled
-                  ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
-                  : 'border-zinc-600/40 bg-zinc-700/30 text-zinc-400 hover:bg-zinc-700/50'
+                  ? 'border-yellow-400/20 bg-yellow-400/5 text-yellow-400 hover:bg-yellow-400/10'
+                  : 'border-white/10 bg-white/5 text-zinc-300 hover:bg-white/10 hover:border-white/20'
               }`}
             >
               {isNodeEnabled ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}

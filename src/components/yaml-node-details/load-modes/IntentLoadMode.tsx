@@ -30,9 +30,9 @@ export function IntentLoadMode({ data, onChange }: LoadModeProps) {
 
   return (
     <div className="space-y-4">
-      <section className="rounded-xl border border-sky-400/20 bg-sky-400/8 p-4 sm:p-5">
-        <h4 className="text-sm font-semibold text-sky-100">{t('yamlEditor.intent.overview.title')}</h4>
-        <p className="mt-1 text-xs leading-relaxed text-sky-100/75">
+      <section className="rounded-xl border border-yellow-400/20 bg-yellow-400/5 p-4 sm:p-5">
+        <h4 className="text-sm font-semibold text-yellow-100">{t('yamlEditor.intent.overview.title')}</h4>
+        <p className="mt-1 text-xs leading-relaxed text-yellow-100/75">
           {t('yamlEditor.intent.overview.description')}
         </p>
       </section>

@@ -192,7 +192,7 @@ export function LoadVisualization({ data, loadType }: LoadVisualizationProps) {
           </div>
         )}
         {isIntentRps && (
-          <div className="mb-2 text-[11px] text-emerald-300/90">
+          <div className="mb-2 rounded border border-yellow-400/20 bg-yellow-400/5 px-3 py-2 text-[11px] text-yellow-300/90">
             {format('yamlEditor.loadVisualization.intent.rpsBand', {
               min: intentMinVus.toFixed(0),
               max: intentMaxVus.toFixed(0),
