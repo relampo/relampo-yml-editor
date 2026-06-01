@@ -52,6 +52,17 @@ describe('isBalancedLoadBearingChild', () => {
   it('treats a disabled request as non-load-bearing', () => {
     expect(isBalancedLoadBearingChild({ id: 'r', type: 'get', name: 'r', data: { enabled: false } })).toBe(false);
   });
+
+  it('treats a disabled container as non-load-bearing even with enabled requests inside', () => {
+    const disabledGroup: YAMLNode = {
+      id: 'g',
+      type: 'transaction',
+      name: 'Group',
+      data: { enabled: false },
+      children: [req('r')],
+    };
+    expect(isBalancedLoadBearingChild(disabledGroup)).toBe(false);
+  });
 });
 
 describe('validateBalancedController with non-load-bearing children', () => {

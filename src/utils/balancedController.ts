@@ -72,9 +72,15 @@ const BALANCED_REQUEST_NODE_TYPES = new Set<string>([
  * and the percentage total. See RLP-475.
  */
 export function isBalancedLoadBearingChild(node: YAMLNode): boolean {
+  // A disabled node produces no load: the serializer emits `enabled: false` and
+  // the runtime skips the whole subtree. This applies to samplers AND containers
+  // — a disabled transaction/group with enabled requests inside still runs no
+  // requests, so it must not receive a percentage either.
+  if (node.data?.enabled === false) {
+    return false;
+  }
   if (BALANCED_REQUEST_NODE_TYPES.has(node.type)) {
-    // Disabled samplers (data.enabled === false) produce no load at runtime.
-    return node.data?.enabled !== false;
+    return true;
   }
   return (node.children ?? []).some(isBalancedLoadBearingChild);
 }
