@@ -1,4 +1,4 @@
-import { ChevronDown, Download, Upload } from 'lucide-react';
+import { ChevronDown, Download, FilePlus, Upload } from 'lucide-react';
 import { Button } from './ui/button';
 import {
   DropdownMenu,
@@ -17,6 +17,8 @@ interface YAMLEditorHeaderProps {
   isDirty: boolean;
   lastSavedAt: string | null;
   actionMessage: string;
+  isDocumentEmpty: boolean;
+  onNew: () => void;
   onUpload: () => void;
   onDownload: (includeResponses: boolean) => void;
   fileInputRef: React.RefObject<HTMLInputElement | null>;
@@ -31,6 +33,8 @@ export function YAMLEditorHeader({
   isDirty,
   lastSavedAt,
   actionMessage,
+  isDocumentEmpty,
+  onNew,
   onUpload,
   onDownload,
   fileInputRef,
@@ -96,6 +100,17 @@ export function YAMLEditorHeader({
 
           {/* Action Buttons */}
           <div className="flex items-center gap-2">
+            {!isDocumentEmpty && (
+              <Button
+                onClick={onNew}
+                size="sm"
+                className="bg-yellow-400 hover:bg-yellow-300 text-black font-bold gap-2"
+              >
+                <FilePlus className="w-4 h-4" />
+                {t('yamlEditor.newDocument')}
+              </Button>
+            )}
+
             <Button
               onClick={onUpload}
               variant="outline"

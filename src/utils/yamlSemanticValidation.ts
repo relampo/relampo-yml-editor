@@ -1,30 +1,9 @@
 import type { YAMLNode } from '../types/yaml';
+import { isBalancedLoadBearingChild } from './balancedController';
 
 interface YAMLSemanticIssue {
   nodeId: string;
   message: string;
-}
-
-const REQUEST_SAMPLER_TYPES = new Set([
-  'request', 'get', 'post', 'put', 'delete', 'patch', 'head', 'options', 'sql',
-]);
-
-/**
- * Returns true when the node subtree contains at least one **enabled**
- * request/SQL step. Disabled nodes (`data.enabled === false`) are ignored
- * because the serializer emits `enabled: false` and the runtime skips them,
- * so they produce no load — identical to the backend `StepTreeHasRequest`
- * behaviour for `RequestStep.Enabled`.
- *
- * Note: this is a structural check only — runtime conditions (e.g. `if`
- * branches) are not evaluated.
- */
-function subtreeHasRequest(node: YAMLNode): boolean {
-  if (REQUEST_SAMPLER_TYPES.has(node.type)) {
-    // A sampler with enabled:false is skipped at runtime — not load-bearing.
-    return node.data?.enabled !== false;
-  }
-  return (node.children ?? []).some(subtreeHasRequest);
 }
 
 export function validateYAMLSemantics(tree: YAMLNode | null): YAMLSemanticIssue[] {
@@ -48,15 +27,15 @@ export function validateYAMLSemantics(tree: YAMLNode | null): YAMLSemanticIssue[
           issues.push({
             nodeId: child.id,
             message:
-              `"${child.name || 'think_time'}" cannot be a balanced child: it would consume a ` +
-              `load percentage without issuing any requests.`,
+              `"${child.name || 'think_time'}" is excluded from this Balanced Controller: it issues ` +
+              `no requests, so it takes no load percentage.`,
           });
-        } else if (!subtreeHasRequest(child)) {
+        } else if (!isBalancedLoadBearingChild(child)) {
           issues.push({
             nodeId: child.id,
             message:
-              `"${child.name || child.type}" contains no requests: all VUs assigned to it ` +
-              `will execute no load.`,
+              `"${child.name || child.type}" is excluded from this Balanced Controller: it contains ` +
+              `no requests, so it takes no load percentage.`,
           });
         }
       });

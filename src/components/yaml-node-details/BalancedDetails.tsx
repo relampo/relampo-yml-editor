@@ -1,6 +1,7 @@
 import { AlertTriangle, ArrowLeftRight, CheckCircle2, CircleDashed, Database, Globe, Folder, GitBranch, Repeat, RotateCcw } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import {
+  isBalancedLoadBearingChild,
   normalizeBalancedDistributionType,
   normalizeBalancedExecutionMode,
   validateBalancedController,
@@ -75,8 +76,14 @@ export function BalancedDetails({ node, onNodeUpdate }: NodeDetailProps) {
   const data = node.data || {};
   const balancedType = normalizeBalancedDistributionType(data.type);
   const mode = normalizeBalancedExecutionMode(data.mode);
-  const validation = validateBalancedController(balancedType, node.children || []);
-  const selectedCount = node.children?.length || 0;
+  const children = node.children || [];
+  // think_time, empty containers and request-less subtrees never participate in
+  // the balance — they are excluded from the included list, the distribution and
+  // the percentage total so they cannot consume load. See RLP-475.
+  const loadBearingChildren = children.filter(isBalancedLoadBearingChild);
+  const excludedChildren = children.filter(child => !isBalancedLoadBearingChild(child));
+  const validation = validateBalancedController(balancedType, children);
+  const selectedCount = loadBearingChildren.length;
   const coverageWidth = Math.max(0, Math.min(validation.total, 100));
   const format = (key: string, values: Record<string, string | number> = {}) =>
     Object.entries(values).reduce(
@@ -98,21 +105,29 @@ export function BalancedDetails({ node, onNodeUpdate }: NodeDetailProps) {
   };
 
   const handleDistributeEvenly = () => {
-    const children = node.children || [];
-    if (!onNodeUpdate || children.length === 0) return;
+    if (!onNodeUpdate || loadBearingChildren.length === 0) return;
 
-    const base = Math.floor(100 / children.length);
+    // Spread 100% across load-bearing children only; excluded ones get nothing.
+    const base = Math.floor(100 / loadBearingChildren.length);
     let assigned = 0;
-    const childUpdates = children.map((child, index) => {
-      const nextValue = index === children.length - 1 ? 100 - assigned : base;
+    const percentageById = new Map<string, number>();
+    loadBearingChildren.forEach((child, index) => {
+      const nextValue = index === loadBearingChildren.length - 1 ? 100 - assigned : base;
       assigned += nextValue;
-      return {
-        nodeId: child.id,
-        data: {
-          ...(child.data || {}),
-          __balancedPercentage: nextValue,
-        },
-      };
+      percentageById.set(child.id, nextValue);
+    });
+
+    const childUpdates = children.map(child => {
+      if (percentageById.has(child.id)) {
+        return {
+          nodeId: child.id,
+          data: { ...(child.data || {}), __balancedPercentage: percentageById.get(child.id) },
+        };
+      }
+      // Clear any stale percentage left on an excluded child (e.g. from the recording).
+      const nextData = { ...(child.data || {}) };
+      delete nextData.__balancedPercentage;
+      return { nodeId: child.id, data: nextData };
     });
 
     onNodeUpdate(node.id, {
@@ -120,17 +135,6 @@ export function BalancedDetails({ node, onNodeUpdate }: NodeDetailProps) {
       __batchChildUpdates: childUpdates,
     });
   };
-
-  const REQUEST_TYPES = new Set([
-    'request', 'get', 'post', 'put', 'delete', 'patch', 'head', 'options', 'sql',
-  ]);
-  function subtreeHasRequest(n: { type: string; data?: any; children?: Array<{ type: string; data?: any; children?: unknown[] }> }): boolean {
-    if (REQUEST_TYPES.has(n.type)) {
-      // Disabled samplers (data.enabled === false) produce no load at runtime.
-      return n.data?.enabled !== false;
-    }
-    return (n.children ?? []).some((c: any) => subtreeHasRequest(c));
-  }
 
   const issues: string[] = [];
   if (!validation.hasChildren) {
@@ -142,13 +146,6 @@ export function BalancedDetails({ node, onNodeUpdate }: NodeDetailProps) {
   if (balancedType === 'total' && validation.hasChildren && !validation.validTotal) {
     issues.push(format('yamlEditor.balanced.alerts.issueInvalidTotal', { total: validation.total }));
   }
-  (node.children ?? []).forEach(child => {
-    if (child.type === 'think_time') {
-      issues.push(t('yamlEditor.balanced.alerts.issueThinkTimeChild'));
-    } else if (!subtreeHasRequest(child as any)) {
-      issues.push(format('yamlEditor.balanced.alerts.issueNoRequestsChild', { name: child.name || child.type }));
-    }
-  });
 
   const statusTone =
     issues.length === 0 ? 'emerald' : !validation.hasChildren ? 'amber' : balancedType === 'total' ? 'amber' : 'sky';
@@ -300,12 +297,12 @@ export function BalancedDetails({ node, onNodeUpdate }: NodeDetailProps) {
           <span
             className={`inline-flex items-center rounded-full border border-sky-300/20 bg-black/20 px-2 py-1 text-[11px] ${labelTextClass}`}
           >
-            {format('yamlEditor.balanced.included.count', { count: node.children?.length || 0 })}
+            {format('yamlEditor.balanced.included.count', { count: loadBearingChildren.length })}
           </span>
         </div>
 
-        {node.children && node.children.length > 0 ? (
-          node.children.map(child => {
+        {loadBearingChildren.length > 0 ? (
+          loadBearingChildren.map(child => {
             const currentPercentage = child.data?.__balancedPercentage ?? '';
 
             return (
@@ -383,6 +380,17 @@ export function BalancedDetails({ node, onNodeUpdate }: NodeDetailProps) {
               </div>
             </div>
           </>
+        )}
+
+        {excludedChildren.length > 0 && (
+          <div className={`mt-1 flex items-start gap-2 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-[11px] leading-4 ${mutedTextClass}`}>
+            <CircleDashed className="mt-0.5 h-3.5 w-3.5 shrink-0 text-zinc-500" />
+            <span>
+              {format('yamlEditor.balanced.included.excludedNote', {
+                names: excludedChildren.map(child => child.name || child.type).join(', '),
+              })}
+            </span>
+          </div>
         )}
       </div>
 

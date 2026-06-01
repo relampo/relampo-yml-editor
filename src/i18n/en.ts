@@ -387,12 +387,17 @@ export const enTranslations = {
   // YAML Editor
   yamlEditor: {
     title: 'YAML Editor',
+    newDocument: 'New',
     uploadYaml: 'Upload YAML',
     validate: 'Validate',
     downloadYaml: 'Download YAML',
     downloadProject: 'Download ZIP',
     validYaml: '✅ Valid YAML according to Relampo v1 specification',
     codeView: 'Code',
+    newDocumentTitle: 'New document',
+    newDocumentConfirm: 'Confirm',
+    confirmNewDocument: 'Are you sure you want to create a new document? All unsaved changes will be lost.',
+    cancel: 'Cancel',
     treeView: 'Tree',
     details: 'Details',
     noNodeSelected: 'Select a node to view details',
@@ -409,6 +414,8 @@ export const enTranslations = {
       delete: 'Delete',
       enable: 'Enable',
       disable: 'Disable',
+      enabled: 'Enabled',
+      disabled: 'Disabled',
       duplicate: 'Duplicate',
       copy: 'Copy',
       browse: 'Browse',
@@ -522,6 +529,8 @@ export const enTranslations = {
         title: 'Included Elements',
         description: 'These are the only elements that this Balanced Controller will manage.',
         count: '{count} item(s)',
+        excludedNote:
+          'Not balanced (no requests): {names}. These elements issue no requests, so they receive no load percentage.',
         childDescriptionTotal:
           'This element shares the entire scope with the other selected elements. Its percentage contributes to the required 100%.',
         childDescriptionParcial:

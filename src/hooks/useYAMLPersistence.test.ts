@@ -2,20 +2,24 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useRef } from 'react';
 import { useYAMLPersistence } from './useYAMLPersistence';
-import { saveActiveDraft } from '../utils/yamlDraftStorage';
+import { clearActiveDraft, saveActiveDraft } from '../utils/yamlDraftStorage';
 
 vi.mock('../utils/yamlDraftStorage', () => ({
   saveActiveDraft: vi.fn(),
+  clearActiveDraft: vi.fn(),
 }));
 
 const saveActiveDraftMock = vi.mocked(saveActiveDraft);
+const clearActiveDraftMock = vi.mocked(clearActiveDraft);
 
 beforeEach(() => {
   saveActiveDraftMock.mockImplementation(async draft => draft);
+  clearActiveDraftMock.mockResolvedValue(undefined);
 });
 
 afterEach(() => {
   saveActiveDraftMock.mockReset();
+  clearActiveDraftMock.mockReset();
 });
 
 // ─── helpers ──────────────────────────────────────────────────────────────
@@ -417,5 +421,71 @@ describe('keyboard shortcuts', () => {
 
     expect(removeSpy).toHaveBeenCalledWith('keydown', expect.any(Function));
     removeSpy.mockRestore();
+  });
+});
+
+// ─── resetForNewDocument ────────────────────────────────────────────────────
+
+describe('resetForNewDocument', () => {
+  it('clears the saved-at status and the stored draft', async () => {
+    const params = makeParams();
+    const { result } = renderHook(() => {
+      const serializeDebounceRef = useRef<number | null>(null);
+      return useYAMLPersistence({ ...params, serializeDebounceRef });
+    });
+
+    await act(async () => {
+      await result.current.handleSave();
+    });
+    expect(result.current.lastSavedAt).not.toBeNull();
+
+    await act(async () => {
+      await result.current.resetForNewDocument();
+    });
+
+    expect(result.current.lastSavedAt).toBeNull();
+    expect(clearActiveDraftMock).toHaveBeenCalled();
+  });
+
+  // Regression: a save already in flight when the user starts a new document
+  // must not resurrect the discarded draft or stamp a stale "saved" status.
+  it('does not commit a save that resolves after a reset', async () => {
+    let resolveSave: (() => void) | undefined;
+    saveActiveDraftMock.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          resolveSave = () => resolve(undefined as never);
+        }),
+    );
+
+    const setHasDocumentActivity = vi.fn();
+    const setIsDirty = vi.fn();
+    const params = makeParams({ setHasDocumentActivity, setIsDirty });
+    const { result } = renderHook(() => {
+      const serializeDebounceRef = useRef<number | null>(null);
+      return useYAMLPersistence({ ...params, serializeDebounceRef });
+    });
+
+    // Kick off a save and leave it pending (saveActiveDraft hasn't resolved).
+    let savePromise: Promise<void> = Promise.resolve();
+    act(() => {
+      savePromise = result.current.handleSave();
+    });
+
+    // User starts a new document while that save is still in flight.
+    await act(async () => {
+      await result.current.resetForNewDocument();
+    });
+
+    // Now the stale save finally resolves.
+    await act(async () => {
+      resolveSave?.();
+      await savePromise;
+    });
+
+    // It undid its own write and committed no stale UI state.
+    expect(clearActiveDraftMock).toHaveBeenCalled();
+    expect(setHasDocumentActivity).not.toHaveBeenCalledWith(true);
+    expect(result.current.lastSavedAt).toBeNull();
   });
 });

@@ -7,16 +7,25 @@ import { useYAMLPersistence } from '../hooks/useYAMLPersistence';
 import type { RedirectSourceInfo, RedirectedRequestInfo, YAMLNode } from '../types/yaml';
 import { logStatsigEvent } from '../utils/analytics';
 import { applyNodeUpdateToTree } from '../utils/nodeUpdate';
+import { collectScenarioHosts, getRequestNodeHost } from '../utils/requestNodeDisplay';
 import { getActiveDraft } from '../utils/yamlDraftStorage';
 import { getDocumentMetrics } from '../utils/yamlDocumentLimits';
 import { parseYAMLToTree, treeToYAML } from '../utils/yamlParser';
 import { validateYAMLSemantics } from '../utils/yamlSemanticValidation';
 import { Button } from './ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from './ui/dialog';
 import { YAMLCodeEditor } from './YAMLCodeEditor';
 import { YAMLEditorHeader } from './YAMLEditorHeader';
 import { YAMLNodeDetails } from './YAMLNodeDetails';
 import { createNodeByType } from './yaml-tree-view/nodeFactory';
-import { addNodeToTree } from './yaml-tree-view/treeOperations';
+import { addNodeToTree, syncRedirectSourceFollowRedirects, updateNodeEnabled } from './yaml-tree-view/treeOperations';
 import type { YAMLAddableNodeType } from './yaml-tree-view/addableItems';
 import { YAMLTreeView } from './YAMLTreeView';
 
@@ -127,6 +136,7 @@ export function YAMLEditor() {
   const [isTreeOutdated, setIsTreeOutdated] = useState(false);
   const [isLargeFileBannerDismissed, setIsLargeFileBannerDismissed] = useState(false);
   const [restoredDraftUpdatedAt, setRestoredDraftUpdatedAt] = useState<string | null>(null);
+  const [isNewDialogOpen, setIsNewDialogOpen] = useState(false);
   const selectedNodeRef = useRef<YAMLNode | null>(null);
   const fallbackRootNameRef = useRef<string | null>(null);
   const selectedNodeIdsRef = useRef<string[]>([]);
@@ -206,7 +216,7 @@ export function YAMLEditor() {
     return serialized;
   };
 
-  const { lastSavedAt, actionMessage, handleDownload } = useYAMLPersistence({
+  const { lastSavedAt, actionMessage, handleDownload, resetForNewDocument } = useYAMLPersistence({
     isDirty,
     setIsDirty,
     isInitialized,
@@ -250,6 +260,7 @@ export function YAMLEditor() {
         targetNodeId,
         targetRequestLabel: targetNode?.name || '',
         matchedLocation: info.matchedLocation,
+        targetDisabled: targetNode?.data?.enabled === false,
       };
     }
     return result;
@@ -262,6 +273,21 @@ export function YAMLEditor() {
     const rawBaseUrl = defaultsNode?.data?.base_url;
     return typeof rawBaseUrl === 'string' ? rawBaseUrl : '';
   }, [yamlTree]);
+
+  // Every distinct host the recording drives (primary first), surfaced in the
+  // HTTP Defaults panel so multi-host recordings show all hosts, not just the
+  // base one. See RLP-365.
+  const scenarioHosts = useMemo<string[]>(
+    () => collectScenarioHosts(yamlTree, httpDefaultsBaseUrl),
+    [yamlTree, httpDefaultsBaseUrl],
+  );
+
+  // Host inherited from http_defaults.base_url, used so the tree shows a host badge
+  // on base-host (relative) requests too — uniformly with secondary hosts. RLP-414.
+  const httpDefaultsBaseHost = useMemo<string>(
+    () => getRequestNodeHost(httpDefaultsBaseUrl) || httpDefaultsBaseUrl.trim(),
+    [httpDefaultsBaseUrl],
+  );
 
   // Worker setup
   useEffect(() => {
@@ -521,6 +547,13 @@ export function YAMLEditor() {
     commitTreeChange(updatedTree, undefined, { serialization: 'debounced' });
   };
 
+  const handleToggleNodeEnabled = (nodeId: string, enabled: boolean) => {
+    if (!yamlTree) return;
+    const toggledTree = updateNodeEnabled(yamlTree, nodeId, enabled);
+    const updatedTree = syncRedirectSourceFollowRedirects(toggledTree, nodeId, enabled, redirectedRequestMap);
+    commitTreeChange(updatedTree, undefined, { serialization: 'debounced' });
+  };
+
   const handleAddChildNode = (parentId: string, nodeType: YAMLAddableNodeType) => {
     if (!yamlTree) return;
 
@@ -565,6 +598,48 @@ export function YAMLEditor() {
       context_menu_discovered: contextMenuDiscovered,
       is_discovery_friction: !contextMenuDiscovered,
     });
+  };
+
+  const handleNewOpen = () => {
+    setIsNewDialogOpen(true);
+  };
+
+  const handleNewConfirm = () => {
+    setIsNewDialogOpen(false);
+
+    if (parseDebounceRef.current) {
+      window.clearTimeout(parseDebounceRef.current);
+      parseDebounceRef.current = null;
+    }
+    if (serializeDebounceRef.current) {
+      window.clearTimeout(serializeDebounceRef.current);
+      serializeDebounceRef.current = null;
+    }
+
+    setYamlCode('');
+    setYamlContent('');
+    setYamlTree(null);
+    setSelectedNode(null);
+    setSelectedNodeIds([]);
+    selectedNodeRef.current = null;
+    selectedNodeIdsRef.current = [];
+    setError(null);
+    setValidationErrors([]);
+    setCurrentFileName('relampo-script.yaml');
+    setIsDirty(false);
+    setHasDocumentActivity(false);
+    setIsTreeOutdated(false);
+    setIsLargeFileBannerDismissed(false);
+    setRestoredDraftUpdatedAt(null);
+    setViewMode('tree');
+
+    activeParseRequestIdRef.current = ++parseRequestIdRef.current;
+    setIsParsing(false);
+    setIsFileLoading(false);
+
+    // Bumps the save generation, cancels any pending autosave, and clears the
+    // stored draft so an in-flight save can't resurrect the discarded content.
+    void resetForNewDocument();
   };
 
   const handleUpload = () => {
@@ -673,11 +748,39 @@ export function YAMLEditor() {
         isDirty={isDirty}
         lastSavedAt={lastSavedAt}
         actionMessage={actionMessage}
+        isDocumentEmpty={!yamlTree && !yamlCode.trim()}
+        onNew={handleNewOpen}
         onUpload={handleUpload}
         onDownload={handleDownload}
         fileInputRef={fileInputRef}
         onFileChange={handleFileChange}
       />
+
+      <Dialog open={isNewDialogOpen} onOpenChange={setIsNewDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('yamlEditor.newDocumentTitle')}</DialogTitle>
+            <DialogDescription>{t('yamlEditor.confirmNewDocument')}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsNewDialogOpen(false)}
+              className="border-white/10 bg-white/5 hover:bg-white/10 text-zinc-300"
+            >
+              {t('yamlEditor.cancel')}
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleNewConfirm}
+              className="bg-yellow-400 hover:bg-yellow-300 text-black font-bold"
+            >
+              {t('yamlEditor.newDocumentConfirm')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {isEditorBusy && (
         <div
@@ -832,6 +935,7 @@ export function YAMLEditor() {
                 selectedNode={selectedNode}
                 selectedNodeIds={selectedNodeIds}
                 redirectedRequestMap={redirectedRequestMap}
+                baseHost={httpDefaultsBaseHost}
                 onSelectionChange={handleSelectionChange}
                 onTreeChange={handleTreeChange}
                 onContextMenuOpened={handleTreeContextMenuOpened}
@@ -876,9 +980,11 @@ export function YAMLEditor() {
             <YAMLNodeDetails
               node={selectedNode}
               baseUrl={httpDefaultsBaseUrl}
+              hosts={scenarioHosts}
               redirectedInfo={selectedNode ? (redirectedRequestMap[selectedNode.id] ?? null) : null}
               redirectSourceInfo={selectedNode ? (redirectSourceMap[selectedNode.id] ?? null) : null}
               onNodeUpdate={handleNodeUpdate}
+              onToggleEnabled={handleToggleNodeEnabled}
               onAddChildNode={handleAddChildNode}
               onAddChildAction={handleDetailPanelAddClicked}
             />

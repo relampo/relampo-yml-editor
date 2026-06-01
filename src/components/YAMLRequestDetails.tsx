@@ -44,7 +44,13 @@ export function YAMLRequestDetails({
   const [responseReplace, setResponseReplace] = useState('');
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
   const contentRef = useRef<HTMLDivElement>(null);
-  const hasRecordedRedirectFollowUp = Boolean(redirectSourceInfo);
+  // When the recorded follow-up (redirect target) is disabled, the redirect
+  // linkage no longer applies, so the source request's redirect options behave
+  // like normal editable checkboxes again.
+  const hasRecordedRedirectFollowUp = Boolean(redirectSourceInfo) && redirectSourceInfo?.targetDisabled !== true;
+  // The selected request itself is disabled: keep all fields visible but
+  // non-editable so users can inspect without accidentally editing dead data.
+  const isRequestDisabled = node.data?.enabled === false;
   const requestMethod = formData.method || getNodeMethodFallback(node);
   const effectiveRedirectAutomatically = hasRecordedRedirectFollowUp ? false : !!formData.redirect_automatically;
   const effectiveFollowRedirects = hasRecordedRedirectFollowUp ? true : formData.follow_redirects !== false;
@@ -128,6 +134,10 @@ export function YAMLRequestDetails({
         ref={contentRef}
         className="flex-1 overflow-y-auto p-6"
       >
+        <fieldset
+          disabled={isRequestDisabled}
+          className={`min-w-0 border-0 p-0 m-0 ${isRequestDisabled ? 'opacity-60' : ''}`}
+        >
         {activeTab === 'request' ? (
           <RequestContent
             formData={formData}
@@ -161,6 +171,7 @@ export function YAMLRequestDetails({
             onNavigate={setCurrentMatchIndex}
           />
         )}
+        </fieldset>
       </div>
     </div>
   );
@@ -207,10 +218,13 @@ function RequestContent({
     'w-[14ch] max-w-full h-9.5 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono';
 
   const urlParts = parseRequestUrl(formData.url || '');
-  // Hint the inherited base host (from http_defaults.base_url) so it is clear
-  // that an empty Base URL means "inherit this host". Falls back to a generic
-  // example when no base_url is configured.
-  const baseUrlPlaceholder = getRequestNodeHost(baseUrl) || baseUrl.trim() || FALLBACK_BASE_URL_PLACEHOLDER;
+  // Host inherited from http_defaults.base_url. Base-host (relative) requests now
+  // surface it as the field value too — not just as a placeholder — so every
+  // request shows its host uniformly and editably, matching the secondary-host
+  // (absolute) requests instead of looking empty/non-editable. See RLP-414.
+  const inheritedHost = getRequestNodeHost(baseUrl) || baseUrl.trim();
+  const baseUrlPlaceholder = inheritedHost || FALLBACK_BASE_URL_PLACEHOLDER;
+  const displayBaseUrl = urlParts.baseUrl || inheritedHost;
   const rawUrl = String(formData.url ?? '').trim();
   const pathInputValue = rawUrl === '' ? '' : urlParts.path;
   const requestBodyText = formData.body
@@ -231,6 +245,15 @@ function RequestContent({
     }
 
     onFieldChange('url', buildRequestUrl(formData.url || '', { path: value }));
+  };
+
+  const handleBaseUrlChange = (value: string) => {
+    const trimmed = value.trim();
+    // Leaving the field at the inherited host keeps the URL relative so a base-host
+    // request inherits from http_defaults instead of being pinned to an absolute
+    // URL. A different (or empty) host writes it explicitly.
+    const nextBaseUrl = trimmed === inheritedHost ? '' : trimmed;
+    onFieldChange('url', buildRequestUrl(formData.url || '', { baseUrl: nextBaseUrl }));
   };
 
   const buildSearchRegex = () => {
@@ -367,8 +390,8 @@ function RequestContent({
             </label>
             <Input
               id="req-base-url"
-              value={urlParts.baseUrl}
-              onChange={e => onFieldChange('url', buildRequestUrl(formData.url || '', { baseUrl: e.target.value }))}
+              value={displayBaseUrl}
+              onChange={e => handleBaseUrlChange(e.target.value)}
               placeholder={baseUrlPlaceholder}
               className="w-full h-9.5 bg-white/5 border border-white/10 text-zinc-300 text-sm font-mono"
             />

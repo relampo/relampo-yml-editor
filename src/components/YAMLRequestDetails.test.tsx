@@ -33,7 +33,7 @@ describe('YAMLRequestDetails', () => {
     expect(screen.getByPlaceholderText('/api/endpoint')).toBeInTheDocument();
   });
 
-  it('hints the inherited base host in the Base URL placeholder for relative requests', () => {
+  it('shows the inherited base host as the editable Base URL value for relative requests', () => {
     const node: YAMLNode = {
       id: 'get-base',
       type: 'get',
@@ -44,8 +44,48 @@ describe('YAMLRequestDetails', () => {
 
     render(<YAMLRequestDetails node={node} baseUrl="https://video-cdn.example.net" />);
 
-    expect(screen.getByLabelText('Base URL')).toHaveValue('');
-    expect(screen.getByPlaceholderText('video-cdn.example.net')).toBeInTheDocument();
+    // Uniform with secondary (absolute) hosts: the field surfaces the inherited
+    // host as a value rather than leaving it blank. See RLP-414.
+    expect(screen.getByLabelText('Base URL')).toHaveValue('video-cdn.example.net');
+  });
+
+  it('rewrites to a relative URL when the Base URL is set back to the inherited host', () => {
+    const onNodeUpdate = vi.fn();
+    const node: YAMLNode = {
+      id: 'get-base-keep',
+      type: 'get',
+      name: 'GET: https://api.other.com/login',
+      data: { url: 'https://api.other.com/login?x=1' },
+      children: [],
+    };
+
+    render(<YAMLRequestDetails node={node} baseUrl="https://relax.beaire.com" onNodeUpdate={onNodeUpdate} />);
+
+    // Pointing a secondary-host request back at the inherited host drops the
+    // absolute URL so it inherits from http_defaults again.
+    fireEvent.change(screen.getByLabelText('Base URL'), { target: { value: 'relax.beaire.com' } });
+
+    expect(onNodeUpdate).toHaveBeenLastCalledWith('get-base-keep', expect.objectContaining({ url: '/login?x=1' }));
+  });
+
+  it('writes an absolute URL when the Base URL is changed to a different host', () => {
+    const onNodeUpdate = vi.fn();
+    const node: YAMLNode = {
+      id: 'get-base-change',
+      type: 'get',
+      name: 'GET: /login',
+      data: { url: '/login?x=1' },
+      children: [],
+    };
+
+    render(<YAMLRequestDetails node={node} baseUrl="https://relax.beaire.com" onNodeUpdate={onNodeUpdate} />);
+
+    fireEvent.change(screen.getByLabelText('Base URL'), { target: { value: 'api.other.com' } });
+
+    expect(onNodeUpdate).toHaveBeenLastCalledWith(
+      'get-base-change',
+      expect.objectContaining({ url: 'https://api.other.com/login?x=1' }),
+    );
   });
 
   it('falls back to the generic Base URL placeholder when no base_url is configured', () => {

@@ -66,6 +66,12 @@ export interface RedirectSourceInfo {
   targetNodeId: string;
   targetRequestLabel: string;
   matchedLocation: string;
+  /**
+   * True when the recorded follow-up (redirect target) request is disabled
+   * (`enabled: false`). The redirect linkage no longer applies, so the source
+   * request's "Follow Redirects" option becomes editable again.
+   */
+  targetDisabled: boolean;
 }
 
 export interface DataSource {

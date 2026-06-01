@@ -12,6 +12,7 @@ import {
   insertNodesAfterTarget,
   moveNodeInTree,
   removeNodeFromTree,
+  syncRedirectSourceFollowRedirects,
   toggleNodeInTree,
   updateNodeEnabled,
   wrapNodesInTransaction,
@@ -27,6 +28,7 @@ interface YAMLTreeViewProps {
   selectedNode: YAMLNode | null;
   selectedNodeIds: string[];
   redirectedRequestMap: Record<string, RedirectedRequestInfo>;
+  baseHost?: string;
   onSelectionChange: (primaryNode: YAMLNode | null, nodeIds: string[]) => void;
   onTreeChange: (tree: YAMLNode, nextSelection?: { primaryId: string | null; nodeIds: string[] }) => void;
   onContextMenuOpened?: (metadata: { nodeType: string; selectionCount: number; hasMultiSelection: boolean }) => void;
@@ -37,6 +39,7 @@ export function YAMLTreeView({
   selectedNode,
   selectedNodeIds,
   redirectedRequestMap,
+  baseHost = '',
   onSelectionChange,
   onTreeChange,
   onContextMenuOpened,
@@ -338,7 +341,13 @@ export function YAMLTreeView({
 
     const targetIds = getContextActionTargetIds(nodeId);
     const updatedTree = targetIds.reduce(
-      (currentTree, targetId) => updateNodeEnabled(currentTree, targetId, enabled),
+      (currentTree, targetId) =>
+        syncRedirectSourceFollowRedirects(
+          updateNodeEnabled(currentTree, targetId, enabled),
+          targetId,
+          enabled,
+          redirectedRequestMap,
+        ),
       tree,
     );
     onTreeChange(updatedTree);
@@ -436,7 +445,13 @@ export function YAMLTreeView({
 
     const nextEnabled = allSelectedDisabled;
     const updatedTree = effectiveSelectedIds.reduce(
-      (currentTree, nodeId) => updateNodeEnabled(currentTree, nodeId, nextEnabled),
+      (currentTree, nodeId) =>
+        syncRedirectSourceFollowRedirects(
+          updateNodeEnabled(currentTree, nodeId, nextEnabled),
+          nodeId,
+          nextEnabled,
+          redirectedRequestMap,
+        ),
       tree,
     );
     onTreeChange(updatedTree);
@@ -553,6 +568,7 @@ export function YAMLTreeView({
             isSelected={selectedNodeIds.includes(tree.id)}
             selectedNodeIds={selectedNodeIds}
             redirectedRequestMap={redirectedRequestMap}
+            baseHost={baseHost}
             onNodeSelect={handleNodeSelect}
             onNodeToggle={handleNodeToggle}
             onContextMenu={handleContextMenu}
