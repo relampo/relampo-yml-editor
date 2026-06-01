@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowLeftRight, CheckCircle2, CircleDashed, Database, Globe, Folder, GitBranch, Repeat, RotateCcw } from 'lucide-react';
+import { AlertTriangle, ArrowLeftRight, CheckCircle2, CircleDashed, Database, Globe, GitBranch, Layers, Repeat, RotateCcw } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import {
   isBalancedLoadBearingChild,
@@ -45,7 +45,7 @@ function getBalancedItemIcon(type: string) {
     case 'sql':
       return <Database className="w-5 h-5" />;
     case 'group':
-      return <Folder className="w-5 h-5" />;
+      return <Layers className="w-5 h-5" />;
     case 'transaction':
       return <ArrowLeftRight className="w-5 h-5" />;
     case 'if':
