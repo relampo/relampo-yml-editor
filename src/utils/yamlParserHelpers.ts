@@ -62,6 +62,7 @@ type RequestThroughputLike = PlainRecord & {
 };
 
 type RequestLike = PlainRecord & {
+  name?: string;
   timeout?: string;
   cookie_override?: OverrideState;
   cache_override?: OverrideState;
