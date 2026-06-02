@@ -290,7 +290,6 @@ export function YAMLTreeNode({
             {redirectedLabel}
           </span>
         )}
-        {getNodeHostBadge(node, baseHost)}
         {getNodeBadge(node, { mutedMethod: isRedirectedFollowUp })}
         {hasRequestHit && (
           <span className="inline-flex h-5 items-center shrink-0 text-xs leading-none px-1.5 py-0.5 rounded bg-yellow-400/15 text-yellow-400 font-mono font-medium border border-yellow-400/30 uppercase">
