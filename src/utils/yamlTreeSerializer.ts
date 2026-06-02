@@ -413,6 +413,7 @@ function requestNodeToObject(node: YAMLNode, methodFallback?: string): any {
   delete request.request.assert;
   delete request.request.files;
   delete request.request.headers;
+  delete request.request.data_source;
 
   if (node.data?.enabled === false) {
     request.request.enabled = false;

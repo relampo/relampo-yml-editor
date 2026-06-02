@@ -609,6 +609,19 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
     return onErrorNode;
   }
 
+  // Data Source as step
+  if (step.data_source) {
+    return {
+      id: stepId,
+      type: 'data_source',
+      name: 'Data Source',
+      data: step.data_source,
+      path: [...path, 'data_source'],
+      children: [],
+      expanded: false,
+    };
+  }
+
   // Default
   return {
     id: stepId,
@@ -785,6 +798,17 @@ function createRequestNode(
         data: file,
         path: [...path, 'files', idx],
       });
+    });
+  }
+
+  // DATA_SOURCE inline (inside the request)
+  if (req.data_source) {
+    requestNode.children!.push({
+      id: `${stepId}_data_source`,
+      type: 'data_source',
+      name: 'Data Source',
+      data: req.data_source,
+      path: [...path, 'data_source'],
     });
   }
 
