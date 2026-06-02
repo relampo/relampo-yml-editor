@@ -1,4 +1,4 @@
-export type LoadType = 'constant' | 'ramp' | 'ramp_up_down' | 'throughput' | 'intent';
+export type LoadType = 'constant' | 'linear' | 'ramp_up_down' | 'throughput' | 'intent';
 
 const intentTargetUnits = new Set(['rps', 'vus']);
 const intentAggressivenessLevels = new Set(['low', 'medium', 'high']);
@@ -18,6 +18,30 @@ export interface IntentAutoConfig {
   error_5xx_max_pct: string;
 }
 
+const loadTypeLabels: Record<LoadType, string> = {
+  constant: 'Constant',
+  linear: 'Linear',
+  ramp_up_down: 'Ramp',
+  throughput: 'Throughput',
+  intent: 'Intent',
+};
+
+export function getLoadTypeLabel(loadType: LoadType | string): string {
+  const normalized = normalizeLoadType(loadType);
+  return loadTypeLabels[normalized] || normalized;
+}
+
+// The editor uses `linear` internally for the straight ramp load shape, but the
+// Relampo/Pulse YAML schema spells this load type `ramp`. Map the internal type
+// back when serializing so saved YAML stays within the documented format.
+const yamlLoadTypeAliases: Partial<Record<LoadType, string>> = {
+  linear: 'ramp',
+};
+
+export function getYamlLoadType(loadType: LoadType): string {
+  return yamlLoadTypeAliases[loadType] ?? loadType;
+}
+
 export function normalizeLoadType(rawType: unknown): LoadType {
   const rawLoadType = String(rawType || 'constant')
     .toLowerCase()
@@ -32,8 +56,8 @@ export function normalizeLoadType(rawType: unknown): LoadType {
   ) {
     return 'ramp_up_down';
   }
-  if (rawLoadType === 'ramp') {
-    return 'ramp';
+  if (rawLoadType === 'ramp' || rawLoadType === 'linear') {
+    return 'linear';
   }
   if (rawLoadType === 'throughput') {
     return 'throughput';
@@ -51,7 +75,7 @@ const loadTypeDefaults: Record<LoadType, Record<string, any>> = {
     iterations: '0',
     ramp_up: '0s',
   },
-  ramp: {
+  linear: {
     start_users: '1',
     end_users: '100',
     duration: '10m',
@@ -89,7 +113,7 @@ const loadTypeDefaults: Record<LoadType, Record<string, any>> = {
 
 const loadTypeAllowedKeys: Record<LoadType, string[]> = {
   constant: ['type', 'users', 'duration', 'iterations', 'ramp_up'],
-  ramp: ['type', 'start_users', 'end_users', 'duration', 'iterations'],
+  linear: ['type', 'start_users', 'end_users', 'duration', 'iterations'],
   ramp_up_down: ['type', 'users', 'duration', 'iterations', 'ramp_up', 'ramp_down'],
   throughput: ['type', 'target_rps', 'duration', 'iterations', 'ramp_up', 'ramp_down'],
   intent: [
@@ -122,7 +146,7 @@ export const selectedLoadButtonStyle = {
     borderColor: 'rgba(250, 204, 21, 0.35)',
     boxShadow: '0 10px 22px rgba(250, 204, 21, 0.15)',
   },
-  ramp: {
+  linear: {
     backgroundColor: 'rgba(250, 204, 21, 0.10)',
     color: '#facc15',
     borderColor: 'rgba(250, 204, 21, 0.35)',
@@ -150,7 +174,7 @@ export const selectedLoadButtonStyle = {
 
 export const loadColors = {
   constant: { stroke: '#f59e0b', fill: '#f59e0b20' },
-  ramp: { stroke: '#f59e0b', fill: '#f59e0b20' },
+  linear: { stroke: '#f59e0b', fill: '#f59e0b20' },
   ramp_up_down: { stroke: '#f59e0b', fill: '#f59e0b20' },
   throughput: { stroke: '#f59e0b', fill: '#f59e0b20' },
   intent: { stroke: '#f59e0b', fill: '#f59e0b20' },
@@ -377,7 +401,7 @@ export function normalizeLoadDataForYaml(data: Record<string, any> = {}): Record
 
   const normalized: Record<string, any> = {
     ...data,
-    type: loadType,
+    type: getYamlLoadType(loadType),
   };
 
   if (normalized.users === undefined && normalized.vusers !== undefined) {

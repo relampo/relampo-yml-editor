@@ -555,7 +555,7 @@ function getVisualizationPoints(data: Record<string, any>, loadType: LoadType) {
     } else {
       points.push({ time: 0, users }, { time: duration, users });
     }
-  } else if (loadType === 'ramp') {
+  } else if (loadType === 'linear') {
     points.push(
       { time: 0, users: parseInt(data.start_users, 10) || 1 },
       {
@@ -622,7 +622,7 @@ function getTimeRanges(data: Record<string, any>, loadType: LoadType, maxTime: n
         ]
       : [{ key: 'steady', label: 'Steady', start: 0, end: maxTime }];
   }
-  if (loadType === 'ramp') {
+  if (loadType === 'linear') {
     return [{ key: 'ramp', label: 'Ramp', start: 0, end: maxTime }];
   }
   const rampUp = Math.max(0, parseTimeToSeconds(String(data.ramp_up || '0s')));
@@ -646,7 +646,7 @@ function getTransitionMarkers(data: Record<string, any>, loadType: LoadType, max
     const rampUp = Math.max(0, parseTimeToSeconds(String(data.ramp_up || '0s')));
     return rampUp > 0 && rampUp < maxTime ? [{ key: 'ramp-up', time: rampUp, label: formatTimeLabel(rampUp) }] : [];
   }
-  if (loadType === 'ramp') {
+  if (loadType === 'linear') {
     return [];
   }
   const rampUp = Math.max(0, parseTimeToSeconds(String(data.ramp_up || '0s')));

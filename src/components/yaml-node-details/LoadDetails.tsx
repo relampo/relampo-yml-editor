@@ -1,6 +1,6 @@
 import { Gauge, Mountain, Target, TrendingUp, Users } from 'lucide-react';
 import { LoadVisualization } from './LoadVisualization';
-import { buildLoadDataForType, getIntentAutoConfig, normalizeLoadType, selectedLoadButtonStyle, type LoadType } from './loadUtils';
+import { buildLoadDataForType, getIntentAutoConfig, getLoadTypeLabel, normalizeLoadType, selectedLoadButtonStyle, type LoadType } from './loadUtils';
 import { ConstantLoadMode } from './load-modes/ConstantLoadMode';
 import { IntentLoadMode } from './load-modes/IntentLoadMode';
 import { RampLoadMode } from './load-modes/RampLoadMode';
@@ -15,7 +15,7 @@ const LOAD_MODE_OPTIONS: Array<{
   icon: typeof Users;
 }> = [
   { type: 'constant', label: 'Constant', icon: Users },
-  { type: 'ramp', label: 'Linear', icon: TrendingUp },
+  { type: 'linear', label: 'Linear', icon: TrendingUp },
   { type: 'ramp_up_down', label: 'Ramp Up/Down', icon: Mountain },
   { type: 'throughput', label: 'Throughput', icon: Gauge },
   { type: 'intent', label: 'Intent', icon: Target },
@@ -28,7 +28,10 @@ export function LoadDetails({ node, onNodeUpdate }: NodeDetailProps) {
   const handleChange = (field: string, value: any) => {
     if (field === 'type') {
       const selectedType = normalizeLoadType(value);
-      updateData(buildLoadDataForType(selectedType, data));
+      updateData({
+        ...buildLoadDataForType(selectedType, data),
+        __name: `Load: ${getLoadTypeLabel(selectedType)}`,
+      });
       return;
     }
 
@@ -101,7 +104,7 @@ function LoadModePanel({
     );
   }
 
-  if (loadType === 'ramp') {
+  if (loadType === 'linear') {
     return (
       <RampLoadMode
         data={data}

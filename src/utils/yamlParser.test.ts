@@ -1269,6 +1269,11 @@ metrics:
 
     // YAML output is stable (no runaway growth)
     expect(yaml2.length).toBeLessThan(yaml1.length * 1.5);
+
+    // The straight-ramp load shape must round-trip as the schema's `type: ramp`,
+    // not the editor's internal `linear` alias (RLP-495).
+    expect(yaml2).toMatch(/type: ramp\b/);
+    expect(yaml2).not.toContain('linear');
   });
 
   it('all node ids are unique within a parsed tree', () => {
