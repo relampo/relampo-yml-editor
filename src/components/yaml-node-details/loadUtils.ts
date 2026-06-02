@@ -26,8 +26,20 @@ const loadTypeLabels: Record<LoadType, string> = {
   intent: 'Intent',
 };
 
-export function getLoadTypeLabel(loadType: LoadType): string {
-  return loadTypeLabels[loadType] || loadType;
+export function getLoadTypeLabel(loadType: LoadType | string): string {
+  const normalized = normalizeLoadType(loadType);
+  return loadTypeLabels[normalized] || normalized;
+}
+
+// The editor uses `linear` internally for the straight ramp load shape, but the
+// Relampo/Pulse YAML schema spells this load type `ramp`. Map the internal type
+// back when serializing so saved YAML stays within the documented format.
+const yamlLoadTypeAliases: Partial<Record<LoadType, string>> = {
+  linear: 'ramp',
+};
+
+export function getYamlLoadType(loadType: LoadType): string {
+  return yamlLoadTypeAliases[loadType] ?? loadType;
 }
 
 export function normalizeLoadType(rawType: unknown): LoadType {
@@ -389,7 +401,7 @@ export function normalizeLoadDataForYaml(data: Record<string, any> = {}): Record
 
   const normalized: Record<string, any> = {
     ...data,
-    type: loadType,
+    type: getYamlLoadType(loadType),
   };
 
   if (normalized.users === undefined && normalized.vusers !== undefined) {
