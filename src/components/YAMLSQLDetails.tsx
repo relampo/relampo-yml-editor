@@ -1,3 +1,4 @@
+import { Info } from 'lucide-react';
 import MonacoEditor from '@monaco-editor/react';
 import * as jsyaml from 'js-yaml';
 import { useEffect, useMemo, useState } from 'react';
@@ -277,19 +278,20 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
         />
       </div>
 
-      <div
-        className={`p-3 rounded border text-xs ${
-          allowWrites
-            ? 'bg-red-400/8 border-red-400/20 text-red-200'
-            : 'bg-yellow-400/8 border-yellow-400/20 text-yellow-200'
-        }`}
-      >
-        {allowWrites
-          ? 'Write execution is enabled for this request. Keep credentials and query text tightly scoped.'
-          : kind === 'exec'
-            ? 'Exec requests remain blocked for writes unless `allow_writes` is enabled.'
-            : 'This request is configured for safe read-only execution by default.'}
-      </div>
+      {allowWrites ? (
+        <div className="p-3 rounded border text-xs bg-red-400/8 border-red-400/20 text-red-200">
+          Write execution is enabled for this request. Keep credentials and query text tightly scoped.
+        </div>
+      ) : kind === 'exec' ? (
+        <div className="p-3 rounded border text-xs bg-yellow-400/8 border-yellow-400/20 text-yellow-200">
+          Exec requests remain blocked for writes unless `allow_writes` is enabled.
+        </div>
+      ) : (
+        <div className="alert-info rounded-md p-3 text-xs flex items-start gap-2">
+          <Info className="alert-info-icon w-4 h-4 mt-0.5 shrink-0" />
+          <span>This request is configured for safe read-only execution by default.</span>
+        </div>
+      )}
 
       <div className="h-px bg-white/10" />
 

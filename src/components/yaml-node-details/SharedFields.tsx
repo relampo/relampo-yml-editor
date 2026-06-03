@@ -1,3 +1,4 @@
+import { Info } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import type { AuthConfig } from '../../types/yaml';
@@ -192,30 +193,27 @@ export function FileField({ label, value, field, onChange, noMargin = false, sho
         />
       </div>
       {showPathHint && (
-        <div className="mt-1.5 space-y-0.5 text-[10px] text-zinc-400">
-          {language === 'es' ? (
-            <>
-              <p>
+        <div className="alert-info rounded-md p-3 text-[13px] flex items-start gap-2 mt-4">
+          <Info className="alert-info-icon w-4 h-4 mt-0.5 shrink-0" />
+          <span>
+            {language === 'es' ? (
+              <>
                 Local: en modo navegador, el selector de archivos normalmente solo devuelve el nombre del archivo. Copia
                 y pega la ruta completa del CSV/TXT si vas a ejecutar este script localmente.
-              </p>
-              <p>
+                <br />
                 Distribuido: usa solo el nombre del archivo o una ruta relativa (por ejemplo, users.csv). Relampo
                 resuelve el resto automáticamente desde los nodos distribuidos.
-              </p>
-            </>
-          ) : (
-            <>
-              <p>
+              </>
+            ) : (
+              <>
                 Local: in browser mode, the file picker usually returns only the file name. Copy/paste the full CSV/TXT
                 path if you will run this script locally.
-              </p>
-              <p>
+                <br />
                 Distributed: use only file name or relative path (for example, users.csv). Relampo resolves the
                 remaining path details automatically across distributed nodes.
-              </p>
-            </>
-          )}
+              </>
+            )}
+          </span>
         </div>
       )}
     </div>
