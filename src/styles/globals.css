@@ -215,3 +215,44 @@ input[type="checkbox"]:active {
 .use-accent-yellow [role="option"][aria-selected="true"] * {
   color: var(--color-amber-500) !important;
 }
+
+/* Alert utilities */
+@utility alert-info {
+  background-color: #1A1405;
+  border: 1px solid #D4A300;
+  color: #F5F5F5;
+}
+
+@utility alert-warning {
+  background-color: #2A1600;
+  border: 1px solid #FF9800;
+  color: #F5F5F5;
+}
+
+@utility alert-error {
+  background-color: #2A0D0D;
+  border: 1px solid #D32F2F;
+  color: #F5F5F5;
+}
+
+@utility alert-success {
+  background-color: #0D2A11;
+  border: 1px solid #43A047;
+  color: #F5F5F5;
+}
+
+@utility alert-info-icon {
+  color: #FFC107;
+}
+
+@utility alert-warning-icon {
+  color: #FF9800;
+}
+
+@utility alert-error-icon {
+  color: #D32F2F;
+}
+
+@utility alert-success-icon {
+  color: #66BB6A;
+}

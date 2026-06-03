@@ -1,3 +1,4 @@
+import { Info } from 'lucide-react';
 import type { AuthConfig } from '../../../types/yaml';
 import { AuthConfigEditor, DetailField, EditableField } from '../SharedFields';
 import { createNodeDataUpdater } from '../nodeDetailHelpers';
@@ -59,8 +60,9 @@ export function TransactionDetails({ node, onNodeUpdate, nodeName }: NamedNodeDe
 
   return (
     <div className="space-y-6">
-      <div className="rounded-lg border border-yellow-400/20 bg-yellow-400/5 p-4 text-sm text-yellow-400">
-        This controller measures the selected flow as one transaction while preserving the exact step order.
+      <div className="alert-info rounded-md p-3 text-sm flex items-start gap-2.5">
+        <Info className="alert-info-icon w-4 h-4 mt-0.5 shrink-0" />
+        <span>This controller measures the selected flow as one transaction while preserving the exact step order.</span>
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(200px,1fr)_minmax(160px,0.7fr)]">

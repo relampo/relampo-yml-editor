@@ -1,4 +1,4 @@
-import { Bug, Code2, GitBranch, Loader2, X } from 'lucide-react';
+import { AlertTriangle, Bug, Code2, GitBranch, Loader2, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useYAML } from '../contexts/YAMLContext';
@@ -870,16 +870,19 @@ export function YAMLEditor() {
       )}
 
       {!error && validationErrors.length > 0 && (
-        <div className="px-6 py-3 bg-amber-500/10 border-b border-amber-500/20 shrink-0">
-          <p className="text-sm font-medium text-amber-300">
-            {language === 'es'
-              ? 'Problemas de validación semántica detectados.'
-              : 'Semantic validation issues detected.'}
-          </p>
-          <p className="mt-1 text-xs text-amber-200/80">
-            {validationErrors[0]}
-            {validationErrors.length > 1 ? ` (+${validationErrors.length - 1})` : ''}
-          </p>
+        <div className="alert-warning px-6 py-3 border-b-0 shrink-0 flex items-start gap-2.5">
+          <AlertTriangle className="alert-warning-icon w-4 h-4 mt-0.5 shrink-0" />
+          <div className="min-w-0">
+            <p className="text-sm font-medium">
+              {language === 'es'
+                ? 'Problemas de validación semántica detectados.'
+                : 'Semantic validation issues detected.'}
+            </p>
+            <p className="mt-0.5 text-xs opacity-80">
+              {validationErrors[0]}
+              {validationErrors.length > 1 ? ` (+${validationErrors.length - 1})` : ''}
+            </p>
+          </div>
         </div>
       )}
 

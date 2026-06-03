@@ -199,25 +199,20 @@ export function BalancedDetails({ node, onNodeUpdate }: NodeDetailProps) {
   const mutedTextClass = 'text-zinc-400';
   const labelTextClass = 'text-zinc-400';
   const accentTextClass = 'text-yellow-400';
-  const warningTextClass = 'text-amber-100';
   const warningAccentTextClass = 'text-amber-200';
-  const successTextClass = 'text-emerald-100';
 
   return (
     <div className={`space-y-3 ${bodyTextClass}`}>
       {issues.length > 0 && validation.hasChildren ? (
-        <div className="rounded-lg border border-[#FBBF2480] bg-[#F59E0B26] px-3 py-2.5 shadow-[0_0_12px_#FBBF241F]">
+        <div className="alert-warning rounded-md p-3">
           <div className="flex items-start gap-2">
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
-            <div className="min-w-0 space-y-1">
-              <div className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${warningAccentTextClass}`}>
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 alert-warning-icon" />
+            <div className="min-w-0 space-y-0.5">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em]">
                 {t('yamlEditor.balanced.alerts.attentionNeeded')}
               </div>
               {issues.map(issue => (
-                <div
-                  key={issue}
-                  className={`text-[13px] leading-5 ${warningTextClass}`}
-                >
+                <div key={issue} className="text-[13px] leading-5 opacity-80">
                   {issue}
                 </div>
               ))}
@@ -225,12 +220,13 @@ export function BalancedDetails({ node, onNodeUpdate }: NodeDetailProps) {
           </div>
         </div>
       ) : issues.length === 0 ? (
-        <div
-          className={`rounded-lg border border-emerald-300/20 bg-emerald-400/8 px-3 py-2 text-[13px] ${successTextClass}`}
-        >
-          {balancedType === 'total'
-            ? t('yamlEditor.balanced.alerts.validTotal')
-            : t('yamlEditor.balanced.alerts.validParcial')}
+        <div className="alert-success rounded-md p-3 text-[13px] flex items-start gap-2">
+          <CheckCircle2 className="alert-success-icon w-4 h-4 mt-0.5 shrink-0" />
+          <span>
+            {balancedType === 'total'
+              ? t('yamlEditor.balanced.alerts.validTotal')
+              : t('yamlEditor.balanced.alerts.validParcial')}
+          </span>
         </div>
       ) : null}
 

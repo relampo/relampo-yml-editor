@@ -1,4 +1,4 @@
-import { AlertTriangle, BetweenHorizontalStart, Binary, Box, Clock3, GitFork, Hourglass, Layers, List, Play, Zap } from 'lucide-react';
+import { AlertTriangle, BetweenHorizontalStart, Binary, Box, Clock3, GitFork, Hourglass, Info, Layers, List, Play, Zap } from 'lucide-react';
 import type { RetryEditorConfig } from '../../types/shared';
 import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
@@ -261,9 +261,12 @@ export function OneTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
       </div>
 
       {stepsCount === 0 && (
-        <div className="rounded border border-amber-400/25 bg-amber-400/10 p-3 text-sm text-amber-100">
-          Add at least one initialization step inside this controller so it produces the shared state required by the
-          scenario.
+        <div className="alert-info rounded-md p-3 text-[13px] flex items-start gap-2">
+          <Info className="alert-info-icon w-4 h-4 mt-0.5 shrink-0" />
+          <span>
+            Add at least one initialization step inside this controller so it produces the shared state required by the
+            scenario.
+          </span>
         </div>
       )}
     </div>
