@@ -22,7 +22,7 @@ import {
   DialogTitle,
 } from './ui/dialog';
 import { YAMLCodeEditor } from './YAMLCodeEditor';
-import { YAMLDebugSession } from './YAMLDebugView';
+// import { YAMLDebugSession } from './YAMLDebugView';
 import { YAMLEditorHeader } from './YAMLEditorHeader';
 import { YAMLNodeDetails } from './YAMLNodeDetails';
 import { createNodeByType } from './yaml-tree-view/nodeFactory';
@@ -163,7 +163,7 @@ export function YAMLEditor() {
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
-  const [viewMode, setViewMode] = useState<'tree' | 'code' | 'debug'>('tree');
+  const [viewMode, setViewMode] = useState<'tree' | 'code' /* | 'debug' */>('tree');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const parseDebounceRef = useRef<number | null>(null);
   const serializeDebounceRef = useRef<number | null>(null);
@@ -981,7 +981,7 @@ export function YAMLEditor() {
               <Code2 className="w-4 h-4" />
               {language === 'es' ? 'Código' : 'Code'}
             </button>
-            <button
+            {/* <button
               onClick={() => setViewMode('debug')}
               className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 text-sm font-bold transition-all duration-200 ${
                 viewMode === 'debug'
@@ -991,7 +991,7 @@ export function YAMLEditor() {
             >
               <Bug className="w-4 h-4" />
               Debug
-            </button>
+            </button> */}
           </div>
 
           <div className="flex-1 overflow-hidden min-h-0 bg-[#0a0a0a]">
@@ -1015,6 +1015,7 @@ export function YAMLEditor() {
                 largeFileMode={isLargeFileMode}
               />
             ) : (
+              /* debug fallback - tree */
               <YAMLTreeView
                 tree={yamlTree}
                 selectedNode={selectedNode}
@@ -1052,15 +1053,15 @@ export function YAMLEditor() {
         <div className="flex-1 min-w-0 flex flex-col bg-[#0d0d0d]">
           <div className="flex items-center border-b border-white/5 bg-[#111111] shrink-0 px-6 py-3">
             <span className="text-sm font-bold tracking-tight uppercase text-zinc-400">
-              {viewMode === 'debug'
+              {/* viewMode === 'debug'
                 ? 'Debug Session'
-                : language === 'es'
-                  ? 'Detalles del elemento'
-                  : 'Element details'}
+                :  */language === 'es'
+                ? 'Detalles del elemento'
+                : 'Element details'}
             </span>
           </div>
           <div className="flex-1 overflow-hidden">
-            {viewMode === 'debug' ? (
+            {/* viewMode === 'debug' ? (
               <YAMLDebugSession
                 tree={yamlTree}
                 selectedNode={selectedNode}
@@ -1071,19 +1072,19 @@ export function YAMLEditor() {
                   setViewMode('tree');
                 }}
               />
-            ) : (
-              <YAMLNodeDetails
-                node={selectedNode}
-                baseUrl={httpDefaultsBaseUrl}
-                hosts={scenarioHosts}
-                redirectedInfo={selectedNode ? (redirectedRequestMap[selectedNode.id] ?? null) : null}
-                redirectSourceInfo={selectedNode ? (redirectSourceMap[selectedNode.id] ?? null) : null}
-                onNodeUpdate={handleNodeUpdate}
-                onToggleEnabled={handleToggleNodeEnabled}
-                onAddChildNode={handleAddChildNode}
-                onAddChildAction={handleDetailPanelAddClicked}
-              />
-            )}
+            ) : ( */}
+            <YAMLNodeDetails
+              node={selectedNode}
+              baseUrl={httpDefaultsBaseUrl}
+              hosts={scenarioHosts}
+              redirectedInfo={selectedNode ? (redirectedRequestMap[selectedNode.id] ?? null) : null}
+              redirectSourceInfo={selectedNode ? (redirectSourceMap[selectedNode.id] ?? null) : null}
+              onNodeUpdate={handleNodeUpdate}
+              onToggleEnabled={handleToggleNodeEnabled}
+              onAddChildNode={handleAddChildNode}
+              onAddChildAction={handleDetailPanelAddClicked}
+            />
+            {/* )} */}
           </div>
         </div>
       </div>
