@@ -236,8 +236,8 @@ input[type="checkbox"]:active {
 }
 
 @utility alert-success {
-  background-color: #1A1405;
-  border: 1px solid #D4A300;
+  background-color: #0D2A11;
+  border: 1px solid #43A047;
   color: #F5F5F5;
 }
 
@@ -254,5 +254,5 @@ input[type="checkbox"]:active {
 }
 
 @utility alert-success-icon {
-  color: #FFC107;
+  color: #66BB6A;
 }

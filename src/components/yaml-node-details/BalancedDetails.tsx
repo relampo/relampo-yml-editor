@@ -199,9 +199,7 @@ export function BalancedDetails({ node, onNodeUpdate }: NodeDetailProps) {
   const mutedTextClass = 'text-zinc-400';
   const labelTextClass = 'text-zinc-400';
   const accentTextClass = 'text-yellow-400';
-  const warningTextClass = 'text-amber-100';
   const warningAccentTextClass = 'text-amber-200';
-  const successTextClass = 'text-emerald-100';
 
   return (
     <div className={`space-y-3 ${bodyTextClass}`}>
