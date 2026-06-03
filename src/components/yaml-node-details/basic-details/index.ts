@@ -9,3 +9,4 @@ export { HeaderDetails, HeadersDetails } from './HeaderDetails';
 export { FileDetails } from './FileDetails';
 export { GenericDetails } from './GenericDetails';
 export { GroupDetails, TransactionDetails } from './ControllerDetails';
+export { StepDetails } from './StepDetails';

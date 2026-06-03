@@ -18,6 +18,7 @@ import {
   ScenarioDetails,
   ScenariosContainerDetails,
   SparkDetails,
+  StepDetails,
   TestDetails,
   TransactionDetails,
   VariablesDetails,
@@ -249,7 +250,12 @@ function NodeDetailsContent({
         />
       );
     case 'steps':
-      return null;
+      return (
+        <StepDetails
+          node={node}
+          onNodeUpdate={onNodeUpdate}
+        />
+      );
     case 'request':
     case 'sql':
     case 'get':
@@ -409,6 +415,13 @@ function NodeDetailsContent({
     case 'headers':
       return (
         <HeadersDetails
+          node={node}
+          onNodeUpdate={onNodeUpdate}
+        />
+      );
+    case 'step':
+      return (
+        <StepDetails
           node={node}
           onNodeUpdate={onNodeUpdate}
         />

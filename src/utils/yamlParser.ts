@@ -199,6 +199,7 @@ function convertScenarioToNode(scenario: any, index: number, path: any[]): YAMLN
       name: 'Steps',
       children: [],
       expanded: true,
+      data: scenario.description ? { description: scenario.description } : undefined,
       path: [...path, 'steps'],
     };
 
