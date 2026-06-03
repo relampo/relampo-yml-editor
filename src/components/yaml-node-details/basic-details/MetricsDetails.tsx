@@ -9,14 +9,22 @@ export function MetricsDetails({ node, onNodeUpdate }: NodeDetailProps) {
   return (
     <div className="space-y-6">
       <div>
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+        <label
+          id="metrics-enabled-label"
+          htmlFor="metrics-enabled"
+          className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
+        >
           Enabled
         </label>
         <Select
           value={data.enabled ? 'true' : 'false'}
           onValueChange={value => updateField('enabled', value === 'true')}
         >
-          <SelectTrigger className="w-full h-9.5 border-white/10 bg-white/5 text-zinc-300 font-mono">
+          <SelectTrigger
+            id="metrics-enabled"
+            aria-labelledby="metrics-enabled-label"
+            className="w-full h-9.5 border-white/10 bg-white/5 text-zinc-300 font-mono"
+          >
             <SelectValue />
           </SelectTrigger>
           <SelectContent className="border-white/10">
