@@ -42,7 +42,7 @@ export function ScenariosContainerDetails({ node, onNodeUpdate }: NodeDetailProp
                 className="p-3 bg-white/5 border-2 border-white/10 hover:border-purple-400/30 rounded-lg transition-all group"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-purple-500/20 text-purple-400 rounded-full flex items-center justify-center text-sm font-bold">
+                  <div className="w-8 h-8 bg-yellow-400/5 text-yellow-400 rounded-full flex items-center justify-center text-sm font-bold">
                     {index + 1}
                   </div>
                   <div>
