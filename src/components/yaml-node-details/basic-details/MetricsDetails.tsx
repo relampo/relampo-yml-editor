@@ -1,5 +1,6 @@
 import { EditableField } from '../SharedFields';
 import { createNodeDataUpdater } from '../nodeDetailHelpers';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
 import type { NodeDetailProps } from '../types';
 
 export function MetricsDetails({ node, onNodeUpdate }: NodeDetailProps) {
@@ -8,21 +9,21 @@ export function MetricsDetails({ node, onNodeUpdate }: NodeDetailProps) {
   return (
     <div className="space-y-6">
       <div>
-        <label
-          htmlFor="metrics-enabled"
-          className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
-        >
+        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
           Enabled
         </label>
-        <select
-          id="metrics-enabled"
+        <Select
           value={data.enabled ? 'true' : 'false'}
-          onChange={event => updateField('enabled', event.target.value === 'true')}
-          className="w-full h-9.5 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+          onValueChange={value => updateField('enabled', value === 'true')}
         >
-          <option value="true">true</option>
-          <option value="false">false</option>
-        </select>
+          <SelectTrigger className="w-full h-9.5 border-white/10 bg-white/5 text-zinc-300 font-mono">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="border-white/10">
+            <SelectItem value="true" className="font-mono">true</SelectItem>
+            <SelectItem value="false" className="font-mono">false</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
       <EditableField
         label="Collect Interval"
