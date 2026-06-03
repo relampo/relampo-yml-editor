@@ -128,6 +128,9 @@ function scenarioNodeToObject(node: YAMLNode): any {
     } else if (child.type === 'error_policy') {
       scenario.error_policy = child.data;
     } else if (child.type === 'steps') {
+      if (child.data?.description) {
+        scenario.description = child.data.description;
+      }
       scenario.steps = child.children?.map(stepNodeToObject) || [];
     }
   }
