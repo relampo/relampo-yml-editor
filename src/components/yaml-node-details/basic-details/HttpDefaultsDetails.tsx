@@ -12,11 +12,31 @@ export function HttpDefaultsDetails({ node, onNodeUpdate, hosts = [] }: NodeDeta
   const preservedDefaults = Object.fromEntries(
     Object.entries(defaults).filter(([key, value]) => key !== 'headers' && key !== 'auth' && typeof value !== 'string'),
   ) as Partial<HttpDefaults>;
-  const mainFields = Object.fromEntries(
+  const storedStringFields = Object.fromEntries(
     Object.entries(defaults)
       .filter(([key, value]) => key !== 'headers' && key !== 'auth' && typeof value === 'string')
       .map(([key, value]) => [key, value]),
   ) as StringMap;
+
+  const hostEntries: [string, string][] = [];
+  for (let i = 1; i < hosts.length; i++) {
+    const key = `base_url${i}`;
+    const value = (defaults as any)[key] || hosts[i];
+    hostEntries.push([key, value]);
+  }
+
+  const allFields: StringMap = {};
+  if (storedStringFields.base_url) {
+    allFields.base_url = storedStringFields.base_url;
+  }
+  for (const [key, value] of hostEntries) {
+    allFields[key] = value;
+  }
+  for (const [key, value] of Object.entries(storedStringFields)) {
+    if (key !== 'base_url') {
+      allFields[key] = value;
+    }
+  }
 
   const handleMainFieldsUpdate = (fields: StringMap) => {
     updateData({
@@ -46,7 +66,7 @@ export function HttpDefaultsDetails({ node, onNodeUpdate, hosts = [] }: NodeDeta
         <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">Configuration</p>
         <EditableList
           title="Fields"
-          items={mainFields}
+          items={allFields}
           onUpdate={handleMainFieldsUpdate}
           keyPlaceholder="field_name"
           valuePlaceholder="value"
@@ -56,33 +76,6 @@ export function HttpDefaultsDetails({ node, onNodeUpdate, hosts = [] }: NodeDeta
           addButtonVariant="pill"
         />
       </div>
-
-      {hosts.length > 1 && (
-        <>
-          <div className="h-px bg-white/10" />
-          <div>
-            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-1">Detected hosts</p>
-            <p className="text-xs text-zinc-500 mb-3">
-              Every host this recording reaches. Secondary hosts are edited on each request.
-            </p>
-            <div className="space-y-2">
-              {hosts.map((host, index) => (
-                <div
-                  key={host}
-                  className="flex items-center justify-between gap-2 px-3 py-2 bg-white/5 border border-white/10 rounded"
-                >
-                  <span className="font-mono text-sm text-amber-400 truncate" title={host}>
-                    {host}
-                  </span>
-                  {index === 0 && (
-                    <span className="text-[10px] uppercase tracking-wider text-zinc-500 shrink-0">primary</span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        </>
-      )}
 
       <div className="h-px bg-white/10" />
 
