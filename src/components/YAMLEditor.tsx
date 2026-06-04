@@ -32,6 +32,9 @@ import { YAMLTreeView } from './YAMLTreeView';
 
 const EMPTY_PARALLEL_ERROR = 'Parallel controller must contain at least one child step';
 const TREE_SERIALIZE_DEBOUNCE_MS = 220;
+const DEBUG_VIEW_ENABLED = false;
+
+type EditorViewMode = 'tree' | 'code' | 'debug';
 
 function getDraftRestoreError(language: string): string {
   return language === 'es'
@@ -163,7 +166,7 @@ export function YAMLEditor() {
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
-  const [viewMode, setViewMode] = useState<'tree' | 'code' | 'debug'>('tree');
+  const [viewMode, setViewMode] = useState<EditorViewMode>('tree');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const parseDebounceRef = useRef<number | null>(null);
   const serializeDebounceRef = useRef<number | null>(null);
@@ -189,6 +192,9 @@ export function YAMLEditor() {
   const documentMetrics = useMemo(() => getDocumentMetrics(yamlCode), [yamlCode]);
   const isLargeFileMode = documentMetrics.large;
   const isEditorBusy = isFileLoading || isParsing;
+  const activeViewMode: EditorViewMode =
+    !DEBUG_VIEW_ENABLED && viewMode === 'debug' ? 'tree' : viewMode;
+  const isDebugViewActive = DEBUG_VIEW_ENABLED && activeViewMode === 'debug';
 
   useEffect(() => {
     selectedNodeRef.current = selectedNode;
@@ -962,7 +968,7 @@ export function YAMLEditor() {
             <button
               onClick={() => setViewMode('tree')}
               className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 text-sm font-bold transition-all duration-200 ${
-                viewMode === 'tree'
+                activeViewMode === 'tree'
                   ? 'text-yellow-400 bg-yellow-400/10 border-b-2 border-yellow-400 shadow-[inset_0_-2px_0_rgba(250,204,21,0.5)]'
                   : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'
               }`}
@@ -973,7 +979,7 @@ export function YAMLEditor() {
             <button
               onClick={() => setViewMode('code')}
               className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 text-sm font-bold transition-all duration-200 ${
-                viewMode === 'code'
+                activeViewMode === 'code'
                   ? 'text-yellow-400 bg-yellow-400/10 border-b-2 border-yellow-400 shadow-[inset_0_-2px_0_rgba(250,204,21,0.5)]'
                   : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'
               }`}
@@ -981,21 +987,23 @@ export function YAMLEditor() {
               <Code2 className="w-4 h-4" />
               {language === 'es' ? 'Código' : 'Code'}
             </button>
-            <button
-              onClick={() => setViewMode('debug')}
-              className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 text-sm font-bold transition-all duration-200 ${
-                viewMode === 'debug'
-                  ? 'text-yellow-400 bg-yellow-400/10 border-b-2 border-yellow-400 shadow-[inset_0_-2px_0_rgba(250,204,21,0.5)]'
-                  : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'
-              }`}
-            >
-              <Bug className="w-4 h-4" />
-              Debug
-            </button>
+            {DEBUG_VIEW_ENABLED ? (
+              <button
+                onClick={() => setViewMode('debug')}
+                className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 text-sm font-bold transition-all duration-200 ${
+                  activeViewMode === 'debug'
+                    ? 'text-yellow-400 bg-yellow-400/10 border-b-2 border-yellow-400 shadow-[inset_0_-2px_0_rgba(250,204,21,0.5)]'
+                    : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'
+                }`}
+              >
+                <Bug className="w-4 h-4" />
+                Debug
+              </button>
+            ) : null}
           </div>
 
           <div className="flex-1 overflow-hidden min-h-0 bg-[#0a0a0a]">
-            {viewMode === 'tree' ? (
+            {activeViewMode === 'tree' ? (
               <YAMLTreeView
                 tree={yamlTree}
                 selectedNode={selectedNode}
@@ -1006,12 +1014,12 @@ export function YAMLEditor() {
                 onTreeChange={handleTreeChange}
                 onContextMenuOpened={handleTreeContextMenuOpened}
               />
-            ) : viewMode === 'code' ? (
+            ) : activeViewMode === 'code' ? (
               <YAMLCodeEditor
                 value={yamlCode}
                 onChange={handleCodeChange}
                 readOnly={true}
-                active={viewMode === 'code'}
+                active={activeViewMode === 'code'}
                 largeFileMode={isLargeFileMode}
               />
             ) : (
@@ -1052,15 +1060,11 @@ export function YAMLEditor() {
         <div className="flex-1 min-w-0 flex flex-col bg-[#0d0d0d]">
           <div className="flex items-center border-b border-white/5 bg-[#111111] shrink-0 px-6 py-3">
             <span className="text-sm font-bold tracking-tight uppercase text-zinc-400">
-              {viewMode === 'debug'
-                ? 'Debug Session'
-                : language === 'es'
-                  ? 'Detalles del elemento'
-                  : 'Element details'}
+              {isDebugViewActive ? 'Debug Session' : language === 'es' ? 'Detalles del elemento' : 'Element details'}
             </span>
           </div>
           <div className="flex-1 overflow-hidden">
-            {viewMode === 'debug' ? (
+            {isDebugViewActive ? (
               <YAMLDebugSession
                 tree={yamlTree}
                 selectedNode={selectedNode}
