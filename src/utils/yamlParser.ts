@@ -807,7 +807,7 @@ function createRequestNode(
     requestNode.children!.push({
       id: `${stepId}_data_source`,
       type: 'data_source',
-      name: 'Data Source',
+      name: req.data_source.name || 'Data Source',
       data: req.data_source,
       path: [...path, 'data_source'],
     });

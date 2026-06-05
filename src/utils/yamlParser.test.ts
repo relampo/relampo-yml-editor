@@ -596,6 +596,31 @@ data_source:
     expect(ds!.data.file).toBe('users.csv');
   });
 
+  it('parses request-local data_source names', () => {
+    const yaml = `
+test:
+  name: t
+scenarios:
+  - name: s
+    steps:
+      - request:
+          url: https://example.com/users
+          data_source:
+            name: Inline Users
+            file: users.csv
+            type: csv
+`;
+    const tree = parseYAMLToTree(yaml)!;
+    const scenario = tree.children!.find(child => child.type === 'scenarios')!.children![0];
+    const steps = scenario.children!.find(child => child.type === 'steps')!;
+    const request = steps.children![0];
+    const dataSource = request.children!.find(child => child.type === 'data_source');
+
+    expect(dataSource).toBeDefined();
+    expect(dataSource!.name).toBe('Inline Users');
+    expect(dataSource!.data.file).toBe('users.csv');
+  });
+
   it('parses metrics node', () => {
     const yaml = `
 test:
@@ -656,6 +681,38 @@ scenarios:
     const output = treeToYAML(tree);
     expect(output).toContain('https://example.com');
     expect(output).toContain('scenarios');
+  });
+
+  it('round-trips edited request-local data_source names', () => {
+    const input = `
+test:
+  name: t
+scenarios:
+  - name: s
+    steps:
+      - request:
+          url: https://example.com/users
+          data_source:
+            name: Original Source
+            file: users.csv
+            type: csv
+`;
+    const tree = parseYAMLToTree(input)!;
+    const scenario = tree.children!.find(child => child.type === 'scenarios')!.children![0];
+    const steps = scenario.children!.find(child => child.type === 'steps')!;
+    const request = steps.children![0];
+    const dataSource = request.children!.find(child => child.type === 'data_source')!;
+
+    dataSource.name = 'Renamed Source';
+
+    const reparsed = parseYAMLToTree(treeToYAML(tree))!;
+    const reparsedScenario = reparsed.children!.find(child => child.type === 'scenarios')!.children![0];
+    const reparsedSteps = reparsedScenario.children!.find(child => child.type === 'steps')!;
+    const reparsedRequest = reparsedSteps.children![0];
+    const reparsedDataSource = reparsedRequest.children!.find(child => child.type === 'data_source');
+
+    expect(reparsedDataSource!.name).toBe('Renamed Source');
+    expect(reparsedDataSource!.data.name).toBe('Renamed Source');
   });
 
   it('round-trips http_defaults with api_key auth', () => {

@@ -492,7 +492,14 @@ function requestNodeToObject(node: YAMLNode, methodFallback?: string): any {
 
     const dataSourceNode = node.children.find(child => child.type === 'data_source');
     if (dataSourceNode) {
-      request.request.data_source = dataSourceNode.data;
+      request.request.data_source = sanitizeBalancedNodeData(dataSourceNode.data);
+      if (
+        dataSourceNode.name &&
+        dataSourceNode.name !== 'Data Source' &&
+        dataSourceNode.name !== dataSourceNode.data?.name
+      ) {
+        request.request.data_source.name = dataSourceNode.name;
+      }
     }
   }
 
