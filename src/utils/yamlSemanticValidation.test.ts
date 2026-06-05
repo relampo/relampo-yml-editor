@@ -3,7 +3,7 @@ import type { YAMLNode } from '../types/yaml';
 import { validateYAMLSemantics } from './yamlSemanticValidation';
 
 describe('validateYAMLSemantics', () => {
-  it('flags transactions with fewer than 2 related steps', () => {
+  it('flags transactions with no steps', () => {
     const tree: YAMLNode = {
       id: 'root',
       type: 'test',
@@ -14,7 +14,7 @@ describe('validateYAMLSemantics', () => {
           type: 'transaction',
           name: 'Checkout',
           data: { name: 'Checkout' },
-          children: [{ id: 'req-1', type: 'post', name: 'POST /cart', data: { url: '/cart' }, children: [] }],
+          children: [],
         },
       ],
     };
@@ -22,12 +22,33 @@ describe('validateYAMLSemantics', () => {
     expect(validateYAMLSemantics(tree)).toEqual([
       {
         nodeId: 'transaction-1',
-        message: '"Checkout" must contain at least 2 related steps.',
+        message: '"Checkout" must contain at least 1 related step.',
       },
     ]);
   });
 
-  it('accepts transactions with two or more ordered steps', () => {
+  it('accepts transactions with one step', () => {
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'test',
+      name: 'Test',
+      children: [
+        {
+          id: 'transaction-1',
+          type: 'transaction',
+          name: 'Checkout',
+          data: { name: 'Checkout' },
+          children: [
+            { id: 'req-1', type: 'post', name: 'POST /cart', data: { url: '/cart' }, children: [] },
+          ],
+        },
+      ],
+    };
+
+    expect(validateYAMLSemantics(tree)).toEqual([]);
+  });
+
+  it('accepts transactions with multiple steps', () => {
     const tree: YAMLNode = {
       id: 'root',
       type: 'test',
