@@ -183,11 +183,9 @@ function normalizeSQLConnection(
 
 export function normalizeAssertionForEditor(assertion: Partial<AssertionLike> | undefined): AssertionLike {
   const next: AssertionLike = { ...(assertion || {}) };
-  delete next.__allowTypeSelection;
   if (next.type === 'jsonpath') next.type = 'json';
   if (!next.type && typeof next.name === 'string' && next.name.trim() !== '') next.type = next.name.trim();
   if (!next.type) next.type = 'status';
-  if (next.type && !next.__lockedType) next.__lockedType = next.type;
   return next;
 }
 
@@ -203,10 +201,8 @@ export function normalizeAssertionForEngine(assertion: Partial<AssertionLike> | 
 
 export function normalizeExtractorForEditor(extractor: Partial<ExtractorLike> | undefined): ExtractorLike {
   const next: ExtractorLike = { ...(extractor || {}) };
-  delete next.__allowTypeSelection;
   if (next.type === 'json') next.type = 'jsonpath';
   if (!next.type) next.type = 'regex';
-  if (next.type && !next.__lockedType) next.__lockedType = next.type;
   if (!next.from) next.from = 'body';
   if (next.var === undefined && next.variable !== undefined) next.var = next.variable;
   if (next.variable === undefined && next.var !== undefined) next.variable = next.var;
