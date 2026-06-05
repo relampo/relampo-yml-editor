@@ -387,6 +387,9 @@ function stepNodeToObject(node: YAMLNode): any {
 
   if (node.type === 'data_source') {
     const res: any = { data_source: sanitizeBalancedNodeData(node.data) };
+    if (node.name && node.name !== 'Data Source' && node.name !== node.data?.name) {
+      res.data_source.name = node.name;
+    }
     if (node.data?.enabled === false) {
       res.enabled = false;
     }
@@ -489,7 +492,14 @@ function requestNodeToObject(node: YAMLNode, methodFallback?: string): any {
 
     const dataSourceNode = node.children.find(child => child.type === 'data_source');
     if (dataSourceNode) {
-      request.request.data_source = dataSourceNode.data;
+      request.request.data_source = sanitizeBalancedNodeData(dataSourceNode.data);
+      if (
+        dataSourceNode.name &&
+        dataSourceNode.name !== 'Data Source' &&
+        dataSourceNode.name !== dataSourceNode.data?.name
+      ) {
+        request.request.data_source.name = dataSourceNode.name;
+      }
     }
   }
 
