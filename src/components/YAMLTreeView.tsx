@@ -19,7 +19,7 @@ import {
 } from './yaml-tree-view/treeOperations';
 import type { YAMLAddableNodeType } from './yaml-tree-view/addableItems';
 import { YAMLContextMenu } from './YAMLContextMenu';
-import { YAMLTreeNode } from './YAMLTreeNode';
+import { nodeDirectlyMatches, subtreeHasMatch, YAMLTreeNode } from './YAMLTreeNode';
 
 const MIN_CONTEXT_MENU_HEIGHT = 700;
 
@@ -53,20 +53,25 @@ export function YAMLTreeView({
   const [searchQuery, setSearchQuery] = useState('');
   const [clipboardNodes, setClipboardNodes] = useState<YAMLNode[]>([]);
   const treeContainerRef = useRef<HTMLDivElement | null>(null);
+  const isFiltering = searchQuery.trim().length > 0;
 
   const visibleNodes = useMemo(() => {
     if (!tree) return [] as YAMLNode[];
     const out: YAMLNode[] = [];
-    const walk = (node: YAMLNode) => {
+    const walk = (node: YAMLNode, ancestorMatches: boolean) => {
       out.push(node);
       const expanded = node.expanded ?? true;
       if (node.children && node.children.length > 0 && expanded) {
-        node.children.forEach(walk);
+        const currentMatches = ancestorMatches || (!!searchQuery.trim() && nodeDirectlyMatches(node, searchQuery));
+        const children = searchQuery.trim() && !currentMatches
+          ? node.children.filter(child => subtreeHasMatch(child, searchQuery))
+          : node.children;
+        children.forEach(child => walk(child, currentMatches));
       }
     };
-    walk(tree);
+    walk(tree, false);
     return out;
-  }, [tree]);
+  }, [tree, searchQuery]);
 
   const parentMap = useMemo(() => {
     const map = new Map<string, string | null>();
@@ -87,14 +92,21 @@ export function YAMLTreeView({
     return map;
   }, [visibleNodes]);
 
-  const selectedNodes = useMemo(
-    () => selectedNodeIds.map(id => nodeById.get(id)).filter(Boolean) as YAMLNode[],
+  const visibleSelectedIds = useMemo(
+    () => selectedNodeIds.filter(id => nodeById.has(id)),
     [selectedNodeIds, nodeById],
+  );
+
+  const activeSelectedIds = isFiltering ? visibleSelectedIds : selectedNodeIds;
+
+  const selectedNodes = useMemo(
+    () => activeSelectedIds.map(id => nodeById.get(id)).filter(Boolean) as YAMLNode[],
+    [activeSelectedIds, nodeById],
   );
 
   const effectiveSelectedIds = useMemo(() => {
     if (!tree) return [] as string[];
-    const selectedSet = new Set(selectedNodeIds);
+    const selectedSet = new Set(activeSelectedIds);
 
     const hasSelectedAncestor = (nodeId: string) => {
       let parentId = parentMap.get(nodeId) ?? null;
@@ -105,8 +117,24 @@ export function YAMLTreeView({
       return false;
     };
 
-    return selectedNodeIds.filter(id => id !== tree.id && !hasSelectedAncestor(id));
-  }, [selectedNodeIds, parentMap, tree]);
+    return activeSelectedIds.filter(id => id !== tree.id && !hasSelectedAncestor(id));
+  }, [activeSelectedIds, parentMap, tree]);
+
+  useEffect(() => {
+    if (!isFiltering || visibleSelectedIds.length === selectedNodeIds.length) {
+      return;
+    }
+
+    const nextPrimary =
+      selectedNode && nodeById.has(selectedNode.id)
+        ? selectedNode
+        : visibleSelectedIds
+            .map(id => nodeById.get(id))
+            .filter(Boolean)
+            .at(-1) ?? null;
+
+    onSelectionChange(nextPrimary, visibleSelectedIds);
+  }, [isFiltering, nodeById, onSelectionChange, selectedNode, selectedNodeIds.length, visibleSelectedIds]);
 
   const allSelectedDisabled = selectedNodes.length > 0 && selectedNodes.every(node => node.data?.enabled === false);
   const transactionWrapValidation = useMemo(
@@ -183,15 +211,15 @@ export function YAMLTreeView({
       if (anchorIndex >= 0 && targetIndex >= 0) {
         const [start, end] = anchorIndex < targetIndex ? [anchorIndex, targetIndex] : [targetIndex, anchorIndex];
         const rangeIds = visibleNodes.slice(start, end + 1).map(n => n.id);
-        const nextIds = Array.from(new Set([...selectedNodeIds, ...rangeIds]));
+        const nextIds = Array.from(new Set([...activeSelectedIds, ...rangeIds]));
         onSelectionChange(node, nextIds);
         return;
       }
     }
 
     if (isToggle) {
-      const isAlreadySelected = selectedNodeIds.includes(node.id);
-      const nextIds = isAlreadySelected ? selectedNodeIds.filter(id => id !== node.id) : [...selectedNodeIds, node.id];
+      const isAlreadySelected = activeSelectedIds.includes(node.id);
+      const nextIds = isAlreadySelected ? activeSelectedIds.filter(id => id !== node.id) : [...activeSelectedIds, node.id];
 
       if (nextIds.length === 0) {
         onSelectionChange(null, []);
@@ -215,7 +243,7 @@ export function YAMLTreeView({
     e.preventDefault();
 
     // If right-clicking an unselected node, target only that node for context actions.
-    if (!selectedNodeIds.includes(node.id)) {
+    if (!activeSelectedIds.includes(node.id)) {
       onSelectionChange(node, [node.id]);
     }
 
@@ -234,7 +262,7 @@ export function YAMLTreeView({
     });
 
     const contextSelectionIds =
-      selectedNodeIds.includes(node.id) && effectiveSelectedIds.includes(node.id) && effectiveSelectedIds.length > 1
+      activeSelectedIds.includes(node.id) && effectiveSelectedIds.includes(node.id) && effectiveSelectedIds.length > 1
         ? effectiveSelectedIds
         : [node.id];
     onContextMenuOpened?.({
@@ -509,11 +537,11 @@ export function YAMLTreeView({
         </div>
       </div>
 
-      {selectedNodeIds.length > 1 && (
+      {activeSelectedIds.length > 1 && (
         <div className="shrink-0 px-3 pb-2">
           <div className="flex flex-wrap items-center gap-2 p-3 bg-[#111111] border border-white/10 rounded-lg">
             <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
-              {selectedNodeIds.length} selected
+              {activeSelectedIds.length} selected
             </span>
             <button
               onClick={handleCreateTransaction}
@@ -565,8 +593,8 @@ export function YAMLTreeView({
           <YAMLTreeNode
             node={tree}
             depth={0}
-            isSelected={selectedNodeIds.includes(tree.id)}
-            selectedNodeIds={selectedNodeIds}
+            isSelected={activeSelectedIds.includes(tree.id)}
+            selectedNodeIds={activeSelectedIds}
             redirectedRequestMap={redirectedRequestMap}
             baseHost={baseHost}
             onNodeSelect={handleNodeSelect}

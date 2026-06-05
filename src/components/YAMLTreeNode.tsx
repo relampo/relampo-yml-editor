@@ -64,6 +64,7 @@ interface YAMLTreeNodeProps {
   onContextMenu: (event: React.MouseEvent, node: YAMLNode) => void;
   onNodeMove: (draggedId: string, targetId: string, position: 'before' | 'after' | 'inside') => void;
   searchQuery?: string;
+  ancestorMatchesSearch?: boolean;
 }
 
 export function YAMLTreeNode({
@@ -78,6 +79,7 @@ export function YAMLTreeNode({
   onContextMenu,
   onNodeMove,
   searchQuery = '',
+  ancestorMatchesSearch = false,
 }: YAMLTreeNodeProps) {
   const [dragOver, setDragOver] = useState<'before' | 'after' | 'inside' | null>(null);
   const hasChildren = node.children && node.children.length > 0;
@@ -216,9 +218,7 @@ export function YAMLTreeNode({
   const color = getNodeColor(node.type, node, isRedirectedFollowUp);
   const IconComponent = icon;
   const searchHitFlags = getNodeSearchHitFlags(node, searchQuery);
-  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
-  const hasDirectNameMatch = normalizedSearchQuery ? node.name.toLowerCase().includes(normalizedSearchQuery) : false;
-  const hasRequestHit = searchHitFlags.request || hasDirectNameMatch;
+  const hasRequestHit = searchHitFlags.request;
   const hasResponseHit = searchHitFlags.response;
 
   const selectionClass = 'bg-yellow-300/12 border border-yellow-300/35 ring-1 ring-yellow-300/25 shadow-[0_0_0_1px_rgba(250,204,21,0.14)]';
@@ -305,7 +305,9 @@ export function YAMLTreeNode({
       {/* Children */}
       {hasChildren && isExpanded && (
         <div className="ml-2 border-l border-white/5">
-          {node.children!.map(child => (
+          {node.children!
+            .filter(child => !searchQuery.trim() || ancestorMatchesSearch || nodeDirectlyMatches(node, searchQuery) || subtreeHasMatch(child, searchQuery))
+            .map(child => (
             <YAMLTreeNode
               key={child.id}
               node={child}
@@ -313,12 +315,12 @@ export function YAMLTreeNode({
               isSelected={selectedNodeIds.includes(child.id)}
               selectedNodeIds={selectedNodeIds}
               redirectedRequestMap={redirectedRequestMap}
-              baseHost={baseHost}
               onNodeSelect={onNodeSelect}
               onNodeToggle={onNodeToggle}
               onContextMenu={onContextMenu}
               onNodeMove={onNodeMove}
               searchQuery={searchQuery}
+              ancestorMatchesSearch={ancestorMatchesSearch || nodeDirectlyMatches(node, searchQuery)}
             />
           ))}
         </div>
@@ -601,6 +603,31 @@ function getNodeBadge(node: YAMLNode, options: { mutedMethod?: boolean } = {}): 
   }
 
   return null;
+}
+
+export function nodeDirectlyMatches(node: YAMLNode, searchQuery: string): boolean {
+  const query = searchQuery.trim().toLowerCase();
+  if (!query) return true;
+
+  if (node.name.toLowerCase().includes(query)) return true;
+
+  if (node.path?.some(segment => String(segment).toLowerCase().includes(query))) return true;
+
+  const searchHitFlags = getNodeSearchHitFlags(node, searchQuery);
+  return searchHitFlags.request || searchHitFlags.response;
+}
+
+export function subtreeHasMatch(node: YAMLNode, searchQuery: string): boolean {
+  const query = searchQuery.trim().toLowerCase();
+  if (!query) return true;
+
+  if (nodeDirectlyMatches(node, searchQuery)) return true;
+
+  if (node.children) {
+    return node.children.some(child => subtreeHasMatch(child, searchQuery));
+  }
+
+  return false;
 }
 
 function getNodeSearchHitFlags(node: YAMLNode, searchQuery: string): { request: boolean; response: boolean } {
