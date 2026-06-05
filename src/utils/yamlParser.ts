@@ -71,7 +71,7 @@ function convertToTree(obj: any, _: string[] = [], defaultRootName?: string): YA
     root.children!.push({
       id: `${rootId}_data_source`,
       type: 'data_source',
-      name: 'Data Source',
+      name: obj.data_source.name || 'Data Source',
       data: obj.data_source,
       path: ['data_source'],
     });
@@ -615,7 +615,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
     return {
       id: stepId,
       type: 'data_source',
-      name: 'Data Source',
+      name: step.data_source.name || 'Data Source',
       data: step.data_source,
       path: [...path, 'data_source'],
       children: [],

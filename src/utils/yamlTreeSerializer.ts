@@ -387,6 +387,9 @@ function stepNodeToObject(node: YAMLNode): any {
 
   if (node.type === 'data_source') {
     const res: any = { data_source: sanitizeBalancedNodeData(node.data) };
+    if (node.name && node.name !== 'Data Source' && node.name !== node.data?.name) {
+      res.data_source.name = node.name;
+    }
     if (node.data?.enabled === false) {
       res.enabled = false;
     }

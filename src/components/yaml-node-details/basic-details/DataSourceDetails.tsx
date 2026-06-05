@@ -37,13 +37,12 @@ export function DataSourceDetails({ node, onNodeUpdate, nodeName, setNodeName }:
           <Input
             id="ds-basic-name"
             value={nodeName || ''}
-            onChange={event => setNodeName?.(event.target.value)}
-            maxLength={50}
-            onBlur={() => {
-              if (onNodeUpdate && nodeName !== node.name) {
-                onNodeUpdate(node.id, { ...sourceData, __name: nodeName });
-              }
+            onChange={event => {
+              const nextName = event.target.value;
+              setNodeName?.(nextName);
+              onNodeUpdate?.(node.id, { ...sourceData, __name: nextName });
             }}
+            maxLength={50}
             className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-semibold h-9.5"
             placeholder="Name"
           />
