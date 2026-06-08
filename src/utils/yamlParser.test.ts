@@ -1267,6 +1267,69 @@ scenarios:
     expect(sqlSteps.filter(step => step.data.kind === 'query')).toHaveLength(3);
     expect(sqlSteps.filter(step => step.data.allow_writes === true)).toHaveLength(4);
   });
+
+  // RLP-522: the backend recorder materializes redirect chains with flat
+  // `chain_id`/`chain_role` markers inside `request:`. The editor must preserve
+  // these unknown fields across a load → edit → save round-trip so it never
+  // silently drops the parent→child linkage the runtime relies on.
+  it('round-trips redirect chain markers (chain_id / chain_role)', () => {
+    const input = `
+test:
+  name: t
+scenarios:
+  - name: s
+    steps:
+      - request:
+          method: POST
+          url: https://example.com/login
+          follow_redirects: true
+          chain_id: rc-1
+          chain_role: parent
+      - request:
+          method: GET
+          url: https://example.com/dashboard
+          enabled: false
+          chain_id: rc-1
+          chain_role: final
+`;
+    const output = treeToYAML(parseYAMLToTree(input)!);
+    const reparsed = parseYAMLToTree(output)!;
+    const steps = reparsed
+      .children!.find(c => c.type === 'scenarios')!
+      .children![0].children!.find(c => c.type === 'steps')!.children!;
+
+    expect(output).toContain('chain_id: rc-1');
+    expect(output).toContain('chain_role: parent');
+    expect(output).toContain('chain_role: final');
+
+    expect(steps[0].data.chain_id).toBe('rc-1');
+    expect(steps[0].data.chain_role).toBe('parent');
+    expect(steps[1].data.chain_id).toBe('rc-1');
+    expect(steps[1].data.chain_role).toBe('final');
+    expect(steps[1].data.enabled).toBe(false);
+  });
+
+  // RLP-522 / JMeter parity: the redirect modes are mutually exclusive. An
+  // imported file carrying both flags must be normalized on save even if the
+  // user never toggled either checkbox; "Redirect Automatically" wins.
+  it('drops follow_redirects when redirect_automatically is set, without toggling', () => {
+    const input = `
+test:
+  name: t
+scenarios:
+  - name: s
+    steps:
+      - request:
+          method: GET
+          url: https://example.com/a
+          redirect_automatically: true
+          follow_redirects: false
+`;
+    const output = treeToYAML(parseYAMLToTree(input)!);
+
+    expect(output).toContain('redirect_automatically: true');
+    expect(output).not.toContain('follow_redirects:');
+  });
 });
 
 // ─── parse → serialize → re-parse consistency ────────────────────────────

@@ -65,6 +65,11 @@ function pruneDefaultRequestFields(request: Record<string, any>) {
   if (request.cookie_override === 'inherit') delete request.cookie_override;
   if (request.cache_override === 'inherit') delete request.cache_override;
   if (request.retrieve_embedded_resources === false) delete request.retrieve_embedded_resources;
+  // RLP-522 / JMeter parity: the redirect modes are mutually exclusive and
+  // "Redirect Automatically" wins. Drop any stale "Follow Redirects" flag that
+  // older files or imported fixtures may carry alongside it, so saving always
+  // emits a single redirect mode even when the user never toggled a checkbox.
+  if (request.redirect_automatically === true) delete request.follow_redirects;
   if (request.redirect_automatically === false) delete request.redirect_automatically;
   if (request.follow_redirects === true) delete request.follow_redirects;
   if (request.throughput && request.throughput.enabled !== true) delete request.throughput;

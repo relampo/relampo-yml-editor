@@ -53,7 +53,14 @@ export function YAMLRequestDetails({
   const isRequestDisabled = node.data?.enabled === false;
   const requestMethod = formData.method || getNodeMethodFallback(node);
   const effectiveRedirectAutomatically = hasRecordedRedirectFollowUp ? false : !!formData.redirect_automatically;
-  const effectiveFollowRedirects = hasRecordedRedirectFollowUp ? true : formData.follow_redirects !== false;
+  // RLP-522 / JMeter parity: "Redirect Automatically" and "Follow Redirects"
+  // are mutually exclusive. "Redirect Automatically" takes precedence, so while
+  // it is on, "Follow Redirects" reads as unchecked (and is disabled below).
+  const effectiveFollowRedirects = hasRecordedRedirectFollowUp
+    ? true
+    : effectiveRedirectAutomatically
+      ? false
+      : formData.follow_redirects !== false;
 
   useEffect(() => {
     setFormData(node.data || {});
@@ -61,6 +68,13 @@ export function YAMLRequestDetails({
 
   const handleFieldChange = (field: string, value: any) => {
     const newData = { ...formData, [field]: value };
+    // RLP-522 / JMeter parity: the two redirect modes are mutually exclusive.
+    // Enabling one clears the other so the YAML never carries both flags.
+    if (field === 'redirect_automatically' && value === true) {
+      delete newData.follow_redirects;
+    } else if (field === 'follow_redirects' && value === true) {
+      delete newData.redirect_automatically;
+    }
     setFormData(newData);
     if (onNodeUpdate) {
       onNodeUpdate(node.id, newData);
@@ -440,7 +454,7 @@ function RequestContent({
               type="checkbox"
               className="w-4 h-4 rounded border-white/10 bg-white/5 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-0"
               checked={effectiveFollowRedirects}
-              disabled={hasRecordedRedirectFollowUp}
+              disabled={hasRecordedRedirectFollowUp || effectiveRedirectAutomatically}
               onChange={e => onFieldChange('follow_redirects', e.target.checked)}
             />
             <span>Follow Redirects</span>
