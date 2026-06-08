@@ -34,6 +34,23 @@ describe('detectRedirectFollowUps', () => {
     expect(map.b.matchedLocation).toBe('/new');
   });
 
+  // Regression (RLP-419): a single 302 whose Location is a relative reference
+  // (e.g. `authenticate`) must resolve against the source request URL, not a
+  // fixed base, so the follow-up request still gets the REDIRECTED badge.
+  it('resolves a relative Location against the source URL', () => {
+    const tree = root([
+      req('a', 'https://eidas.example.uy/tuid-authn-login/authenticate', {
+        status: 302,
+        location: 'authenticate',
+      }),
+      req('b', 'https://eidas.example.uy/tuid-authn-login/authenticate'),
+    ]);
+    const map = detectRedirectFollowUps(tree);
+    expect(Object.keys(map)).toEqual(['b']);
+    expect(map.b.sourceNodeId).toBe('a');
+    expect(map.b.matchedLocation).toBe('/tuid-authn-login/authenticate');
+  });
+
   it('ignores non-redirect status codes', () => {
     const tree = root([
       req('a', '/old', { status: 200, location: '/new' }),
@@ -68,6 +85,15 @@ describe('nodesStillFormRedirect', () => {
   it('is true while the 3xx + Location still resolve to the target URL', () => {
     const source = req('a', '/old', { status: 302, location: '/new' });
     const target = req('b', '/new');
+    expect(nodesStillFormRedirect(source, target)).toBe(true);
+  });
+
+  it('resolves a relative Location against the source URL', () => {
+    const source = req('a', 'https://eidas.example.uy/tuid-authn-passwd/authenticate', {
+      status: 302,
+      location: 'authenticate',
+    });
+    const target = req('b', 'https://eidas.example.uy/tuid-authn-passwd/authenticate');
     expect(nodesStillFormRedirect(source, target)).toBe(true);
   });
 

@@ -104,6 +104,30 @@ function normalizeUrlForCompare(value: string): string {
   }
 }
 
+// Normalize a redirect Location header for comparison against a follow-up
+// request URL. A Location can be relative (e.g. `authenticate`, `../foo`), and
+// per the HTTP spec it must be resolved against the URL of the request that
+// returned it — not against a fixed base. A single 302 whose Location is the
+// bare `authenticate` (relative to `.../tuid-authn-login/authenticate`) resolves
+// to that same path, so the follow-up request is correctly detected as the
+// redirect target. We fall back to base-less normalization when the source URL
+// is itself relative (no host), preserving the existing behavior.
+function normalizeRedirectLocationForCompare(location: string, sourceUrl: string): string {
+  const trimmedLocation = String(location || '').trim();
+  if (!trimmedLocation) return '';
+  const trimmedSource = String(sourceUrl || '').trim();
+  if (/^https?:\/\//i.test(trimmedSource)) {
+    try {
+      const resolved = new URL(trimmedLocation, trimmedSource);
+      const normalized = `${resolved.pathname || '/'}${resolved.search || ''}`;
+      return normalized.replace(/\/+$/, '') || '/';
+    } catch {
+      // Fall through to base-less normalization below.
+    }
+  }
+  return normalizeUrlForCompare(trimmedLocation);
+}
+
 // True when `source` still describes a redirect whose Location resolves to
 // `target`'s current URL. Used to decide whether a previously-detected
 // redirect should survive a tree restructure (e.g. the source dragged into a
@@ -114,7 +138,7 @@ export function nodesStillFormRedirect(source: YAMLNode, target: YAMLNode): bool
   if (!REDIRECT_STATUS_CODES.includes(getResponseStatusCode(source))) return false;
   const location = getRedirectLocationHeader(source);
   if (!location) return false;
-  const normalizedLocation = normalizeUrlForCompare(location);
+  const normalizedLocation = normalizeRedirectLocationForCompare(location, String(source.data?.url || ''));
   const normalizedTarget = normalizeUrlForCompare(String(target.data?.url || ''));
   return Boolean(normalizedLocation && normalizedTarget && normalizedLocation === normalizedTarget);
 }
@@ -1116,7 +1140,10 @@ export function detectRedirectFollowUps(tree: YAMLNode): Record<string, Redirect
     result[target.id] = {
       sourceNodeId: source.id,
       sourceRequestLabel: source.name,
-      matchedLocation: normalizeUrlForCompare(getRedirectLocationHeader(source)),
+      matchedLocation: normalizeRedirectLocationForCompare(
+        getRedirectLocationHeader(source),
+        String(source.data?.url || ''),
+      ),
     };
   }
 
