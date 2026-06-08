@@ -43,6 +43,7 @@ interface YAMLNodeDetailsProps {
   redirectedInfo?: RedirectedRequestInfo | null;
   redirectSourceInfo?: RedirectSourceInfo | null;
   onNodeUpdate?: (nodeId: string, updatedData: any) => void;
+  onRenameHost?: (oldHost: string, newHost: string) => void;
   onToggleEnabled?: (nodeId: string, enabled: boolean) => void;
   onAddChildNode?: (parentId: string, nodeType: YAMLAddableNodeType) => void;
   onAddChildAction?: (metadata: { parentNodeType: string; childNodeType: YAMLAddableNodeType }) => void;
@@ -58,6 +59,7 @@ export function YAMLNodeDetails({
   hosts = [],
   redirectSourceInfo = null,
   onNodeUpdate,
+  onRenameHost,
   onToggleEnabled,
   onAddChildNode,
   onAddChildAction,
@@ -169,6 +171,7 @@ export function YAMLNodeDetails({
           hosts={hosts}
           redirectSourceInfo={redirectSourceInfo}
           onNodeUpdate={onNodeUpdate}
+          onRenameHost={onRenameHost}
         />
       </div>
     </div>
@@ -183,6 +186,7 @@ function NodeDetailsContent({
   hosts,
   redirectSourceInfo,
   onNodeUpdate,
+  onRenameHost,
 }: {
   node: YAMLNode;
   nodeName: string;
@@ -191,6 +195,7 @@ function NodeDetailsContent({
   hosts: string[];
   redirectSourceInfo: RedirectSourceInfo | null;
   onNodeUpdate?: (nodeId: string, updatedData: any) => void;
+  onRenameHost?: (oldHost: string, newHost: string) => void;
 }) {
   switch (node.type) {
     case 'test':
@@ -224,6 +229,7 @@ function NodeDetailsContent({
           node={node}
           onNodeUpdate={onNodeUpdate}
           hosts={hosts}
+          onRenameHost={onRenameHost}
         />
       );
     case 'scenarios':

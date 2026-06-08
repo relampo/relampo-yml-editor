@@ -6,7 +6,7 @@ import { useResizePanel } from '../hooks/useResizePanel';
 import { useYAMLPersistence } from '../hooks/useYAMLPersistence';
 import type { RedirectSourceInfo, RedirectedRequestInfo, YAMLNode } from '../types/yaml';
 import { logStatsigEvent } from '../utils/analytics';
-import { applyNodeUpdateToTree } from '../utils/nodeUpdate';
+import { applyNodeUpdateToTree, renameRequestHost } from '../utils/nodeUpdate';
 import { collectScenarioHosts, getRequestNodeHost } from '../utils/requestNodeDisplay';
 import { getActiveDraft } from '../utils/yamlDraftStorage';
 import { getDocumentMetrics } from '../utils/yamlDocumentLimits';
@@ -629,6 +629,16 @@ export function YAMLEditor() {
     commitTreeChange(updatedTree, undefined, { serialization: 'debounced' });
   };
 
+  // Rename a recorded host everywhere it appears (base_url + every absolute
+  // request URL that targets it), so secondary hosts are editable like the
+  // primary one instead of being locked to the recorded value. See RLP-365.
+  const handleRenameHost = (oldHost: string, newHost: string) => {
+    if (!yamlTree) return;
+    const updatedTree = renameRequestHost(yamlTree, oldHost, newHost);
+    if (updatedTree === yamlTree) return;
+    commitTreeChange(updatedTree, undefined, { serialization: 'debounced' });
+  };
+
   const handleToggleNodeEnabled = (nodeId: string, enabled: boolean) => {
     if (!yamlTree) return;
     const toggledTree = updateNodeEnabled(yamlTree, nodeId, enabled);
@@ -1107,6 +1117,7 @@ export function YAMLEditor() {
                 redirectedInfo={selectedNode ? (redirectedRequestMap[selectedNode.id] ?? null) : null}
                 redirectSourceInfo={selectedNode ? (redirectSourceMap[selectedNode.id] ?? null) : null}
                 onNodeUpdate={handleNodeUpdate}
+                onRenameHost={handleRenameHost}
                 onToggleEnabled={handleToggleNodeEnabled}
                 onAddChildNode={handleAddChildNode}
                 onAddChildAction={handleDetailPanelAddClicked}
