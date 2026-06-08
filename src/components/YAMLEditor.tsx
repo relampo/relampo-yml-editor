@@ -148,16 +148,13 @@ function lockTypedNodeSelectionInNode(node: YAMLNode): [YAMLNode, boolean] {
   let nextData = node.data;
   let nextChildren = node.children;
 
-  const defaultType = node.type === 'extractor' ? 'regex' : node.type === 'assertion' ? 'status' : null;
-
-  if (defaultType) {
+  if (node.type === 'assertion' || node.type === 'extractor') {
     const currentData = node.data || {};
-    const currentType =
-      typeof node.data?.type === 'string' && node.data.type.trim() !== '' ? node.data.type.trim() : defaultType;
-    const typedData = { ...currentData, __lockedType: currentType } as Record<string, unknown>;
-    delete typedData.__allowTypeSelection;
-    if (currentData.__lockedType !== currentType || currentData.__allowTypeSelection !== undefined) {
-      nextData = typedData;
+    const cleaned = { ...currentData } as Record<string, unknown>;
+    delete cleaned.__lockedType;
+    delete cleaned.__allowTypeSelection;
+    if (currentData.__lockedType !== undefined || currentData.__allowTypeSelection !== undefined) {
+      nextData = cleaned;
       changed = true;
     }
   }

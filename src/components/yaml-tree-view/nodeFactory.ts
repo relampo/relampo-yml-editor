@@ -234,7 +234,6 @@ export function createNodeByType(
         name: 'Assertion',
         data: {
           type: 'status',
-          __allowTypeSelection: true,
         },
       };
     case 'extractor':
@@ -244,7 +243,6 @@ export function createNodeByType(
         name: 'Extractor',
         data: {
           type: 'regex',
-          __allowTypeSelection: true,
           from: 'body',
           var: 'extracted_value',
           variable: 'extracted_value',
