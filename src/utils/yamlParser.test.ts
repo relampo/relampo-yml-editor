@@ -1308,6 +1308,28 @@ scenarios:
     expect(steps[1].data.chain_role).toBe('final');
     expect(steps[1].data.enabled).toBe(false);
   });
+
+  // RLP-522 / JMeter parity: the redirect modes are mutually exclusive. An
+  // imported file carrying both flags must be normalized on save even if the
+  // user never toggled either checkbox; "Redirect Automatically" wins.
+  it('drops follow_redirects when redirect_automatically is set, without toggling', () => {
+    const input = `
+test:
+  name: t
+scenarios:
+  - name: s
+    steps:
+      - request:
+          method: GET
+          url: https://example.com/a
+          redirect_automatically: true
+          follow_redirects: false
+`;
+    const output = treeToYAML(parseYAMLToTree(input)!);
+
+    expect(output).toContain('redirect_automatically: true');
+    expect(output).not.toContain('follow_redirects:');
+  });
 });
 
 // ─── parse → serialize → re-parse consistency ────────────────────────────
