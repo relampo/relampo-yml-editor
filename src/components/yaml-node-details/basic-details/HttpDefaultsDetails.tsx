@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { StringMap } from '../../../types/shared';
 import type { AuthConfig, HttpDefaults } from '../../../types/yaml';
 import { EditableList } from '../../EditableList';
@@ -25,12 +25,21 @@ function SecondaryHostField({
   onRename: (oldHost: string, newHost: string) => void;
 }) {
   const [draft, setDraft] = useState(host);
+  // Escape blurs the input, but React batches the draft reset so the blur
+  // handler still sees the edited draft. This flag lets commit() know the edit
+  // was cancelled and must not rename.
+  const cancelledRef = useRef(false);
 
   useEffect(() => {
     setDraft(host);
   }, [host]);
 
   const commit = () => {
+    if (cancelledRef.current) {
+      cancelledRef.current = false;
+      setDraft(host);
+      return;
+    }
     const next = draft.trim();
     if (!next || next === host) {
       setDraft(host);
@@ -56,6 +65,7 @@ function SecondaryHostField({
           if (event.key === 'Enter') {
             event.currentTarget.blur();
           } else if (event.key === 'Escape') {
+            cancelledRef.current = true;
             setDraft(host);
             event.currentTarget.blur();
           }

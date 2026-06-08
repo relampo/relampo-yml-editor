@@ -100,6 +100,32 @@ describe('YAMLNodeDetails http defaults hosts', () => {
     expect(onRenameHost).toHaveBeenCalledWith('cdn.example.com', 'static.example.com');
   });
 
+  it('cancels the edit on Escape without renaming', () => {
+    const onRenameHost = vi.fn();
+    renderDetails({
+      node: {
+        id: 'http-defaults',
+        type: 'http_defaults',
+        name: 'HTTP Defaults',
+        data: {
+          base_url: 'https://api.example.com',
+        },
+        children: [],
+      },
+      hosts: ['api.example.com', 'cdn.example.com'],
+      onRenameHost,
+    });
+
+    const input = screen.getByDisplayValue('cdn.example.com');
+    fireEvent.change(input, { target: { value: 'static.example.com' } });
+    // Escape resets the draft and blurs; the blur must not commit the edit.
+    fireEvent.keyDown(input, { key: 'Escape' });
+    fireEvent.blur(input);
+
+    expect(onRenameHost).not.toHaveBeenCalled();
+    expect(screen.getByDisplayValue('cdn.example.com')).toBeInTheDocument();
+  });
+
   it('drops unsupported base_urlN fields when editable defaults change', () => {
     const onNodeUpdate = vi.fn();
     renderDetails({
