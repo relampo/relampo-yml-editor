@@ -113,6 +113,13 @@ describe('renameRequestHost', () => {
     expect(updated.children?.[3].data.url).toBe('https://other.example.com/ping');
   });
 
+  it('normalizes a pasted full URL down to its authority before rewriting', () => {
+    const updated = renameRequestHost(buildTree(), 'cdn.example.com', 'https://static.example.com/ignored');
+
+    // No double scheme: only the authority is swapped, path/query preserved.
+    expect(updated.children?.[2].data.url).toBe('https://static.example.com/upload?token=1');
+  });
+
   it('rewrites the base_url when the primary host is renamed', () => {
     const updated = renameRequestHost(buildTree(), 'primary.example.com', 'api.example.com');
 

@@ -90,8 +90,15 @@ export function applyNodeUpdateToTree(tree: YAMLNode, nodeId: string, updatedDat
  * @returns A new tree with the host swapped, or the same tree when nothing matches.
  */
 export function renameRequestHost(tree: YAMLNode, oldHost: string, newHost: string): YAMLNode {
-  const from = oldHost.trim();
-  const to = newHost.trim();
+  // Accept either a bare authority (`host[:port]`) or a full URL — users
+  // naturally paste a scheme since the primary base_url has one. Reduce both to
+  // the authority so we never feed `https://https://host` into buildRequestUrl.
+  const toAuthority = (value: string): string => {
+    const trimmed = value.trim();
+    return getRequestNodeHost(trimmed) || trimmed;
+  };
+  const from = toAuthority(oldHost);
+  const to = toAuthority(newHost);
   if (!from || !to || from === to) {
     return tree;
   }
