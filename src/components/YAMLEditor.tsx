@@ -202,7 +202,6 @@ export function YAMLEditor() {
   const [isParsing, setIsParsing] = useState(false);
   const [isFileLoading, setIsFileLoading] = useState(false);
   const [isTreeOutdated, setIsTreeOutdated] = useState(false);
-  const [isLargeFileBannerDismissed, setIsLargeFileBannerDismissed] = useState(false);
   const [restoredDraftUpdatedAt, setRestoredDraftUpdatedAt] = useState<string | null>(null);
   const [isNewDialogOpen, setIsNewDialogOpen] = useState(false);
   const selectedNodeRef = useRef<YAMLNode | null>(null);
@@ -223,10 +222,6 @@ export function YAMLEditor() {
   useEffect(() => {
     selectedNodeIdsRef.current = selectedNodeIds;
   }, [selectedNodeIds]);
-
-  useEffect(() => {
-    if (!isLargeFileMode) setIsLargeFileBannerDismissed(false);
-  }, [isLargeFileMode]);
 
   const syncSelectionWithTree = (tree: YAMLNode | null) => {
     if (!tree) {
@@ -612,14 +607,6 @@ export function YAMLEditor() {
     selectedNodeIdsRef.current = nodeIds;
   };
 
-  const handleParseNow = () => {
-    if (parseDebounceRef.current) {
-      window.clearTimeout(parseDebounceRef.current);
-      parseDebounceRef.current = null;
-    }
-    syncCodeToTree(yamlCode, { force: true });
-  };
-
   const handleNodeUpdate = (nodeId: string, updatedData: Record<string, unknown>) => {
     if (!yamlTree) return;
     const updatedTree = applyNodeUpdateToTree(yamlTree, nodeId, updatedData);
@@ -718,7 +705,6 @@ export function YAMLEditor() {
     setIsDirty(false);
     setHasDocumentActivity(false);
     setIsTreeOutdated(false);
-    setIsLargeFileBannerDismissed(false);
     setRestoredDraftUpdatedAt(null);
     setViewMode('tree');
 
@@ -803,9 +789,6 @@ export function YAMLEditor() {
     }
     loadYamlFile(file);
   };
-
-  const formattedLineCount = documentMetrics.lines.toLocaleString(language === 'es' ? 'es-ES' : 'en-US');
-  const formattedCharCount = documentMetrics.chars.toLocaleString(language === 'es' ? 'es-ES' : 'en-US');
 
   return (
     <div
@@ -919,71 +902,6 @@ export function YAMLEditor() {
               {validationErrors[0]}
               {validationErrors.length > 1 ? ` (+${validationErrors.length - 1})` : ''}
             </p>
-          </div>
-        </div>
-      )}
-
-      {isLargeFileMode && !isLargeFileBannerDismissed && (
-        <div className="px-6 py-3 bg-yellow-500/10 border-b border-yellow-500/20 shrink-0">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-sm text-yellow-300 font-semibold">
-                {isTreeOutdated
-                  ? language === 'es'
-                    ? 'Modo de archivo grande activo: refresca el árbol manualmente.'
-                    : 'Large file mode is active: refresh the tree manually.'
-                  : isParsing
-                    ? language === 'es'
-                      ? 'Modo de archivo grande activo: parseando el árbol.'
-                      : 'Large file mode is active: parsing the tree.'
-                    : language === 'es'
-                      ? 'Modo de archivo grande activo: el árbol está disponible con optimizaciones.'
-                      : 'Large file mode is active: the tree is available with optimizations.'}
-              </p>
-              <p className="text-xs text-yellow-200/80">
-                {language === 'es'
-                  ? `Líneas: ${formattedLineCount} · Caracteres: ${formattedCharCount}`
-                  : `Lines: ${formattedLineCount} · Characters: ${formattedCharCount}`}
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              {(isTreeOutdated || !yamlTree || isParsing) && (
-                <Button
-                  onClick={handleParseNow}
-                  variant="outline"
-                  size="sm"
-                  disabled={isParsing}
-                  className="border-yellow-300/30 bg-yellow-300/10 hover:bg-yellow-300/20 text-yellow-200 disabled:opacity-50"
-                >
-                  {isParsing
-                    ? language === 'es'
-                      ? 'Parseando...'
-                      : 'Parsing...'
-                    : language === 'es'
-                      ? 'Parsear árbol ahora'
-                      : 'Parse tree now'}
-                </Button>
-              )}
-              {isTreeOutdated && (
-                <span className="text-[11px] px-2 py-1 rounded border border-yellow-300/30 bg-yellow-300/10 text-yellow-200">
-                  {language === 'es' ? 'Árbol desactualizado' : 'Tree outdated'}
-                </span>
-              )}
-              {yamlTree && !isTreeOutdated && !isParsing && (
-                <span className="text-[11px] px-2 py-1 rounded border border-emerald-300/30 bg-emerald-300/10 text-emerald-200">
-                  {language === 'es' ? 'Árbol actualizado' : 'Tree current'}
-                </span>
-              )}
-              <button
-                type="button"
-                onClick={() => setIsLargeFileBannerDismissed(true)}
-                className="inline-flex h-8 w-8 items-center justify-center rounded border border-yellow-300/20 bg-yellow-300/5 text-yellow-100/80 transition-colors hover:border-yellow-300/40 hover:bg-yellow-300/10 hover:text-yellow-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-300/60"
-                aria-label={language === 'es' ? 'Ocultar alerta de archivo grande' : 'Hide large file alert'}
-                title={language === 'es' ? 'Ocultar alerta' : 'Hide alert'}
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
           </div>
         </div>
       )}
