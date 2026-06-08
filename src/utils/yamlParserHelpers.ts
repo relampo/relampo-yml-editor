@@ -378,6 +378,15 @@ export function normalizeSQLForYaml(step: Partial<SQLLike> | undefined): SQLLike
   return normalized;
 }
 
+function mergeQueryParamsIntoUrl(url: string, queryParams: PlainRecord): string {
+  const pairs = Object.entries(queryParams)
+    .filter(([key]) => key.trim() !== '')
+    .map(([key, value]) => `${key}=${value ?? ''}`);
+  if (pairs.length === 0) return url;
+  const separator = url.includes('?') ? '&' : '?';
+  return `${url}${separator}${pairs.join('&')}`;
+}
+
 export function normalizeRequestForEditor(request: Partial<RequestLike> | undefined): NormalizedRequestLike {
   const normalizeOverride = (value: unknown): OverrideState => {
     if (value === 'enabled' || value === 'disabled' || value === 'inherit') return value;
@@ -396,8 +405,22 @@ export function normalizeRequestForEditor(request: Partial<RequestLike> | undefi
       : { enabled: false };
   };
 
+  const rawUrl = typeof (request as PlainRecord)?.url === 'string' ? (request as PlainRecord).url as string : '';
+  const queryParamsMap = (request as PlainRecord)?.query_params;
+  const mergedUrl = isPlainObject(queryParamsMap)
+    ? mergeQueryParamsIntoUrl(rawUrl, queryParamsMap)
+    : rawUrl;
+
+  const normalized: PlainRecord = { ...(request || {}) };
+  if (isPlainObject(queryParamsMap)) {
+    delete normalized.query_params;
+  }
+  if (mergedUrl !== rawUrl || isPlainObject(queryParamsMap)) {
+    normalized.url = mergedUrl;
+  }
+
   return {
-    ...(request || {}),
+    ...normalized,
     timeout: typeof request?.timeout === 'string' && request.timeout.trim() !== '30s' ? request.timeout : '',
     cookie_override: normalizeOverride(request?.cookie_override),
     cache_override: normalizeOverride(request?.cache_override),
@@ -405,7 +428,7 @@ export function normalizeRequestForEditor(request: Partial<RequestLike> | undefi
     retrieve_embedded_resources: request?.retrieve_embedded_resources === true,
     redirect_automatically: request?.redirect_automatically === true,
     follow_redirects: request?.follow_redirects !== false,
-  };
+  } as NormalizedRequestLike;
 }
 
 export function normalizeAuthForEditor(auth: unknown): AuthConfig | undefined {

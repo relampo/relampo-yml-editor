@@ -154,6 +154,27 @@ export function buildRequestUrlWithQuery(baseUrl: string, params: RequestQueryPa
  * @param url - Raw URL containing query parameters.
  * @returns Parsed query params in insertion order, or an empty array if parsing fails.
  */
+function parseQueryStringManually(queryString: string): RequestQueryParam[] {
+  if (!queryString) return [];
+  const qs = queryString.startsWith('?') ? queryString.slice(1) : queryString;
+  if (!qs) return [];
+  return qs.split('&').reduce<RequestQueryParam[]>((acc, pair) => {
+    const eqIndex = pair.indexOf('=');
+    if (eqIndex < 0) {
+      if (pair.trim()) acc.push({ key: decodeURIComponent(pair.trim()), value: '' });
+    } else {
+      const key = decodeURIComponent(pair.slice(0, eqIndex));
+      const value = pair.slice(eqIndex + 1);
+      try {
+        acc.push({ key, value: decodeURIComponent(value) });
+      } catch {
+        acc.push({ key, value });
+      }
+    }
+    return acc;
+  }, []);
+}
+
 export function parseRequestQueryParams(url: string): RequestQueryParam[] {
   const parts = parseRequestUrl(url);
   const candidate = parts.isAbsolute
@@ -168,6 +189,6 @@ export function parseRequestQueryParams(url: string): RequestQueryParam[] {
     });
     return params;
   } catch {
-    return [];
+    return parseQueryStringManually(parts.query);
   }
 }
