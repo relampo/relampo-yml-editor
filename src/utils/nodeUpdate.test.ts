@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { YAMLNode } from '../types/yaml';
-import { applyNodeUpdateToTree } from './nodeUpdate';
+import { applyNodeUpdateToTree, renameRequestHost } from './nodeUpdate';
 
 describe('applyNodeUpdateToTree', () => {
   it('updates multiple balanced children in a single mutation', () => {
@@ -68,5 +68,61 @@ describe('applyNodeUpdateToTree', () => {
     });
 
     expect(updatedTree.children?.[0].name).toBe('');
+  });
+});
+
+describe('renameRequestHost', () => {
+  const buildTree = (): YAMLNode => ({
+    id: 'root',
+    type: 'root',
+    name: 'Root',
+    children: [
+      {
+        id: 'http-defaults',
+        type: 'http_defaults',
+        name: 'HTTP Defaults',
+        data: { base_url: 'https://primary.example.com' },
+      },
+      {
+        id: 'request-base',
+        type: 'get',
+        name: 'GET: /home',
+        data: { url: '/home' },
+      },
+      {
+        id: 'request-secondary',
+        type: 'post',
+        name: 'POST: /upload',
+        data: { url: 'https://cdn.example.com/upload?token=1' },
+      },
+      {
+        id: 'request-other',
+        type: 'get',
+        name: 'GET: /ping',
+        data: { url: 'https://other.example.com/ping' },
+      },
+    ],
+  });
+
+  it('rewrites absolute request URLs that target the renamed secondary host', () => {
+    const updated = renameRequestHost(buildTree(), 'cdn.example.com', 'static.example.com');
+
+    expect(updated.children?.[2].data.url).toBe('https://static.example.com/upload?token=1');
+    // Relative and unrelated requests are untouched.
+    expect(updated.children?.[1].data.url).toBe('/home');
+    expect(updated.children?.[3].data.url).toBe('https://other.example.com/ping');
+  });
+
+  it('rewrites the base_url when the primary host is renamed', () => {
+    const updated = renameRequestHost(buildTree(), 'primary.example.com', 'api.example.com');
+
+    expect(updated.children?.[0].data.base_url).toBe('https://api.example.com/');
+  });
+
+  it('returns the same tree reference when nothing matches or the host is unchanged', () => {
+    const tree = buildTree();
+    expect(renameRequestHost(tree, 'missing.example.com', 'new.example.com')).toBe(tree);
+    expect(renameRequestHost(tree, 'cdn.example.com', 'cdn.example.com')).toBe(tree);
+    expect(renameRequestHost(tree, '  ', 'new.example.com')).toBe(tree);
   });
 });
