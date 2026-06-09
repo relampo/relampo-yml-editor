@@ -139,7 +139,7 @@ export function YAMLNodeDetails({
                 setNodeName(nextName);
                 onNodeUpdate?.(node.id, { ...node.data, __name: nextName });
               }}
-              maxLength={isRequestNode ? 150 : 50}
+              maxLength={isRequestNode ? 255 : 50}
               style={{
                 width: node.type === 'think_time' ? '100px' : `${Math.min(Math.max((nodeName || '').length + 4, 12), 48)}ch`,
               }}
