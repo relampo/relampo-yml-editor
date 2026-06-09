@@ -19,7 +19,7 @@ import {
 } from './yaml-tree-view/treeOperations';
 import type { YAMLAddableNodeType } from './yaml-tree-view/addableItems';
 import { YAMLContextMenu } from './YAMLContextMenu';
-import { subtreeHasMatch, YAMLTreeNode } from './YAMLTreeNode';
+import { nodeDirectlyMatches, subtreeHasMatch, YAMLTreeNode } from './YAMLTreeNode';
 
 const MIN_CONTEXT_MENU_HEIGHT = 700;
 
@@ -58,17 +58,21 @@ export function YAMLTreeView({
   const visibleNodes = useMemo(() => {
     if (!tree) return [] as YAMLNode[];
     const out: YAMLNode[] = [];
-    const walk = (node: YAMLNode) => {
+    // ancestorMatches: true when a node higher in the chain matched the query,
+    // so every descendant must be kept to preserve the full subtree.
+    const walk = (node: YAMLNode, ancestorMatches: boolean) => {
       out.push(node);
       const expanded = node.expanded ?? true;
       if (node.children && node.children.length > 0 && expanded) {
-        const children = searchQuery.trim()
-          ? node.children.filter(child => subtreeHasMatch(child, searchQuery))
-          : node.children;
-        children.forEach(walk);
+        const currentMatches = ancestorMatches || nodeDirectlyMatches(node, searchQuery);
+        const children =
+          !searchQuery.trim() || currentMatches
+            ? node.children
+            : node.children.filter(child => subtreeHasMatch(child, searchQuery));
+        children.forEach(child => walk(child, currentMatches));
       }
     };
-    walk(tree);
+    walk(tree, false);
     return out;
   }, [tree, searchQuery]);
 
