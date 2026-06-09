@@ -404,7 +404,7 @@ export function normalizeRequestForEditor(request: Partial<RequestLike> | undefi
     throughput: normalizeThroughput(request?.throughput),
     retrieve_embedded_resources: request?.retrieve_embedded_resources === true,
     redirect_automatically: request?.redirect_automatically === true,
-    follow_redirects: request?.follow_redirects !== false,
+    follow_redirects: request?.follow_redirects === true,
   };
 }
 
