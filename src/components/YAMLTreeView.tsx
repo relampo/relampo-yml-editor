@@ -58,14 +58,17 @@ export function YAMLTreeView({
   const visibleNodes = useMemo(() => {
     if (!tree) return [] as YAMLNode[];
     const out: YAMLNode[] = [];
+    // ancestorMatches: true when a node higher in the chain matched the query,
+    // so every descendant must be kept to preserve the full subtree.
     const walk = (node: YAMLNode, ancestorMatches: boolean) => {
       out.push(node);
       const expanded = node.expanded ?? true;
       if (node.children && node.children.length > 0 && expanded) {
-        const currentMatches = ancestorMatches || (!!searchQuery.trim() && nodeDirectlyMatches(node, searchQuery));
-        const children = searchQuery.trim() && !currentMatches
-          ? node.children.filter(child => subtreeHasMatch(child, searchQuery))
-          : node.children;
+        const currentMatches = ancestorMatches || nodeDirectlyMatches(node, searchQuery);
+        const children =
+          !searchQuery.trim() || currentMatches
+            ? node.children
+            : node.children.filter(child => subtreeHasMatch(child, searchQuery));
         children.forEach(child => walk(child, currentMatches));
       }
     };
