@@ -1,6 +1,7 @@
 import { AlertTriangle, ArrowLeftRight, CheckCircle2, CircleDashed, Database, Globe, GitBranch, Layers, Repeat, RotateCcw } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import {
+  distributeEvenPercentages,
   isBalancedLoadBearingChild,
   normalizeBalancedDistributionType,
   normalizeBalancedExecutionMode,
@@ -108,13 +109,12 @@ export function BalancedDetails({ node, onNodeUpdate }: NodeDetailProps) {
     if (!onNodeUpdate || loadBearingChildren.length === 0) return;
 
     // Spread 100% across load-bearing children only; excluded ones get nothing.
-    const base = Math.floor(100 / loadBearingChildren.length);
-    let assigned = 0;
+    // distributeEvenPercentages uses the largest remainder method so the gap
+    // between any two percentages stays ≤ 1. See RLP-475.
+    const evenPercentages = distributeEvenPercentages(loadBearingChildren.length);
     const percentageById = new Map<string, number>();
     loadBearingChildren.forEach((child, index) => {
-      const nextValue = index === loadBearingChildren.length - 1 ? 100 - assigned : base;
-      assigned += nextValue;
-      percentageById.set(child.id, nextValue);
+      percentageById.set(child.id, evenPercentages[index]);
     });
 
     const childUpdates = children.map(child => {

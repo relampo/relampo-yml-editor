@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { YAMLNode } from '../types/yaml';
-import { isBalancedLoadBearingChild, validateBalancedController } from './balancedController';
+import {
+  distributeEvenPercentages,
+  isBalancedLoadBearingChild,
+  validateBalancedController,
+} from './balancedController';
 
 function req(id: string, percentage?: number): YAMLNode {
   return {
@@ -85,5 +89,35 @@ describe('validateBalancedController with non-load-bearing children', () => {
     const result = validateBalancedController('total', [thinkTime('t', 5)]);
     expect(result.hasChildren).toBe(false);
     expect(result.validForType).toBe(false);
+  });
+});
+
+describe('distributeEvenPercentages', () => {
+  it('splits evenly when 100 divides the count', () => {
+    expect(distributeEvenPercentages(4)).toEqual([25, 25, 25, 25]);
+    expect(distributeEvenPercentages(5)).toEqual([20, 20, 20, 20, 20]);
+  });
+
+  it('uses the largest remainder method so the gap between any two values is <= 1', () => {
+    // 6 requests: 100 / 6 = 16.66… → 4×17 + 2×16, never 5×16 + 1×20. See RLP-475.
+    expect(distributeEvenPercentages(6)).toEqual([17, 17, 17, 17, 16, 16]);
+    // 3 requests: 34 + 33 + 33.
+    expect(distributeEvenPercentages(3)).toEqual([34, 33, 33]);
+  });
+
+  it('always sums to exactly 100 across a range of counts', () => {
+    for (let count = 1; count <= 50; count++) {
+      const percentages = distributeEvenPercentages(count);
+      expect(percentages).toHaveLength(count);
+      expect(percentages.reduce((sum, value) => sum + value, 0)).toBe(100);
+      const max = Math.max(...percentages);
+      const min = Math.min(...percentages);
+      expect(max - min).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it('returns an empty distribution for non-positive counts', () => {
+    expect(distributeEvenPercentages(0)).toEqual([]);
+    expect(distributeEvenPercentages(-3)).toEqual([]);
   });
 });
