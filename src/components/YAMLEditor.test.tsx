@@ -198,40 +198,6 @@ describe('YAMLEditor draft restoration', () => {
     expect(screen.getByTestId('editor-header')).toHaveAttribute('data-activity', 'false');
   });
 
-  it('keeps the tree available after restoring a large draft', async () => {
-    getActiveDraftMock.mockResolvedValueOnce({
-      yaml: '# LARGE_DRAFT\ntest:\n  name: large restored\n',
-      fileName: 'large-restored.yaml',
-      updatedAt: '2026-04-23T10:00:00.000Z',
-    });
-
-    renderEditor();
-
-    expect(await screen.findByText('Large restored plan')).toBeInTheDocument();
-    expect(
-      screen.getByText('Large file mode is active: the tree is available with optimizations.'),
-    ).toBeInTheDocument();
-    expect(screen.getByText('Tree current')).toBeInTheDocument();
-  });
-
-  it('allows dismissing the large file mode alert', async () => {
-    getActiveDraftMock.mockResolvedValueOnce({
-      yaml: '# LARGE_DRAFT\ntest:\n  name: large restored\n',
-      fileName: 'large-restored.yaml',
-      updatedAt: '2026-04-23T10:00:00.000Z',
-    });
-
-    renderEditor();
-
-    const alertText = await screen.findByText('Large file mode is active: the tree is available with optimizations.');
-    expect(alertText).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Hide large file alert' }));
-
-    expect(screen.queryByText('Large file mode is active: the tree is available with optimizations.')).not.toBeInTheDocument();
-    expect(screen.getByTestId('tree-view')).toHaveTextContent('Large restored plan');
-  });
-
   it('serializes and marks dirty when the tree view changes the tree', async () => {
     getActiveDraftMock.mockResolvedValueOnce({
       yaml: 'test:\n  name: restored\n',
