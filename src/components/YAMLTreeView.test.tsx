@@ -136,7 +136,7 @@ describe('YAMLTreeView context menu', () => {
 });
 
 describe('YAMLTreeView search filtering', () => {
-  it('keeps nodes visible when the search only matches request data', () => {
+  it('filters children by node name and path, keeping only matching nodes visible', () => {
     renderInteractiveTreeView({
       tree: {
         id: 'steps',
@@ -152,9 +152,6 @@ describe('YAMLTreeView search filtering', () => {
             data: {
               method: 'GET',
               url: '/matching',
-              headers: {
-                authorization: 'Bearer needle-token',
-              },
             },
             children: [],
           },
@@ -174,11 +171,10 @@ describe('YAMLTreeView search filtering', () => {
     });
 
     fireEvent.change(screen.getByPlaceholderText('Search nodes...'), {
-      target: { value: 'needle-token' },
+      target: { value: 'Matching' },
     });
 
     expect(screen.getByText('Matching request')).toBeInTheDocument();
-    expect(screen.getByText('req')).toBeInTheDocument();
     expect(screen.queryByText('Other request')).not.toBeInTheDocument();
   });
 

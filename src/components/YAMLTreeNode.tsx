@@ -613,8 +613,7 @@ export function nodeDirectlyMatches(node: YAMLNode, searchQuery: string): boolea
 
   if (node.path?.some(segment => String(segment).toLowerCase().includes(query))) return true;
 
-  const searchHitFlags = getNodeSearchHitFlags(node, searchQuery);
-  return searchHitFlags.request || searchHitFlags.response;
+  return false;
 }
 
 export function subtreeHasMatch(node: YAMLNode, searchQuery: string): boolean {
