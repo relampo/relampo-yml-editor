@@ -306,7 +306,7 @@ export function YAMLTreeNode({
       {hasChildren && isExpanded && (
         <div className="ml-2 border-l border-white/5">
           {node.children!
-            .filter(child => !searchQuery.trim() || ancestorMatchesSearch || nodeDirectlyMatches(node, searchQuery) || subtreeHasMatch(child, searchQuery))
+            .filter(child => !searchQuery.trim() || subtreeHasMatch(child, searchQuery))
             .map(child => (
             <YAMLTreeNode
               key={child.id}
@@ -613,7 +613,8 @@ export function nodeDirectlyMatches(node: YAMLNode, searchQuery: string): boolea
 
   if (node.path?.some(segment => String(segment).toLowerCase().includes(query))) return true;
 
-  return false;
+  const searchHitFlags = getNodeSearchHitFlags(node, searchQuery);
+  return searchHitFlags.request || searchHitFlags.response;
 }
 
 export function subtreeHasMatch(node: YAMLNode, searchQuery: string): boolean {
