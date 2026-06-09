@@ -18,22 +18,17 @@ export function HttpDefaultsDetails({ node, onNodeUpdate, hosts = [] }: NodeDeta
       .map(([key, value]) => [key, value]),
   ) as StringMap;
 
-  const hostEntries: [string, string][] = [];
-  for (let i = 1; i < hosts.length; i++) {
-    const key = `base_url${i}`;
-    const value = (defaults as any)[key] || hosts[i];
-    hostEntries.push([key, value]);
-  }
+  // Derived secondary hosts — they live in the absolute URLs of the requests
+  // that target them, not in http_defaults. Keep them out of allFields so
+  // handleMainFieldsUpdate never serializes base_urlN back into the YAML.
+  const secondaryHostEntries: [string, string][] = hosts.slice(1).map((host, i) => [`base_url${i + 1}`, host]);
 
   const allFields: StringMap = {};
   if (storedStringFields.base_url) {
     allFields.base_url = storedStringFields.base_url;
   }
-  for (const [key, value] of hostEntries) {
-    allFields[key] = value;
-  }
   for (const [key, value] of Object.entries(storedStringFields)) {
-    if (key !== 'base_url') {
+    if (key !== 'base_url' && !/^base_url\d+$/.test(key)) {
       allFields[key] = value;
     }
   }
@@ -75,6 +70,28 @@ export function HttpDefaultsDetails({ node, onNodeUpdate, hosts = [] }: NodeDeta
           variant="minimal"
           addButtonVariant="pill"
         />
+        {secondaryHostEntries.length > 0 && (
+          <div className="mt-3 divide-y divide-white/5 rounded-lg border border-white/5 bg-white/[0.02] px-3">
+            {secondaryHostEntries.map(([key, value]) => (
+              <div
+                key={key}
+                className="flex items-center gap-3 py-3"
+              >
+                <div className="flex items-center gap-2 shrink-0 w-[250px]">
+                  <div className="flex-1 rounded border border-yellow-400/20 bg-yellow-400/5 px-2 py-1 text-xs font-mono text-yellow-400">
+                    {key}
+                  </div>
+                  <span className="shrink-0 font-bold text-zinc-500">=</span>
+                </div>
+                <div className="w-0 flex-1 min-w-0 overflow-x-auto scrollbar-none">
+                  <div className="w-full rounded border border-white/10 bg-white/5 px-2 py-1 text-sm font-mono text-zinc-400">
+                    {value}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="h-px bg-white/10" />
