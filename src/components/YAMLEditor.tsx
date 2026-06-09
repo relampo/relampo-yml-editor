@@ -541,18 +541,17 @@ export function YAMLEditor() {
     }
     if (parseDebounceRef.current) window.clearTimeout(parseDebounceRef.current);
 
-    if (getDocumentMetrics(newCode).large) {
-      activeParseRequestIdRef.current = ++parseRequestIdRef.current;
+    const isLarge = getDocumentMetrics(newCode).large;
+    if (isLarge) {
       setIsTreeOutdated(Boolean(newCode.trim()));
-      setError(null);
-      setValidationErrors([]);
-      setIsParsing(false);
-      setIsFileLoading(false);
-      return;
     }
 
     parseDebounceRef.current = window.setTimeout(() => {
-      syncCodeToTree(newCode, fallbackRootNameRef.current ? { defaultRootName: fallbackRootNameRef.current } : undefined);
+      const opts = {
+        ...(fallbackRootNameRef.current ? { defaultRootName: fallbackRootNameRef.current } : {}),
+        ...(isLarge ? { force: true } : {}),
+      };
+      syncCodeToTree(newCode, Object.keys(opts).length ? opts : undefined);
     }, 350);
   };
 
