@@ -16,12 +16,23 @@ function getDraftStorageError(language: string): string {
     : 'Could not autosave this YAML in the browser. Download the YAML to keep your changes.';
 }
 
+const REQUEST_PARENT_KEYS = new Set([
+  'request',
+  'get',
+  'post',
+  'put',
+  'delete',
+  'patch',
+  'head',
+  'options',
+]);
+
 function stripResponsesFromObject(value: unknown, parentKey = ''): unknown {
   if (Array.isArray(value)) return value.map(item => stripResponsesFromObject(item, parentKey));
   if (value && typeof value === 'object') {
     const next: Record<string, unknown> = {};
     for (const [key, nestedValue] of Object.entries(value as Record<string, unknown>)) {
-      if (parentKey === 'request' && key === 'response') continue;
+      if (REQUEST_PARENT_KEYS.has(parentKey) && key === 'response') continue;
       next[key] = stripResponsesFromObject(nestedValue, key);
     }
     return next;
