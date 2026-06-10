@@ -82,8 +82,8 @@ type ParseWorkerResponse = { id: number; ok: true; tree: YAMLNode | null } | { i
 
 type ParseWorkerDeps = {
   language: string;
-  activeParseRequestIdRef: React.MutableRefObject<number>;
-  parseWorkerRef: React.MutableRefObject<Worker | null>;
+  activeParseRequestIdRef: React.RefObject<number>;
+  parseWorkerRef: React.RefObject<Worker | null>;
   setIsParsing: (value: boolean) => void;
   setIsFileLoading: (value: boolean) => void;
   setError: (value: string | null) => void;

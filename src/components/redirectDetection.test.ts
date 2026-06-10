@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { detectRedirectFollowUps, nodesStillFormRedirect } from './YAMLEditor';
+import { detectRedirectFollowUps, nodesStillFormRedirect } from './yamlEditorHelpers';
 import type { YAMLNode } from '../types/yaml';
 
 function req(

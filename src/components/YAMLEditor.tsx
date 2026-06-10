@@ -38,9 +38,6 @@ import {
   type TreeSelection,
 } from './yamlEditorHelpers';
 
-// Re-exported from their new home so existing imports/tests keep working.
-export { detectRedirectFollowUps, nodesStillFormRedirect } from './yamlEditorHelpers';
-
 const EMPTY_PARALLEL_ERROR = 'Parallel controller must contain at least one child step';
 const TREE_SERIALIZE_DEBOUNCE_MS = 220;
 const DEBUG_VIEW_ENABLED = import.meta.env.VITE_DEBUG_VIEW_ENABLED === 'true';
