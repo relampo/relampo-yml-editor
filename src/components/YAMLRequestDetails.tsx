@@ -52,10 +52,8 @@ export function YAMLRequestDetails({
   // non-editable so users can inspect without accidentally editing dead data.
   const isRequestDisabled = node.data?.enabled === false;
   const requestMethod = formData.method || getNodeMethodFallback(node);
-  const effectiveRedirectAutomatically = hasRecordedRedirectFollowUp ? false : !!formData.redirect_automatically;
-  const effectiveFollowRedirects = hasRecordedRedirectFollowUp
-    ? true
-    : !!formData.follow_redirects;
+  const effectiveRedirectAutomatically = !!formData.redirect_automatically;
+  const effectiveFollowRedirects = !!formData.follow_redirects;
 
   useEffect(() => {
     setFormData(node.data || {});
@@ -439,7 +437,6 @@ function RequestContent({
               type="checkbox"
               className="w-4 h-4 rounded border-white/10 bg-white/5 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-0"
               checked={effectiveRedirectAutomatically}
-              disabled={hasRecordedRedirectFollowUp}
               onChange={e => onFieldChange('redirect_automatically', e.target.checked)}
             />
             <span>Redirect Automatically</span>
@@ -449,7 +446,6 @@ function RequestContent({
               type="checkbox"
               className="w-4 h-4 rounded border-white/10 bg-white/5 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-0"
               checked={effectiveFollowRedirects}
-              disabled={hasRecordedRedirectFollowUp}
               onChange={e => onFieldChange('follow_redirects', e.target.checked)}
             />
             <span>Follow Redirects</span>
@@ -457,7 +453,7 @@ function RequestContent({
         </div>
         {hasRecordedRedirectFollowUp && (
           <div className="mt-2 text-xs text-zinc-500">
-            This request leads to the next recorded step, so redirect behavior is derived from the recording.
+            This request is part of a recorded redirect chain.
           </div>
         )}
       </div>
