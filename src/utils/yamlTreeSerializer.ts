@@ -60,6 +60,11 @@ function hasOnlyShortHttpData(node: YAMLNode): boolean {
   return Object.keys(data).every(key => key === 'url' || key === 'enabled' || key === 'method');
 }
 
+// Set per treeToObject() run from `http_defaults.follow_redirects`. When the
+// global default is true, a request-level `follow_redirects: false` is the
+// documented per-request override and must survive serialization.
+let followRedirectsEnabledByDefault = false;
+
 function pruneDefaultRequestFields(request: Record<string, any>) {
   if (request.timeout === '') delete request.timeout;
   if (request.cookie_override === 'inherit') delete request.cookie_override;
@@ -72,13 +77,20 @@ function pruneDefaultRequestFields(request: Record<string, any>) {
   if (request.redirect_automatically === true) delete request.follow_redirects;
   if (request.redirect_automatically === false) delete request.redirect_automatically;
   // follow_redirects is opt-in (default false), so an explicit true must be
-  // preserved on save; only the default false is pruned.
-  if (request.follow_redirects === false) delete request.follow_redirects;
+  // preserved on save. A false is only prunable when it matches the effective
+  // default; with http_defaults.follow_redirects: true it is an explicit
+  // per-request override and must be kept.
+  if (request.follow_redirects === false && !followRedirectsEnabledByDefault) {
+    delete request.follow_redirects;
+  }
   if (request.throughput && request.throughput.enabled !== true) delete request.throughput;
 }
 
 export function treeToObject(tree: YAMLNode): any {
   const obj: any = {};
+
+  followRedirectsEnabledByDefault =
+    tree.children?.find(child => child.type === 'http_defaults')?.data?.follow_redirects === true;
 
   if (tree.type === 'test') {
     obj.test = { ...tree.data };
