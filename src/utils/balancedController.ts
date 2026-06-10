@@ -85,6 +85,28 @@ export function isBalancedLoadBearingChild(node: YAMLNode): boolean {
   return (node.children ?? []).some(isBalancedLoadBearingChild);
 }
 
+/**
+ * Spread 100% across `count` load-bearing elements as evenly as possible.
+ *
+ * Uses the largest remainder method: every element gets `floor(100 / count)`,
+ * then the leftover units are handed out one-by-one to the first elements. The
+ * result always sums to exactly 100 and the gap between any two values is ≤ 1,
+ * so 6 requests yield `[17, 17, 17, 17, 16, 16]` instead of dumping the whole
+ * remainder on the last element (`[16, 16, 16, 16, 16, 20]`). See RLP-475.
+ *
+ * @param count - Number of elements to distribute across.
+ * @returns Integer percentages, in element order. Empty when `count <= 0`.
+ */
+export function distributeEvenPercentages(count: number): number[] {
+  if (!Number.isFinite(count) || count <= 0) {
+    return [];
+  }
+
+  const base = Math.floor(100 / count);
+  const remainder = 100 - base * count;
+  return Array.from({ length: count }, (_, index) => (index < remainder ? base + 1 : base));
+}
+
 export function sanitizeBalancedNodeData<T>(data: T): T {
   if (!data || typeof data !== 'object' || Array.isArray(data)) {
     return data;

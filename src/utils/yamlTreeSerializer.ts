@@ -71,7 +71,9 @@ function pruneDefaultRequestFields(request: Record<string, any>) {
   // emits a single redirect mode even when the user never toggled a checkbox.
   if (request.redirect_automatically === true) delete request.follow_redirects;
   if (request.redirect_automatically === false) delete request.redirect_automatically;
-  if (request.follow_redirects === true) delete request.follow_redirects;
+  // follow_redirects is opt-in (default false), so an explicit true must be
+  // preserved on save; only the default false is pruned.
+  if (request.follow_redirects === false) delete request.follow_redirects;
   if (request.throughput && request.throughput.enabled !== true) delete request.throughput;
 }
 

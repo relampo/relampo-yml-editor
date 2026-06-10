@@ -1,4 +1,4 @@
-import { Eye, EyeOff, FileText, Plus } from 'lucide-react';
+import { Eye, EyeOff, FileText } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import type { RedirectSourceInfo, RedirectedRequestInfo, YAMLNode } from '../types/yaml';
@@ -34,7 +34,7 @@ import {
 import { LoadDetails } from './yaml-node-details/LoadDetails';
 import { CacheManagerDetails, CookiesDetails, ErrorPolicyDetails } from './yaml-node-details/OpsDetails';
 import { AssertionDetails, ExtractorDetails } from './yaml-node-details/ValidationDetails';
-import { getAddableItems, type YAMLAddableNodeType } from './yaml-tree-view/addableItems';
+import { type YAMLAddableNodeType } from './yaml-tree-view/addableItems';
 
 interface YAMLNodeDetailsProps {
   node: YAMLNode | null;
@@ -43,6 +43,7 @@ interface YAMLNodeDetailsProps {
   redirectedInfo?: RedirectedRequestInfo | null;
   redirectSourceInfo?: RedirectSourceInfo | null;
   onNodeUpdate?: (nodeId: string, updatedData: any) => void;
+  onRenameHost?: (oldHost: string, newHost: string) => void;
   onToggleEnabled?: (nodeId: string, enabled: boolean) => void;
   onAddChildNode?: (parentId: string, nodeType: YAMLAddableNodeType) => void;
   onAddChildAction?: (metadata: { parentNodeType: string; childNodeType: YAMLAddableNodeType }) => void;
@@ -59,8 +60,8 @@ export function YAMLNodeDetails({
   redirectSourceInfo = null,
   onNodeUpdate,
   onToggleEnabled,
-  onAddChildNode,
-  onAddChildAction,
+  // onAddChildNode, // TODO Add it when it's ready
+  // onAddChildAction, // TODO Add it when it's ready
 }: YAMLNodeDetailsProps) {
   const { t } = useLanguage();
   const [nodeName, setNodeName] = useState(node?.name || '');
@@ -68,7 +69,6 @@ export function YAMLNodeDetails({
   const isNodeEnabled = node?.data?.enabled !== false;
   const canToggleEnabled = Boolean(onToggleEnabled) && !!node && !NON_TOGGLEABLE_NODE_TYPES.includes(node.type);
   const isCompactDetailsNode = node?.type === 'balanced';
-  const addableItems = node ? getAddableItems(node.type, t) : [];
 
   useEffect(() => {
     setNodeName(node?.name || '');
@@ -137,7 +137,7 @@ export function YAMLNodeDetails({
                 setNodeName(nextName);
                 onNodeUpdate?.(node.id, { ...node.data, __name: nextName });
               }}
-              maxLength={50}
+              maxLength={isRequestNode ? 255 : 50}
               style={{
                 width: node.type === 'think_time' ? '100px' : `${Math.min(Math.max((nodeName || '').length + 4, 12), 48)}ch`,
               }}
@@ -436,51 +436,52 @@ function NodeDetailsContent({
   }
 }
 
-function AddChildActions({
-  nodeId,
-  parentNodeType,
-  items,
-  onAddChildNode,
-  onAddChildAction,
-  title,
-  compact,
-}: {
-  nodeId: string;
-  parentNodeType: string;
-  items: ReturnType<typeof getAddableItems>;
-  onAddChildNode: (parentId: string, nodeType: YAMLAddableNodeType) => void;
-  onAddChildAction?: (metadata: { parentNodeType: string; childNodeType: YAMLAddableNodeType }) => void;
-  title: string;
-  compact: boolean;
-}) {
-  return (
-    <section className={compact ? 'mb-4' : 'mb-6'}>
-      <div className="flex items-center gap-2 mb-3">
-        <Plus className="w-3.5 h-3.5 text-yellow-400" />
-          <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">{title}</h4>
-      </div>
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-2">
-        {items.map(item => (
-          <button
-            key={item.type}
-            type="button"
-            onClick={() => {
-              onAddChildAction?.({ parentNodeType, childNodeType: item.type });
-              onAddChildNode(nodeId, item.type);
-            }}
-            className="min-w-0 rounded-md border border-white/10 bg-white/5 px-3 py-2 text-left transition-colors hover:border-yellow-400/40 hover:bg-yellow-400/8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/60"
-            aria-label={`Add ${item.label}`}
-          >
-            <div className="flex min-w-0 items-start gap-2.5">
-              <div className={`mt-0.5 shrink-0 ${item.color}`}>{item.icon}</div>
-              <div className="min-w-0">
-                <div className="text-sm font-medium text-zinc-200 break-words">{item.label}</div>
-                {item.description && <div className="mt-0.5 text-xs leading-snug text-zinc-500 break-words">{item.description}</div>}
-              </div>
-            </div>
-          </button>
-        ))}
-      </div>
-    </section>
-  );
-}
+// TODO Add it when it's ready
+// function AddChildActions({
+//   nodeId,
+//   parentNodeType,
+//   items,
+//   onAddChildNode,
+//   onAddChildAction,
+//   title,
+//   compact,
+// }: {
+//   nodeId: string;
+//   parentNodeType: string;
+//   items: ReturnType<typeof getAddableItems>;
+//   onAddChildNode: (parentId: string, nodeType: YAMLAddableNodeType) => void;
+//   onAddChildAction?: (metadata: { parentNodeType: string; childNodeType: YAMLAddableNodeType }) => void;
+//   title: string;
+//   compact: boolean;
+// }) {
+//   return (
+//     <section className={compact ? 'mb-4' : 'mb-6'}>
+//       <div className="flex items-center gap-2 mb-3">
+//         <Plus className="w-3.5 h-3.5 text-yellow-400" />
+//           <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">{title}</h4>
+//       </div>
+//       <div className="grid grid-cols-1 xl:grid-cols-2 gap-2">
+//         {items.map(item => (
+//           <button
+//             key={item.type}
+//             type="button"
+//             onClick={() => {
+//               onAddChildAction?.({ parentNodeType, childNodeType: item.type });
+//               onAddChildNode(nodeId, item.type);
+//             }}
+//             className="min-w-0 rounded-md border border-white/10 bg-white/5 px-3 py-2 text-left transition-colors hover:border-yellow-400/40 hover:bg-yellow-400/8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/60"
+//             aria-label={`Add ${item.label}`}
+//           >
+//             <div className="flex min-w-0 items-start gap-2.5">
+//               <div className={`mt-0.5 shrink-0 ${item.color}`}>{item.icon}</div>
+//               <div className="min-w-0">
+//                 <div className="text-sm font-medium text-zinc-200 break-words">{item.label}</div>
+//                 {item.description && <div className="mt-0.5 text-xs leading-snug text-zinc-500 break-words">{item.description}</div>}
+//               </div>
+//             </div>
+//           </button>
+//         ))}
+//       </div>
+//     </section>
+//   );
+// }
