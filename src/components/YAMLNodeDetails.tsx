@@ -43,6 +43,7 @@ interface YAMLNodeDetailsProps {
   redirectedInfo?: RedirectedRequestInfo | null;
   redirectSourceInfo?: RedirectSourceInfo | null;
   onNodeUpdate?: (nodeId: string, updatedData: any) => void;
+  onRenameHost?: (oldHost: string, newHost: string) => void;
   onToggleEnabled?: (nodeId: string, enabled: boolean) => void;
   onAddChildNode?: (parentId: string, nodeType: YAMLAddableNodeType) => void;
   onAddChildAction?: (metadata: { parentNodeType: string; childNodeType: YAMLAddableNodeType }) => void;
