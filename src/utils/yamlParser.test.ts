@@ -1355,6 +1355,30 @@ scenarios:
     expect(output).toContain('follow_redirects: false');
   });
 
+  it('keeps requests inheriting http_defaults.follow_redirects: true implicit on save', () => {
+    const input = `
+test:
+  name: t
+http_defaults:
+  follow_redirects: true
+scenarios:
+  - name: s
+    steps:
+      - request:
+          method: GET
+          url: https://example.com/a
+          headers:
+            X-Keep: '1'
+`;
+    const output = treeToYAML(parseYAMLToTree(input)!);
+
+    // The only follow_redirects in the output is the global default; the
+    // inheriting request must not gain an explicit flag (neither a fabricated
+    // false override nor a redundant true).
+    expect(output.match(/follow_redirects/g)).toHaveLength(1);
+    expect(output).toContain('follow_redirects: true');
+  });
+
   it('prunes follow_redirects: false when there is no enabling global default', () => {
     const input = `
 test:

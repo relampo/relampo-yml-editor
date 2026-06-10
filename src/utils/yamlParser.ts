@@ -45,6 +45,8 @@ export function treeToYAML(tree: YAMLNode): string {
 function convertToTree(obj: any, _: string[] = [], defaultRootName?: string): YAMLNode {
   const rootId = 'root';
 
+  followRedirectsDefault = obj.http_defaults?.follow_redirects === true;
+
   const root: YAMLNode = {
     id: rootId,
     type: 'test',
@@ -633,6 +635,10 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
   };
 }
 
+// Set per convertToTree() run from http_defaults.follow_redirects, so request
+// normalization knows what an omitted follow_redirects flag inherits.
+let followRedirectsDefault = false;
+
 function createRequestNode(
   stepId: string,
   type: Extract<YAMLNode['type'], 'request' | 'get' | 'post' | 'put' | 'delete' | 'patch' | 'head' | 'options'>,
@@ -640,7 +646,7 @@ function createRequestNode(
   path: any[],
   isEnabled: boolean,
 ): YAMLNode {
-  const req = normalizeRequestForEditor(requestData);
+  const req = normalizeRequestForEditor(requestData, followRedirectsDefault);
   const method = req.method || (type === 'request' ? 'GET' : type.toUpperCase());
   const enabled = req.enabled !== undefined ? req.enabled : isEnabled;
   const requestNode: YAMLNode = {

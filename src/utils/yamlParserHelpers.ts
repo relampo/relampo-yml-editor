@@ -387,7 +387,13 @@ function mergeQueryParamsIntoUrl(url: string, queryParams: PlainRecord): string 
   return `${url}${separator}${pairs.join('&')}`;
 }
 
-export function normalizeRequestForEditor(request: Partial<RequestLike> | undefined): NormalizedRequestLike {
+export function normalizeRequestForEditor(
+  request: Partial<RequestLike> | undefined,
+  // Effective global default from http_defaults.follow_redirects. A request
+  // that omits the flag inherits this value, so normalization must not
+  // fabricate an explicit false (or true) that the file never stated.
+  followRedirectsDefault = false,
+): NormalizedRequestLike {
   const normalizeOverride = (value: unknown): OverrideState => {
     if (value === 'enabled' || value === 'disabled' || value === 'inherit') return value;
     return 'inherit';
@@ -427,7 +433,12 @@ export function normalizeRequestForEditor(request: Partial<RequestLike> | undefi
     throughput: normalizeThroughput(request?.throughput),
     retrieve_embedded_resources: request?.retrieve_embedded_resources === true,
     redirect_automatically: request?.redirect_automatically === true,
-    follow_redirects: request?.follow_redirects === true,
+    follow_redirects:
+      request?.redirect_automatically === true
+        ? false
+        : typeof request?.follow_redirects === 'boolean'
+          ? request.follow_redirects
+          : followRedirectsDefault,
   } as NormalizedRequestLike;
 }
 

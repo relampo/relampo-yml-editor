@@ -76,11 +76,11 @@ function pruneDefaultRequestFields(request: Record<string, any>) {
   // emits a single redirect mode even when the user never toggled a checkbox.
   if (request.redirect_automatically === true) delete request.follow_redirects;
   if (request.redirect_automatically === false) delete request.redirect_automatically;
-  // follow_redirects is opt-in (default false), so an explicit true must be
-  // preserved on save. A false is only prunable when it matches the effective
-  // default; with http_defaults.follow_redirects: true it is an explicit
-  // per-request override and must be kept.
-  if (request.follow_redirects === false && !followRedirectsEnabledByDefault) {
+  // follow_redirects can be omitted only when it matches the effective global
+  // default (http_defaults.follow_redirects, off when absent): an omission is
+  // reparsed as that default, so any differing value is an explicit
+  // per-request override that must survive the round trip.
+  if (request.follow_redirects === followRedirectsEnabledByDefault) {
     delete request.follow_redirects;
   }
   if (request.throughput && request.throughput.enabled !== true) delete request.throughput;
@@ -423,7 +423,7 @@ function requestNodeToObject(node: YAMLNode, methodFallback?: string): any {
     ...(node.data || {}),
     method: node.data?.method || methodFallback,
   });
-  const normalizedRequest = normalizeRequestForEditor(requestData);
+  const normalizedRequest = normalizeRequestForEditor(requestData, followRedirectsEnabledByDefault);
   const request: any = { request: { ...normalizedRequest } };
   pruneDefaultRequestFields(request.request);
 
