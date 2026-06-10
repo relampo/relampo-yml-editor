@@ -52,15 +52,8 @@ export function YAMLRequestDetails({
   // non-editable so users can inspect without accidentally editing dead data.
   const isRequestDisabled = node.data?.enabled === false;
   const requestMethod = formData.method || getNodeMethodFallback(node);
-  const effectiveRedirectAutomatically = hasRecordedRedirectFollowUp ? false : !!formData.redirect_automatically;
-  // RLP-522 / JMeter parity: "Redirect Automatically" and "Follow Redirects"
-  // are mutually exclusive. "Redirect Automatically" takes precedence, so while
-  // it is on, "Follow Redirects" reads as unchecked (and is disabled below).
-  const effectiveFollowRedirects = hasRecordedRedirectFollowUp
-    ? true
-    : effectiveRedirectAutomatically
-      ? false
-      : formData.follow_redirects !== false;
+  const effectiveRedirectAutomatically = !!formData.redirect_automatically;
+  const effectiveFollowRedirects = !!formData.follow_redirects;
 
   useEffect(() => {
     setFormData(node.data || {});
@@ -68,11 +61,11 @@ export function YAMLRequestDetails({
 
   const handleFieldChange = (field: string, value: any) => {
     const newData = { ...formData, [field]: value };
-    // RLP-522 / JMeter parity: the two redirect modes are mutually exclusive.
-    // Enabling one clears the other so the YAML never carries both flags.
-    if (field === 'redirect_automatically' && value === true) {
+    // The two redirect modes are mutually exclusive.
+    // Toggling one always clears the other so the YAML never carries both flags.
+    if (field === 'redirect_automatically') {
       delete newData.follow_redirects;
-    } else if (field === 'follow_redirects' && value === true) {
+    } else if (field === 'follow_redirects') {
       delete newData.redirect_automatically;
     }
     setFormData(newData);
@@ -444,7 +437,6 @@ function RequestContent({
               type="checkbox"
               className="w-4 h-4 rounded border-white/10 bg-white/5 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-0"
               checked={effectiveRedirectAutomatically}
-              disabled={hasRecordedRedirectFollowUp}
               onChange={e => onFieldChange('redirect_automatically', e.target.checked)}
             />
             <span>Redirect Automatically</span>
@@ -454,7 +446,6 @@ function RequestContent({
               type="checkbox"
               className="w-4 h-4 rounded border-white/10 bg-white/5 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-0"
               checked={effectiveFollowRedirects}
-              disabled={hasRecordedRedirectFollowUp || effectiveRedirectAutomatically}
               onChange={e => onFieldChange('follow_redirects', e.target.checked)}
             />
             <span>Follow Redirects</span>
@@ -462,7 +453,7 @@ function RequestContent({
         </div>
         {hasRecordedRedirectFollowUp && (
           <div className="mt-2 text-xs text-zinc-500">
-            This request leads to the next recorded step, so redirect behavior is derived from the recording.
+            This request is part of a recorded redirect chain.
           </div>
         )}
       </div>

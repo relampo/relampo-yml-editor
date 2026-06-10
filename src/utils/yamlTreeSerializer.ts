@@ -60,6 +60,11 @@ function hasOnlyShortHttpData(node: YAMLNode): boolean {
   return Object.keys(data).every(key => key === 'url' || key === 'enabled' || key === 'method');
 }
 
+// Set per treeToObject() run from `http_defaults.follow_redirects`. When the
+// global default is true, a request-level `follow_redirects: false` is the
+// documented per-request override and must survive serialization.
+let followRedirectsEnabledByDefault = false;
+
 function pruneDefaultRequestFields(request: Record<string, any>) {
   if (request.timeout === '') delete request.timeout;
   if (request.cookie_override === 'inherit') delete request.cookie_override;
@@ -71,12 +76,21 @@ function pruneDefaultRequestFields(request: Record<string, any>) {
   // emits a single redirect mode even when the user never toggled a checkbox.
   if (request.redirect_automatically === true) delete request.follow_redirects;
   if (request.redirect_automatically === false) delete request.redirect_automatically;
-  if (request.follow_redirects === true) delete request.follow_redirects;
+  // follow_redirects can be omitted only when it matches the effective global
+  // default (http_defaults.follow_redirects, off when absent): an omission is
+  // reparsed as that default, so any differing value is an explicit
+  // per-request override that must survive the round trip.
+  if (request.follow_redirects === followRedirectsEnabledByDefault) {
+    delete request.follow_redirects;
+  }
   if (request.throughput && request.throughput.enabled !== true) delete request.throughput;
 }
 
 export function treeToObject(tree: YAMLNode): any {
   const obj: any = {};
+
+  followRedirectsEnabledByDefault =
+    tree.children?.find(child => child.type === 'http_defaults')?.data?.follow_redirects === true;
 
   if (tree.type === 'test') {
     obj.test = { ...tree.data };
@@ -409,7 +423,7 @@ function requestNodeToObject(node: YAMLNode, methodFallback?: string): any {
     ...(node.data || {}),
     method: node.data?.method || methodFallback,
   });
-  const normalizedRequest = normalizeRequestForEditor(requestData);
+  const normalizedRequest = normalizeRequestForEditor(requestData, followRedirectsEnabledByDefault);
   const request: any = { request: { ...normalizedRequest } };
   pruneDefaultRequestFields(request.request);
 
