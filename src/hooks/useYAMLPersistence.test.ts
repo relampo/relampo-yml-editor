@@ -258,6 +258,89 @@ describe('handleDownload', () => {
     expect(result.current.actionMessage).toBe('YAML downloaded without responses');
   });
 
+  it('removes recorded request responses without removing form body response fields', async () => {
+    let downloadedBlob: Blob | null = null;
+    vi.mocked(URL.createObjectURL).mockImplementation(blob => {
+      downloadedBlob = blob as Blob;
+      return 'blob:fake';
+    });
+    const params = makeParams({
+      getPersistableYaml: vi.fn(
+        () => `scenarios:
+  - name: Recorded Scenario
+    steps:
+      - request:
+          request_id: 13
+          method: POST
+          url: /trustedx-authserver/TuID-idp/authentication
+          headers:
+            Content-Type: application/x-www-form-urlencoded
+          body:
+            - response: '{{response1}}'
+          response:
+            status: 200
+            body: '<html>recorded response</html>'
+`,
+      ),
+    });
+    const { result } = renderHook(() => {
+      const serializeDebounceRef = useRef<number | null>(null);
+      return useYAMLPersistence({ ...params, serializeDebounceRef });
+    });
+
+    act(() => {
+      result.current.handleDownload(false);
+    });
+
+    expect(downloadedBlob).not.toBeNull();
+    const downloadedYaml = await downloadedBlob!.text();
+    expect(downloadedYaml).toContain("response: '{{response1}}'");
+    expect(downloadedYaml).not.toContain("status: 200");
+    expect(downloadedYaml).not.toContain('recorded response');
+  });
+
+  it('removes recorded responses from method-form steps', async () => {
+    let downloadedBlob: Blob | null = null;
+    vi.mocked(URL.createObjectURL).mockImplementation(blob => {
+      downloadedBlob = blob as Blob;
+      return 'blob:fake';
+    });
+    const params = makeParams({
+      getPersistableYaml: vi.fn(
+        () => `scenarios:
+  - name: Recorded Scenario
+    steps:
+      - get:
+          url: /foo
+          response:
+            status: 200
+            body: '<html>recorded response</html>'
+      - post:
+          url: /bar
+          body:
+            - response: '{{response1}}'
+          response:
+            status: 201
+`,
+      ),
+    });
+    const { result } = renderHook(() => {
+      const serializeDebounceRef = useRef<number | null>(null);
+      return useYAMLPersistence({ ...params, serializeDebounceRef });
+    });
+
+    act(() => {
+      result.current.handleDownload(false);
+    });
+
+    expect(downloadedBlob).not.toBeNull();
+    const downloadedYaml = await downloadedBlob!.text();
+    expect(downloadedYaml).toContain("response: '{{response1}}'");
+    expect(downloadedYaml).not.toContain('status: 200');
+    expect(downloadedYaml).not.toContain('status: 201');
+    expect(downloadedYaml).not.toContain('recorded response');
+  });
+
   it('calls setIsDirty(false) after download', () => {
     const setIsDirty = vi.fn();
     const params = makeParams({ setIsDirty });
