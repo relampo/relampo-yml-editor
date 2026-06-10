@@ -1,13 +1,12 @@
-import { AlertTriangle, Bug, Code2, GitBranch, Loader2, X } from 'lucide-react';
+import { AlertTriangle, Bug, Code2, GitBranch, Loader2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useYAML } from '../contexts/YAMLContext';
 import { useResizePanel } from '../hooks/useResizePanel';
 import { useYAMLPersistence } from '../hooks/useYAMLPersistence';
-import type { RedirectSourceInfo, RedirectedRequestInfo, YAMLNode } from '../types/yaml';
+import type { YAMLNode } from '../types/yaml';
 import { logStatsigEvent } from '../utils/analytics';
 import { applyNodeUpdateToTree, renameRequestHost } from '../utils/nodeUpdate';
-import { collectScenarioHosts, getRequestNodeHost } from '../utils/requestNodeDisplay';
 import { getActiveDraft } from '../utils/yamlDraftStorage';
 import { getDocumentMetrics } from '../utils/yamlDocumentLimits';
 import { parseYAMLToTree, treeToYAML } from '../utils/yamlParser';
@@ -29,6 +28,18 @@ import { createNodeByType } from './yaml-tree-view/nodeFactory';
 import { addNodeToTree, syncRedirectSourceFollowRedirects, updateNodeEnabled } from './yaml-tree-view/treeOperations';
 import type { YAMLAddableNodeType } from './yaml-tree-view/addableItems';
 import { YAMLTreeView } from './YAMLTreeView';
+import { useHttpDefaultsInfo, useParseWorker, useRedirectMaps, useTreeSelection } from './useYamlEditorDerived';
+import {
+  findNodeById,
+  getDraftRestoreError,
+  lockTypedNodeSelectionInNode,
+  normalizeYamlFileName,
+  type ParseWorkerRequest,
+  type TreeSelection,
+} from './yamlEditorHelpers';
+
+// Re-exported from their new home so existing imports/tests keep working.
+export { detectRedirectFollowUps, nodesStillFormRedirect } from './yamlEditorHelpers';
 
 const EMPTY_PARALLEL_ERROR = 'Parallel controller must contain at least one child step';
 const TREE_SERIALIZE_DEBOUNCE_MS = 220;
@@ -36,145 +47,9 @@ const DEBUG_VIEW_ENABLED = import.meta.env.VITE_DEBUG_VIEW_ENABLED === 'true';
 
 type EditorViewMode = 'tree' | 'code' | 'debug';
 
-function getDraftRestoreError(language: string): string {
-  return language === 'es'
-    ? 'No se pudo restaurar el autoguardado del navegador. Puedes seguir editando o cargar un YAML.'
-    : 'Could not restore the browser autosave. You can keep editing or upload a YAML file.';
-}
-
-type ParseWorkerRequest = {
-  id: number;
-  yaml: string;
-  rootName?: string;
-};
-
-type ParseWorkerResponse = { id: number; ok: true; tree: YAMLNode | null } | { id: number; ok: false; error: string };
-
-type TreeSelection = {
-  primaryId: string | null;
-  nodeIds: string[];
-};
-
 type CommitTreeChangeOptions = {
   serialization?: 'immediate' | 'debounced';
 };
-
-function normalizeYamlFileName(name: string): string {
-  const trimmed = (name || '').trim();
-  if (!trimmed) return 'relampo-script.yaml';
-  return /\.(ya?ml)$/i.test(trimmed) ? trimmed : `${trimmed}.yaml`;
-}
-
-function findNodeById(node: YAMLNode, id: string): YAMLNode | null {
-  if (node.id === id) return node;
-  if (node.children) {
-    for (const child of node.children) {
-      const found = findNodeById(child, id);
-      if (found) return found;
-    }
-  }
-  return null;
-}
-
-const REDIRECT_STATUS_CODES = [301, 302, 303, 307, 308];
-
-function getRedirectLocationHeader(node: YAMLNode): string {
-  const headers = node.data?.response?.headers;
-  if (!headers || typeof headers !== 'object') return '';
-  return String(
-    (headers as Record<string, unknown>).Location || (headers as Record<string, unknown>).location || '',
-  ).trim();
-}
-
-function getResponseStatusCode(node: YAMLNode): number {
-  const status = Number(node.data?.response?.status);
-  return Number.isFinite(status) ? status : 0;
-}
-
-function normalizeUrlForCompare(value: string): string {
-  const trimmed = String(value || '').trim();
-  if (!trimmed) return '';
-  try {
-    const parsed = /^https?:\/\//i.test(trimmed) ? new URL(trimmed) : new URL(trimmed, 'http://relampo.local');
-    const normalized = `${parsed.pathname || '/'}${parsed.search || ''}`;
-    return normalized.replace(/\/+$/, '') || '/';
-  } catch {
-    const normalized = trimmed.replace(/^[a-z]+:\/\/[^/]+/i, '');
-    return (normalized || '/').replace(/\/+$/, '') || '/';
-  }
-}
-
-// Normalize a redirect Location header for comparison against a follow-up
-// request URL. A Location can be relative (e.g. `authenticate`, `../foo`), and
-// per the HTTP spec it must be resolved against the URL of the request that
-// returned it — not against a fixed base. A single 302 whose Location is the
-// bare `authenticate` (relative to `.../tuid-authn-login/authenticate`) resolves
-// to that same path, so the follow-up request is correctly detected as the
-// redirect target. We fall back to base-less normalization when the source URL
-// is itself relative (no host), preserving the existing behavior.
-function normalizeRedirectLocationForCompare(location: string, sourceUrl: string): string {
-  const trimmedLocation = String(location || '').trim();
-  if (!trimmedLocation) return '';
-  const trimmedSource = String(sourceUrl || '').trim();
-  if (/^https?:\/\//i.test(trimmedSource)) {
-    try {
-      const resolved = new URL(trimmedLocation, trimmedSource);
-      const normalized = `${resolved.pathname || '/'}${resolved.search || ''}`;
-      return normalized.replace(/\/+$/, '') || '/';
-    } catch {
-      // Fall through to base-less normalization below.
-    }
-  }
-  return normalizeUrlForCompare(trimmedLocation);
-}
-
-// True when `source` still describes a redirect whose Location resolves to
-// `target`'s current URL. Used to decide whether a previously-detected
-// redirect should survive a tree restructure (e.g. the source dragged into a
-// transaction breaks document adjacency) versus a genuine change that should
-// drop the badge (status edited away from 3xx, Location changed, or the
-// target URL edited).
-export function nodesStillFormRedirect(source: YAMLNode, target: YAMLNode): boolean {
-  if (!REDIRECT_STATUS_CODES.includes(getResponseStatusCode(source))) return false;
-  const location = getRedirectLocationHeader(source);
-  if (!location) return false;
-  const normalizedLocation = normalizeRedirectLocationForCompare(location, String(source.data?.url || ''));
-  const normalizedTarget = normalizeUrlForCompare(String(target.data?.url || ''));
-  return Boolean(normalizedLocation && normalizedTarget && normalizedLocation === normalizedTarget);
-}
-
-function lockTypedNodeSelectionInNode(node: YAMLNode): [YAMLNode, boolean] {
-  let changed = false;
-  let nextData = node.data;
-  let nextChildren = node.children;
-
-  if (node.type === 'assertion' || node.type === 'extractor') {
-    const currentData = node.data || {};
-    const cleaned = { ...currentData } as Record<string, unknown>;
-    delete cleaned.__lockedType;
-    delete cleaned.__allowTypeSelection;
-    if (currentData.__lockedType !== undefined || currentData.__allowTypeSelection !== undefined) {
-      nextData = cleaned;
-      changed = true;
-    }
-  }
-
-  if (node.children && node.children.length > 0) {
-    let childChanged = false;
-    const updatedChildren = node.children.map(child => {
-      const [nextChild, wasChanged] = lockTypedNodeSelectionInNode(child);
-      if (wasChanged) childChanged = true;
-      return nextChild;
-    });
-    if (childChanged) {
-      nextChildren = updatedChildren;
-      changed = true;
-    }
-  }
-
-  if (!changed) return [node, false];
-  return [{ ...node, data: nextData, children: nextChildren }, true];
-}
 
 export function YAMLEditor() {
   const { language, setLanguage, t } = useLanguage();
@@ -183,8 +58,15 @@ export function YAMLEditor() {
 
   const [yamlCode, setYamlCode] = useState<string>('');
   const [yamlTree, setYamlTree] = useState<YAMLNode | null>(null);
-  const [selectedNode, setSelectedNode] = useState<YAMLNode | null>(null);
-  const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
+  const {
+    selectedNode,
+    setSelectedNode,
+    selectedNodeIds,
+    setSelectedNodeIds,
+    selectedNodeRef,
+    selectedNodeIdsRef,
+    syncSelectionWithTree,
+  } = useTreeSelection();
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<EditorViewMode>('tree');
@@ -204,9 +86,7 @@ export function YAMLEditor() {
   const [isTreeOutdated, setIsTreeOutdated] = useState(false);
   const [restoredDraftUpdatedAt, setRestoredDraftUpdatedAt] = useState<string | null>(null);
   const [isNewDialogOpen, setIsNewDialogOpen] = useState(false);
-  const selectedNodeRef = useRef<YAMLNode | null>(null);
   const fallbackRootNameRef = useRef<string | null>(null);
-  const selectedNodeIdsRef = useRef<string[]>([]);
   const hasDiscoveredTreeContextMenuRef = useRef(false);
 
   const documentMetrics = useMemo(() => getDocumentMetrics(yamlCode), [yamlCode]);
@@ -215,45 +95,6 @@ export function YAMLEditor() {
   const activeViewMode: EditorViewMode =
     !DEBUG_VIEW_ENABLED && viewMode === 'debug' ? 'tree' : viewMode;
   const isDebugViewActive = DEBUG_VIEW_ENABLED && activeViewMode === 'debug';
-
-  useEffect(() => {
-    selectedNodeRef.current = selectedNode;
-  }, [selectedNode]);
-  useEffect(() => {
-    selectedNodeIdsRef.current = selectedNodeIds;
-  }, [selectedNodeIds]);
-
-  const syncSelectionWithTree = (tree: YAMLNode | null) => {
-    if (!tree) {
-      setSelectedNode(null);
-      setSelectedNodeIds([]);
-      selectedNodeRef.current = null;
-      selectedNodeIdsRef.current = [];
-      return;
-    }
-
-    const survivingIds = selectedNodeIdsRef.current.filter(id => findNodeById(tree, id));
-    setSelectedNodeIds(survivingIds);
-    selectedNodeIdsRef.current = survivingIds;
-
-    const currentSelectedNode = selectedNodeRef.current;
-    if (currentSelectedNode && survivingIds.includes(currentSelectedNode.id)) {
-      const freshNode = findNodeById(tree, currentSelectedNode.id);
-      setSelectedNode(freshNode ?? null);
-      selectedNodeRef.current = freshNode ?? null;
-      return;
-    }
-
-    if (survivingIds.length > 0) {
-      const nextPrimary = findNodeById(tree, survivingIds[survivingIds.length - 1]);
-      setSelectedNode(nextPrimary ?? null);
-      selectedNodeRef.current = nextPrimary ?? null;
-      return;
-    }
-
-    setSelectedNode(null);
-    selectedNodeRef.current = null;
-  };
 
   const applySemanticValidation = (tree: YAMLNode | null) => {
     setValidationErrors(validateYAMLSemantics(tree).map(issue => issue.message));
@@ -296,112 +137,23 @@ export function YAMLEditor() {
     serializeDebounceRef,
   });
 
-  const prevRedirectedMapRef = useRef<Record<string, RedirectedRequestInfo>>({});
+  const { redirectedRequestMap, redirectSourceMap } = useRedirectMaps(yamlTree);
+  const { httpDefaultsBaseUrl, scenarioHosts, httpDefaultsBaseHost } = useHttpDefaultsInfo(yamlTree);
 
-  const redirectedRequestMap = useMemo<Record<string, RedirectedRequestInfo>>(() => {
-    if (!yamlTree) return {};
-    const freshMap = detectRedirectFollowUps(yamlTree);
-    const merged = { ...freshMap };
-
-    for (const [id, info] of Object.entries(prevRedirectedMapRef.current)) {
-      if (!merged[id]) {
-        const targetNode = findNodeById(yamlTree, id);
-        if (!targetNode) continue;
-
-        // Fresh detection missed this entry. Only preserve it when the
-        // redirect relationship is genuinely still intact — either the source
-        // moved/was deleted (so adjacency-based detection can't see it), or it
-        // still exists and continues to redirect to this target. If the source
-        // is present but no longer redirects here (status changed off 3xx,
-        // Location edited, or the target URL changed), let the badge drop.
-        const sourceNode = findNodeById(yamlTree, info.sourceNodeId);
-        if (!sourceNode || nodesStillFormRedirect(sourceNode, targetNode)) {
-          merged[id] = info;
-        }
-      }
-    }
-
-    prevRedirectedMapRef.current = merged;
-    return merged;
-  }, [yamlTree]);
-
-  const redirectSourceMap = useMemo<Record<string, RedirectSourceInfo>>(() => {
-    if (!yamlTree) return {};
-    const result: Record<string, RedirectSourceInfo> = {};
-    for (const [targetNodeId, info] of Object.entries(redirectedRequestMap)) {
-      const targetNode = findNodeById(yamlTree, targetNodeId);
-      result[info.sourceNodeId] = {
-        targetNodeId,
-        targetRequestLabel: targetNode?.name || '',
-        matchedLocation: info.matchedLocation,
-        targetDisabled: targetNode?.data?.enabled === false,
-      };
-    }
-    return result;
-  }, [yamlTree, redirectedRequestMap]);
-
-  // Base URL inherited from http_defaults, used as the placeholder hint for
-  // requests that target the base host (relative URLs).
-  const httpDefaultsBaseUrl = useMemo<string>(() => {
-    const defaultsNode = yamlTree?.children?.find(child => child.type === 'http_defaults');
-    const rawBaseUrl = defaultsNode?.data?.base_url;
-    return typeof rawBaseUrl === 'string' ? rawBaseUrl : '';
-  }, [yamlTree]);
-
-  // Every distinct host the recording drives (primary first), surfaced in the
-  // HTTP Defaults panel so multi-host recordings show all hosts, not just the
-  // base one. See RLP-365.
-  const scenarioHosts = useMemo<string[]>(
-    () => collectScenarioHosts(yamlTree, httpDefaultsBaseUrl),
-    [yamlTree, httpDefaultsBaseUrl],
-  );
-
-  // Host inherited from http_defaults.base_url, used so the tree shows a host badge
-  // on base-host (relative) requests too — uniformly with secondary hosts. RLP-414.
-  const httpDefaultsBaseHost = useMemo<string>(
-    () => getRequestNodeHost(httpDefaultsBaseUrl) || httpDefaultsBaseUrl.trim(),
-    [httpDefaultsBaseUrl],
-  );
-
-  // Worker setup
-  useEffect(() => {
-    if (typeof Worker === 'undefined') return;
-    const worker = new Worker(new URL('../workers/yamlParser.worker.ts', import.meta.url), {
-      type: 'module',
-    });
-    parseWorkerRef.current = worker;
-
-    worker.onmessage = (event: MessageEvent<ParseWorkerResponse>) => {
-      const message = event.data;
-      if (!message || message.id !== activeParseRequestIdRef.current) return;
-      setIsParsing(false);
-      setIsFileLoading(false);
-      if (!message.ok) {
-        setError(message.error || (language === 'es' ? 'Error al parsear YAML' : 'Error parsing YAML'));
-        setYamlTree(null);
-        syncSelectionWithTree(null);
-        setValidationErrors([]);
-        setIsTreeOutdated(true);
-        return;
-      }
-      const [normalizedTree] = message.tree ? lockTypedNodeSelectionInNode(message.tree) : [message.tree, false];
-      setYamlTree(normalizedTree);
-      syncSelectionWithTree(normalizedTree);
-      setError(null);
-      applySemanticValidation(normalizedTree);
-      setIsTreeOutdated(false);
-    };
-
-    worker.onerror = () => {
-      setIsParsing(false);
-      setIsFileLoading(false);
-    };
-
-    return () => {
-      worker.terminate();
-      if (parseWorkerRef.current === worker) parseWorkerRef.current = null;
-    };
-  }, [language]);
+  useParseWorker({
+    language,
+    activeParseRequestIdRef,
+    parseWorkerRef,
+    setIsParsing,
+    setIsFileLoading,
+    setError,
+    setYamlTree,
+    syncSelectionWithTree,
+    setValidationErrors,
+    setIsTreeOutdated,
+    applySemanticValidation,
+    normalizeParsedTree: tree => (tree ? lockTypedNodeSelectionInNode(tree)[0] : tree),
+  });
 
   const syncCodeToTree = (code: string, options?: { force?: boolean; defaultRootName?: string }) => {
     if (!code || code.trim() === '') {
@@ -1042,35 +794,4 @@ export function YAMLEditor() {
       </div>
     </div>
   );
-}
-
-export function detectRedirectFollowUps(tree: YAMLNode): Record<string, RedirectedRequestInfo> {
-  const requestNodes: YAMLNode[] = [];
-  const requestTypes = new Set(['request', 'get', 'post', 'put', 'delete', 'patch', 'head', 'options']);
-
-  const walk = (node: YAMLNode) => {
-    if (requestTypes.has(node.type)) requestNodes.push(node);
-    node.children?.forEach(walk);
-  };
-
-  walk(tree);
-
-  const result: Record<string, RedirectedRequestInfo> = {};
-
-  for (let i = 0; i < requestNodes.length - 1; i += 1) {
-    const source = requestNodes[i];
-    const target = requestNodes[i + 1];
-    if (!nodesStillFormRedirect(source, target)) continue;
-
-    result[target.id] = {
-      sourceNodeId: source.id,
-      sourceRequestLabel: source.name,
-      matchedLocation: normalizeRedirectLocationForCompare(
-        getRedirectLocationHeader(source),
-        String(source.data?.url || ''),
-      ),
-    };
-  }
-
-  return result;
 }
