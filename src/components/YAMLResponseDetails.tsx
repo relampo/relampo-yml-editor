@@ -185,8 +185,8 @@ export function YAMLResponseDetails({
     [headerStatusLine, headerEntries],
   );
 
-  const effectiveHeaderSearch = searchText.trim() ? searchText.trim() : headerSearchText;
-  const effectiveHeaderSearchMode: 'text' | 'regex' = searchText.trim() ? 'text' : headerSearchMode;
+  const effectiveHeaderSearch = headerSearchText.trim() ? headerSearchText.trim() : searchText.trim();
+  const effectiveHeaderSearchMode: 'text' | 'regex' = headerSearchText.trim() ? headerSearchMode : 'text';
 
   const buildHeaderSearchRegex = () => {
     if (!effectiveHeaderSearch || effectiveHeaderSearchMode !== 'regex') return null;
@@ -196,7 +196,7 @@ export function YAMLResponseDetails({
       return null;
     }
   };
-  const headerRegexInvalid = !!headerSearchText && headerSearchMode === 'regex' && !buildHeaderSearchRegex();
+  const headerRegexInvalid = !!effectiveHeaderSearch && effectiveHeaderSearchMode === 'regex' && !buildHeaderSearchRegex();
 
   const collectHeaderMatchesForLine = (text: string) => {
     if (!text || !effectiveHeaderSearch) return [] as Array<{ start: number; end: number }>;
