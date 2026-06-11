@@ -4,7 +4,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import type { RedirectSourceInfo, RedirectedRequestInfo, YAMLNode } from '../types/yaml';
 import { YAMLRequestDetails } from './YAMLRequestDetails';
 import { YAMLSQLDetails } from './YAMLSQLDetails';
-import { Input } from './ui/input';
+import { HighlightedInput } from './ui/HighlightedInput';
 import { BalancedDetails } from './yaml-node-details/BalancedDetails';
 import {
   DataSourceDetails,
@@ -36,6 +36,22 @@ import { CacheManagerDetails, CookiesDetails, ErrorPolicyDetails } from './yaml-
 import { AssertionDetails, ExtractorDetails } from './yaml-node-details/ValidationDetails';
 import { type YAMLAddableNodeType } from './yaml-tree-view/addableItems';
 
+function HighlightText({ text, query }: { text: string; query: string }) {
+  const q = query.trim();
+  if (!q) return <>{text}</>;
+  const idx = text.toLowerCase().indexOf(q.toLowerCase());
+  if (idx === -1) return <>{text}</>;
+  return (
+    <>
+      {text.slice(0, idx)}
+      <mark className="bg-yellow-400/35 text-yellow-200 rounded-sm not-italic">
+        {text.slice(idx, idx + q.length)}
+      </mark>
+      {text.slice(idx + q.length)}
+    </>
+  );
+}
+
 interface YAMLNodeDetailsProps {
   node: YAMLNode | null;
   baseUrl?: string;
@@ -47,6 +63,7 @@ interface YAMLNodeDetailsProps {
   onToggleEnabled?: (nodeId: string, enabled: boolean) => void;
   onAddChildNode?: (parentId: string, nodeType: YAMLAddableNodeType) => void;
   onAddChildAction?: (metadata: { parentNodeType: string; childNodeType: YAMLAddableNodeType }) => void;
+  searchQuery?: string;
 }
 
 const REQUEST_NODE_TYPES = ['request', 'sql', 'get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
@@ -62,6 +79,7 @@ export function YAMLNodeDetails({
   onToggleEnabled,
   // onAddChildNode, // TODO Add it when it's ready
   // onAddChildAction, // TODO Add it when it's ready
+  searchQuery = '',
 }: YAMLNodeDetailsProps) {
   const { t } = useLanguage();
   const [nodeName, setNodeName] = useState(node?.name || '');
@@ -103,7 +121,7 @@ export function YAMLNodeDetails({
           <h3
             className={`flex-1 ${isRequestNode ? 'text-base italic font-medium text-zinc-200 normal-case tracking-normal leading-snug whitespace-normal wrap-break-word' : 'text-xs font-semibold text-zinc-400 uppercase tracking-wider'}`}
           >
-            {isRequestNode ? node.name : t('yamlEditor.details')}
+            {isRequestNode ? <HighlightText text={node.name} query={searchQuery} /> : t('yamlEditor.details')}
           </h3>
           {canToggleEnabled && (
             <button
@@ -130,7 +148,7 @@ export function YAMLNodeDetails({
             <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
               {t('yamlEditor.common.name')}
             </label>
-            <Input
+            <HighlightedInput
               value={nodeName}
               onChange={event => {
                 const nextName = event.target.value;
@@ -143,6 +161,8 @@ export function YAMLNodeDetails({
               }}
               className="max-w-full shrink-0 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-semibold"
               placeholder="Node name"
+              searchText={searchQuery}
+              overlayClass="px-3 text-sm text-zinc-300 font-semibold"
             />
           </div>
         )}
@@ -169,6 +189,7 @@ export function YAMLNodeDetails({
           hosts={hosts}
           redirectSourceInfo={redirectSourceInfo}
           onNodeUpdate={onNodeUpdate}
+          searchQuery={searchQuery}
         />
       </div>
     </div>
@@ -183,6 +204,7 @@ function NodeDetailsContent({
   hosts,
   redirectSourceInfo,
   onNodeUpdate,
+  searchQuery = '',
 }: {
   node: YAMLNode;
   nodeName: string;
@@ -191,6 +213,7 @@ function NodeDetailsContent({
   hosts: string[];
   redirectSourceInfo: RedirectSourceInfo | null;
   onNodeUpdate?: (nodeId: string, updatedData: any) => void;
+  searchQuery?: string;
 }) {
   switch (node.type) {
     case 'test':
@@ -279,6 +302,7 @@ function NodeDetailsContent({
           baseUrl={baseUrl}
           redirectSourceInfo={redirectSourceInfo}
           onNodeUpdate={onNodeUpdate}
+          searchQuery={searchQuery}
         />
       );
     case 'group':

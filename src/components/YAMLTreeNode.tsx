@@ -280,7 +280,7 @@ export function YAMLTreeNode({
             node.data?.enabled === false ? 'text-zinc-400' : isRedirectedFollowUp ? 'text-zinc-100' : 'text-zinc-300'
           }`}
         >
-          {node.name}
+          <HighlightText text={node.name} query={searchQuery} />
         </span>
 
         {/* Badge with extra info */}
@@ -604,6 +604,22 @@ function getNodeBadge(node: YAMLNode, options: { mutedMethod?: boolean } = {}): 
   }
 
   return null;
+}
+
+function HighlightText({ text, query }: { text: string; query: string }) {
+  const q = query.trim();
+  if (!q) return <>{text}</>;
+  const idx = text.toLowerCase().indexOf(q.toLowerCase());
+  if (idx === -1) return <>{text}</>;
+  return (
+    <>
+      {text.slice(0, idx)}
+      <mark className="bg-yellow-400/35 text-yellow-200 rounded-sm not-italic">
+        {text.slice(idx, idx + q.length)}
+      </mark>
+      {text.slice(idx + q.length)}
+    </>
+  );
 }
 
 export function nodeDirectlyMatches(node: YAMLNode, searchQuery: string): boolean {

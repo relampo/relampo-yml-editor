@@ -32,6 +32,7 @@ interface YAMLTreeViewProps {
   onSelectionChange: (primaryNode: YAMLNode | null, nodeIds: string[]) => void;
   onTreeChange: (tree: YAMLNode, nextSelection?: { primaryId: string | null; nodeIds: string[] }) => void;
   onContextMenuOpened?: (metadata: { nodeType: string; selectionCount: number; hasMultiSelection: boolean }) => void;
+  onSearchChange?: (query: string) => void;
 }
 
 export function YAMLTreeView({
@@ -43,6 +44,7 @@ export function YAMLTreeView({
   onSelectionChange,
   onTreeChange,
   onContextMenuOpened,
+  onSearchChange,
 }: YAMLTreeViewProps) {
   const { t } = useLanguage();
   const [contextMenu, setContextMenu] = useState<{
@@ -51,6 +53,10 @@ export function YAMLTreeView({
     node: YAMLNode;
   } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    onSearchChange?.(searchQuery);
+  }, [searchQuery, onSearchChange]);
   const [clipboardNodes, setClipboardNodes] = useState<YAMLNode[]>([]);
   const treeContainerRef = useRef<HTMLDivElement | null>(null);
   const isFiltering = searchQuery.trim().length > 0;
