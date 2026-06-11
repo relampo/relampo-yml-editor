@@ -1,7 +1,7 @@
 import type { ComponentProps } from 'react';
 import { Input } from './input';
 
-function HighlightParts({ text, query }: { text: string; query: string }) {
+export function HighlightText({ text, query }: { text: string; query: string }) {
   const q = query.trim();
   if (!q) return <>{text}</>;
   const idx = text.toLowerCase().indexOf(q.toLowerCase());
@@ -45,7 +45,7 @@ export function HighlightedInput({
         aria-hidden="true"
       >
         <span className="whitespace-pre truncate w-full">
-          <HighlightParts text={strValue} query={searchText} />
+          <HighlightText text={strValue} query={searchText} />
         </span>
       </div>
       <Input

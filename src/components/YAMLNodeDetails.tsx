@@ -35,22 +35,7 @@ import { LoadDetails } from './yaml-node-details/LoadDetails';
 import { CacheManagerDetails, CookiesDetails, ErrorPolicyDetails } from './yaml-node-details/OpsDetails';
 import { AssertionDetails, ExtractorDetails } from './yaml-node-details/ValidationDetails';
 import { type YAMLAddableNodeType } from './yaml-tree-view/addableItems';
-
-function HighlightText({ text, query }: { text: string; query: string }) {
-  const q = query.trim();
-  if (!q) return <>{text}</>;
-  const idx = text.toLowerCase().indexOf(q.toLowerCase());
-  if (idx === -1) return <>{text}</>;
-  return (
-    <>
-      {text.slice(0, idx)}
-      <mark className="bg-yellow-400/35 text-yellow-200 rounded-sm not-italic">
-        {text.slice(idx, idx + q.length)}
-      </mark>
-      {text.slice(idx + q.length)}
-    </>
-  );
-}
+import { HighlightText } from './ui/HighlightedInput';
 
 interface YAMLNodeDetailsProps {
   node: YAMLNode | null;

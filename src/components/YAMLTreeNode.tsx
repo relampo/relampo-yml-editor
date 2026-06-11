@@ -34,6 +34,7 @@ import {
 import { useEffect, useRef, useState } from 'react';
 import type { RedirectedRequestInfo, YAMLNode, YAMLNodeType } from '../types/yaml';
 import { canContain, canDrop } from '../utils/yamlDragDropRules';
+import { HighlightText } from './ui/HighlightedInput';
 
 // Track the dragged node outside React so dragOver can resolve it.
 let currentDraggedNode: { id: string; type: YAMLNodeType } | null = null;
@@ -613,22 +614,6 @@ function getNodeBadge(node: YAMLNode, options: { mutedMethod?: boolean } = {}): 
   }
 
   return null;
-}
-
-function HighlightText({ text, query }: { text: string; query: string }) {
-  const q = query.trim();
-  if (!q) return <>{text}</>;
-  const idx = text.toLowerCase().indexOf(q.toLowerCase());
-  if (idx === -1) return <>{text}</>;
-  return (
-    <>
-      {text.slice(0, idx)}
-      <mark className="bg-yellow-400/35 text-yellow-200 rounded-sm not-italic">
-        {text.slice(idx, idx + q.length)}
-      </mark>
-      {text.slice(idx + q.length)}
-    </>
-  );
 }
 
 export function nodeDirectlyMatches(node: YAMLNode, searchQuery: string): boolean {
