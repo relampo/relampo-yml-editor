@@ -8,6 +8,7 @@ interface YAMLResponseDetailsProps {
   response: any;
   onResponseUpdate: (updatedResponse: any) => void;
   searchText?: string;
+  searchInputValue?: string;
   searchMode?: 'text' | 'regex';
   replaceValue?: string;
   currentMatchIndex?: number; // Kept for API compatibility
@@ -47,9 +48,8 @@ function HeaderLine({ line, className, ranges, startIndex, currentMatchIndex, ha
         className={
           isActive
             ? 'bg-yellow-300 text-black ring-2 ring-amber-500 shadow-[0_0_0_1px_rgba(245,158,11,0.45)] rounded-sm'
-            : 'rounded-sm'
+            : 'bg-yellow-300/80 text-black rounded-sm'
         }
-        style={isActive ? undefined : { backgroundColor: 'rgba(59,130,246,0.4)', color: '#dbeafe' }}
       >
         {line.slice(r.start, r.end)}
       </mark>,
@@ -83,9 +83,8 @@ function HighlightedText({ text, searchText, searchMode, currentMatchIndex }: Hi
         className={
           isActive
             ? 'bg-yellow-300 text-black ring-2 ring-amber-500 shadow-[0_0_0_1px_rgba(245,158,11,0.45)] rounded-sm'
-            : 'rounded-sm'
+            : 'bg-yellow-300/80 text-black rounded-sm'
         }
-        style={isActive ? undefined : { backgroundColor: 'rgba(59,130,246,0.4)', color: '#dbeafe' }}
       >
         {text.slice(r.start, r.end)}
       </mark>,
@@ -99,6 +98,7 @@ function HighlightedText({ text, searchText, searchMode, currentMatchIndex }: Hi
 export function YAMLResponseDetails({
   response,
   searchText = '',
+  searchInputValue = '',
   searchMode = 'text',
   currentMatchIndex = 0,
   onSearchChange,
@@ -183,22 +183,25 @@ export function YAMLResponseDetails({
     [headerStatusLine, headerEntries],
   );
 
+  const effectiveHeaderSearch = headerSearchText.trim() ? headerSearchText.trim() : searchText.trim();
+  const effectiveHeaderSearchMode: 'text' | 'regex' = headerSearchText.trim() ? headerSearchMode : 'text';
+
   const buildHeaderSearchRegex = () => {
-    if (!headerSearchText || headerSearchMode !== 'regex') return null;
+    if (!effectiveHeaderSearch || effectiveHeaderSearchMode !== 'regex') return null;
     try {
-      return new RegExp(headerSearchText, 'gi');
+      return new RegExp(effectiveHeaderSearch, 'gi');
     } catch {
       return null;
     }
   };
-  const headerRegexInvalid = !!headerSearchText && headerSearchMode === 'regex' && !buildHeaderSearchRegex();
+  const headerRegexInvalid = !!effectiveHeaderSearch && effectiveHeaderSearchMode === 'regex' && !buildHeaderSearchRegex();
 
   const collectHeaderMatchesForLine = (text: string) => {
-    if (!text || !headerSearchText) return [] as Array<{ start: number; end: number }>;
+    if (!text || !effectiveHeaderSearch) return [] as Array<{ start: number; end: number }>;
     const out: Array<{ start: number; end: number }> = [];
-    if (headerSearchMode === 'text') {
+    if (effectiveHeaderSearchMode === 'text') {
       const hay = text.toLowerCase();
-      const needle = headerSearchText.toLowerCase();
+      const needle = effectiveHeaderSearch.toLowerCase();
       let pos = 0;
       while (pos <= hay.length - needle.length) {
         const idx = hay.indexOf(needle, pos);
@@ -232,7 +235,7 @@ export function YAMLResponseDetails({
 
   const headerLineMatches = useMemo(
     () => headerLines.map(line => collectHeaderMatchesForLine(line)),
-    [headerLines, headerSearchText, headerSearchMode],
+    [headerLines, effectiveHeaderSearch, effectiveHeaderSearchMode],
   );
   const headerTotalMatches = useMemo(
     () => headerLineMatches.reduce((acc, ranges) => acc + ranges.length, 0),
@@ -381,7 +384,7 @@ export function YAMLResponseDetails({
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
           <Input
-            value={searchText}
+            value={searchInputValue}
             onChange={e => onSearchChange?.(e.target.value)}
             placeholder="Search in response body..."
             className="pl-9 pr-3 bg-white/5 border-white/10 text-zinc-300 text-sm focus-visible:border-yellow-400/60 focus-visible:ring-yellow-400/30"
@@ -541,7 +544,7 @@ export function YAMLResponseDetails({
                           ranges={statusRanges}
                           startIndex={statusStartIndex}
                           currentMatchIndex={headerCurrentMatchIndex}
-                          hasSearch={!!headerSearchText}
+                          hasSearch={!!effectiveHeaderSearch}
                         />
                       </div>
                       {headerEntries.length > 0 ? (
@@ -556,7 +559,7 @@ export function YAMLResponseDetails({
                               ranges={ranges}
                               startIndex={startIndex}
                               currentMatchIndex={headerCurrentMatchIndex}
-                              hasSearch={!!headerSearchText}
+                              hasSearch={!!effectiveHeaderSearch}
                             />
                           </div>
                         ))
@@ -750,8 +753,8 @@ function MonacoResponseBodyEditor({ value, searchText, searchMode, currentMatchI
       />
       <style>{`
         .relampo-find-match {
-          background-color: rgba(59, 130, 246, 0.4);
-          color: #dbeafe;
+          background-color: rgba(253, 224, 71, 0.75);
+          color: #000000;
           border-radius: 2px;
         }
         .relampo-find-current {

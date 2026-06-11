@@ -6,6 +6,7 @@ import { MethodDropdown } from './fields/MethodDropdown';
 import { QueryParamsEditor } from './fields/QueryParamsEditor';
 import { buildRequestUrl, parseRequestUrl } from './fields/requestUrl';
 import { getRequestNodeHost } from '../utils/requestNodeDisplay';
+import { HighlightedInput } from './ui/HighlightedInput';
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { YAMLResponseDetails } from './YAMLResponseDetails';
@@ -17,6 +18,7 @@ interface YAMLRequestDetailsProps {
   baseUrl?: string;
   redirectSourceInfo?: RedirectSourceInfo | null;
   onNodeUpdate?: (nodeId: string, updatedData: any) => void;
+  searchQuery?: string;
 }
 
 type Tab = 'request' | 'response';
@@ -32,6 +34,7 @@ export function YAMLRequestDetails({
   baseUrl = '',
   redirectSourceInfo = null,
   onNodeUpdate,
+  searchQuery = '',
 }: YAMLRequestDetailsProps) {
   const data = node.data || {};
   const [formData, setFormData] = useState(data);
@@ -59,6 +62,7 @@ export function YAMLRequestDetails({
     setFormData(node.data || {});
   }, [node.id, node.data]);
 
+
   const handleFieldChange = (field: string, value: any) => {
     const newData = { ...formData, [field]: value };
     // The two redirect modes are mutually exclusive.
@@ -83,7 +87,17 @@ export function YAMLRequestDetails({
     }
   };
 
-  const searchText = activeTab === 'request' ? requestSearch : responseSearch;
+  const manualSearch = activeTab === 'request' ? requestSearch : responseSearch;
+  // A search typed directly in the details panel always wins over the tree
+  // search, so users can still search the selected body while a tree filter
+  // is active.
+  const searchText = manualSearch.trim() ? manualSearch : searchQuery.trim();
+
+  // The tree search can change searchText without going through
+  // handleSearchChange; keep the match cursor in range when that happens.
+  useEffect(() => {
+    setCurrentMatchIndex(0);
+  }, [searchText]);
   const searchMode = activeTab === 'request' ? requestSearchMode : responseSearchMode;
   const replaceValue = activeTab === 'request' ? requestReplace : responseReplace;
 
@@ -156,6 +170,7 @@ export function YAMLRequestDetails({
             onFieldChange={handleFieldChange}
             onBodyChange={handleBodyChange}
             searchText={searchText}
+            searchInputValue={requestSearch}
             searchMode={searchMode}
             replaceValue={replaceValue}
             currentMatchIndex={currentMatchIndex}
@@ -169,6 +184,7 @@ export function YAMLRequestDetails({
             response={formData.response}
             onResponseUpdate={updatedResponse => handleFieldChange('response', updatedResponse)}
             searchText={searchText}
+            searchInputValue={responseSearch}
             searchMode={searchMode}
             replaceValue={replaceValue}
             currentMatchIndex={currentMatchIndex}
@@ -194,6 +210,7 @@ interface RequestContentProps {
   onFieldChange: (field: string, value: any) => void;
   onBodyChange: (value: string) => void;
   searchText: string;
+  searchInputValue: string;
   searchMode: SearchMode;
   replaceValue: string;
   currentMatchIndex: number;
@@ -213,6 +230,7 @@ function RequestContent({
   onFieldChange,
   onBodyChange: _,
   searchText,
+  searchInputValue,
   searchMode,
   replaceValue,
   currentMatchIndex,
@@ -395,12 +413,14 @@ function RequestContent({
             >
               Base URL
             </label>
-            <Input
+            <HighlightedInput
               id="req-base-url"
               value={displayBaseUrl}
               onChange={e => handleBaseUrlChange(e.target.value)}
               placeholder={baseUrlPlaceholder}
               className="w-full h-9.5 bg-white/5 border border-white/10 text-zinc-300 text-sm font-mono"
+              searchText={searchText}
+              overlayClass="px-3 text-sm text-zinc-300 font-mono"
             />
           </div>
           <div className="col-span-4">
@@ -410,12 +430,14 @@ function RequestContent({
             >
               Path
             </label>
-            <Input
+            <HighlightedInput
               id="req-path"
               value={pathInputValue}
               onChange={e => handlePathChange(e.target.value)}
               placeholder="/api/endpoint"
               className="w-full h-9.5 bg-white/5 border border-white/10 text-zinc-300 text-sm font-mono"
+              searchText={searchText}
+              overlayClass="px-3 text-sm text-zinc-300 font-mono"
             />
           </div>
         </div>
@@ -462,6 +484,7 @@ function RequestContent({
         url={formData.url || ''}
         onUrlChange={url => onFieldChange('url', url)}
         showBaseUrl={false}
+        searchText={searchText}
       />
 
       <div>
@@ -473,7 +496,7 @@ function RequestContent({
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
               <Input
-                value={searchText}
+                value={searchInputValue}
                 onChange={e => onSearchChange(e.target.value)}
                 placeholder="Search in request body..."
                 className="pl-9 pr-3 bg-white/5 border-white/10 text-zinc-300 text-sm focus-visible:border-yellow-400/60 focus-visible:ring-yellow-400/30"

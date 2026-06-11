@@ -1,5 +1,6 @@
 import { AlertCircle, Info, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { HighlightedInput } from '../ui/HighlightedInput';
 import { Input } from '../ui/input';
 import { buildRequestUrlWithQuery, parseRequestQueryParams, parseRequestUrl } from './requestUrl';
 
@@ -13,9 +14,10 @@ interface QueryParamsEditorProps {
   onUrlChange: (url: string) => void;
   className?: string;
   showBaseUrl?: boolean;
+  searchText?: string;
 }
 
-export function QueryParamsEditor({ url, onUrlChange, className = '', showBaseUrl = true }: QueryParamsEditorProps) {
+export function QueryParamsEditor({ url, onUrlChange, className = '', showBaseUrl = true, searchText = '' }: QueryParamsEditorProps) {
   const [params, setParams] = useState<QueryParam[]>([]);
   const [baseUrl, setBaseUrl] = useState('');
   const [urlHint, setUrlHint] = useState<{
@@ -159,20 +161,25 @@ export function QueryParamsEditor({ url, onUrlChange, className = '', showBaseUr
             >
               <div className="flex-1 flex items-center gap-3 min-w-0">
                 <div className="flex items-center gap-2 shrink-0 w-[250px]">
-                  <Input
+                  <HighlightedInput
                     value={param.key}
                     onChange={e => handleParamChange(index, 'key', e.target.value)}
                     placeholder="name"
-                    className="flex-1 px-2 py-1 text-xs font-mono text-yellow-400 bg-yellow-400/5 border-yellow-400/20"
+                    containerClass="flex-1 min-w-0"
+                    className="w-full px-2 py-1 text-xs font-mono text-yellow-400 bg-yellow-400/5 border-yellow-400/20"
+                    searchText={searchText}
+                    overlayClass="px-2 text-xs font-mono text-yellow-400"
                   />
                   <span className="text-zinc-500 font-bold shrink-0">=</span>
                 </div>
                 <div className="w-0 flex-1 min-w-0 overflow-x-auto scrollbar-none">
-                  <Input
+                  <HighlightedInput
                     value={param.value}
                     onChange={e => handleParamChange(index, 'value', e.target.value)}
                     placeholder="value"
                     className="w-full px-2 py-1 text-sm font-mono text-zinc-300 bg-white/5 border-white/10"
+                    searchText={searchText}
+                    overlayClass="px-2 text-sm font-mono text-zinc-300"
                   />
                 </div>
               </div>

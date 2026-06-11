@@ -302,8 +302,8 @@ export function YAMLCodeEditor({
       </div>
       <style>{`
         .relampo-find-match {
-          background-color: rgba(59, 130, 246, 0.4);
-          color: #dbeafe;
+          background-color: rgba(253, 224, 71, 0.75);
+          color: #000000;
           border-radius: 2px;
         }
         .relampo-find-current {

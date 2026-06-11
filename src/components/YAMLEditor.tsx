@@ -83,6 +83,7 @@ export function YAMLEditor() {
   const [isTreeOutdated, setIsTreeOutdated] = useState(false);
   const [restoredDraftUpdatedAt, setRestoredDraftUpdatedAt] = useState<string | null>(null);
   const [isNewDialogOpen, setIsNewDialogOpen] = useState(false);
+  const [treeSearchQuery, setTreeSearchQuery] = useState('');
   const fallbackRootNameRef = useRef<string | null>(null);
   const hasDiscoveredTreeContextMenuRef = useRef(false);
 
@@ -710,6 +711,7 @@ export function YAMLEditor() {
                 onSelectionChange={handleSelectionChange}
                 onTreeChange={handleTreeChange}
                 onContextMenuOpened={handleTreeContextMenuOpened}
+                onSearchChange={setTreeSearchQuery}
               />
             ) : activeViewMode === 'code' ? (
               <YAMLCodeEditor
@@ -784,6 +786,7 @@ export function YAMLEditor() {
                 onToggleEnabled={handleToggleNodeEnabled}
                 onAddChildNode={handleAddChildNode}
                 onAddChildAction={handleDetailPanelAddClicked}
+                searchQuery={activeViewMode === 'tree' ? treeSearchQuery : ''}
               />
             )}
           </div>
