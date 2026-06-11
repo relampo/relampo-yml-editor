@@ -217,23 +217,7 @@ export function YAMLTreeNode({
   const icon = getNodeIcon(node.type);
   const color = getNodeColor(node.type, node, isRedirectedFollowUp);
   const IconComponent = icon;
-  // Only scan request/response body content for nodes that actually carry body
-  // data, and skip serialization when the node already matches structurally
-  // (name or path). This prevents large payloads from being JSON-stringified on
-  // every keystroke for every node in the tree.
-  const HTTP_METHOD_TYPES = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
-  const isRequestLikeNode = node.type === 'request' || HTTP_METHOD_TYPES.includes(node.type);
-  const nodeMatchesStructurally = Boolean(
-    searchQuery.trim() &&
-      (node.name.toLowerCase().includes(searchQuery.trim().toLowerCase()) ||
-        node.path?.some(segment =>
-          String(segment).toLowerCase().includes(searchQuery.trim().toLowerCase()),
-        )),
-  );
-  const searchHitFlags =
-    isRequestLikeNode && !nodeMatchesStructurally
-      ? getNodeSearchHitFlags(node, searchQuery)
-      : { request: false, response: false };
+  const searchHitFlags = getNodeSearchHitFlags(node, searchQuery);
   const hasRequestHit = searchHitFlags.request;
   const hasResponseHit = searchHitFlags.response;
 
@@ -322,15 +306,7 @@ export function YAMLTreeNode({
       {hasChildren && isExpanded && (
         <div className="ml-2 border-l border-white/5">
           {node.children!
-            .filter(child =>
-              // When there is no search query, show all children unconditionally.
-              // When an ancestor (or this node itself) already matched the query, preserve
-              // the full subtree so descendants are not silently dropped.
-              !searchQuery.trim() ||
-              ancestorMatchesSearch ||
-              nodeDirectlyMatches(node, searchQuery) ||
-              subtreeHasMatch(child, searchQuery),
-            )
+            .filter(child => !searchQuery.trim() || subtreeHasMatch(child, searchQuery))
             .map(child => (
             <YAMLTreeNode
               key={child.id}
@@ -339,6 +315,7 @@ export function YAMLTreeNode({
               isSelected={selectedNodeIds.includes(child.id)}
               selectedNodeIds={selectedNodeIds}
               redirectedRequestMap={redirectedRequestMap}
+              baseHost={baseHost}
               onNodeSelect={onNodeSelect}
               onNodeToggle={onNodeToggle}
               onContextMenu={onContextMenu}
@@ -633,16 +610,12 @@ export function nodeDirectlyMatches(node: YAMLNode, searchQuery: string): boolea
   const query = searchQuery.trim().toLowerCase();
   if (!query) return true;
 
-  // Structural fields only — name and path segments. Request/response body
-  // content is intentionally excluded here to avoid serializing large payloads
-  // on every call (which runs once per visible node per keystroke). Body-content
-  // badges (req/res) are surfaced separately in the render path and only for
-  // request-like nodes that don't already match structurally.
   if (node.name.toLowerCase().includes(query)) return true;
 
   if (node.path?.some(segment => String(segment).toLowerCase().includes(query))) return true;
 
-  return false;
+  const searchHitFlags = getNodeSearchHitFlags(node, searchQuery);
+  return searchHitFlags.request || searchHitFlags.response;
 }
 
 export function subtreeHasMatch(node: YAMLNode, searchQuery: string): boolean {
