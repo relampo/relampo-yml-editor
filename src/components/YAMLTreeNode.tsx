@@ -39,6 +39,18 @@ import { canContain, canDrop } from '../utils/yamlDragDropRules';
 let currentDraggedNode: { id: string; type: YAMLNodeType } | null = null;
 const DND_CLEAR_EVENT = 'yaml-tree-dnd-clear-indicators';
 
+const REQUEST_LIKE_NODE_TYPES: readonly YAMLNodeType[] = [
+  'request',
+  'get',
+  'post',
+  'put',
+  'delete',
+  'patch',
+  'head',
+  'options',
+  'sql',
+];
+
 function setDraggedNode(node: { id: string; type: YAMLNodeType } | null) {
   currentDraggedNode = node;
 }
@@ -626,6 +638,8 @@ export function nodeDirectlyMatches(node: YAMLNode, searchQuery: string): boolea
   if (node.name.toLowerCase().includes(query)) return true;
 
   if (node.path?.some(segment => String(segment).toLowerCase().includes(query))) return true;
+
+  if (!REQUEST_LIKE_NODE_TYPES.includes(node.type)) return false;
 
   const searchHitFlags = getNodeSearchHitFlags(node, searchQuery);
   return searchHitFlags.request || searchHitFlags.response;
