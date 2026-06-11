@@ -64,7 +64,6 @@ interface YAMLTreeNodeProps {
   onContextMenu: (event: React.MouseEvent, node: YAMLNode) => void;
   onNodeMove: (draggedId: string, targetId: string, position: 'before' | 'after' | 'inside') => void;
   searchQuery?: string;
-  ancestorMatchesSearch?: boolean;
 }
 
 export function YAMLTreeNode({
@@ -79,7 +78,6 @@ export function YAMLTreeNode({
   onContextMenu,
   onNodeMove,
   searchQuery = '',
-  ancestorMatchesSearch = false,
 }: YAMLTreeNodeProps) {
   const [dragOver, setDragOver] = useState<'before' | 'after' | 'inside' | null>(null);
   const hasChildren = node.children && node.children.length > 0;
@@ -321,7 +319,6 @@ export function YAMLTreeNode({
               onContextMenu={onContextMenu}
               onNodeMove={onNodeMove}
               searchQuery={searchQuery}
-              ancestorMatchesSearch={ancestorMatchesSearch || nodeDirectlyMatches(node, searchQuery)}
             />
           ))}
         </div>
