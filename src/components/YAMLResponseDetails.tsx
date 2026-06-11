@@ -48,9 +48,8 @@ function HeaderLine({ line, className, ranges, startIndex, currentMatchIndex, ha
         className={
           isActive
             ? 'bg-yellow-300 text-black ring-2 ring-amber-500 shadow-[0_0_0_1px_rgba(245,158,11,0.45)] rounded-sm'
-            : 'rounded-sm'
+            : 'bg-yellow-300/80 text-black rounded-sm'
         }
-        style={isActive ? undefined : { backgroundColor: 'rgba(59,130,246,0.4)', color: '#dbeafe' }}
       >
         {line.slice(r.start, r.end)}
       </mark>,
@@ -84,9 +83,8 @@ function HighlightedText({ text, searchText, searchMode, currentMatchIndex }: Hi
         className={
           isActive
             ? 'bg-yellow-300 text-black ring-2 ring-amber-500 shadow-[0_0_0_1px_rgba(245,158,11,0.45)] rounded-sm'
-            : 'rounded-sm'
+            : 'bg-yellow-300/80 text-black rounded-sm'
         }
-        style={isActive ? undefined : { backgroundColor: 'rgba(59,130,246,0.4)', color: '#dbeafe' }}
       >
         {text.slice(r.start, r.end)}
       </mark>,
@@ -755,8 +753,8 @@ function MonacoResponseBodyEditor({ value, searchText, searchMode, currentMatchI
       />
       <style>{`
         .relampo-find-match {
-          background-color: rgba(59, 130, 246, 0.4);
-          color: #dbeafe;
+          background-color: rgba(253, 224, 71, 0.75);
+          color: #000000;
           border-radius: 2px;
         }
         .relampo-find-current {
