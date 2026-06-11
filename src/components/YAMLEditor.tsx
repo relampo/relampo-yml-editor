@@ -786,7 +786,7 @@ export function YAMLEditor() {
                 onToggleEnabled={handleToggleNodeEnabled}
                 onAddChildNode={handleAddChildNode}
                 onAddChildAction={handleDetailPanelAddClicked}
-                searchQuery={treeSearchQuery}
+                searchQuery={activeViewMode === 'tree' ? treeSearchQuery : ''}
               />
             )}
           </div>

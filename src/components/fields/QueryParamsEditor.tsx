@@ -165,7 +165,8 @@ export function QueryParamsEditor({ url, onUrlChange, className = '', showBaseUr
                     value={param.key}
                     onChange={e => handleParamChange(index, 'key', e.target.value)}
                     placeholder="name"
-                    className="flex-1 px-2 py-1 text-xs font-mono text-yellow-400 bg-yellow-400/5 border-yellow-400/20"
+                    containerClass="flex-1 min-w-0"
+                    className="w-full px-2 py-1 text-xs font-mono text-yellow-400 bg-yellow-400/5 border-yellow-400/20"
                     searchText={searchText}
                     overlayClass="px-2 text-xs font-mono text-yellow-400"
                   />

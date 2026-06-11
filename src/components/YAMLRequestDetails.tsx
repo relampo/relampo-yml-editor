@@ -88,7 +88,16 @@ export function YAMLRequestDetails({
   };
 
   const manualSearch = activeTab === 'request' ? requestSearch : responseSearch;
-  const searchText = searchQuery.trim() ? searchQuery.trim() : manualSearch;
+  // A search typed directly in the details panel always wins over the tree
+  // search, so users can still search the selected body while a tree filter
+  // is active.
+  const searchText = manualSearch.trim() ? manualSearch : searchQuery.trim();
+
+  // The tree search can change searchText without going through
+  // handleSearchChange; keep the match cursor in range when that happens.
+  useEffect(() => {
+    setCurrentMatchIndex(0);
+  }, [searchText]);
   const searchMode = activeTab === 'request' ? requestSearchMode : responseSearchMode;
   const replaceValue = activeTab === 'request' ? requestReplace : responseReplace;
 
