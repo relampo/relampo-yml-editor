@@ -20,6 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from './ui/dialog';
+import { probeStudio } from '../utils/debugApi';
 import { YAMLCodeEditor } from './YAMLCodeEditor';
 import { YAMLDebugSession } from './YAMLDebugView';
 import { YAMLEditorHeader } from './YAMLEditorHeader';
@@ -40,7 +41,9 @@ import {
 
 const EMPTY_PARALLEL_ERROR = 'Parallel controller must contain at least one child step';
 const TREE_SERIALIZE_DEBOUNCE_MS = 220;
-const DEBUG_VIEW_ENABLED = import.meta.env.VITE_DEBUG_VIEW_ENABLED === 'true';
+// Dev-time override; in production the Debug view unlocks itself at runtime
+// when the app detects it is being served by `relampo studio`.
+const DEBUG_VIEW_FORCED = import.meta.env.VITE_DEBUG_VIEW_ENABLED === 'true';
 
 type EditorViewMode = 'tree' | 'code' | 'debug';
 
@@ -87,12 +90,24 @@ export function YAMLEditor() {
   const fallbackRootNameRef = useRef<string | null>(null);
   const hasDiscoveredTreeContextMenuRef = useRef(false);
 
+  const [debugViewEnabled, setDebugViewEnabled] = useState(DEBUG_VIEW_FORCED);
+  useEffect(() => {
+    if (DEBUG_VIEW_FORCED) return;
+    let cancelled = false;
+    probeStudio().then(isStudio => {
+      if (!cancelled && isStudio) setDebugViewEnabled(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const documentMetrics = useMemo(() => getDocumentMetrics(yamlCode), [yamlCode]);
   const isLargeFileMode = documentMetrics.large;
   const isEditorBusy = isFileLoading || isParsing;
   const activeViewMode: EditorViewMode =
-    !DEBUG_VIEW_ENABLED && viewMode === 'debug' ? 'tree' : viewMode;
-  const isDebugViewActive = DEBUG_VIEW_ENABLED && activeViewMode === 'debug';
+    !debugViewEnabled && viewMode === 'debug' ? 'tree' : viewMode;
+  const isDebugViewActive = debugViewEnabled && activeViewMode === 'debug';
 
   const applySemanticValidation = (tree: YAMLNode | null) => {
     setValidationErrors(validateYAMLSemantics(tree).map(issue => issue.message));
@@ -685,7 +700,7 @@ export function YAMLEditor() {
               <Code2 className="w-4 h-4" />
               {language === 'es' ? 'Código' : 'Code'}
             </button>
-            {DEBUG_VIEW_ENABLED ? (
+            {debugViewEnabled ? (
               <button
                 onClick={() => setViewMode('debug')}
                 className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 text-sm font-bold transition-all duration-200 ${

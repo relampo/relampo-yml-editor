@@ -58,6 +58,20 @@ export interface DebugStreamHandlers {
 
 const apiBase: string = import.meta.env.VITE_DEBUG_API_URL ?? '';
 
+// Detects whether the editor is being served by `relampo studio`. Standalone
+// deployments have no /api and the probe simply fails, keeping the editor an
+// independent tool with the Debug view hidden.
+export async function probeStudio(): Promise<boolean> {
+  try {
+    const response = await fetch(`${apiBase}/api/studio/info`, { signal: AbortSignal.timeout(2000) });
+    if (!response.ok) return false;
+    const body = await response.json();
+    return body?.studio === true;
+  } catch {
+    return false;
+  }
+}
+
 export async function startDebugRun(yaml: string, vus: number): Promise<string> {
   const response = await fetch(`${apiBase}/api/debug/runs`, {
     method: 'POST',
