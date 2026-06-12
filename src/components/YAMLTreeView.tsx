@@ -452,7 +452,7 @@ export function YAMLTreeView({
 
     const updatedTree =
       targetNode.id === tree.id
-        ? pastedNodes.reduce((currentTree, node) => addNodeToTree(currentTree, tree.id, node), tree)
+        ? [...pastedNodes].reverse().reduce((currentTree, node) => addNodeToTree(currentTree, tree.id, node), tree)
         : insertNodesAfterTarget(tree, targetNode.id, pastedNodes);
 
     onTreeChange(updatedTree);
