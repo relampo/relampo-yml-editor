@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { LanguageProvider } from '../contexts/LanguageContext';
 import type { YAMLNode } from '../types/yaml';
@@ -56,10 +56,12 @@ function renderInteractiveTreeView({
   tree,
   selectedNodeIds = [],
   selectedNodeId = null,
+  onTreeStateChange,
 }: {
   tree: YAMLNode;
   selectedNodeIds?: string[];
   selectedNodeId?: string | null;
+  onTreeStateChange?: (tree: YAMLNode, selectedNodeIds: string[]) => void;
 }) {
   function Harness() {
     const [currentTree, setCurrentTree] = useState(tree);
@@ -67,6 +69,10 @@ function renderInteractiveTreeView({
     const [currentSelectedNode, setCurrentSelectedNode] = useState<YAMLNode | null>(
       selectedNodeId ? findNodeById(tree, selectedNodeId) : null,
     );
+
+    useEffect(() => {
+      onTreeStateChange?.(currentTree, currentSelectedIds);
+    }, [currentSelectedIds, currentTree]);
 
     return (
       <LanguageProvider>
@@ -234,5 +240,61 @@ describe('YAMLTreeView search filtering', () => {
 
     expect(screen.queryByText('Alpha request')).not.toBeInTheDocument();
     expect(screen.getByText('Beta request')).toBeInTheDocument();
+  });
+
+  it('preserves clipboard order when pasting multiple nodes at the root', async () => {
+    let latestTree: YAMLNode | null = null;
+
+    renderInteractiveTreeView({
+      tree: {
+        id: 'steps',
+        type: 'steps',
+        name: 'Steps',
+        expanded: true,
+        children: [
+          {
+            id: 'alpha',
+            type: 'request',
+            name: 'Alpha request',
+            expanded: true,
+            data: {
+              method: 'GET',
+              url: '/alpha',
+            },
+            children: [],
+          },
+          {
+            id: 'beta',
+            type: 'request',
+            name: 'Beta request',
+            expanded: true,
+            data: {
+              method: 'GET',
+              url: '/beta',
+            },
+            children: [],
+          },
+        ],
+      },
+      selectedNodeIds: ['alpha', 'beta'],
+      selectedNodeId: 'beta',
+      onTreeStateChange: tree => {
+        latestTree = tree;
+      },
+    });
+
+    const treeElement = screen.getByRole('tree');
+    fireEvent.keyDown(treeElement, { key: 'c', ctrlKey: true });
+    fireEvent.click(screen.getByRole('treeitem', { name: /Steps/i }));
+    fireEvent.keyDown(treeElement, { key: 'v', ctrlKey: true });
+
+    await waitFor(() => {
+      expect(latestTree?.children?.map(node => node.name)).toEqual([
+        'Alpha request (Copy)',
+        'Beta request (Copy)',
+        'Alpha request',
+        'Beta request',
+      ]);
+    });
   });
 });
