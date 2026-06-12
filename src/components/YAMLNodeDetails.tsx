@@ -427,6 +427,7 @@ function NodeDetailsContent({
         <HeadersDetails
           node={node}
           onNodeUpdate={onNodeUpdate}
+          searchQuery={searchQuery}
         />
       );
     case 'step':

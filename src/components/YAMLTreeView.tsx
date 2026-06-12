@@ -19,7 +19,19 @@ import {
 } from './yaml-tree-view/treeOperations';
 import type { YAMLAddableNodeType } from './yaml-tree-view/addableItems';
 import { YAMLContextMenu } from './YAMLContextMenu';
-import { subtreeHasMatch, YAMLTreeNode } from './YAMLTreeNode';
+import { nodeDirectlyMatches, subtreeHasMatch, YAMLTreeNode } from './YAMLTreeNode';
+
+const REQUEST_LIKE_NODE_TYPES = new Set([
+  'request',
+  'get',
+  'post',
+  'put',
+  'delete',
+  'patch',
+  'head',
+  'options',
+  'sql',
+]);
 
 const MIN_CONTEXT_MENU_HEIGHT = 700;
 
@@ -64,17 +76,19 @@ export function YAMLTreeView({
   const visibleNodes = useMemo(() => {
     if (!tree) return [] as YAMLNode[];
     const out: YAMLNode[] = [];
-    const walk = (node: YAMLNode) => {
+    const walk = (node: YAMLNode, ancestorMatches: boolean) => {
       out.push(node);
       const expanded = node.expanded ?? true;
       if (node.children && node.children.length > 0 && expanded) {
+        const isRequestLike = REQUEST_LIKE_NODE_TYPES.has(node.type);
+        const passAncestor = !isRequestLike && (ancestorMatches || nodeDirectlyMatches(node, searchQuery));
         const children = searchQuery.trim()
-          ? node.children.filter(child => subtreeHasMatch(child, searchQuery))
+          ? node.children.filter(child => passAncestor || subtreeHasMatch(child, searchQuery))
           : node.children;
-        children.forEach(walk);
+        children.forEach(child => walk(child, passAncestor));
       }
     };
-    walk(tree);
+    walk(tree, false);
     return out;
   }, [tree, searchQuery]);
 

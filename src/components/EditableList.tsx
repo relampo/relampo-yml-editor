@@ -1,6 +1,7 @@
 import { Check, CheckCircle2, Circle, Edit2, Plus, Trash2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { StringMap } from '../types/shared';
+import { HighlightedInput } from './ui/HighlightedInput';
 import { Input } from './ui/input';
 
 interface EditableListItem {
@@ -23,6 +24,7 @@ interface EditableListProps {
   onBulkDelete?: (keys: string[]) => void;
   variant?: 'default' | 'minimal';
   addButtonVariant?: 'default' | 'pill';
+  searchText?: string;
 }
 
 export function EditableList({
@@ -36,6 +38,7 @@ export function EditableList({
   onBulkDelete,
   variant = 'default',
   addButtonVariant = 'default',
+  searchText = '',
 }: EditableListProps) {
   const [localItems, setLocalItems] = useState<EditableListItem[]>([]);
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
@@ -217,7 +220,7 @@ export function EditableList({
                 <>
                   <div className="flex-1 flex items-center gap-3 min-w-0">
                     <div className="flex items-center gap-2 shrink-0 w-[250px]">
-                      <Input
+                      <HighlightedInput
                         value={item.key}
                         onFocus={() => setEditingKey(item.originalKey)}
                         onChange={e => {
@@ -240,12 +243,14 @@ export function EditableList({
                         placeholder={keyPlaceholder}
                         maxLength={50}
                         className="flex-1 px-2 py-1 text-xs font-mono text-yellow-400 bg-yellow-400/5 border-yellow-400/20 focus:border-yellow-400/40"
+                        searchText={searchText}
+                        overlayClass="px-2 py-1 text-xs font-mono text-yellow-400"
                       />
                       <span className="text-zinc-500 font-bold shrink-0">=</span>
                     </div>
 
                     <div className="w-0 flex-1 min-w-0 overflow-x-auto scrollbar-none">
-                      <Input
+                      <HighlightedInput
                         value={item.value}
                         onChange={e => {
                           const updatedItems = {
@@ -256,6 +261,8 @@ export function EditableList({
                         }}
                         placeholder={valuePlaceholder}
                         className="w-full px-2 py-1 text-sm font-mono text-zinc-300 bg-white/5 border-white/10 focus:border-white/30"
+                        searchText={searchText}
+                        overlayClass="px-2 py-1 text-sm font-mono text-zinc-300"
                       />
                     </div>
                   </div>
