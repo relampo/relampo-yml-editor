@@ -766,6 +766,7 @@ export function YAMLEditor() {
             {isDebugViewActive ? (
               <YAMLDebugSession
                 tree={yamlTree}
+                yamlCode={yamlCode}
                 selectedNode={selectedNode}
                 validationErrors={validationErrors}
                 onSelectNode={node => handleSelectionChange(node, [node.id])}
