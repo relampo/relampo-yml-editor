@@ -644,9 +644,11 @@ export function nodeDirectlyMatches(node: YAMLNode, searchQuery: string): boolea
 
 export function nodeMatchExpandsDescendants(node: YAMLNode, searchQuery: string): boolean {
   const query = searchQuery.trim().toLowerCase();
-  if (!query || REQUEST_LIKE_NODE_TYPES.includes(node.type)) return false;
+  if (!query) return false;
 
   if (nodeNameOrPathMatches(node, query)) return true;
+
+  if (REQUEST_LIKE_NODE_TYPES.includes(node.type)) return false;
 
   return !node.children?.length && nodeDirectlyMatches(node, searchQuery);
 }

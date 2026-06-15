@@ -188,6 +188,47 @@ describe('YAMLTreeView search filtering', () => {
     expect(screen.queryByText('Other request')).not.toBeInTheDocument();
   });
 
+  it('keeps request descendants visible when the search matches the request name', () => {
+    renderInteractiveTreeView({
+      tree: {
+        id: 'steps',
+        type: 'steps',
+        name: 'Steps',
+        expanded: true,
+        children: [
+          {
+            id: 'request-login',
+            type: 'request',
+            name: 'Login request',
+            expanded: true,
+            data: {
+              method: 'GET',
+              url: '/login',
+            },
+            children: [
+              {
+                id: 'request-login-headers',
+                type: 'headers',
+                name: 'Headers',
+                data: {
+                  authorization: 'Bearer token',
+                },
+                children: [],
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    fireEvent.change(screen.getByPlaceholderText('Search nodes...'), {
+      target: { value: 'Login' },
+    });
+
+    expect(screen.getByRole('treeitem', { name: /Login request/i })).toBeInTheDocument();
+    expect(screen.getByRole('treeitem', { name: /Headers/i })).toBeInTheDocument();
+  });
+
   it('removes hidden selections from delete shortcuts while the tree is filtered', async () => {
     renderInteractiveTreeView({
       tree: {
