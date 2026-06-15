@@ -319,8 +319,7 @@ export function YAMLTreeNode({
       {hasChildren && isExpanded && (
         <div className="ml-2 border-l border-white/5">
           {(() => {
-            const isRequestLike = REQUEST_LIKE_NODE_TYPES.includes(node.type);
-            const passAncestor = !isRequestLike && (ancestorMatchesSearch || nodeDirectlyMatches(node, searchQuery));
+            const passAncestor = ancestorMatchesSearch || nodeMatchExpandsDescendants(node, searchQuery);
             return node.children!
               .filter(
                 child =>
@@ -632,9 +631,7 @@ export function nodeDirectlyMatches(node: YAMLNode, searchQuery: string): boolea
   const query = searchQuery.trim().toLowerCase();
   if (!query) return true;
 
-  if (node.name.toLowerCase().includes(query)) return true;
-
-  if (node.path?.some(segment => String(segment).toLowerCase().includes(query))) return true;
+  if (nodeNameOrPathMatches(node, query)) return true;
 
   const dataPayload = serializeSearchValue(stripResponseField(node.data));
   if (dataPayload.includes(query)) return true;
@@ -643,6 +640,15 @@ export function nodeDirectlyMatches(node: YAMLNode, searchQuery: string): boolea
   if (responsePayload.includes(query)) return true;
 
   return false;
+}
+
+export function nodeMatchExpandsDescendants(node: YAMLNode, searchQuery: string): boolean {
+  const query = searchQuery.trim().toLowerCase();
+  if (!query || REQUEST_LIKE_NODE_TYPES.includes(node.type)) return false;
+
+  if (nodeNameOrPathMatches(node, query)) return true;
+
+  return !node.children?.length && nodeDirectlyMatches(node, searchQuery);
 }
 
 export function subtreeHasMatch(node: YAMLNode, searchQuery: string): boolean {
@@ -656,6 +662,12 @@ export function subtreeHasMatch(node: YAMLNode, searchQuery: string): boolean {
   }
 
   return false;
+}
+
+function nodeNameOrPathMatches(node: YAMLNode, query: string): boolean {
+  if (node.name.toLowerCase().includes(query)) return true;
+
+  return node.path?.some(segment => String(segment).toLowerCase().includes(query)) ?? false;
 }
 
 function getNodeSearchHitFlags(node: YAMLNode, searchQuery: string): { request: boolean; response: boolean } {

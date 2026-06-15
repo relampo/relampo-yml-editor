@@ -297,4 +297,88 @@ describe('YAMLTreeView search filtering', () => {
       ]);
     });
   });
+
+  it('keeps non-matching siblings hidden when a scenario only matches through duplicated request data', () => {
+    renderInteractiveTreeView({
+      tree: {
+        id: 'scenarios',
+        type: 'scenarios',
+        name: 'Scenarios',
+        expanded: true,
+        children: [
+          {
+            id: 'scenario-1',
+            type: 'scenario',
+            name: 'Checkout flow',
+            expanded: true,
+            data: {
+              name: 'Checkout flow',
+              steps: [
+                {
+                  request: {
+                    headers: {
+                      authorization: 'Bearer needle-token',
+                    },
+                  },
+                },
+              ],
+            },
+            children: [
+              {
+                id: 'scenario-1-load',
+                type: 'load',
+                name: 'Load settings',
+                expanded: true,
+                data: {
+                  users: 25,
+                },
+                children: [],
+              },
+              {
+                id: 'scenario-1-steps',
+                type: 'steps',
+                name: 'Steps',
+                expanded: true,
+                children: [
+                  {
+                    id: 'scenario-1-request-match',
+                    type: 'request',
+                    name: 'Matching request',
+                    expanded: true,
+                    data: {
+                      method: 'GET',
+                      headers: {
+                        authorization: 'Bearer needle-token',
+                      },
+                    },
+                    children: [],
+                  },
+                  {
+                    id: 'scenario-1-request-other',
+                    type: 'request',
+                    name: 'Other request',
+                    expanded: true,
+                    data: {
+                      method: 'GET',
+                      url: '/other',
+                    },
+                    children: [],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    fireEvent.change(screen.getByPlaceholderText('Search nodes...'), {
+      target: { value: 'needle-token' },
+    });
+
+    expect(screen.getByText('Checkout flow')).toBeInTheDocument();
+    expect(screen.getByText('Matching request')).toBeInTheDocument();
+    expect(screen.queryByText('Load settings')).not.toBeInTheDocument();
+    expect(screen.queryByText('Other request')).not.toBeInTheDocument();
+  });
 });

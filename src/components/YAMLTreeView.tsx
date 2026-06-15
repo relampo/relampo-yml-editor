@@ -19,19 +19,7 @@ import {
 } from './yaml-tree-view/treeOperations';
 import type { YAMLAddableNodeType } from './yaml-tree-view/addableItems';
 import { YAMLContextMenu } from './YAMLContextMenu';
-import { nodeDirectlyMatches, subtreeHasMatch, YAMLTreeNode } from './YAMLTreeNode';
-
-const REQUEST_LIKE_NODE_TYPES = new Set([
-  'request',
-  'get',
-  'post',
-  'put',
-  'delete',
-  'patch',
-  'head',
-  'options',
-  'sql',
-]);
+import { nodeMatchExpandsDescendants, subtreeHasMatch, YAMLTreeNode } from './YAMLTreeNode';
 
 const MIN_CONTEXT_MENU_HEIGHT = 700;
 
@@ -80,8 +68,7 @@ export function YAMLTreeView({
       out.push(node);
       const expanded = node.expanded ?? true;
       if (node.children && node.children.length > 0 && expanded) {
-        const isRequestLike = REQUEST_LIKE_NODE_TYPES.has(node.type);
-        const passAncestor = !isRequestLike && (ancestorMatches || nodeDirectlyMatches(node, searchQuery));
+        const passAncestor = ancestorMatches || nodeMatchExpandsDescendants(node, searchQuery);
         const children = searchQuery.trim()
           ? node.children.filter(child => passAncestor || subtreeHasMatch(child, searchQuery))
           : node.children;
