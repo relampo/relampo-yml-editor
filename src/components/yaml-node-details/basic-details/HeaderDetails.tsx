@@ -57,7 +57,7 @@ export function HeaderDetails({ node, onNodeUpdate }: NodeDetailProps) {
   );
 }
 
-export function HeadersDetails({ node, onNodeUpdate }: NodeDetailProps) {
+export function HeadersDetails({ node, onNodeUpdate, searchQuery = '' }: NodeDetailProps & { searchQuery?: string }) {
   const data = node.data || {};
 
   return (
@@ -73,6 +73,7 @@ export function HeadersDetails({ node, onNodeUpdate }: NodeDetailProps) {
         enableCheckboxes={false}
         enableBulkActions={false}
         variant="minimal"
+        searchText={searchQuery}
       />
 
       <div className="mt-4 p-3 bg-red-400/5 border border-red-400/20 rounded text-xs text-zinc-400">
