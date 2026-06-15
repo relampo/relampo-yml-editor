@@ -399,6 +399,12 @@ export const esTranslations = {
     newDocumentConfirm: 'Confirmar',
     confirmNewDocument: '¿Estás seguro de que deseas crear un nuevo documento? Se perderán todos los cambios no guardados.',
     cancel: 'Cancelar',
+    restoreDialog: {
+      title: 'Script no guardado encontrado',
+      description: 'Restauramos tu último script. ¿Deseas continuar donde lo dejaste o iniciar un nuevo script?',
+      continue: 'Continuar editando',
+      startNew: 'Iniciar nuevo script',
+    },
     treeView: 'Árbol',
     details: 'Detalles',
     noNodeSelected: 'Selecciona un nodo para ver detalles',

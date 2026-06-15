@@ -7,7 +7,7 @@ import { useYAMLPersistence } from '../hooks/useYAMLPersistence';
 import type { YAMLNode } from '../types/yaml';
 import { logStatsigEvent } from '../utils/analytics';
 import { applyNodeUpdateToTree, renameRequestHost } from '../utils/nodeUpdate';
-import { getActiveDraft } from '../utils/yamlDraftStorage';
+import { clearActiveDraft, getActiveDraft, type YAMLDraft } from '../utils/yamlDraftStorage';
 import { getDocumentMetrics } from '../utils/yamlDocumentLimits';
 import { parseYAMLToTree, treeToYAML } from '../utils/yamlParser';
 import { validateYAMLSemantics } from '../utils/yamlSemanticValidation';
@@ -41,6 +41,7 @@ import {
 const EMPTY_PARALLEL_ERROR = 'Parallel controller must contain at least one child step';
 const TREE_SERIALIZE_DEBOUNCE_MS = 220;
 const DEBUG_VIEW_ENABLED = import.meta.env.VITE_DEBUG_VIEW_ENABLED === 'true';
+const SESSION_RESTORE_KEY = 'relampo-restore-checked';
 
 type EditorViewMode = 'tree' | 'code' | 'debug';
 
@@ -83,6 +84,8 @@ export function YAMLEditor() {
   const [isTreeOutdated, setIsTreeOutdated] = useState(false);
   const [restoredDraftUpdatedAt, setRestoredDraftUpdatedAt] = useState<string | null>(null);
   const [isNewDialogOpen, setIsNewDialogOpen] = useState(false);
+  const [isRestoreDialogOpen, setIsRestoreDialogOpen] = useState(false);
+  const pendingRestoredDraftRef = useRef<YAMLDraft | null>(null);
   const [treeSearchQuery, setTreeSearchQuery] = useState('');
   const fallbackRootNameRef = useRef<string | null>(null);
   const hasDiscoveredTreeContextMenuRef = useRef(false);
@@ -235,23 +238,32 @@ export function YAMLEditor() {
     let isCancelled = false;
 
     const initializeDocument = async () => {
-      let initialYaml = yamlContent || '';
-      let initialFileName = 'relampo-script.yaml';
-      let initialUpdatedAt: string | null = null;
+      const isNewSession = !sessionStorage.getItem(SESSION_RESTORE_KEY);
+      sessionStorage.setItem(SESSION_RESTORE_KEY, '1');
+
+      let draft: YAMLDraft | null = null;
       let restoreError: string | null = null;
 
       try {
-        const draft = await getActiveDraft();
-        if (draft) {
-          initialYaml = draft.yaml;
-          initialFileName = normalizeYamlFileName(draft.fileName);
-          initialUpdatedAt = draft.updatedAt;
-        }
+        draft = await getActiveDraft();
       } catch {
         restoreError = getDraftRestoreError(language);
       }
 
       if (isCancelled) return;
+
+      // First visit of the session with an existing draft → ask the user
+      if (isNewSession && draft) {
+        pendingRestoredDraftRef.current = draft;
+        setIsRestoreDialogOpen(true);
+        if (restoreError) setError(restoreError);
+        return;
+      }
+
+      // Refresh or no draft → load silently as before
+      const initialYaml = draft ? draft.yaml : (yamlContent || '');
+      const initialFileName = draft ? normalizeYamlFileName(draft.fileName) : 'relampo-script.yaml';
+      const initialUpdatedAt = draft ? draft.updatedAt : null;
 
       if (initialYaml.trim()) setIsFileLoading(true);
       setYamlCode(initialYaml);
@@ -423,6 +435,39 @@ export function YAMLEditor() {
       context_menu_discovered: contextMenuDiscovered,
       is_discovery_friction: !contextMenuDiscovered,
     });
+  };
+
+  const handleRestoreContinue = () => {
+    const draft = pendingRestoredDraftRef.current;
+    pendingRestoredDraftRef.current = null;
+    setIsRestoreDialogOpen(false);
+
+    if (!draft) {
+      setIsInitialized(true);
+      return;
+    }
+
+    const fileName = normalizeYamlFileName(draft.fileName);
+    const displayName = fileName.replace(/\.(ya?ml)$/i, '');
+    fallbackRootNameRef.current = displayName;
+    if (draft.yaml.trim()) setIsFileLoading(true);
+    setYamlCode(draft.yaml);
+    setYamlContent(draft.yaml);
+    setCurrentFileName(fileName);
+    setRestoredDraftUpdatedAt(draft.updatedAt);
+    setHasDocumentActivity(true);
+    setIsDirty(false);
+    syncCodeToTree(draft.yaml, { force: true, defaultRootName: displayName });
+    setIsInitialized(true);
+  };
+
+  const handleRestoreStartNew = () => {
+    pendingRestoredDraftRef.current = null;
+    setIsRestoreDialogOpen(false);
+    void clearActiveDraft();
+    setIsInitialized(true);
+    // Give the dialog time to unmount before opening the file picker
+    window.setTimeout(() => fileInputRef.current?.click(), 100);
   };
 
   const handleNewOpen = () => {
@@ -598,6 +643,32 @@ export function YAMLEditor() {
               className="bg-yellow-400 hover:bg-yellow-300 text-black font-bold"
             >
               {t('yamlEditor.newDocumentConfirm')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isRestoreDialogOpen} onOpenChange={() => {}}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('yamlEditor.restoreDialog.title')}</DialogTitle>
+            <DialogDescription>{t('yamlEditor.restoreDialog.description')}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRestoreStartNew}
+              className="border-white/10 bg-white/5 hover:bg-white/10 text-zinc-300"
+            >
+              {t('yamlEditor.restoreDialog.startNew')}
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleRestoreContinue}
+              className="bg-yellow-400 hover:bg-yellow-300 text-black font-bold"
+            >
+              {t('yamlEditor.restoreDialog.continue')}
             </Button>
           </DialogFooter>
         </DialogContent>

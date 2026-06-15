@@ -398,6 +398,12 @@ export const enTranslations = {
     newDocumentConfirm: 'Confirm',
     confirmNewDocument: 'Are you sure you want to create a new document? All unsaved changes will be lost.',
     cancel: 'Cancel',
+    restoreDialog: {
+      title: 'Unsaved script found',
+      description: 'We restored your last unsaved script. Do you want to continue where you left off or start a new script?',
+      continue: 'Continue editing',
+      startNew: 'Start new script',
+    },
     treeView: 'Tree',
     details: 'Details',
     noNodeSelected: 'Select a node to view details',
