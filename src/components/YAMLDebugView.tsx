@@ -34,7 +34,7 @@ export type DebugEntry = {
 function entryStatus(event: EngineEvent): DebugStatus {
   if (event.err) return 'failed';
   if (event.status >= 400) return 'failed';
-  if ((event.Assertions ?? []).some(assertion => !assertion.Passed)) return 'failed';
+  if ((event.assertions ?? []).some(assertion => !assertion.Passed)) return 'failed';
   return 'passed';
 }
 
@@ -541,7 +541,7 @@ function DebugInspectorContent({ entry, tab }: { entry: DebugEntry; tab: DetailT
   }
 
   if (tab === 'assertions') {
-    const assertions = event.Assertions ?? [];
+    const assertions = event.assertions ?? [];
     if (assertions.length === 0) {
       return <p className="text-sm text-zinc-500">No assertions were evaluated for this request.</p>;
     }

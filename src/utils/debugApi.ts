@@ -46,7 +46,9 @@ export interface EngineEvent {
   redirect_source?: string;
   debug?: boolean;
   embedded?: boolean;
-  Assertions?: EngineAssertionResult[];
+  // The outer key is lowercase (Event json tag), but the inner AssertionResult
+  // fields are capitalized because pkg/runtime.AssertionResult has no json tags.
+  assertions?: EngineAssertionResult[];
   variables?: Record<string, string>;
 }
 
