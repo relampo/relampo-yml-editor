@@ -318,31 +318,33 @@ export function YAMLTreeNode({
       {/* Children */}
       {hasChildren && isExpanded && (
         <div className="ml-2 border-l border-white/5">
-          {node.children!
-            .filter(
-              child =>
-                !searchQuery.trim() ||
-                ancestorMatchesSearch ||
-                nodeDirectlyMatches(node, searchQuery) ||
-                subtreeHasMatch(child, searchQuery)
-            )
-            .map(child => (
-            <YAMLTreeNode
-              key={child.id}
-              node={child}
-              depth={depth + 1}
-              isSelected={selectedNodeIds.includes(child.id)}
-              selectedNodeIds={selectedNodeIds}
-              redirectedRequestMap={redirectedRequestMap}
-              baseHost={baseHost}
-              onNodeSelect={onNodeSelect}
-              onNodeToggle={onNodeToggle}
-              onContextMenu={onContextMenu}
-              onNodeMove={onNodeMove}
-              searchQuery={searchQuery}
-              ancestorMatchesSearch={ancestorMatchesSearch || nodeDirectlyMatches(node, searchQuery)}
-            />
-          ))}
+          {(() => {
+            const passAncestor = ancestorMatchesSearch || nodeMatchExpandsDescendants(node, searchQuery);
+            return node.children!
+              .filter(
+                child =>
+                  !searchQuery.trim() ||
+                  passAncestor ||
+                  subtreeHasMatch(child, searchQuery)
+              )
+              .map(child => (
+                <YAMLTreeNode
+                  key={child.id}
+                  node={child}
+                  depth={depth + 1}
+                  isSelected={selectedNodeIds.includes(child.id)}
+                  selectedNodeIds={selectedNodeIds}
+                  redirectedRequestMap={redirectedRequestMap}
+                  baseHost={baseHost}
+                  onNodeSelect={onNodeSelect}
+                  onNodeToggle={onNodeToggle}
+                  onContextMenu={onContextMenu}
+                  onNodeMove={onNodeMove}
+                  searchQuery={searchQuery}
+                  ancestorMatchesSearch={passAncestor}
+                />
+              ));
+          })()}
         </div>
       )}
     </div>
@@ -629,14 +631,26 @@ export function nodeDirectlyMatches(node: YAMLNode, searchQuery: string): boolea
   const query = searchQuery.trim().toLowerCase();
   if (!query) return true;
 
-  if (node.name.toLowerCase().includes(query)) return true;
+  if (nodeNameOrPathMatches(node, query)) return true;
 
-  if (node.path?.some(segment => String(segment).toLowerCase().includes(query))) return true;
+  const dataPayload = serializeSearchValue(stripResponseField(node.data));
+  if (dataPayload.includes(query)) return true;
 
-  if (!REQUEST_LIKE_NODE_TYPES.includes(node.type)) return false;
+  const responsePayload = serializeSearchValue(node.data?.response);
+  if (responsePayload.includes(query)) return true;
 
-  const searchHitFlags = getNodeSearchHitFlags(node, searchQuery);
-  return searchHitFlags.request || searchHitFlags.response;
+  return false;
+}
+
+export function nodeMatchExpandsDescendants(node: YAMLNode, searchQuery: string): boolean {
+  const query = searchQuery.trim().toLowerCase();
+  if (!query) return false;
+
+  if (nodeNameOrPathMatches(node, query)) return true;
+
+  if (REQUEST_LIKE_NODE_TYPES.includes(node.type)) return false;
+
+  return !node.children?.length && nodeDirectlyMatches(node, searchQuery);
 }
 
 export function subtreeHasMatch(node: YAMLNode, searchQuery: string): boolean {
@@ -650,6 +664,12 @@ export function subtreeHasMatch(node: YAMLNode, searchQuery: string): boolean {
   }
 
   return false;
+}
+
+function nodeNameOrPathMatches(node: YAMLNode, query: string): boolean {
+  if (node.name.toLowerCase().includes(query)) return true;
+
+  return node.path?.some(segment => String(segment).toLowerCase().includes(query)) ?? false;
 }
 
 function getNodeSearchHitFlags(node: YAMLNode, searchQuery: string): { request: boolean; response: boolean } {

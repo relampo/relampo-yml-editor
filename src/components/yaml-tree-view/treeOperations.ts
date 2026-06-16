@@ -36,7 +36,7 @@ export function addNodeToTree(tree: YAMLNode, parentId: string, newNode: YAMLNod
     const children = tree.children || [];
     return {
       ...tree,
-      children: [...children, newNode],
+      children: [newNode, ...children],
       expanded: true,
     };
   }

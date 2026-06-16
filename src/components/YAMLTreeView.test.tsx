@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { LanguageProvider } from '../contexts/LanguageContext';
 import type { YAMLNode } from '../types/yaml';
@@ -56,10 +56,12 @@ function renderInteractiveTreeView({
   tree,
   selectedNodeIds = [],
   selectedNodeId = null,
+  onTreeStateChange,
 }: {
   tree: YAMLNode;
   selectedNodeIds?: string[];
   selectedNodeId?: string | null;
+  onTreeStateChange?: (tree: YAMLNode, selectedNodeIds: string[]) => void;
 }) {
   function Harness() {
     const [currentTree, setCurrentTree] = useState(tree);
@@ -67,6 +69,10 @@ function renderInteractiveTreeView({
     const [currentSelectedNode, setCurrentSelectedNode] = useState<YAMLNode | null>(
       selectedNodeId ? findNodeById(tree, selectedNodeId) : null,
     );
+
+    useEffect(() => {
+      onTreeStateChange?.(currentTree, currentSelectedIds);
+    }, [currentSelectedIds, currentTree]);
 
     return (
       <LanguageProvider>
@@ -182,6 +188,47 @@ describe('YAMLTreeView search filtering', () => {
     expect(screen.queryByText('Other request')).not.toBeInTheDocument();
   });
 
+  it('keeps request descendants visible when the search matches the request name', () => {
+    renderInteractiveTreeView({
+      tree: {
+        id: 'steps',
+        type: 'steps',
+        name: 'Steps',
+        expanded: true,
+        children: [
+          {
+            id: 'request-login',
+            type: 'request',
+            name: 'Login request',
+            expanded: true,
+            data: {
+              method: 'GET',
+              url: '/login',
+            },
+            children: [
+              {
+                id: 'request-login-headers',
+                type: 'headers',
+                name: 'Headers',
+                data: {
+                  authorization: 'Bearer token',
+                },
+                children: [],
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    fireEvent.change(screen.getByPlaceholderText('Search nodes...'), {
+      target: { value: 'Login' },
+    });
+
+    expect(screen.getByRole('treeitem', { name: /Login request/i })).toBeInTheDocument();
+    expect(screen.getByRole('treeitem', { name: /Headers/i })).toBeInTheDocument();
+  });
+
   it('removes hidden selections from delete shortcuts while the tree is filtered', async () => {
     renderInteractiveTreeView({
       tree: {
@@ -234,5 +281,145 @@ describe('YAMLTreeView search filtering', () => {
 
     expect(screen.queryByText('Alpha request')).not.toBeInTheDocument();
     expect(screen.getByText('Beta request')).toBeInTheDocument();
+  });
+
+  it('preserves clipboard order when pasting multiple nodes at the root', async () => {
+    let latestTree: YAMLNode | null = null;
+
+    renderInteractiveTreeView({
+      tree: {
+        id: 'steps',
+        type: 'steps',
+        name: 'Steps',
+        expanded: true,
+        children: [
+          {
+            id: 'alpha',
+            type: 'request',
+            name: 'Alpha request',
+            expanded: true,
+            data: {
+              method: 'GET',
+              url: '/alpha',
+            },
+            children: [],
+          },
+          {
+            id: 'beta',
+            type: 'request',
+            name: 'Beta request',
+            expanded: true,
+            data: {
+              method: 'GET',
+              url: '/beta',
+            },
+            children: [],
+          },
+        ],
+      },
+      selectedNodeIds: ['alpha', 'beta'],
+      selectedNodeId: 'beta',
+      onTreeStateChange: tree => {
+        latestTree = tree;
+      },
+    });
+
+    const treeElement = screen.getByRole('tree');
+    fireEvent.keyDown(treeElement, { key: 'c', ctrlKey: true });
+    fireEvent.click(screen.getByRole('treeitem', { name: /Steps/i }));
+    fireEvent.keyDown(treeElement, { key: 'v', ctrlKey: true });
+
+    await waitFor(() => {
+      expect(latestTree?.children?.map(node => node.name)).toEqual([
+        'Alpha request (Copy)',
+        'Beta request (Copy)',
+        'Alpha request',
+        'Beta request',
+      ]);
+    });
+  });
+
+  it('keeps non-matching siblings hidden when a scenario only matches through duplicated request data', () => {
+    renderInteractiveTreeView({
+      tree: {
+        id: 'scenarios',
+        type: 'scenarios',
+        name: 'Scenarios',
+        expanded: true,
+        children: [
+          {
+            id: 'scenario-1',
+            type: 'scenario',
+            name: 'Checkout flow',
+            expanded: true,
+            data: {
+              name: 'Checkout flow',
+              steps: [
+                {
+                  request: {
+                    headers: {
+                      authorization: 'Bearer needle-token',
+                    },
+                  },
+                },
+              ],
+            },
+            children: [
+              {
+                id: 'scenario-1-load',
+                type: 'load',
+                name: 'Load settings',
+                expanded: true,
+                data: {
+                  users: 25,
+                },
+                children: [],
+              },
+              {
+                id: 'scenario-1-steps',
+                type: 'steps',
+                name: 'Steps',
+                expanded: true,
+                children: [
+                  {
+                    id: 'scenario-1-request-match',
+                    type: 'request',
+                    name: 'Matching request',
+                    expanded: true,
+                    data: {
+                      method: 'GET',
+                      headers: {
+                        authorization: 'Bearer needle-token',
+                      },
+                    },
+                    children: [],
+                  },
+                  {
+                    id: 'scenario-1-request-other',
+                    type: 'request',
+                    name: 'Other request',
+                    expanded: true,
+                    data: {
+                      method: 'GET',
+                      url: '/other',
+                    },
+                    children: [],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    fireEvent.change(screen.getByPlaceholderText('Search nodes...'), {
+      target: { value: 'needle-token' },
+    });
+
+    expect(screen.getByText('Checkout flow')).toBeInTheDocument();
+    expect(screen.getByText('Matching request')).toBeInTheDocument();
+    expect(screen.queryByText('Load settings')).not.toBeInTheDocument();
+    expect(screen.queryByText('Other request')).not.toBeInTheDocument();
   });
 });
