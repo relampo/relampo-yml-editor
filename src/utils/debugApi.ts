@@ -74,11 +74,14 @@ export async function probeStudio(): Promise<boolean> {
   }
 }
 
-export async function startDebugRun(yaml: string, vus: number): Promise<string> {
+// A debug run is always a single VU doing one pass through the flow; the
+// backend forces this and ignores the scenario's load, so no parameters
+// beyond the YAML are sent.
+export async function startDebugRun(yaml: string): Promise<string> {
   const response = await fetch(`${apiBase}/api/debug/runs`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ yaml, vus }),
+    body: JSON.stringify({ yaml }),
   });
   if (!response.ok) {
     let message = `debug run failed to start (HTTP ${response.status})`;

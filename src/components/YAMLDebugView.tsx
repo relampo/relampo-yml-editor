@@ -147,11 +147,9 @@ export function YAMLDebugSession({
   onSelectNode,
   onEditNode,
 }: YAMLDebugSessionProps) {
-  const [debugVus, setDebugVus] = useState<1 | 2>(1);
-  // Duration is captured but not yet sent: a duration override loops the
-  // scenario for that long, which clashes with stage/iteration configs. The
-  // backend accepts it; wire it once the override semantics are agreed.
-  const [durationMinutes, setDurationMinutes] = useState(1);
+  // A debug run is always a single virtual user doing one pass through the
+  // flow (the backend forces this and ignores the scenario's load), so there
+  // are no VUs/duration controls — they would not mean anything here.
   const [entries, setEntries] = useState<DebugEntry[]>([]);
   const [isRunning, setIsRunning] = useState(false);
   const [runError, setRunError] = useState<string | null>(null);
@@ -246,7 +244,7 @@ export function YAMLDebugSession({
     setDetailTab('overview');
     setIsRunning(true);
     try {
-      const runId = await startDebugRun(yamlCode, debugVus);
+      const runId = await startDebugRun(yamlCode);
       storeRunId(runId);
       subscribe(runId, false);
     } catch (error) {
@@ -303,32 +301,9 @@ export function YAMLDebugSession({
             >
               <RotateCcw className="h-4 w-4" />
             </button>
-            <label className="inline-flex h-9 items-center gap-2 rounded border border-white/10 bg-[#161616] px-2 text-xs text-zinc-300">
-              <span className="text-zinc-500">VUs</span>
-              <select
-                value={debugVus}
-                onChange={event => setDebugVus(Number(event.target.value) === 2 ? 2 : 1)}
-                className="h-7 rounded border border-white/10 bg-[#0a0a0a] px-2 text-xs text-zinc-100 outline-none focus:border-yellow-400/50"
-              >
-                <option value={1}>1</option>
-                <option value={2}>2</option>
-              </select>
-            </label>
-            <label className="inline-flex h-9 items-center gap-2 rounded border border-white/10 bg-[#161616] px-2 text-xs text-zinc-300">
-              <span className="text-zinc-500">Min</span>
-              <input
-                type="number"
-                min={1}
-                max={60}
-                value={durationMinutes}
-                onChange={event => {
-                  const next = Number(event.target.value);
-                  if (!Number.isFinite(next)) return;
-                  setDurationMinutes(Math.min(60, Math.max(1, Math.round(next))));
-                }}
-                className="h-7 w-14 rounded border border-white/10 bg-[#0a0a0a] px-2 text-xs text-zinc-100 outline-none focus:border-yellow-400/50"
-              />
-            </label>
+            <span className="inline-flex h-9 items-center gap-2 rounded border border-white/10 bg-[#161616] px-3 text-xs text-zinc-400">
+              1 VU · 1 iteration
+            </span>
             <span className="inline-flex h-9 items-center gap-2 rounded border border-emerald-400/20 bg-emerald-400/10 px-3 text-xs text-emerald-300">
               <ShieldCheck className="h-4 w-4" />
               {hasValidationErrors ? 'Blocked' : 'Validate'}
