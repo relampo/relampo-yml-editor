@@ -778,19 +778,25 @@ export function YAMLEditor() {
             </span>
           </div>
           <div className="flex-1 overflow-hidden">
-            {isDebugViewActive ? (
-              <YAMLDebugSession
-                tree={yamlTree}
-                yamlCode={yamlCode}
-                selectedNode={selectedNode}
-                validationErrors={validationErrors}
-                onSelectNode={node => handleSelectionChange(node, [node.id])}
-                onEditNode={node => {
-                  handleSelectionChange(node, [node.id]);
-                  setViewMode('tree');
-                }}
-              />
-            ) : (
+            {/* The debug session stays mounted while enabled (hidden via CSS
+                when another tab is active) so an in-progress or finished run
+                survives tab switches instead of being torn down. */}
+            {debugViewEnabled && (
+              <div className={isDebugViewActive ? 'h-full' : 'hidden'}>
+                <YAMLDebugSession
+                  tree={yamlTree}
+                  yamlCode={yamlCode}
+                  selectedNode={selectedNode}
+                  validationErrors={validationErrors}
+                  onSelectNode={node => handleSelectionChange(node, [node.id])}
+                  onEditNode={node => {
+                    handleSelectionChange(node, [node.id]);
+                    setViewMode('tree');
+                  }}
+                />
+              </div>
+            )}
+            <div className={isDebugViewActive ? 'hidden' : 'h-full'}>
               <YAMLNodeDetails
                 node={selectedNode}
                 baseUrl={httpDefaultsBaseUrl}
@@ -804,7 +810,7 @@ export function YAMLEditor() {
                 onAddChildAction={handleDetailPanelAddClicked}
                 searchQuery={activeViewMode === 'tree' ? treeSearchQuery : ''}
               />
-            )}
+            </div>
           </div>
         </div>
       </div>

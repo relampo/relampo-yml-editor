@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -20,6 +20,35 @@ import { startDebugRun, streamDebugRun, type EngineEvent } from '../utils/debugA
 
 type DetailTab = 'overview' | 'request' | 'response' | 'assertions' | 'variables' | 'logs';
 type SearchMode = 'text' | 'regex';
+
+// The id of the last debug run is parked in sessionStorage so a page reload
+// can re-attach and let the backend replay the run's history. Only the id is
+// stored (a short string); the events and bodies stay on the studio server.
+const RUN_STORAGE_KEY = 'relampo.studio.debugRunId';
+
+function readStoredRunId(): string | null {
+  try {
+    return sessionStorage.getItem(RUN_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function storeRunId(runId: string): void {
+  try {
+    sessionStorage.setItem(RUN_STORAGE_KEY, runId);
+  } catch {
+    // Private-mode / disabled storage: persistence is best-effort.
+  }
+}
+
+function clearStoredRunId(): void {
+  try {
+    sessionStorage.removeItem(RUN_STORAGE_KEY);
+  } catch {
+    // ignore
+  }
+}
 
 // One timeline entry: a request-level engine event, optionally mapped back to
 // the tree node it came from (matched by report name, best effort).
@@ -129,7 +158,53 @@ export function YAMLDebugSession({
   requestNodesRef.current = requestNodes;
 
   const stopStreamRef = useRef<(() => void) | null>(null);
-  useEffect(() => () => stopStreamRef.current?.(), []);
+
+  // Wires a run's SSE stream into the timeline. Shared by a fresh Run Debug
+  // and by re-attaching to a stored run after a reload (the backend replays
+  // the full event history on connect). `quiet` suppresses the error banner
+  // for auto re-attach: a stored run that no longer exists (server restarted)
+  // should clear silently rather than alarm the user.
+  const subscribe = useCallback((runId: string, quiet: boolean) => {
+    stopStreamRef.current?.();
+    stopStreamRef.current = streamDebugRun(runId, {
+      onEvent: event => {
+        if (!isTimelineEvent(event)) return;
+        setEntries(previous => [
+          ...previous,
+          {
+            id: `evt-${previous.length}`,
+            index: previous.length + 1,
+            event,
+            node: matchEventToNode(event, requestNodesRef.current),
+            status: entryStatus(event),
+          },
+        ]);
+      },
+      onDone: error => {
+        setIsRunning(false);
+        setRunError(error);
+      },
+      onConnectionError: () => {
+        setIsRunning(false);
+        if (quiet) {
+          clearStoredRunId();
+          setEntries([]);
+        } else {
+          setRunError('Lost connection to the studio server.');
+        }
+      },
+    });
+  }, []);
+
+  // On first mount, re-attach to a run that was started before a reload.
+  useEffect(() => {
+    const storedRunId = readStoredRunId();
+    if (storedRunId) {
+      setIsRunning(true);
+      subscribe(storedRunId, true);
+    }
+    return () => stopStreamRef.current?.();
+  }, [subscribe]);
 
   useEffect(() => {
     if (!selectedNode) return;
@@ -157,29 +232,8 @@ export function YAMLDebugSession({
     setIsRunning(true);
     try {
       const runId = await startDebugRun(yamlCode, debugVus);
-      stopStreamRef.current = streamDebugRun(runId, {
-        onEvent: event => {
-          if (!isTimelineEvent(event)) return;
-          setEntries(previous => [
-            ...previous,
-            {
-              id: `evt-${previous.length}`,
-              index: previous.length + 1,
-              event,
-              node: matchEventToNode(event, requestNodesRef.current),
-              status: entryStatus(event),
-            },
-          ]);
-        },
-        onDone: error => {
-          setIsRunning(false);
-          setRunError(error);
-        },
-        onConnectionError: () => {
-          setIsRunning(false);
-          setRunError('Lost connection to the studio server.');
-        },
-      });
+      storeRunId(runId);
+      subscribe(runId, false);
     } catch (error) {
       setIsRunning(false);
       setRunError(error instanceof Error ? error.message : String(error));
