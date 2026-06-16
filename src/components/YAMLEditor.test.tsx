@@ -147,6 +147,12 @@ const clearActiveDraftMock = vi.mocked(clearActiveDraft);
 const logStatsigEventMock = vi.mocked(logStatsigEvent);
 const parseYAMLToTreeMock = vi.mocked(parseYAMLToTree);
 const treeToYAMLMock = vi.mocked(treeToYAML);
+const SESSION_RESTORE_KEY = 'relampo-restore-checked';
+const RESTORED_DRAFT = {
+  yaml: 'test:\n  name: restored\n',
+  fileName: 'restored.yaml',
+  updatedAt: '2026-04-23T10:00:00.000Z',
+};
 
 function renderEditor() {
   return render(
@@ -158,12 +164,20 @@ function renderEditor() {
   );
 }
 
+async function renderEditorWithRestoredDraft() {
+  sessionStorage.setItem(SESSION_RESTORE_KEY, '1');
+  renderEditor();
+  expect(await screen.findByText('Restored plan')).toBeInTheDocument();
+}
+
 describe('YAMLEditor draft restoration', () => {
   beforeEach(() => {
     getActiveDraftMock.mockResolvedValue(null);
+    clearActiveDraftMock.mockResolvedValue(undefined);
     logStatsigEventMock.mockClear();
     parseYAMLToTreeMock.mockClear();
     treeToYAMLMock.mockClear();
+    sessionStorage.clear();
   });
 
   afterEach(() => {
@@ -172,20 +186,36 @@ describe('YAMLEditor draft restoration', () => {
     vi.clearAllMocks();
   });
 
-  it('restores the active IndexedDB draft on mount', async () => {
-    getActiveDraftMock.mockResolvedValueOnce({
-      yaml: 'test:\n  name: restored\n',
-      fileName: 'restored.yaml',
-      updatedAt: '2026-04-23T10:00:00.000Z',
-    });
+  it('prompts on the first session visit before restoring the active IndexedDB draft', async () => {
+    getActiveDraftMock.mockResolvedValueOnce(RESTORED_DRAFT);
 
     renderEditor();
+
+    expect(await screen.findByText('Unsaved script found')).toBeInTheDocument();
+    expect(screen.getByTestId('tree-view')).toHaveTextContent('empty tree');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Continue editing' }));
 
     expect(await screen.findByText('Restored plan')).toBeInTheDocument();
     expect(parseYAMLToTreeMock).toHaveBeenCalledWith('test:\n  name: restored\n', 'restored');
     expect(screen.getByTestId('editor-header')).toHaveAttribute('data-activity', 'true');
     expect(screen.getByTestId('editor-header')).toHaveAttribute('data-dirty', 'false');
     await waitFor(() => expect(screen.getByTestId('editor-header').getAttribute('data-saved-at')).not.toBe(''));
+  });
+
+  it('starts a blank document and clears the stored draft when the user declines restore', async () => {
+    getActiveDraftMock.mockResolvedValueOnce(RESTORED_DRAFT);
+
+    renderEditor();
+
+    expect(await screen.findByText('Unsaved script found')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Start new script' }));
+
+    await waitFor(() => expect(clearActiveDraftMock).toHaveBeenCalled());
+    await waitFor(() => expect(screen.queryByText('Unsaved script found')).not.toBeInTheDocument());
+    expect(screen.getByTestId('tree-view')).toHaveTextContent('empty tree');
+    expect(parseYAMLToTreeMock).not.toHaveBeenCalled();
+    expect(screen.getByTestId('editor-header')).toHaveAttribute('data-activity', 'false');
   });
 
   it('starts empty when IndexedDB has no active draft', async () => {
@@ -199,15 +229,9 @@ describe('YAMLEditor draft restoration', () => {
   });
 
   it('serializes and marks dirty when the tree view changes the tree', async () => {
-    getActiveDraftMock.mockResolvedValueOnce({
-      yaml: 'test:\n  name: restored\n',
-      fileName: 'restored.yaml',
-      updatedAt: '2026-04-23T10:00:00.000Z',
-    });
+    getActiveDraftMock.mockResolvedValueOnce(RESTORED_DRAFT);
 
-    renderEditor();
-
-    await screen.findByText('Restored plan');
+    await renderEditorWithRestoredDraft();
     fireEvent.click(screen.getByRole('button', { name: 'change from tree' }));
 
     expect(treeToYAMLMock).toHaveBeenLastCalledWith(
@@ -219,15 +243,9 @@ describe('YAMLEditor draft restoration', () => {
   });
 
   it('refreshes details immediately and debounces serialization when the details panel updates a node', async () => {
-    getActiveDraftMock.mockResolvedValueOnce({
-      yaml: 'test:\n  name: restored\n',
-      fileName: 'restored.yaml',
-      updatedAt: '2026-04-23T10:00:00.000Z',
-    });
+    getActiveDraftMock.mockResolvedValueOnce(RESTORED_DRAFT);
 
-    renderEditor();
-
-    await screen.findByText('Restored plan');
+    await renderEditorWithRestoredDraft();
     fireEvent.click(screen.getByRole('button', { name: 'select tree root' }));
 
     vi.useFakeTimers();
@@ -250,15 +268,9 @@ describe('YAMLEditor draft restoration', () => {
   });
 
   it('serializes and selects the created node when details adds a child', async () => {
-    getActiveDraftMock.mockResolvedValueOnce({
-      yaml: 'test:\n  name: restored\n',
-      fileName: 'restored.yaml',
-      updatedAt: '2026-04-23T10:00:00.000Z',
-    });
+    getActiveDraftMock.mockResolvedValueOnce(RESTORED_DRAFT);
 
-    renderEditor();
-
-    await screen.findByText('Restored plan');
+    await renderEditorWithRestoredDraft();
     fireEvent.click(screen.getByRole('button', { name: 'select tree root' }));
     fireEvent.click(screen.getByRole('button', { name: 'add from details' }));
 
@@ -276,15 +288,9 @@ describe('YAMLEditor draft restoration', () => {
   });
 
   it('logs detail-panel add as discovery friction before the tree context menu is opened', async () => {
-    getActiveDraftMock.mockResolvedValueOnce({
-      yaml: 'test:\n  name: restored\n',
-      fileName: 'restored.yaml',
-      updatedAt: '2026-04-23T10:00:00.000Z',
-    });
+    getActiveDraftMock.mockResolvedValueOnce(RESTORED_DRAFT);
 
-    renderEditor();
-
-    await screen.findByText('Restored plan');
+    await renderEditorWithRestoredDraft();
     fireEvent.click(screen.getByRole('button', { name: 'select tree root' }));
     fireEvent.click(screen.getByRole('button', { name: 'add from details' }));
 
@@ -298,15 +304,9 @@ describe('YAMLEditor draft restoration', () => {
 
   describe('new document dialog', () => {
     it('clears the document and calls clearActiveDraft when New is confirmed', async () => {
-      getActiveDraftMock.mockResolvedValueOnce({
-        yaml: 'test:\n  name: restored\n',
-        fileName: 'restored.yaml',
-        updatedAt: '2026-04-23T10:00:00.000Z',
-      });
+      getActiveDraftMock.mockResolvedValueOnce(RESTORED_DRAFT);
 
-      renderEditor();
-
-      await screen.findByText('Restored plan');
+      await renderEditorWithRestoredDraft();
 
       fireEvent.click(screen.getByRole('button', { name: 'New' }));
       fireEvent.click(await screen.findByRole('button', { name: 'Confirm' }));
@@ -327,15 +327,9 @@ describe('YAMLEditor draft restoration', () => {
   });
 
   it('logs detail-panel add without friction after the tree context menu is opened', async () => {
-    getActiveDraftMock.mockResolvedValueOnce({
-      yaml: 'test:\n  name: restored\n',
-      fileName: 'restored.yaml',
-      updatedAt: '2026-04-23T10:00:00.000Z',
-    });
+    getActiveDraftMock.mockResolvedValueOnce(RESTORED_DRAFT);
 
-    renderEditor();
-
-    await screen.findByText('Restored plan');
+    await renderEditorWithRestoredDraft();
     fireEvent.click(screen.getByRole('button', { name: 'select tree root' }));
     fireEvent.click(screen.getByRole('button', { name: 'open context menu' }));
     fireEvent.click(screen.getByRole('button', { name: 'add from details' }));
