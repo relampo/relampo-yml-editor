@@ -128,6 +128,10 @@ function StatusIcon({ status }: { status: DebugStatus }) {
 interface YAMLDebugSessionProps {
   tree: YAMLNode | null;
   yamlCode: string;
+  // True once the editor has finished restoring (or failing to restore) the
+  // document. Gates the reload re-attach so an orphaned run is not revived
+  // when the document itself did not come back.
+  documentReady: boolean;
   selectedNode: YAMLNode | null;
   validationErrors: string[];
   onSelectNode: (node: YAMLNode) => void;
@@ -137,6 +141,7 @@ interface YAMLDebugSessionProps {
 export function YAMLDebugSession({
   tree,
   yamlCode,
+  documentReady,
   selectedNode,
   validationErrors,
   onSelectNode,
@@ -196,15 +201,25 @@ export function YAMLDebugSession({
     });
   }, []);
 
-  // On first mount, re-attach to a run that was started before a reload.
+  useEffect(() => () => stopStreamRef.current?.(), []);
+
+  // Re-attach to a run started before a reload — but only once the editor has
+  // settled the document. A debug run belongs to a document, so if the
+  // document did not come back (no draft restored), the run is orphaned and
+  // its stored id is dropped instead of reviving a timeline with no script.
+  const reattachedRef = useRef(false);
   useEffect(() => {
+    if (!documentReady || reattachedRef.current) return;
+    reattachedRef.current = true;
     const storedRunId = readStoredRunId();
-    if (storedRunId) {
-      setIsRunning(true);
-      subscribe(storedRunId, true);
+    if (!storedRunId) return;
+    if (!yamlCode.trim()) {
+      clearStoredRunId();
+      return;
     }
-    return () => stopStreamRef.current?.();
-  }, [subscribe]);
+    setIsRunning(true);
+    subscribe(storedRunId, true);
+  }, [documentReady, yamlCode, subscribe]);
 
   useEffect(() => {
     if (!selectedNode) return;
