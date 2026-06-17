@@ -90,17 +90,9 @@ export function YAMLEditor() {
   const fallbackRootNameRef = useRef<string | null>(null);
   const hasDiscoveredTreeContextMenuRef = useRef(false);
 
+  // Studio detection + the optional CLI-mounted script are resolved together in
+  // the init effect below (one /api/studio/info probe).
   const [debugViewEnabled, setDebugViewEnabled] = useState(DEBUG_VIEW_FORCED);
-  useEffect(() => {
-    if (DEBUG_VIEW_FORCED) return;
-    let cancelled = false;
-    probeStudio().then(isStudio => {
-      if (!cancelled && isStudio) setDebugViewEnabled(true);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const documentMetrics = useMemo(() => getDocumentMetrics(yamlCode), [yamlCode]);
   const isLargeFileMode = documentMetrics.large;
@@ -264,6 +256,18 @@ export function YAMLEditor() {
         }
       } catch {
         restoreError = getDraftRestoreError(language);
+      }
+
+      // `relampo studio` probe: unlock Debug, and mount a CLI-passed script
+      // (`relampo studio file.yaml`) — it wins over the restored draft. A
+      // standalone editor returns null here, leaving the draft untouched.
+      const studioInfo = await probeStudio();
+      if (studioInfo?.studio && !DEBUG_VIEW_FORCED) setDebugViewEnabled(true);
+      if (studioInfo?.initialScript) {
+        initialYaml = studioInfo.initialScript.yaml;
+        initialFileName = normalizeYamlFileName(studioInfo.initialScript.name);
+        initialUpdatedAt = null;
+        restoreError = null;
       }
 
       if (isCancelled) return;
