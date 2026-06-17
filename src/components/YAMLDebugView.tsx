@@ -15,8 +15,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import type { YAMLNode } from '../types/yaml';
-import { collectDebugSelectableRequests, type DebugStatus } from './debugRequests';
-import { matchEventToNode } from './debugEventMapping';
+import { collectDebugEventTargets, type DebugStatus } from './debugRequests';
 import { startDebugRun, streamDebugRun, type EngineEvent } from '../utils/debugApi';
 
 type DetailTab = 'overview' | 'request' | 'response' | 'assertions' | 'variables' | 'logs';
@@ -72,7 +71,7 @@ function clearStoredRun(): void {
 }
 
 // One timeline entry: a request-level engine event, optionally mapped back to
-// the tree node it came from.
+// the tree node it came from (matched by report name, best effort).
 export type DebugEntry = {
   id: string;
   index: number;
@@ -93,6 +92,23 @@ function entryStatus(event: EngineEvent): DebugStatus {
 // VUS_DRAINED) and embedded events are sub-resources of a page load.
 function isTimelineEvent(event: EngineEvent): boolean {
   return Boolean(event.method) && event.method !== 'INFO' && event.method !== 'SYSTEM' && !event.embedded;
+}
+
+// Engine report names look like "[vu-1] Group/Sub:Request name #2". Strip the
+// shard prefix and dedup suffix, then try the exact name, the last segment,
+// and finally the request URL.
+function matchEventToNode(event: EngineEvent, requestNodes: YAMLNode[]): YAMLNode | null {
+  const raw = event.name.replace(/^\[[^\]]+\]\s*/, '').replace(/\s+#\d+$/, '');
+  const base = raw.includes(':') ? raw.slice(raw.lastIndexOf(':') + 1) : raw;
+  return (
+    requestNodes.find(node => node.name === raw) ??
+    requestNodes.find(node => node.name === base) ??
+    requestNodes.find(node => {
+      const url = String(node.data?.url ?? '');
+      return url !== '' && (base.endsWith(url) || event.path === url);
+    }) ??
+    null
+  );
 }
 
 function formatEventTime(timestamp: string): string {
@@ -141,6 +157,7 @@ interface YAMLDebugSessionProps {
   // when the document itself did not come back.
   documentReady: boolean;
   selectedNode: YAMLNode | null;
+  treeFocusNodeId: string | null;
   validationErrors: string[];
   onSelectNode: (node: YAMLNode) => void;
   onEditNode: (node: YAMLNode) => void;
@@ -152,6 +169,7 @@ export function YAMLDebugSession({
   flushPendingEdits,
   documentReady,
   selectedNode,
+  treeFocusNodeId,
   validationErrors,
   onSelectNode,
   onEditNode,
@@ -165,9 +183,9 @@ export function YAMLDebugSession({
   const [activeId, setActiveId] = useState<string | null>(null);
   const [detailTab, setDetailTab] = useState<DetailTab>('overview');
 
-  const requestNodes = useMemo(() => collectDebugSelectableRequests(tree), [tree]);
-  const requestNodesRef = useRef(requestNodes);
-  requestNodesRef.current = requestNodes;
+  const debugEventTargets = useMemo(() => collectDebugEventTargets(tree), [tree]);
+  const debugEventTargetsRef = useRef(debugEventTargets);
+  debugEventTargetsRef.current = debugEventTargets;
 
   const stopStreamRef = useRef<(() => void) | null>(null);
   // Bumped on every start and on Stop; a slow startDebugRun continuation checks
@@ -190,7 +208,7 @@ export function YAMLDebugSession({
             id: `evt-${previous.length}`,
             index: previous.length + 1,
             event,
-            node: matchEventToNode(event, requestNodesRef.current),
+            node: matchEventToNode(event, debugEventTargetsRef.current),
             status: entryStatus(event),
           },
         ]);
@@ -235,29 +253,32 @@ export function YAMLDebugSession({
 
   // When the parsed tree arrives or changes, re-resolve each entry's node. On
   // reload the SSE history can replay before the parse worker has populated
-  // requestNodes (documentReady flips right after parsing is *posted*), so
+  // debugEventTargets (documentReady flips right after parsing is *posted*), so
   // entries would otherwise stay node:null and never become selectable/editable
   // once the tree lands. Idempotent: returns the same array when nothing moved.
   useEffect(() => {
     setEntries(previous => {
       let changed = false;
       const remapped = previous.map(entry => {
-        const node = matchEventToNode(entry.event, requestNodes);
+        const node = matchEventToNode(entry.event, debugEventTargets);
         if (node?.id === entry.node?.id) return entry;
         changed = true;
         return { ...entry, node };
       });
       return changed ? remapped : previous;
     });
-  }, [requestNodes]);
+  }, [debugEventTargets]);
 
-  useEffect(() => {
-    if (!selectedNode) return;
-    const entry = entries.find(candidate => candidate.node?.id === selectedNode.id);
-    if (entry) setActiveId(entry.id);
-  }, [entries, selectedNode]);
-
-  const activeEntry = entries.find(entry => entry.id === activeId) || entries[entries.length - 1];
+  const treeFocusedEntry =
+    selectedNode && treeFocusNodeId === selectedNode.id
+      ? entries.find(candidate => candidate.node?.id === selectedNode.id)
+      : null;
+  const nodeWithoutEvent =
+    selectedNode && treeFocusNodeId === selectedNode.id && entries.length > 0 && !treeFocusedEntry ? selectedNode : null;
+  const displayedActiveId = treeFocusedEntry?.id ?? activeId;
+  const activeEntry = nodeWithoutEvent
+    ? null
+    : entries.find(entry => entry.id === displayedActiveId) || entries[entries.length - 1];
   const passed = entries.filter(entry => entry.status === 'passed').length;
   const failed = entries.filter(entry => entry.status === 'failed').length;
   const redirects = entries.reduce(
@@ -524,7 +545,11 @@ export function YAMLDebugSession({
             <div className="flex h-full items-center justify-center px-8 text-center">
               <div>
                 <TerminalSquare className="mx-auto h-10 w-10 text-zinc-700" />
-                <p className="mt-4 text-sm text-zinc-400">Select a debug event to inspect request and response data.</p>
+                <p className="mt-4 text-sm text-zinc-400">
+                  {nodeWithoutEvent
+                    ? `No debug event for "${nodeWithoutEvent.name}" in the current run.`
+                    : 'Select a debug event to inspect request and response data.'}
+                </p>
               </div>
             </div>
           )}

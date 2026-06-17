@@ -1,33 +1,54 @@
-import { afterEach, describe, expect, it } from 'vitest';
-import { cleanup, render } from '@testing-library/react';
-import { collectDebugSelectableRequests, collectRequests } from './debugRequests';
-import { matchEventToNode } from './debugEventMapping';
-import { DebugSection } from './YAMLDebugView';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { collectDebugEventTargets, collectRequests } from './debugRequests';
+import { DebugSection, YAMLDebugSession } from './YAMLDebugView';
 import type { YAMLNode } from '../types/yaml';
 import type { EngineEvent } from '../utils/debugApi';
 
-afterEach(cleanup);
-
-function req(id: string, enabled?: boolean, data: Record<string, unknown> = {}): YAMLNode {
+const debugApiMock = vi.hoisted(() => {
+  const handlers: Array<{
+    onEvent: (event: EngineEvent) => void;
+    onDone: (error: string | null) => void;
+    onConnectionError: () => void;
+  }> = [];
   return {
-    id,
-    type: 'request',
-    name: id,
-    data: {
-      ...(enabled === undefined ? {} : { enabled }),
-      ...data,
-    },
+    handlers,
+    startDebugRun: vi.fn(async () => 'run-1'),
+    streamDebugRun: vi.fn((_runId: string, handler: (typeof handlers)[number]) => {
+      handlers.push(handler);
+      return vi.fn();
+    }),
   };
+});
+
+vi.mock('../utils/debugApi', async importOriginal => {
+  const actual = await importOriginal<typeof import('../utils/debugApi')>();
+  return {
+    ...actual,
+    startDebugRun: debugApiMock.startDebugRun,
+    streamDebugRun: debugApiMock.streamDebugRun,
+  };
+});
+
+afterEach(() => {
+  cleanup();
+  debugApiMock.handlers.length = 0;
+  debugApiMock.startDebugRun.mockClear();
+  debugApiMock.streamDebugRun.mockClear();
+});
+
+function req(id: string, enabled?: boolean): YAMLNode {
+  return { id, type: 'request', name: id, data: enabled === undefined ? {} : { enabled } };
 }
 
-function engineEvent(overrides: Partial<EngineEvent>): EngineEvent {
+function event(overrides: Partial<EngineEvent>): EngineEvent {
   return {
-    ts: '2026-06-17T20:56:37.000Z',
-    name: 'GET /demo',
+    ts: '2026-06-17T21:00:00Z',
+    name: 'Request A',
     method: 'GET',
-    path: '/demo',
+    path: '/a',
     status: 200,
-    latency_ms: 12,
+    latency_ms: 1,
     concurrency: 1,
     ...overrides,
   };
@@ -75,110 +96,35 @@ describe('collectRequests', () => {
   });
 });
 
-describe('debug timeline tree matching', () => {
-  it('keeps disabled requests selectable for debug navigation', () => {
+describe('collectDebugEventTargets', () => {
+  it('includes disabled request nodes for debug event mapping', () => {
     const tree: YAMLNode = {
       id: 'root',
       type: 'root',
       name: 'root',
       children: [req('a'), req('b', false), req('c')],
     };
-
-    expect(collectRequests(tree).map(n => n.id)).toEqual(['a', 'c']);
-    expect(collectDebugSelectableRequests(tree).map(n => n.id)).toEqual(['a', 'b', 'c']);
+    expect(collectDebugEventTargets(tree).map(n => n.id)).toEqual(['a', 'b', 'c']);
   });
 
-  it('maps a redirect final event to its disabled tree target', () => {
+  it('does not descend into a disabled controller', () => {
     const tree: YAMLNode = {
       id: 'root',
       type: 'root',
       name: 'root',
       children: [
-        req('parent', undefined, {
-          request_id: 1,
-          method: 'GET',
-          url: 'http://www.testingyes.com/demo',
-          chain_id: 'rc-1',
-          chain_role: 'parent',
-        }),
-        req('final', false, {
-          request_id: 2,
-          method: 'GET',
-          url: 'http://www.testingyes.com/demo/',
-          chain_id: 'rc-1',
-          chain_role: 'final',
-        }),
+        req('a'),
+        {
+          id: 'grp',
+          type: 'group',
+          name: 'grp',
+          data: { enabled: false },
+          children: [req('inner1'), req('inner2', false)],
+        },
+        req('b', false),
       ],
     };
-
-    const match = matchEventToNode(
-      engineEvent({
-        name: '[vu-1] [1] GET /demo -> final 1 GET /demo/',
-        request_id: 1,
-        path: 'http://www.testingyes.com/demo/',
-        status: 200,
-        chain_id: 'rc-1',
-        chain_role: 'final',
-        redirect_index: 1,
-      }),
-      collectDebugSelectableRequests(tree),
-    );
-
-    expect(match?.id).toBe('final');
-  });
-
-  it('leaves the tree unchanged when no unique request matches the event', () => {
-    const tree: YAMLNode = {
-      id: 'root',
-      type: 'root',
-      name: 'root',
-      children: [
-        req('one', undefined, { method: 'GET', url: '/shared' }),
-        req('two', undefined, { method: 'GET', url: '/shared' }),
-      ],
-    };
-
-    const match = matchEventToNode(
-      engineEvent({
-        name: '[vu-1] GET /shared',
-        path: '/shared',
-      }),
-      collectDebugSelectableRequests(tree),
-    );
-
-    expect(match).toBeNull();
-  });
-
-  it('does not fall back to the redirect parent when the target role is not present', () => {
-    const tree: YAMLNode = {
-      id: 'root',
-      type: 'root',
-      name: 'root',
-      children: [
-        req('parent', undefined, {
-          request_id: 1,
-          method: 'GET',
-          url: 'http://www.testingyes.com/demo',
-          chain_id: 'rc-1',
-          chain_role: 'parent',
-        }),
-      ],
-    };
-
-    const match = matchEventToNode(
-      engineEvent({
-        name: '[vu-1] [1] GET /demo -> final 1 GET /demo/',
-        request_id: 1,
-        path: 'http://www.testingyes.com/demo/',
-        status: 200,
-        chain_id: 'rc-1',
-        chain_role: 'final',
-        redirect_index: 1,
-      }),
-      collectDebugSelectableRequests(tree),
-    );
-
-    expect(match).toBeNull();
+    expect(collectDebugEventTargets(tree).map(n => n.id)).toEqual(['a', 'b']);
   });
 });
 
@@ -204,5 +150,103 @@ describe('DebugSection highlighting', () => {
     expect(active).toHaveLength(1);
     // The active mark is the second occurrence (global index 1).
     expect(marks.indexOf(active[0])).toBe(1);
+  });
+});
+
+describe('YAMLDebugSession tree selection sync', () => {
+  it('shows an empty debug-event state when a focused tree node did not run', async () => {
+    const requestA: YAMLNode = {
+      id: 'a',
+      type: 'request',
+      name: 'Request A',
+      data: { method: 'GET', url: '/a' },
+    };
+    const requestB: YAMLNode = {
+      id: 'b',
+      type: 'request',
+      name: 'Request B',
+      data: { method: 'GET', url: '/b' },
+    };
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'root',
+      name: 'root',
+      children: [requestA, requestB],
+    };
+    const commonProps = {
+      tree,
+      yamlCode: 'test:\n  name: sync\n',
+      documentReady: true,
+      validationErrors: [],
+      onSelectNode: vi.fn(),
+      onEditNode: vi.fn(),
+    };
+
+    const { rerender } = render(
+      <YAMLDebugSession {...commonProps} selectedNode={null} treeFocusNodeId={null} />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
+
+    act(() => {
+      debugApiMock.handlers[0].onEvent(event({ name: 'Request A', path: '/a' }));
+    });
+
+    expect(await screen.findAllByText('/a')).not.toHaveLength(0);
+
+    rerender(
+      <YAMLDebugSession {...commonProps} selectedNode={requestB} treeFocusNodeId={requestB.id} />,
+    );
+
+    expect(screen.getByText('No debug event for "Request B" in the current run.')).toBeInTheDocument();
+  });
+
+  it('maps a focused disabled tree request to its debug event', async () => {
+    const requestA: YAMLNode = {
+      id: 'a',
+      type: 'request',
+      name: 'Request A',
+      data: { method: 'GET', url: '/a' },
+    };
+    const requestB: YAMLNode = {
+      id: 'b',
+      type: 'request',
+      name: 'Request B',
+      data: { enabled: false, method: 'GET', url: '/b' },
+    };
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'root',
+      name: 'root',
+      children: [requestA, requestB],
+    };
+    const commonProps = {
+      tree,
+      yamlCode: 'test:\n  name: sync\n',
+      documentReady: true,
+      validationErrors: [],
+      onSelectNode: vi.fn(),
+      onEditNode: vi.fn(),
+    };
+
+    const { rerender } = render(
+      <YAMLDebugSession {...commonProps} selectedNode={null} treeFocusNodeId={null} />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
+
+    act(() => {
+      debugApiMock.handlers[0].onEvent(event({ name: 'Request B', path: '/b' }));
+    });
+
+    rerender(
+      <YAMLDebugSession {...commonProps} selectedNode={requestB} treeFocusNodeId={requestB.id} />,
+    );
+
+    expect(screen.getAllByText('GET')).not.toHaveLength(0);
+    expect(screen.getAllByText('/b')).not.toHaveLength(0);
+    expect(screen.queryByText('No debug event for "Request B" in the current run.')).not.toBeInTheDocument();
   });
 });

@@ -158,8 +158,8 @@ describe('YAMLTreeView search filtering', () => {
             data: {
               method: 'GET',
               url: '/matching',
-              headers: {
-                authorization: 'Bearer needle-token',
+              body: {
+                token: 'needle-token',
               },
             },
             children: [],
@@ -188,7 +188,7 @@ describe('YAMLTreeView search filtering', () => {
     expect(screen.queryByText('Other request')).not.toBeInTheDocument();
   });
 
-  it('keeps request descendants visible when the search matches the request name', () => {
+  it('keeps request descendants hidden when the search only matches the request name', () => {
     renderInteractiveTreeView({
       tree: {
         id: 'steps',
@@ -226,7 +226,51 @@ describe('YAMLTreeView search filtering', () => {
     });
 
     expect(screen.getByRole('treeitem', { name: /Login request/i })).toBeInTheDocument();
-    expect(screen.getByRole('treeitem', { name: /Headers/i })).toBeInTheDocument();
+    expect(screen.queryByRole('treeitem', { name: /Headers/i })).not.toBeInTheDocument();
+  });
+
+  it('keeps HTTP Defaults visible when the search matches global headers', () => {
+    renderInteractiveTreeView({
+      tree: {
+        id: 'root',
+        type: 'root',
+        name: 'Test',
+        expanded: true,
+        children: [
+          {
+            id: 'http-defaults',
+            type: 'http_defaults',
+            name: 'HTTP Defaults',
+            expanded: true,
+            data: {
+              base_url: 'https://api.example.com',
+              headers: {
+                Authorization: 'Bearer shared-token',
+              },
+            },
+            children: [],
+          },
+          {
+            id: 'request-other',
+            type: 'request',
+            name: 'Other request',
+            expanded: true,
+            data: {
+              method: 'GET',
+              url: '/other',
+            },
+            children: [],
+          },
+        ],
+      },
+    });
+
+    fireEvent.change(screen.getByPlaceholderText('Search nodes...'), {
+      target: { value: 'Authorization' },
+    });
+
+    expect(screen.getByRole('treeitem', { name: /HTTP Defaults/i })).toBeInTheDocument();
+    expect(screen.queryByRole('treeitem', { name: /Other request/i })).not.toBeInTheDocument();
   });
 
   it('removes hidden selections from delete shortcuts while the tree is filtered', async () => {
@@ -339,7 +383,7 @@ describe('YAMLTreeView search filtering', () => {
     });
   });
 
-  it('keeps non-matching siblings hidden when a scenario only matches through duplicated request data', () => {
+  it('keeps request descendants hidden when a scenario only matches through duplicated request data', () => {
     renderInteractiveTreeView({
       tree: {
         id: 'scenarios',
@@ -418,7 +462,7 @@ describe('YAMLTreeView search filtering', () => {
     });
 
     expect(screen.getByText('Checkout flow')).toBeInTheDocument();
-    expect(screen.getByText('Matching request')).toBeInTheDocument();
+    expect(screen.queryByText('Matching request')).not.toBeInTheDocument();
     expect(screen.queryByText('Load settings')).not.toBeInTheDocument();
     expect(screen.queryByText('Other request')).not.toBeInTheDocument();
   });

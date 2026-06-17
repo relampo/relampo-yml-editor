@@ -46,11 +46,16 @@ export function collectRequests(tree: YAMLNode | null): YAMLNode[] {
   return nodes;
 }
 
-export function collectDebugSelectableRequests(tree: YAMLNode | null): YAMLNode[] {
+export function collectDebugEventTargets(tree: YAMLNode | null): YAMLNode[] {
   if (!tree) return [];
   const nodes: YAMLNode[] = [];
   const walk = (node: YAMLNode) => {
-    if (REQUEST_TYPES.has(node.type)) nodes.push(node);
+    const isRequest = REQUEST_TYPES.has(node.type);
+    if (isRequest) {
+      nodes.push(node);
+      return;
+    }
+    if (node.data?.enabled === false) return;
     node.children?.forEach(walk);
   };
   walk(tree);
