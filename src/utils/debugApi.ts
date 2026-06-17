@@ -60,17 +60,36 @@ export interface DebugStreamHandlers {
 
 const apiBase: string = import.meta.env.VITE_DEBUG_API_URL ?? '';
 
+// A YAML script the CLI asked the editor to mount on startup, supplied via
+// `relampo studio <script.yaml>`.
+export interface StudioInitialScript {
+  name: string;
+  yaml: string;
+}
+
+export interface StudioInfo {
+  studio: boolean;
+  initialScript?: StudioInitialScript;
+}
+
 // Detects whether the editor is being served by `relampo studio`. Standalone
-// deployments have no /api and the probe simply fails, keeping the editor an
-// independent tool with the Debug view hidden.
-export async function probeStudio(): Promise<boolean> {
+// deployments have no /api and the probe simply fails (returns null), keeping
+// the editor an independent tool with the Debug view hidden. When studio passed
+// a script (`relampo studio file.yaml`) it is returned so the editor mounts it.
+export async function probeStudio(): Promise<StudioInfo | null> {
   try {
     const response = await fetch(`${apiBase}/api/studio/info`, { signal: AbortSignal.timeout(2000) });
-    if (!response.ok) return false;
+    if (!response.ok) return null;
     const body = await response.json();
-    return body?.studio === true;
+    if (body?.studio !== true) return null;
+    const raw = body.initialScript;
+    const initialScript =
+      raw && typeof raw.yaml === 'string'
+        ? { name: typeof raw.name === 'string' && raw.name ? raw.name : 'script.yaml', yaml: raw.yaml }
+        : undefined;
+    return { studio: true, initialScript };
   } catch {
-    return false;
+    return null;
   }
 }
 
