@@ -1,0 +1,87 @@
+name: publish-dist
+
+# Build the editor and publish a versioned dist tarball to the Relampo downloads
+# bucket. relampo-backend's release pipelines fetch this artifact
+# (scripts/fetch-editor-dist.sh) and embed it into the `relampo` CLI so
+# `relampo studio` serves the editor offline.
+#
+# The artifact lands at:
+#   s3://<bucket>/editor/<version>/dist.tar.gz
+#   s3://<bucket>/editor/<version>/dist.tar.gz.sha256
+# where <version> is the pushed tag (vX.Y.Z) or the workflow_dispatch input.
+#
+# Required repo configuration:
+#   - vars.AWS_RELEASE_ROLE_ARN: an IAM role whose trust policy allows this repo
+#     to assume it via GitHub OIDC, with s3:PutObject on editor/* of the bucket.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to publish under (e.g. v0.1.0)"
+        required: true
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  RELAMPO_DOWNLOADS_BUCKET: relampo-downloads-616250100969-20260201142308
+  AWS_REGION: us-east-2
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Test
+        run: bun run test
+      - name: Build
+        run: bun run build
+      - name: Package dist
+        id: pkg
+        run: |
+          set -euo pipefail
+          VER="${{ github.event.inputs.version || github.ref_name }}"
+          if [ -z "$VER" ]; then
+            echo "::error::could not resolve version to publish" >&2
+            exit 1
+          fi
+          echo "version=$VER" >> "$GITHUB_OUTPUT"
+          # vite builds to build/; tarball is rooted at index.html so the backend
+          # can extract it straight into internal/studio/assets/dist.
+          if [ ! -f build/index.html ]; then
+            echo "::error::build/index.html missing — editor build did not produce expected output" >&2
+            exit 1
+          fi
+          tar -czf dist.tar.gz -C build .
+          sha256sum dist.tar.gz | awk '{print $1}' > dist.tar.gz.sha256
+          echo "Packaged $VER:"
+          cat dist.tar.gz.sha256
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_RELEASE_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Upload to S3
+        run: |
+          set -euo pipefail
+          VER="${{ steps.pkg.outputs.version }}"
+          PREFIX="editor/$VER"
+          aws s3 cp dist.tar.gz \
+            "s3://$RELAMPO_DOWNLOADS_BUCKET/$PREFIX/dist.tar.gz" \
+            --region "$AWS_REGION" --sse AES256 \
+            --content-type application/gzip
+          aws s3 cp dist.tar.gz.sha256 \
+            "s3://$RELAMPO_DOWNLOADS_BUCKET/$PREFIX/dist.tar.gz.sha256" \
+            --region "$AWS_REGION" --sse AES256 \
+            --content-type "text/plain"
+          echo "Published editor dist to s3://$RELAMPO_DOWNLOADS_BUCKET/$PREFIX/"
