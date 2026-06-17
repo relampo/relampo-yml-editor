@@ -337,6 +337,28 @@ export function YAMLEditor() {
     syncTreeToCode(tree);
   };
 
+  // Force a pending debounced tree→code serialization to run now and return the
+  // freshest YAML. Debug/Run snapshot the script string, so a still-pending
+  // 220 ms serialization (handleNodeUpdate / handleRenameHost /
+  // handleToggleNodeEnabled commit debounced) would otherwise hand them stale
+  // YAML while the tree already reflects the edit.
+  const flushPendingTreeSerialization = (): string => {
+    if (!serializeDebounceRef.current || !yamlTree) return yamlCode;
+    window.clearTimeout(serializeDebounceRef.current);
+    serializeDebounceRef.current = null;
+    try {
+      const code = treeToYAML(yamlTree);
+      setYamlCode(code);
+      setYamlContent(code);
+      setError(null);
+      setIsTreeOutdated(false);
+      return code;
+    } catch {
+      // Keep the last serialized code if the current tree can't serialize.
+      return yamlCode;
+    }
+  };
+
   const commitTreeChange = (
     newTree: YAMLNode,
     nextSelection?: TreeSelection,
@@ -786,6 +808,7 @@ export function YAMLEditor() {
                 <YAMLDebugSession
                   tree={yamlTree}
                   yamlCode={yamlCode}
+                  flushPendingEdits={flushPendingTreeSerialization}
                   documentReady={isInitialized}
                   selectedNode={selectedNode}
                   validationErrors={validationErrors}

@@ -148,6 +148,10 @@ function StatusIcon({ status }: { status: DebugStatus }) {
 interface YAMLDebugSessionProps {
   tree: YAMLNode | null;
   yamlCode: string;
+  // Flushes any pending debounced tree→code serialization and returns the
+  // freshest YAML. Called at run start so a debug snapshot never POSTs stale
+  // YAML while the tree already shows an uncommitted edit.
+  flushPendingEdits?: () => string;
   // True once the editor has finished restoring (or failing to restore) the
   // document. Gates the reload re-attach so an orphaned run is not revived
   // when the document itself did not come back.
@@ -161,6 +165,7 @@ interface YAMLDebugSessionProps {
 export function YAMLDebugSession({
   tree,
   yamlCode,
+  flushPendingEdits,
   documentReady,
   selectedNode,
   validationErrors,
@@ -244,6 +249,24 @@ export function YAMLDebugSession({
     subscribe(stored.id, true);
   }, [documentReady, yamlCode, subscribe]);
 
+  // When the parsed tree arrives or changes, re-resolve each entry's node. On
+  // reload the SSE history can replay before the parse worker has populated
+  // requestNodes (documentReady flips right after parsing is *posted*), so
+  // entries would otherwise stay node:null and never become selectable/editable
+  // once the tree lands. Idempotent: returns the same array when nothing moved.
+  useEffect(() => {
+    setEntries(previous => {
+      let changed = false;
+      const remapped = previous.map(entry => {
+        const node = matchEventToNode(entry.event, requestNodes);
+        if (node?.id === entry.node?.id) return entry;
+        changed = true;
+        return { ...entry, node };
+      });
+      return changed ? remapped : previous;
+    });
+  }, [requestNodes]);
+
   useEffect(() => {
     if (!selectedNode) return;
     const entry = entries.find(candidate => candidate.node?.id === selectedNode.id);
@@ -261,9 +284,12 @@ export function YAMLDebugSession({
   const hasValidationErrors = validationErrors.length > 0;
 
   const startRun = async () => {
-    if (hasValidationErrors || isRunning || !yamlCode.trim()) return;
+    if (hasValidationErrors || isRunning) return;
+    // Flush any debounced tree edit so the run uses the YAML that matches the
+    // tree on screen, not a string that is up to 220 ms stale.
+    const scriptAtStart = flushPendingEdits ? flushPendingEdits() : yamlCode;
+    if (!scriptAtStart.trim()) return;
     const token = (startTokenRef.current += 1);
-    const scriptAtStart = yamlCode;
     stopStreamRef.current?.();
     setEntries([]);
     setRunError(null);
