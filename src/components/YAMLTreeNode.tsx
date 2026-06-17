@@ -633,7 +633,7 @@ export function nodeDirectlyMatches(node: YAMLNode, searchQuery: string): boolea
 
   if (nodeNameOrPathMatches(node, query)) return true;
 
-  const dataPayload = serializeSearchValue(stripRequestTagMetadata(node.data));
+  const dataPayload = serializeSearchValue(getNodeRequestSearchPayload(node));
   if (dataPayload.includes(query)) return true;
 
   const responsePayload = serializeSearchValue(node.data?.response);
@@ -683,13 +683,17 @@ function stripRequestTagMetadata(value: any): any {
   return next;
 }
 
+function getNodeRequestSearchPayload(node: YAMLNode): any {
+  return REQUEST_LIKE_NODE_TYPES.includes(node.type) ? stripRequestTagMetadata(node.data) : stripResponseField(node.data);
+}
+
 function getNodeSearchHitFlags(node: YAMLNode, searchQuery: string): { request: boolean; response: boolean } {
   const query = searchQuery.trim().toLowerCase();
   if (!query || !REQUEST_LIKE_NODE_TYPES.includes(node.type)) {
     return { request: false, response: false };
   }
 
-  const requestPayload = serializeSearchValue(stripRequestTagMetadata(node.data));
+  const requestPayload = serializeSearchValue(getNodeRequestSearchPayload(node));
   const responsePayload = serializeSearchValue(node.data?.response);
 
   return {
