@@ -633,7 +633,7 @@ export function nodeDirectlyMatches(node: YAMLNode, searchQuery: string): boolea
 
   if (nodeNameOrPathMatches(node, query)) return true;
 
-  const dataPayload = serializeSearchValue(stripResponseField(node.data));
+  const dataPayload = serializeSearchValue(getNodeRequestSearchPayload(node));
   if (dataPayload.includes(query)) return true;
 
   const responsePayload = serializeSearchValue(node.data?.response);
@@ -646,9 +646,11 @@ export function nodeMatchExpandsDescendants(node: YAMLNode, searchQuery: string)
   const query = searchQuery.trim().toLowerCase();
   if (!query) return false;
 
-  if (nodeNameOrPathMatches(node, query)) return true;
-
+  // Request-like nodes never propagate ancestor match to children;
+  // each child (Headers, Extractor, etc.) must independently match.
   if (REQUEST_LIKE_NODE_TYPES.includes(node.type)) return false;
+
+  if (nodeNameOrPathMatches(node, query)) return true;
 
   return !node.children?.length && nodeDirectlyMatches(node, searchQuery);
 }
@@ -672,13 +674,26 @@ function nodeNameOrPathMatches(node: YAMLNode, query: string): boolean {
   return node.path?.some(segment => String(segment).toLowerCase().includes(query)) ?? false;
 }
 
+const REQUEST_TAG_STRIP_KEYS = new Set(['response', 'response_preview', 'recorded_at', 'chain_id', 'chain_role', 'headers']);
+
+function stripRequestTagMetadata(value: any): any {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
+  const next = { ...value };
+  REQUEST_TAG_STRIP_KEYS.forEach(k => delete next[k]);
+  return next;
+}
+
+function getNodeRequestSearchPayload(node: YAMLNode): any {
+  return REQUEST_LIKE_NODE_TYPES.includes(node.type) ? stripRequestTagMetadata(node.data) : stripResponseField(node.data);
+}
+
 function getNodeSearchHitFlags(node: YAMLNode, searchQuery: string): { request: boolean; response: boolean } {
   const query = searchQuery.trim().toLowerCase();
-  if (!query) {
+  if (!query || !REQUEST_LIKE_NODE_TYPES.includes(node.type)) {
     return { request: false, response: false };
   }
 
-  const requestPayload = serializeSearchValue(stripResponseField(node.data));
+  const requestPayload = serializeSearchValue(getNodeRequestSearchPayload(node));
   const responsePayload = serializeSearchValue(node.data?.response);
 
   return {
