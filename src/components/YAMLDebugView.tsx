@@ -21,28 +21,48 @@ import { startDebugRun, streamDebugRun, type EngineEvent } from '../utils/debugA
 type DetailTab = 'overview' | 'request' | 'response' | 'assertions' | 'variables' | 'logs';
 type SearchMode = 'text' | 'regex';
 
-// The id of the last debug run is parked in sessionStorage so a page reload
-// can re-attach and let the backend replay the run's history. Only the id is
-// stored (a short string); the events and bodies stay on the studio server.
-const RUN_STORAGE_KEY = 'relampo.studio.debugRunId';
+// The last debug run is parked in sessionStorage so a page reload can
+// re-attach and let the backend replay the run's history. Only the id and a
+// fingerprint of the document are stored; the events and bodies stay on the
+// studio server. The fingerprint guards against replaying a run against a
+// different script (edited/uploaded YAML) after a reload.
+const RUN_STORAGE_KEY = 'relampo.studio.debugRun';
 
-function readStoredRunId(): string | null {
+interface StoredRun {
+  id: string;
+  fp: string;
+}
+
+// Cheap, stable (djb2) fingerprint of the document.
+function fingerprint(text: string): string {
+  let hash = 5381;
+  for (let i = 0; i < text.length; i += 1) {
+    hash = ((hash << 5) + hash + text.charCodeAt(i)) | 0;
+  }
+  return `${text.length}:${(hash >>> 0).toString(36)}`;
+}
+
+function readStoredRun(): StoredRun | null {
   try {
-    return sessionStorage.getItem(RUN_STORAGE_KEY);
+    const raw = sessionStorage.getItem(RUN_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed.id === 'string' && typeof parsed.fp === 'string') return parsed;
+    return null;
   } catch {
     return null;
   }
 }
 
-function storeRunId(runId: string): void {
+function storeRun(run: StoredRun): void {
   try {
-    sessionStorage.setItem(RUN_STORAGE_KEY, runId);
+    sessionStorage.setItem(RUN_STORAGE_KEY, JSON.stringify(run));
   } catch {
     // Private-mode / disabled storage: persistence is best-effort.
   }
 }
 
-function clearStoredRunId(): void {
+function clearStoredRun(): void {
   try {
     sessionStorage.removeItem(RUN_STORAGE_KEY);
   } catch {
@@ -161,6 +181,9 @@ export function YAMLDebugSession({
   requestNodesRef.current = requestNodes;
 
   const stopStreamRef = useRef<(() => void) | null>(null);
+  // Bumped on every start and on Stop; a slow startDebugRun continuation checks
+  // it and bails if it was superseded or stopped while the POST was in flight.
+  const startTokenRef = useRef(0);
 
   // Wires a run's SSE stream into the timeline. Shared by a fresh Run Debug
   // and by re-attaching to a stored run after a reload (the backend replays
@@ -190,7 +213,7 @@ export function YAMLDebugSession({
       onConnectionError: () => {
         setIsRunning(false);
         if (quiet) {
-          clearStoredRunId();
+          clearStoredRun();
           setEntries([]);
         } else {
           setRunError('Lost connection to the studio server.');
@@ -209,14 +232,16 @@ export function YAMLDebugSession({
   useEffect(() => {
     if (!documentReady || reattachedRef.current) return;
     reattachedRef.current = true;
-    const storedRunId = readStoredRunId();
-    if (!storedRunId) return;
-    if (!yamlCode.trim()) {
-      clearStoredRunId();
+    const stored = readStoredRun();
+    if (!stored) return;
+    // Drop the run if the document did not come back, or came back as a
+    // different script — replaying it against another tree is misleading.
+    if (!yamlCode.trim() || stored.fp !== fingerprint(yamlCode)) {
+      clearStoredRun();
       return;
     }
     setIsRunning(true);
-    subscribe(storedRunId, true);
+    subscribe(stored.id, true);
   }, [documentReady, yamlCode, subscribe]);
 
   useEffect(() => {
@@ -237,6 +262,8 @@ export function YAMLDebugSession({
 
   const startRun = async () => {
     if (hasValidationErrors || isRunning || !yamlCode.trim()) return;
+    const token = (startTokenRef.current += 1);
+    const scriptAtStart = yamlCode;
     stopStreamRef.current?.();
     setEntries([]);
     setRunError(null);
@@ -244,16 +271,20 @@ export function YAMLDebugSession({
     setDetailTab('overview');
     setIsRunning(true);
     try {
-      const runId = await startDebugRun(yamlCode);
-      storeRunId(runId);
+      const runId = await startDebugRun(scriptAtStart);
+      // Stop (or another Run) may have fired while the POST was in flight.
+      if (token !== startTokenRef.current) return;
+      storeRun({ id: runId, fp: fingerprint(scriptAtStart) });
       subscribe(runId, false);
     } catch (error) {
+      if (token !== startTokenRef.current) return;
       setIsRunning(false);
       setRunError(error instanceof Error ? error.message : String(error));
     }
   };
 
   const stopRun = () => {
+    startTokenRef.current += 1; // invalidate any in-flight start
     stopStreamRef.current?.();
     stopStreamRef.current = null;
     setIsRunning(false);
