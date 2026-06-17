@@ -1,13 +1,36 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { cleanup, render } from '@testing-library/react';
-import { collectRequests } from './debugRequests';
+import { collectDebugSelectableRequests, collectRequests } from './debugRequests';
+import { matchEventToNode } from './debugEventMapping';
 import { DebugSection } from './YAMLDebugView';
 import type { YAMLNode } from '../types/yaml';
+import type { EngineEvent } from '../utils/debugApi';
 
 afterEach(cleanup);
 
-function req(id: string, enabled?: boolean): YAMLNode {
-  return { id, type: 'request', name: id, data: enabled === undefined ? {} : { enabled } };
+function req(id: string, enabled?: boolean, data: Record<string, unknown> = {}): YAMLNode {
+  return {
+    id,
+    type: 'request',
+    name: id,
+    data: {
+      ...(enabled === undefined ? {} : { enabled }),
+      ...data,
+    },
+  };
+}
+
+function engineEvent(overrides: Partial<EngineEvent>): EngineEvent {
+  return {
+    ts: '2026-06-17T20:56:37.000Z',
+    name: 'GET /demo',
+    method: 'GET',
+    path: '/demo',
+    status: 200,
+    latency_ms: 12,
+    concurrency: 1,
+    ...overrides,
+  };
 }
 
 describe('collectRequests', () => {
@@ -49,6 +72,113 @@ describe('collectRequests', () => {
       ],
     };
     expect(collectRequests(tree).map(n => n.id)).toEqual(['a', 'b']);
+  });
+});
+
+describe('debug timeline tree matching', () => {
+  it('keeps disabled requests selectable for debug navigation', () => {
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'root',
+      name: 'root',
+      children: [req('a'), req('b', false), req('c')],
+    };
+
+    expect(collectRequests(tree).map(n => n.id)).toEqual(['a', 'c']);
+    expect(collectDebugSelectableRequests(tree).map(n => n.id)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('maps a redirect final event to its disabled tree target', () => {
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'root',
+      name: 'root',
+      children: [
+        req('parent', undefined, {
+          request_id: 1,
+          method: 'GET',
+          url: 'http://www.testingyes.com/demo',
+          chain_id: 'rc-1',
+          chain_role: 'parent',
+        }),
+        req('final', false, {
+          request_id: 2,
+          method: 'GET',
+          url: 'http://www.testingyes.com/demo/',
+          chain_id: 'rc-1',
+          chain_role: 'final',
+        }),
+      ],
+    };
+
+    const match = matchEventToNode(
+      engineEvent({
+        name: '[vu-1] [1] GET /demo -> final 1 GET /demo/',
+        request_id: 1,
+        path: 'http://www.testingyes.com/demo/',
+        status: 200,
+        chain_id: 'rc-1',
+        chain_role: 'final',
+        redirect_index: 1,
+      }),
+      collectDebugSelectableRequests(tree),
+    );
+
+    expect(match?.id).toBe('final');
+  });
+
+  it('leaves the tree unchanged when no unique request matches the event', () => {
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'root',
+      name: 'root',
+      children: [
+        req('one', undefined, { method: 'GET', url: '/shared' }),
+        req('two', undefined, { method: 'GET', url: '/shared' }),
+      ],
+    };
+
+    const match = matchEventToNode(
+      engineEvent({
+        name: '[vu-1] GET /shared',
+        path: '/shared',
+      }),
+      collectDebugSelectableRequests(tree),
+    );
+
+    expect(match).toBeNull();
+  });
+
+  it('does not fall back to the redirect parent when the target role is not present', () => {
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'root',
+      name: 'root',
+      children: [
+        req('parent', undefined, {
+          request_id: 1,
+          method: 'GET',
+          url: 'http://www.testingyes.com/demo',
+          chain_id: 'rc-1',
+          chain_role: 'parent',
+        }),
+      ],
+    };
+
+    const match = matchEventToNode(
+      engineEvent({
+        name: '[vu-1] [1] GET /demo -> final 1 GET /demo/',
+        request_id: 1,
+        path: 'http://www.testingyes.com/demo/',
+        status: 200,
+        chain_id: 'rc-1',
+        chain_role: 'final',
+        redirect_index: 1,
+      }),
+      collectDebugSelectableRequests(tree),
+    );
+
+    expect(match).toBeNull();
   });
 });
 

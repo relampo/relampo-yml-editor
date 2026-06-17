@@ -15,7 +15,8 @@ import {
   XCircle,
 } from 'lucide-react';
 import type { YAMLNode } from '../types/yaml';
-import { collectRequests, type DebugStatus } from './debugRequests';
+import { collectDebugSelectableRequests, type DebugStatus } from './debugRequests';
+import { matchEventToNode } from './debugEventMapping';
 import { startDebugRun, streamDebugRun, type EngineEvent } from '../utils/debugApi';
 
 type DetailTab = 'overview' | 'request' | 'response' | 'assertions' | 'variables' | 'logs';
@@ -71,7 +72,7 @@ function clearStoredRun(): void {
 }
 
 // One timeline entry: a request-level engine event, optionally mapped back to
-// the tree node it came from (matched by report name, best effort).
+// the tree node it came from.
 export type DebugEntry = {
   id: string;
   index: number;
@@ -92,23 +93,6 @@ function entryStatus(event: EngineEvent): DebugStatus {
 // VUS_DRAINED) and embedded events are sub-resources of a page load.
 function isTimelineEvent(event: EngineEvent): boolean {
   return Boolean(event.method) && event.method !== 'INFO' && event.method !== 'SYSTEM' && !event.embedded;
-}
-
-// Engine report names look like "[vu-1] Group/Sub:Request name #2". Strip the
-// shard prefix and dedup suffix, then try the exact name, the last segment,
-// and finally the request URL.
-function matchEventToNode(event: EngineEvent, requestNodes: YAMLNode[]): YAMLNode | null {
-  const raw = event.name.replace(/^\[[^\]]+\]\s*/, '').replace(/\s+#\d+$/, '');
-  const base = raw.includes(':') ? raw.slice(raw.lastIndexOf(':') + 1) : raw;
-  return (
-    requestNodes.find(node => node.name === raw) ??
-    requestNodes.find(node => node.name === base) ??
-    requestNodes.find(node => {
-      const url = String(node.data?.url ?? '');
-      return url !== '' && (base.endsWith(url) || event.path === url);
-    }) ??
-    null
-  );
 }
 
 function formatEventTime(timestamp: string): string {
@@ -181,7 +165,7 @@ export function YAMLDebugSession({
   const [activeId, setActiveId] = useState<string | null>(null);
   const [detailTab, setDetailTab] = useState<DetailTab>('overview');
 
-  const requestNodes = useMemo(() => collectRequests(tree), [tree]);
+  const requestNodes = useMemo(() => collectDebugSelectableRequests(tree), [tree]);
   const requestNodesRef = useRef(requestNodes);
   requestNodesRef.current = requestNodes;
 

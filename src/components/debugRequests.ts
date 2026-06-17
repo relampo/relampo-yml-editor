@@ -46,6 +46,17 @@ export function collectRequests(tree: YAMLNode | null): YAMLNode[] {
   return nodes;
 }
 
+export function collectDebugSelectableRequests(tree: YAMLNode | null): YAMLNode[] {
+  if (!tree) return [];
+  const nodes: YAMLNode[] = [];
+  const walk = (node: YAMLNode) => {
+    if (REQUEST_TYPES.has(node.type)) nodes.push(node);
+    node.children?.forEach(walk);
+  };
+  walk(tree);
+  return nodes;
+}
+
 export function buildDebugRequests(tree: YAMLNode | null, vus = 1): DebugRequestNode[] {
   const requests = collectRequests(tree);
   return requests.map((node, index) => {
