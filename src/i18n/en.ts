@@ -530,7 +530,7 @@ export const enTranslations = {
         description: 'These are the only elements that this Balanced Controller will manage.',
         count: '{count} item(s)',
         excludedNote:
-          'Not balanced (no requests): {names}. These elements issue no requests, so they receive no load percentage.',
+          'Not balanced (no requests): these elements issue no requests, so they receive no load percentage.',
         childDescriptionTotal:
           'This element shares the entire scope with the other selected elements. Its percentage contributes to the required 100%.',
         childDescriptionParcial:
