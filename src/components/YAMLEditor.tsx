@@ -87,6 +87,7 @@ export function YAMLEditor() {
   const [restoredDraftUpdatedAt, setRestoredDraftUpdatedAt] = useState<string | null>(null);
   const [isNewDialogOpen, setIsNewDialogOpen] = useState(false);
   const [treeSearchQuery, setTreeSearchQuery] = useState('');
+  const [debugTreeFocusNodeId, setDebugTreeFocusNodeId] = useState<string | null>(null);
   const fallbackRootNameRef = useRef<string | null>(null);
   const hasDiscoveredTreeContextMenuRef = useRef(false);
 
@@ -395,6 +396,16 @@ export function YAMLEditor() {
     setSelectedNodeIds(nodeIds);
     selectedNodeRef.current = primaryNode;
     selectedNodeIdsRef.current = nodeIds;
+  };
+
+  const handleTreeSelectionChange = (primaryNode: YAMLNode | null, nodeIds: string[]) => {
+    setDebugTreeFocusNodeId(null);
+    handleSelectionChange(primaryNode, nodeIds);
+  };
+
+  const handleDebugTreeSelectionChange = (primaryNode: YAMLNode | null, nodeIds: string[]) => {
+    handleSelectionChange(primaryNode, nodeIds);
+    setDebugTreeFocusNodeId(primaryNode?.id ?? null);
   };
 
   const handleNodeUpdate = (nodeId: string, updatedData: Record<string, unknown>) => {
@@ -749,7 +760,7 @@ export function YAMLEditor() {
                 selectedNodeIds={selectedNodeIds}
                 redirectedRequestMap={redirectedRequestMap}
                 baseHost={httpDefaultsBaseHost}
-                onSelectionChange={handleSelectionChange}
+                onSelectionChange={handleTreeSelectionChange}
                 onTreeChange={handleTreeChange}
                 onContextMenuOpened={handleTreeContextMenuOpened}
                 onSearchChange={setTreeSearchQuery}
@@ -768,10 +779,7 @@ export function YAMLEditor() {
                 selectedNode={selectedNode}
                 selectedNodeIds={selectedNodeIds}
                 redirectedRequestMap={redirectedRequestMap}
-                onSelectionChange={(node, nodeIds) => {
-                  handleSelectionChange(node, nodeIds);
-                  setViewMode('tree');
-                }}
+                onSelectionChange={handleDebugTreeSelectionChange}
                 onTreeChange={handleTreeChange}
                 onContextMenuOpened={handleTreeContextMenuOpened}
               />
@@ -815,9 +823,14 @@ export function YAMLEditor() {
                   flushPendingEdits={flushPendingTreeSerialization}
                   documentReady={isInitialized}
                   selectedNode={selectedNode}
+                  treeFocusNodeId={debugTreeFocusNodeId}
                   validationErrors={validationErrors}
-                  onSelectNode={node => handleSelectionChange(node, [node.id])}
+                  onSelectNode={node => {
+                    setDebugTreeFocusNodeId(null);
+                    handleSelectionChange(node, [node.id]);
+                  }}
                   onEditNode={node => {
+                    setDebugTreeFocusNodeId(null);
                     handleSelectionChange(node, [node.id]);
                     setViewMode('tree');
                   }}

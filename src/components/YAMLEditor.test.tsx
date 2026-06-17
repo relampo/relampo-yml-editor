@@ -4,12 +4,19 @@ import { LanguageProvider } from '../contexts/LanguageContext';
 import { YAMLProvider } from '../contexts/YAMLContext';
 import type { YAMLNode } from '../types/yaml';
 import { logStatsigEvent } from '../utils/analytics';
+import { probeStudio } from '../utils/debugApi';
 import { clearActiveDraft, getActiveDraft } from '../utils/yamlDraftStorage';
 import { parseYAMLToTree, treeToYAML } from '../utils/yamlParser';
 import { YAMLEditor } from './YAMLEditor';
 
 vi.mock('../utils/analytics', () => ({
   logStatsigEvent: vi.fn(),
+}));
+
+vi.mock('../utils/debugApi', () => ({
+  probeStudio: vi.fn(() => Promise.resolve(null)),
+  startDebugRun: vi.fn(),
+  streamDebugRun: vi.fn(),
 }));
 
 vi.mock('../utils/yamlDraftStorage', () => ({
@@ -145,6 +152,7 @@ vi.mock('./YAMLNodeDetails', () => ({
 const getActiveDraftMock = vi.mocked(getActiveDraft);
 const clearActiveDraftMock = vi.mocked(clearActiveDraft);
 const logStatsigEventMock = vi.mocked(logStatsigEvent);
+const probeStudioMock = vi.mocked(probeStudio);
 const parseYAMLToTreeMock = vi.mocked(parseYAMLToTree);
 const treeToYAMLMock = vi.mocked(treeToYAML);
 
@@ -161,7 +169,9 @@ function renderEditor() {
 describe('YAMLEditor draft restoration', () => {
   beforeEach(() => {
     getActiveDraftMock.mockResolvedValue(null);
+    probeStudioMock.mockResolvedValue(null);
     logStatsigEventMock.mockClear();
+    probeStudioMock.mockClear();
     parseYAMLToTreeMock.mockClear();
     treeToYAMLMock.mockClear();
   });
@@ -294,6 +304,27 @@ describe('YAMLEditor draft restoration', () => {
       context_menu_discovered: false,
       is_discovery_friction: true,
     });
+  });
+
+  it('keeps the Debug tab active when selecting a node from the tree shown in Debug', async () => {
+    getActiveDraftMock.mockResolvedValueOnce({
+      yaml: 'test:\n  name: restored\n',
+      fileName: 'restored.yaml',
+      updatedAt: '2026-04-23T10:00:00.000Z',
+    });
+    probeStudioMock.mockResolvedValueOnce({ studio: true });
+
+    renderEditor();
+
+    await screen.findByText('Restored plan');
+    fireEvent.click(await screen.findByRole('button', { name: 'Debug' }));
+
+    expect(screen.getByText('Debug Session')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'select tree root' }));
+
+    expect(screen.getByText('Debug Session')).toBeInTheDocument();
+    expect(screen.queryByText('Element details')).not.toBeInTheDocument();
   });
 
   describe('new document dialog', () => {
