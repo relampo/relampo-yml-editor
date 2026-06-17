@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import type { YAMLNode } from '../types/yaml';
 import { collectRequests, type DebugStatus } from './debugRequests';
+import { getDebugEntryStatus, getDebugResultLabel } from './debugEventStatus';
 import { startDebugRun, streamDebugRun, type EngineEvent } from '../utils/debugApi';
 
 type DetailTab = 'overview' | 'request' | 'response' | 'assertions' | 'variables' | 'logs';
@@ -79,13 +80,6 @@ export type DebugEntry = {
   node: YAMLNode | null;
   status: DebugStatus;
 };
-
-function entryStatus(event: EngineEvent): DebugStatus {
-  if (event.err) return 'failed';
-  if (event.status >= 400) return 'failed';
-  if ((event.assertions ?? []).some(assertion => !assertion.Passed)) return 'failed';
-  return 'passed';
-}
 
 // The engine only emits request-level events for actual steps; INFO events
 // are verbose-run messages, SYSTEM events are lifecycle markers (e.g.
@@ -207,7 +201,7 @@ export function YAMLDebugSession({
             index: previous.length + 1,
             event,
             node: matchEventToNode(event, requestNodesRef.current),
-            status: entryStatus(event),
+            status: getDebugEntryStatus(event),
           },
         ]);
       },
@@ -505,11 +499,7 @@ export function YAMLDebugSession({
                       </button>
                     )}
                     <span className={`rounded-full border px-2.5 py-1 text-xs ${statusTone(activeEntry.status)}`}>
-                      {activeEntry.status === 'failed'
-                        ? 'Failed'
-                        : activeEntry.event.status >= 300 && activeEntry.event.status < 400
-                          ? 'Redirect'
-                          : 'Passed'}
+                      {getDebugResultLabel(activeEntry.event, activeEntry.status)}
                     </span>
                   </div>
                 </div>
