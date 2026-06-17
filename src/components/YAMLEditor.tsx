@@ -20,6 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from './ui/dialog';
+import { probeStudio } from '../utils/debugApi';
 import { YAMLCodeEditor } from './YAMLCodeEditor';
 import { YAMLDebugSession } from './YAMLDebugView';
 import { YAMLEditorHeader } from './YAMLEditorHeader';
@@ -40,7 +41,9 @@ import {
 
 const EMPTY_PARALLEL_ERROR = 'Parallel controller must contain at least one child step';
 const TREE_SERIALIZE_DEBOUNCE_MS = 220;
-const DEBUG_VIEW_ENABLED = import.meta.env.VITE_DEBUG_VIEW_ENABLED === 'true';
+// Dev-time override; in production the Debug view unlocks itself at runtime
+// when the app detects it is being served by `relampo studio`.
+const DEBUG_VIEW_FORCED = import.meta.env.VITE_DEBUG_VIEW_ENABLED === 'true';
 
 type EditorViewMode = 'tree' | 'code' | 'debug';
 
@@ -87,12 +90,24 @@ export function YAMLEditor() {
   const fallbackRootNameRef = useRef<string | null>(null);
   const hasDiscoveredTreeContextMenuRef = useRef(false);
 
+  const [debugViewEnabled, setDebugViewEnabled] = useState(DEBUG_VIEW_FORCED);
+  useEffect(() => {
+    if (DEBUG_VIEW_FORCED) return;
+    let cancelled = false;
+    probeStudio().then(isStudio => {
+      if (!cancelled && isStudio) setDebugViewEnabled(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const documentMetrics = useMemo(() => getDocumentMetrics(yamlCode), [yamlCode]);
   const isLargeFileMode = documentMetrics.large;
   const isEditorBusy = isFileLoading || isParsing;
   const activeViewMode: EditorViewMode =
-    !DEBUG_VIEW_ENABLED && viewMode === 'debug' ? 'tree' : viewMode;
-  const isDebugViewActive = DEBUG_VIEW_ENABLED && activeViewMode === 'debug';
+    !debugViewEnabled && viewMode === 'debug' ? 'tree' : viewMode;
+  const isDebugViewActive = debugViewEnabled && activeViewMode === 'debug';
 
   const applySemanticValidation = (tree: YAMLNode | null) => {
     setValidationErrors(validateYAMLSemantics(tree).map(issue => issue.message));
@@ -320,6 +335,28 @@ export function YAMLEditor() {
     }
 
     syncTreeToCode(tree);
+  };
+
+  // Force a pending debounced tree→code serialization to run now and return the
+  // freshest YAML. Debug/Run snapshot the script string, so a still-pending
+  // 220 ms serialization (handleNodeUpdate / handleRenameHost /
+  // handleToggleNodeEnabled commit debounced) would otherwise hand them stale
+  // YAML while the tree already reflects the edit.
+  const flushPendingTreeSerialization = (): string => {
+    if (!serializeDebounceRef.current || !yamlTree) return yamlCode;
+    window.clearTimeout(serializeDebounceRef.current);
+    serializeDebounceRef.current = null;
+    try {
+      const code = treeToYAML(yamlTree);
+      setYamlCode(code);
+      setYamlContent(code);
+      setError(null);
+      setIsTreeOutdated(false);
+      return code;
+    } catch {
+      // Keep the last serialized code if the current tree can't serialize.
+      return yamlCode;
+    }
   };
 
   const commitTreeChange = (
@@ -685,7 +722,7 @@ export function YAMLEditor() {
               <Code2 className="w-4 h-4" />
               {language === 'es' ? 'Código' : 'Code'}
             </button>
-            {DEBUG_VIEW_ENABLED ? (
+            {debugViewEnabled ? (
               <button
                 onClick={() => setViewMode('debug')}
                 className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 text-sm font-bold transition-all duration-200 ${
@@ -763,18 +800,27 @@ export function YAMLEditor() {
             </span>
           </div>
           <div className="flex-1 overflow-hidden">
-            {isDebugViewActive ? (
-              <YAMLDebugSession
-                tree={yamlTree}
-                selectedNode={selectedNode}
-                validationErrors={validationErrors}
-                onSelectNode={node => handleSelectionChange(node, [node.id])}
-                onEditNode={node => {
-                  handleSelectionChange(node, [node.id]);
-                  setViewMode('tree');
-                }}
-              />
-            ) : (
+            {/* The debug session stays mounted while enabled (hidden via CSS
+                when another tab is active) so an in-progress or finished run
+                survives tab switches instead of being torn down. */}
+            {debugViewEnabled && (
+              <div className={isDebugViewActive ? 'h-full' : 'hidden'}>
+                <YAMLDebugSession
+                  tree={yamlTree}
+                  yamlCode={yamlCode}
+                  flushPendingEdits={flushPendingTreeSerialization}
+                  documentReady={isInitialized}
+                  selectedNode={selectedNode}
+                  validationErrors={validationErrors}
+                  onSelectNode={node => handleSelectionChange(node, [node.id])}
+                  onEditNode={node => {
+                    handleSelectionChange(node, [node.id]);
+                    setViewMode('tree');
+                  }}
+                />
+              </div>
+            )}
+            <div className={isDebugViewActive ? 'hidden' : 'h-full'}>
               <YAMLNodeDetails
                 node={selectedNode}
                 baseUrl={httpDefaultsBaseUrl}
@@ -788,7 +834,7 @@ export function YAMLEditor() {
                 onAddChildAction={handleDetailPanelAddClicked}
                 searchQuery={activeViewMode === 'tree' ? treeSearchQuery : ''}
               />
-            )}
+            </div>
           </div>
         </div>
       </div>

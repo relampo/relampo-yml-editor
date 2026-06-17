@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -15,10 +15,112 @@ import {
   XCircle,
 } from 'lucide-react';
 import type { YAMLNode } from '../types/yaml';
-import { buildDebugRequests, type DebugRequestNode, type DebugStatus } from './debugRequests';
+import { collectRequests, type DebugStatus } from './debugRequests';
+import { startDebugRun, streamDebugRun, type EngineEvent } from '../utils/debugApi';
 
 type DetailTab = 'overview' | 'request' | 'response' | 'assertions' | 'variables' | 'logs';
 type SearchMode = 'text' | 'regex';
+
+// The last debug run is parked in sessionStorage so a page reload can
+// re-attach and let the backend replay the run's history. Only the id and a
+// fingerprint of the document are stored; the events and bodies stay on the
+// studio server. The fingerprint guards against replaying a run against a
+// different script (edited/uploaded YAML) after a reload.
+const RUN_STORAGE_KEY = 'relampo.studio.debugRun';
+
+interface StoredRun {
+  id: string;
+  fp: string;
+}
+
+// Cheap, stable (djb2) fingerprint of the document.
+function fingerprint(text: string): string {
+  let hash = 5381;
+  for (let i = 0; i < text.length; i += 1) {
+    hash = ((hash << 5) + hash + text.charCodeAt(i)) | 0;
+  }
+  return `${text.length}:${(hash >>> 0).toString(36)}`;
+}
+
+function readStoredRun(): StoredRun | null {
+  try {
+    const raw = sessionStorage.getItem(RUN_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed.id === 'string' && typeof parsed.fp === 'string') return parsed;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function storeRun(run: StoredRun): void {
+  try {
+    sessionStorage.setItem(RUN_STORAGE_KEY, JSON.stringify(run));
+  } catch {
+    // Private-mode / disabled storage: persistence is best-effort.
+  }
+}
+
+function clearStoredRun(): void {
+  try {
+    sessionStorage.removeItem(RUN_STORAGE_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+// One timeline entry: a request-level engine event, optionally mapped back to
+// the tree node it came from (matched by report name, best effort).
+export type DebugEntry = {
+  id: string;
+  index: number;
+  event: EngineEvent;
+  node: YAMLNode | null;
+  status: DebugStatus;
+};
+
+function entryStatus(event: EngineEvent): DebugStatus {
+  if (event.err) return 'failed';
+  if (event.status >= 400) return 'failed';
+  if ((event.assertions ?? []).some(assertion => !assertion.Passed)) return 'failed';
+  return 'passed';
+}
+
+// The engine only emits request-level events for actual steps; INFO events
+// are verbose-run messages, SYSTEM events are lifecycle markers (e.g.
+// VUS_DRAINED) and embedded events are sub-resources of a page load.
+function isTimelineEvent(event: EngineEvent): boolean {
+  return Boolean(event.method) && event.method !== 'INFO' && event.method !== 'SYSTEM' && !event.embedded;
+}
+
+// Engine report names look like "[vu-1] Group/Sub:Request name #2". Strip the
+// shard prefix and dedup suffix, then try the exact name, the last segment,
+// and finally the request URL.
+function matchEventToNode(event: EngineEvent, requestNodes: YAMLNode[]): YAMLNode | null {
+  const raw = event.name.replace(/^\[[^\]]+\]\s*/, '').replace(/\s+#\d+$/, '');
+  const base = raw.includes(':') ? raw.slice(raw.lastIndexOf(':') + 1) : raw;
+  return (
+    requestNodes.find(node => node.name === raw) ??
+    requestNodes.find(node => node.name === base) ??
+    requestNodes.find(node => {
+      const url = String(node.data?.url ?? '');
+      return url !== '' && (base.endsWith(url) || event.path === url);
+    }) ??
+    null
+  );
+}
+
+function formatEventTime(timestamp: string): string {
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return timestamp;
+  const pad = (value: number, size = 2) => String(value).padStart(size, '0');
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}.${pad(date.getMilliseconds(), 3)}`;
+}
+
+function formatLatency(latencyMs: number): string {
+  return latencyMs < 10 ? `${latencyMs.toFixed(1)}ms` : `${Math.round(latencyMs)}ms`;
+}
 
 function statusTone(status: DebugStatus): string {
   switch (status) {
@@ -45,6 +147,15 @@ function StatusIcon({ status }: { status: DebugStatus }) {
 
 interface YAMLDebugSessionProps {
   tree: YAMLNode | null;
+  yamlCode: string;
+  // Flushes any pending debounced tree→code serialization and returns the
+  // freshest YAML. Called at run start so a debug snapshot never POSTs stale
+  // YAML while the tree already shows an uncommitted edit.
+  flushPendingEdits?: () => string;
+  // True once the editor has finished restoring (or failing to restore) the
+  // document. Gates the reload re-attach so an orphaned run is not revived
+  // when the document itself did not come back.
+  documentReady: boolean;
   selectedNode: YAMLNode | null;
   validationErrors: string[];
   onSelectNode: (node: YAMLNode) => void;
@@ -53,56 +164,161 @@ interface YAMLDebugSessionProps {
 
 export function YAMLDebugSession({
   tree,
+  yamlCode,
+  flushPendingEdits,
+  documentReady,
   selectedNode,
   validationErrors,
   onSelectNode,
   onEditNode,
 }: YAMLDebugSessionProps) {
-  const [debugVus, setDebugVus] = useState<1 | 2>(1);
-  // Prototype control only: the duration is captured from the input but not yet
-  // applied to the (mocked) run length — wire it up when the backend lands.
-  const [durationMinutes, setDurationMinutes] = useState(1);
-  const requests = useMemo(() => buildDebugRequests(tree, debugVus), [debugVus, tree]);
+  // A debug run is always a single virtual user doing one pass through the
+  // flow (the backend forces this and ignores the scenario's load), so there
+  // are no VUs/duration controls — they would not mean anything here.
+  const [entries, setEntries] = useState<DebugEntry[]>([]);
   const [isRunning, setIsRunning] = useState(false);
-  // Starts at 0 so the timeline is empty until a run actually begins, instead
-  // of showing every step as already executed before the first Run Debug.
-  const [visibleCount, setVisibleCount] = useState(0);
+  const [runError, setRunError] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [detailTab, setDetailTab] = useState<DetailTab>('overview');
 
-  useEffect(() => {
-    if (!selectedNode) return;
-    if (requests.some(request => request.node.id === selectedNode.id)) setActiveId(selectedNode.id);
-  }, [requests, selectedNode]);
+  const requestNodes = useMemo(() => collectRequests(tree), [tree]);
+  const requestNodesRef = useRef(requestNodes);
+  requestNodesRef.current = requestNodes;
 
+  const stopStreamRef = useRef<(() => void) | null>(null);
+  // Bumped on every start and on Stop; a slow startDebugRun continuation checks
+  // it and bails if it was superseded or stopped while the POST was in flight.
+  const startTokenRef = useRef(0);
+
+  // Wires a run's SSE stream into the timeline. Shared by a fresh Run Debug
+  // and by re-attaching to a stored run after a reload (the backend replays
+  // the full event history on connect). `quiet` suppresses the error banner
+  // for auto re-attach: a stored run that no longer exists (server restarted)
+  // should clear silently rather than alarm the user.
+  const subscribe = useCallback((runId: string, quiet: boolean) => {
+    stopStreamRef.current?.();
+    stopStreamRef.current = streamDebugRun(runId, {
+      onEvent: event => {
+        if (!isTimelineEvent(event)) return;
+        setEntries(previous => [
+          ...previous,
+          {
+            id: `evt-${previous.length}`,
+            index: previous.length + 1,
+            event,
+            node: matchEventToNode(event, requestNodesRef.current),
+            status: entryStatus(event),
+          },
+        ]);
+      },
+      onDone: error => {
+        setIsRunning(false);
+        setRunError(error);
+      },
+      onConnectionError: () => {
+        setIsRunning(false);
+        if (quiet) {
+          clearStoredRun();
+          setEntries([]);
+        } else {
+          setRunError('Lost connection to the studio server.');
+        }
+      },
+    });
+  }, []);
+
+  useEffect(() => () => stopStreamRef.current?.(), []);
+
+  // Re-attach to a run started before a reload — but only once the editor has
+  // settled the document. A debug run belongs to a document, so if the
+  // document did not come back (no draft restored), the run is orphaned and
+  // its stored id is dropped instead of reviving a timeline with no script.
+  const reattachedRef = useRef(false);
   useEffect(() => {
-    if (!isRunning) return;
-    if (visibleCount >= requests.length) {
-      setIsRunning(false);
+    if (!documentReady || reattachedRef.current) return;
+    reattachedRef.current = true;
+    const stored = readStoredRun();
+    if (!stored) return;
+    // Drop the run if the document did not come back, or came back as a
+    // different script — replaying it against another tree is misleading.
+    if (!yamlCode.trim() || stored.fp !== fingerprint(yamlCode)) {
+      clearStoredRun();
       return;
     }
-    const timeout = window.setTimeout(() => setVisibleCount(count => Math.min(count + 1, requests.length)), 420);
-    return () => window.clearTimeout(timeout);
-  }, [isRunning, requests.length, visibleCount]);
+    setIsRunning(true);
+    subscribe(stored.id, true);
+  }, [documentReady, yamlCode, subscribe]);
 
-  const visibleRequests = requests.slice(0, visibleCount);
-  const activeRequest = requests.find(request => request.node.id === activeId) || visibleRequests[visibleRequests.length - 1] || requests[0];
-  const passed = visibleRequests.filter(request => request.status === 'passed').length;
-  const failed = visibleRequests.filter(request => request.status === 'failed').length;
-  const redirects = visibleRequests.filter(request => request.statusCode >= 300 && request.statusCode < 400).length;
+  // When the parsed tree arrives or changes, re-resolve each entry's node. On
+  // reload the SSE history can replay before the parse worker has populated
+  // requestNodes (documentReady flips right after parsing is *posted*), so
+  // entries would otherwise stay node:null and never become selectable/editable
+  // once the tree lands. Idempotent: returns the same array when nothing moved.
+  useEffect(() => {
+    setEntries(previous => {
+      let changed = false;
+      const remapped = previous.map(entry => {
+        const node = matchEventToNode(entry.event, requestNodes);
+        if (node?.id === entry.node?.id) return entry;
+        changed = true;
+        return { ...entry, node };
+      });
+      return changed ? remapped : previous;
+    });
+  }, [requestNodes]);
+
+  useEffect(() => {
+    if (!selectedNode) return;
+    const entry = entries.find(candidate => candidate.node?.id === selectedNode.id);
+    if (entry) setActiveId(entry.id);
+  }, [entries, selectedNode]);
+
+  const activeEntry = entries.find(entry => entry.id === activeId) || entries[entries.length - 1];
+  const passed = entries.filter(entry => entry.status === 'passed').length;
+  const failed = entries.filter(entry => entry.status === 'failed').length;
+  const redirects = entries.reduce(
+    (count, entry) =>
+      count + (entry.event.redirects?.length ?? (entry.event.status >= 300 && entry.event.status < 400 ? 1 : 0)),
+    0,
+  );
   const hasValidationErrors = validationErrors.length > 0;
 
-  const startRun = () => {
-    if (hasValidationErrors) return;
-    setVisibleCount(0);
-    setIsRunning(true);
+  const startRun = async () => {
+    if (hasValidationErrors || isRunning) return;
+    // Flush any debounced tree edit so the run uses the YAML that matches the
+    // tree on screen, not a string that is up to 220 ms stale.
+    const scriptAtStart = flushPendingEdits ? flushPendingEdits() : yamlCode;
+    if (!scriptAtStart.trim()) return;
+    const token = (startTokenRef.current += 1);
+    stopStreamRef.current?.();
+    setEntries([]);
+    setRunError(null);
     setActiveId(null);
     setDetailTab('overview');
+    setIsRunning(true);
+    try {
+      const runId = await startDebugRun(scriptAtStart);
+      // Stop (or another Run) may have fired while the POST was in flight.
+      if (token !== startTokenRef.current) return;
+      storeRun({ id: runId, fp: fingerprint(scriptAtStart) });
+      subscribe(runId, false);
+    } catch (error) {
+      if (token !== startTokenRef.current) return;
+      setIsRunning(false);
+      setRunError(error instanceof Error ? error.message : String(error));
+    }
   };
 
-  const selectRequest = (request: DebugRequestNode) => {
-    setActiveId(request.node.id);
-    onSelectNode(request.node);
+  const stopRun = () => {
+    startTokenRef.current += 1; // invalidate any in-flight start
+    stopStreamRef.current?.();
+    stopStreamRef.current = null;
+    setIsRunning(false);
+  };
+
+  const selectEntry = (entry: DebugEntry) => {
+    setActiveId(entry.id);
+    if (entry.node) onSelectNode(entry.node);
   };
 
   return (
@@ -117,7 +333,7 @@ export function YAMLDebugSession({
             <button
               type="button"
               onClick={startRun}
-              disabled={requests.length === 0 || isRunning || hasValidationErrors}
+              disabled={isRunning || hasValidationErrors || !yamlCode.trim()}
               className="inline-flex h-9 items-center gap-2 rounded border border-yellow-400/40 bg-yellow-400 px-3 text-sm font-semibold text-black transition-colors hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Play className="h-4 w-4" />
@@ -125,7 +341,7 @@ export function YAMLDebugSession({
             </button>
             <button
               type="button"
-              onClick={() => setIsRunning(false)}
+              onClick={stopRun}
               disabled={!isRunning}
               className="inline-flex h-9 items-center gap-2 rounded border border-white/10 bg-white/[0.03] px-3 text-sm text-zinc-300 transition-colors hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-40"
             >
@@ -135,39 +351,16 @@ export function YAMLDebugSession({
             <button
               type="button"
               onClick={startRun}
-              disabled={requests.length === 0 || hasValidationErrors}
+              disabled={isRunning || hasValidationErrors || !yamlCode.trim()}
               className="inline-flex h-9 w-9 items-center justify-center rounded border border-white/10 bg-white/[0.03] text-zinc-300 transition-colors hover:bg-white/[0.06] disabled:opacity-40"
               aria-label="Re-run debug"
               title="Re-run debug"
             >
               <RotateCcw className="h-4 w-4" />
             </button>
-            <label className="inline-flex h-9 items-center gap-2 rounded border border-white/10 bg-[#161616] px-2 text-xs text-zinc-300">
-              <span className="text-zinc-500">VUs</span>
-              <select
-                value={debugVus}
-                onChange={event => setDebugVus(Number(event.target.value) === 2 ? 2 : 1)}
-                className="h-7 rounded border border-white/10 bg-[#0a0a0a] px-2 text-xs text-zinc-100 outline-none focus:border-yellow-400/50"
-              >
-                <option value={1}>1</option>
-                <option value={2}>2</option>
-              </select>
-            </label>
-            <label className="inline-flex h-9 items-center gap-2 rounded border border-white/10 bg-[#161616] px-2 text-xs text-zinc-300">
-              <span className="text-zinc-500">Min</span>
-              <input
-                type="number"
-                min={1}
-                max={60}
-                value={durationMinutes}
-                onChange={event => {
-                  const next = Number(event.target.value);
-                  if (!Number.isFinite(next)) return;
-                  setDurationMinutes(Math.min(60, Math.max(1, Math.round(next))));
-                }}
-                className="h-7 w-14 rounded border border-white/10 bg-[#0a0a0a] px-2 text-xs text-zinc-100 outline-none focus:border-yellow-400/50"
-              />
-            </label>
+            <span className="inline-flex h-9 items-center gap-2 rounded border border-white/10 bg-[#161616] px-3 text-xs text-zinc-400">
+              1 VU · 1 iteration
+            </span>
             <span className="inline-flex h-9 items-center gap-2 rounded border border-emerald-400/20 bg-emerald-400/10 px-3 text-xs text-emerald-300">
               <ShieldCheck className="h-4 w-4" />
               {hasValidationErrors ? 'Blocked' : 'Validate'}
@@ -200,9 +393,21 @@ export function YAMLDebugSession({
         </div>
       )}
 
+      {runError && (
+        <div className="border-b border-red-400/20 bg-red-500/10 px-5 py-3">
+          <div className="flex items-start gap-3">
+            <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-300" />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-red-200">Debug run failed</p>
+              <p className="mt-1 break-words font-mono text-xs text-red-100/90">{runError}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-4 border-b border-white/5 bg-[#0a0a0a]">
         {[
-          ['Requests', visibleRequests.length, 'text-zinc-100'],
+          ['Requests', entries.length, 'text-zinc-100'],
           ['Passed', passed, 'text-emerald-300'],
           ['Failed', failed, 'text-red-300'],
           ['Redirects', redirects, 'text-blue-300'],
@@ -221,19 +426,21 @@ export function YAMLDebugSession({
               <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">Execution timeline</p>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto p-2">
-              {visibleRequests.length === 0 ? (
+              {entries.length === 0 ? (
                 <div className="flex h-full items-center justify-center px-8 text-center text-sm text-zinc-500">
-                  Press Run Debug to preview the event stream for this YAML.
+                  {isRunning
+                    ? 'Running... waiting for the first engine event.'
+                    : 'Press Run Debug to execute this YAML against the engine.'}
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {visibleRequests.map(request => {
-                    const active = activeRequest?.node.id === request.node.id;
+                  {entries.map(entry => {
+                    const active = activeEntry?.id === entry.id;
                     return (
                       <button
-                        key={request.node.id}
+                        key={entry.id}
                         type="button"
-                        onClick={() => selectRequest(request)}
+                        onClick={() => selectEntry(entry)}
                         className={`w-full border px-3 py-2.5 text-left transition-colors ${
                           active
                             ? 'border-yellow-400/50 bg-yellow-400/10'
@@ -241,20 +448,20 @@ export function YAMLDebugSession({
                         }`}
                       >
                         <div className="flex min-w-0 items-center gap-3">
-                          <StatusIcon status={request.status} />
+                          <StatusIcon status={entry.status} />
                           <div className="min-w-0 flex-1">
                             <div className="flex min-w-0 items-center gap-2">
                               <span className="rounded border border-blue-400/25 bg-blue-400/10 px-1.5 py-0.5 text-[10px] font-semibold text-blue-300">
-                                {request.method}
+                                {entry.event.method}
                               </span>
-                              <span className="truncate text-sm text-zinc-100">{request.path}</span>
+                              <span className="truncate text-sm text-zinc-100">{entry.event.path || entry.event.name}</span>
                             </div>
                             <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] text-zinc-500">
-                              <span>{request.startedAt}</span>
-                              <span>VU{request.vu}</span>
-                              <span>{request.latencyMs}ms</span>
-                              <span className={`rounded border px-1.5 py-0.5 ${statusTone(request.status)}`}>
-                                {request.statusCode}
+                              <span>{formatEventTime(entry.event.ts)}</span>
+                              {entry.event.vu ? <span>VU{entry.event.vu}</span> : null}
+                              <span>{formatLatency(entry.event.latency_ms)}</span>
+                              <span className={`rounded border px-1.5 py-0.5 ${statusTone(entry.status)}`}>
+                                {entry.event.status || '—'}
                               </span>
                             </div>
                           </div>
@@ -269,30 +476,40 @@ export function YAMLDebugSession({
         </div>
 
         <div className="min-w-0 min-h-0 overflow-hidden">
-          {activeRequest ? (
+          {activeEntry ? (
             <div className="flex h-full min-h-0 flex-col">
               <div className="border-b border-white/5 px-4 py-3">
                 <div className="flex min-w-0 items-start justify-between gap-4">
                   <div className="min-w-0">
                     <div className="flex min-w-0 items-center gap-2">
                       <span className="rounded border border-blue-400/25 bg-blue-400/10 px-2 py-1 text-xs font-semibold text-blue-300">
-                        {activeRequest.method}
+                        {activeEntry.event.method}
                       </span>
-                      <h3 className="truncate text-base font-semibold text-zinc-100">{activeRequest.path}</h3>
+                      <h3 className="truncate text-base font-semibold text-zinc-100">
+                        {activeEntry.event.path || activeEntry.event.name}
+                      </h3>
                     </div>
-                    <p className="mt-1 text-xs text-zinc-500">Mapped to the selected tree node.</p>
+                    <p className="mt-1 text-xs text-zinc-500">
+                      {activeEntry.node ? 'Mapped to the selected tree node.' : activeEntry.event.name}
+                    </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => onEditNode(activeRequest.node)}
-                      className="inline-flex h-8 items-center gap-2 rounded border border-white/10 bg-white/[0.03] px-2.5 text-xs text-zinc-300 transition-colors hover:bg-white/[0.06]"
-                    >
-                      <Edit3 className="h-3.5 w-3.5" />
-                      Edit
-                    </button>
-                    <span className={`rounded-full border px-2.5 py-1 text-xs ${statusTone(activeRequest.status)}`}>
-                      {activeRequest.status === 'failed' ? 'Failed' : activeRequest.statusCode >= 300 ? 'Redirect' : 'Passed'}
+                    {activeEntry.node && (
+                      <button
+                        type="button"
+                        onClick={() => onEditNode(activeEntry.node!)}
+                        className="inline-flex h-8 items-center gap-2 rounded border border-white/10 bg-white/[0.03] px-2.5 text-xs text-zinc-300 transition-colors hover:bg-white/[0.06]"
+                      >
+                        <Edit3 className="h-3.5 w-3.5" />
+                        Edit
+                      </button>
+                    )}
+                    <span className={`rounded-full border px-2.5 py-1 text-xs ${statusTone(activeEntry.status)}`}>
+                      {activeEntry.status === 'failed'
+                        ? 'Failed'
+                        : activeEntry.event.status >= 300 && activeEntry.event.status < 400
+                          ? 'Redirect'
+                          : 'Passed'}
                     </span>
                   </div>
                 </div>
@@ -316,7 +533,7 @@ export function YAMLDebugSession({
               </div>
 
               <div className="min-h-0 flex-1 overflow-y-auto p-4">
-                <DebugInspectorContent request={activeRequest} tab={detailTab} />
+                <DebugInspectorContent entry={activeEntry} tab={detailTab} />
               </div>
             </div>
           ) : (
@@ -333,7 +550,7 @@ export function YAMLDebugSession({
   );
 }
 
-function DebugInspectorContent({ request, tab }: { request: DebugRequestNode; tab: DetailTab }) {
+function DebugInspectorContent({ entry, tab }: { entry: DebugEntry; tab: DetailTab }) {
   const [requestSearch, setRequestSearch] = useState('');
   const [requestSearchMode, setRequestSearchMode] = useState<SearchMode>('text');
   const [requestMatchIndex, setRequestMatchIndex] = useState(0);
@@ -341,25 +558,24 @@ function DebugInspectorContent({ request, tab }: { request: DebugRequestNode; ta
   const [responseSearchMode, setResponseSearchMode] = useState<SearchMode>('text');
   const [responseMatchIndex, setResponseMatchIndex] = useState(0);
 
+  const { event } = entry;
   const requestRows: Array<[string, string]> = [
-    ['URL', request.path],
-    ['Method', request.method],
-    ['Accept', 'application/json'],
-    ['User-Agent', 'Relampo Debug UI'],
+    ['URL', event.path || '<unknown>'],
+    ['Method', event.method],
+    ...Object.entries(event.request_headers ?? {}),
   ];
-  const requestBody = request.method === 'POST' ? '{"username":"demo","password":"super-secret-demo"}' : '<empty>';
+  const requestBody = event.request_body || '<empty>';
   const responseRows: Array<[string, string]> = [
-    ['Status', String(request.statusCode)],
-    ['Duration', `${request.latencyMs}ms`],
-    ['Content-Type', 'application/json'],
-    ['Set-Cookie', request.status === 'failed' ? '<empty>' : 'session_id=abc123-debug-session; HttpOnly'],
+    ['Status', event.status ? String(event.status) : '—'],
+    ['Duration', formatLatency(event.latency_ms)],
+    ...Object.entries(event.response_headers ?? {}),
   ];
-  const responseBody = request.status === 'failed' ? '{"error":"Internal Server Error"}' : '{"ok":true,"token":"eyJhbGciOiJIUzI1NiJ9.debug-token-value"}';
+  const responseBody = event.response_body || '<empty>';
 
   useEffect(() => {
     setRequestMatchIndex(0);
     setResponseMatchIndex(0);
-  }, [request.node.id]);
+  }, [entry.id]);
 
   if (tab === 'request') {
     const requestSearchText = [...requestRows.map(([label, value]) => `${label}: ${value}`), requestBody].join('\n');
@@ -426,52 +642,76 @@ function DebugInspectorContent({ request, tab }: { request: DebugRequestNode; ta
   }
 
   if (tab === 'assertions') {
+    const assertions = event.assertions ?? [];
+    if (assertions.length === 0) {
+      return <p className="text-sm text-zinc-500">No assertions were evaluated for this request.</p>;
+    }
     return (
       <div className="space-y-3">
-        <DebugLine
-          icon={request.status === 'failed' ? <XCircle className="h-4 w-4 text-red-300" /> : <CheckCircle2 className="h-4 w-4 text-emerald-300" />}
-          title="Status code assertion"
-          value={request.status === 'failed' ? 'Expected 200, got 500' : 'Expected 200, got 200'}
-        />
-        <DebugLine
-          icon={<CheckCircle2 className="h-4 w-4 text-emerald-300" />}
-          title="Response time assertion"
-          value={`${request.latencyMs}ms below debug threshold`}
-        />
+        {assertions.map((assertion, index) => (
+          <DebugLine
+            key={`${assertion.Name}-${index}`}
+            icon={
+              assertion.Passed ? (
+                <CheckCircle2 className="h-4 w-4 text-emerald-300" />
+              ) : (
+                <XCircle className="h-4 w-4 text-red-300" />
+              )
+            }
+            title={assertion.Name || 'Assertion'}
+            value={assertion.Message || (assertion.Passed ? 'Passed' : 'Failed')}
+          />
+        ))}
       </div>
     );
   }
 
   if (tab === 'variables') {
-    return (
-      <DebugSection
-        rows={[
-          ['auth_token', request.status === 'failed' ? '<missing>' : 'eyJhbGciOiJIUzI1NiJ9.debug-token-value'],
-          ['current_vu', String(request.vu)],
-          ['last_status', String(request.statusCode)],
-        ]}
-      />
-    );
+    const variables = Object.entries(event.variables ?? {});
+    if (variables.length === 0) {
+      return <p className="text-sm text-zinc-500">No variables were captured for this request.</p>;
+    }
+    return <DebugSection rows={variables} />;
   }
 
   if (tab === 'logs') {
+    const time = formatEventTime(event.ts);
     return (
       <div className="border border-white/10 bg-[#050505] p-4 font-mono text-xs leading-6 text-zinc-300">
-        <p className="text-emerald-300">[{request.startedAt}] debug session received request event</p>
-        <p className="text-blue-300">[{request.startedAt}] {request.method} {request.path} - {request.statusCode} ({request.latencyMs}ms)</p>
-        {request.status === 'failed' && (
-          <p className="text-red-300">[{request.startedAt}] assertion failed: expected successful HTTP response</p>
-        )}
+        <p className="text-emerald-300">[{time}] debug session received request event</p>
+        <p className="text-blue-300">
+          [{time}] {event.method} {event.path || event.name} - {event.status || '—'} ({formatLatency(event.latency_ms)})
+        </p>
+        {(event.redirects ?? []).map((hop, index) => (
+          <p key={`hop-${index}`} className="text-zinc-400">
+            [{time}] redirect {index + 1}: {hop.status} {hop.url || ''} → {hop.location || hop.target_url || ''}
+          </p>
+        ))}
+        {event.err && <p className="text-red-300">[{time}] {event.err}</p>}
       </div>
     );
   }
 
   return (
     <div className="grid gap-3 md:grid-cols-2">
-      <DebugLine icon={<Eye className="h-4 w-4 text-yellow-300" />} title="Selected node" value={request.node.name} />
-      <DebugLine icon={<Clock3 className="h-4 w-4 text-zinc-300" />} title="Latency" value={`${request.latencyMs}ms`} />
-      <DebugLine icon={<TerminalSquare className="h-4 w-4 text-zinc-300" />} title="VU" value={`Virtual user ${request.vu}`} />
-      <DebugLine icon={<ShieldCheck className="h-4 w-4 text-emerald-300" />} title="Validation" value="YAML validation passed before debug" />
+      <DebugLine
+        icon={<Eye className="h-4 w-4 text-yellow-300" />}
+        title="Step"
+        value={entry.node?.name ?? event.name}
+      />
+      <DebugLine icon={<Clock3 className="h-4 w-4 text-zinc-300" />} title="Latency" value={formatLatency(event.latency_ms)} />
+      <DebugLine
+        icon={<TerminalSquare className="h-4 w-4 text-zinc-300" />}
+        title="VU"
+        value={event.vu ? `Virtual user ${event.vu}` : '—'}
+      />
+      <DebugLine
+        icon={
+          event.err ? <XCircle className="h-4 w-4 text-red-300" /> : <ShieldCheck className="h-4 w-4 text-emerald-300" />
+        }
+        title="Result"
+        value={event.err || (event.status ? `HTTP ${event.status}` : 'Completed')}
+      />
     </div>
   );
 }
