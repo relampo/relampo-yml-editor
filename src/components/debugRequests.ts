@@ -62,6 +62,35 @@ export function collectDebugEventTargets(tree: YAMLNode | null): YAMLNode[] {
   return nodes;
 }
 
+function extractorVariableName(node: YAMLNode): string | null {
+  const candidates = [node.data?.var, node.data?.variable, node.data?.name];
+  for (const candidate of candidates) {
+    if (typeof candidate === 'string' && candidate.trim()) return candidate.trim();
+  }
+  return null;
+}
+
+export function requestExtractorVariableNames(node: YAMLNode | null): string[] {
+  if (!node?.children) return [];
+  const names: string[] = [];
+  node.children.forEach(child => {
+    if (child.type !== 'extractor' && child.type !== 'extract') return;
+    const name = extractorVariableName(child);
+    if (name && !names.includes(name)) names.push(name);
+  });
+  return names;
+}
+
+export function variableRowsForRequestNode(
+  node: YAMLNode | null,
+  variables: Record<string, string>,
+): Array<[string, string]> {
+  if (!node) return Object.entries(variables);
+  return requestExtractorVariableNames(node).flatMap(name =>
+    Object.prototype.hasOwnProperty.call(variables, name) ? [[name, variables[name]] as [string, string]] : [],
+  );
+}
+
 export function buildDebugRequests(tree: YAMLNode | null, vus = 1): DebugRequestNode[] {
   const requests = collectRequests(tree);
   return requests.map((node, index) => {

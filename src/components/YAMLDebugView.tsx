@@ -16,7 +16,12 @@ import {
   XCircle,
 } from 'lucide-react';
 import type { YAMLNode } from '../types/yaml';
-import { collectDebugEventTargets, type DebugStatus } from './debugRequests';
+import {
+  collectDebugEventTargets,
+  requestExtractorVariableNames,
+  variableRowsForRequestNode,
+  type DebugStatus,
+} from './debugRequests';
 import { startDebugRun, streamDebugRun, type DebugVUs, type EngineEvent } from '../utils/debugApi';
 
 type DetailTab = 'overview' | 'request' | 'response' | 'assertions' | 'variables' | 'logs';
@@ -702,9 +707,14 @@ function DebugInspectorContent({ entry, tab }: { entry: DebugEntry; tab: DetailT
   }
 
   if (tab === 'variables') {
-    const variables = Object.entries(event.variables ?? {});
+    const variables = variableRowsForRequestNode(entry.node, event.variables ?? {});
     if (variables.length === 0) {
-      return <p className="text-sm text-zinc-500">No variables were captured for this request.</p>;
+      const extractorNames = requestExtractorVariableNames(entry.node);
+      const message =
+        entry.node && extractorNames.length === 0
+          ? 'No variables were extracted by this request.'
+          : 'No extracted variables were captured for this request.';
+      return <p className="text-sm text-zinc-500">{message}</p>;
     }
     return <DebugSection rows={variables} />;
   }
