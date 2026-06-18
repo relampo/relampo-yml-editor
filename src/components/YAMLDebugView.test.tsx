@@ -154,6 +154,70 @@ describe('DebugSection highlighting', () => {
 });
 
 describe('YAMLDebugSession tree selection sync', () => {
+  it('limits the variables tab to extractors declared by the mapped request node', async () => {
+    const requestA: YAMLNode = {
+      id: 'a',
+      type: 'request',
+      name: 'Request A',
+      data: { method: 'POST', url: '/a' },
+      children: [
+        {
+          id: 'a_extract_request2',
+          type: 'extractor',
+          name: 'Extract: request2',
+          data: { type: 'regex', var: 'request2', pattern: 'request2=(.*)' },
+        },
+      ],
+    };
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'root',
+      name: 'root',
+      children: [requestA],
+    };
+
+    render(
+      <YAMLDebugSession
+        tree={tree}
+        yamlCode={'test:\n  name: variables\n'}
+        documentReady
+        selectedNode={null}
+        treeFocusNodeId={null}
+        validationErrors={[]}
+        onSelectNode={vi.fn()}
+        onEditNode={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
+
+    act(() => {
+      debugApiMock.handlers[0].onEvent(
+        event({
+          name: 'Request A',
+          method: 'POST',
+          path: '/a',
+          variables: {
+            'javax.faces.ViewState': 'view-state-value',
+            REQUEST1: 'previous-request',
+            request2: 'current-request',
+            RESPONSE1: 'previous-response',
+          },
+        }),
+      );
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'variables' }));
+
+    expect(await screen.findByText('request2')).toBeInTheDocument();
+    expect(screen.getByText('current-request')).toBeInTheDocument();
+    expect(screen.queryByText('REQUEST1')).not.toBeInTheDocument();
+    expect(screen.queryByText('previous-request')).not.toBeInTheDocument();
+    expect(screen.queryByText('RESPONSE1')).not.toBeInTheDocument();
+    expect(screen.queryByText('javax.faces.ViewState')).not.toBeInTheDocument();
+  });
+
   it('starts a debug run with the selected 2 VUs option', async () => {
     const tree: YAMLNode = {
       id: 'root',
