@@ -15,6 +15,7 @@ export type DebugRequestNode = {
 };
 
 const REQUEST_TYPES = new Set(['request', 'get', 'post', 'put', 'delete', 'patch', 'head', 'options']);
+const DEBUG_EVENT_TYPES = new Set([...REQUEST_TYPES, 'think_time']);
 
 function getRequestMethod(node: YAMLNode): string {
   const rawMethod = node.data?.method || node.type;
@@ -50,10 +51,9 @@ export function collectDebugEventTargets(tree: YAMLNode | null): YAMLNode[] {
   if (!tree) return [];
   const nodes: YAMLNode[] = [];
   const walk = (node: YAMLNode) => {
-    const isRequest = REQUEST_TYPES.has(node.type);
-    if (isRequest) {
+    const isDebugEventTarget = DEBUG_EVENT_TYPES.has(node.type);
+    if (isDebugEventTarget) {
       nodes.push(node);
-      return;
     }
     if (node.data?.enabled === false) return;
     node.children?.forEach(walk);

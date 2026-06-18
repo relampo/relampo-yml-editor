@@ -100,11 +100,10 @@ function isTimelineEvent(event: EngineEvent): boolean {
   return Boolean(event.method) && event.method !== 'INFO' && event.method !== 'SYSTEM' && !event.embedded;
 }
 
-// Engine report names look like "[vu-1] Group/Sub:Request name #2". Strip the
-// shard prefix and dedup suffix, then try the exact name, the last segment,
-// and finally the request URL.
 function matchEventToNode(event: EngineEvent, requestNodes: YAMLNode[]): YAMLNode | null {
-  const raw = event.name.replace(/^\[[^\]]+\]\s*/, '').replace(/\s+#\d+$/, '');
+  const rawWithSuffix = event.name.replace(/^\[[^\]]+\]\s*/, '');
+  if (event.method === 'THINK_TIME') return requestNodes.filter(node => node.type === 'think_time')[Number.parseInt(rawWithSuffix.match(/\s+#(\d+)$/)?.[1] ?? '1', 10) - 1] ?? null;
+  const raw = rawWithSuffix.replace(/\s+#\d+$/, '');
   const base = raw.includes(':') ? raw.slice(raw.lastIndexOf(':') + 1) : raw;
   return (
     requestNodes.find(node => node.name === raw) ??

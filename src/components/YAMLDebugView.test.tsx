@@ -126,6 +126,50 @@ describe('collectDebugEventTargets', () => {
     };
     expect(collectDebugEventTargets(tree).map(n => n.id)).toEqual(['a', 'b']);
   });
+
+  it('includes think time nodes for debug event mapping', () => {
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'root',
+      name: 'root',
+      children: [
+        req('a'),
+        {
+          id: 'think-1',
+          type: 'think_time',
+          name: 'Think Time',
+          data: { duration: '1s' },
+        },
+      ],
+    };
+
+    expect(collectDebugEventTargets(tree).map(n => n.id)).toEqual(['a', 'think-1']);
+  });
+
+  it('keeps walking request children so inline think time nodes can be mapped', () => {
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'root',
+      name: 'root',
+      children: [
+        {
+          id: 'a',
+          type: 'request',
+          name: 'Request A',
+          children: [
+            {
+              id: 'a-think',
+              type: 'think_time',
+              name: 'Think Time',
+              data: { duration: '1s' },
+            },
+          ],
+        },
+      ],
+    };
+
+    expect(collectDebugEventTargets(tree).map(n => n.id)).toEqual(['a', 'a-think']);
+  });
 });
 
 describe('DebugSection highlighting', () => {
@@ -154,6 +198,120 @@ describe('DebugSection highlighting', () => {
 });
 
 describe('YAMLDebugSession tree selection sync', () => {
+  it('maps a focused think time node to its debug timeline event', async () => {
+    const thinkTime: YAMLNode = {
+      id: 'think-1',
+      type: 'think_time',
+      name: 'Think Time',
+      data: { duration: '1s' },
+    };
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'root',
+      name: 'root',
+      children: [thinkTime],
+    };
+    const commonProps = {
+      tree,
+      yamlCode: 'test:\n  name: think-time\n',
+      documentReady: true,
+      validationErrors: [],
+      onSelectNode: vi.fn(),
+      onEditNode: vi.fn(),
+    };
+
+    const { rerender } = render(
+      <YAMLDebugSession {...commonProps} selectedNode={null} treeFocusNodeId={null} />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
+
+    act(() => {
+      debugApiMock.handlers[0].onEvent(
+        event({
+          name: 'Think Time',
+          method: 'THINK_TIME',
+          path: 'think_time',
+          status: 0,
+          latency_ms: 1000,
+        }),
+      );
+    });
+
+    rerender(
+      <YAMLDebugSession {...commonProps} selectedNode={thinkTime} treeFocusNodeId={thinkTime.id} />,
+    );
+
+    expect(await screen.findAllByText('think_time')).not.toHaveLength(0);
+    expect(screen.getAllByText('THINK_TIME')).not.toHaveLength(0);
+    expect(screen.queryByText('No debug event for "Think Time" in the current run.')).not.toBeInTheDocument();
+  });
+
+  it('maps repeated think time events by engine suffix', async () => {
+    const firstThinkTime: YAMLNode = {
+      id: 'think-1',
+      type: 'think_time',
+      name: 'Think Time',
+      data: { duration: '1s' },
+    };
+    const secondThinkTime: YAMLNode = {
+      id: 'think-2',
+      type: 'think_time',
+      name: 'Think Time',
+      data: { duration: '2s' },
+    };
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'root',
+      name: 'root',
+      children: [firstThinkTime, secondThinkTime],
+    };
+    const commonProps = {
+      tree,
+      yamlCode: 'test:\n  name: repeated-think-time\n',
+      documentReady: true,
+      validationErrors: [],
+      onSelectNode: vi.fn(),
+      onEditNode: vi.fn(),
+    };
+
+    const { rerender } = render(
+      <YAMLDebugSession {...commonProps} selectedNode={null} treeFocusNodeId={null} />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
+
+    act(() => {
+      debugApiMock.handlers[0].onEvent(
+        event({
+          name: 'Think Time',
+          method: 'THINK_TIME',
+          path: 'think_time',
+          status: 0,
+          latency_ms: 1000,
+        }),
+      );
+      debugApiMock.handlers[0].onEvent(
+        event({
+          name: 'Think Time #2',
+          method: 'THINK_TIME',
+          path: 'think_time',
+          status: 0,
+          latency_ms: 2000,
+        }),
+      );
+    });
+
+    rerender(
+      <YAMLDebugSession {...commonProps} selectedNode={secondThinkTime} treeFocusNodeId={secondThinkTime.id} />,
+    );
+
+    expect(screen.queryByText('No debug event for "Think Time" in the current run.')).not.toBeInTheDocument();
+    expect(screen.getAllByText('2000ms')).not.toHaveLength(0);
+  });
+
   it('limits the variables tab to extractors declared by the mapped request node', async () => {
     const requestA: YAMLNode = {
       id: 'a',
