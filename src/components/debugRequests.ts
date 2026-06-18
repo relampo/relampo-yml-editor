@@ -54,7 +54,6 @@ export function collectDebugEventTargets(tree: YAMLNode | null): YAMLNode[] {
     const isDebugEventTarget = DEBUG_EVENT_TYPES.has(node.type);
     if (isDebugEventTarget) {
       nodes.push(node);
-      return;
     }
     if (node.data?.enabled === false) return;
     node.children?.forEach(walk);
