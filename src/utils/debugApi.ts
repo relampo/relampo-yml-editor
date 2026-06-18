@@ -24,6 +24,7 @@ export interface EngineEvent {
   started_at?: string;
   name: string;
   request_id?: number;
+  step_path?: string;
   method: string;
   path: string;
   status: number;

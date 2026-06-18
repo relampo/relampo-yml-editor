@@ -14,6 +14,13 @@ export type DebugRequestNode = {
   startedAt: string;
 };
 
+export type DebugEventLike = {
+  method: string;
+  name: string;
+  path: string;
+  step_path?: string;
+};
+
 const REQUEST_TYPES = new Set(['request', 'get', 'post', 'put', 'delete', 'patch', 'head', 'options']);
 const DEBUG_EVENT_TYPES = new Set([...REQUEST_TYPES, 'think_time']);
 
@@ -51,15 +58,50 @@ export function collectDebugEventTargets(tree: YAMLNode | null): YAMLNode[] {
   if (!tree) return [];
   const nodes: YAMLNode[] = [];
   const walk = (node: YAMLNode) => {
+    if (node.data?.enabled === false) {
+      if (REQUEST_TYPES.has(node.type)) nodes.push(node);
+      return;
+    }
     const isDebugEventTarget = DEBUG_EVENT_TYPES.has(node.type);
     if (isDebugEventTarget) {
       nodes.push(node);
     }
-    if (node.data?.enabled === false) return;
     node.children?.forEach(walk);
   };
   walk(tree);
   return nodes;
+}
+
+export function matchDebugEventTarget(event: DebugEventLike, requestNodes: YAMLNode[]): YAMLNode | null {
+  const rawWithSuffix = event.name.replace(/^\[[^\]]+\]\s*/, '');
+  if (event.method === 'THINK_TIME') return matchThinkTimeEventToNode(event, requestNodes, rawWithSuffix);
+  const raw = rawWithSuffix.replace(/\s+#\d+$/, '');
+  const base = raw.includes(':') ? raw.slice(raw.lastIndexOf(':') + 1) : raw;
+  return (
+    requestNodes.find(node => node.name === raw) ??
+    requestNodes.find(node => node.name === base) ??
+    requestNodes.find(node => {
+      const url = String(node.data?.url ?? '');
+      return url !== '' && (base.endsWith(url) || event.path === url);
+    }) ??
+    null
+  );
+}
+
+function matchThinkTimeEventToNode(event: DebugEventLike, requestNodes: YAMLNode[], rawWithSuffix: string): YAMLNode | null {
+  const timers = requestNodes.filter(node => node.type === 'think_time');
+  const eventStepPath = String(event.step_path ?? '');
+  if (eventStepPath) {
+    const byPath = timers.find(node => debugNodeStepPath(node) === eventStepPath);
+    if (byPath) return byPath;
+  }
+  return timers[Number.parseInt(rawWithSuffix.match(/\s+#(\d+)$/)?.[1] ?? '1', 10) - 1] ?? null;
+}
+
+function debugNodeStepPath(node: YAMLNode): string {
+  const path = [...(node.path ?? [])];
+  if (path[path.length - 1] === node.type) path.pop();
+  return path.reduce((out, part) => (typeof part === 'number' ? `${out}[${part}]` : out ? `${out}.${part}` : part), '');
 }
 
 function extractorVariableName(node: YAMLNode): string | null {
