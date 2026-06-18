@@ -18,6 +18,7 @@ import {
 import type { YAMLNode } from '../types/yaml';
 import {
   collectDebugEventTargets,
+  matchDebugEventTarget,
   requestExtractorVariableNames,
   variableRowsForRequestNode,
   type DebugStatus,
@@ -98,22 +99,6 @@ function entryStatus(event: EngineEvent): DebugStatus {
 // VUS_DRAINED) and embedded events are sub-resources of a page load.
 function isTimelineEvent(event: EngineEvent): boolean {
   return Boolean(event.method) && event.method !== 'INFO' && event.method !== 'SYSTEM' && !event.embedded;
-}
-
-function matchEventToNode(event: EngineEvent, requestNodes: YAMLNode[]): YAMLNode | null {
-  const rawWithSuffix = event.name.replace(/^\[[^\]]+\]\s*/, '');
-  if (event.method === 'THINK_TIME') return requestNodes.filter(node => node.type === 'think_time')[Number.parseInt(rawWithSuffix.match(/\s+#(\d+)$/)?.[1] ?? '1', 10) - 1] ?? null;
-  const raw = rawWithSuffix.replace(/\s+#\d+$/, '');
-  const base = raw.includes(':') ? raw.slice(raw.lastIndexOf(':') + 1) : raw;
-  return (
-    requestNodes.find(node => node.name === raw) ??
-    requestNodes.find(node => node.name === base) ??
-    requestNodes.find(node => {
-      const url = String(node.data?.url ?? '');
-      return url !== '' && (base.endsWith(url) || event.path === url);
-    }) ??
-    null
-  );
 }
 
 function formatEventTime(timestamp: string): string {
@@ -211,7 +196,7 @@ export function YAMLDebugSession({
             id: `evt-${previous.length}`,
             index: previous.length + 1,
             event,
-            node: matchEventToNode(event, debugEventTargetsRef.current),
+            node: matchDebugEventTarget(event, debugEventTargetsRef.current),
             status: entryStatus(event),
           },
         ]);
@@ -263,7 +248,7 @@ export function YAMLDebugSession({
     setEntries(previous => {
       let changed = false;
       const remapped = previous.map(entry => {
-        const node = matchEventToNode(entry.event, debugEventTargets);
+        const node = matchDebugEventTarget(entry.event, debugEventTargets);
         if (node?.id === entry.node?.id) return entry;
         changed = true;
         return { ...entry, node };
