@@ -838,8 +838,11 @@ export function DebugSection({
           const previousText = rows.slice(0, rowIndex).map(([prevLabel, prevValue]) => `${prevLabel}: ${prevValue}`).join('\n');
           const startOffset = previousText ? previousText.length + 1 : 0;
           return (
-          <div key={label} className="grid grid-cols-[112px_1fr] border-b border-white/10 last:border-b-0">
-            <div className="bg-white/[0.03] px-3 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
+          <div key={label} className="grid grid-cols-[minmax(10px,30%)_1fr] border-b border-white/10 last:border-b-0">
+            <div
+              className="min-w-0 bg-white/3 px-3 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500 truncate"
+              title={label}
+            >
               <HighlightedDebugText
                 text={label}
                 fullSearchText={fullSearchText}
