@@ -165,7 +165,7 @@ describe('YAMLDebugSession tree selection sync', () => {
     render(
       <YAMLDebugSession
         tree={tree}
-        yamlCode="test:\n  name: two-vus\n"
+        yamlCode={'test:\n  name: two-vus\n'}
         documentReady
         selectedNode={null}
         treeFocusNodeId={null}

@@ -12,11 +12,12 @@ import {
   ShieldCheck,
   Square,
   TerminalSquare,
+  Users,
   XCircle,
 } from 'lucide-react';
 import type { YAMLNode } from '../types/yaml';
 import { collectDebugEventTargets, type DebugStatus } from './debugRequests';
-import { startDebugRun, streamDebugRun, type EngineEvent } from '../utils/debugApi';
+import { startDebugRun, streamDebugRun, type DebugVUs, type EngineEvent } from '../utils/debugApi';
 
 type DetailTab = 'overview' | 'request' | 'response' | 'assertions' | 'variables' | 'logs';
 type SearchMode = 'text' | 'regex';
@@ -174,14 +175,12 @@ export function YAMLDebugSession({
   onSelectNode,
   onEditNode,
 }: YAMLDebugSessionProps) {
-  // A debug run is always a single virtual user doing one pass through the
-  // flow (the backend forces this and ignores the scenario's load), so there
-  // are no VUs/duration controls — they would not mean anything here.
   const [entries, setEntries] = useState<DebugEntry[]>([]);
   const [isRunning, setIsRunning] = useState(false);
   const [runError, setRunError] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [detailTab, setDetailTab] = useState<DetailTab>('overview');
+  const [debugVUs, setDebugVUs] = useState<DebugVUs>(1);
 
   const debugEventTargets = useMemo(() => collectDebugEventTargets(tree), [tree]);
   const debugEventTargetsRef = useRef(debugEventTargets);
@@ -302,11 +301,11 @@ export function YAMLDebugSession({
     setDetailTab('overview');
     setIsRunning(true);
     try {
-      const runId = await startDebugRun(scriptAtStart);
-      // Stop (or another Run) may have fired while the POST was in flight.
-      if (token !== startTokenRef.current) return;
-      storeRun({ id: runId, fp: fingerprint(scriptAtStart) });
-      subscribe(runId, false);
+      const runId = await startDebugRun(scriptAtStart, { vus: debugVUs });
+      if (token === startTokenRef.current) {
+        storeRun({ id: runId, fp: fingerprint(scriptAtStart) });
+        subscribe(runId, false);
+      }
     } catch (error) {
       if (token !== startTokenRef.current) return;
       setIsRunning(false);
@@ -363,8 +362,35 @@ export function YAMLDebugSession({
             >
               <RotateCcw className="h-4 w-4" />
             </button>
-            <span className="inline-flex h-9 items-center gap-2 rounded border border-white/10 bg-[#161616] px-3 text-xs text-zinc-400">
-              1 VU · 1 iteration
+            <fieldset className="m-0 inline-flex h-9 min-w-0 items-center rounded border border-white/10 bg-[#161616] p-0 text-xs text-zinc-400">
+              <legend className="sr-only">Debug VUs</legend>
+              <span aria-hidden="true" className="inline-flex h-full items-center gap-1.5 border-r border-white/10 px-2">
+                <Users className="h-3.5 w-3.5" />
+                VUs
+              </span>
+              {[1, 2].map(value => {
+                const vus = value as DebugVUs;
+                const selected = debugVUs === vus;
+                return (
+                  <button
+                    key={vus}
+                    type="button"
+                    onClick={() => setDebugVUs(vus)}
+                    disabled={isRunning}
+                    aria-pressed={selected}
+                    className={`h-full min-w-14 px-2.5 font-semibold transition-colors ${
+                      selected
+                        ? 'bg-yellow-400 text-black'
+                        : 'text-zinc-300 hover:bg-white/[0.06] hover:text-zinc-100'
+                    } disabled:cursor-not-allowed disabled:opacity-50`}
+                  >
+                    {vus} {vus === 1 ? 'VU' : 'VUs'}
+                  </button>
+                );
+              })}
+            </fieldset>
+            <span className="inline-flex h-9 items-center rounded border border-white/10 bg-[#161616] px-3 text-xs text-zinc-400">
+              1 pass
             </span>
             <span className="inline-flex h-9 items-center gap-2 rounded border border-emerald-400/20 bg-emerald-400/10 px-3 text-xs text-emerald-300">
               <ShieldCheck className="h-4 w-4" />
