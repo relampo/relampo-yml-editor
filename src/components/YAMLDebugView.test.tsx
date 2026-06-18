@@ -154,6 +154,35 @@ describe('DebugSection highlighting', () => {
 });
 
 describe('YAMLDebugSession tree selection sync', () => {
+  it('starts a debug run with the selected 2 VUs option', async () => {
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'root',
+      name: 'root',
+      children: [req('Request A')],
+    };
+
+    render(
+      <YAMLDebugSession
+        tree={tree}
+        yamlCode="test:\n  name: two-vus\n"
+        documentReady
+        selectedNode={null}
+        treeFocusNodeId={null}
+        validationErrors={[]}
+        onSelectNode={vi.fn()}
+        onEditNode={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '2 VUs' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+
+    await waitFor(() =>
+      expect(debugApiMock.startDebugRun).toHaveBeenCalledWith('test:\n  name: two-vus\n', { vus: 2 }),
+    );
+  });
+
   it('shows an empty debug-event state when a focused tree node did not run', async () => {
     const requestA: YAMLNode = {
       id: 'a',
