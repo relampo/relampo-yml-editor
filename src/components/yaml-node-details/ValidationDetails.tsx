@@ -10,6 +10,7 @@ import {
   Tag,
   TextSearch,
 } from 'lucide-react';
+import { HighlightedInput } from '../ui/HighlightedInput';
 import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { createNodeDataUpdater } from './nodeDetailHelpers';
@@ -255,7 +256,7 @@ export function AssertionDetails({ node, onNodeUpdate }: NodeDetailProps) {
   );
 }
 
-export function ExtractorDetails({ node, onNodeUpdate }: NodeDetailProps) {
+export function ExtractorDetails({ node, onNodeUpdate, searchQuery = '' }: NodeDetailProps) {
   const { data, updateData, updateField } = createNodeDataUpdater(node, onNodeUpdate);
   const extractorType = data.type || 'regex';
   const extractorVariableName = data.var ?? data.variable ?? '';
@@ -397,6 +398,7 @@ export function ExtractorDetails({ node, onNodeUpdate }: NodeDetailProps) {
             label="Regular Expression Pattern *"
             value={data.pattern || ''}
             placeholder="token=([a-zA-Z0-9_-]+)"
+            searchQuery={searchQuery}
             onSourceChange={value => handleChange('from', value)}
             onValueChange={value => handleChange('pattern', value)}
           />
@@ -460,6 +462,7 @@ export function ExtractorDetails({ node, onNodeUpdate }: NodeDetailProps) {
             label="JSONPath Expression *"
             value={data.expression || data.pattern || ''}
             placeholder="$.data.id"
+            searchQuery={searchQuery}
             onSourceChange={value => handleChange('from', value)}
             onValueChange={value => handleChange('expression', value)}
           />
@@ -474,6 +477,7 @@ export function ExtractorDetails({ node, onNodeUpdate }: NodeDetailProps) {
             label="XPath Expression *"
             value={data.expression || data.pattern || ''}
             placeholder="//div[@class='title']/text()"
+            searchQuery={searchQuery}
             onSourceChange={value => handleChange('from', value)}
             onValueChange={value => handleChange('expression', value)}
           />
@@ -505,22 +509,26 @@ export function ExtractorDetails({ node, onNodeUpdate }: NodeDetailProps) {
             <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
               Left Boundary *
             </label>
-            <Input
+            <HighlightedInput
               value={data.left_boundary || ''}
+              searchText={searchQuery}
               onChange={event => handleChange('left_boundary', event.target.value)}
               placeholder="&lt;title&gt;"
               className="bg-white/5 border-white/10 text-zinc-300 text-sm font-mono"
+              overlayClass="px-3 py-2 text-sm text-zinc-300 font-mono"
             />
           </div>
           <div className="min-w-0 flex-1">
             <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
               Right Boundary *
             </label>
-            <Input
+            <HighlightedInput
               value={data.right_boundary || ''}
+              searchText={searchQuery}
               onChange={event => handleChange('right_boundary', event.target.value)}
               placeholder="&lt;/title&gt;"
               className="bg-white/5 border-white/10 text-zinc-300 text-sm font-mono"
+              overlayClass="px-3 py-2 text-sm text-zinc-300 font-mono"
             />
           </div>
         </div>
@@ -543,6 +551,7 @@ function ExtractorSourceAndPattern({
   label,
   value,
   placeholder,
+  searchQuery = '',
   onSourceChange,
   onValueChange,
 }: {
@@ -550,6 +559,7 @@ function ExtractorSourceAndPattern({
   label: string;
   value: string;
   placeholder: string;
+  searchQuery?: string;
   onSourceChange: (value: string) => void;
   onValueChange: (value: string) => void;
 }) {
@@ -561,11 +571,13 @@ function ExtractorSourceAndPattern({
       />
       <div className="min-w-0 flex-1">
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{label}</label>
-        <Input
+        <HighlightedInput
           value={value}
+          searchText={searchQuery}
           onChange={event => onValueChange(event.target.value)}
           placeholder={placeholder}
           className="w-full bg-white/5 border-white/10 text-zinc-300 text-sm font-mono"
+          overlayClass="px-3 py-2 text-sm text-zinc-300 font-mono"
         />
       </div>
     </div>
