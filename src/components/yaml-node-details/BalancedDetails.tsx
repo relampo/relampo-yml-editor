@@ -381,11 +381,17 @@ export function BalancedDetails({ node, onNodeUpdate }: NodeDetailProps) {
         {excludedChildren.length > 0 && (
           <div className={`mt-1 flex items-start gap-2 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-[11px] leading-4 ${mutedTextClass}`}>
             <CircleDashed className="mt-0.5 h-3.5 w-3.5 shrink-0 text-zinc-500" />
-            <span>
-              {format('yamlEditor.balanced.included.excludedNote', {
-                names: excludedChildren.map(child => child.name || child.type).join(', '),
-              })}
-            </span>
+            <div className="min-w-0 flex-1">
+              <p className="mb-1.5">{t('yamlEditor.balanced.included.excludedNote')}</p>
+              <ul className="space-y-0.5">
+                {excludedChildren.map(child => (
+                  <li key={child.id} className="flex items-start gap-1.5">
+                    <span className="shrink-0 select-none text-zinc-600">–</span>
+                    <span className="min-w-0 break-words">{child.name || child.type}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         )}
       </div>
