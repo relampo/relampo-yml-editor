@@ -385,9 +385,9 @@ export function BalancedDetails({ node, onNodeUpdate }: NodeDetailProps) {
               <p className="mb-1.5">{t('yamlEditor.balanced.included.excludedNote')}</p>
               <ul className="space-y-0.5">
                 {excludedChildren.map(child => (
-                  <li key={child.id} className="flex items-baseline gap-1.5">
+                  <li key={child.id} className="flex items-start gap-1.5">
                     <span className="shrink-0 select-none text-zinc-600">–</span>
-                    <span className="break-all">{child.name || child.type}</span>
+                    <span className="min-w-0 break-words">{child.name || child.type}</span>
                   </li>
                 ))}
               </ul>
