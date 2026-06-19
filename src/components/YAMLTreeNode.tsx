@@ -715,9 +715,14 @@ function serializeSearchValue(value: any): string {
   if (value == null) return '';
   if (typeof value === 'string') return value.toLowerCase();
   if (typeof value === 'number' || typeof value === 'boolean') return String(value).toLowerCase();
-  try {
-    return JSON.stringify(value).toLowerCase();
-  } catch {
-    return '';
+  if (Array.isArray(value)) {
+    return value.map(serializeSearchValue).join(' ');
   }
+  if (typeof value === 'object') {
+    return Object.entries(value)
+      .flatMap(([key, nestedValue]) => [key.toLowerCase(), serializeSearchValue(nestedValue)])
+      .filter(Boolean)
+      .join(' ');
+  }
+  return '';
 }

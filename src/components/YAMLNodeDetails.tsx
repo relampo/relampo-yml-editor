@@ -406,6 +406,7 @@ function NodeDetailsContent({
         <ExtractorDetails
           node={node}
           onNodeUpdate={onNodeUpdate}
+          searchQuery={searchQuery}
         />
       );
     case 'file':

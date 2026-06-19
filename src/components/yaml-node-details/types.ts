@@ -4,6 +4,7 @@ import type { NodeUpdateHandler } from '../../types/shared';
 export interface NodeDetailProps {
   node: YAMLNode;
   onNodeUpdate?: NodeUpdateHandler;
+  searchQuery?: string;
 }
 
 export interface NamedNodeDetailProps extends NodeDetailProps {
