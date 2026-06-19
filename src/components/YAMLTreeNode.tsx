@@ -719,7 +719,10 @@ function serializeSearchValue(value: any): string {
     return value.map(serializeSearchValue).join(' ');
   }
   if (typeof value === 'object') {
-    return Object.values(value).map(serializeSearchValue).join(' ');
+    return Object.entries(value)
+      .flatMap(([key, nestedValue]) => [key.toLowerCase(), serializeSearchValue(nestedValue)])
+      .filter(Boolean)
+      .join(' ');
   }
   return '';
 }
