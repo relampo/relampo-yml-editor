@@ -219,6 +219,21 @@ describe('DebugSection highlighting', () => {
     // The active mark is the second occurrence (global index 1).
     expect(marks.indexOf(active[0])).toBe(1);
   });
+
+  it('keeps long labels expanded while search is active so matches stay visible', () => {
+    const label = 'A long debug label with token at the end';
+    const { container } = render(
+      <DebugSection rows={[[label, 'value']]} searchText="token" searchMode="text" currentMatchIndex={0} />,
+    );
+
+    const labelMatch = container.querySelector('mark');
+    expect(labelMatch).not.toBeNull();
+
+    const labelCell = labelMatch?.closest('div');
+    expect(labelCell).not.toHaveClass('truncate');
+    expect(labelCell).toHaveClass('break-words');
+    expect(labelCell).not.toHaveAttribute('title', label);
+  });
 });
 
 describe('YAMLDebugSession tree selection sync', () => {
