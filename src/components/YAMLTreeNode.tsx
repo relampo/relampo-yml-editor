@@ -674,7 +674,10 @@ function nodeNameOrPathMatches(node: YAMLNode, query: string): boolean {
   return node.path?.some(segment => String(segment).toLowerCase().includes(query)) ?? false;
 }
 
-const REQUEST_TAG_STRIP_KEYS = new Set(['response', 'response_preview', 'recorded_at', 'chain_id', 'chain_role', 'headers']);
+const REQUEST_TAG_STRIP_KEYS = new Set([
+  'response', 'response_preview', 'recorded_at', 'chain_id', 'chain_role', 'headers',
+  'extract', 'extractors', 'assert', 'assertions',
+]);
 
 function stripRequestTagMetadata(value: any): any {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
