@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { collectDebugEventTargets, collectRequests } from './debugRequests';
-import { DebugSection, YAMLDebugSession } from './YAMLDebugView';
+import { collectDebugEventTargets, collectRequests, matchDebugEventTarget } from './debugRequests';
+import { DebugSection } from './debugSection';
+import { YAMLDebugSession } from './YAMLDebugView';
 import type { YAMLNode } from '../types/yaml';
 import type { EngineEvent } from '../utils/debugApi';
 
@@ -193,6 +194,61 @@ describe('collectDebugEventTargets', () => {
     };
 
     expect(collectDebugEventTargets(tree).map(n => n.id)).toEqual(['enabled-think']);
+  });
+});
+
+describe('matchDebugEventTarget', () => {
+  it('maps repeated request names by step_path before name or URL fallback', () => {
+    const loginLikeRequest: YAMLNode = {
+      id: 'login',
+      type: 'request',
+      name: 'GET /demo/index.php?main_page=login',
+      data: { method: 'GET', url: '/demo/index.php?main_page=login' },
+      path: ['scenarios', 0, 'steps', 0],
+    };
+    const logoutRedirectRequest: YAMLNode = {
+      id: 'logout-redirect',
+      type: 'request',
+      name: 'GET /demo/index.php?main_page=login',
+      data: { method: 'GET', url: '/demo/index.php?main_page=logoff' },
+      path: ['scenarios', 0, 'steps', 12],
+    };
+
+    const match = matchDebugEventTarget(
+      event({
+        name: 'GET /demo/index.php?main_page=login',
+        path: 'http://www.testingyes.com/demo/index.php?main_page=login',
+        step_path: 'scenarios[0].steps[12]',
+      }),
+      [loginLikeRequest, logoutRedirectRequest],
+    );
+
+    expect(match?.id).toBe('logout-redirect');
+  });
+
+  it('does not map ambiguous repeated request names without exact step identity', () => {
+    const firstRequest: YAMLNode = {
+      id: 'first',
+      type: 'request',
+      name: 'GET /demo/index.php?main_page=login',
+      data: { method: 'GET', url: '/demo/index.php?main_page=login' },
+    };
+    const secondRequest: YAMLNode = {
+      id: 'second',
+      type: 'request',
+      name: 'GET /demo/index.php?main_page=login',
+      data: { method: 'GET', url: '/demo/index.php?main_page=login' },
+    };
+
+    const match = matchDebugEventTarget(
+      event({
+        name: 'GET /demo/index.php?main_page=login',
+        path: 'http://www.testingyes.com/demo/index.php?main_page=login',
+      }),
+      [firstRequest, secondRequest],
+    );
+
+    expect(match).toBeNull();
   });
 });
 
@@ -516,6 +572,77 @@ describe('YAMLDebugSession tree selection sync', () => {
     );
   });
 
+  it('shows the mapped YAML request number for redirected debug events', async () => {
+    const parentRequest: YAMLNode = {
+      id: 'parent',
+      type: 'request',
+      name: '[10] POST /demo/index.php?main_page=checkout_shipping',
+      data: {
+        request_id: 10,
+        method: 'POST',
+        url: '/demo/index.php?main_page=checkout_shipping',
+        chain_id: 'rc-10',
+        chain_role: 'parent',
+      },
+      path: ['scenarios', 0, 'steps', 10],
+    };
+    const finalRequest: YAMLNode = {
+      id: 'final',
+      type: 'request',
+      name: '[11] GET /demo/index.php?main_page=checkout_payment',
+      data: {
+        request_id: 11,
+        method: 'GET',
+        url: '/demo/index.php?main_page=checkout_payment',
+        enabled: false,
+        chain_id: 'rc-10',
+        chain_role: 'final',
+      },
+      path: ['scenarios', 0, 'steps', 11],
+    };
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'root',
+      name: 'root',
+      children: [parentRequest, finalRequest],
+    };
+
+    render(
+      <YAMLDebugSession
+        tree={tree}
+        yamlCode={'test:\n  name: request-id\n'}
+        documentReady
+        selectedNode={null}
+        treeFocusNodeId={null}
+        validationErrors={[]}
+        onSelectNode={vi.fn()}
+        onEditNode={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
+
+    act(() => {
+      debugApiMock.handlers[0].onEvent(
+        event({
+          name: '[10] GET /demo/index.php?main_page=checkout_payment',
+          path: 'http://www.testingyes.com/demo/index.php?main_page=checkout_payment',
+          request_id: 10,
+          step_path: 'scenarios[0].steps[10].redirects[1]',
+          chain_id: 'rc-10',
+          chain_role: 'final',
+          redirect_index: 1,
+          redirect_source: 'runtime',
+        }),
+      );
+    });
+
+    expect(await screen.findByText('#11')).toBeInTheDocument();
+    expect(screen.queryByText('#10')).not.toBeInTheDocument();
+    expect(screen.getAllByText('http://www.testingyes.com/demo/index.php?main_page=checkout_payment')).not.toHaveLength(0);
+  });
+
   it('shows an empty debug-event state when a focused tree node did not run', async () => {
     const requestA: YAMLNode = {
       id: 'a',
@@ -610,5 +737,101 @@ describe('YAMLDebugSession tree selection sync', () => {
     expect(screen.getAllByText('GET')).not.toHaveLength(0);
     expect(screen.getAllByText('/b')).not.toHaveLength(0);
     expect(screen.queryByText('No debug event for "Request B" in the current run.')).not.toBeInTheDocument();
+  });
+
+  it('clears the tree selection when a selected debug event has no matching tree request', async () => {
+    const requestA: YAMLNode = {
+      id: 'a',
+      type: 'request',
+      name: 'Request A',
+      data: { method: 'GET', url: '/a' },
+    };
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'root',
+      name: 'root',
+      children: [requestA],
+    };
+    const onSelectNode = vi.fn();
+
+    render(
+      <YAMLDebugSession
+        tree={tree}
+        yamlCode={'test:\n  name: unmatched-debug-event\n'}
+        documentReady
+        selectedNode={requestA}
+        treeFocusNodeId={null}
+        validationErrors={[]}
+        onSelectNode={onSelectNode}
+        onEditNode={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
+
+    act(() => {
+      debugApiMock.handlers[0].onEvent(event({ name: 'External request', path: '/external' }));
+    });
+
+    const timelinePath = (await screen.findAllByText('/external')).find(element => element.closest('button'));
+    expect(timelinePath).toBeDefined();
+    fireEvent.click(timelinePath!.closest('button')!);
+
+    expect(onSelectNode).toHaveBeenCalledWith(null);
+  });
+
+  it('highlights and scrolls all matching debug events when a tree request has multiple VU events', async () => {
+    const scrollIntoView = vi.fn();
+    Object.defineProperty(Element.prototype, 'scrollIntoView', {
+      configurable: true,
+      value: scrollIntoView,
+    });
+    const requestA: YAMLNode = {
+      id: 'a',
+      type: 'request',
+      name: 'Request A',
+      data: { method: 'GET', url: '/a' },
+      path: ['scenarios', 0, 'steps', 0],
+    };
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'root',
+      name: 'root',
+      children: [requestA],
+    };
+    const commonProps = {
+      tree,
+      yamlCode: 'test:\n  name: two-vu-sync\n',
+      documentReady: true,
+      validationErrors: [],
+      onSelectNode: vi.fn(),
+      onEditNode: vi.fn(),
+    };
+
+    const { rerender } = render(
+      <YAMLDebugSession {...commonProps} selectedNode={null} treeFocusNodeId={null} />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
+
+    act(() => {
+      debugApiMock.handlers[0].onEvent(event({ name: 'Request A', path: '/a', step_path: 'scenarios[0].steps[0]', vu: 1 }));
+      debugApiMock.handlers[0].onEvent(event({ name: 'Request A', path: '/a', step_path: 'scenarios[0].steps[0]', vu: 2 }));
+    });
+
+    rerender(
+      <YAMLDebugSession {...commonProps} selectedNode={requestA} treeFocusNodeId={requestA.id} />,
+    );
+
+    expect(screen.getByText('Select a debug event to inspect request and response data.')).toBeInTheDocument();
+    expect(screen.queryByText('Virtual user 1')).not.toBeInTheDocument();
+    expect(screen.queryByText('Virtual user 2')).not.toBeInTheDocument();
+    await waitFor(() => expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest', behavior: 'smooth' }));
+
+    const vuButtons = screen.getAllByRole('button').filter(button => button.textContent?.includes('/a'));
+    expect(vuButtons).toHaveLength(2);
+    expect(vuButtons.every(button => button.className.includes('border-yellow-400/50'))).toBe(true);
   });
 });
