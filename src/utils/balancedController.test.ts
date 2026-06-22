@@ -120,4 +120,27 @@ describe('distributeEvenPercentages', () => {
     expect(distributeEvenPercentages(0)).toEqual([]);
     expect(distributeEvenPercentages(-3)).toEqual([]);
   });
+
+  it('never assigns 0% to any item, even beyond 100 items', () => {
+    // 103 items: floor(100/103) = 0, so integers would give 0 to 3 items.
+    // With 1 decimal place: floor(1000/103) = 9, so 73 get 1.0 and 30 get 0.9.
+    const result103 = distributeEvenPercentages(103);
+    expect(result103).toHaveLength(103);
+    expect(Math.min(...result103)).toBeGreaterThan(0);
+    expect(Math.max(...result103) - Math.min(...result103)).toBeLessThanOrEqual(0.1);
+
+    // 200 items: 1 decimal place → all get 0.5.
+    const result200 = distributeEvenPercentages(200);
+    expect(result200).toHaveLength(200);
+    expect(Math.min(...result200)).toBeGreaterThan(0);
+  });
+
+  it('sums to exactly 100 for counts beyond 100', () => {
+    for (const count of [101, 103, 150, 200, 500, 1000]) {
+      const percentages = distributeEvenPercentages(count);
+      expect(percentages).toHaveLength(count);
+      const sum = percentages.reduce((acc, v) => acc + v, 0);
+      expect(parseFloat(sum.toFixed(4))).toBe(100);
+    }
+  });
 });
