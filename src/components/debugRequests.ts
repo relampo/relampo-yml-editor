@@ -93,7 +93,7 @@ export function matchDebugEventTarget(event: DebugEventLike, requestNodes: YAMLN
   const eventStepPath = String(event.step_path ?? '');
   if (eventStepPath) {
     const byStepPath = findUniqueTarget(requestNodes, node => debugNodeStepPath(node) === eventStepPath);
-    if (byStepPath || event.method !== 'THINK_TIME') return byStepPath;
+    if (byStepPath) return byStepPath;
   }
   if (event.method === 'THINK_TIME') return matchThinkTimeEventToNode(event, requestNodes, rawWithSuffix);
   return (

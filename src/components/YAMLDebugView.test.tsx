@@ -250,6 +250,34 @@ describe('matchDebugEventTarget', () => {
 
     expect(match).toBeNull();
   });
+
+  it('falls back to URL matching when a non-think-time step_path misses every node', () => {
+    const firstRequest: YAMLNode = {
+      id: 'first',
+      type: 'request',
+      name: 'GET /demo/index.php?main_page=login',
+      data: { method: 'GET', url: '/demo/index.php?main_page=login' },
+      path: ['scenarios', 0, 'steps', 0],
+    };
+    const secondRequest: YAMLNode = {
+      id: 'second',
+      type: 'request',
+      name: 'GET /demo/index.php?main_page=checkout',
+      data: { method: 'GET', url: '/demo/index.php?main_page=checkout' },
+      path: ['scenarios', 0, 'steps', 1],
+    };
+
+    const match = matchDebugEventTarget(
+      event({
+        name: 'GET /demo/index.php?main_page=checkout',
+        path: 'http://www.testingyes.com/demo/index.php?main_page=checkout',
+        step_path: 'scenarios[0].steps[99]',
+      }),
+      [firstRequest, secondRequest],
+    );
+
+    expect(match?.id).toBe('second');
+  });
 });
 
 describe('DebugSection highlighting', () => {
