@@ -273,6 +273,110 @@ describe('YAMLTreeView search filtering', () => {
     expect(screen.queryByRole('treeitem', { name: /Other request/i })).not.toBeInTheDocument();
   });
 
+  it('keeps request-local extract metadata out of the request hit badge while preserving the matching child node', () => {
+    renderInteractiveTreeView({
+      tree: {
+        id: 'steps',
+        type: 'steps',
+        name: 'Steps',
+        expanded: true,
+        children: [
+          {
+            id: 'request-with-extract',
+            type: 'request',
+            name: 'Request with extract',
+            expanded: true,
+            data: {
+              method: 'GET',
+              url: '/users',
+              extract: {
+                user_id: "jsonpath('$[0].id')",
+              },
+            },
+            children: [
+              {
+                id: 'request-with-extract-child',
+                type: 'extract',
+                name: 'Extract: user_id',
+                data: {
+                  variable: 'user_id',
+                  expression: "jsonpath('$[0].id')",
+                },
+                children: [],
+              },
+            ],
+          },
+          {
+            id: 'request-other',
+            type: 'request',
+            name: 'Other request',
+            expanded: true,
+            data: {
+              method: 'GET',
+              url: '/other',
+            },
+            children: [],
+          },
+        ],
+      },
+    });
+
+    fireEvent.change(screen.getByPlaceholderText('Search nodes...'), {
+      target: { value: 'user_id' },
+    });
+
+    expect(screen.getByRole('treeitem', { name: /Request with extract/i })).toBeInTheDocument();
+    expect(screen.getByRole('treeitem', { name: /Extract: user_id/i })).toBeInTheDocument();
+    expect(screen.queryByText('req')).not.toBeInTheDocument();
+    expect(screen.queryByRole('treeitem', { name: /Other request/i })).not.toBeInTheDocument();
+  });
+
+  it('keeps SQL extract mappings searchable on the SQL node', () => {
+    renderInteractiveTreeView({
+      tree: {
+        id: 'steps',
+        type: 'steps',
+        name: 'Steps',
+        expanded: true,
+        children: [
+          {
+            id: 'sql-query',
+            type: 'sql',
+            name: 'Fetch users',
+            expanded: true,
+            data: {
+              dialect: 'postgres',
+              query: 'SELECT id FROM users',
+              extract: {
+                user_id: "jsonpath('$[0].id')",
+              },
+            },
+            children: [],
+          },
+          {
+            id: 'request-other',
+            type: 'request',
+            name: 'Other request',
+            expanded: true,
+            data: {
+              method: 'GET',
+              url: '/other',
+            },
+            children: [],
+          },
+        ],
+      },
+    });
+
+    fireEvent.change(screen.getByPlaceholderText('Search nodes...'), {
+      target: { value: 'user_id' },
+    });
+
+    expect(screen.getByRole('treeitem', { name: /Fetch users/i })).toBeInTheDocument();
+    expect(screen.getByText('req')).toBeInTheDocument();
+    expect(screen.queryByRole('treeitem', { name: /Other request/i })).not.toBeInTheDocument();
+  });
+
   it('removes hidden selections from delete shortcuts while the tree is filtered', async () => {
     renderInteractiveTreeView({
       tree: {

@@ -674,20 +674,28 @@ function nodeNameOrPathMatches(node: YAMLNode, query: string): boolean {
   return node.path?.some(segment => String(segment).toLowerCase().includes(query)) ?? false;
 }
 
-const REQUEST_TAG_STRIP_KEYS = new Set([
+const SHARED_REQUEST_TAG_STRIP_KEYS = new Set([
   'response', 'response_preview', 'recorded_at', 'chain_id', 'chain_role', 'headers',
+]);
+
+const REQUEST_ONLY_TAG_STRIP_KEYS = new Set([
   'extract', 'extractors', 'assert', 'assertions',
 ]);
 
-function stripRequestTagMetadata(value: any): any {
+function stripRequestTagMetadata(value: any, nodeType: YAMLNodeType): any {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
   const next = { ...value };
-  REQUEST_TAG_STRIP_KEYS.forEach(k => delete next[k]);
+  SHARED_REQUEST_TAG_STRIP_KEYS.forEach(k => delete next[k]);
+  if (nodeType !== 'sql') {
+    REQUEST_ONLY_TAG_STRIP_KEYS.forEach(k => delete next[k]);
+  }
   return next;
 }
 
 function getNodeRequestSearchPayload(node: YAMLNode): any {
-  return REQUEST_LIKE_NODE_TYPES.includes(node.type) ? stripRequestTagMetadata(node.data) : stripResponseField(node.data);
+  return REQUEST_LIKE_NODE_TYPES.includes(node.type)
+    ? stripRequestTagMetadata(node.data, node.type)
+    : stripResponseField(node.data);
 }
 
 function getNodeSearchHitFlags(node: YAMLNode, searchQuery: string): { request: boolean; response: boolean } {
