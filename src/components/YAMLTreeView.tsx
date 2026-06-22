@@ -67,8 +67,10 @@ export function YAMLTreeView({
     const walk = (node: YAMLNode, ancestorMatches: boolean) => {
       out.push(node);
       const expanded = node.expanded ?? true;
-      if (node.children && node.children.length > 0 && expanded) {
-        const passAncestor = ancestorMatches || nodeMatchExpandsDescendants(node, searchQuery);
+      const passAncestor = ancestorMatches || nodeMatchExpandsDescendants(node, searchQuery);
+      const showChildrenWhileSearching = Boolean(searchQuery.trim()) &&
+        (passAncestor || node.children?.some(child => subtreeHasMatch(child, searchQuery)));
+      if (node.children && node.children.length > 0 && (expanded || showChildrenWhileSearching)) {
         const children = searchQuery.trim()
           ? node.children.filter(child => passAncestor || subtreeHasMatch(child, searchQuery))
           : node.children;

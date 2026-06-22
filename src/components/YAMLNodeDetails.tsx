@@ -399,6 +399,7 @@ function NodeDetailsContent({
         <AssertionDetails
           node={node}
           onNodeUpdate={onNodeUpdate}
+          searchQuery={searchQuery}
         />
       );
     case 'extractor':
