@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { probeStudio } from './debugApi';
+import { probeStudio, startDebugRun } from './debugApi';
 
 function mockFetch(body: unknown, ok = true) {
   vi.stubGlobal(
@@ -50,5 +50,21 @@ describe('probeStudio', () => {
   it('ignores a malformed initial script (no yaml string)', async () => {
     mockFetch({ studio: true, initialScript: { name: 'x.yaml' } });
     expect(await probeStudio()).toEqual({ studio: true, initialScript: undefined });
+  });
+});
+
+describe('startDebugRun', () => {
+  it('posts the selected debug VUs with the YAML', async () => {
+    mockFetch({ id: 'run-2' });
+
+    await expect(startDebugRun('test:\n  name: debug\n', { vus: 2 })).resolves.toBe('run-2');
+
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/debug/runs',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ yaml: 'test:\n  name: debug\n', vus: 2 }),
+      }),
+    );
   });
 });

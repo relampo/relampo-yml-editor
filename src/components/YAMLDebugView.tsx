@@ -12,14 +12,22 @@ import {
   ShieldCheck,
   Square,
   TerminalSquare,
+  Users,
   XCircle,
 } from 'lucide-react';
 import type { YAMLNode } from '../types/yaml';
-import { collectDebugEventTargets, type DebugStatus } from './debugRequests';
-import { startDebugRun, streamDebugRun, type EngineEvent } from '../utils/debugApi';
+import {
+  collectDebugEventTargets,
+  matchDebugEventTarget,
+  requestExtractorVariableNames,
+  variableRowsForRequestNode,
+  type DebugStatus,
+} from './debugRequests';
+import { startDebugRun, streamDebugRun, type DebugVUs, type EngineEvent } from '../utils/debugApi';
+import { DebugSection } from './debugSection';
+import { buildSearchRegex, findMatchRanges, type SearchMode } from './debugSearch';
 
 type DetailTab = 'overview' | 'request' | 'response' | 'assertions' | 'variables' | 'logs';
-type SearchMode = 'text' | 'regex';
 
 // The last debug run is parked in sessionStorage so a page reload can
 // re-attach and let the backend replay the run's history. Only the id and a
@@ -80,6 +88,8 @@ export type DebugEntry = {
   status: DebugStatus;
 };
 
+type StoredDebugEntry = Omit<DebugEntry, 'node'>;
+
 function entryStatus(event: EngineEvent): DebugStatus {
   if (event.err) return 'failed';
   if (event.status >= 400) return 'failed';
@@ -92,23 +102,6 @@ function entryStatus(event: EngineEvent): DebugStatus {
 // VUS_DRAINED) and embedded events are sub-resources of a page load.
 function isTimelineEvent(event: EngineEvent): boolean {
   return Boolean(event.method) && event.method !== 'INFO' && event.method !== 'SYSTEM' && !event.embedded;
-}
-
-// Engine report names look like "[vu-1] Group/Sub:Request name #2". Strip the
-// shard prefix and dedup suffix, then try the exact name, the last segment,
-// and finally the request URL.
-function matchEventToNode(event: EngineEvent, requestNodes: YAMLNode[]): YAMLNode | null {
-  const raw = event.name.replace(/^\[[^\]]+\]\s*/, '').replace(/\s+#\d+$/, '');
-  const base = raw.includes(':') ? raw.slice(raw.lastIndexOf(':') + 1) : raw;
-  return (
-    requestNodes.find(node => node.name === raw) ??
-    requestNodes.find(node => node.name === base) ??
-    requestNodes.find(node => {
-      const url = String(node.data?.url ?? '');
-      return url !== '' && (base.endsWith(url) || event.path === url);
-    }) ??
-    null
-  );
 }
 
 function formatEventTime(timestamp: string): string {
@@ -152,14 +145,11 @@ interface YAMLDebugSessionProps {
   // freshest YAML. Called at run start so a debug snapshot never POSTs stale
   // YAML while the tree already shows an uncommitted edit.
   flushPendingEdits?: () => string;
-  // True once the editor has finished restoring (or failing to restore) the
-  // document. Gates the reload re-attach so an orphaned run is not revived
-  // when the document itself did not come back.
   documentReady: boolean;
   selectedNode: YAMLNode | null;
   treeFocusNodeId: string | null;
   validationErrors: string[];
-  onSelectNode: (node: YAMLNode) => void;
+  onSelectNode: (node: YAMLNode | null) => void;
   onEditNode: (node: YAMLNode) => void;
 }
 
@@ -174,23 +164,31 @@ export function YAMLDebugSession({
   onSelectNode,
   onEditNode,
 }: YAMLDebugSessionProps) {
-  // A debug run is always a single virtual user doing one pass through the
-  // flow (the backend forces this and ignores the scenario's load), so there
-  // are no VUs/duration controls — they would not mean anything here.
-  const [entries, setEntries] = useState<DebugEntry[]>([]);
+  const [entryEvents, setEntryEvents] = useState<StoredDebugEntry[]>([]);
   const [isRunning, setIsRunning] = useState(false);
   const [runError, setRunError] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [detailTab, setDetailTab] = useState<DetailTab>('overview');
+  const [debugVUs, setDebugVUs] = useState<DebugVUs>(1);
 
   const debugEventTargets = useMemo(() => collectDebugEventTargets(tree), [tree]);
-  const debugEventTargetsRef = useRef(debugEventTargets);
-  debugEventTargetsRef.current = debugEventTargets;
-
+  const entries = useMemo<DebugEntry[]>(
+    () =>
+      entryEvents.map(entry => ({
+        ...entry,
+        node: matchDebugEventTarget(entry.event, debugEventTargets),
+      })),
+    [debugEventTargets, entryEvents],
+  );
   const stopStreamRef = useRef<(() => void) | null>(null);
   // Bumped on every start and on Stop; a slow startDebugRun continuation checks
   // it and bails if it was superseded or stopped while the POST was in flight.
   const startTokenRef = useRef(0);
+  const lastTimelineScrollRef = useRef<string | null>(null);
+  const storedRunRef = useRef<StoredRun | null | undefined>(undefined);
+  if (storedRunRef.current === undefined) {
+    storedRunRef.current = readStoredRun();
+  }
 
   // Wires a run's SSE stream into the timeline. Shared by a fresh Run Debug
   // and by re-attaching to a stored run after a reload (the backend replays
@@ -202,13 +200,12 @@ export function YAMLDebugSession({
     stopStreamRef.current = streamDebugRun(runId, {
       onEvent: event => {
         if (!isTimelineEvent(event)) return;
-        setEntries(previous => [
+        setEntryEvents(previous => [
           ...previous,
           {
             id: `evt-${previous.length}`,
             index: previous.length + 1,
             event,
-            node: matchEventToNode(event, debugEventTargetsRef.current),
             status: entryStatus(event),
           },
         ]);
@@ -221,7 +218,7 @@ export function YAMLDebugSession({
         setIsRunning(false);
         if (quiet) {
           clearStoredRun();
-          setEntries([]);
+          setEntryEvents([]);
         } else {
           setRunError('Lost connection to the studio server.');
         }
@@ -236,49 +233,39 @@ export function YAMLDebugSession({
   // document did not come back (no draft restored), the run is orphaned and
   // its stored id is dropped instead of reviving a timeline with no script.
   const reattachedRef = useRef(false);
-  useEffect(() => {
-    if (!documentReady || reattachedRef.current) return;
-    reattachedRef.current = true;
-    const stored = readStoredRun();
-    if (!stored) return;
-    // Drop the run if the document did not come back, or came back as a
-    // different script — replaying it against another tree is misleading.
-    if (!yamlCode.trim() || stored.fp !== fingerprint(yamlCode)) {
+  const reattachStoredRun = useCallback((element: HTMLSpanElement | null) => {
+    if (!element || !documentReady || reattachedRef.current) return;
+    const storedRun = storedRunRef.current;
+    if (!storedRun) return;
+    if (!yamlCode.trim() || storedRun.fp !== fingerprint(yamlCode)) {
       clearStoredRun();
+      storedRunRef.current = null;
       return;
     }
+    reattachedRef.current = true;
     setIsRunning(true);
-    subscribe(stored.id, true);
-  }, [documentReady, yamlCode, subscribe]);
+    subscribe(storedRun.id, true);
+  }, [documentReady, subscribe, yamlCode]);
 
-  // When the parsed tree arrives or changes, re-resolve each entry's node. On
-  // reload the SSE history can replay before the parse worker has populated
-  // debugEventTargets (documentReady flips right after parsing is *posted*), so
-  // entries would otherwise stay node:null and never become selectable/editable
-  // once the tree lands. Idempotent: returns the same array when nothing moved.
-  useEffect(() => {
-    setEntries(previous => {
-      let changed = false;
-      const remapped = previous.map(entry => {
-        const node = matchEventToNode(entry.event, debugEventTargets);
-        if (node?.id === entry.node?.id) return entry;
-        changed = true;
-        return { ...entry, node };
-      });
-      return changed ? remapped : previous;
-    });
-  }, [debugEventTargets]);
-
-  const treeFocusedEntry =
+  const treeFocusedEntries =
     selectedNode && treeFocusNodeId === selectedNode.id
-      ? entries.find(candidate => candidate.node?.id === selectedNode.id)
-      : null;
+      ? entries.filter(candidate => candidate.node?.id === selectedNode.id)
+      : [];
+  const treeFocusedEntry = treeFocusedEntries.length === 1 ? treeFocusedEntries[0] : null;
   const nodeWithoutEvent =
-    selectedNode && treeFocusNodeId === selectedNode.id && entries.length > 0 && !treeFocusedEntry ? selectedNode : null;
+    selectedNode && treeFocusNodeId === selectedNode.id && entries.length > 0 && treeFocusedEntries.length === 0
+      ? selectedNode
+      : null;
+  const nodeWithAmbiguousEvents =
+    selectedNode && treeFocusNodeId === selectedNode.id && treeFocusedEntries.length > 1 ? selectedNode : null;
   const displayedActiveId = treeFocusedEntry?.id ?? activeId;
   const activeEntry = nodeWithoutEvent
     ? null
-    : entries.find(entry => entry.id === displayedActiveId) || entries[entries.length - 1];
+    : nodeWithAmbiguousEvents
+      ? null
+      : entries.find(entry => entry.id === displayedActiveId) || entries[entries.length - 1];
+  const treeFocusedEntryIds = new Set(treeFocusedEntries.map(entry => entry.id));
+  const firstTreeFocusedEntryId = treeFocusedEntries[0]?.id ?? null;
   const passed = entries.filter(entry => entry.status === 'passed').length;
   const failed = entries.filter(entry => entry.status === 'failed').length;
   const redirects = entries.reduce(
@@ -296,17 +283,17 @@ export function YAMLDebugSession({
     if (!scriptAtStart.trim()) return;
     const token = (startTokenRef.current += 1);
     stopStreamRef.current?.();
-    setEntries([]);
+      setEntryEvents([]);
     setRunError(null);
     setActiveId(null);
     setDetailTab('overview');
     setIsRunning(true);
     try {
-      const runId = await startDebugRun(scriptAtStart);
-      // Stop (or another Run) may have fired while the POST was in flight.
-      if (token !== startTokenRef.current) return;
-      storeRun({ id: runId, fp: fingerprint(scriptAtStart) });
-      subscribe(runId, false);
+      const runId = await startDebugRun(scriptAtStart, { vus: debugVUs });
+      if (token === startTokenRef.current) {
+        storeRun({ id: runId, fp: fingerprint(scriptAtStart) });
+        subscribe(runId, false);
+      }
     } catch (error) {
       if (token !== startTokenRef.current) return;
       setIsRunning(false);
@@ -323,11 +310,12 @@ export function YAMLDebugSession({
 
   const selectEntry = (entry: DebugEntry) => {
     setActiveId(entry.id);
-    if (entry.node) onSelectNode(entry.node);
+    onSelectNode(entry.node);
   };
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-[#0d0d0d]">
+      {storedRunRef.current && <span ref={reattachStoredRun} hidden aria-hidden="true" />}
       <div className="border-b border-white/5 px-5 py-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -348,7 +336,7 @@ export function YAMLDebugSession({
               type="button"
               onClick={stopRun}
               disabled={!isRunning}
-              className="inline-flex h-9 items-center gap-2 rounded border border-white/10 bg-white/[0.03] px-3 text-sm text-zinc-300 transition-colors hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-40"
+              className="inline-flex h-9 items-center gap-2 rounded border border-white/10 bg-white/3 px-3 text-sm text-zinc-300 transition-colors hover:bg-white/6 disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Square className="h-4 w-4" />
               Stop
@@ -357,14 +345,41 @@ export function YAMLDebugSession({
               type="button"
               onClick={startRun}
               disabled={isRunning || hasValidationErrors || !yamlCode.trim()}
-              className="inline-flex h-9 w-9 items-center justify-center rounded border border-white/10 bg-white/[0.03] text-zinc-300 transition-colors hover:bg-white/[0.06] disabled:opacity-40"
+              className="inline-flex h-9 w-9 items-center justify-center rounded border border-white/10 bg-white/3 text-zinc-300 transition-colors hover:bg-white/6 disabled:opacity-40"
               aria-label="Re-run debug"
               title="Re-run debug"
             >
               <RotateCcw className="h-4 w-4" />
             </button>
-            <span className="inline-flex h-9 items-center gap-2 rounded border border-white/10 bg-[#161616] px-3 text-xs text-zinc-400">
-              1 VU · 1 iteration
+            <fieldset className="m-0 inline-flex h-9 min-w-0 items-center rounded border border-white/10 bg-[#161616] p-0 text-xs text-zinc-400">
+              <legend className="sr-only">Debug VUs</legend>
+              <span aria-hidden="true" className="inline-flex h-full items-center gap-1.5 border-r border-white/10 px-2">
+                <Users className="h-3.5 w-3.5" />
+                VUs
+              </span>
+              {[1, 2].map(value => {
+                const vus = value as DebugVUs;
+                const selected = debugVUs === vus;
+                return (
+                  <button
+                    key={vus}
+                    type="button"
+                    onClick={() => setDebugVUs(vus)}
+                    disabled={isRunning}
+                    aria-pressed={selected}
+                    className={`h-full min-w-14 px-2.5 font-semibold transition-colors ${
+                      selected
+                        ? 'bg-yellow-400 text-black'
+                        : 'text-zinc-300 hover:bg-white/6 hover:text-zinc-100'
+                    } disabled:cursor-not-allowed disabled:opacity-50`}
+                  >
+                    {vus} {vus === 1 ? 'VU' : 'VUs'}
+                  </button>
+                );
+              })}
+            </fieldset>
+            <span className="inline-flex h-9 items-center rounded border border-white/10 bg-[#161616] px-3 text-xs text-zinc-400">
+              1 pass
             </span>
             <span className="inline-flex h-9 items-center gap-2 rounded border border-emerald-400/20 bg-emerald-400/10 px-3 text-xs text-emerald-300">
               <ShieldCheck className="h-4 w-4" />
@@ -385,7 +400,7 @@ export function YAMLDebugSession({
               </p>
               <div className="mt-2 space-y-1">
                 {validationErrors.slice(0, 4).map((error, index) => (
-                  <p key={`${error}-${index}`} className="break-words font-mono text-xs text-red-100/90">
+                  <p key={`${error}-${index}`} className="wrap-break-word font-mono text-xs text-red-100/90">
                     {error}
                   </p>
                 ))}
@@ -404,7 +419,7 @@ export function YAMLDebugSession({
             <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-300" />
             <div className="min-w-0">
               <p className="text-sm font-semibold text-red-200">Debug run failed</p>
-              <p className="mt-1 break-words font-mono text-xs text-red-100/90">{runError}</p>
+              <p className="mt-1 wrap-break-word font-mono text-xs text-red-100/90">{runError}</p>
             </div>
           </div>
         </div>
@@ -440,22 +455,39 @@ export function YAMLDebugSession({
               ) : (
                 <div className="space-y-2">
                   {entries.map(entry => {
-                    const active = activeEntry?.id === entry.id;
+                    const active = activeEntry?.id === entry.id || treeFocusedEntryIds.has(entry.id);
+                    const requestNumber = String(entry.node?.data?.request_id ?? entry.event.request_id ?? '').trim();
                     return (
                       <button
                         key={entry.id}
+                        ref={element => {
+                          const scrollKey =
+                            treeFocusNodeId && entry.id === firstTreeFocusedEntryId ? `${treeFocusNodeId}:${entry.id}` : null;
+                          if (element && scrollKey && lastTimelineScrollRef.current !== scrollKey) {
+                            lastTimelineScrollRef.current = scrollKey;
+                            if (typeof element.scrollIntoView === 'function') {
+                              element.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                            }
+                          }
+                        }}
                         type="button"
                         onClick={() => selectEntry(entry)}
                         className={`w-full border px-3 py-2.5 text-left transition-colors ${
-                          active
-                            ? 'border-yellow-400/50 bg-yellow-400/10'
-                            : 'border-white/10 bg-[#111111] hover:border-white/20'
+                          active ? 'border-yellow-400/50 bg-yellow-400/10' : 'border-white/10 bg-[#111111] hover:border-white/20'
                         }`}
                       >
                         <div className="flex min-w-0 items-center gap-3">
                           <StatusIcon status={entry.status} />
                           <div className="min-w-0 flex-1">
                             <div className="flex min-w-0 items-center gap-2">
+                              {requestNumber && (
+                                <span
+                                  className="shrink-0 rounded border border-zinc-500/25 bg-white/4 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-zinc-300"
+                                  title="Request ID"
+                                >
+                                  #{requestNumber}
+                                </span>
+                              )}
                               <span className="rounded border border-blue-400/25 bg-blue-400/10 px-1.5 py-0.5 text-[10px] font-semibold text-blue-300">
                                 {entry.event.method}
                               </span>
@@ -503,7 +535,7 @@ export function YAMLDebugSession({
                       <button
                         type="button"
                         onClick={() => onEditNode(activeEntry.node!)}
-                        className="inline-flex h-8 items-center gap-2 rounded border border-white/10 bg-white/[0.03] px-2.5 text-xs text-zinc-300 transition-colors hover:bg-white/[0.06]"
+                        className="inline-flex h-8 items-center gap-2 rounded border border-white/10 bg-white/3 px-2.5 text-xs text-zinc-300 transition-colors hover:bg-white/6"
                       >
                         <Edit3 className="h-3.5 w-3.5" />
                         Edit
@@ -538,7 +570,7 @@ export function YAMLDebugSession({
               </div>
 
               <div className="min-h-0 flex-1 overflow-y-auto p-4">
-                <DebugInspectorContent entry={activeEntry} tab={detailTab} />
+                <DebugInspectorContent key={activeEntry.id} entry={activeEntry} tab={detailTab} />
               </div>
             </div>
           ) : (
@@ -548,6 +580,8 @@ export function YAMLDebugSession({
                 <p className="mt-4 text-sm text-zinc-400">
                   {nodeWithoutEvent
                     ? `No debug event for "${nodeWithoutEvent.name}" in the current run.`
+                    : nodeWithAmbiguousEvents
+                      ? 'Select a debug event to inspect request and response data.'
                     : 'Select a debug event to inspect request and response data.'}
                 </p>
               </div>
@@ -580,11 +614,6 @@ function DebugInspectorContent({ entry, tab }: { entry: DebugEntry; tab: DetailT
     ...Object.entries(event.response_headers ?? {}),
   ];
   const responseBody = event.response_body || '<empty>';
-
-  useEffect(() => {
-    setRequestMatchIndex(0);
-    setResponseMatchIndex(0);
-  }, [entry.id]);
 
   if (tab === 'request') {
     const requestSearchText = [...requestRows.map(([label, value]) => `${label}: ${value}`), requestBody].join('\n');
@@ -676,9 +705,14 @@ function DebugInspectorContent({ entry, tab }: { entry: DebugEntry; tab: DetailT
   }
 
   if (tab === 'variables') {
-    const variables = Object.entries(event.variables ?? {});
+    const variables = variableRowsForRequestNode(entry.node, event.variables ?? {});
     if (variables.length === 0) {
-      return <p className="text-sm text-zinc-500">No variables were captured for this request.</p>;
+      const extractorNames = requestExtractorVariableNames(entry.node);
+      const message =
+        entry.node && extractorNames.length === 0
+          ? 'No variables were extracted by this request.'
+          : 'No extracted variables were captured for this request.';
+      return <p className="text-sm text-zinc-500">{message}</p>;
     }
     return <DebugSection rows={variables} />;
   }
@@ -692,7 +726,7 @@ function DebugInspectorContent({ entry, tab }: { entry: DebugEntry; tab: DetailT
           [{time}] {event.method} {event.path || event.name} - {event.status || '—'} ({formatLatency(event.latency_ms)})
         </p>
         {(event.redirects ?? []).map((hop, index) => (
-          <p key={`hop-${index}`} className="text-zinc-400">
+          <p key={`${hop.status}-${hop.method ?? ''}-${hop.url ?? ''}-${hop.location ?? hop.target_url ?? ''}`} className="text-zinc-400">
             [{time}] redirect {index + 1}: {hop.status} {hop.url || ''} → {hop.location || hop.target_url || ''}
           </p>
         ))}
@@ -731,7 +765,7 @@ function DebugLine({ icon, title, value }: { icon: ReactNode; title: string; val
       <div className="mt-0.5">{icon}</div>
       <div className="min-w-0">
         <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">{title}</p>
-        <p className="mt-1 break-words text-sm text-zinc-200">{value}</p>
+        <p className="mt-1 wrap-break-word text-sm text-zinc-200">{value}</p>
       </div>
     </div>
   );
@@ -766,9 +800,10 @@ function DebugSearchControls({
 
   return (
     <div className="flex flex-wrap items-center gap-2 border border-white/10 bg-[#111111] p-2">
-      <div className="relative min-w-[220px] flex-1">
+      <div className="relative min-w-55 flex-1">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
         <input
+          aria-label={placeholder}
           value={value}
           onChange={event => onChange(event.target.value)}
           placeholder={placeholder}
@@ -796,7 +831,7 @@ function DebugSearchControls({
         type="button"
         onClick={() => move(-1)}
         disabled={!value || totalMatches === 0 || regexInvalid}
-        className="h-8 rounded border border-white/10 bg-white/[0.03] px-2 text-xs text-zinc-300 disabled:cursor-not-allowed disabled:opacity-40"
+        className="h-8 rounded border border-white/10 bg-white/3 px-2 text-xs text-zinc-300 disabled:cursor-not-allowed disabled:opacity-40"
       >
         Prev
       </button>
@@ -804,7 +839,7 @@ function DebugSearchControls({
         type="button"
         onClick={() => move(1)}
         disabled={!value || totalMatches === 0 || regexInvalid}
-        className="h-8 rounded border border-white/10 bg-white/[0.03] px-2 text-xs text-zinc-300 disabled:cursor-not-allowed disabled:opacity-40"
+        className="h-8 rounded border border-white/10 bg-white/3 px-2 text-xs text-zinc-300 disabled:cursor-not-allowed disabled:opacity-40"
       >
         Next
       </button>

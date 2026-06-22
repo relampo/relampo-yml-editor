@@ -24,6 +24,7 @@ export interface EngineEvent {
   started_at?: string;
   name: string;
   request_id?: number;
+  step_path?: string;
   method: string;
   path: string;
   status: number;
@@ -56,6 +57,12 @@ export interface DebugStreamHandlers {
   onEvent: (event: EngineEvent) => void;
   onDone: (error: string | null) => void;
   onConnectionError: () => void;
+}
+
+export type DebugVUs = 1 | 2;
+
+export interface StartDebugRunOptions {
+  vus?: DebugVUs;
 }
 
 const apiBase: string = import.meta.env.VITE_DEBUG_API_URL ?? '';
@@ -93,14 +100,15 @@ export async function probeStudio(): Promise<StudioInfo | null> {
   }
 }
 
-// A debug run is always a single VU doing one pass through the flow; the
-// backend forces this and ignores the scenario's load, so no parameters
-// beyond the YAML are sent.
-export async function startDebugRun(yaml: string): Promise<string> {
+// A debug run is one pass through the flow with a small, explicit VU count.
+// The backend ignores the scenario's load, so duration/iterations stay out of
+// this payload.
+export async function startDebugRun(yaml: string, options: StartDebugRunOptions = {}): Promise<string> {
+  const vus = options.vus ?? 1;
   const response = await fetch(`${apiBase}/api/debug/runs`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ yaml }),
+    body: JSON.stringify({ yaml, vus }),
   });
   if (!response.ok) {
     let message = `debug run failed to start (HTTP ${response.status})`;

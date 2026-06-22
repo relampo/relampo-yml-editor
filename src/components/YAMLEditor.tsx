@@ -22,9 +22,8 @@ import {
 } from './ui/dialog';
 import { probeStudio } from '../utils/debugApi';
 import { YAMLCodeEditor } from './YAMLCodeEditor';
-import { YAMLDebugSession } from './YAMLDebugView';
+import { YAMLEditorDetailsPanel } from './YAMLEditorDetailsPanel';
 import { YAMLEditorHeader } from './YAMLEditorHeader';
-import { YAMLNodeDetails } from './YAMLNodeDetails';
 import { createNodeByType } from './yaml-tree-view/nodeFactory';
 import { addNodeToTree, syncRedirectSourceFollowRedirects, updateNodeEnabled } from './yaml-tree-view/treeOperations';
 import { autoRebalanceBalancedControllers } from '../utils/balancedController';
@@ -808,56 +807,37 @@ export function YAMLEditor() {
           <div className="absolute inset-y-0 left-1/2 -ml-px w-0.5 bg-white/20 group-hover:bg-yellow-400/80 transition-colors" />
         </div>
 
-        {/* Right Panel: Details */}
-        <div className="flex-1 min-w-0 flex flex-col bg-[#0d0d0d]">
-          <div className="flex items-center border-b border-white/5 bg-[#111111] shrink-0 px-6 py-3">
-            <span className="text-sm font-bold tracking-tight uppercase text-zinc-400">
-              {isDebugViewActive ? 'Debug Session' : language === 'es' ? 'Detalles del elemento' : 'Element details'}
-            </span>
-          </div>
-          <div className="flex-1 overflow-hidden">
-            {/* The debug session stays mounted while enabled (hidden via CSS
-                when another tab is active) so an in-progress or finished run
-                survives tab switches instead of being torn down. */}
-            {debugViewEnabled && (
-              <div className={isDebugViewActive ? 'h-full' : 'hidden'}>
-                <YAMLDebugSession
-                  tree={yamlTree}
-                  yamlCode={yamlCode}
-                  flushPendingEdits={flushPendingTreeSerialization}
-                  documentReady={isInitialized}
-                  selectedNode={selectedNode}
-                  treeFocusNodeId={debugTreeFocusNodeId}
-                  validationErrors={validationErrors}
-                  onSelectNode={node => {
-                    setDebugTreeFocusNodeId(null);
-                    handleSelectionChange(node, [node.id]);
-                  }}
-                  onEditNode={node => {
-                    setDebugTreeFocusNodeId(null);
-                    handleSelectionChange(node, [node.id]);
-                    setViewMode('tree');
-                  }}
-                />
-              </div>
-            )}
-            <div className={isDebugViewActive ? 'hidden' : 'h-full'}>
-              <YAMLNodeDetails
-                node={selectedNode}
-                baseUrl={httpDefaultsBaseUrl}
-                hosts={scenarioHosts}
-                redirectedInfo={selectedNode ? (redirectedRequestMap[selectedNode.id] ?? null) : null}
-                redirectSourceInfo={selectedNode ? (redirectSourceMap[selectedNode.id] ?? null) : null}
-                onNodeUpdate={handleNodeUpdate}
-                onRenameHost={handleRenameHost}
-                onToggleEnabled={handleToggleNodeEnabled}
-                onAddChildNode={handleAddChildNode}
-                onAddChildAction={handleDetailPanelAddClicked}
-                searchQuery={activeViewMode === 'tree' ? treeSearchQuery : ''}
-              />
-            </div>
-          </div>
-        </div>
+        <YAMLEditorDetailsPanel
+          isDebugViewActive={isDebugViewActive}
+          language={language}
+          debugViewEnabled={debugViewEnabled}
+          yamlTree={yamlTree}
+          yamlCode={yamlCode}
+          flushPendingEdits={flushPendingTreeSerialization}
+          documentReady={isInitialized}
+          selectedNode={selectedNode}
+          treeFocusNodeId={debugTreeFocusNodeId}
+          validationErrors={validationErrors}
+          onDebugSelectNode={node => {
+            setDebugTreeFocusNodeId(null);
+            handleSelectionChange(node, node ? [node.id] : []);
+          }}
+          onDebugEditNode={node => {
+            setDebugTreeFocusNodeId(null);
+            handleSelectionChange(node, [node.id]);
+            setViewMode('tree');
+          }}
+          baseUrl={httpDefaultsBaseUrl}
+          hosts={scenarioHosts}
+          redirectedRequestMap={redirectedRequestMap}
+          redirectSourceMap={redirectSourceMap}
+          onNodeUpdate={handleNodeUpdate}
+          onRenameHost={handleRenameHost}
+          onToggleEnabled={handleToggleNodeEnabled}
+          onAddChildNode={handleAddChildNode}
+          onAddChildAction={handleDetailPanelAddClicked}
+          searchQuery={activeViewMode === 'tree' ? treeSearchQuery : ''}
+        />
       </div>
     </div>
   );

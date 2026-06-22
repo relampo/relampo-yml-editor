@@ -101,6 +101,10 @@ export function YAMLTreeNode({
   const redirectedInfo = redirectedRequestMap[node.id];
   const isRedirectedFollowUp = Boolean(redirectedInfo);
   const redirectedLabel = 'Redirected';
+  const passAncestor = ancestorMatchesSearch || nodeMatchExpandsDescendants(node, searchQuery);
+  const showChildrenWhileSearching = Boolean(searchQuery.trim()) &&
+    (passAncestor || node.children?.some(child => subtreeHasMatch(child, searchQuery)));
+  const showChildren = hasChildren && (isExpanded || showChildrenWhileSearching);
 
   useEffect(() => {
     const clearIndicator = () => {
@@ -316,35 +320,32 @@ export function YAMLTreeNode({
       </div>
 
       {/* Children */}
-      {hasChildren && isExpanded && (
+      {showChildren && (
         <div className="ml-2 border-l border-white/5">
-          {(() => {
-            const passAncestor = ancestorMatchesSearch || nodeMatchExpandsDescendants(node, searchQuery);
-            return node.children!
-              .filter(
-                child =>
-                  !searchQuery.trim() ||
-                  passAncestor ||
-                  subtreeHasMatch(child, searchQuery)
-              )
-              .map(child => (
-                <YAMLTreeNode
-                  key={child.id}
-                  node={child}
-                  depth={depth + 1}
-                  isSelected={selectedNodeIds.includes(child.id)}
-                  selectedNodeIds={selectedNodeIds}
-                  redirectedRequestMap={redirectedRequestMap}
-                  baseHost={baseHost}
-                  onNodeSelect={onNodeSelect}
-                  onNodeToggle={onNodeToggle}
-                  onContextMenu={onContextMenu}
-                  onNodeMove={onNodeMove}
-                  searchQuery={searchQuery}
-                  ancestorMatchesSearch={passAncestor}
-                />
-              ));
-          })()}
+          {node.children!
+            .filter(
+              child =>
+                !searchQuery.trim() ||
+                passAncestor ||
+                subtreeHasMatch(child, searchQuery)
+            )
+            .map(child => (
+              <YAMLTreeNode
+                key={child.id}
+                node={child}
+                depth={depth + 1}
+                isSelected={selectedNodeIds.includes(child.id)}
+                selectedNodeIds={selectedNodeIds}
+                redirectedRequestMap={redirectedRequestMap}
+                baseHost={baseHost}
+                onNodeSelect={onNodeSelect}
+                onNodeToggle={onNodeToggle}
+                onContextMenu={onContextMenu}
+                onNodeMove={onNodeMove}
+                searchQuery={searchQuery}
+                ancestorMatchesSearch={passAncestor}
+              />
+            ))}
         </div>
       )}
     </div>
@@ -674,17 +675,28 @@ function nodeNameOrPathMatches(node: YAMLNode, query: string): boolean {
   return node.path?.some(segment => String(segment).toLowerCase().includes(query)) ?? false;
 }
 
-const REQUEST_TAG_STRIP_KEYS = new Set(['response', 'response_preview', 'recorded_at', 'chain_id', 'chain_role', 'headers']);
+const SHARED_REQUEST_TAG_STRIP_KEYS = new Set([
+  'response', 'response_preview', 'recorded_at', 'chain_id', 'chain_role', 'headers',
+]);
 
-function stripRequestTagMetadata(value: any): any {
+const REQUEST_ONLY_TAG_STRIP_KEYS = new Set([
+  'extract', 'extractors', 'assert', 'assertions',
+]);
+
+function stripRequestTagMetadata(value: any, nodeType: YAMLNodeType): any {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
   const next = { ...value };
-  REQUEST_TAG_STRIP_KEYS.forEach(k => delete next[k]);
+  SHARED_REQUEST_TAG_STRIP_KEYS.forEach(k => delete next[k]);
+  if (nodeType !== 'sql') {
+    REQUEST_ONLY_TAG_STRIP_KEYS.forEach(k => delete next[k]);
+  }
   return next;
 }
 
 function getNodeRequestSearchPayload(node: YAMLNode): any {
-  return REQUEST_LIKE_NODE_TYPES.includes(node.type) ? stripRequestTagMetadata(node.data) : stripResponseField(node.data);
+  return REQUEST_LIKE_NODE_TYPES.includes(node.type)
+    ? stripRequestTagMetadata(node.data, node.type)
+    : stripResponseField(node.data);
 }
 
 function getNodeSearchHitFlags(node: YAMLNode, searchQuery: string): { request: boolean; response: boolean } {
@@ -715,9 +727,14 @@ function serializeSearchValue(value: any): string {
   if (value == null) return '';
   if (typeof value === 'string') return value.toLowerCase();
   if (typeof value === 'number' || typeof value === 'boolean') return String(value).toLowerCase();
-  try {
-    return JSON.stringify(value).toLowerCase();
-  } catch {
-    return '';
+  if (Array.isArray(value)) {
+    return value.map(serializeSearchValue).join(' ');
   }
+  if (typeof value === 'object') {
+    return Object.entries(value)
+      .flatMap(([key, nestedValue]) => [key.toLowerCase(), serializeSearchValue(nestedValue)])
+      .filter(Boolean)
+      .join(' ');
+  }
+  return '';
 }

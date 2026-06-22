@@ -10,12 +10,13 @@ import {
   Tag,
   TextSearch,
 } from 'lucide-react';
+import { HighlightedInput } from '../ui/HighlightedInput';
 import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { createNodeDataUpdater } from './nodeDetailHelpers';
 import type { NodeDetailProps } from './types';
 
-export function AssertionDetails({ node, onNodeUpdate }: NodeDetailProps) {
+export function AssertionDetails({ node, onNodeUpdate, searchQuery = '' }: NodeDetailProps) {
   const { data, updateData, updateField } = createNodeDataUpdater(node, onNodeUpdate);
   const assertionType = data.type || 'status';
   const assertionTypes = [
@@ -128,10 +129,11 @@ export function AssertionDetails({ node, onNodeUpdate }: NodeDetailProps) {
           <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
             {assertionType === 'status' ? 'Expected Status Code' : 'Expected Status Codes (comma separated)'}
           </label>
-          <Input
+          <HighlightedInput
             value={data.value !== undefined ? String(data.value) : ''}
             onChange={event => handleChange('value', event.target.value)}
             placeholder={assertionType === 'status' ? '200' : '200, 201, 204'}
+            searchText={searchQuery}
             className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono focus:border-white/30 transition-all"
           />
         </div>
@@ -143,10 +145,11 @@ export function AssertionDetails({ node, onNodeUpdate }: NodeDetailProps) {
             <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
               Text to {assertionType === 'contains' ? 'Find' : 'Not Find'}
             </label>
-            <Input
+            <HighlightedInput
               value={data.value !== undefined ? String(data.value) : ''}
               onChange={event => handleChange('value', event.target.value)}
               placeholder="Expected text in response..."
+              searchText={searchQuery}
               className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono focus:border-white/30 transition-all"
             />
           </div>
@@ -170,10 +173,11 @@ export function AssertionDetails({ node, onNodeUpdate }: NodeDetailProps) {
             <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
               Regular Expression Pattern
             </label>
-            <Input
+            <HighlightedInput
               value={data.pattern || ''}
               onChange={event => handleChange('pattern', event.target.value)}
               placeholder="token=([a-f0-9]+)"
+              searchText={searchQuery}
               className="bg-white/5 border-white/10 text-zinc-300 text-sm font-mono"
             />
           </div>
@@ -225,12 +229,14 @@ export function AssertionDetails({ node, onNodeUpdate }: NodeDetailProps) {
             value={data.name || ''}
             placeholder="Content-Type, Authorization..."
             onChange={value => handleChange('name', value)}
+            searchQuery={searchQuery}
           />
           <TextField
             label="Expected Header Value"
             value={data.value !== undefined ? String(data.value) : ''}
             placeholder="application/json"
             onChange={value => handleChange('value', value)}
+            searchQuery={searchQuery}
           />
         </div>
       )}
@@ -242,12 +248,14 @@ export function AssertionDetails({ node, onNodeUpdate }: NodeDetailProps) {
             value={data.path || ''}
             placeholder="$.data.id"
             onChange={value => handleChange('path', value)}
+            searchQuery={searchQuery}
           />
           <TextField
             label="Expected Value"
             value={data.value !== undefined ? String(data.value) : ''}
             placeholder="123"
             onChange={value => handleChange('value', value)}
+            searchQuery={searchQuery}
           />
         </div>
       )}
@@ -255,7 +263,7 @@ export function AssertionDetails({ node, onNodeUpdate }: NodeDetailProps) {
   );
 }
 
-export function ExtractorDetails({ node, onNodeUpdate }: NodeDetailProps) {
+export function ExtractorDetails({ node, onNodeUpdate, searchQuery = '' }: NodeDetailProps) {
   const { data, updateData, updateField } = createNodeDataUpdater(node, onNodeUpdate);
   const extractorType = data.type || 'regex';
   const extractorVariableName = data.var ?? data.variable ?? '';
@@ -397,6 +405,7 @@ export function ExtractorDetails({ node, onNodeUpdate }: NodeDetailProps) {
             label="Regular Expression Pattern *"
             value={data.pattern || ''}
             placeholder="token=([a-zA-Z0-9_-]+)"
+            searchQuery={searchQuery}
             onSourceChange={value => handleChange('from', value)}
             onValueChange={value => handleChange('pattern', value)}
           />
@@ -460,6 +469,7 @@ export function ExtractorDetails({ node, onNodeUpdate }: NodeDetailProps) {
             label="JSONPath Expression *"
             value={data.expression || data.pattern || ''}
             placeholder="$.data.id"
+            searchQuery={searchQuery}
             onSourceChange={value => handleChange('from', value)}
             onValueChange={value => handleChange('expression', value)}
           />
@@ -474,6 +484,7 @@ export function ExtractorDetails({ node, onNodeUpdate }: NodeDetailProps) {
             label="XPath Expression *"
             value={data.expression || data.pattern || ''}
             placeholder="//div[@class='title']/text()"
+            searchQuery={searchQuery}
             onSourceChange={value => handleChange('from', value)}
             onValueChange={value => handleChange('expression', value)}
           />
@@ -505,22 +516,26 @@ export function ExtractorDetails({ node, onNodeUpdate }: NodeDetailProps) {
             <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
               Left Boundary *
             </label>
-            <Input
+            <HighlightedInput
               value={data.left_boundary || ''}
+              searchText={searchQuery}
               onChange={event => handleChange('left_boundary', event.target.value)}
               placeholder="&lt;title&gt;"
               className="bg-white/5 border-white/10 text-zinc-300 text-sm font-mono"
+              overlayClass="px-3 py-2 text-sm text-zinc-300 font-mono"
             />
           </div>
           <div className="min-w-0 flex-1">
             <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
               Right Boundary *
             </label>
-            <Input
+            <HighlightedInput
               value={data.right_boundary || ''}
+              searchText={searchQuery}
               onChange={event => handleChange('right_boundary', event.target.value)}
               placeholder="&lt;/title&gt;"
               className="bg-white/5 border-white/10 text-zinc-300 text-sm font-mono"
+              overlayClass="px-3 py-2 text-sm text-zinc-300 font-mono"
             />
           </div>
         </div>
@@ -543,6 +558,7 @@ function ExtractorSourceAndPattern({
   label,
   value,
   placeholder,
+  searchQuery = '',
   onSourceChange,
   onValueChange,
 }: {
@@ -550,6 +566,7 @@ function ExtractorSourceAndPattern({
   label: string;
   value: string;
   placeholder: string;
+  searchQuery?: string;
   onSourceChange: (value: string) => void;
   onValueChange: (value: string) => void;
 }) {
@@ -561,11 +578,13 @@ function ExtractorSourceAndPattern({
       />
       <div className="min-w-0 flex-1">
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{label}</label>
-        <Input
+        <HighlightedInput
           value={value}
+          searchText={searchQuery}
           onChange={event => onValueChange(event.target.value)}
           placeholder={placeholder}
           className="w-full bg-white/5 border-white/10 text-zinc-300 text-sm font-mono"
+          overlayClass="px-3 py-2 text-sm text-zinc-300 font-mono"
         />
       </div>
     </div>
@@ -597,19 +616,22 @@ function TextField({
   value,
   placeholder,
   onChange,
+  searchQuery = '',
 }: {
   label: string;
   value: string;
   placeholder: string;
   onChange: (value: string) => void;
+  searchQuery?: string;
 }) {
   return (
     <div>
       <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{label}</label>
-      <Input
+      <HighlightedInput
         value={value}
         onChange={event => onChange(event.target.value)}
         placeholder={placeholder}
+        searchText={searchQuery}
         className="bg-white/5 border-white/10 text-zinc-300 text-sm font-mono"
       />
     </div>
