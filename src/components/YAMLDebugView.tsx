@@ -839,7 +839,7 @@ export function DebugSection({
           const startOffset = previousText ? previousText.length + 1 : 0;
           return (
           <div key={label} className="grid grid-cols-[112px_1fr] border-b border-white/10 last:border-b-0">
-            <div className="bg-white/[0.03] px-3 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
+            <div className="bg-white/3 px-3 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
               <HighlightedDebugText
                 text={label}
                 fullSearchText={fullSearchText}

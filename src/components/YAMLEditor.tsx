@@ -27,6 +27,7 @@ import { YAMLEditorHeader } from './YAMLEditorHeader';
 import { YAMLNodeDetails } from './YAMLNodeDetails';
 import { createNodeByType } from './yaml-tree-view/nodeFactory';
 import { addNodeToTree, syncRedirectSourceFollowRedirects, updateNodeEnabled } from './yaml-tree-view/treeOperations';
+import { autoRebalanceBalancedControllers } from '../utils/balancedController';
 import type { YAMLAddableNodeType } from './yaml-tree-view/addableItems';
 import { YAMLTreeView } from './YAMLTreeView';
 import { useHttpDefaultsInfo, useParseWorker, useRedirectMaps, useTreeSelection } from './useYamlEditorDerived';
@@ -388,7 +389,8 @@ export function YAMLEditor() {
   };
 
   const handleTreeChange = (newTree: YAMLNode, nextSelection?: TreeSelection) => {
-    commitTreeChange(newTree, nextSelection);
+    const rebalanced = yamlTree ? autoRebalanceBalancedControllers(yamlTree, newTree) : newTree;
+    commitTreeChange(rebalanced, nextSelection);
   };
 
   const handleSelectionChange = (primaryNode: YAMLNode | null, nodeIds: string[]) => {
@@ -428,7 +430,8 @@ export function YAMLEditor() {
     if (!yamlTree) return;
     const toggledTree = updateNodeEnabled(yamlTree, nodeId, enabled);
     const updatedTree = syncRedirectSourceFollowRedirects(toggledTree, nodeId, enabled, redirectedRequestMap);
-    commitTreeChange(updatedTree, undefined, { serialization: 'debounced' });
+    const rebalanced = autoRebalanceBalancedControllers(yamlTree, updatedTree);
+    commitTreeChange(rebalanced, undefined, { serialization: 'debounced' });
   };
 
   const handleAddChildNode = (parentId: string, nodeType: YAMLAddableNodeType) => {
@@ -438,7 +441,8 @@ export function YAMLEditor() {
     const updatedTree = addNodeToTree(yamlTree, parentId, newNode);
     if (!findNodeById(updatedTree, newNode.id)) return;
 
-    commitTreeChange(updatedTree, {
+    const rebalanced = autoRebalanceBalancedControllers(yamlTree, updatedTree);
+    commitTreeChange(rebalanced, {
       primaryId: newNode.id,
       nodeIds: [newNode.id],
     });

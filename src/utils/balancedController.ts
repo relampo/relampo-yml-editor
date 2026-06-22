@@ -107,6 +107,52 @@ export function distributeEvenPercentages(count: number): number[] {
   return Array.from({ length: count }, (_, index) => (index < remainder ? base + 1 : base));
 }
 
+/**
+ * After a structural tree change (add/remove/enable-toggle), walks the new
+ * tree and redistributes percentages evenly on any Balanced Controller whose
+ * load-bearing child count differs from the old tree.  Pure – returns the
+ * same reference when nothing changed.
+ */
+export function autoRebalanceBalancedControllers(oldTree: YAMLNode, newTree: YAMLNode): YAMLNode {
+  function findNode(root: YAMLNode, id: string): YAMLNode | undefined {
+    if (root.id === id) return root;
+    for (const child of root.children ?? []) {
+      const found = findNode(child, id);
+      if (found) return found;
+    }
+    return undefined;
+  }
+
+  function visit(node: YAMLNode): YAMLNode {
+    if (node.type === 'balanced') {
+      const oldNode = findNode(oldTree, node.id);
+      const newLBC = (node.children ?? []).filter(isBalancedLoadBearingChild);
+      const oldCount = oldNode ? (oldNode.children ?? []).filter(isBalancedLoadBearingChild).length : -1;
+
+      if (oldCount !== newLBC.length && newLBC.length > 0) {
+        const percentages = distributeEvenPercentages(newLBC.length);
+        const byId = new Map(newLBC.map((c, i) => [c.id, percentages[i]]));
+        const nextChildren = (node.children ?? []).map(child => {
+          if (byId.has(child.id)) {
+            return { ...child, data: { ...(child.data ?? {}), __balancedPercentage: byId.get(child.id) } };
+          }
+          const nextData = { ...(child.data ?? {}) };
+          delete nextData.__balancedPercentage;
+          return { ...child, data: nextData };
+        });
+        return { ...node, children: nextChildren };
+      }
+    }
+
+    if (!node.children?.length) return node;
+    const nextChildren = node.children.map(visit);
+    const changed = nextChildren.some((c, i) => c !== node.children![i]);
+    return changed ? { ...node, children: nextChildren } : node;
+  }
+
+  return visit(newTree);
+}
+
 export function sanitizeBalancedNodeData<T>(data: T): T {
   if (!data || typeof data !== 'object' || Array.isArray(data)) {
     return data;

@@ -107,18 +107,13 @@ export function BalancedDetails({ node, onNodeUpdate }: NodeDetailProps) {
     });
   };
 
-  const handleDistributeEvenly = () => {
+  const buildEvenDistribution = () => {
     if (!onNodeUpdate || loadBearingChildren.length === 0) return;
-
-    // Spread 100% across load-bearing children only; excluded ones get nothing.
-    // distributeEvenPercentages uses the largest remainder method so the gap
-    // between any two percentages stays ≤ 1. See RLP-475.
     const evenPercentages = distributeEvenPercentages(loadBearingChildren.length);
     const percentageById = new Map<string, number>();
     loadBearingChildren.forEach((child, index) => {
       percentageById.set(child.id, evenPercentages[index]);
     });
-
     const childUpdates = children.map(child => {
       if (percentageById.has(child.id)) {
         return {
@@ -126,17 +121,17 @@ export function BalancedDetails({ node, onNodeUpdate }: NodeDetailProps) {
           data: { ...(child.data || {}), __balancedPercentage: percentageById.get(child.id) },
         };
       }
-      // Clear any stale percentage left on an excluded child (e.g. from the recording).
       const nextData = { ...(child.data || {}) };
       delete nextData.__balancedPercentage;
       return { nodeId: child.id, data: nextData };
     });
-
     onNodeUpdate(node.id, {
       ...data,
       __batchChildUpdates: childUpdates,
     });
   };
+
+  const handleDistributeEvenly = buildEvenDistribution;
 
   const issues: string[] = [];
   if (!validation.hasChildren) {
