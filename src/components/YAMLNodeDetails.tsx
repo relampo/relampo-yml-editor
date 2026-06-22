@@ -225,6 +225,7 @@ function NodeDetailsContent({
           onNodeUpdate={onNodeUpdate}
           nodeName={nodeName}
           setNodeName={setNodeName}
+          searchQuery={searchQuery}
         />
       );
     case 'http_defaults':
