@@ -278,6 +278,41 @@ describe('matchDebugEventTarget', () => {
 
     expect(match?.id).toBe('second');
   });
+
+  it('ignores think-time children when resolving a request step_path', () => {
+    const firstRequest: YAMLNode = {
+      id: 'first',
+      type: 'request',
+      name: 'GET /demo/index.php?main_page=login',
+      data: { method: 'GET', url: '/demo/index.php?main_page=login' },
+      path: ['scenarios', 0, 'steps', 0],
+    };
+    const firstThinkTime: YAMLNode = {
+      id: 'first-think-time',
+      type: 'think_time',
+      name: 'Think Time',
+      data: { duration: '2s' },
+      path: ['scenarios', 0, 'steps', 0, 'think_time'],
+    };
+    const secondRequest: YAMLNode = {
+      id: 'second',
+      type: 'request',
+      name: 'GET /demo/index.php?main_page=login',
+      data: { method: 'GET', url: '/demo/index.php?main_page=login' },
+      path: ['scenarios', 0, 'steps', 1],
+    };
+
+    const match = matchDebugEventTarget(
+      event({
+        name: 'GET /demo/index.php?main_page=login',
+        path: 'http://www.testingyes.com/demo/index.php?main_page=login',
+        step_path: 'scenarios[0].steps[0]',
+      }),
+      [firstRequest, firstThinkTime, secondRequest],
+    );
+
+    expect(match?.id).toBe('first');
+  });
 });
 
 describe('DebugSection highlighting', () => {
