@@ -101,6 +101,10 @@ export function YAMLTreeNode({
   const redirectedInfo = redirectedRequestMap[node.id];
   const isRedirectedFollowUp = Boolean(redirectedInfo);
   const redirectedLabel = 'Redirected';
+  const passAncestor = ancestorMatchesSearch || nodeMatchExpandsDescendants(node, searchQuery);
+  const showChildrenWhileSearching = Boolean(searchQuery.trim()) &&
+    (passAncestor || node.children?.some(child => subtreeHasMatch(child, searchQuery)));
+  const showChildren = hasChildren && (isExpanded || showChildrenWhileSearching);
 
   useEffect(() => {
     const clearIndicator = () => {
@@ -316,35 +320,32 @@ export function YAMLTreeNode({
       </div>
 
       {/* Children */}
-      {hasChildren && isExpanded && (
+      {showChildren && (
         <div className="ml-2 border-l border-white/5">
-          {(() => {
-            const passAncestor = ancestorMatchesSearch || nodeMatchExpandsDescendants(node, searchQuery);
-            return node.children!
-              .filter(
-                child =>
-                  !searchQuery.trim() ||
-                  passAncestor ||
-                  subtreeHasMatch(child, searchQuery)
-              )
-              .map(child => (
-                <YAMLTreeNode
-                  key={child.id}
-                  node={child}
-                  depth={depth + 1}
-                  isSelected={selectedNodeIds.includes(child.id)}
-                  selectedNodeIds={selectedNodeIds}
-                  redirectedRequestMap={redirectedRequestMap}
-                  baseHost={baseHost}
-                  onNodeSelect={onNodeSelect}
-                  onNodeToggle={onNodeToggle}
-                  onContextMenu={onContextMenu}
-                  onNodeMove={onNodeMove}
-                  searchQuery={searchQuery}
-                  ancestorMatchesSearch={passAncestor}
-                />
-              ));
-          })()}
+          {node.children!
+            .filter(
+              child =>
+                !searchQuery.trim() ||
+                passAncestor ||
+                subtreeHasMatch(child, searchQuery)
+            )
+            .map(child => (
+              <YAMLTreeNode
+                key={child.id}
+                node={child}
+                depth={depth + 1}
+                isSelected={selectedNodeIds.includes(child.id)}
+                selectedNodeIds={selectedNodeIds}
+                redirectedRequestMap={redirectedRequestMap}
+                baseHost={baseHost}
+                onNodeSelect={onNodeSelect}
+                onNodeToggle={onNodeToggle}
+                onContextMenu={onContextMenu}
+                onNodeMove={onNodeMove}
+                searchQuery={searchQuery}
+                ancestorMatchesSearch={passAncestor}
+              />
+            ))}
         </div>
       )}
     </div>

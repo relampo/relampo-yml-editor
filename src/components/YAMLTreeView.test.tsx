@@ -273,7 +273,7 @@ describe('YAMLTreeView search filtering', () => {
     expect(screen.queryByRole('treeitem', { name: /Other request/i })).not.toBeInTheDocument();
   });
 
-  it('keeps request-local extract metadata out of the request hit badge while preserving the matching child node', () => {
+  it('reveals request-local extract matches even when the request starts collapsed', () => {
     renderInteractiveTreeView({
       tree: {
         id: 'steps',
@@ -285,7 +285,7 @@ describe('YAMLTreeView search filtering', () => {
             id: 'request-with-extract',
             type: 'request',
             name: 'Request with extract',
-            expanded: true,
+            expanded: false,
             data: {
               method: 'GET',
               url: '/users',
