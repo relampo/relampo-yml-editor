@@ -124,11 +124,15 @@ vi.mock('./YAMLTreeView', () => ({
 vi.mock('./YAMLNodeDetails', () => ({
   YAMLNodeDetails: (props: {
     node: YAMLNode | null;
+    dataSourceFileBrowseEnabled?: boolean;
     onNodeUpdate?: (nodeId: string, updatedData: Record<string, unknown>) => void;
     onAddChildNode?: (parentId: string, nodeType: 'variables') => void;
     onAddChildAction?: (metadata: { parentNodeType: string; childNodeType: 'variables' }) => void;
   }) => (
-    <div data-testid="node-details">
+    <div
+      data-testid="node-details"
+      data-source-file-browse-enabled={String(props.dataSourceFileBrowseEnabled)}
+    >
       <span>{props.node?.name ?? 'no selected node'}</span>
       {props.node && (
         <button onClick={() => props.onNodeUpdate?.(props.node!.id, { __name: 'Details changed plan' })}>
@@ -325,7 +329,22 @@ describe('YAMLEditor draft restoration', () => {
 
     expect(screen.getByText('Element details')).toBeInTheDocument();
     expect(screen.getByTestId('node-details')).toHaveTextContent('Restored plan');
+    expect(screen.getByTestId('node-details')).toHaveAttribute('data-source-file-browse-enabled', 'true');
     expect(screen.queryByText('Debug Session')).not.toBeInTheDocument();
+  });
+
+  it('keeps data source file browsing disabled when the editor is not served by Studio', async () => {
+    getActiveDraftMock.mockResolvedValueOnce({
+      yaml: 'test:\n  name: restored\n',
+      fileName: 'restored.yaml',
+      updatedAt: '2026-04-23T10:00:00.000Z',
+    });
+
+    renderEditor();
+
+    await screen.findByText('Restored plan');
+
+    expect(screen.getByTestId('node-details')).toHaveAttribute('data-source-file-browse-enabled', 'false');
   });
 
   describe('new document dialog', () => {

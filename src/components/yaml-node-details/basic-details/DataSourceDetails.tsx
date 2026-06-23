@@ -15,7 +15,14 @@ type EditorDataSource = Partial<Omit<DataSource, 'type' | 'mode'>> & {
   mode?: NonNullable<DataSource['mode']> | 'per_worker';
 };
 
-export function DataSourceDetails({ node, onNodeUpdate, nodeName, setNodeName, searchQuery = '' }: NamedNodeDetailProps) {
+export function DataSourceDetails({
+  node,
+  onNodeUpdate,
+  nodeName,
+  setNodeName,
+  searchQuery = '',
+  fileBrowseEnabled = false,
+}: NamedNodeDetailProps) {
   const { data, updateData, updateField } = createNodeDataUpdater(node, onNodeUpdate);
   const sourceData = data as EditorDataSource;
   const bind = (sourceData.bind || {}) as StringMap;
@@ -77,6 +84,7 @@ export function DataSourceDetails({ node, onNodeUpdate, nodeName, setNodeName, s
             }}
             noMargin
             showPathHint
+            browseEnabled={fileBrowseEnabled}
           />
         </div>
       </div>

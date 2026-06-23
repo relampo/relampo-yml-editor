@@ -93,6 +93,7 @@ export function YAMLEditor() {
   // Studio detection + the optional CLI-mounted script are resolved together in
   // the init effect below (one /api/studio/info probe).
   const [debugViewEnabled, setDebugViewEnabled] = useState(DEBUG_VIEW_FORCED);
+  const [dataSourceFileBrowseEnabled, setDataSourceFileBrowseEnabled] = useState(false);
 
   const documentMetrics = useMemo(() => getDocumentMetrics(yamlCode), [yamlCode]);
   const isLargeFileMode = documentMetrics.large;
@@ -262,7 +263,10 @@ export function YAMLEditor() {
       // (`relampo studio file.yaml`) — it wins over the restored draft. A
       // standalone editor returns null here, leaving the draft untouched.
       const studioInfo = await probeStudio();
-      if (studioInfo?.studio && !DEBUG_VIEW_FORCED) setDebugViewEnabled(true);
+      if (studioInfo?.studio) {
+        setDataSourceFileBrowseEnabled(true);
+        if (!DEBUG_VIEW_FORCED) setDebugViewEnabled(true);
+      }
       if (studioInfo?.initialScript) {
         initialYaml = studioInfo.initialScript.yaml;
         initialFileName = normalizeYamlFileName(studioInfo.initialScript.name);
@@ -828,6 +832,7 @@ export function YAMLEditor() {
           onAddChildNode={handleAddChildNode}
           onAddChildAction={handleDetailPanelAddClicked}
           searchQuery={activeViewMode === 'tree' ? treeSearchQuery : ''}
+          dataSourceFileBrowseEnabled={dataSourceFileBrowseEnabled}
         />
       </div>
     </div>

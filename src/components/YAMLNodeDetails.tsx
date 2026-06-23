@@ -49,6 +49,7 @@ interface YAMLNodeDetailsProps {
   onAddChildNode?: (parentId: string, nodeType: YAMLAddableNodeType) => void;
   onAddChildAction?: (metadata: { parentNodeType: string; childNodeType: YAMLAddableNodeType }) => void;
   searchQuery?: string;
+  dataSourceFileBrowseEnabled?: boolean;
 }
 
 const REQUEST_NODE_TYPES = ['request', 'sql', 'get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
@@ -65,6 +66,7 @@ export function YAMLNodeDetails({
   // onAddChildNode, // TODO Add it when it's ready
   // onAddChildAction, // TODO Add it when it's ready
   searchQuery = '',
+  dataSourceFileBrowseEnabled = false,
 }: YAMLNodeDetailsProps) {
   const { t } = useLanguage();
   const [nodeName, setNodeName] = useState(node?.name || '');
@@ -176,6 +178,7 @@ export function YAMLNodeDetails({
           redirectSourceInfo={redirectSourceInfo}
           onNodeUpdate={onNodeUpdate}
           searchQuery={searchQuery}
+          dataSourceFileBrowseEnabled={dataSourceFileBrowseEnabled}
         />
       </div>
     </div>
@@ -191,6 +194,7 @@ function NodeDetailsContent({
   redirectSourceInfo,
   onNodeUpdate,
   searchQuery = '',
+  dataSourceFileBrowseEnabled = false,
 }: {
   node: YAMLNode;
   nodeName: string;
@@ -200,6 +204,7 @@ function NodeDetailsContent({
   redirectSourceInfo: RedirectSourceInfo | null;
   onNodeUpdate?: (nodeId: string, updatedData: any) => void;
   searchQuery?: string;
+  dataSourceFileBrowseEnabled?: boolean;
 }) {
   switch (node.type) {
     case 'test':
@@ -226,6 +231,7 @@ function NodeDetailsContent({
           nodeName={nodeName}
           setNodeName={setNodeName}
           searchQuery={searchQuery}
+          fileBrowseEnabled={dataSourceFileBrowseEnabled}
         />
       );
     case 'http_defaults':

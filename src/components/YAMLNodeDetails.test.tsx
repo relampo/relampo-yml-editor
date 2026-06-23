@@ -4,18 +4,36 @@ import { LanguageProvider } from '../contexts/LanguageContext';
 import type { YAMLNode } from '../types/yaml';
 import { YAMLNodeDetails } from './YAMLNodeDetails';
 
-function renderDetails(node: YAMLNode, onAddChildNode = vi.fn(), onAddChildAction = vi.fn()) {
+function renderDetails(
+  node: YAMLNode,
+  onAddChildNode = vi.fn(),
+  onAddChildAction = vi.fn(),
+  options: { dataSourceFileBrowseEnabled?: boolean } = {},
+) {
   render(
     <LanguageProvider>
       <YAMLNodeDetails
         node={node}
         onAddChildNode={onAddChildNode}
         onAddChildAction={onAddChildAction}
+        dataSourceFileBrowseEnabled={options.dataSourceFileBrowseEnabled}
       />
     </LanguageProvider>,
   );
   return { onAddChildNode, onAddChildAction };
 }
+
+const dataSourceNode: YAMLNode = {
+  id: 'data_source',
+  type: 'data_source',
+  name: 'Data Source',
+  data: {
+    type: 'csv',
+    path: 'users.csv',
+    variable_names: 'userIdentifier',
+    mode: 'per_vu',
+  },
+};
 
 describe('YAMLNodeDetails add actions', () => {
   //TODO - re-enable this test when the add child node functionality is implemented
@@ -47,5 +65,24 @@ describe('YAMLNodeDetails add actions', () => {
       parentNodeType: 'steps',
       childNodeType: 'request',
     });
+  });
+});
+
+describe('YAMLNodeDetails data source file browsing', () => {
+  it('disables data source file browsing outside local Studio', () => {
+    renderDetails(dataSourceNode);
+
+    expect(screen.getByRole('button', { name: 'Browse' })).toBeDisabled();
+    expect(screen.getByText(/Data source file browsing is only available when running Relampo Studio locally/)).toBeInTheDocument();
+  });
+
+  it('enables data source file browsing in local Studio', () => {
+    renderDetails(dataSourceNode, vi.fn(), vi.fn(), { dataSourceFileBrowseEnabled: true });
+
+    expect(screen.getByRole('button', { name: 'Browse' })).toBeEnabled();
+    expect(
+      screen.queryByText(/Data source file browsing is only available when running Relampo Studio locally/),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/Local: in browser mode/)).not.toBeInTheDocument();
   });
 });
