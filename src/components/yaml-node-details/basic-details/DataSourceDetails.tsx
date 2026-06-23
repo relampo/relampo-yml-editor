@@ -1,6 +1,8 @@
+import { AlertCircle, Loader2, Table2 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import type { StringMap } from '../../../types/shared';
 import type { DataSource } from '../../../types/yaml';
-import { uploadStudioDataSourceFile } from '../../../utils/debugApi';
+import { previewStudioDataSourceFile, uploadStudioDataSourceFile } from '../../../utils/debugApi';
 import { EditableList } from '../../EditableList';
 import { HighlightedInput } from '../../ui/HighlightedInput';
 import { Input } from '../../ui/input';
@@ -28,6 +30,7 @@ export function DataSourceDetails({
   const sourceData = data as EditorDataSource;
   const bind = (sourceData.bind || {}) as StringMap;
   const showDiagnosis = false;
+  const sourcePath = String(sourceData.file || sourceData.path || '');
 
   const handleBindUpdate = (updatedBind: StringMap) => {
     updateData({ ...sourceData, bind: updatedBind });
@@ -76,7 +79,7 @@ export function DataSourceDetails({
         <div>
           <FileField
             label="File"
-            value={sourceData.file || sourceData.path || ''}
+            value={sourcePath}
             field="file"
             onChange={(_, value) => {
               const nextData: EditorDataSource = { ...sourceData, path: String(value) };
@@ -115,6 +118,13 @@ export function DataSourceDetails({
         />
         <p className="text-[10px] text-zinc-500 mt-1 italic">Define variable names separated by commas manually.</p>
       </div>
+
+      <DataSourcePreviewPanel
+        enabled={fileBrowseEnabled}
+        path={sourcePath}
+        type={sourceData.type || 'csv'}
+        variableNames={sourceData.variable_names || ''}
+      />
 
       <div className="flex gap-4">
         <div className="w-30 shrink-0">
@@ -185,4 +195,186 @@ export function DataSourceDetails({
       )}
     </div>
   );
+}
+
+type PreviewState =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'ready'; lines: string[]; truncated: boolean }
+  | { status: 'error'; message: string };
+
+function DataSourcePreviewPanel({
+  enabled,
+  path,
+  type,
+  variableNames,
+}: {
+  enabled: boolean;
+  path: string;
+  type: NonNullable<EditorDataSource['type']>;
+  variableNames: string;
+}) {
+  const trimmedPath = path.trim();
+  const [state, setState] = useState<PreviewState>({ status: 'idle' });
+
+  useEffect(() => {
+    if (!enabled || !trimmedPath) {
+      setState({ status: 'idle' });
+      return;
+    }
+    const controller = new AbortController();
+    setState({ status: 'loading' });
+    previewStudioDataSourceFile(trimmedPath, controller.signal)
+      .then(preview => {
+        setState({ status: 'ready', lines: preview.lines, truncated: preview.truncated });
+      })
+      .catch(error => {
+        if (controller.signal.aborted) return;
+        setState({ status: 'error', message: error instanceof Error ? error.message : 'Preview unavailable' });
+      });
+    return () => controller.abort();
+  }, [enabled, trimmedPath]);
+
+  const columns = useMemo(() => previewColumns(type, variableNames), [type, variableNames]);
+  const rows = useMemo(() => previewRows(type, state.status === 'ready' ? state.lines : []), [state, type]);
+  const displayColumns = useMemo(() => {
+    const maxColumns = Math.max(columns.length, ...rows.map(row => row.length));
+    return Array.from({ length: maxColumns }, (_, index) => columns[index] || `col ${index + 1}`);
+  }, [columns, rows]);
+
+  if (!trimmedPath) {
+    return null;
+  }
+
+  return (
+    <section className="rounded border border-white/10 bg-black/20">
+      <div className="flex min-h-10 items-center justify-between gap-3 border-b border-white/10 px-3 py-2">
+        <div className="flex items-center gap-2">
+          <Table2 className="h-4 w-4 text-yellow-300" />
+          <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Data Preview</p>
+        </div>
+        {state.status === 'ready' && (
+          <p className="text-[10px] font-medium text-zinc-500">
+            {rows.length} {rows.length === 1 ? 'row' : 'rows'}
+            {state.truncated ? ' shown' : ''}
+          </p>
+        )}
+      </div>
+
+      {!enabled && (
+        <div className="flex items-start gap-2 px-3 py-3 text-xs text-zinc-500">
+          <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-zinc-500" />
+          <p>Preview is available when running Relampo Studio locally.</p>
+        </div>
+      )}
+
+      {enabled && state.status === 'loading' && (
+        <div className="flex items-center gap-2 px-3 py-3 text-xs text-zinc-400">
+          <Loader2 className="h-3.5 w-3.5 animate-spin text-yellow-300" />
+          <p>Loading preview...</p>
+        </div>
+      )}
+
+      {enabled && state.status === 'error' && (
+        <div className="flex items-start gap-2 px-3 py-3 text-xs text-red-300">
+          <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <p>{state.message}</p>
+        </div>
+      )}
+
+      {enabled && state.status === 'ready' && rows.length === 0 && (
+        <div className="px-3 py-3 text-xs text-zinc-500">No rows found.</div>
+      )}
+
+      {enabled && state.status === 'ready' && rows.length > 0 && (
+        <div className="max-h-56 overflow-auto">
+          <table className="w-full table-fixed border-collapse text-left text-xs">
+            <thead className="sticky top-0 bg-zinc-950">
+              <tr>
+                <th className="w-12 border-b border-white/10 px-3 py-2 font-mono text-[10px] font-semibold uppercase text-zinc-500">
+                  #
+                </th>
+                {displayColumns.map((column, index) => (
+                  <th
+                    key={`${column}-${index}`}
+                    className="border-b border-white/10 px-3 py-2 font-mono text-[10px] font-semibold uppercase text-zinc-500"
+                  >
+                    {column}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, rowIndex) => (
+                <tr key={`${rowIndex}-${row.join('|')}`} className="border-b border-white/5 last:border-b-0">
+                  <td className="px-3 py-2 align-top font-mono text-[10px] text-zinc-600">{rowIndex + 1}</td>
+                  {displayColumns.map((_, columnIndex) => (
+                    <td
+                      key={columnIndex}
+                      className="truncate px-3 py-2 align-top font-mono text-[11px] text-zinc-300"
+                      title={row[columnIndex] || ''}
+                    >
+                      {row[columnIndex] || <span className="text-zinc-600">empty</span>}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {state.truncated && (
+            <div className="border-t border-white/10 px-3 py-2 text-[10px] text-zinc-500">
+              Showing the first {rows.length} rows.
+            </div>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function previewColumns(type: NonNullable<EditorDataSource['type']>, variableNames: string): string[] {
+  const names = variableNames
+    .split(',')
+    .map(name => name.trim())
+    .filter(Boolean);
+  if (type === 'txt') {
+    return [names[0] || 'value'];
+  }
+  return names.length > 0 ? names : ['col 1'];
+}
+
+function previewRows(type: NonNullable<EditorDataSource['type']>, lines: string[]): string[][] {
+  if (type === 'txt') {
+    return lines.map(line => [line]);
+  }
+  const rows = lines.map(parseCsvPreviewLine);
+  const maxColumns = Math.max(1, ...rows.map(row => row.length));
+  return rows.map(row => Array.from({ length: maxColumns }, (_, index) => row[index] || ''));
+}
+
+function parseCsvPreviewLine(line: string): string[] {
+  const cells: string[] = [];
+  let cell = '';
+  let quoted = false;
+  for (let index = 0; index < line.length; index++) {
+    const char = line[index];
+    const next = line[index + 1];
+    if (char === '"' && quoted && next === '"') {
+      cell += '"';
+      index++;
+      continue;
+    }
+    if (char === '"') {
+      quoted = !quoted;
+      continue;
+    }
+    if (char === ',' && !quoted) {
+      cells.push(cell);
+      cell = '';
+      continue;
+    }
+    cell += char;
+  }
+  cells.push(cell);
+  return cells;
 }

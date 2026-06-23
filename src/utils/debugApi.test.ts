@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { probeStudio, startDebugRun, uploadStudioDataSourceFile } from './debugApi';
+import { previewStudioDataSourceFile, probeStudio, startDebugRun, uploadStudioDataSourceFile } from './debugApi';
 
 function mockFetch(body: unknown, ok = true) {
   vi.stubGlobal(
@@ -93,5 +93,28 @@ describe('uploadStudioDataSourceFile', () => {
     await expect(uploadStudioDataSourceFile(new File(['{}'], 'users.json'))).rejects.toThrow(
       'only .csv and .txt data source files are supported',
     );
+  });
+});
+
+describe('previewStudioDataSourceFile', () => {
+  it('loads a Studio data source preview', async () => {
+    mockFetch({ path: '/tmp/users.txt', lines: ['alice', 'bob'], truncated: false });
+
+    await expect(previewStudioDataSourceFile('/tmp/users.txt')).resolves.toEqual({
+      path: '/tmp/users.txt',
+      lines: ['alice', 'bob'],
+      truncated: false,
+    });
+
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/studio/data-source-preview?path=%2Ftmp%2Fusers.txt',
+      expect.objectContaining({ signal: undefined }),
+    );
+  });
+
+  it('surfaces Studio preview errors', async () => {
+    mockFetch({ error: 'read data source: file not found' }, false);
+
+    await expect(previewStudioDataSourceFile('/tmp/missing.txt')).rejects.toThrow('read data source: file not found');
   });
 });

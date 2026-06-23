@@ -1,8 +1,12 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { LanguageProvider } from '../contexts/LanguageContext';
 import type { YAMLNode } from '../types/yaml';
 import { YAMLNodeDetails } from './YAMLNodeDetails';
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 function renderDetails(
   node: YAMLNode,
@@ -77,6 +81,11 @@ describe('YAMLNodeDetails data source file browsing', () => {
   });
 
   it('enables data source file browsing in local Studio', () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ ok: true, json: async () => ({ path: 'users.csv', lines: [], truncated: false }) }),
+    );
+
     renderDetails(dataSourceNode, vi.fn(), vi.fn(), { dataSourceFileBrowseEnabled: true });
 
     expect(screen.getByRole('button', { name: 'Browse' })).toBeEnabled();
@@ -84,5 +93,25 @@ describe('YAMLNodeDetails data source file browsing', () => {
       screen.queryByText(/Data source file browsing is only available when running Relampo Studio locally/),
     ).not.toBeInTheDocument();
     expect(screen.queryByText(/Local: in browser mode/)).not.toBeInTheDocument();
+  });
+
+  it('shows a local Studio data preview', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ path: 'users.csv', lines: ['alice', 'bob'], truncated: false }),
+      }),
+    );
+
+    renderDetails(dataSourceNode, vi.fn(), vi.fn(), { dataSourceFileBrowseEnabled: true });
+
+    expect(await screen.findByText('Data Preview')).toBeInTheDocument();
+    expect(await screen.findByText('alice')).toBeInTheDocument();
+    expect(screen.getByText('bob')).toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/studio/data-source-preview?path=users.csv',
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
   });
 });
