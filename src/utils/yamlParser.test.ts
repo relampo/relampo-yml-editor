@@ -328,6 +328,32 @@ scenarios:
     expect(step.children?.map(child => child.name)).toEqual(['POST: /cart', 'POST: /address']);
   });
 
+  it('preserves controller enabled state when declared inside the controller payload', () => {
+    const yaml = `
+test:
+  name: t
+scenarios:
+  - name: qa
+    steps:
+      - group:
+          name: Disabled dangerous cases
+          enabled: false
+          steps:
+            - request:
+                name: Dangerous request
+                method: GET
+                url: /danger
+                enabled: true
+`;
+    const tree = parseYAMLToTree(yaml)!;
+    const group = tree.children!.find(c => c.type === 'scenarios')!.children![0].children!.find(c => c.type === 'steps')!
+      .children![0];
+
+    expect(group.type).toBe('group');
+    expect(group.data.enabled).toBe(false);
+    expect(group.children?.[0].data.enabled).toBe(true);
+  });
+
   it('preserves enabled state for disabled one_time controllers', () => {
     const yaml = `
 test:

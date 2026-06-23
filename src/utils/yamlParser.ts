@@ -221,6 +221,8 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
 
   // Parsear enabled ANTES (común para todos los tipos)
   const isEnabled = step.enabled !== undefined ? step.enabled : true;
+  const resolveEnabled = (payload: unknown) =>
+    isPlainRecord(payload) && payload.enabled !== undefined ? payload.enabled : isEnabled;
 
   // HTTP methods (short form)
   const httpMethods = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
@@ -379,6 +381,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
 
   // Group (Simple controller for organization)
   if (step.group) {
+    const enabled = resolveEnabled(step.group);
     const groupNode: YAMLNode = {
       id: stepId,
       type: step.group.simple ? 'simple' : 'group',
@@ -388,7 +391,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       data: {
         ...step.group,
         auth: normalizeAuthForEditor(step.group.auth),
-        enabled: isEnabled,
+        enabled,
       },
       path,
     };
@@ -404,6 +407,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
   }
 
   if (step.transaction) {
+    const enabled = resolveEnabled(step.transaction);
     const transactionNode: YAMLNode = {
       id: stepId,
       type: 'transaction',
@@ -413,7 +417,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       data: {
         ...step.transaction,
         auth: normalizeAuthForEditor(step.transaction.auth),
-        enabled: isEnabled,
+        enabled,
       },
       path,
     };
@@ -429,13 +433,14 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
   }
 
   if (step.parallel) {
+    const enabled = resolveEnabled(step.parallel);
     const parallelNode: YAMLNode = {
       id: stepId,
       type: 'parallel',
       name: step.parallel.name || 'Parallel Controller',
       children: [],
       expanded: true,
-      data: { ...step.parallel, enabled: isEnabled },
+      data: { ...step.parallel, enabled },
       path,
     };
 
@@ -451,6 +456,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
 
   if (step.balanced) {
     const balancedData = typeof step.balanced === 'object' && step.balanced !== null ? step.balanced : {};
+    const enabled = resolveEnabled(balancedData);
     const balancedNode: YAMLNode = {
       id: stepId,
       type: 'balanced',
@@ -459,7 +465,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       expanded: true,
       data: {
         ...balancedData,
-        enabled: isEnabled,
+        enabled,
         type: normalizeBalancedDistributionType(balancedData.type),
         mode: normalizeBalancedExecutionMode(balancedData.mode),
       },
@@ -522,7 +528,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       expanded: true,
       data: {
         ...loopData,
-        enabled: isEnabled,
+        enabled: resolveEnabled(loopData),
       },
       path,
     };
@@ -551,7 +557,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       name: 'Retry',
       children: [],
       expanded: true,
-      data: { ...retryData, enabled: isEnabled },
+      data: { ...retryData, enabled: resolveEnabled(retryData) },
       path,
     };
 
@@ -576,7 +582,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       name: oneTimeData.name || 'One Time Controller',
       children: [],
       expanded: true,
-      data: { ...oneTimeData, enabled: isEnabled },
+      data: { ...oneTimeData, enabled: resolveEnabled(oneTimeData) },
       path,
     };
 
