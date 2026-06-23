@@ -132,24 +132,9 @@ export function FileField({
   const isBrowseDisabled = !browseEnabled;
   const showUnavailableHint = showPathHint && isBrowseDisabled;
 
-  const handleBrowseClick = async (event: React.MouseEvent) => {
+  const handleBrowseClick = (event: React.MouseEvent) => {
     event.preventDefault();
     if (isBrowseDisabled) return;
-
-    if ((window as any).electron?.selectFile) {
-      try {
-        let path = await (window as any).electron.selectFile();
-        if (Array.isArray(path)) {
-          path = path[0];
-        }
-        if (path) {
-          onChange(field, path);
-        }
-        return;
-      } catch (error) {
-        console.error('Electron file selection failed:', error);
-      }
-    }
 
     fileInputRef.current?.click();
   };
