@@ -51,6 +51,21 @@ describe('probeStudio', () => {
     mockFetch({ studio: true, initialScript: { name: 'x.yaml' } });
     expect(await probeStudio()).toEqual({ studio: true, initialScript: undefined });
   });
+
+  it('reports the loadRun capability when the studio advertises it', async () => {
+    mockFetch({ studio: true, capabilities: { loadRun: true } });
+    expect((await probeStudio())?.capabilities).toEqual({ loadRun: true });
+  });
+
+  it('defaults loadRun to false when capabilities are present without it', async () => {
+    mockFetch({ studio: true, capabilities: {} });
+    expect((await probeStudio())?.capabilities).toEqual({ loadRun: false });
+  });
+
+  it('omits capabilities for older studio builds that do not send them', async () => {
+    mockFetch({ studio: true });
+    expect((await probeStudio())?.capabilities).toBeUndefined();
+  });
 });
 
 describe('startDebugRun', () => {

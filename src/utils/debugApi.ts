@@ -74,9 +74,17 @@ export interface StudioInitialScript {
   yaml: string;
 }
 
+// Optional studio features the backend advertises so the editor only shows UI
+// it supports. Absent on older studio builds, so every flag defaults to false.
+export interface StudioCapabilities {
+  // loadRun unlocks the Run (load test) view backed by POST /api/run.
+  loadRun?: boolean;
+}
+
 export interface StudioInfo {
   studio: boolean;
   initialScript?: StudioInitialScript;
+  capabilities?: StudioCapabilities;
 }
 
 export interface StudioDataSourceUpload {
@@ -105,7 +113,11 @@ export async function probeStudio(): Promise<StudioInfo | null> {
       raw && typeof raw.yaml === 'string'
         ? { name: typeof raw.name === 'string' && raw.name ? raw.name : 'script.yaml', yaml: raw.yaml }
         : undefined;
-    return { studio: true, initialScript };
+    const capabilities =
+      body.capabilities && typeof body.capabilities === 'object'
+        ? { loadRun: body.capabilities.loadRun === true }
+        : undefined;
+    return { studio: true, initialScript, capabilities };
   } catch {
     return null;
   }

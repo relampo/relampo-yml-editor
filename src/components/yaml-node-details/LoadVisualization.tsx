@@ -4,9 +4,12 @@ import { getIntentAutoConfig, loadColors, parseTimeToSeconds, type LoadType } fr
 interface LoadVisualizationProps {
   data: Record<string, any>;
   loadType: LoadType;
+  // Elapsed seconds into a live run. When set, a vertical playhead glides across
+  // the chart at the matching time position. Undefined hides it (default).
+  progressSeconds?: number;
 }
 
-export function LoadVisualization({ data, loadType }: LoadVisualizationProps) {
+export function LoadVisualization({ data, loadType, progressSeconds }: LoadVisualizationProps) {
   const { t } = useLanguage();
   const effectiveData =
     loadType === 'intent'
@@ -161,6 +164,9 @@ export function LoadVisualization({ data, loadType }: LoadVisualizationProps) {
         min: intentMinVus.toFixed(0),
         max: intentMaxVus.toFixed(0),
       });
+
+  const showPlayhead = progressSeconds != null && maxTime > 0;
+  const playheadX = showPlayhead ? 40 + (Math.min(Math.max(progressSeconds, 0), maxTime) / maxTime) * 340 : 0;
 
   return (
     <div>
@@ -537,6 +543,12 @@ export function LoadVisualization({ data, loadType }: LoadVisualizationProps) {
           >
             {yAxisLabel}
           </text>
+          {showPlayhead && (
+            <g style={{ transform: `translateX(${playheadX}px)`, transition: 'transform 1s linear' }}>
+              <line x1={0} y1={8} x2={0} y2={170} stroke="#fde047" strokeWidth={2} strokeOpacity={0.9} />
+              <circle cx={0} cy={8} r={3.5} fill="#fde047" />
+            </g>
+          )}
         </svg>
       </div>
     </div>
