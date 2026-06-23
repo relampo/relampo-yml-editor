@@ -1,5 +1,5 @@
 import { AlertCircle, Loader2, Table2 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { StringMap } from '../../../types/shared';
 import type { DataSource } from '../../../types/yaml';
 import { previewStudioDataSourceFile, uploadStudioDataSourceFile } from '../../../utils/debugApi';
@@ -232,6 +232,11 @@ function DataSourcePreviewPanel({
 }) {
   const trimmedPath = path.trim();
   const [state, setState] = useState<PreviewState>({ status: 'idle' });
+  const latestPreviewPath = useRef(trimmedPath);
+
+  useEffect(() => {
+    latestPreviewPath.current = trimmedPath;
+  }, [trimmedPath]);
 
   useEffect(() => {
     if (!enabled || !trimmedPath) {
@@ -239,9 +244,11 @@ function DataSourcePreviewPanel({
       return;
     }
     const controller = new AbortController();
+    const requestedPath = trimmedPath;
     setState({ status: 'loading' });
     previewStudioDataSourceFile(trimmedPath, controller.signal)
       .then(preview => {
+        if (controller.signal.aborted || latestPreviewPath.current !== requestedPath) return;
         setState({ status: 'ready', lines: preview.lines, truncated: preview.truncated });
       })
       .catch(error => {
