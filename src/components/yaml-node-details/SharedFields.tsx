@@ -129,7 +129,7 @@ export function FileField({
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const pathHintId = useId();
-  const isBrowseDisabled = !browseEnabled;
+  const isBrowseDisabled = !browseEnabled || !uploadFile;
   const showUnavailableHint = showPathHint && isBrowseDisabled;
 
   const handleBrowseClick = (event: React.MouseEvent) => {
@@ -158,8 +158,7 @@ export function FileField({
       }
       return;
     }
-    const path = (file as any).path || file.name;
-    onChange(field, path);
+    setUploadError('File browsing is unavailable for this field');
     event.target.value = '';
   };
 
@@ -182,9 +181,13 @@ export function FileField({
           aria-describedby={showUnavailableHint ? pathHintId : undefined}
           title={
             isBrowseDisabled
-              ? language === 'es'
-                ? 'Disponible solo cuando ejecutas Relampo Studio localmente'
-                : 'Available only when running Relampo Studio locally'
+              ? !browseEnabled
+                ? language === 'es'
+                  ? 'Disponible solo cuando ejecutas Relampo Studio localmente'
+                  : 'Available only when running Relampo Studio locally'
+                : language === 'es'
+                  ? 'No hay un selector de archivos con ruta local disponible'
+                  : 'No path-capable file picker is available'
               : undefined
           }
           className="px-3 py-2 bg-yellow-400/10 border border-yellow-400/30 rounded text-yellow-400 hover:bg-yellow-400/20 text-sm font-medium transition-colors flex items-center gap-2 shrink-0 h-9.5 disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/5 disabled:text-zinc-500 disabled:hover:bg-white/5"
