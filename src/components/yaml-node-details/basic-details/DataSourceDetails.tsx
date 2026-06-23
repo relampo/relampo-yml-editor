@@ -113,6 +113,7 @@ export function DataSourceDetails({
             onChange={(_, value) => updateDataSourcePath(String(value))}
             noMargin
             showPathHint
+            accept=".csv,.txt"
             browseEnabled={fileBrowseEnabled}
             uploadFile={
               fileBrowseEnabled

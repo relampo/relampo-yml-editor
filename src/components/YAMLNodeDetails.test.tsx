@@ -62,6 +62,16 @@ const dataSourceNode: YAMLNode = {
   },
 };
 
+const fileNode: YAMLNode = {
+  id: 'file_upload',
+  type: 'file',
+  name: 'File Upload',
+  data: {
+    path: '',
+    mime: '',
+  },
+};
+
 describe('YAMLNodeDetails add actions', () => {
   //TODO - re-enable this test when the add child node functionality is implemented
   it.skip('renders add actions for steps nodes', () => {
@@ -176,5 +186,22 @@ describe('YAMLNodeDetails data source file browsing', () => {
 
     expect(await screen.findByDisplayValue('/tmp/uploaded-users.txt')).toBeInTheDocument();
     expect(screen.getByDisplayValue('userIdentifier, tenant')).toBeInTheDocument();
+  });
+});
+
+describe('YAMLNodeDetails file upload browsing', () => {
+  it('keeps Browse enabled for multipart file upload nodes', () => {
+    render(<StatefulDetails initialNode={fileNode} />);
+
+    expect(screen.getByRole('button', { name: 'Browse' })).toBeEnabled();
+
+    const input = document.querySelector<HTMLInputElement>('input[type="file"]');
+    expect(input).not.toBeNull();
+
+    fireEvent.change(input as HTMLInputElement, {
+      target: { files: [new File(['report'], 'report.pdf', { type: 'application/pdf' })] },
+    });
+
+    expect(screen.getByDisplayValue('report.pdf')).toBeInTheDocument();
   });
 });

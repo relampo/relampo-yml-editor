@@ -112,6 +112,7 @@ interface FileFieldProps extends EditableFieldProps {
   showPathHint?: boolean;
   browseEnabled?: boolean;
   uploadFile?: (file: File) => Promise<string>;
+  accept?: string;
 }
 
 export function FileField({
@@ -123,13 +124,15 @@ export function FileField({
   showPathHint = false,
   browseEnabled = true,
   uploadFile,
+  accept,
 }: FileFieldProps) {
   const { t, language } = useLanguage();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const pathHintId = useId();
-  const isBrowseDisabled = !browseEnabled || !uploadFile;
+  const requiresPathCapablePicker = showPathHint;
+  const isBrowseDisabled = !browseEnabled || (requiresPathCapablePicker && !uploadFile);
   const showUnavailableHint = showPathHint && isBrowseDisabled;
 
   const handleBrowseClick = (event: React.MouseEvent) => {
@@ -158,7 +161,7 @@ export function FileField({
       }
       return;
     }
-    setUploadError('File browsing is unavailable for this field');
+    onChange(field, file.name);
     event.target.value = '';
   };
 
@@ -198,7 +201,7 @@ export function FileField({
         <input
           ref={fileInputRef}
           type="file"
-          accept=".csv,.txt"
+          accept={accept}
           onChange={handleFileChange}
           disabled={isBrowseDisabled}
           className="hidden"
