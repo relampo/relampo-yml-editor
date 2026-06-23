@@ -13,6 +13,7 @@ import {
 } from '../utils/runApi';
 import { LoadVisualization } from './yaml-node-details/LoadVisualization';
 import { normalizeLoadType } from './yaml-node-details/loadUtils';
+import { createStoredRunStore, fingerprint, type StoredRun } from '../utils/studioRunStore';
 
 // The live sparklines only need a recent window; keeping every snapshot for a
 // long run would bloat state and slow re-render. Cumulative totals live on the
@@ -24,52 +25,8 @@ const MAX_LIVE_POINTS = 600;
 const MAX_LIVE_LOGS = 1000;
 
 // The last load run is parked in sessionStorage so a reload can re-attach and
-// let the studio replay the run (history + final summary). Only the id and a
-// document fingerprint are stored; the metrics stay on the server. The
-// fingerprint guards against replaying a run against a different script.
-const RUN_STORAGE_KEY = 'relampo.studio.loadRun';
-
-interface StoredRun {
-  id: string;
-  fp: string;
-}
-
-// Cheap, stable (djb2) fingerprint of the document.
-function fingerprint(text: string): string {
-  let hash = 5381;
-  for (let i = 0; i < text.length; i += 1) {
-    hash = ((hash << 5) + hash + text.charCodeAt(i)) | 0;
-  }
-  return `${text.length}:${(hash >>> 0).toString(36)}`;
-}
-
-function readStoredRun(): StoredRun | null {
-  try {
-    const raw = sessionStorage.getItem(RUN_STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (parsed && typeof parsed.id === 'string' && typeof parsed.fp === 'string') return parsed;
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-function storeRun(run: StoredRun): void {
-  try {
-    sessionStorage.setItem(RUN_STORAGE_KEY, JSON.stringify(run));
-  } catch {
-    // Private-mode / disabled storage: persistence is best-effort.
-  }
-}
-
-function clearStoredRun(): void {
-  try {
-    sessionStorage.removeItem(RUN_STORAGE_KEY);
-  } catch {
-    // ignore
-  }
-}
+// let the studio replay it (history + final summary).
+const runStore = createStoredRunStore('relampo.studio.loadRun');
 
 // Collects every `load` node in the tree (one per scenario). The Run panel
 // previews the first as the "planned profile" and notes when there are several.
@@ -158,15 +115,17 @@ export function YAMLLoadRunSession({
   const stopStreamRef = useRef<(() => void) | null>(null);
   const startTokenRef = useRef(0);
   const activeRunIdRef = useRef<string | null>(null);
+  const stopRequestedRef = useRef(false);
   const storedRunRef = useRef<StoredRun | null | undefined>(undefined);
   if (storedRunRef.current === undefined) {
-    storedRunRef.current = readStoredRun();
+    storedRunRef.current = runStore.read();
   }
 
   const loadNodes = useMemo(() => collectLoadNodes(tree), [tree]);
   const plannedLoadNode = loadNodes[0] ?? null;
   const hasValidationErrors = validationErrors.length > 0;
   const latest = snapshots[snapshots.length - 1] ?? null;
+  const hasRunActivity = snapshots.length > 0 || logs.length > 0 || summary != null;
 
   // Wires a run's SSE stream into the dashboard. Shared by a fresh Run and by
   // re-attaching to a stored run after a reload. `quiet` suppresses the error
@@ -204,7 +163,7 @@ export function YAMLLoadRunSession({
         setIsRunning(false);
         setIsStopping(false);
         if (quiet) {
-          clearStoredRun();
+          runStore.clear();
           storedRunRef.current = null;
           activeRunIdRef.current = null;
           setSnapshots([]);
@@ -235,7 +194,7 @@ export function YAMLLoadRunSession({
       const storedRun = storedRunRef.current;
       if (!storedRun) return;
       if (!yamlCode.trim() || storedRun.fp !== fingerprint(yamlCode)) {
-        clearStoredRun();
+        runStore.clear();
         storedRunRef.current = null;
         return;
       }
@@ -252,6 +211,8 @@ export function YAMLLoadRunSession({
     if (!scriptAtStart.trim()) return;
     const token = (startTokenRef.current += 1);
     stopStreamRef.current?.();
+    activeRunIdRef.current = null;
+    stopRequestedRef.current = false;
     setSnapshots([]);
     setLogs([]);
     setSummary(null);
@@ -261,13 +222,19 @@ export function YAMLLoadRunSession({
     setIsRunning(true);
     try {
       const runId = await startLoadRun(scriptAtStart);
-      if (token === startTokenRef.current) {
-        storeRun({ id: runId, fp: fingerprint(scriptAtStart) });
-        subscribe(runId, false);
+      if (token !== startTokenRef.current) return;
+      runStore.store({ id: runId, fp: fingerprint(scriptAtStart) });
+      subscribe(runId, false);
+      // The user hit Stop while the start request was in flight: the run now
+      // exists on the server, so cancel it (the SSE delivers the stopped summary).
+      if (stopRequestedRef.current) {
+        setIsStopping(true);
+        void stopLoadRun(runId);
       }
     } catch (error) {
       if (token !== startTokenRef.current) return;
       setIsRunning(false);
+      setIsStopping(false);
       setRunStatus('errored');
       setRunError(error instanceof Error ? error.message : String(error));
     }
@@ -277,9 +244,14 @@ export function YAMLLoadRunSession({
   // terminal `done` (status "stopped") delivers the partial summary. The
   // unmount cleanup never stops a run — Stop is a deliberate user action.
   const stopRun = async () => {
-    const runId = activeRunIdRef.current;
-    if (!runId || !isRunning) return;
+    if (!isRunning || isStopping) return;
     setIsStopping(true);
+    const runId = activeRunIdRef.current;
+    if (!runId) {
+      // The start request is still in flight; cancel as soon as we get the id.
+      stopRequestedRef.current = true;
+      return;
+    }
     try {
       await stopLoadRun(runId);
     } catch {
@@ -379,7 +351,7 @@ export function YAMLLoadRunSession({
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-4">
-        {snapshots.length === 0 && logs.length === 0 && !summary ? (
+        {!hasRunActivity ? (
           <div className="flex h-full items-center justify-center px-8 text-center text-sm text-zinc-500">
             {isRunning
               ? 'Running… waiting for the first engine events.'

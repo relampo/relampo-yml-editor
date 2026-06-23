@@ -26,57 +26,13 @@ import {
 import { startDebugRun, streamDebugRun, type DebugVUs, type EngineEvent } from '../utils/debugApi';
 import { DebugSection } from './debugSection';
 import { buildSearchRegex, findMatchRanges, type SearchMode } from './debugSearch';
+import { createStoredRunStore, fingerprint, type StoredRun } from '../utils/studioRunStore';
 
 type DetailTab = 'overview' | 'request' | 'response' | 'assertions' | 'variables' | 'logs';
 
-// The last debug run is parked in sessionStorage so a page reload can
-// re-attach and let the backend replay the run's history. Only the id and a
-// fingerprint of the document are stored; the events and bodies stay on the
-// studio server. The fingerprint guards against replaying a run against a
-// different script (edited/uploaded YAML) after a reload.
-const RUN_STORAGE_KEY = 'relampo.studio.debugRun';
-
-interface StoredRun {
-  id: string;
-  fp: string;
-}
-
-// Cheap, stable (djb2) fingerprint of the document.
-function fingerprint(text: string): string {
-  let hash = 5381;
-  for (let i = 0; i < text.length; i += 1) {
-    hash = ((hash << 5) + hash + text.charCodeAt(i)) | 0;
-  }
-  return `${text.length}:${(hash >>> 0).toString(36)}`;
-}
-
-function readStoredRun(): StoredRun | null {
-  try {
-    const raw = sessionStorage.getItem(RUN_STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (parsed && typeof parsed.id === 'string' && typeof parsed.fp === 'string') return parsed;
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-function storeRun(run: StoredRun): void {
-  try {
-    sessionStorage.setItem(RUN_STORAGE_KEY, JSON.stringify(run));
-  } catch {
-    // Private-mode / disabled storage: persistence is best-effort.
-  }
-}
-
-function clearStoredRun(): void {
-  try {
-    sessionStorage.removeItem(RUN_STORAGE_KEY);
-  } catch {
-    // ignore
-  }
-}
+// The last debug run is parked in sessionStorage so a page reload can re-attach
+// and let the backend replay the run's history.
+const runStore = createStoredRunStore('relampo.studio.debugRun');
 
 // One timeline entry: a request-level engine event, optionally mapped back to
 // the tree node it came from (matched by report name, best effort).
@@ -185,7 +141,7 @@ export function YAMLDebugSession({
   const startTokenRef = useRef(0);
   const storedRunRef = useRef<StoredRun | null | undefined>(undefined);
   if (storedRunRef.current === undefined) {
-    storedRunRef.current = readStoredRun();
+    storedRunRef.current = runStore.read();
   }
 
   // Wires a run's SSE stream into the timeline. Shared by a fresh Run Debug
@@ -215,7 +171,7 @@ export function YAMLDebugSession({
       onConnectionError: () => {
         setIsRunning(false);
         if (quiet) {
-          clearStoredRun();
+          runStore.clear();
           setEntryEvents([]);
         } else {
           setRunError('Lost connection to the studio server.');
@@ -236,7 +192,7 @@ export function YAMLDebugSession({
     const storedRun = storedRunRef.current;
     if (!storedRun) return;
     if (!yamlCode.trim() || storedRun.fp !== fingerprint(yamlCode)) {
-      clearStoredRun();
+      runStore.clear();
       storedRunRef.current = null;
       return;
     }
@@ -271,7 +227,7 @@ export function YAMLDebugSession({
     try {
       const runId = await startDebugRun(scriptAtStart, { vus: debugVUs });
       if (token === startTokenRef.current) {
-        storeRun({ id: runId, fp: fingerprint(scriptAtStart) });
+        runStore.store({ id: runId, fp: fingerprint(scriptAtStart) });
         subscribe(runId, false);
       }
     } catch (error) {
