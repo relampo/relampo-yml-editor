@@ -1,4 +1,4 @@
-import { AlertTriangle, Bug, Code2, GitBranch, Loader2 } from 'lucide-react';
+import { AlertTriangle, Loader2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useYAML } from '../contexts/YAMLContext';
@@ -23,6 +23,7 @@ import {
 import { probeStudio } from '../utils/debugApi';
 import { YAMLCodeEditor } from './YAMLCodeEditor';
 import { YAMLEditorDetailsPanel } from './YAMLEditorDetailsPanel';
+import { EditorViewModeTabs, type EditorViewMode } from './EditorViewModeTabs';
 import { YAMLEditorHeader } from './YAMLEditorHeader';
 import { createNodeByType } from './yaml-tree-view/nodeFactory';
 import { addNodeToTree, syncRedirectSourceFollowRedirects, updateNodeEnabled } from './yaml-tree-view/treeOperations';
@@ -44,8 +45,7 @@ const TREE_SERIALIZE_DEBOUNCE_MS = 220;
 // Dev-time override; in production the Debug view unlocks itself at runtime
 // when the app detects it is being served by `relampo studio`.
 const DEBUG_VIEW_FORCED = import.meta.env.VITE_DEBUG_VIEW_ENABLED === 'true';
-
-type EditorViewMode = 'tree' | 'code' | 'debug';
+const RUN_VIEW_FORCED = import.meta.env.VITE_RUN_VIEW_ENABLED === 'true';
 
 type CommitTreeChangeOptions = {
   serialization?: 'immediate' | 'debounced';
@@ -93,14 +93,16 @@ export function YAMLEditor() {
   // Studio detection + the optional CLI-mounted script are resolved together in
   // the init effect below (one /api/studio/info probe).
   const [debugViewEnabled, setDebugViewEnabled] = useState(DEBUG_VIEW_FORCED);
+  const [runViewEnabled, setRunViewEnabled] = useState(RUN_VIEW_FORCED);
   const [dataSourceFileBrowseEnabled, setDataSourceFileBrowseEnabled] = useState(false);
 
   const documentMetrics = useMemo(() => getDocumentMetrics(yamlCode), [yamlCode]);
   const isLargeFileMode = documentMetrics.large;
   const isEditorBusy = isFileLoading || isParsing;
   const activeViewMode: EditorViewMode =
-    !debugViewEnabled && viewMode === 'debug' ? 'tree' : viewMode;
+    (!debugViewEnabled && viewMode === 'debug') || (!runViewEnabled && viewMode === 'run') ? 'tree' : viewMode;
   const isDebugViewActive = debugViewEnabled && activeViewMode === 'debug';
+  const isRunViewActive = runViewEnabled && activeViewMode === 'run';
 
   const applySemanticValidation = (tree: YAMLNode | null) => {
     setValidationErrors(validateYAMLSemantics(tree).map(issue => issue.message));
@@ -266,6 +268,7 @@ export function YAMLEditor() {
       if (studioInfo?.studio) {
         setDataSourceFileBrowseEnabled(true);
         if (!DEBUG_VIEW_FORCED) setDebugViewEnabled(true);
+        if (!RUN_VIEW_FORCED && studioInfo.capabilities?.loadRun) setRunViewEnabled(true);
       }
       if (studioInfo?.initialScript) {
         initialYaml = studioInfo.initialScript.yaml;
@@ -715,43 +718,13 @@ export function YAMLEditor() {
           className="min-w-0 flex flex-col bg-[#0a0a0a]"
           style={{ width: `${leftPanelWidth}%` }}
         >
-          <div className="flex items-center bg-[#111111] border-b border-white/5 shrink-0">
-            <button
-              onClick={() => setViewMode('tree')}
-              className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 text-sm font-bold transition-all duration-200 ${
-                activeViewMode === 'tree'
-                  ? 'text-yellow-400 bg-yellow-400/10 border-b-2 border-yellow-400 shadow-[inset_0_-2px_0_rgba(250,204,21,0.5)]'
-                  : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'
-              }`}
-            >
-              <GitBranch className="w-4 h-4" />
-              {language === 'es' ? 'Árbol' : 'Tree'}
-            </button>
-            <button
-              onClick={() => setViewMode('code')}
-              className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 text-sm font-bold transition-all duration-200 ${
-                activeViewMode === 'code'
-                  ? 'text-yellow-400 bg-yellow-400/10 border-b-2 border-yellow-400 shadow-[inset_0_-2px_0_rgba(250,204,21,0.5)]'
-                  : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'
-              }`}
-            >
-              <Code2 className="w-4 h-4" />
-              {language === 'es' ? 'Código' : 'Code'}
-            </button>
-            {debugViewEnabled ? (
-              <button
-                onClick={() => setViewMode('debug')}
-                className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 text-sm font-bold transition-all duration-200 ${
-                  activeViewMode === 'debug'
-                    ? 'text-yellow-400 bg-yellow-400/10 border-b-2 border-yellow-400 shadow-[inset_0_-2px_0_rgba(250,204,21,0.5)]'
-                    : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'
-                }`}
-              >
-                <Bug className="w-4 h-4" />
-                Debug
-              </button>
-            ) : null}
-          </div>
+          <EditorViewModeTabs
+            activeViewMode={activeViewMode}
+            onSelect={setViewMode}
+            language={language}
+            debugViewEnabled={debugViewEnabled}
+            runViewEnabled={runViewEnabled}
+          />
 
           <div className="flex-1 overflow-hidden min-h-0 bg-[#0a0a0a]">
             {activeViewMode === 'tree' ? (
@@ -807,8 +780,10 @@ export function YAMLEditor() {
 
         <YAMLEditorDetailsPanel
           isDebugViewActive={isDebugViewActive}
+          isRunViewActive={isRunViewActive}
           language={language}
           debugViewEnabled={debugViewEnabled}
+          runViewEnabled={runViewEnabled}
           yamlTree={yamlTree}
           yamlCode={yamlCode}
           flushPendingEdits={flushPendingTreeSerialization}
