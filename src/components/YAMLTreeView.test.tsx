@@ -487,6 +487,88 @@ describe('YAMLTreeView search filtering', () => {
     });
   });
 
+  it('does not duplicate the scenarios container from the keyboard shortcut', async () => {
+    let latestTree: YAMLNode | null = null;
+
+    renderInteractiveTreeView({
+      tree: {
+        id: 'test-root',
+        type: 'test',
+        name: 'Recording',
+        expanded: true,
+        children: [
+          {
+            id: 'scenarios',
+            type: 'scenarios',
+            name: 'Scenarios',
+            expanded: true,
+            children: [{ id: 'scenario-1', type: 'scenario', name: 'Recorded Scenario', children: [] }],
+          },
+          {
+            id: 'http-defaults',
+            type: 'http_defaults',
+            name: 'HTTP Defaults',
+            children: [],
+          },
+        ],
+      },
+      selectedNodeIds: ['scenarios'],
+      selectedNodeId: 'scenarios',
+      onTreeStateChange: tree => {
+        latestTree = tree;
+      },
+    });
+
+    await waitFor(() => {
+      expect(latestTree?.children?.map(node => node.id)).toEqual(['scenarios', 'http-defaults']);
+    });
+
+    fireEvent.keyDown(screen.getByRole('tree'), { key: 'd', ctrlKey: true });
+
+    expect(latestTree?.children?.map(node => node.id)).toEqual(['scenarios', 'http-defaults']);
+    expect(latestTree?.children?.filter(node => node.type === 'scenarios')).toHaveLength(1);
+  });
+
+  it('does not paste the scenarios container from the clipboard', async () => {
+    let latestTree: YAMLNode | null = null;
+
+    renderInteractiveTreeView({
+      tree: {
+        id: 'test-root',
+        type: 'test',
+        name: 'Recording',
+        expanded: true,
+        children: [
+          {
+            id: 'scenarios',
+            type: 'scenarios',
+            name: 'Scenarios',
+            expanded: true,
+            children: [{ id: 'scenario-1', type: 'scenario', name: 'Recorded Scenario', children: [] }],
+          },
+          {
+            id: 'http-defaults',
+            type: 'http_defaults',
+            name: 'HTTP Defaults',
+            children: [],
+          },
+        ],
+      },
+      selectedNodeIds: ['scenarios'],
+      selectedNodeId: 'scenarios',
+      onTreeStateChange: tree => {
+        latestTree = tree;
+      },
+    });
+
+    const treeElement = screen.getByRole('tree');
+    fireEvent.keyDown(treeElement, { key: 'c', ctrlKey: true });
+    fireEvent.keyDown(treeElement, { key: 'v', ctrlKey: true });
+
+    expect(latestTree?.children?.map(node => node.id)).toEqual(['scenarios', 'http-defaults']);
+    expect(latestTree?.children?.filter(node => node.type === 'scenarios')).toHaveLength(1);
+  });
+
   it('keeps request descendants hidden when a scenario only matches through duplicated request data', () => {
     renderInteractiveTreeView({
       tree: {

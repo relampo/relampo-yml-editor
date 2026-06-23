@@ -308,7 +308,7 @@ export function YAMLTreeView({
   const canAddNodeToTarget = (target: YAMLNode, nodeType: YAMLAddableNodeType) =>
     !(nodeType === 'scenario' && target.type === 'scenarios' && target.children?.some(child => child.type === 'scenario'));
 
-  const canDuplicateNode = (node: YAMLNode | null | undefined) => node?.type !== 'scenario';
+  const canDuplicateNode = (node: YAMLNode | null | undefined) => node?.type !== 'scenario' && node?.type !== 'scenarios';
 
   const handleAddNode = (nodeType: YAMLAddableNodeType) => {
     if (!contextMenu || !tree) return;
@@ -461,7 +461,7 @@ export function YAMLTreeView({
 
     const copySuffix = t('yamlEditor.common.copy') || 'Copy';
     const pastedNodes = clipboardNodes
-      .filter(node => node.type !== 'scenario')
+      .filter(node => canDuplicateNode(node))
       .map(node => cloneNodeWithNewIds(node, copySuffix));
     if (pastedNodes.length === 0) return;
 
