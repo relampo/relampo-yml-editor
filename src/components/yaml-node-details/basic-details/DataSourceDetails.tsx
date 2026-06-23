@@ -119,13 +119,6 @@ export function DataSourceDetails({
         <p className="text-[10px] text-zinc-500 mt-1 italic">Define variable names separated by commas manually.</p>
       </div>
 
-      <DataSourcePreviewPanel
-        enabled={fileBrowseEnabled}
-        path={sourcePath}
-        type={sourceData.type || 'csv'}
-        variableNames={sourceData.variable_names || ''}
-      />
-
       <div className="flex gap-4">
         <div className="w-30 shrink-0">
           <SelectField
@@ -182,6 +175,13 @@ export function DataSourceDetails({
           </div>
         </>
       )}
+
+      <DataSourcePreviewPanel
+        enabled={fileBrowseEnabled}
+        path={sourcePath}
+        type={sourceData.type || 'csv'}
+        variableNames={sourceData.variable_names || ''}
+      />
 
       {showDiagnosis && (
         <div className="mt-8 pt-4 border-t border-white/5">
