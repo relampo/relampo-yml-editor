@@ -1,0 +1,163 @@
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { DebugSection } from './debugSection';
+import { YAMLDebugSession } from './YAMLDebugView';
+import type { YAMLNode } from '../types/yaml';
+import type { EngineEvent } from '../utils/debugApi';
+
+const debugApiMock = vi.hoisted(() => {
+  const handlers: Array<{
+    onEvent: (event: EngineEvent) => void;
+    onDone: (error: string | null) => void;
+    onConnectionError: () => void;
+  }> = [];
+  return {
+    handlers,
+    startDebugRun: vi.fn(async () => 'run-1'),
+    streamDebugRun: vi.fn((_runId: string, handler: (typeof handlers)[number]) => {
+      handlers.push(handler);
+      return vi.fn();
+    }),
+  };
+});
+
+vi.mock('../utils/debugApi', async importOriginal => {
+  const actual = await importOriginal<typeof import('../utils/debugApi')>();
+  return {
+    ...actual,
+    startDebugRun: debugApiMock.startDebugRun,
+    streamDebugRun: debugApiMock.streamDebugRun,
+  };
+});
+
+afterEach(() => {
+  cleanup();
+  debugApiMock.handlers.length = 0;
+  debugApiMock.startDebugRun.mockClear();
+  debugApiMock.streamDebugRun.mockClear();
+});
+
+function event(overrides: Partial<EngineEvent>): EngineEvent {
+  return {
+    ts: '2026-06-17T21:00:00Z',
+    name: 'Request A',
+    method: 'GET',
+    path: '/a',
+    status: 200,
+    latency_ms: 1,
+    concurrency: 1,
+    ...overrides,
+  };
+}
+
+describe('YAMLDebugSession RLP debug fixes', () => {
+  it('does not render explanatory text under the selected debug request title', async () => {
+    const { container } = render(
+      <YAMLDebugSession
+        tree={null}
+        yamlCode={'test:\n  name: header-cleanup\n'}
+        documentReady
+        validationErrors={[]}
+        onSelectNode={vi.fn()}
+        onEditNode={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
+
+    act(() => {
+      debugApiMock.handlers[0].onEvent(event({ name: 'Do not show this explanation', path: '/external' }));
+    });
+
+    expect(await screen.findByRole('heading', { name: '/external' })).toBeInTheDocument();
+
+    const heading = container.querySelector('h3');
+    const titleColumn = heading?.parentElement?.parentElement;
+    expect(titleColumn?.querySelector('p')).toBeNull();
+  });
+
+  it('shows redirected follow-up context in logs instead of a separate banner', async () => {
+    const parentRequest: YAMLNode = {
+      id: 'parent',
+      type: 'request',
+      name: '[10] POST /login',
+      data: { request_id: 10, method: 'POST', url: '/login', chain_id: 'rc-10', chain_role: 'parent' },
+      path: ['scenarios', 0, 'steps', 10],
+    };
+    const finalRequest: YAMLNode = {
+      id: 'final',
+      type: 'request',
+      name: '[11] GET /dashboard',
+      data: { request_id: 11, method: 'GET', url: '/dashboard', chain_id: 'rc-10', chain_role: 'final' },
+      path: ['scenarios', 0, 'steps', 11],
+    };
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'root',
+      name: 'root',
+      children: [parentRequest, finalRequest],
+    };
+
+    render(
+      <YAMLDebugSession
+        tree={tree}
+        yamlCode={'test:\n  name: redirect-log\n'}
+        documentReady
+        validationErrors={[]}
+        redirectedRequestMap={{
+          final: {
+            sourceNodeId: 'parent',
+            sourceRequestLabel: '[10] POST /login',
+            matchedLocation: '/dashboard',
+          },
+        }}
+        onSelectNode={vi.fn()}
+        onEditNode={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
+
+    act(() => {
+      debugApiMock.handlers[0].onEvent(
+        event({
+          name: '[10] GET /dashboard',
+          path: 'http://example.test/dashboard',
+          step_path: 'scenarios[0].steps[10].redirects[1]',
+          chain_id: 'rc-10',
+          chain_role: 'final',
+          redirect_index: 1,
+        }),
+      );
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'logs' }));
+
+    expect(await screen.findByText(/redirected request launched by \[10\] POST \/login/)).toBeInTheDocument();
+    expect(screen.getByText(/→ \/dashboard/)).toBeInTheDocument();
+  });
+});
+
+describe('DebugSection RLP body layout', () => {
+  it('keeps metadata compact and gives request bodies the primary reading area', () => {
+    const { container } = render(
+      <DebugSection
+        rows={[
+          ['Content-Type', 'application/x-www-form-urlencoded'],
+          ['Authorization', 'Bearer token'],
+        ]}
+        body="javax.faces.ViewState=very-long-correlated-value"
+      />,
+    );
+
+    const metadata = screen.getByText('Metadata and headers (2)').closest('details');
+    expect(metadata).not.toHaveAttribute('open');
+
+    const body = container.querySelector('pre');
+    expect(body).toHaveClass('min-h-72');
+    expect(body).toHaveClass('whitespace-pre-wrap');
+    expect(body).toHaveTextContent('javax.faces.ViewState=very-long-correlated-value');
+  });
+});

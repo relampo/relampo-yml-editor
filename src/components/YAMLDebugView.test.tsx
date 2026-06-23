@@ -353,6 +353,51 @@ describe('DebugSection highlighting', () => {
     expect(labelCell).toHaveClass('break-words');
     expect(labelCell).not.toHaveAttribute('title', label);
   });
+
+  it('scrolls the active match into view when navigating search results', async () => {
+    const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
+    const scrollIntoView = vi.fn();
+    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+      configurable: true,
+      value: scrollIntoView,
+    });
+
+    try {
+      const { container, rerender } = render(
+        <DebugSection
+          rows={[['Header', 'first token']]}
+          body={'line one\nline two token'}
+          searchText="token"
+          searchMode="text"
+          currentMatchIndex={0}
+        />,
+      );
+
+      scrollIntoView.mockClear();
+
+      rerender(
+        <DebugSection
+          rows={[['Header', 'first token']]}
+          body={'line one\nline two token'}
+          searchText="token"
+          searchMode="text"
+          currentMatchIndex={1}
+        />,
+      );
+
+      await waitFor(() => expect(scrollIntoView).toHaveBeenCalledWith({ block: 'center', inline: 'nearest' }));
+      expect(container.querySelector('mark[data-match-index="1"]')).toHaveClass('ring-amber-500');
+    } finally {
+      if (originalScrollIntoView) {
+        Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+          configurable: true,
+          value: originalScrollIntoView,
+        });
+      } else {
+        delete HTMLElement.prototype.scrollIntoView;
+      }
+    }
+  });
 });
 
 describe('YAMLDebugSession tree selection sync', () => {
@@ -378,8 +423,8 @@ describe('YAMLDebugSession tree selection sync', () => {
       onEditNode: vi.fn(),
     };
 
-    const { rerender } = render(
-      <YAMLDebugSession {...commonProps} selectedNode={null} treeFocusNodeId={null} />,
+    render(
+      <YAMLDebugSession {...commonProps} />,
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
@@ -397,13 +442,8 @@ describe('YAMLDebugSession tree selection sync', () => {
       );
     });
 
-    rerender(
-      <YAMLDebugSession {...commonProps} selectedNode={thinkTime} treeFocusNodeId={thinkTime.id} />,
-    );
-
     expect(await screen.findAllByText('think_time')).not.toHaveLength(0);
     expect(screen.getAllByText('THINK_TIME')).not.toHaveLength(0);
-    expect(screen.queryByText('No debug event for "Think Time" in the current run.')).not.toBeInTheDocument();
   });
 
   it('maps repeated think time events by engine suffix', async () => {
@@ -436,8 +476,8 @@ describe('YAMLDebugSession tree selection sync', () => {
       onEditNode: vi.fn(),
     };
 
-    const { rerender } = render(
-      <YAMLDebugSession {...commonProps} selectedNode={null} treeFocusNodeId={null} />,
+    render(
+      <YAMLDebugSession {...commonProps} />,
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
@@ -466,11 +506,6 @@ describe('YAMLDebugSession tree selection sync', () => {
       );
     });
 
-    rerender(
-      <YAMLDebugSession {...commonProps} selectedNode={secondThinkTime} treeFocusNodeId={secondThinkTime.id} />,
-    );
-
-    expect(screen.queryByText('No debug event for "Think Time" in the current run.')).not.toBeInTheDocument();
     expect(screen.getAllByText('2000ms')).not.toHaveLength(0);
   });
 
@@ -504,8 +539,8 @@ describe('YAMLDebugSession tree selection sync', () => {
       onEditNode: vi.fn(),
     };
 
-    const { rerender } = render(
-      <YAMLDebugSession {...commonProps} selectedNode={null} treeFocusNodeId={null} />,
+    render(
+      <YAMLDebugSession {...commonProps} />,
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
@@ -534,11 +569,6 @@ describe('YAMLDebugSession tree selection sync', () => {
       );
     });
 
-    rerender(
-      <YAMLDebugSession {...commonProps} selectedNode={secondThinkTime} treeFocusNodeId={secondThinkTime.id} />,
-    );
-
-    expect(screen.queryByText('No debug event for "Think Time" in the current run.')).not.toBeInTheDocument();
     expect(screen.getAllByText('2000ms')).not.toHaveLength(0);
   });
 
@@ -569,8 +599,6 @@ describe('YAMLDebugSession tree selection sync', () => {
         tree={tree}
         yamlCode={'test:\n  name: variables\n'}
         documentReady
-        selectedNode={null}
-        treeFocusNodeId={null}
         validationErrors={[]}
         onSelectNode={vi.fn()}
         onEditNode={vi.fn()}
@@ -619,8 +647,6 @@ describe('YAMLDebugSession tree selection sync', () => {
         tree={tree}
         yamlCode={'test:\n  name: two-vus\n'}
         documentReady
-        selectedNode={null}
-        treeFocusNodeId={null}
         validationErrors={[]}
         onSelectNode={vi.fn()}
         onEditNode={vi.fn()}
@@ -675,8 +701,6 @@ describe('YAMLDebugSession tree selection sync', () => {
         tree={tree}
         yamlCode={'test:\n  name: request-id\n'}
         documentReady
-        selectedNode={null}
-        treeFocusNodeId={null}
         validationErrors={[]}
         onSelectNode={vi.fn()}
         onEditNode={vi.fn()}
@@ -706,55 +730,7 @@ describe('YAMLDebugSession tree selection sync', () => {
     expect(screen.getAllByText('http://www.testingyes.com/demo/index.php?main_page=checkout_payment')).not.toHaveLength(0);
   });
 
-  it('shows an empty debug-event state when a focused tree node did not run', async () => {
-    const requestA: YAMLNode = {
-      id: 'a',
-      type: 'request',
-      name: 'Request A',
-      data: { method: 'GET', url: '/a' },
-    };
-    const requestB: YAMLNode = {
-      id: 'b',
-      type: 'request',
-      name: 'Request B',
-      data: { method: 'GET', url: '/b' },
-    };
-    const tree: YAMLNode = {
-      id: 'root',
-      type: 'root',
-      name: 'root',
-      children: [requestA, requestB],
-    };
-    const commonProps = {
-      tree,
-      yamlCode: 'test:\n  name: sync\n',
-      documentReady: true,
-      validationErrors: [],
-      onSelectNode: vi.fn(),
-      onEditNode: vi.fn(),
-    };
-
-    const { rerender } = render(
-      <YAMLDebugSession {...commonProps} selectedNode={null} treeFocusNodeId={null} />,
-    );
-
-    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
-    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
-
-    act(() => {
-      debugApiMock.handlers[0].onEvent(event({ name: 'Request A', path: '/a' }));
-    });
-
-    expect(await screen.findAllByText('/a')).not.toHaveLength(0);
-
-    rerender(
-      <YAMLDebugSession {...commonProps} selectedNode={requestB} treeFocusNodeId={requestB.id} />,
-    );
-
-    expect(screen.getByText('No debug event for "Request B" in the current run.')).toBeInTheDocument();
-  });
-
-  it('maps a focused disabled tree request to its debug event', async () => {
+  it('maps a disabled tree request when its debug event is selected', async () => {
     const requestA: YAMLNode = {
       id: 'a',
       type: 'request',
@@ -782,8 +758,8 @@ describe('YAMLDebugSession tree selection sync', () => {
       onEditNode: vi.fn(),
     };
 
-    const { rerender } = render(
-      <YAMLDebugSession {...commonProps} selectedNode={null} treeFocusNodeId={null} />,
+    render(
+      <YAMLDebugSession {...commonProps} />,
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
@@ -793,13 +769,8 @@ describe('YAMLDebugSession tree selection sync', () => {
       debugApiMock.handlers[0].onEvent(event({ name: 'Request B', path: '/b' }));
     });
 
-    rerender(
-      <YAMLDebugSession {...commonProps} selectedNode={requestB} treeFocusNodeId={requestB.id} />,
-    );
-
     expect(screen.getAllByText('GET')).not.toHaveLength(0);
     expect(screen.getAllByText('/b')).not.toHaveLength(0);
-    expect(screen.queryByText('No debug event for "Request B" in the current run.')).not.toBeInTheDocument();
   });
 
   it('clears the tree selection when a selected debug event has no matching tree request', async () => {
@@ -822,8 +793,6 @@ describe('YAMLDebugSession tree selection sync', () => {
         tree={tree}
         yamlCode={'test:\n  name: unmatched-debug-event\n'}
         documentReady
-        selectedNode={requestA}
-        treeFocusNodeId={null}
         validationErrors={[]}
         onSelectNode={onSelectNode}
         onEditNode={vi.fn()}
@@ -844,57 +813,50 @@ describe('YAMLDebugSession tree selection sync', () => {
     expect(onSelectNode).toHaveBeenCalledWith(null);
   });
 
-  it('highlights and scrolls all matching debug events when a tree request has multiple VU events', async () => {
-    const scrollIntoView = vi.fn();
-    Object.defineProperty(Element.prototype, 'scrollIntoView', {
-      configurable: true,
-      value: scrollIntoView,
-    });
-    const requestA: YAMLNode = {
-      id: 'a',
-      type: 'request',
-      name: 'Request A',
-      data: { method: 'GET', url: '/a' },
-      path: ['scenarios', 0, 'steps', 0],
-    };
-    const tree: YAMLNode = {
-      id: 'root',
-      type: 'root',
-      name: 'root',
-      children: [requestA],
-    };
-    const commonProps = {
-      tree,
-      yamlCode: 'test:\n  name: two-vu-sync\n',
-      documentReady: true,
-      validationErrors: [],
-      onSelectNode: vi.fn(),
-      onEditNode: vi.fn(),
-    };
-
-    const { rerender } = render(
-      <YAMLDebugSession {...commonProps} selectedNode={null} treeFocusNodeId={null} />,
+  it('moves timeline selection and focus with arrow keys', async () => {
+    render(
+      <YAMLDebugSession
+        tree={null}
+        yamlCode={'test:\n  name: keyboard-timeline\n'}
+        documentReady
+        validationErrors={[]}
+        onSelectNode={vi.fn()}
+        onEditNode={vi.fn()}
+      />,
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
     await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
 
     act(() => {
-      debugApiMock.handlers[0].onEvent(event({ name: 'Request A', path: '/a', step_path: 'scenarios[0].steps[0]', vu: 1 }));
-      debugApiMock.handlers[0].onEvent(event({ name: 'Request A', path: '/a', step_path: 'scenarios[0].steps[0]', vu: 2 }));
+      debugApiMock.handlers[0].onEvent(event({ name: 'First request', path: '/first' }));
+      debugApiMock.handlers[0].onEvent(event({ name: 'Second request', path: '/second' }));
+      debugApiMock.handlers[0].onEvent(event({ name: 'Third request', path: '/third' }));
     });
 
-    rerender(
-      <YAMLDebugSession {...commonProps} selectedNode={requestA} treeFocusNodeId={requestA.id} />,
-    );
+    const timelineButton = (path: string) =>
+      screen.getAllByRole('button').find(button => button.textContent?.includes(path)) as HTMLButtonElement;
 
-    expect(screen.getByText('Select a debug event to inspect request and response data.')).toBeInTheDocument();
-    expect(screen.queryByText('Virtual user 1')).not.toBeInTheDocument();
-    expect(screen.queryByText('Virtual user 2')).not.toBeInTheDocument();
-    await waitFor(() => expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest', behavior: 'smooth' }));
+    const first = timelineButton('/first');
+    const second = timelineButton('/second');
 
-    const vuButtons = screen.getAllByRole('button').filter(button => button.textContent?.includes('/a'));
-    expect(vuButtons).toHaveLength(2);
-    expect(vuButtons.every(button => button.className.includes('border-yellow-400/50'))).toBe(true);
+    fireEvent.click(first);
+    first.focus();
+    expect(first).toHaveAttribute('aria-current', 'true');
+
+    fireEvent.keyDown(first, { key: 'ArrowDown' });
+
+    await waitFor(() => {
+      expect(second).toHaveAttribute('aria-current', 'true');
+      expect(document.activeElement).toBe(second);
+    });
+
+    fireEvent.keyDown(second, { key: 'ArrowUp' });
+
+    await waitFor(() => {
+      expect(first).toHaveAttribute('aria-current', 'true');
+      expect(document.activeElement).toBe(first);
+    });
   });
+
 });

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -15,7 +15,7 @@ import {
   Users,
   XCircle,
 } from 'lucide-react';
-import type { YAMLNode } from '../types/yaml';
+import type { RedirectedRequestInfo, YAMLNode } from '../types/yaml';
 import {
   collectDebugEventTargets,
   matchDebugEventTarget,
@@ -146,9 +146,8 @@ interface YAMLDebugSessionProps {
   // YAML while the tree already shows an uncommitted edit.
   flushPendingEdits?: () => string;
   documentReady: boolean;
-  selectedNode: YAMLNode | null;
-  treeFocusNodeId: string | null;
   validationErrors: string[];
+  redirectedRequestMap?: Record<string, RedirectedRequestInfo>;
   onSelectNode: (node: YAMLNode | null) => void;
   onEditNode: (node: YAMLNode) => void;
 }
@@ -158,9 +157,8 @@ export function YAMLDebugSession({
   yamlCode,
   flushPendingEdits,
   documentReady,
-  selectedNode,
-  treeFocusNodeId,
   validationErrors,
+  redirectedRequestMap = {},
   onSelectNode,
   onEditNode,
 }: YAMLDebugSessionProps) {
@@ -170,6 +168,7 @@ export function YAMLDebugSession({
   const [activeId, setActiveId] = useState<string | null>(null);
   const [detailTab, setDetailTab] = useState<DetailTab>('overview');
   const [debugVUs, setDebugVUs] = useState<DebugVUs>(1);
+  const timelineButtonRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
 
   const debugEventTargets = useMemo(() => collectDebugEventTargets(tree), [tree]);
   const entries = useMemo<DebugEntry[]>(
@@ -184,7 +183,6 @@ export function YAMLDebugSession({
   // Bumped on every start and on Stop; a slow startDebugRun continuation checks
   // it and bails if it was superseded or stopped while the POST was in flight.
   const startTokenRef = useRef(0);
-  const lastTimelineScrollRef = useRef<string | null>(null);
   const storedRunRef = useRef<StoredRun | null | undefined>(undefined);
   if (storedRunRef.current === undefined) {
     storedRunRef.current = readStoredRun();
@@ -247,25 +245,7 @@ export function YAMLDebugSession({
     subscribe(storedRun.id, true);
   }, [documentReady, subscribe, yamlCode]);
 
-  const treeFocusedEntries =
-    selectedNode && treeFocusNodeId === selectedNode.id
-      ? entries.filter(candidate => candidate.node?.id === selectedNode.id)
-      : [];
-  const treeFocusedEntry = treeFocusedEntries.length === 1 ? treeFocusedEntries[0] : null;
-  const nodeWithoutEvent =
-    selectedNode && treeFocusNodeId === selectedNode.id && entries.length > 0 && treeFocusedEntries.length === 0
-      ? selectedNode
-      : null;
-  const nodeWithAmbiguousEvents =
-    selectedNode && treeFocusNodeId === selectedNode.id && treeFocusedEntries.length > 1 ? selectedNode : null;
-  const displayedActiveId = treeFocusedEntry?.id ?? activeId;
-  const activeEntry = nodeWithoutEvent
-    ? null
-    : nodeWithAmbiguousEvents
-      ? null
-      : entries.find(entry => entry.id === displayedActiveId) || entries[entries.length - 1];
-  const treeFocusedEntryIds = new Set(treeFocusedEntries.map(entry => entry.id));
-  const firstTreeFocusedEntryId = treeFocusedEntries[0]?.id ?? null;
+  const activeEntry = entries.find(entry => entry.id === activeId) || entries[entries.length - 1];
   const passed = entries.filter(entry => entry.status === 'passed').length;
   const failed = entries.filter(entry => entry.status === 'failed').length;
   const redirects = entries.reduce(
@@ -311,6 +291,27 @@ export function YAMLDebugSession({
   const selectEntry = (entry: DebugEntry) => {
     setActiveId(entry.id);
     onSelectNode(entry.node);
+  };
+
+  const moveTimelineSelection = (entry: DebugEntry, direction: -1 | 1) => {
+    const currentIndex = entries.findIndex(candidate => candidate.id === entry.id);
+    if (currentIndex < 0) return;
+
+    const nextIndex = Math.min(Math.max(currentIndex + direction, 0), entries.length - 1);
+    if (nextIndex === currentIndex) return;
+
+    const nextEntry = entries[nextIndex];
+    selectEntry(nextEntry);
+
+    window.requestAnimationFrame(() => {
+      timelineButtonRefs.current.get(nextEntry.id)?.focus();
+    });
+  };
+
+  const handleTimelineEntryKeyDown = (event: KeyboardEvent<HTMLButtonElement>, entry: DebugEntry) => {
+    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+    event.preventDefault();
+    moveTimelineSelection(entry, event.key === 'ArrowDown' ? 1 : -1);
   };
 
   return (
@@ -378,13 +379,6 @@ export function YAMLDebugSession({
                 );
               })}
             </fieldset>
-            <span className="inline-flex h-9 items-center rounded border border-white/10 bg-[#161616] px-3 text-xs text-zinc-400">
-              1 pass
-            </span>
-            <span className="inline-flex h-9 items-center gap-2 rounded border border-emerald-400/20 bg-emerald-400/10 px-3 text-xs text-emerald-300">
-              <ShieldCheck className="h-4 w-4" />
-              {hasValidationErrors ? 'Blocked' : 'Validate'}
-            </span>
           </div>
         </div>
       </div>
@@ -455,26 +449,25 @@ export function YAMLDebugSession({
               ) : (
                 <div className="space-y-2">
                   {entries.map(entry => {
-                    const active = activeEntry?.id === entry.id || treeFocusedEntryIds.has(entry.id);
+                    const active = activeEntry?.id === entry.id;
                     const requestNumber = String(entry.node?.data?.request_id ?? entry.event.request_id ?? '').trim();
                     return (
                       <button
                         key={entry.id}
                         ref={element => {
-                          const scrollKey =
-                            treeFocusNodeId && entry.id === firstTreeFocusedEntryId ? `${treeFocusNodeId}:${entry.id}` : null;
-                          if (element && scrollKey && lastTimelineScrollRef.current !== scrollKey) {
-                            lastTimelineScrollRef.current = scrollKey;
-                            if (typeof element.scrollIntoView === 'function') {
-                              element.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-                            }
+                          if (element) {
+                            timelineButtonRefs.current.set(entry.id, element);
+                          } else {
+                            timelineButtonRefs.current.delete(entry.id);
                           }
                         }}
                         type="button"
                         onClick={() => selectEntry(entry)}
+                        onKeyDown={event => handleTimelineEntryKeyDown(event, entry)}
+                        aria-current={active ? 'true' : undefined}
                         className={`w-full border px-3 py-2.5 text-left transition-colors ${
                           active ? 'border-yellow-400/50 bg-yellow-400/10' : 'border-white/10 bg-[#111111] hover:border-white/20'
-                        }`}
+                        } focus:outline-none focus-visible:border-yellow-400/70 focus-visible:ring-2 focus-visible:ring-yellow-400/40`}
                       >
                         <div className="flex min-w-0 items-center gap-3">
                           <StatusIcon status={entry.status} />
@@ -526,9 +519,6 @@ export function YAMLDebugSession({
                         {activeEntry.event.path || activeEntry.event.name}
                       </h3>
                     </div>
-                    <p className="mt-1 text-xs text-zinc-500">
-                      {activeEntry.node ? 'Mapped to the selected tree node.' : activeEntry.event.name}
-                    </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     {activeEntry.node && (
@@ -570,20 +560,19 @@ export function YAMLDebugSession({
               </div>
 
               <div className="min-h-0 flex-1 overflow-y-auto p-4">
-                <DebugInspectorContent key={activeEntry.id} entry={activeEntry} tab={detailTab} />
+                <DebugInspectorContent
+                  key={activeEntry.id}
+                  entry={activeEntry}
+                  tab={detailTab}
+                  redirectedInfo={activeEntry.node ? (redirectedRequestMap[activeEntry.node.id] ?? null) : null}
+                />
               </div>
             </div>
           ) : (
             <div className="flex h-full items-center justify-center px-8 text-center">
               <div>
                 <TerminalSquare className="mx-auto h-10 w-10 text-zinc-700" />
-                <p className="mt-4 text-sm text-zinc-400">
-                  {nodeWithoutEvent
-                    ? `No debug event for "${nodeWithoutEvent.name}" in the current run.`
-                    : nodeWithAmbiguousEvents
-                      ? 'Select a debug event to inspect request and response data.'
-                    : 'Select a debug event to inspect request and response data.'}
-                </p>
+                <p className="mt-4 text-sm text-zinc-400">Select a debug event to inspect request and response data.</p>
               </div>
             </div>
           )}
@@ -593,7 +582,15 @@ export function YAMLDebugSession({
   );
 }
 
-function DebugInspectorContent({ entry, tab }: { entry: DebugEntry; tab: DetailTab }) {
+function DebugInspectorContent({
+  entry,
+  tab,
+  redirectedInfo,
+}: {
+  entry: DebugEntry;
+  tab: DetailTab;
+  redirectedInfo?: RedirectedRequestInfo | null;
+}) {
   const [requestSearch, setRequestSearch] = useState('');
   const [requestSearchMode, setRequestSearchMode] = useState<SearchMode>('text');
   const [requestMatchIndex, setRequestMatchIndex] = useState(0);
@@ -730,6 +727,12 @@ function DebugInspectorContent({ entry, tab }: { entry: DebugEntry; tab: DetailT
             [{time}] redirect {index + 1}: {hop.status} {hop.url || ''} → {hop.location || hop.target_url || ''}
           </p>
         ))}
+        {redirectedInfo && (
+          <p className="text-zinc-400">
+            [{time}] redirected request launched by {redirectedInfo.sourceRequestLabel}
+            {redirectedInfo.matchedLocation ? ` → ${redirectedInfo.matchedLocation}` : ''}
+          </p>
+        )}
         {event.err && <p className="text-red-300">[{time}] {event.err}</p>}
       </div>
     );
