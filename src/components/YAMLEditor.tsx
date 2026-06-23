@@ -86,7 +86,6 @@ export function YAMLEditor() {
   const [restoredDraftUpdatedAt, setRestoredDraftUpdatedAt] = useState<string | null>(null);
   const [isNewDialogOpen, setIsNewDialogOpen] = useState(false);
   const [treeSearchQuery, setTreeSearchQuery] = useState('');
-  const [debugTreeFocusNodeId, setDebugTreeFocusNodeId] = useState<string | null>(null);
   const fallbackRootNameRef = useRef<string | null>(null);
   const hasDiscoveredTreeContextMenuRef = useRef(false);
 
@@ -398,13 +397,8 @@ export function YAMLEditor() {
   };
 
   const handleTreeSelectionChange = (primaryNode: YAMLNode | null, nodeIds: string[]) => {
-    setDebugTreeFocusNodeId(null);
     handleSelectionChange(primaryNode, nodeIds);
-  };
-
-  const handleDebugTreeSelectionChange = (primaryNode: YAMLNode | null, nodeIds: string[]) => {
-    handleSelectionChange(primaryNode, nodeIds);
-    setDebugTreeFocusNodeId(primaryNode?.id ?? null);
+    setViewMode('tree');
   };
 
   const handleNodeUpdate = (nodeId: string, updatedData: Record<string, unknown>) => {
@@ -778,7 +772,7 @@ export function YAMLEditor() {
                 selectedNode={selectedNode}
                 selectedNodeIds={selectedNodeIds}
                 redirectedRequestMap={redirectedRequestMap}
-                onSelectionChange={handleDebugTreeSelectionChange}
+                onSelectionChange={handleTreeSelectionChange}
                 onTreeChange={handleTreeChange}
                 onContextMenuOpened={handleTreeContextMenuOpened}
               />
@@ -812,14 +806,11 @@ export function YAMLEditor() {
           flushPendingEdits={flushPendingTreeSerialization}
           documentReady={isInitialized}
           selectedNode={selectedNode}
-          treeFocusNodeId={debugTreeFocusNodeId}
           validationErrors={validationErrors}
           onDebugSelectNode={node => {
-            setDebugTreeFocusNodeId(null);
             handleSelectionChange(node, node ? [node.id] : []);
           }}
           onDebugEditNode={node => {
-            setDebugTreeFocusNodeId(null);
             handleSelectionChange(node, [node.id]);
             setViewMode('tree');
           }}

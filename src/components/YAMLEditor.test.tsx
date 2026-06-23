@@ -306,7 +306,7 @@ describe('YAMLEditor draft restoration', () => {
     });
   });
 
-  it('keeps the Debug tab active when selecting a node from the tree shown in Debug', async () => {
+  it('switches to Tree details when selecting a node from the tree shown in Debug', async () => {
     getActiveDraftMock.mockResolvedValueOnce({
       yaml: 'test:\n  name: restored\n',
       fileName: 'restored.yaml',
@@ -323,8 +323,9 @@ describe('YAMLEditor draft restoration', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'select tree root' }));
 
-    expect(screen.getByText('Debug Session')).toBeInTheDocument();
-    expect(screen.queryByText('Element details')).not.toBeInTheDocument();
+    expect(screen.getByText('Element details')).toBeInTheDocument();
+    expect(screen.getByTestId('node-details')).toHaveTextContent('Restored plan');
+    expect(screen.queryByText('Debug Session')).not.toBeInTheDocument();
   });
 
   describe('new document dialog', () => {

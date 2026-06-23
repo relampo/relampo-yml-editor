@@ -69,4 +69,30 @@ describe('validateYAMLSemantics', () => {
 
     expect(validateYAMLSemantics(tree)).toEqual([]);
   });
+
+  it('flags more than one scenario', () => {
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'test',
+      name: 'Test',
+      children: [
+        {
+          id: 'scenarios',
+          type: 'scenarios',
+          name: 'Scenarios',
+          children: [
+            { id: 'scenario-1', type: 'scenario', name: 'Scenario A', children: [] },
+            { id: 'scenario-2', type: 'scenario', name: 'Scenario B', children: [] },
+          ],
+        },
+      ],
+    };
+
+    expect(validateYAMLSemantics(tree)).toEqual([
+      {
+        nodeId: 'scenarios',
+        message: 'Relampo Studio supports only one scenario. Remove or merge extra scenarios before running Debug.',
+      },
+    ]);
+  });
 });

@@ -74,8 +74,16 @@ export function YAMLContextMenu({
     }
   }, [x, y]);
 
-  const addableItems = getAddableItems(node.type, t);
+  const addableItems = getAddableItems(node.type, t, node);
   const canAddChildren = addableItems.length > 0;
+  const canShowNodeActions = node.type !== 'root' && node.type !== 'test' && node.type !== 'scenarios' && node.type !== 'steps';
+  const canToggleEnabled = canShowNodeActions && Boolean(onToggleEnabled);
+  const canDuplicate = canShowNodeActions && node.type !== 'scenario' && Boolean(onDuplicate);
+  const canRemove = canShowNodeActions;
+
+  if (!canAddChildren && !canToggleEnabled && !canDuplicate && !canRemove) {
+    return null;
+  }
 
   return (
     <div
@@ -117,11 +125,7 @@ export function YAMLContextMenu({
       )}
 
       {/* Enable/Disable option */}
-      {node.type !== 'root' &&
-        node.type !== 'test' &&
-        node.type !== 'scenarios' &&
-        node.type !== 'steps' &&
-        onToggleEnabled && (
+      {canToggleEnabled && (
           <button
             onClick={() => {
               const isCurrentlyEnabled = node.data?.enabled !== false;
@@ -144,14 +148,14 @@ export function YAMLContextMenu({
           </button>
         )}
 
-      {node.type !== 'root' && node.type !== 'test' && node.type !== 'scenarios' && node.type !== 'steps' && (
+      {canRemove && (
         <>
           <div className="h-px bg-white/5 my-1" />
 
-          {onDuplicate && (
+          {canDuplicate && (
             <button
               onClick={() => {
-                onDuplicate(node.id);
+                onDuplicate?.(node.id);
                 onClose();
               }}
               className="w-full px-3 py-2 flex items-center gap-3 hover:bg-white/5 text-left transition-colors text-zinc-300"

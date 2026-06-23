@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { YAMLNode } from '../../types/yaml';
 import type { RedirectedRequestInfo } from '../../types/yaml';
 import {
+  addNodeToTree,
   getTransactionWrapValidation,
   syncRedirectSourceFollowRedirects,
   updateNodeEnabled,
@@ -53,6 +54,19 @@ function findNodeById(node: YAMLNode, nodeId: string): YAMLNode | null {
 }
 
 describe('transaction grouping operations', () => {
+  it('does not add a second scenario under scenarios', () => {
+    const tree = createBaseTree();
+
+    const result = addNodeToTree(tree, 'scenarios', {
+      id: 'scenario-2',
+      type: 'scenario',
+      name: 'Scenario 2',
+      children: [],
+    });
+
+    expect(findNodeById(result, 'scenarios')?.children?.map(child => child.id)).toEqual(['scenario-1']);
+  });
+
   it('wraps a valid contiguous sibling selection into a transaction preserving order and position', () => {
     const tree = createBaseTree();
 
