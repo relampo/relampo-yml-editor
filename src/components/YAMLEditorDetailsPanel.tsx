@@ -30,6 +30,7 @@ type YAMLEditorDetailsPanelProps = {
   onAddChildNode: (parentId: string, nodeType: YAMLAddableNodeType) => void;
   onAddChildAction: (metadata: DetailPanelAddAction) => void;
   searchQuery: string;
+  dataSourceFileBrowseEnabled: boolean;
 };
 
 export function YAMLEditorDetailsPanel({
@@ -54,6 +55,7 @@ export function YAMLEditorDetailsPanel({
   onAddChildNode,
   onAddChildAction,
   searchQuery,
+  dataSourceFileBrowseEnabled,
 }: YAMLEditorDetailsPanelProps) {
   return (
     <div className="flex-1 min-w-0 flex flex-col bg-[#0d0d0d]">
@@ -95,6 +97,7 @@ export function YAMLEditorDetailsPanel({
             onAddChildNode={onAddChildNode}
             onAddChildAction={onAddChildAction}
             searchQuery={searchQuery}
+            dataSourceFileBrowseEnabled={dataSourceFileBrowseEnabled}
           />
         </div>
       </div>

@@ -1,5 +1,5 @@
-import { Info } from 'lucide-react';
-import React, { useEffect, useRef, useState } from 'react';
+import { Info, Upload } from 'lucide-react';
+import React, { useEffect, useId, useRef, useState } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import type { AuthConfig } from '../../types/yaml';
 import { Input } from '../ui/input';
@@ -110,40 +110,59 @@ export function SelectField({
 interface FileFieldProps extends EditableFieldProps {
   noMargin?: boolean;
   showPathHint?: boolean;
+  browseEnabled?: boolean;
+  uploadFile?: (file: File) => Promise<string>;
+  accept?: string;
 }
 
-export function FileField({ label, value, field, onChange, noMargin = false, showPathHint = false }: FileFieldProps) {
+export function FileField({
+  label,
+  value,
+  field,
+  onChange,
+  noMargin = false,
+  showPathHint = false,
+  browseEnabled = true,
+  uploadFile,
+  accept,
+}: FileFieldProps) {
   const { t, language } = useLanguage();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const pathHintId = useId();
+  const requiresPathCapablePicker = showPathHint;
+  const isBrowseDisabled = !browseEnabled || (requiresPathCapablePicker && !uploadFile);
+  const showUnavailableHint = showPathHint && isBrowseDisabled;
 
-  const handleBrowseClick = async (event: React.MouseEvent) => {
+  const handleBrowseClick = (event: React.MouseEvent) => {
     event.preventDefault();
-
-    if ((window as any).electron?.selectFile) {
-      try {
-        let path = await (window as any).electron.selectFile();
-        if (Array.isArray(path)) {
-          path = path[0];
-        }
-        if (path) {
-          onChange(field, path);
-        }
-        return;
-      } catch (error) {
-        console.error('Electron file selection failed:', error);
-      }
-    }
+    if (isBrowseDisabled) return;
 
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) {
       return;
     }
-    const path = (file as any).path || file.name;
-    onChange(field, path);
+    setUploadError(null);
+    if (uploadFile) {
+      try {
+        setIsUploading(true);
+        const path = await uploadFile(file);
+        onChange(field, path);
+      } catch (error) {
+        setUploadError(error instanceof Error ? error.message : 'File upload failed');
+      } finally {
+        setIsUploading(false);
+        event.target.value = '';
+      }
+      return;
+    }
+    onChange(field, file.name);
+    event.target.value = '';
   };
 
   return (
@@ -156,61 +175,56 @@ export function FileField({ label, value, field, onChange, noMargin = false, sho
           placeholder="path/to/file.csv"
           className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono h-9.5"
           title={String(value || '')}
+          aria-describedby={showUnavailableHint ? pathHintId : undefined}
         />
         <button
           type="button"
           onClick={handleBrowseClick}
-          className="px-3 py-2 bg-yellow-400/10 border border-yellow-400/30 rounded text-yellow-400 hover:bg-yellow-400/20 text-sm font-medium transition-colors flex items-center gap-2 shrink-0 h-9.5"
+          disabled={isBrowseDisabled || isUploading}
+          aria-describedby={showUnavailableHint ? pathHintId : undefined}
+          title={
+            isBrowseDisabled
+              ? !browseEnabled
+                ? language === 'es'
+                  ? 'Disponible solo cuando ejecutas Relampo Studio localmente'
+                  : 'Available only when running Relampo Studio locally'
+                : language === 'es'
+                  ? 'No hay un selector de archivos con ruta local disponible'
+                  : 'No path-capable file picker is available'
+              : undefined
+          }
+          className="px-3 py-2 bg-yellow-400/10 border border-yellow-400/30 rounded text-yellow-400 hover:bg-yellow-400/20 text-sm font-medium transition-colors flex items-center gap-2 shrink-0 h-9.5 disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/5 disabled:text-zinc-500 disabled:hover:bg-white/5"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="17 8 12 3 7 8" />
-            <line
-              x1="12"
-              y1="3"
-              x2="12"
-              y2="15"
-            />
-          </svg>
-          {t('yamlEditor.common.browse')}
+          <Upload className="w-4 h-4" />
+          {isUploading ? (language === 'es' ? 'Subiendo...' : 'Uploading...') : t('yamlEditor.common.browse')}
         </button>
         <input
           ref={fileInputRef}
           type="file"
-          accept=".csv,.txt"
+          accept={accept}
           onChange={handleFileChange}
+          disabled={isBrowseDisabled}
           className="hidden"
         />
       </div>
-      {showPathHint && (
-        <div className="alert-info rounded-md p-3 text-[13px] flex items-start gap-2 mt-4">
+      {uploadError && <p className="mt-2 text-xs text-red-300">{uploadError}</p>}
+      {showUnavailableHint && (
+        <div
+          id={pathHintId}
+          className="alert-info rounded-md p-3 text-[13px] flex items-start gap-2 mt-4"
+        >
           <Info className="alert-info-icon w-4 h-4 mt-0.5 shrink-0" />
           <span>
             {language === 'es' ? (
               <>
-                Local: en modo navegador, el selector de archivos normalmente solo devuelve el nombre del archivo. Copia
-                y pega la ruta completa del CSV/TXT si vas a ejecutar este script localmente.
-                <br />
-                Distribuido: usa solo el nombre del archivo o una ruta relativa (por ejemplo, users.csv). Relampo
-                resuelve el resto automáticamente desde los nodos distribuidos.
+                La selección de archivos de datos solo está disponible cuando ejecutas Relampo Studio localmente. En el
+                editor web no podemos acceder a archivos locales; escribe una ruta relativa o nombre de archivo que exista
+                donde correrá relampo run.
               </>
             ) : (
               <>
-                Local: in browser mode, the file picker usually returns only the file name. Copy/paste the full CSV/TXT
-                path if you will run this script locally.
-                <br />
-                Distributed: use only file name or relative path (for example, users.csv). Relampo resolves the
-                remaining path details automatically across distributed nodes.
+                Data source file browsing is only available when running Relampo Studio locally. In the web editor, local
+                files are not accessible; enter a relative path or file name that exists where relampo run will execute.
               </>
             )}
           </span>

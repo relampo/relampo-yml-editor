@@ -79,6 +79,17 @@ export interface StudioInfo {
   initialScript?: StudioInitialScript;
 }
 
+export interface StudioDataSourceUpload {
+  name: string;
+  path: string;
+}
+
+export interface StudioDataSourcePreview {
+  path: string;
+  lines: string[];
+  truncated: boolean;
+}
+
 // Detects whether the editor is being served by `relampo studio`. Standalone
 // deployments have no /api and the probe simply fails (returns null), keeping
 // the editor an independent tool with the Debug view hidden. When studio passed
@@ -122,6 +133,51 @@ export async function startDebugRun(yaml: string, options: StartDebugRunOptions 
   }
   const body = await response.json();
   return body.id as string;
+}
+
+export async function uploadStudioDataSourceFile(file: File): Promise<StudioDataSourceUpload> {
+  const form = new FormData();
+  form.append('file', file);
+  const response = await fetch(`${apiBase}/api/studio/data-source-files`, {
+    method: 'POST',
+    body: form,
+  });
+  if (!response.ok) {
+    let message = `data source file upload failed (HTTP ${response.status})`;
+    try {
+      const body = await response.json();
+      if (body?.error) message = body.error;
+    } catch {
+      // keep the generic message
+    }
+    throw new Error(message);
+  }
+  const body = (await response.json()) as StudioDataSourceUpload;
+  if (!body.path) {
+    throw new Error('data source file upload did not return a path');
+  }
+  return body;
+}
+
+export async function previewStudioDataSourceFile(path: string, signal?: AbortSignal): Promise<StudioDataSourcePreview> {
+  const params = new URLSearchParams({ path });
+  const response = await fetch(`${apiBase}/api/studio/data-source-preview?${params.toString()}`, { signal });
+  if (!response.ok) {
+    let message = `data source preview failed (HTTP ${response.status})`;
+    try {
+      const body = await response.json();
+      if (body?.error) message = body.error;
+    } catch {
+      // keep the generic message
+    }
+    throw new Error(message);
+  }
+  const body = (await response.json()) as StudioDataSourcePreview;
+  return {
+    path: body.path,
+    lines: Array.isArray(body.lines) ? body.lines : [],
+    truncated: Boolean(body.truncated),
+  };
 }
 
 // Streams a run's events over SSE. Returns a function that closes the stream.
