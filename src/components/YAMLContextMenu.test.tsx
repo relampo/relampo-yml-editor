@@ -28,4 +28,72 @@ describe('YAMLContextMenu', () => {
     expect(screen.getByRole('button', { name: 'Group Group steps' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Think Time Pause between requests' })).toBeInTheDocument();
   });
+
+  it('does not offer a second scenario under scenarios', () => {
+    render(
+      <LanguageProvider>
+        <YAMLContextMenu
+          x={10}
+          y={10}
+          node={{
+            id: 'scenarios',
+            type: 'scenarios',
+            name: 'Scenarios',
+            children: [{ id: 'scenario-1', type: 'scenario', name: 'Scenario', children: [] }],
+          }}
+          onClose={vi.fn()}
+          onAddNode={vi.fn()}
+          onRemove={vi.fn()}
+        />
+      </LanguageProvider>,
+    );
+
+    expect(screen.queryByRole('button', { name: 'Scenario New load scenario' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+  });
+
+  it('offers scenario creation when scenarios is empty', () => {
+    render(
+      <LanguageProvider>
+        <YAMLContextMenu
+          x={10}
+          y={10}
+          node={{
+            id: 'scenarios',
+            type: 'scenarios',
+            name: 'Scenarios',
+            children: [],
+          }}
+          onClose={vi.fn()}
+          onAddNode={vi.fn()}
+          onRemove={vi.fn()}
+        />
+      </LanguageProvider>,
+    );
+
+    expect(screen.getByRole('button', { name: 'Scenario New load scenario' })).toBeInTheDocument();
+  });
+
+  it('does not offer duplicate for scenarios', () => {
+    render(
+      <LanguageProvider>
+        <YAMLContextMenu
+          x={10}
+          y={10}
+          node={{
+            id: 'scenario-1',
+            type: 'scenario',
+            name: 'Scenario',
+            children: [],
+          }}
+          onClose={vi.fn()}
+          onAddNode={vi.fn()}
+          onRemove={vi.fn()}
+          onDuplicate={vi.fn()}
+        />
+      </LanguageProvider>,
+    );
+
+    expect(screen.queryByRole('button', { name: 'Duplicate' })).not.toBeInTheDocument();
+  });
 });

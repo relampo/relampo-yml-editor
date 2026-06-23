@@ -305,6 +305,11 @@ export function YAMLTreeView({
     onTreeChange(updatedTree);
   };
 
+  const canAddNodeToTarget = (target: YAMLNode, nodeType: YAMLAddableNodeType) =>
+    !(nodeType === 'scenario' && target.type === 'scenarios' && target.children?.some(child => child.type === 'scenario'));
+
+  const canDuplicateNode = (node: YAMLNode | null | undefined) => node?.type !== 'scenario';
+
   const handleAddNode = (nodeType: YAMLAddableNodeType) => {
     if (!contextMenu || !tree) return;
 
@@ -314,6 +319,7 @@ export function YAMLTreeView({
     const updatedTree = targetIds.reduce((currentTree, targetId) => {
       const target = findNodeById(currentTree, targetId);
       if (!target) return currentTree;
+      if (!canAddNodeToTarget(target, nodeType)) return currentTree;
 
       const newNode = createNodeByType(nodeType, { balancedName: t('yamlEditor.balanced.name') });
       createdNodes.push(newNode);
@@ -335,7 +341,11 @@ export function YAMLTreeView({
     const copySuffix = t('yamlEditor.common.copy') || 'Copy';
     const targetIds = getContextActionTargetIds(nodeId);
     const updatedTree = targetIds.reduce(
-      (currentTree, targetId) => duplicateNodeInTree(currentTree, targetId, copySuffix),
+      (currentTree, targetId) => {
+        const target = findNodeById(currentTree, targetId);
+        if (!canDuplicateNode(target)) return currentTree;
+        return duplicateNodeInTree(currentTree, targetId, copySuffix);
+      },
       tree,
     );
     onTreeChange(updatedTree);
@@ -450,7 +460,11 @@ export function YAMLTreeView({
     if (!tree || clipboardNodes.length === 0) return;
 
     const copySuffix = t('yamlEditor.common.copy') || 'Copy';
-    const pastedNodes = clipboardNodes.map(node => cloneNodeWithNewIds(node, copySuffix));
+    const pastedNodes = clipboardNodes
+      .filter(node => node.type !== 'scenario')
+      .map(node => cloneNodeWithNewIds(node, copySuffix));
+    if (pastedNodes.length === 0) return;
+
     const targetNode = selectedNode && nodeById.get(selectedNode.id) ? selectedNode : tree;
 
     const updatedTree =
@@ -470,7 +484,11 @@ export function YAMLTreeView({
 
     const copySuffix = t('yamlEditor.common.copy') || 'Copy';
     const updatedTree = effectiveSelectedIds.reduce(
-      (currentTree, nodeId) => duplicateNodeInTree(currentTree, nodeId, copySuffix),
+      (currentTree, nodeId) => {
+        const target = findNodeById(currentTree, nodeId);
+        if (!canDuplicateNode(target)) return currentTree;
+        return duplicateNodeInTree(currentTree, nodeId, copySuffix);
+      },
       tree,
     );
     onTreeChange(updatedTree);

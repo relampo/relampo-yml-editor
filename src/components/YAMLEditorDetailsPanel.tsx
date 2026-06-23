@@ -17,7 +17,6 @@ type YAMLEditorDetailsPanelProps = {
   flushPendingEdits: () => string;
   documentReady: boolean;
   selectedNode: YAMLNode | null;
-  treeFocusNodeId: string | null;
   validationErrors: string[];
   onDebugSelectNode: (node: YAMLNode | null) => void;
   onDebugEditNode: (node: YAMLNode) => void;
@@ -42,7 +41,6 @@ export function YAMLEditorDetailsPanel({
   flushPendingEdits,
   documentReady,
   selectedNode,
-  treeFocusNodeId,
   validationErrors,
   onDebugSelectNode,
   onDebugEditNode,
@@ -77,9 +75,8 @@ export function YAMLEditorDetailsPanel({
               yamlCode={yamlCode}
               flushPendingEdits={flushPendingEdits}
               documentReady={documentReady}
-              selectedNode={selectedNode}
-              treeFocusNodeId={treeFocusNodeId}
               validationErrors={validationErrors}
+              redirectedRequestMap={redirectedRequestMap}
               onSelectNode={onDebugSelectNode}
               onEditNode={onDebugEditNode}
             />

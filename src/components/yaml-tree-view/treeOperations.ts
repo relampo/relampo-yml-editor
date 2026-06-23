@@ -34,6 +34,10 @@ export function toggleNodeInTree(tree: YAMLNode, nodeId: string): YAMLNode {
 export function addNodeToTree(tree: YAMLNode, parentId: string, newNode: YAMLNode): YAMLNode {
   if (tree.id === parentId) {
     const children = tree.children || [];
+    if (newNode.type === 'scenario' && tree.type === 'scenarios' && children.some(child => child.type === 'scenario')) {
+      return tree;
+    }
+
     return {
       ...tree,
       children: [newNode, ...children],

@@ -12,6 +12,26 @@ export function validateYAMLSemantics(tree: YAMLNode | null): YAMLSemanticIssue[
   }
 
   const issues: YAMLSemanticIssue[] = [];
+  const scenarioNodes: YAMLNode[] = [];
+  let scenariosNodeId: string | null = null;
+
+  const collectScenarios = (node: YAMLNode) => {
+    if (node.type === 'scenarios' && scenariosNodeId === null) {
+      scenariosNodeId = node.id;
+    }
+    if (node.type === 'scenario') {
+      scenarioNodes.push(node);
+    }
+    node.children?.forEach(collectScenarios);
+  };
+
+  collectScenarios(tree);
+  if (scenarioNodes.length > 1) {
+    issues.push({
+      nodeId: scenariosNodeId ?? tree.id,
+      message: 'Relampo Studio supports only one scenario. Remove or merge extra scenarios before running Debug.',
+    });
+  }
 
   const walk = (node: YAMLNode) => {
     if (node.type === 'transaction' && (node.children?.length || 0) < 1) {

@@ -25,7 +25,7 @@ import {
   Zap,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
-import type { YAMLNodeType } from '../../types/yaml';
+import type { YAMLNode, YAMLNodeType } from '../../types/yaml';
 import { canContain } from '../../utils/yamlDragDropRules';
 
 export type YAMLAddableNodeType =
@@ -77,7 +77,11 @@ function filterAddableItemsByContainment(parentType: YAMLNodeType, items: Addabl
   return items.filter(item => canContain(parentType, item.type as YAMLNodeType));
 }
 
-export function getAddableItems(parentType: YAMLNodeType, t: (key: string) => string): AddableItem[] {
+export function getAddableItems(
+  parentType: YAMLNodeType,
+  t: (key: string) => string,
+  parentNode?: Pick<YAMLNode, 'children'>,
+): AddableItem[] {
   const iconClass = 'w-4 h-4';
 
   if (parentType === 'root' || parentType === 'test') {
@@ -121,6 +125,9 @@ export function getAddableItems(parentType: YAMLNodeType, t: (key: string) => st
   }
 
   if (parentType === 'scenarios') {
+    const hasScenario = parentNode?.children?.some(child => child.type === 'scenario') ?? false;
+    if (hasScenario) return [];
+
     return [
       {
         type: 'scenario',
