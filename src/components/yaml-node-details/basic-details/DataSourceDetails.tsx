@@ -4,6 +4,7 @@ import type { StringMap } from '../../../types/shared';
 import type { DataSource } from '../../../types/yaml';
 import { previewStudioDataSourceFile, uploadStudioDataSourceFile } from '../../../utils/debugApi';
 import { EditableList } from '../../EditableList';
+import { useLanguage } from '../../../contexts/LanguageContext';
 import { HighlightedInput } from '../../ui/HighlightedInput';
 import { Input } from '../../ui/input';
 import { FileField, SelectField } from '../SharedFields';
@@ -18,6 +19,22 @@ type EditorDataSource = Partial<Omit<DataSource, 'type' | 'mode'>> & {
   mode?: NonNullable<DataSource['mode']> | 'per_worker';
 };
 
+function dataSourceModeDescription(mode: EditorDataSource['mode'], language: 'en' | 'es'): string {
+  const descriptions = {
+    en: {
+      shared: 'A global cursor; rows are consumed only once.',
+      per_worker: 'Fixed 1:1 mapping: VU i -> row (i-1) % total. Same row, no cursor advance.',
+      per_vu: 'Each VU cycles through the list from the beginning.',
+    },
+    es: {
+      shared: 'Un cursor global; filas consumidas una sola vez.',
+      per_worker: 'Mapeo fijo 1:1: VU i -> fila (i-1) % total. Misma fila, sin avance.',
+      per_vu: 'Cada VU cicla sobre la lista desde el inicio.',
+    },
+  };
+  return descriptions[language][mode === 'shared' || mode === 'per_worker' ? mode : 'per_vu'];
+}
+
 export function DataSourceDetails({
   node,
   onNodeUpdate,
@@ -31,6 +48,7 @@ export function DataSourceDetails({
   const bind = (sourceData.bind || {}) as StringMap;
   const showDiagnosis = false;
   const sourcePath = String(sourceData.file || sourceData.path || '');
+  const { language } = useLanguage();
 
   const handleBindUpdate = (updatedBind: StringMap) => {
     updateData({ ...sourceData, bind: updatedBind });
@@ -134,9 +152,7 @@ export function DataSourceDetails({
             noMargin
           />
           <p className="text-[10px] text-zinc-400 mt-1 italic">
-            {sourceData.mode === 'shared' && 'Un cursor global; filas consumidas una sola vez.'}
-            {sourceData.mode === 'per_worker' && 'Mapeo fijo 1:1: VU i → fila (i-1) % total. Misma fila, sin avance.'}
-            {(!sourceData.mode || sourceData.mode === 'per_vu') && 'Cada VU cicla sobre la lista desde el inicio.'}
+            {dataSourceModeDescription(sourceData.mode, language)}
           </p>
         </div>
 

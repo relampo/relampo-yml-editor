@@ -95,6 +95,18 @@ describe('YAMLNodeDetails data source file browsing', () => {
     expect(screen.queryByText(/Local: in browser mode/)).not.toBeInTheDocument();
   });
 
+  it('shows the data source mode helper in English by default', () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ ok: true, json: async () => ({ path: 'users.csv', lines: [], truncated: false }) }),
+    );
+
+    renderDetails(dataSourceNode, vi.fn(), vi.fn(), { dataSourceFileBrowseEnabled: true });
+
+    expect(screen.getByText('Each VU cycles through the list from the beginning.')).toBeInTheDocument();
+    expect(screen.queryByText('Cada VU cicla sobre la lista desde el inicio.')).not.toBeInTheDocument();
+  });
+
   it('shows a local Studio data preview', async () => {
     vi.stubGlobal(
       'fetch',
