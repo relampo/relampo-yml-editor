@@ -1,6 +1,7 @@
 import type { StringMap } from '../../../types/shared';
 import type { DataSource } from '../../../types/yaml';
 import { EditableList } from '../../EditableList';
+import { HighlightedInput } from '../../ui/HighlightedInput';
 import { Input } from '../../ui/input';
 import { FileField, SelectField } from '../SharedFields';
 import { createNodeDataUpdater } from '../nodeDetailHelpers';
@@ -14,7 +15,7 @@ type EditorDataSource = Partial<Omit<DataSource, 'type' | 'mode'>> & {
   mode?: NonNullable<DataSource['mode']> | 'per_worker';
 };
 
-export function DataSourceDetails({ node, onNodeUpdate, nodeName, setNodeName }: NamedNodeDetailProps) {
+export function DataSourceDetails({ node, onNodeUpdate, nodeName, setNodeName, searchQuery = '' }: NamedNodeDetailProps) {
   const { data, updateData, updateField } = createNodeDataUpdater(node, onNodeUpdate);
   const sourceData = data as EditorDataSource;
   const bind = (sourceData.bind || {}) as StringMap;
@@ -87,12 +88,13 @@ export function DataSourceDetails({ node, onNodeUpdate, nodeName, setNodeName }:
         >
           Variable Names (comma-separated)
         </label>
-        <Input
+        <HighlightedInput
           id="ds-basic-var-names"
           value={sourceData.variable_names || ''}
           onChange={event => updateField('variable_names', event.target.value)}
           className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono focus:border-white/30 transition-all h-9.5"
           placeholder="var1, var2, var3"
+          searchText={searchQuery}
         />
         <p className="text-[10px] text-zinc-500 mt-1 italic">Define variable names separated by commas manually.</p>
       </div>
