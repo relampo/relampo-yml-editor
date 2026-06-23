@@ -1,4 +1,5 @@
-import { AlertTriangle, ArrowLeftRight, CheckCircle2, CircleDashed, Database, Globe, GitBranch, Layers, Repeat, RotateCcw } from 'lucide-react';
+import { AlertTriangle, ArrowLeftRight, CheckCircle2, ChevronDown, CircleDashed, Database, Globe, GitBranch, Layers, Repeat, RotateCcw } from 'lucide-react';
+import { useState } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import {
   distributeEvenPercentages,
@@ -74,6 +75,7 @@ function getBalancedModeDescription(mode: 'iteraciones' | 'usuarios_virtuales', 
 
 export function BalancedDetails({ node, onNodeUpdate }: NodeDetailProps) {
   const { t } = useLanguage();
+  const [excludedOpen, setExcludedOpen] = useState(false);
   const data = node.data || {};
   const balancedType = normalizeBalancedDistributionType(data.type);
   const mode = normalizeBalancedExecutionMode(data.mode);
@@ -105,18 +107,13 @@ export function BalancedDetails({ node, onNodeUpdate }: NodeDetailProps) {
     });
   };
 
-  const handleDistributeEvenly = () => {
+  const buildEvenDistribution = () => {
     if (!onNodeUpdate || loadBearingChildren.length === 0) return;
-
-    // Spread 100% across load-bearing children only; excluded ones get nothing.
-    // distributeEvenPercentages uses the largest remainder method so the gap
-    // between any two percentages stays ≤ 1. See RLP-475.
     const evenPercentages = distributeEvenPercentages(loadBearingChildren.length);
     const percentageById = new Map<string, number>();
     loadBearingChildren.forEach((child, index) => {
       percentageById.set(child.id, evenPercentages[index]);
     });
-
     const childUpdates = children.map(child => {
       if (percentageById.has(child.id)) {
         return {
@@ -124,17 +121,17 @@ export function BalancedDetails({ node, onNodeUpdate }: NodeDetailProps) {
           data: { ...(child.data || {}), __balancedPercentage: percentageById.get(child.id) },
         };
       }
-      // Clear any stale percentage left on an excluded child (e.g. from the recording).
       const nextData = { ...(child.data || {}) };
       delete nextData.__balancedPercentage;
       return { nodeId: child.id, data: nextData };
     });
-
     onNodeUpdate(node.id, {
       ...data,
       __batchChildUpdates: childUpdates,
     });
   };
+
+  const handleDistributeEvenly = buildEvenDistribution;
 
   const issues: string[] = [];
   if (!validation.hasChildren) {
@@ -379,19 +376,29 @@ export function BalancedDetails({ node, onNodeUpdate }: NodeDetailProps) {
         )}
 
         {excludedChildren.length > 0 && (
-          <div className={`mt-1 flex items-start gap-2 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-[11px] leading-4 ${mutedTextClass}`}>
-            <CircleDashed className="mt-0.5 h-3.5 w-3.5 shrink-0 text-zinc-500" />
-            <div className="min-w-0 flex-1">
-              <p className="mb-1.5">{t('yamlEditor.balanced.included.excludedNote')}</p>
-              <ul className="space-y-0.5">
+          <div className={`mt-6 rounded-lg border border-amber-500/20 bg-amber-500/5 text-sm leading-5 ${mutedTextClass}`}>
+            <button
+              type="button"
+              onClick={() => setExcludedOpen(o => !o)}
+              className="flex w-full items-center gap-2 px-3 py-2 text-left"
+            >
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-400" />
+              <span className="min-w-0 flex-1 font-medium text-zinc-200">{t('yamlEditor.balanced.included.excludedNote')}</span>
+              <span className="shrink-0 text-zinc-500 text-[10px] mr-1">{excludedChildren.length}</span>
+              <ChevronDown
+                className={`h-3 w-3 shrink-0 text-zinc-500 transition-transform duration-150 ${excludedOpen ? 'rotate-180' : ''}`}
+              />
+            </button>
+            {excludedOpen && (
+              <ul className="border-t border-white/5 px-3 pb-2 pt-1.5 space-y-0.5">
                 {excludedChildren.map(child => (
-                  <li key={child.id} className="flex items-start gap-1.5">
+                  <li key={child.id} className="flex items-baseline gap-1.5">
                     <span className="shrink-0 select-none text-zinc-600">–</span>
-                    <span className="min-w-0 break-words">{child.name || child.type}</span>
+                    <span className="break-all">{child.name || child.type}</span>
                   </li>
                 ))}
               </ul>
-            </div>
+            )}
           </div>
         )}
       </div>

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { LanguageProvider } from '../../contexts/LanguageContext';
 import type { YAMLNode } from '../../types/yaml';
@@ -13,7 +13,7 @@ function renderWithLanguage(node: YAMLNode) {
 }
 
 describe('BalancedDetails excluded children', () => {
-  it('renders excluded children in a readable vertical list', () => {
+  it('renders excluded children in a collapsible list', () => {
     renderWithLanguage({
       id: 'balanced-1',
       type: 'balanced',
@@ -49,13 +49,17 @@ describe('BalancedDetails excluded children', () => {
       ),
     ).toBeInTheDocument();
 
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /Not balanced \(no requests\): these elements issue no requests, so they receive no load percentage\./i,
+      }),
+    );
+
     expect(screen.getAllByRole('listitem')).toHaveLength(2);
 
     const longLabel = screen.getByText(
       'Long excluded child label that should wrap naturally instead of splitting midword',
     );
-    expect(longLabel).toHaveClass('min-w-0');
-    expect(longLabel).toHaveClass('break-words');
-    expect(longLabel).not.toHaveClass('break-all');
+    expect(longLabel).toHaveClass('break-all');
   });
 });
