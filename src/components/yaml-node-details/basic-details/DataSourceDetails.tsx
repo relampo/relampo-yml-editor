@@ -1,5 +1,6 @@
 import type { StringMap } from '../../../types/shared';
 import type { DataSource } from '../../../types/yaml';
+import { uploadStudioDataSourceFile } from '../../../utils/debugApi';
 import { EditableList } from '../../EditableList';
 import { HighlightedInput } from '../../ui/HighlightedInput';
 import { Input } from '../../ui/input';
@@ -85,6 +86,14 @@ export function DataSourceDetails({
             noMargin
             showPathHint
             browseEnabled={fileBrowseEnabled}
+            uploadFile={
+              fileBrowseEnabled
+                ? async file => {
+                    const uploaded = await uploadStudioDataSourceFile(file);
+                    return uploaded.path;
+                  }
+                : undefined
+            }
           />
         </div>
       </div>

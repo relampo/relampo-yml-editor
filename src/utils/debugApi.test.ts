@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { probeStudio, startDebugRun } from './debugApi';
+import { probeStudio, startDebugRun, uploadStudioDataSourceFile } from './debugApi';
 
 function mockFetch(body: unknown, ok = true) {
   vi.stubGlobal(
@@ -65,6 +65,33 @@ describe('startDebugRun', () => {
         method: 'POST',
         body: JSON.stringify({ yaml: 'test:\n  name: debug\n', vus: 2 }),
       }),
+    );
+  });
+});
+
+describe('uploadStudioDataSourceFile', () => {
+  it('uploads a file to Studio and returns the local path', async () => {
+    mockFetch({ name: 'users.txt', path: '/tmp/relampo-studio/users.txt' });
+
+    await expect(uploadStudioDataSourceFile(new File(['alice\n'], 'users.txt'))).resolves.toEqual({
+      name: 'users.txt',
+      path: '/tmp/relampo-studio/users.txt',
+    });
+
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/studio/data-source-files',
+      expect.objectContaining({
+        method: 'POST',
+        body: expect.any(FormData),
+      }),
+    );
+  });
+
+  it('surfaces Studio upload errors', async () => {
+    mockFetch({ error: 'only .csv and .txt data source files are supported' }, false);
+
+    await expect(uploadStudioDataSourceFile(new File(['{}'], 'users.json'))).rejects.toThrow(
+      'only .csv and .txt data source files are supported',
     );
   });
 });
