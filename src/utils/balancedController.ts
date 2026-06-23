@@ -139,10 +139,11 @@ export function autoRebalanceBalancedControllers(oldTree: YAMLNode, newTree: YAM
   function visit(node: YAMLNode): YAMLNode {
     if (node.type === 'balanced') {
       const oldNode = findNode(oldTree, node.id);
+      const distributionType = normalizeBalancedDistributionType(node.data?.type);
       const newLBC = (node.children ?? []).filter(isBalancedLoadBearingChild);
       const oldCount = oldNode ? (oldNode.children ?? []).filter(isBalancedLoadBearingChild).length : -1;
 
-      if (oldCount !== newLBC.length && newLBC.length > 0) {
+      if (distributionType === 'total' && oldCount !== newLBC.length && newLBC.length > 0) {
         const percentages = distributeEvenPercentages(newLBC.length);
         const byId = new Map(newLBC.map((c, i) => [c.id, percentages[i]]));
         const nextChildren = (node.children ?? []).map(child => {

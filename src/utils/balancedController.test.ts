@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { YAMLNode } from '../types/yaml';
 import {
+  autoRebalanceBalancedControllers,
   distributeEvenPercentages,
   isBalancedLoadBearingChild,
   validateBalancedController,
@@ -21,6 +22,16 @@ function thinkTime(id: string, percentage?: number): YAMLNode {
     type: 'think_time',
     name: id,
     data: percentage === undefined ? {} : { __balancedPercentage: percentage },
+  };
+}
+
+function balanced(id: string, type: 'total' | 'parcial', children: YAMLNode[]): YAMLNode {
+  return {
+    id,
+    type: 'balanced',
+    name: id,
+    data: { type },
+    children,
   };
 }
 
@@ -142,5 +153,26 @@ describe('distributeEvenPercentages', () => {
       const sum = percentages.reduce((acc, v) => acc + v, 0);
       expect(parseFloat(sum.toFixed(4))).toBe(100);
     }
+  });
+});
+
+describe('autoRebalanceBalancedControllers', () => {
+  it('rebalances total controllers when the included child count changes', () => {
+    const oldTree = balanced('bc', 'total', [req('a', 50), req('b', 50)]);
+    const newTree = balanced('bc', 'total', [req('a', 50), req('b', 50), req('c')]);
+
+    const result = autoRebalanceBalancedControllers(oldTree, newTree);
+
+    expect(result.children?.map(child => child.data?.__balancedPercentage)).toEqual([34, 33, 33]);
+  });
+
+  it('preserves partial controller allocations on structural changes', () => {
+    const oldTree = balanced('bc', 'parcial', [req('a', 20), req('b', 35)]);
+    const newTree = balanced('bc', 'parcial', [req('a', 20), req('b', 35), req('c')]);
+
+    const result = autoRebalanceBalancedControllers(oldTree, newTree);
+
+    expect(result).toBe(newTree);
+    expect(result.children?.map(child => child.data?.__balancedPercentage)).toEqual([20, 35, undefined]);
   });
 });
