@@ -49,9 +49,20 @@ export function DataSourceDetails({
   const showDiagnosis = false;
   const sourcePath = String(sourceData.file || sourceData.path || '');
   const { language } = useLanguage();
+  const latestSourceData = useRef(sourceData);
+
+  useEffect(() => {
+    latestSourceData.current = sourceData;
+  }, [sourceData]);
 
   const handleBindUpdate = (updatedBind: StringMap) => {
     updateData({ ...sourceData, bind: updatedBind });
+  };
+
+  const updateDataSourcePath = (path: string) => {
+    const nextData: EditorDataSource = { ...latestSourceData.current, path };
+    delete (nextData as Record<string, unknown>).file;
+    updateData(nextData);
   };
 
   return (
@@ -99,11 +110,7 @@ export function DataSourceDetails({
             label="File"
             value={sourcePath}
             field="file"
-            onChange={(_, value) => {
-              const nextData: EditorDataSource = { ...sourceData, path: String(value) };
-              delete (nextData as Record<string, unknown>).file;
-              updateData(nextData);
-            }}
+            onChange={(_, value) => updateDataSourcePath(String(value))}
             noMargin
             showPathHint
             browseEnabled={fileBrowseEnabled}
