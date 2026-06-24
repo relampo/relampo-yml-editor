@@ -118,6 +118,28 @@ describe('variableRowsForRequestNode', () => {
     expect(variableRowsForRequestNode(null, { user: 'u', pass: 'p', REQUEST1: 'x' })).toEqual([]);
   });
 
+  it('shows no variables for a redirect hop that maps to an extractor-less child', () => {
+    // RLP-575: a redirect follow-up event (e.g. the chain rc-17 hop landing on
+    // /user/authCode/response) carries the full accumulated correlation map the
+    // engine stamps on every event. It resolves to a recorded REDIRECTED-DISABLED
+    // hop child that extracts nothing, so the Variables tab must stay empty
+    // instead of dumping javax.faces.ViewState/REQUEST1/RESPONSE1/... onto it.
+    const hop: YAMLNode = {
+      id: 'h',
+      type: 'request',
+      name: '[19] Home - GET /user/authCode/response',
+      data: { request_id: 19, enabled: false, method: 'GET', url: '/user/authCode/response', chain_id: 'rc-17', chain_role: 'hop' },
+    };
+    const accumulated = {
+      'javax.faces.ViewState': 'v',
+      request1: 'a',
+      request2: 'b',
+      response1: 'c',
+      x_correlation_id: 'd',
+    };
+    expect(variableRowsForRequestNode(hop, accumulated)).toEqual([]);
+  });
+
   it('lists only the variables the node extracts', () => {
     const node: YAMLNode = {
       id: 'r',
