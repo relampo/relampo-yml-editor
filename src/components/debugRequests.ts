@@ -60,13 +60,20 @@ function chainRoleOf(node: YAMLNode): string {
 // resolved (e.g. the recording and the live run disagree on hop count) so the
 // Tree shows no selection instead of a wrong one. RLP-570.
 function matchRedirectChainChildToNode(event: DebugEventLike, chainId: string, requestTargets: YAMLNode[]): YAMLNode | null {
-  const redirectIndex = event.redirect_index ?? 0;
-  if (redirectIndex < 1) return null;
   const children = requestTargets.filter(node => {
     const role = chainRoleOf(node);
     return String(node.data?.chain_id ?? '') === chainId && (role === 'hop' || role === 'final');
   });
-  return children[redirectIndex - 1] ?? null;
+  const redirectIndex = event.redirect_index ?? 0;
+  if (redirectIndex >= 1) return children[redirectIndex - 1] ?? null;
+  // A 'final' event can arrive without a positional redirect_index (the field is
+  // optional and omitempty drops a 0). Map it to the chain's recorded 'final'
+  // child so the landing still selects its node and keeps its redirect context,
+  // rather than going unmatched. RLP-585.
+  if (String(event.chain_role ?? '').trim().toLowerCase() === 'final') {
+    return children.find(node => chainRoleOf(node) === 'final') ?? null;
+  }
+  return null;
 }
 
 // The number shown on a Debug timeline row. Redirect follow-up rows display the
