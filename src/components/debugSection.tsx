@@ -7,12 +7,17 @@ export function DebugSection({
   searchText = '',
   searchMode = 'text',
   currentMatchIndex = 0,
+  wrapLabels = false,
 }: {
   rows: Array<[string, string]>;
   body?: string;
   searchText?: string;
   searchMode?: SearchMode;
   currentMatchIndex?: number;
+  // When true the label column wraps its full text instead of truncating it.
+  // Used for the Variables tab so long names (e.g. javax.faces.ViewState) stay
+  // fully readable rather than being clipped. RLP-585 #6.
+  wrapLabels?: boolean;
 }) {
   const fullSearchText = [
     ...rows.map(([label, value]) => `${label}: ${value}`),
@@ -40,6 +45,7 @@ export function DebugSection({
           searchMode={searchMode}
           currentMatchIndex={currentMatchIndex}
           hasActiveSearch={hasActiveSearch}
+          wrapLabels={wrapLabels}
           className="border border-white/10"
         />
       )}
@@ -113,6 +119,7 @@ function DebugRowsTable({
   currentMatchIndex,
   hasActiveSearch,
   className,
+  wrapLabels = false,
 }: {
   rows: Array<[string, string]>;
   fullSearchText: string;
@@ -121,6 +128,7 @@ function DebugRowsTable({
   currentMatchIndex: number;
   hasActiveSearch: boolean;
   className: string;
+  wrapLabels?: boolean;
 }) {
   return (
     <div className={className}>
@@ -134,7 +142,7 @@ function DebugRowsTable({
           <div key={label} className="grid grid-cols-[minmax(100px,30%)_1fr] border-b border-white/10 last:border-b-0">
             <div
               className={`min-w-0 bg-white/3 px-3 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500 ${
-                hasActiveSearch ? 'break-words' : 'truncate'
+                hasActiveSearch || wrapLabels ? 'break-words' : 'truncate'
               }`}
               title={hasActiveSearch ? undefined : label}
             >
