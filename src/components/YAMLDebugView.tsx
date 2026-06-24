@@ -668,20 +668,31 @@ function DebugInspectorContent({
           : 'No extracted variables were captured for this request.';
       return <p className="text-sm text-zinc-500">{message}</p>;
     }
-    return <DebugSection rows={variables} />;
+    return <DebugSection rows={variables} wrapLabels />;
   }
 
   if (tab === 'logs') {
     const time = formatEventTime(event.ts);
+    const redirectHops = event.redirects ?? [];
     return (
       <div className="border border-white/10 bg-[#050505] p-4 font-mono text-xs leading-6 text-zinc-300">
         <p className="text-emerald-300">[{time}] debug session received request event</p>
         <p className="text-blue-300">
           [{time}] {event.method} {event.path || event.name} - {event.status || '—'} ({formatLatency(event.latency_ms)})
         </p>
-        {(event.redirects ?? []).map((hop, index) => (
-          <p key={`${hop.status}-${hop.method ?? ''}-${hop.url ?? ''}-${hop.location ?? hop.target_url ?? ''}`} className="text-zinc-400">
-            [{time}] redirect {index + 1}: {hop.status} {hop.url || ''} → {hop.location || hop.target_url || ''}
+        {redirectHops.length > 0 && (
+          // These rows are the redirect chain that led to the response above —
+          // not the request's own status. Spell that out so a final 200 that
+          // followed 302s no longer reads as if the request itself were a 302.
+          // RLP-585 #7.
+          <p className="text-zinc-400">
+            [{time}] followed {redirectHops.length} redirect{redirectHops.length === 1 ? '' : 's'} before this{' '}
+            {event.status || ''} response:
+          </p>
+        )}
+        {redirectHops.map((hop, index) => (
+          <p key={`${hop.status}-${hop.method ?? ''}-${hop.url ?? ''}-${hop.location ?? hop.target_url ?? ''}`} className="pl-6 text-zinc-400">
+            ↳ hop {index + 1}: {hop.status} {hop.method ? `${hop.method} ` : ''}{hop.url || ''} → {hop.location || hop.target_url || ''}
           </p>
         ))}
         {redirectedInfo && (
