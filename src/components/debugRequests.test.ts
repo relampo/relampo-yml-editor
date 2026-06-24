@@ -73,6 +73,17 @@ describe('matchDebugEventTarget — redirect chain follow-ups', () => {
     expect(match?.id).toBe('h18');
   });
 
+  it('maps a final event with no redirect_index to the recorded final child', () => {
+    const nodes = chainNodes();
+    // chain_role 'final' but redirect_index omitted (the field is optional /
+    // omitempty drops a 0): must still resolve to the chain's final child.
+    const match = matchDebugEventTarget(
+      event({ name: '[17] Home -> redirect', path: 'https://live.test/landing', chain_id: 'rc-17', chain_role: 'final', request_id: 17 }),
+      nodes,
+    );
+    expect(match?.id).toBe('f21');
+  });
+
   it('leaves the Tree unmarked when the chain has fewer children than the live run', () => {
     const nodes = chainNodes();
     const match = matchDebugEventTarget(
