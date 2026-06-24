@@ -18,6 +18,7 @@ import {
 import type { RedirectedRequestInfo, YAMLNode } from '../types/yaml';
 import {
   collectDebugEventTargets,
+  debugEventRequestNumber,
   matchDebugEventTarget,
   requestExtractorVariableNames,
   variableRowsForRequestNode,
@@ -406,7 +407,7 @@ export function YAMLDebugSession({
                 <div className="space-y-2">
                   {entries.map(entry => {
                     const active = activeEntry?.id === entry.id;
-                    const requestNumber = String(entry.node?.data?.request_id ?? entry.event.request_id ?? '').trim();
+                    const requestNumber = debugEventRequestNumber(entry.event, entry.node, debugEventTargets);
                     return (
                       <button
                         key={entry.id}
