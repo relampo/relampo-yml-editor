@@ -57,19 +57,26 @@ const BALANCED_REQUEST_NODE_TYPES = new Set<string>([
   'patch',
   'head',
   'options',
-  'sql',
+]);
+
+/**
+ * Only these container node types are allowed to act as load-bearing elements
+ * inside a Balanced Controller (i.e. when they transitively hold requests).
+ * Everything else — data_source, think_time, group, if, loop, retry, etc. —
+ * is excluded from the distribution, regardless of its children. See RLP-475.
+ */
+const BALANCED_CONTAINER_NODE_TYPES = new Set<string>([
+  'transaction',
 ]);
 
 /**
  * Whether a balanced child actually contributes load.
  *
- * A child is load-bearing when it is a request/SQL sampler, or a container
- * (group, transaction, if, loop, retry…) that transitively holds at least one
- * enabled request. think_time steps, empty containers, and request-less subtrees
- * are NOT load-bearing: assigning them a percentage of a Balanced Controller
- * routes virtual users to zero work, silently lowering the real load. They are
- * therefore excluded from the controller's included elements, its distribution,
- * and the percentage total. See RLP-475.
+ * A child is load-bearing when it is an HTTP request, or a `transaction`
+ * that transitively holds at least one enabled HTTP request. All other node types —
+ * data_source, think_time, group, if, loop, retry, etc. — are excluded from the
+ * controller's included elements, its distribution, and the percentage total,
+ * regardless of their children. See RLP-475.
  */
 export function isBalancedLoadBearingChild(node: YAMLNode): boolean {
   // A disabled node produces no load: the serializer emits `enabled: false` and
@@ -82,7 +89,10 @@ export function isBalancedLoadBearingChild(node: YAMLNode): boolean {
   if (BALANCED_REQUEST_NODE_TYPES.has(node.type)) {
     return true;
   }
-  return (node.children ?? []).some(isBalancedLoadBearingChild);
+  if (BALANCED_CONTAINER_NODE_TYPES.has(node.type)) {
+    return (node.children ?? []).some(isBalancedLoadBearingChild);
+  }
+  return false;
 }
 
 /**
