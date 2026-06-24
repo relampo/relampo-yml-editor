@@ -20,7 +20,7 @@ import {
   collectDebugEventTargets,
   debugEventRequestNumber,
   matchDebugEventTarget,
-  requestExtractorVariableNames,
+  requestVariableNames,
   variableRowsForRequestNode,
   type DebugStatus,
 } from './debugRequests';
@@ -661,11 +661,11 @@ function DebugInspectorContent({
   if (tab === 'variables') {
     const variables = variableRowsForRequestNode(entry.node, event.variables ?? {});
     if (variables.length === 0) {
-      const extractorNames = requestExtractorVariableNames(entry.node);
+      const usedNames = requestVariableNames(entry.node);
       const message =
-        entry.node && extractorNames.length === 0
-          ? 'No variables were extracted by this request.'
-          : 'No extracted variables were captured for this request.';
+        entry.node && usedNames.length === 0
+          ? 'This request neither extracts nor uses any variables.'
+          : 'No variable values were captured for this request.';
       return <p className="text-sm text-zinc-500">{message}</p>;
     }
     return <DebugSection rows={variables} wrapLabels />;

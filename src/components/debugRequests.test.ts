@@ -93,15 +93,30 @@ describe('matchDebugEventTarget — redirect chain follow-ups', () => {
     expect(match).toBeNull();
   });
 
-  it('numbers every follow-up row with the parent request id, not the child id', () => {
+  it('numbers each follow-up with the parent id plus its position in the chain', () => {
+    // RLP-586: hops and the final landing keep the parent's number (#17) so the
+    // chain stays grouped, but each gets a sub-index (#17.1, #17.2, ...) so the
+    // parent and its children are individually identifiable even when several
+    // VUs interleave their chains on the timeline.
     const nodes = chainNodes();
     const hopEvent = event({ chain_id: 'rc-17', chain_role: 'hop', redirect_index: 3, request_id: 17 });
     const hopNode = matchDebugEventTarget(hopEvent, nodes);
     expect(hopNode?.id).toBe('h20');
-    expect(debugEventRequestNumber(hopEvent, hopNode, nodes)).toBe('17');
+    expect(debugEventRequestNumber(hopEvent, hopNode, nodes)).toBe('17.3');
 
     const finalEvent = event({ chain_id: 'rc-17', chain_role: 'final', redirect_index: 4, request_id: 17 });
-    expect(debugEventRequestNumber(finalEvent, matchDebugEventTarget(finalEvent, nodes), nodes)).toBe('17');
+    expect(debugEventRequestNumber(finalEvent, matchDebugEventTarget(finalEvent, nodes), nodes)).toBe('17.4');
+  });
+
+  it('sub-indexes a final follow-up that arrives without a redirect_index', () => {
+    // chain_role 'final' with redirect_index omitted (omitempty drops a 0): the
+    // position must still be derived from the matched child's order in the
+    // chain, so the final landing reads #17.4 rather than collapsing to #17.
+    const nodes = chainNodes();
+    const finalEvent = event({ chain_id: 'rc-17', chain_role: 'final', request_id: 17 });
+    const finalNode = matchDebugEventTarget(finalEvent, nodes);
+    expect(finalNode?.id).toBe('f21');
+    expect(debugEventRequestNumber(finalEvent, finalNode, nodes)).toBe('17.4');
   });
 
   it('keeps the normal node number for non-redirect rows', () => {
@@ -140,7 +155,7 @@ describe('variableRowsForRequestNode', () => {
     expect(variableRowsForRequestNode(hop, accumulated)).toEqual([]);
   });
 
-  it('lists only the variables the node extracts', () => {
+  it('lists the variables the node extracts and ignores unrelated values', () => {
     const node: YAMLNode = {
       id: 'r',
       type: 'request',
@@ -149,5 +164,66 @@ describe('variableRowsForRequestNode', () => {
       children: [{ id: 'e', type: 'extractor', name: 'e', data: { type: 'regex', var: 'token', pattern: 't=(.*)' } }],
     };
     expect(variableRowsForRequestNode(node, { token: 'abc', user: 'u', pass: 'p' })).toEqual([['token', 'abc']]);
+  });
+
+  it('also lists variables the request uses via {{placeholders}} in headers/url/body', () => {
+    // RLP-584: a request that references {{tenant_id}} in a header and {{user_id}}
+    // in its url consumes those variables even though it extracts nothing — they
+    // must appear in the Variables tab with their accumulated values.
+    const node: YAMLNode = {
+      id: 'r',
+      type: 'request',
+      name: 'r',
+      data: {
+        method: 'POST',
+        url: '/catalog/items/{{user_id}}',
+        headers: { 'X-Tenant-Id': '{{tenant_id}}' },
+        body: 'name={{user_id}}',
+      },
+    };
+    // Order follows the request config traversal (url before headers), so
+    // user_id (in the url) precedes tenant_id (in a header).
+    expect(variableRowsForRequestNode(node, { tenant_id: 't-1', user_id: '42', unrelated: 'x' })).toEqual([
+      ['user_id', '42'],
+      ['tenant_id', 't-1'],
+    ]);
+  });
+
+  it('lists data-source bound variables for a request that owns the data source', () => {
+    // RLP-584: a request with its own data source should surface the bound
+    // variable names (the bind keys), so values pulled per-iteration show up.
+    const node: YAMLNode = {
+      id: 'r',
+      type: 'request',
+      name: 'r',
+      data: { method: 'POST', url: '/login' },
+      children: [
+        {
+          id: 'ds',
+          type: 'data_source',
+          name: 'Data Source',
+          data: { type: 'csv', file: 'users.csv', bind: { username: 'username', password: 'password' } },
+        },
+      ],
+    };
+    expect(variableRowsForRequestNode(node, { username: 'neo', password: 'pw', pass: 'leak' })).toEqual([
+      ['username', 'neo'],
+      ['password', 'pw'],
+    ]);
+  });
+
+  it('keeps extractor output first, then used variables, without duplicates', () => {
+    const node: YAMLNode = {
+      id: 'r',
+      type: 'request',
+      name: 'r',
+      data: { method: 'GET', url: '/u/{{user_id}}', headers: { Authorization: 'Bearer {{token}}' } },
+      children: [{ id: 'e', type: 'extractor', name: 'e', data: { type: 'regex', var: 'token', pattern: 't=(.*)' } }],
+    };
+    // token is both extracted and referenced — it must appear once, extractor-first.
+    expect(variableRowsForRequestNode(node, { token: 'abc', user_id: '7' })).toEqual([
+      ['token', 'abc'],
+      ['user_id', '7'],
+    ]);
   });
 });
