@@ -98,7 +98,6 @@ const STEP_ELEMENTS: YAMLNodeType[] = [
 /** Elements that can be distributed inside a Balanced Controller */
 const BALANCED_CHILD_ELEMENTS: YAMLNodeType[] = [
   ...HTTP_SAMPLERS,
-  ...SQL_SAMPLERS,
   'group',
   'transaction',
   'if',

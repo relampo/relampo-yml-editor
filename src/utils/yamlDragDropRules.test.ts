@@ -33,8 +33,16 @@ describe('yamlDragDropRules', () => {
       expect(canContain('balanced', 'think_time')).toBe(false);
     });
 
+    it('rejects sql as a direct balanced child', () => {
+      expect(canContain('balanced', 'sql')).toBe(false);
+    });
+
     it('blocks dropping think_time inside a balanced controller', () => {
       expect(canDrop('think_time', 'balanced', 'inside')).toBe(false);
+    });
+
+    it('blocks dropping sql inside a balanced controller', () => {
+      expect(canDrop('sql', 'balanced', 'inside')).toBe(false);
     });
 
     it('does not list balanced as a valid container for think_time', () => {
