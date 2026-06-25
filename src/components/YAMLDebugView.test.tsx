@@ -726,8 +726,9 @@ describe('YAMLDebugSession tree selection sync', () => {
     });
 
     // The final landing is a redirect follow-up, so it shows the parent's
-    // number (#10), not the recorded final child's own id (#11). RLP-570.
-    expect(await screen.findByText('#10')).toBeInTheDocument();
+    // number with its chain position (#10.1) — grouped under the parent yet
+    // distinct — never the recorded final child's own id (#11). RLP-586.
+    expect(await screen.findByText('#10.1')).toBeInTheDocument();
     expect(screen.queryByText('#11')).not.toBeInTheDocument();
     expect(screen.getAllByText('http://www.testingyes.com/demo/index.php?main_page=checkout_payment')).not.toHaveLength(0);
   });

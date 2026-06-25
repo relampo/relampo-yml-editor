@@ -76,22 +76,44 @@ function matchRedirectChainChildToNode(event: DebugEventLike, chainId: string, r
   return null;
 }
 
-// The number shown on a Debug timeline row. Redirect follow-up rows display the
-// number of the enabled parent request that triggered the chain — every hop and
-// the final landing share it — never the recorded child's own request_id. This
-// keeps the chain visually grouped under one number (e.g. #17) instead of
-// leaking the disabled children's ids (18, 19, 20...). RLP-570.
+// The 1-based position of a redirect follow-up within its chain: hop 1, hop 2,
+// ..., final last. Derived from the matched child's order among the recorded
+// chain children so it agrees with what the Tree selects; falls back to the
+// event's redirect_index when the chain can't be resolved to a node.
+function redirectChainPosition(
+  event: DebugEventLike,
+  matchedNode: YAMLNode | null,
+  chainId: string,
+  requestNodes: YAMLNode[],
+): number {
+  const children = requestNodes.filter(node => {
+    const role = chainRoleOf(node);
+    return String(node.data?.chain_id ?? '') === chainId && (role === 'hop' || role === 'final');
+  });
+  const position = matchedNode ? children.findIndex(child => child.id === matchedNode.id) : -1;
+  if (position >= 0) return position + 1;
+  return event.redirect_index ?? 0;
+}
+
+// The number shown on a Debug timeline row. A redirect follow-up row shows the
+// enabled parent's number with a sub-index for its position in the chain
+// (#32.1, #32.2, ... the final landing last) so the parent and each of its
+// children stay grouped under one number yet remain individually identifiable —
+// critical when multiple VUs interleave their chains. The parent's own row
+// keeps the bare number (#32). RLP-586 (was: every follow-up shared #32, RLP-570).
 export function debugEventRequestNumber(event: DebugEventLike, matchedNode: YAMLNode | null, requestNodes: YAMLNode[]): string {
   const chainId = String(event.chain_id ?? '').trim();
   if (chainId && isRedirectFollowUpEvent(event)) {
     const parent = requestNodes.find(node => String(node.data?.chain_id ?? '') === chainId && chainRoleOf(node) === 'parent');
     const parentId = parent?.data?.request_id;
-    if (parentId !== undefined && parentId !== null && String(parentId).trim() !== '') {
-      return String(parentId).trim();
-    }
     // The backend stamps the parent's request_id on every chain event, so fall
     // back to it when the parent node can't be found in the tree.
-    return String(event.request_id ?? '').trim();
+    const base =
+      parentId !== undefined && parentId !== null && String(parentId).trim() !== ''
+        ? String(parentId).trim()
+        : String(event.request_id ?? '').trim();
+    const position = redirectChainPosition(event, matchedNode, chainId, requestNodes);
+    return position > 0 ? `${base}.${position}` : base;
   }
   return String(matchedNode?.data?.request_id ?? event.request_id ?? '').trim();
 }
@@ -212,17 +234,67 @@ export function requestExtractorVariableNames(node: YAMLNode | null): string[] {
   return names;
 }
 
+const PLACEHOLDER_PATTERN = /\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*\}\}/g;
+
+// Pull every `{{var}}` reference out of an arbitrary request-config value (the
+// url, headers, query params, body, auth — whatever shape `node.data` holds).
+function collectPlaceholderNames(value: unknown, into: Set<string>): void {
+  if (typeof value === 'string') {
+    for (const match of value.matchAll(PLACEHOLDER_PATTERN)) into.add(match[1]);
+    return;
+  }
+  if (Array.isArray(value)) {
+    value.forEach(item => collectPlaceholderNames(item, into));
+    return;
+  }
+  if (value && typeof value === 'object') {
+    Object.values(value as Record<string, unknown>).forEach(item => collectPlaceholderNames(item, into));
+  }
+}
+
+// The variable names a request *uses* (vs. extracts): `{{placeholders}}` woven
+// through its url/headers/body/params, plus the names bound by any data source
+// attached to the request. RLP-584. This stays request-scoped on purpose — we
+// never widen back to "every variable in scope", which is what RLP-585 removed
+// to stop unrelated data-source columns leaking onto requests that don't touch
+// them.
+export function requestReferencedVariableNames(node: YAMLNode | null): string[] {
+  if (!node) return [];
+  const names = new Set<string>();
+  collectPlaceholderNames(node.data, names);
+  node.children?.forEach(child => {
+    if (child.type !== 'data_source') return;
+    const bind = child.data?.bind;
+    if (bind && typeof bind === 'object') {
+      Object.keys(bind as Record<string, unknown>).forEach(name => name && names.add(name));
+    }
+  });
+  return [...names];
+}
+
+// Every variable name relevant to a request's Variables tab: what it extracts
+// followed by what it references. Order is stable (extractors first) and
+// duplicates collapse. RLP-584.
+export function requestVariableNames(node: YAMLNode | null): string[] {
+  const names: string[] = [];
+  for (const name of [...requestExtractorVariableNames(node), ...requestReferencedVariableNames(node)]) {
+    if (!names.includes(name)) names.push(name);
+  }
+  return names;
+}
+
 export function variableRowsForRequestNode(
   node: YAMLNode | null,
   variables: Record<string, string>,
 ): Array<[string, string]> {
-  // A request's Variables tab lists only the variables that request itself
-  // extracts. When the event can't be mapped to a tree node we show nothing
-  // rather than dumping every variable in scope — otherwise unrelated values
-  // (e.g. data-source columns like `user`/`pass`, which no request here even
-  // captures) leak onto requests that neither capture nor use them. RLP-585.
+  // A request's Variables tab lists the variables that request extracts *and*
+  // the ones it uses (header/body/url placeholders, data-source binds). When
+  // the event can't be mapped to a tree node we show nothing rather than
+  // dumping every variable in scope — otherwise unrelated values (e.g.
+  // data-source columns like `user`/`pass`, which this request neither captures
+  // nor references) leak onto it. RLP-584 / RLP-585.
   if (!node) return [];
-  return requestExtractorVariableNames(node).flatMap(name =>
+  return requestVariableNames(node).flatMap(name =>
     Object.prototype.hasOwnProperty.call(variables, name) ? [[name, variables[name]] as [string, string]] : [],
   );
 }
