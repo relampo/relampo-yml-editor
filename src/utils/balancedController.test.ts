@@ -36,9 +36,12 @@ function balanced(id: string, type: 'total' | 'parcial', children: YAMLNode[]): 
 }
 
 describe('isBalancedLoadBearingChild', () => {
-  it('treats requests and SQL samplers as load-bearing', () => {
+  it('treats HTTP requests as load-bearing', () => {
     expect(isBalancedLoadBearingChild(req('r'))).toBe(true);
-    expect(isBalancedLoadBearingChild({ id: 's', type: 'sql', name: 's', data: {} })).toBe(true);
+  });
+
+  it('treats sql as non-load-bearing', () => {
+    expect(isBalancedLoadBearingChild({ id: 's', type: 'sql', name: 's', data: {} } as YAMLNode)).toBe(false);
   });
 
   it('treats think_time as non-load-bearing', () => {
@@ -54,14 +57,62 @@ describe('isBalancedLoadBearingChild', () => {
     expect(isBalancedLoadBearingChild(group)).toBe(false);
   });
 
-  it('treats a container that transitively holds a request as load-bearing', () => {
-    const nested: YAMLNode = {
+  it('treats direct controller children with request descendants as load-bearing', () => {
+    const group: YAMLNode = {
       id: 'g',
       type: 'group',
       name: 'Group',
-      children: [{ id: 'tx', type: 'transaction', name: 'Tx', children: [req('r')] }],
+      children: [req('r')],
     };
-    expect(isBalancedLoadBearingChild(nested)).toBe(true);
+    expect(isBalancedLoadBearingChild(group)).toBe(true);
+  });
+
+  it('treats a transaction with nested controllers leading to a request as load-bearing', () => {
+    const tx: YAMLNode = {
+      id: 'tx',
+      type: 'transaction',
+      name: 'Tx',
+      children: [
+        {
+          id: 'loop',
+          type: 'loop',
+          name: 'Loop',
+          children: [
+            {
+              id: 'if',
+              type: 'if',
+              name: 'If',
+              children: [req('r')],
+            },
+          ],
+        },
+      ],
+    };
+    expect(isBalancedLoadBearingChild(tx)).toBe(true);
+  });
+
+  it('treats leaf nodes without HTTP requests as non-load-bearing', () => {
+    for (const type of ['data_source', 'think_time', 'sql']) {
+      const node = { id: `n-${type}`, type, name: type, data: {} } as YAMLNode;
+      expect(isBalancedLoadBearingChild(node)).toBe(false);
+    }
+  });
+
+  it('treats a container with only sql descendants as non-load-bearing', () => {
+    const tx: YAMLNode = {
+      id: 'tx',
+      type: 'transaction',
+      name: 'Tx',
+      children: [
+        {
+          id: 'group',
+          type: 'group',
+          name: 'Group',
+          children: [{ id: 'sql', type: 'sql', name: 'SQL', data: {} } as YAMLNode],
+        },
+      ],
+    };
+    expect(isBalancedLoadBearingChild(tx)).toBe(false);
   });
 
   it('treats a disabled request as non-load-bearing', () => {

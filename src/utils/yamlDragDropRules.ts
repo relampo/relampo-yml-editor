@@ -98,7 +98,6 @@ const STEP_ELEMENTS: YAMLNodeType[] = [
 /** Elements that can be distributed inside a Balanced Controller */
 const BALANCED_CHILD_ELEMENTS: YAMLNodeType[] = [
   ...HTTP_SAMPLERS,
-  ...SQL_SAMPLERS,
   'group',
   'transaction',
   'if',
@@ -234,6 +233,7 @@ export function canDrop(
   draggedType: YAMLNodeType,
   targetType: YAMLNodeType,
   position: 'before' | 'after' | 'inside',
+  parentType?: YAMLNodeType,
 ): boolean {
   // Cannot move root
   if (draggedType === 'root') {
@@ -247,7 +247,10 @@ export function canDrop(
 
   // Before/After: check sibling rules
   if (position === 'before' || position === 'after') {
-    return canBeSiblings(draggedType, targetType);
+    if (!canBeSiblings(draggedType, targetType)) {
+      return false;
+    }
+    return parentType ? canContain(parentType, draggedType) : true;
   }
 
   return false;

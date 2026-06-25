@@ -68,6 +68,7 @@ function clearDragIndicatorsGlobally() {
 interface YAMLTreeNodeProps {
   node: YAMLNode;
   depth: number;
+  parentType?: YAMLNodeType;
   isSelected: boolean;
   selectedNodeIds: string[];
   redirectedRequestMap: Record<string, RedirectedRequestInfo>;
@@ -83,6 +84,7 @@ interface YAMLTreeNodeProps {
 export function YAMLTreeNode({
   node,
   depth,
+  parentType,
   isSelected,
   selectedNodeIds,
   redirectedRequestMap,
@@ -190,7 +192,7 @@ export function YAMLTreeNode({
       position = canContainResult ? 'inside' : 'after';
     }
 
-    const canDropResult = canDrop(draggedNodeType, node.type, position);
+    const canDropResult = canDrop(draggedNodeType, node.type, position, parentType);
 
     if (canDropResult) {
       e.dataTransfer.dropEffect = 'move';
@@ -334,6 +336,7 @@ export function YAMLTreeNode({
                 key={child.id}
                 node={child}
                 depth={depth + 1}
+                parentType={node.type}
                 isSelected={selectedNodeIds.includes(child.id)}
                 selectedNodeIds={selectedNodeIds}
                 redirectedRequestMap={redirectedRequestMap}

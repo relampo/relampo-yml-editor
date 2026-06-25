@@ -57,32 +57,41 @@ const BALANCED_REQUEST_NODE_TYPES = new Set<string>([
   'patch',
   'head',
   'options',
-  'sql',
 ]);
 
 /**
- * Whether a balanced child actually contributes load.
+ * Whether an enabled subtree contains at least one enabled HTTP request.
  *
- * A child is load-bearing when it is a request/SQL sampler, or a container
- * (group, transaction, if, loop, retry…) that transitively holds at least one
- * enabled request. think_time steps, empty containers, and request-less subtrees
- * are NOT load-bearing: assigning them a percentage of a Balanced Controller
- * routes virtual users to zero work, silently lowering the real load. They are
- * therefore excluded from the controller's included elements, its distribution,
- * and the percentage total. See RLP-475.
+ * Balanced children can be either direct HTTP request steps or controller
+ * wrappers such as group/transaction/if/loop/retry that eventually lead to
+ * enabled HTTP requests. SQL, think_time, and request-less subtrees never
+ * qualify. See RLP-475.
  */
-export function isBalancedLoadBearingChild(node: YAMLNode): boolean {
-  // A disabled node produces no load: the serializer emits `enabled: false` and
-  // the runtime skips the whole subtree. This applies to samplers AND containers
-  // — a disabled transaction/group with enabled requests inside still runs no
-  // requests, so it must not receive a percentage either.
+function hasEnabledBalancedHttpRequest(node: YAMLNode): boolean {
   if (node.data?.enabled === false) {
     return false;
   }
   if (BALANCED_REQUEST_NODE_TYPES.has(node.type)) {
     return true;
   }
-  return (node.children ?? []).some(isBalancedLoadBearingChild);
+  return (node.children ?? []).some(hasEnabledBalancedHttpRequest);
+}
+
+/**
+ * Whether a balanced child actually contributes load.
+ *
+ * A child is load-bearing when it is an enabled HTTP request itself, or when
+ * its enabled subtree contains at least one enabled HTTP request. SQL,
+ * think_time, empty containers, and request-less subtrees are excluded from
+ * the controller's included elements, its distribution, and the percentage
+ * total. See RLP-475.
+ */
+export function isBalancedLoadBearingChild(node: YAMLNode): boolean {
+  // A disabled node produces no load: the serializer emits `enabled: false` and
+  // the runtime skips the whole subtree. This applies to samplers and
+  // containers, so disabled wrappers with enabled descendants still count as
+  // non-load-bearing.
+  return hasEnabledBalancedHttpRequest(node);
 }
 
 /**

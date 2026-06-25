@@ -33,8 +33,21 @@ describe('yamlDragDropRules', () => {
       expect(canContain('balanced', 'think_time')).toBe(false);
     });
 
+    it('rejects sql as a direct balanced child', () => {
+      expect(canContain('balanced', 'sql')).toBe(false);
+    });
+
     it('blocks dropping think_time inside a balanced controller', () => {
       expect(canDrop('think_time', 'balanced', 'inside')).toBe(false);
+    });
+
+    it('blocks dropping sql inside a balanced controller', () => {
+      expect(canDrop('sql', 'balanced', 'inside')).toBe(false);
+    });
+
+    it('blocks dropping sql before or after an existing balanced child', () => {
+      expect(canDrop('sql', 'get', 'before', 'balanced')).toBe(false);
+      expect(canDrop('sql', 'get', 'after', 'balanced')).toBe(false);
     });
 
     it('does not list balanced as a valid container for think_time', () => {
@@ -49,6 +62,8 @@ describe('yamlDragDropRules', () => {
       expect(canContain('balanced', 'transaction')).toBe(true);
       expect(canContain('balanced', 'loop')).toBe(true);
       expect(canContain('balanced', 'retry')).toBe(true);
+      expect(canDrop('group', 'get', 'before', 'balanced')).toBe(true);
+      expect(canDrop('retry', 'post', 'after', 'balanced')).toBe(true);
     });
   });
 });
