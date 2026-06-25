@@ -263,10 +263,18 @@ export function requestReferencedVariableNames(node: YAMLNode | null): string[] 
   const names = new Set<string>();
   collectPlaceholderNames(node.data, names);
   node.children?.forEach(child => {
-    if (child.type !== 'data_source') return;
-    const bind = child.data?.bind;
-    if (bind && typeof bind === 'object') {
-      Object.keys(bind as Record<string, unknown>).forEach(name => name && names.add(name));
+    // Header/body config edited through the detail UI lives on child config
+    // nodes (e.g. the `headers` child) and is serialized from there, not from
+    // node.data — so a header like `Authorization: Bearer {{token}}` only
+    // surfaces if we scan child data too. Skip nested request children so a
+    // controller's sub-requests never leak their placeholders up here. RLP-584.
+    if (REQUEST_TYPES.has(child.type)) return;
+    collectPlaceholderNames(child.data, names);
+    if (child.type === 'data_source') {
+      const bind = child.data?.bind;
+      if (bind && typeof bind === 'object') {
+        Object.keys(bind as Record<string, unknown>).forEach(name => name && names.add(name));
+      }
     }
   });
   return [...names];

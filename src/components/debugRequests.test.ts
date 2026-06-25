@@ -189,6 +189,20 @@ describe('variableRowsForRequestNode', () => {
     ]);
   });
 
+  it('lists placeholders stored on the headers child node, not just node.data', () => {
+    // RLP-584 (Codex follow-up): headers edited through the UI live on the
+    // `headers` child and are serialized from there, so an Authorization header
+    // referencing {{token}} must surface even though node.data has no headers.
+    const node: YAMLNode = {
+      id: 'r',
+      type: 'request',
+      name: 'r',
+      data: { method: 'GET', url: '/me' },
+      children: [{ id: 'h', type: 'headers', name: 'Headers', data: { Authorization: 'Bearer {{token}}' } }],
+    };
+    expect(variableRowsForRequestNode(node, { token: 'abc', unrelated: 'x' })).toEqual([['token', 'abc']]);
+  });
+
   it('lists data-source bound variables for a request that owns the data source', () => {
     // RLP-584: a request with its own data source should surface the bound
     // variable names (the bind keys), so values pulled per-iteration show up.
