@@ -45,6 +45,11 @@ describe('yamlDragDropRules', () => {
       expect(canDrop('sql', 'balanced', 'inside')).toBe(false);
     });
 
+    it('blocks dropping sql before or after an existing balanced child', () => {
+      expect(canDrop('sql', 'get', 'before', 'balanced')).toBe(false);
+      expect(canDrop('sql', 'get', 'after', 'balanced')).toBe(false);
+    });
+
     it('does not list balanced as a valid container for think_time', () => {
       const targets = getValidDropTargets('think_time');
       expect(targets.containers).not.toContain('balanced');
@@ -57,6 +62,8 @@ describe('yamlDragDropRules', () => {
       expect(canContain('balanced', 'transaction')).toBe(true);
       expect(canContain('balanced', 'loop')).toBe(true);
       expect(canContain('balanced', 'retry')).toBe(true);
+      expect(canDrop('group', 'get', 'before', 'balanced')).toBe(true);
+      expect(canDrop('retry', 'post', 'after', 'balanced')).toBe(true);
     });
   });
 });

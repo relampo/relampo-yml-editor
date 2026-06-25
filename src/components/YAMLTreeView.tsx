@@ -619,6 +619,7 @@ export function YAMLTreeView({
           <YAMLTreeNode
             node={tree}
             depth={0}
+            parentType={undefined}
             isSelected={activeSelectedIds.includes(tree.id)}
             selectedNodeIds={activeSelectedIds}
             redirectedRequestMap={redirectedRequestMap}
