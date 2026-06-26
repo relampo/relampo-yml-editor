@@ -77,6 +77,42 @@ describe('YAMLDebugSession RLP debug fixes', () => {
     expect(titleColumn?.querySelector('p')).toBeNull();
   });
 
+  it('counts only redirect follow-up steps in the Redirects summary (RLP-588)', async () => {
+    render(
+      <YAMLDebugSession
+        tree={null}
+        yamlCode={'test:\n  name: redirect-count\n'}
+        documentReady
+        validationErrors={[]}
+        onSelectNode={vi.fn()}
+        onEditNode={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
+
+    act(() => {
+      // A 304 Not Modified and a standalone 302 (e.g. a sign-off) both carry a
+      // 3xx status but produce no labeled REDIRECTED step, so neither should be
+      // counted. Only the chain "final" landing is a follow-up step.
+      debugApiMock.handlers[0].onEvent(event({ name: '[1] GET /', status: 304 }));
+      debugApiMock.handlers[0].onEvent(event({ name: '[13] GET /logout', status: 302 }));
+      debugApiMock.handlers[0].onEvent(
+        event({
+          name: '[14] GET /catalog',
+          status: 200,
+          chain_id: 'rc-13',
+          chain_role: 'final',
+          redirect_index: 1,
+        }),
+      );
+    });
+
+    const redirectsValue = await screen.findByText('Redirects');
+    expect(redirectsValue.previousElementSibling).toHaveTextContent('1');
+  });
+
   it('shows redirected follow-up context in logs instead of a separate banner', async () => {
     const parentRequest: YAMLNode = {
       id: 'parent',
