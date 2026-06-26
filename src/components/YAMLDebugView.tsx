@@ -19,7 +19,7 @@ import type { RedirectedRequestInfo, YAMLNode } from '../types/yaml';
 import {
   collectDebugEventTargets,
   debugEventRequestNumber,
-  isRedirectFollowUpEvent,
+  isRedirectStepEvent,
   matchDebugEventTarget,
   requestVariableNames,
   variableRowsForRequestNode,
@@ -211,7 +211,7 @@ export function YAMLDebugSession({
   // instead diverged: it swept in 304 Not Modified and standalone 302s (e.g. a
   // sign-off) that never produced a labeled follow-up step.
   const redirects = entries.reduce(
-    (count, entry) => count + (isRedirectFollowUpEvent(entry.event) ? 1 : 0),
+    (count, entry) => count + (isRedirectStepEvent(entry.event) ? 1 : 0),
     0,
   );
   const hasValidationErrors = validationErrors.length > 0;
