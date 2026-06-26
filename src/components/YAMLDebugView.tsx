@@ -19,6 +19,7 @@ import type { RedirectedRequestInfo, YAMLNode } from '../types/yaml';
 import {
   collectDebugEventTargets,
   debugEventRequestNumber,
+  isRedirectStepEvent,
   matchDebugEventTarget,
   requestVariableNames,
   variableRowsForRequestNode,
@@ -205,9 +206,12 @@ export function YAMLDebugSession({
   const activeEntry = entries.find(entry => entry.id === activeId) || entries[entries.length - 1];
   const passed = entries.filter(entry => entry.status === 'passed').length;
   const failed = entries.filter(entry => entry.status === 'failed').length;
+  // Count the same redirect follow-up steps the tree labels REDIRECTED, so the
+  // summary reconciles with the tree (RLP-588). Counting 3xx response statuses
+  // instead diverged: it swept in 304 Not Modified and standalone 302s (e.g. a
+  // sign-off) that never produced a labeled follow-up step.
   const redirects = entries.reduce(
-    (count, entry) =>
-      count + (entry.event.redirects?.length ?? (entry.event.status >= 300 && entry.event.status < 400 ? 1 : 0)),
+    (count, entry) => count + (isRedirectStepEvent(entry.event) ? 1 : 0),
     0,
   );
   const hasValidationErrors = validationErrors.length > 0;

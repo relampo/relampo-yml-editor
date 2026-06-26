@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { previewStudioDataSourceFile, probeStudio, startDebugRun, uploadStudioDataSourceFile } from './debugApi';
+import {
+  AGENT_UNREACHABLE_MESSAGE,
+  previewStudioDataSourceFile,
+  probeStudio,
+  startDebugRun,
+  uploadStudioDataSourceFile,
+} from './debugApi';
 
 function mockFetch(body: unknown, ok = true) {
   vi.stubGlobal(
@@ -81,6 +87,19 @@ describe('startDebugRun', () => {
         body: JSON.stringify({ yaml: 'test:\n  name: debug\n', vus: 2 }),
       }),
     );
+  });
+
+  it('translates an unreachable local agent into actionable guidance (RLP-590)', async () => {
+    // fetch rejects with a TypeError when the connection is refused.
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
+
+    await expect(startDebugRun('test:\n  name: debug\n')).rejects.toThrow(AGENT_UNREACHABLE_MESSAGE);
+  });
+
+  it('passes through HTTP error bodies without the connection message', async () => {
+    mockFetch({ error: 'invalid yaml' }, false);
+
+    await expect(startDebugRun('test:\n  name: debug\n')).rejects.toThrow('invalid yaml');
   });
 });
 

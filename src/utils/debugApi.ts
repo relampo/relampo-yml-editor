@@ -67,6 +67,30 @@ export interface StartDebugRunOptions {
 
 const apiBase: string = import.meta.env.VITE_DEBUG_API_URL ?? '';
 
+// When the local agent is not running, fetch rejects with a TypeError (Chrome:
+// "Failed to fetch", Firefox: "NetworkError when attempting to fetch resource")
+// before any HTTP status exists. That browser-internal string tells the user
+// nothing, so we translate connection failures into actionable guidance
+// (RLP-590) and re-throw anything else (HTTP errors, aborts) untouched.
+export const AGENT_UNREACHABLE_MESSAGE =
+  'Could not reach the local Relampo agent. Make sure it is running with `relampo debug` or `relampo studio` in your terminal.';
+
+function isConnectionFailure(error: unknown): boolean {
+  // AbortError (timeouts, user-cancelled runs) is a real outcome, not an
+  // unreachable agent — leave it alone.
+  if (error instanceof DOMException && error.name === 'AbortError') return false;
+  return error instanceof TypeError;
+}
+
+async function fetchAgent(input: string, init?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(input, init);
+  } catch (error) {
+    if (isConnectionFailure(error)) throw new Error(AGENT_UNREACHABLE_MESSAGE);
+    throw error;
+  }
+}
+
 // A YAML script the CLI asked the editor to mount on startup, supplied via
 // `relampo studio <script.yaml>`.
 export interface StudioInitialScript {
@@ -128,7 +152,7 @@ export async function probeStudio(): Promise<StudioInfo | null> {
 // this payload.
 export async function startDebugRun(yaml: string, options: StartDebugRunOptions = {}): Promise<string> {
   const vus = options.vus ?? 1;
-  const response = await fetch(`${apiBase}/api/debug/runs`, {
+  const response = await fetchAgent(`${apiBase}/api/debug/runs`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ yaml, vus }),
@@ -150,7 +174,7 @@ export async function startDebugRun(yaml: string, options: StartDebugRunOptions 
 export async function uploadStudioDataSourceFile(file: File): Promise<StudioDataSourceUpload> {
   const form = new FormData();
   form.append('file', file);
-  const response = await fetch(`${apiBase}/api/studio/data-source-files`, {
+  const response = await fetchAgent(`${apiBase}/api/studio/data-source-files`, {
     method: 'POST',
     body: form,
   });
@@ -173,7 +197,7 @@ export async function uploadStudioDataSourceFile(file: File): Promise<StudioData
 
 export async function previewStudioDataSourceFile(path: string, signal?: AbortSignal): Promise<StudioDataSourcePreview> {
   const params = new URLSearchParams({ path });
-  const response = await fetch(`${apiBase}/api/studio/data-source-preview?${params.toString()}`, { signal });
+  const response = await fetchAgent(`${apiBase}/api/studio/data-source-preview?${params.toString()}`, { signal });
   if (!response.ok) {
     let message = `data source preview failed (HTTP ${response.status})`;
     try {

@@ -45,6 +45,15 @@ export function isRedirectFollowUpEvent(event: DebugEventLike): boolean {
   return role === 'hop' || role === 'final' || (event.redirect_index ?? 0) > 0;
 }
 
+// Whether an event is a redirect follow-up step for counting purposes — the
+// same set the tree badges REDIRECTED. It widens isRedirectFollowUpEvent with
+// the step_path fallback that matchRedirectFinalEventToNode also accepts, so
+// older/partial engine payloads that land a redirect final identified only by
+// its recorded `...redirects[N]` step path stay in sync with the tree (RLP-588).
+export function isRedirectStepEvent(event: DebugEventLike): boolean {
+  return isRedirectFollowUpEvent(event) || String(event.step_path ?? '').includes('.redirects[');
+}
+
 function chainRoleOf(node: YAMLNode): string {
   return String(node.data?.chain_role ?? '').trim().toLowerCase();
 }
