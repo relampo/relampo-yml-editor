@@ -634,6 +634,64 @@ describe('YAMLDebugSession tree selection sync', () => {
     expect(screen.queryByText('javax.faces.ViewState')).not.toBeInTheDocument();
   });
 
+  // RLP-576: long variable names (e.g. javax.faces.ViewState) must stay fully
+  // readable and never collapse into the value column. The original report
+  // showed clipped names glued to their value ("JAVAX.FACES.VIE517301297...").
+  // Guard the rendering contract that prevents it: the name wraps instead of
+  // truncating, and name and value live in separate cells.
+  it('renders a long variable name fully and separated from its value', async () => {
+    const longName = 'javax.faces.ViewState';
+    const viewStateValue = '517301297273386199:-4952852429995464386';
+    const requestA: YAMLNode = {
+      id: 'a',
+      type: 'request',
+      name: 'Request A',
+      data: { method: 'POST', url: '/a' },
+      children: [
+        {
+          id: 'a_extract_viewstate',
+          type: 'extractor',
+          name: `Extract: ${longName}`,
+          data: { type: 'regex', var: longName, pattern: 'ViewState:value="(.*)"' },
+        },
+      ],
+    };
+    const tree: YAMLNode = { id: 'root', type: 'root', name: 'root', children: [requestA] };
+
+    render(
+      <YAMLDebugSession
+        tree={tree}
+        yamlCode={'test:\n  name: variables\n'}
+        documentReady
+        validationErrors={[]}
+        onSelectNode={vi.fn()}
+        onEditNode={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
+
+    act(() => {
+      debugApiMock.handlers[0].onEvent(
+        event({ name: 'Request A', method: 'POST', path: '/a', variables: { [longName]: viewStateValue } }),
+      );
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'variables' }));
+
+    const nameCell = await screen.findByText(longName);
+    const valueCell = screen.getByText(viewStateValue);
+
+    // Name wraps to a second line instead of being clipped into the value.
+    expect(nameCell).toHaveClass('break-words');
+    expect(nameCell).not.toHaveClass('truncate');
+    // Name and value are distinct cells, so they can never appear concatenated.
+    expect(nameCell).not.toBe(valueCell);
+    expect(nameCell).not.toHaveTextContent(viewStateValue);
+    expect(valueCell).not.toHaveTextContent(longName);
+  });
+
   it('starts a debug run with the selected 2 VUs option', async () => {
     const tree: YAMLNode = {
       id: 'root',
