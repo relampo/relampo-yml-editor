@@ -715,7 +715,13 @@ function DebugInspectorContent({
       <DebugLine
         icon={<Eye className="h-4 w-4 text-yellow-300" />}
         title="Step"
-        value={entry.node?.name ?? event.name}
+        // Show what the run actually sent, sourced from the event like the
+        // timeline and the header above — not the recorded node name, which
+        // bakes in the capture-time value of any correlated placeholder. When an
+        // extraction fails the node name still reads NROEXP=2026-88-001-0168
+        // while the request went out as NROEXP=Regex+value+not+found, so reading
+        // from the node made Overview contradict the Request tab. RLP-593.
+        value={event.path || event.name}
       />
       <DebugLine icon={<Clock3 className="h-4 w-4 text-zinc-300" />} title="Latency" value={formatLatency(event.latency_ms)} />
       <DebugLine

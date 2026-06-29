@@ -206,6 +206,46 @@ describe('YAMLDebugSession RLP debug fixes', () => {
     expect(await screen.findByText(/redirected request launched by \[10\] POST \/login/)).toBeInTheDocument();
     expect(screen.getByText(/→ \/dashboard/)).toBeInTheDocument();
   });
+
+  it('Overview shows the runtime URL, not the recorded one with the stale correlated value (RLP-593)', async () => {
+    // The recorded step name bakes in the capture-time value of the {{NROEXP}}
+    // placeholder. At runtime the extraction failed, so the request actually went
+    // out with NROEXP=Regex+value+not+found. Overview read the node name and
+    // showed the stale 2026-88-001-0168, contradicting the Request tab.
+    const recordedName = 'Consulta Expediente - GET /servlet/exp?NROEXP=2026-88-001-0168';
+    const request: YAMLNode = {
+      id: 'exp',
+      type: 'request',
+      name: recordedName,
+      data: { request_id: 12, method: 'GET', url: '/servlet/exp?NROEXP=2026-88-001-0168' },
+      path: ['scenarios', 0, 'steps', 12],
+    };
+    const tree: YAMLNode = { id: 'root', type: 'root', name: 'root', children: [request] };
+
+    render(
+      <YAMLDebugSession
+        tree={tree}
+        yamlCode={'test:\n  name: overview-url\n'}
+        documentReady
+        validationErrors={[]}
+        onSelectNode={vi.fn()}
+        onEditNode={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
+
+    act(() => {
+      debugApiMock.handlers[0].onEvent(
+        event({ name: `[12] ${recordedName}`, path: '/servlet/exp?NROEXP=Regex+value+not+found' }),
+      );
+    });
+
+    const stepValue = (await screen.findByText('Step')).nextElementSibling;
+    expect(stepValue).toHaveTextContent('NROEXP=Regex+value+not+found');
+    expect(stepValue).not.toHaveTextContent('2026-88-001-0168');
+  });
 });
 
 describe('DebugSection RLP body layout', () => {
