@@ -243,13 +243,25 @@ export function requestExtractorVariableNames(node: YAMLNode | null): string[] {
   return names;
 }
 
-const PLACEHOLDER_PATTERN = /\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*\}\}/g;
+// Match `{{name}}` where the inner name is anything but a brace (trimmed by the
+// caller). Correlation variables are routinely named with dots or hyphens —
+// `javax.faces.ViewState`, `x-correlation-id` — so restricting to an identifier
+// charset silently dropped them: the run still carried the value and the request
+// still referenced it, but the Variables tab never listed it. That looked
+// "intermittent" because plain names worked and dotted ones didn't. Over-
+// capturing here is harmless: variableRowsForRequestNode only surfaces names that
+// actually exist in the run's variable map, so junk never reaches the UI.
+// RLP-597 / RLP-584.
+const PLACEHOLDER_PATTERN = /\{\{([^{}]+)\}\}/g;
 
 // Pull every `{{var}}` reference out of an arbitrary request-config value (the
 // url, headers, query params, body, auth — whatever shape `node.data` holds).
 function collectPlaceholderNames(value: unknown, into: Set<string>): void {
   if (typeof value === 'string') {
-    for (const match of value.matchAll(PLACEHOLDER_PATTERN)) into.add(match[1]);
+    for (const match of value.matchAll(PLACEHOLDER_PATTERN)) {
+      const name = match[1].trim();
+      if (name) into.add(name);
+    }
     return;
   }
   if (Array.isArray(value)) {

@@ -189,6 +189,34 @@ describe('variableRowsForRequestNode', () => {
     ]);
   });
 
+  it('surfaces correlation variables whose names contain dots or hyphens', () => {
+    // RLP-597: JSF/correlation variables are named `javax.faces.ViewState`,
+    // `x-correlation-id`, etc. The placeholder scan used to require an identifier
+    // charset, so a body re-posting `{{javax.faces.ViewState}}` never listed it —
+    // it read as "intermittent" because plain names worked and dotted ones didn't.
+    const node: YAMLNode = {
+      id: 'r',
+      type: 'request',
+      name: 'r',
+      data: {
+        method: 'POST',
+        url: '/jsf/page',
+        body: 'javax.faces.ViewState={{javax.faces.ViewState}}',
+        headers: { 'X-Correlation-Id': '{{x-correlation-id}}' },
+      },
+    };
+    expect(
+      variableRowsForRequestNode(node, {
+        'javax.faces.ViewState': 'vs-token',
+        'x-correlation-id': 'cid-9',
+        unrelated: 'x',
+      }),
+    ).toEqual([
+      ['javax.faces.ViewState', 'vs-token'],
+      ['x-correlation-id', 'cid-9'],
+    ]);
+  });
+
   it('lists placeholders stored on the headers child node, not just node.data', () => {
     // RLP-584 (Codex follow-up): headers edited through the UI live on the
     // `headers` child and are serialized from there, so an Authorization header
