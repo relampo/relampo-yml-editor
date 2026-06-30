@@ -4,6 +4,7 @@ import type { RedirectedRequestInfo } from '../../types/yaml';
 import {
   addNodeToTree,
   getTransactionWrapValidation,
+  refreshTreePaths,
   syncRedirectSourceFollowRedirects,
   updateNodeEnabled,
   wrapNodesInTransaction,
@@ -65,6 +66,27 @@ describe('transaction grouping operations', () => {
     });
 
     expect(findNodeById(result, 'scenarios')?.children?.map(child => child.id)).toEqual(['scenario-1']);
+  });
+
+  it('reindexes step paths after inserting a data source before requests', () => {
+    const tree = refreshTreePaths(createBaseTree());
+    const updatedTree = addNodeToTree(tree, 'steps-1', {
+      id: 'data-source',
+      type: 'data_source',
+      name: 'Data Source',
+      data: { type: 'csv', file: 'data.csv' },
+    });
+
+    const normalizedTree = refreshTreePaths(updatedTree);
+    const stepsNode = findNodeById(normalizedTree, 'steps-1');
+
+    expect(stepsNode?.children?.map(child => [child.id, child.path])).toEqual([
+      ['data-source', ['scenarios', 0, 'steps', 0]],
+      ['step-a', ['scenarios', 0, 'steps', 1]],
+      ['step-b', ['scenarios', 0, 'steps', 2]],
+      ['step-c', ['scenarios', 0, 'steps', 3]],
+      ['step-d', ['scenarios', 0, 'steps', 4]],
+    ]);
   });
 
   it('wraps a valid contiguous sibling selection into a transaction preserving order and position', () => {

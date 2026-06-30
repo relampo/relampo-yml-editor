@@ -16,6 +16,114 @@ interface TransactionWrapValidationResult {
   parentId?: string;
 }
 
+const STEP_CONTAINER_TYPES = new Set<YAMLNode['type']>([
+  'group',
+  'simple',
+  'transaction',
+  'parallel',
+  'balanced',
+  'if',
+  'loop',
+  'retry',
+  'one_time',
+  'on_error',
+]);
+
+const REQUEST_TYPES = new Set<YAMLNode['type']>([
+  'request',
+  'get',
+  'post',
+  'put',
+  'delete',
+  'patch',
+  'head',
+  'options',
+]);
+
+function ordinalAmong(siblings: YAMLNode[], index: number, predicate: (node: YAMLNode) => boolean): number {
+  return siblings.slice(0, index + 1).filter(predicate).length - 1;
+}
+
+function childPathFor(
+  parent: YAMLNode,
+  child: YAMLNode,
+  index: number,
+  siblings: YAMLNode[],
+  parentPath: Array<string | number>,
+): Array<string | number> {
+  if (parent.type === 'root' || parent.type === 'test') {
+    if (child.type === 'scenarios') return ['scenarios'];
+    if (child.type === 'variables') return ['variables'];
+    if (child.type === 'data_source') return ['data_source'];
+    if (child.type === 'http_defaults') return ['http_defaults'];
+    if (child.type === 'metrics') return ['metrics'];
+    if (child.type === 'error_policy') return ['error_policy'];
+    return [child.type];
+  }
+
+  if (parent.type === 'scenarios') return [...parentPath, index];
+
+  if (parent.type === 'scenario') {
+    if (child.type === 'steps') return [...parentPath, 'steps'];
+    if (child.type === 'load') return [...parentPath, 'load'];
+    if (child.type === 'cookies') return [...parentPath, 'cookies'];
+    if (child.type === 'cache_manager') return [...parentPath, 'cache_manager'];
+    if (child.type === 'error_policy') return [...parentPath, 'error_policy'];
+    return [...parentPath, child.type];
+  }
+
+  if (parent.type === 'steps') return [...parentPath, index];
+
+  if (STEP_CONTAINER_TYPES.has(parent.type)) return [...parentPath, 'steps', index];
+
+  if (REQUEST_TYPES.has(parent.type)) {
+    if (child.type === 'headers') return [...parentPath, 'request', 'headers'];
+    if (child.type === 'spark_before' || child.type === 'spark_after') {
+      return [
+        ...parentPath,
+        'spark',
+        ordinalAmong(siblings, index, node => node.type === 'spark_before' || node.type === 'spark_after'),
+      ];
+    }
+    if (child.type === 'extractor') {
+      return [...parentPath, 'extractors', ordinalAmong(siblings, index, node => node.type === 'extractor')];
+    }
+    if (child.type === 'extract') {
+      return [...parentPath, 'request', 'extract', ordinalAmong(siblings, index, node => node.type === 'extract')];
+    }
+    if (child.type === 'assertion') {
+      return [...parentPath, 'assertions', ordinalAmong(siblings, index, node => node.type === 'assertion')];
+    }
+    if (child.type === 'assert') {
+      return [...parentPath, 'request', 'assert', ordinalAmong(siblings, index, node => node.type === 'assert')];
+    }
+    if (child.type === 'think_time') return [...parentPath, 'think_time'];
+    if (child.type === 'error_policy') return [...parentPath, 'error_policy'];
+    if (child.type === 'file')
+      return [...parentPath, 'files', ordinalAmong(siblings, index, node => node.type === 'file')];
+    if (child.type === 'data_source') return [...parentPath, 'data_source'];
+    return [...parentPath, child.type];
+  }
+
+  return [...parentPath, child.type];
+}
+
+export function refreshTreePaths(tree: YAMLNode): YAMLNode {
+  const visit = (node: YAMLNode, path: Array<string | number>): YAMLNode => {
+    const children = node.children?.map((child, index, siblings) =>
+      visit(child, childPathFor(node, child, index, siblings, path)),
+    );
+
+    return {
+      ...node,
+      path,
+      ...(children ? { children } : {}),
+    };
+  };
+
+  return visit(tree, []);
+}
+
 export function toggleNodeInTree(tree: YAMLNode, nodeId: string): YAMLNode {
   if (tree.id === nodeId) {
     return { ...tree, expanded: !tree.expanded };

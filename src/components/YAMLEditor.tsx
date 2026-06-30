@@ -26,7 +26,12 @@ import { YAMLEditorDetailsPanel } from './YAMLEditorDetailsPanel';
 import { EditorViewModeTabs, type EditorViewMode } from './EditorViewModeTabs';
 import { YAMLEditorHeader } from './YAMLEditorHeader';
 import { createNodeByType } from './yaml-tree-view/nodeFactory';
-import { addNodeToTree, syncRedirectSourceFollowRedirects, updateNodeEnabled } from './yaml-tree-view/treeOperations';
+import {
+  addNodeToTree,
+  refreshTreePaths,
+  syncRedirectSourceFollowRedirects,
+  updateNodeEnabled,
+} from './yaml-tree-view/treeOperations';
 import { autoRebalanceBalancedControllers } from '../utils/balancedController';
 import type { YAMLAddableNodeType } from './yaml-tree-view/addableItems';
 import { YAMLTreeView } from './YAMLTreeView';
@@ -375,19 +380,20 @@ export function YAMLEditor() {
     nextSelection?: TreeSelection,
     options: CommitTreeChangeOptions = {},
   ) => {
-    setYamlTree(newTree);
+    const normalizedTree = refreshTreePaths(newTree);
+    setYamlTree(normalizedTree);
     if (nextSelection) {
       const nextSelectedIds = nextSelection.nodeIds.filter(Boolean);
-      const nextPrimary = nextSelection.primaryId ? findNodeById(newTree, nextSelection.primaryId) : null;
+      const nextPrimary = nextSelection.primaryId ? findNodeById(normalizedTree, nextSelection.primaryId) : null;
       setSelectedNode(nextPrimary);
       setSelectedNodeIds(nextSelectedIds);
       selectedNodeRef.current = nextPrimary;
       selectedNodeIdsRef.current = nextSelectedIds;
     } else {
-      syncSelectionWithTree(newTree);
+      syncSelectionWithTree(normalizedTree);
     }
-    applySemanticValidation(newTree);
-    scheduleTreeSerialization(newTree, options.serialization);
+    applySemanticValidation(normalizedTree);
+    scheduleTreeSerialization(normalizedTree, options.serialization);
     setHasDocumentActivity(true);
     setIsDirty(true);
     setIsTreeOutdated(false);
