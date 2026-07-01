@@ -5,6 +5,8 @@
 // `relampo studio` the API lives on the same origin; during `vite dev` point
 // VITE_DEBUG_API_URL at a running studio.
 
+import { studioAuthHeaders, withStudioToken } from './studioAuth';
+
 const apiBase: string = import.meta.env.VITE_DEBUG_API_URL ?? '';
 
 // EventSource auto-reconnects on transient drops; a multi-minute load run will
@@ -107,7 +109,7 @@ export interface RunStreamHandlers {
 export async function startLoadRun(yaml: string): Promise<string> {
   const response = await fetch(`${apiBase}/api/run`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: studioAuthHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ yaml }),
   });
   if (!response.ok) {
@@ -127,20 +129,22 @@ export async function startLoadRun(yaml: string): Promise<string> {
 // URL of the standalone HTML report the studio generates when a run finishes
 // (the same report `relampo run` writes). Open it in a new tab.
 export function loadRunReportUrl(runId: string): string {
-  return `${apiBase}/api/run/${runId}/report`;
+  // Opened in a new tab, so it cannot send the token header — carry it in the
+  // query string, which the studio server also accepts.
+  return withStudioToken(`${apiBase}/api/run/${runId}/report`);
 }
 
 // Asks the studio to cancel a running load run. The engine drains its VUs and
 // the run finishes with status "stopped" carrying partial metrics. Best-effort:
 // stopping an unknown/finished run is a no-op on the server.
 export async function stopLoadRun(runId: string): Promise<void> {
-  await fetch(`${apiBase}/api/run/${runId}/stop`, { method: 'POST' });
+  await fetch(`${apiBase}/api/run/${runId}/stop`, { method: 'POST', headers: studioAuthHeaders() });
 }
 
 // Streams a run's state, metric snapshots, and terminal summary over SSE.
 // Returns a function that closes the stream.
 export function streamLoadRun(runId: string, handlers: RunStreamHandlers): () => void {
-  const source = new EventSource(`${apiBase}/api/run/${runId}/events`);
+  const source = new EventSource(withStudioToken(`${apiBase}/api/run/${runId}/events`));
   let finished = false;
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
