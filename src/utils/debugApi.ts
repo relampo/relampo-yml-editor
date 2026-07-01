@@ -2,6 +2,8 @@
 // When the editor is served by `relampo studio` the API lives on the same
 // origin; during `vite dev` point VITE_DEBUG_API_URL at a running studio.
 
+import { studioAuthHeaders, withStudioToken } from './studioAuth';
+
 export interface EngineAssertionResult {
   Name: string;
   Passed: boolean;
@@ -84,7 +86,7 @@ function isConnectionFailure(error: unknown): boolean {
 
 async function fetchAgent(input: string, init?: RequestInit): Promise<Response> {
   try {
-    return await fetch(input, init);
+    return await fetch(input, { ...init, headers: studioAuthHeaders(init?.headers) });
   } catch (error) {
     if (isConnectionFailure(error)) throw new Error(AGENT_UNREACHABLE_MESSAGE);
     throw error;
@@ -128,7 +130,10 @@ export interface StudioDataSourcePreview {
 // a script (`relampo studio file.yaml`) it is returned so the editor mounts it.
 export async function probeStudio(): Promise<StudioInfo | null> {
   try {
-    const response = await fetch(`${apiBase}/api/studio/info`, { signal: AbortSignal.timeout(2000) });
+    const response = await fetch(`${apiBase}/api/studio/info`, {
+      signal: AbortSignal.timeout(2000),
+      headers: studioAuthHeaders(),
+    });
     if (!response.ok) return null;
     const body = await response.json();
     if (body?.studio !== true) return null;
@@ -218,7 +223,7 @@ export async function previewStudioDataSourceFile(path: string, signal?: AbortSi
 
 // Streams a run's events over SSE. Returns a function that closes the stream.
 export function streamDebugRun(runId: string, handlers: DebugStreamHandlers): () => void {
-  const source = new EventSource(`${apiBase}/api/debug/runs/${runId}/events`);
+  const source = new EventSource(withStudioToken(`${apiBase}/api/debug/runs/${runId}/events`));
   let finished = false;
 
   source.addEventListener('engine', message => {
