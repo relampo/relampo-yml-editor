@@ -1,6 +1,6 @@
 import { Gauge, Mountain, Target, TrendingUp, Users } from 'lucide-react';
 import { LoadVisualization } from './LoadVisualization';
-import { buildLoadDataForType, getIntentAutoConfig, getLoadTypeLabel, normalizeLoadType, selectedLoadButtonStyle, type LoadType } from './loadUtils';
+import { buildLoadDataForType, getIntentAutoConfig, getLoadTypeLabel, normalizeLoadType, selectedLoadButtonStyle, type LoadData, type LoadDataValue, type LoadType } from './loadUtils';
 import { ConstantLoadMode } from './load-modes/ConstantLoadMode';
 import { IntentLoadMode } from './load-modes/IntentLoadMode';
 import { RampLoadMode } from './load-modes/RampLoadMode';
@@ -25,7 +25,7 @@ export function LoadDetails({ node, onNodeUpdate }: NodeDetailProps) {
   const { data, updateData, updateField } = createNodeDataUpdater(node, onNodeUpdate);
   const loadType = normalizeLoadType(data.type);
 
-  const handleChange = (field: string, value: any) => {
+  const handleChange = (field: string, value: LoadDataValue) => {
     if (field === 'type') {
       const selectedType = normalizeLoadType(value);
       updateData({
@@ -91,9 +91,9 @@ function LoadModePanel({
   loadType,
   onChange,
 }: {
-  data: Record<string, any>;
+  data: LoadData;
   loadType: LoadType;
-  onChange: (field: string, value: any) => void;
+  onChange: (field: string, value: LoadDataValue) => void;
 }) {
   if (loadType === 'constant') {
     return (

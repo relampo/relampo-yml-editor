@@ -1,4 +1,4 @@
-export const YAML_DRAFT_DB_NAME = 'relampo-yaml-editor';
+const YAML_DRAFT_DB_NAME = 'relampo-yaml-editor';
 export const YAML_DRAFT_STORE_NAME = 'drafts';
 export const ACTIVE_YAML_DRAFT_KEY = 'active';
 

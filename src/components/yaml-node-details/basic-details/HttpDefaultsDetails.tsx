@@ -91,7 +91,6 @@ export function HttpDefaultsDetails({ node, onNodeUpdate, hosts = [] }: NodeDeta
           enableCheckboxes={false}
           enableBulkActions={false}
           variant="minimal"
-          addButtonVariant="pill"
         />
         {secondaryHostEntries.length > 0 && (
           <div className="divide-y divide-white/5 border-t border-white/5">
@@ -130,7 +129,6 @@ export function HttpDefaultsDetails({ node, onNodeUpdate, hosts = [] }: NodeDeta
           enableCheckboxes={false}
           enableBulkActions={false}
           variant="minimal"
-          addButtonVariant="pill"
         />
       </div>
 

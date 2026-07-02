@@ -389,8 +389,6 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
         onUpdate={handleOptionsUpdate}
         keyPlaceholder="option_name"
         valuePlaceholder="value"
-        keyLabel="Option"
-        valueLabel="Value"
         enableCheckboxes={false}
         enableBulkActions={false}
         variant="minimal"
@@ -432,8 +430,6 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
           onUpdate={handleExtractUpdate}
           keyPlaceholder="variable_name"
           valuePlaceholder="jsonpath('$[0].id')"
-          keyLabel="Variable"
-          valueLabel="Extractor"
           enableCheckboxes={false}
           enableBulkActions={false}
           variant="minimal"

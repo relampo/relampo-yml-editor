@@ -4,13 +4,13 @@
 
 import { studioAuthHeaders, withStudioToken } from './studioAuth';
 
-export interface EngineAssertionResult {
+interface EngineAssertionResult {
   Name: string;
   Passed: boolean;
   Message: string;
 }
 
-export interface EngineRedirectHop {
+interface EngineRedirectHop {
   status: number;
   method?: string;
   url?: string;
@@ -95,14 +95,14 @@ async function fetchAgent(input: string, init?: RequestInit): Promise<Response> 
 
 // A YAML script the CLI asked the editor to mount on startup, supplied via
 // `relampo studio <script.yaml>`.
-export interface StudioInitialScript {
+interface StudioInitialScript {
   name: string;
   yaml: string;
 }
 
 // Optional studio features the backend advertises so the editor only shows UI
 // it supports. Absent on older studio builds, so every flag defaults to false.
-export interface StudioCapabilities {
+interface StudioCapabilities {
   // loadRun unlocks the Run (load test) view backed by POST /api/run.
   loadRun?: boolean;
 }

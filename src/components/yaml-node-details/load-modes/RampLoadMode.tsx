@@ -1,5 +1,11 @@
-import { limitedInputValue } from '../loadUtils';
-import { LoadField, LoadGrid, LoadModeProps, LoadSection } from './shared';
+import { LOAD_DURATION_HELP_TEXT, LoadFieldGroup, LoadGrid, LoadModeProps, LoadSection } from './shared';
+
+const RAMP_LOAD_FIELDS = [
+  { field: 'start_users', label: 'Start Users', placeholder: '1', type: 'number' },
+  { field: 'end_users', label: 'End Users', placeholder: '100', type: 'number' },
+  { field: 'duration', label: 'Duration', placeholder: '10m', helpText: LOAD_DURATION_HELP_TEXT },
+  { field: 'iterations', label: 'Iterations', placeholder: '0', type: 'number' },
+] as const;
 
 export function RampLoadMode({ data, onChange }: LoadModeProps) {
   return (
@@ -8,33 +14,10 @@ export function RampLoadMode({ data, onChange }: LoadModeProps) {
       description="Move from the starting user count to the ending user count over the configured duration."
     >
       <LoadGrid>
-        <LoadField
-          label="Start Users"
-          value={data.start_users || ''}
-          placeholder="1"
-          onChange={value => onChange('start_users', limitedInputValue(value))}
-          type="number"
-        />
-        <LoadField
-          label="End Users"
-          value={data.end_users || ''}
-          placeholder="100"
-          onChange={value => onChange('end_users', limitedInputValue(value))}
-          type="number"
-        />
-        <LoadField
-          label="Duration"
-          value={data.duration || ''}
-          placeholder="10m"
-          onChange={value => onChange('duration', limitedInputValue(value))}
-          helpText="Format: 500ms, 5s, 5m"
-        />
-        <LoadField
-          label="Iterations"
-          value={data.iterations || ''}
-          placeholder="0"
-          onChange={value => onChange('iterations', limitedInputValue(value))}
-          type="number"
+        <LoadFieldGroup
+          data={data}
+          fields={RAMP_LOAD_FIELDS}
+          onChange={onChange}
         />
       </LoadGrid>
     </LoadSection>

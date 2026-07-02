@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react';
 import { Input } from '../../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
+import { limitedInputValue, type LoadData, type LoadDataValue } from '../loadUtils';
 
 export interface LoadModeProps {
-  data: Record<string, any>;
-  onChange: (field: string, value: any) => void;
+  data: LoadData;
+  onChange: (field: string, value: LoadDataValue) => void;
 }
 
 interface LoadSectionProps {
@@ -63,6 +64,42 @@ export function LoadField({
       />
       {helpText && <p className="text-[11px] leading-relaxed text-zinc-500">{helpText}</p>}
     </div>
+  );
+}
+
+export const LOAD_DURATION_HELP_TEXT = 'Format: 500ms, 5s, 5m';
+
+interface LoadFieldConfig {
+  field: string;
+  label: string;
+  placeholder: string;
+  helpText?: string;
+  type?: 'text' | 'number';
+  maxLength?: number;
+}
+
+interface LoadFieldGroupProps {
+  data: LoadData;
+  fields: readonly LoadFieldConfig[];
+  onChange: (field: string, value: LoadDataValue) => void;
+}
+
+export function LoadFieldGroup({ data, fields, onChange }: LoadFieldGroupProps) {
+  return (
+    <>
+      {fields.map(field => (
+        <LoadField
+          key={field.field}
+          label={field.label}
+          value={data[field.field] || ''}
+          placeholder={field.placeholder}
+          onChange={value => onChange(field.field, limitedInputValue(value))}
+          type={field.type}
+          maxLength={field.maxLength}
+          helpText={field.helpText}
+        />
+      ))}
+    </>
   );
 }
 

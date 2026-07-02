@@ -1,8 +1,20 @@
-import { limitedInputValue } from '../loadUtils';
-import { LoadField, LoadGrid, LoadModeProps, LoadSection } from './shared';
+import { LOAD_DURATION_HELP_TEXT, LoadFieldGroup, LoadGrid, LoadModeProps, LoadSection } from './shared';
 
 export function ThroughputLoadMode({ data, onChange }: LoadModeProps) {
   const throughputPerMinute = (parseFloat(String(data.target_rps || '0')) || 0) * 60;
+  const fields = [
+    {
+      field: 'target_rps',
+      label: 'Target RPS',
+      placeholder: '20',
+      type: 'number',
+      helpText: `${throughputPerMinute.toFixed(0)} req/min`,
+    },
+    { field: 'duration', label: 'Duration', placeholder: '10m', helpText: LOAD_DURATION_HELP_TEXT },
+    { field: 'iterations', label: 'Iterations', placeholder: '0', type: 'number' },
+    { field: 'ramp_up', label: 'Ramp Up', placeholder: '1m', helpText: LOAD_DURATION_HELP_TEXT },
+    { field: 'ramp_down', label: 'Ramp Down', placeholder: '1m', helpText: LOAD_DURATION_HELP_TEXT },
+  ] as const;
 
   return (
     <LoadSection
@@ -10,41 +22,10 @@ export function ThroughputLoadMode({ data, onChange }: LoadModeProps) {
       description="Drive traffic toward a target request rate while shaping the ramp-up and ramp-down windows."
     >
       <LoadGrid>
-        <LoadField
-          label="Target RPS"
-          value={data.target_rps || ''}
-          placeholder="20"
-          onChange={value => onChange('target_rps', limitedInputValue(value))}
-          type="number"
-          helpText={`${throughputPerMinute.toFixed(0)} req/min`}
-        />
-        <LoadField
-          label="Duration"
-          value={data.duration || ''}
-          placeholder="10m"
-          onChange={value => onChange('duration', limitedInputValue(value))}
-          helpText="Format: 500ms, 5s, 5m"
-        />
-        <LoadField
-          label="Iterations"
-          value={data.iterations || ''}
-          placeholder="0"
-          onChange={value => onChange('iterations', limitedInputValue(value))}
-          type="number"
-        />
-        <LoadField
-          label="Ramp Up"
-          value={data.ramp_up || ''}
-          placeholder="1m"
-          onChange={value => onChange('ramp_up', limitedInputValue(value))}
-          helpText="Format: 500ms, 5s, 5m"
-        />
-        <LoadField
-          label="Ramp Down"
-          value={data.ramp_down || ''}
-          placeholder="1m"
-          onChange={value => onChange('ramp_down', limitedInputValue(value))}
-          helpText="Format: 500ms, 5s, 5m"
+        <LoadFieldGroup
+          data={data}
+          fields={fields}
+          onChange={onChange}
         />
       </LoadGrid>
     </LoadSection>

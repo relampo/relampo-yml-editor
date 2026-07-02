@@ -46,7 +46,7 @@ export function IntentLoadMode({ data, onChange }: LoadModeProps) {
         <LoadGrid>
           <LoadSelectField
             label={t('yamlEditor.intent.fields.targetUnit')}
-            value={data.target_unit || 'rps'}
+            value={String(data.target_unit || 'rps')}
             onChange={value => onChange('target_unit', value)}
             options={[
               { label: t('yamlEditor.intent.options.targetUnitRps'), value: 'rps' },
@@ -67,7 +67,7 @@ export function IntentLoadMode({ data, onChange }: LoadModeProps) {
           />
           <LoadSelectField
             label={t('yamlEditor.intent.fields.aggressiveness')}
-            value={data.aggressiveness || 'medium'}
+            value={String(data.aggressiveness || 'medium')}
             onChange={value => onChange('aggressiveness', value)}
             helpText={t('yamlEditor.intent.helpers.aggressiveness')}
             options={[

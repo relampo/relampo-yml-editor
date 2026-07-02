@@ -1,6 +1,7 @@
 import { FileField } from '../SharedFields';
 import { createNodeDataUpdater } from '../nodeDetailHelpers';
 import type { NodeDetailProps } from '../types';
+import type { YAMLNodeData, YAMLValue } from '../../../types/yaml';
 
 export function FileDetails({ node, onNodeUpdate }: NodeDetailProps) {
   const { data, updateData, updateField } = createNodeDataUpdater(node, onNodeUpdate);
@@ -22,11 +23,11 @@ export function FileDetails({ node, onNodeUpdate }: NodeDetailProps) {
     'audio/mpeg',
   ];
 
-  const handleChange = (field: string, value: any) => {
+  const handleChange = (field: string, value: YAMLValue) => {
     const raw = String(value ?? '');
 
     if (field === 'path') {
-      const nextData: Record<string, any> = { ...data, path: raw };
+      const nextData: YAMLNodeData = { ...data, path: raw };
       if (!String(nextData.field || '').trim() && raw.trim()) {
         nextData.field = 'file';
       }

@@ -35,8 +35,6 @@ export function VariablesDetails({ node, onNodeUpdate }: NodeDetailProps) {
       onUpdate={handleUpdate}
       keyPlaceholder="variable_name"
       valuePlaceholder="value"
-      keyLabel="Variable Name"
-      valueLabel="Value"
       enableCheckboxes={false}
       enableBulkActions={false}
       variant="minimal"

@@ -207,7 +207,14 @@ export function YAMLLoadRunSession({
 
   const startRun = async () => {
     if (hasValidationErrors || isRunning) return;
-    const scriptAtStart = flushPendingEdits ? flushPendingEdits() : yamlCode;
+    let scriptAtStart: string;
+    try {
+      scriptAtStart = flushPendingEdits ? flushPendingEdits() : yamlCode;
+    } catch (error) {
+      setRunStatus('errored');
+      setRunError(error instanceof Error ? error.message : String(error));
+      return;
+    }
     if (!scriptAtStart.trim()) return;
     const token = (startTokenRef.current += 1);
     stopStreamRef.current?.();

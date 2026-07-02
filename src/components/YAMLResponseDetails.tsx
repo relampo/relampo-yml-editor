@@ -2,18 +2,20 @@ import Editor from '@monaco-editor/react';
 import { ChevronDown, ChevronUp, Search } from 'lucide-react';
 import type { editor as MonacoEditorNS } from 'monaco-editor';
 import { JSX, useEffect, useMemo, useRef, useState } from 'react';
+import type { YAMLValue } from '../types/yaml';
+import type { SearchMode } from './debugSearch';
 import { Input } from './ui/input';
 
 interface YAMLResponseDetailsProps {
-  response: any;
-  onResponseUpdate: (updatedResponse: any) => void;
+  response: YAMLValue;
+  onResponseUpdate: (updatedResponse: YAMLValue) => void;
   searchText?: string;
   searchInputValue?: string;
-  searchMode?: 'text' | 'regex';
+  searchMode?: SearchMode;
   replaceValue?: string;
-  currentMatchIndex?: number; // Kept for API compatibility
+  currentMatchIndex?: number;
   onSearchChange?: (value: string) => void;
-  onSearchModeChange?: (mode: 'text' | 'regex') => void;
+  onSearchModeChange?: (mode: SearchMode) => void;
   onReplaceValueChange?: (value: string) => void;
   onNavigate?: (index: number) => void;
 }
@@ -21,6 +23,10 @@ interface YAMLResponseDetailsProps {
 const BODY_FIXED_HEIGHT = 300;
 const MONACO_SWITCH_LINE_THRESHOLD = 2000;
 const MONACO_SWITCH_SIZE_THRESHOLD = 120 * 1024;
+
+function isResponseRecord(value: YAMLValue): value is Record<string, YAMLValue> {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+}
 
 interface HeaderLineProps {
   line: string;
@@ -63,7 +69,7 @@ function HeaderLine({ line, className, ranges, startIndex, currentMatchIndex, ha
 interface HighlightedTextProps {
   text: string;
   searchText: string;
-  searchMode: 'text' | 'regex';
+  searchMode: SearchMode;
   currentMatchIndex: number;
 }
 
@@ -105,10 +111,10 @@ export function YAMLResponseDetails({
   onSearchModeChange,
   onNavigate,
 }: YAMLResponseDetailsProps) {
-  const formData = response || {};
+  const formData = isResponseRecord(response) ? response : {};
   const [headersCollapsed, setHeadersCollapsed] = useState(false);
   const [headerSearchText, setHeaderSearchText] = useState('');
-  const [headerSearchMode, setHeaderSearchMode] = useState<'text' | 'regex'>('text');
+  const [headerSearchMode, setHeaderSearchMode] = useState<SearchMode>('text');
   const [headerCurrentMatchIndex, setHeaderCurrentMatchIndex] = useState(0);
   const headersContentRef = useRef<HTMLDivElement | null>(null);
   const responseBodyRef = useRef<HTMLPreElement | null>(null);
@@ -154,9 +160,9 @@ export function YAMLResponseDetails({
           if (Array.isArray(item) && item.length >= 2) {
             return [String(item[0]), String(item[1])] as [string, string];
           }
-          if (typeof item === 'object') {
-            const key = String((item as any).key ?? (item as any).name ?? '');
-            const value = String((item as any).value ?? '');
+          if (isResponseRecord(item)) {
+            const key = String(item.key ?? item.name ?? '');
+            const value = String(item.value ?? '');
             if (!key) return null;
             return [key, value] as [string, string];
           }
@@ -164,7 +170,7 @@ export function YAMLResponseDetails({
         })
         .filter(Boolean) as Array<[string, string]>;
     }
-    if (typeof raw === 'object') {
+    if (isResponseRecord(raw)) {
       return Object.entries(raw).map(([k, v]) => [k, String(v ?? '')] as [string, string]);
     }
     return [] as Array<[string, string]>;
@@ -174,7 +180,7 @@ export function YAMLResponseDetails({
     () =>
       !response
         ? ''
-        : `${String(formData.http_version || 'HTTP/1.1')} ${String(formData.status || 0)} ${String(formData.status_text || getStatusReason(formData.status))}`,
+        : `${String(formData.http_version || 'HTTP/1.1')} ${String(formData.status || 0)} ${String(formData.status_text || getStatusReason(typeof formData.status === 'number' ? formData.status : undefined))}`,
     [response, formData.http_version, formData.status, formData.status_text],
   );
 
@@ -184,7 +190,7 @@ export function YAMLResponseDetails({
   );
 
   const effectiveHeaderSearch = headerSearchText.trim() ? headerSearchText.trim() : searchText.trim();
-  const effectiveHeaderSearchMode: 'text' | 'regex' = headerSearchText.trim() ? headerSearchMode : 'text';
+  const effectiveHeaderSearchMode: SearchMode = headerSearchText.trim() ? headerSearchMode : 'text';
 
   const buildHeaderSearchRegex = () => {
     if (!effectiveHeaderSearch || effectiveHeaderSearchMode !== 'regex') return null;
@@ -654,7 +660,7 @@ export function YAMLResponseDetails({
 interface MonacoResponseBodyEditorProps {
   value: string;
   searchText: string;
-  searchMode: 'text' | 'regex';
+  searchMode: SearchMode;
   currentMatchIndex: number;
 }
 
@@ -769,7 +775,7 @@ function MonacoResponseBodyEditor({ value, searchText, searchMode, currentMatchI
   );
 }
 
-function findMatchRanges(text: string, query: string, mode: 'text' | 'regex'): Array<{ start: number; end: number }> {
+function findMatchRanges(text: string, query: string, mode: SearchMode): Array<{ start: number; end: number }> {
   if (!text || !query) return [];
   if (mode === 'text') {
     const ranges: Array<{ start: number; end: number }> = [];

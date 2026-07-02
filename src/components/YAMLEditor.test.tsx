@@ -126,8 +126,6 @@ vi.mock('./YAMLNodeDetails', () => ({
     node: YAMLNode | null;
     dataSourceFileBrowseEnabled?: boolean;
     onNodeUpdate?: (nodeId: string, updatedData: Record<string, unknown>) => void;
-    onAddChildNode?: (parentId: string, nodeType: 'variables') => void;
-    onAddChildAction?: (metadata: { parentNodeType: string; childNodeType: 'variables' }) => void;
   }) => (
     <div
       data-testid="node-details"
@@ -137,16 +135,6 @@ vi.mock('./YAMLNodeDetails', () => ({
       {props.node && (
         <button onClick={() => props.onNodeUpdate?.(props.node!.id, { __name: 'Details changed plan' })}>
           change from details
-        </button>
-      )}
-      {props.node && (
-        <button
-          onClick={() => {
-            props.onAddChildAction?.({ parentNodeType: props.node!.type, childNodeType: 'variables' });
-            props.onAddChildNode?.(props.node!.id, 'variables');
-          }}
-        >
-          add from details
         </button>
       )}
     </div>
@@ -263,53 +251,6 @@ describe('YAMLEditor draft restoration', () => {
     expect(screen.getByTestId('editor-header')).toHaveAttribute('data-dirty', 'true');
   });
 
-  it('serializes and selects the created node when details adds a child', async () => {
-    getActiveDraftMock.mockResolvedValueOnce({
-      yaml: 'test:\n  name: restored\n',
-      fileName: 'restored.yaml',
-      updatedAt: '2026-04-23T10:00:00.000Z',
-    });
-
-    renderEditor();
-
-    await screen.findByText('Restored plan');
-    fireEvent.click(screen.getByRole('button', { name: 'select tree root' }));
-    fireEvent.click(screen.getByRole('button', { name: 'add from details' }));
-
-    expect(await screen.findByText('Variables')).toBeInTheDocument();
-    expect(treeToYAMLMock).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        children: expect.arrayContaining([
-          expect.objectContaining({
-            type: 'variables',
-          }),
-        ]),
-      }),
-    );
-    expect(screen.getByTestId('editor-header')).toHaveAttribute('data-dirty', 'true');
-  });
-
-  it('logs detail-panel add as discovery friction before the tree context menu is opened', async () => {
-    getActiveDraftMock.mockResolvedValueOnce({
-      yaml: 'test:\n  name: restored\n',
-      fileName: 'restored.yaml',
-      updatedAt: '2026-04-23T10:00:00.000Z',
-    });
-
-    renderEditor();
-
-    await screen.findByText('Restored plan');
-    fireEvent.click(screen.getByRole('button', { name: 'select tree root' }));
-    fireEvent.click(screen.getByRole('button', { name: 'add from details' }));
-
-    expect(logStatsigEventMock).toHaveBeenCalledWith('detail_panel_add_clicked', {
-      parent_node_type: 'root',
-      child_node_type: 'variables',
-      context_menu_discovered: false,
-      is_discovery_friction: true,
-    });
-  });
-
   it('switches to Tree details when selecting a node from the tree shown in Debug', async () => {
     getActiveDraftMock.mockResolvedValueOnce({
       yaml: 'test:\n  name: restored\n',
@@ -377,7 +318,7 @@ describe('YAMLEditor draft restoration', () => {
     });
   });
 
-  it('logs detail-panel add without friction after the tree context menu is opened', async () => {
+  it('logs tree context menu discovery', async () => {
     getActiveDraftMock.mockResolvedValueOnce({
       yaml: 'test:\n  name: restored\n',
       fileName: 'restored.yaml',
@@ -389,18 +330,11 @@ describe('YAMLEditor draft restoration', () => {
     await screen.findByText('Restored plan');
     fireEvent.click(screen.getByRole('button', { name: 'select tree root' }));
     fireEvent.click(screen.getByRole('button', { name: 'open context menu' }));
-    fireEvent.click(screen.getByRole('button', { name: 'add from details' }));
 
     expect(logStatsigEventMock).toHaveBeenCalledWith('tree_context_menu_opened', {
       node_type: 'root',
       selection_count: 1,
       has_multi_selection: false,
-    });
-    expect(logStatsigEventMock).toHaveBeenCalledWith('detail_panel_add_clicked', {
-      parent_node_type: 'root',
-      child_node_type: 'variables',
-      context_menu_discovered: true,
-      is_discovery_friction: false,
     });
   });
 });

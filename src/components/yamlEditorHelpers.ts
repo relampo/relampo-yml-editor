@@ -40,7 +40,7 @@ export function findNodeById(node: YAMLNode, id: string): YAMLNode | null {
 
 const REDIRECT_STATUS_CODES = [301, 302, 303, 307, 308];
 
-export function getRedirectLocationHeader(node: YAMLNode): string {
+function getRedirectLocationHeader(node: YAMLNode): string {
   const headers = node.data?.response?.headers;
   if (!headers || typeof headers !== 'object') return '';
   return String(
@@ -82,7 +82,7 @@ function normalizeUrlForCompare(value: string): string {
 // to that same path, so the follow-up request is correctly detected as the
 // redirect target. We fall back to base-less normalization when the source URL
 // is itself relative (no host), preserving the existing behavior.
-export function normalizeRedirectLocationForCompare(location: string, sourceUrl: string): string {
+function normalizeRedirectLocationForCompare(location: string, sourceUrl: string): string {
   const trimmedLocation = String(location || '').trim();
   if (!trimmedLocation) return '';
   const trimmedSource = String(sourceUrl || '').trim();

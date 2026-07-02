@@ -17,13 +17,10 @@ interface EditableListProps {
   onUpdate: (items: StringMap) => void;
   keyPlaceholder?: string;
   valuePlaceholder?: string;
-  keyLabel?: string;
-  valueLabel?: string;
   enableCheckboxes?: boolean;
   enableBulkActions?: boolean;
   onBulkDelete?: (keys: string[]) => void;
   variant?: 'default' | 'minimal';
-  addButtonVariant?: 'default' | 'pill';
   searchText?: string;
 }
 
@@ -37,7 +34,6 @@ export function EditableList({
   enableBulkActions = true,
   onBulkDelete,
   variant = 'default',
-  addButtonVariant = 'default',
   searchText = '',
 }: EditableListProps) {
   const [localItems, setLocalItems] = useState<EditableListItem[]>([]);
@@ -159,7 +155,6 @@ export function EditableList({
 
   const addButtonClass =
     'flex items-center gap-1 px-2 py-1 text-xs text-amber-500 hover:text-amber-400 border border-yellow-400/20 bg-yellow-400/5 hover:bg-yellow-400/10 hover:border-yellow-400/35 rounded transition-colors';
-  const addButtonStyle = undefined;
 
   return (
     <div className="space-y-3">
@@ -191,7 +186,6 @@ export function EditableList({
           <button
             onClick={handleAdd}
             className={addButtonClass}
-            style={addButtonStyle}
           >
             <Plus className="w-3 h-3" />
             Add

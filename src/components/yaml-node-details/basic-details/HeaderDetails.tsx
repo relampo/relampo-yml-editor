@@ -68,8 +68,6 @@ export function HeadersDetails({ node, onNodeUpdate, searchQuery = '' }: NodeDet
         onUpdate={items => onNodeUpdate?.(node.id, items)}
         keyPlaceholder="Header-Name"
         valuePlaceholder="Header value"
-        keyLabel="Header Name"
-        valueLabel="Value"
         enableCheckboxes={false}
         enableBulkActions={false}
         variant="minimal"
