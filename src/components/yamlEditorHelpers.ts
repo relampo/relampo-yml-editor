@@ -53,6 +53,14 @@ function getResponseStatusCode(node: YAMLNode): number {
   return Number.isFinite(status) ? status : 0;
 }
 
+function getChainId(node: YAMLNode): string {
+  return String(node.data?.chain_id ?? '').trim();
+}
+
+function getChainRole(node: YAMLNode): string {
+  return String(node.data?.chain_role ?? '').trim().toLowerCase();
+}
+
 function normalizeUrlForCompare(value: string): string {
   const trimmed = String(value || '').trim();
   if (!trimmed) return '';
@@ -131,6 +139,44 @@ export function detectRedirectFollowUps(tree: YAMLNode): Record<string, Redirect
         String(source.data?.url || ''),
       ),
     };
+  }
+
+  // Chain-metadata detection (RLP-604): recognize redirect follow-ups by the
+  // recorded chain_id/chain_role instead of status+Location matching. The
+  // adjacency+3xx+URL pass above misses a chain member when correlation has
+  // rewritten the target's query string (so the source Location no longer
+  // equals the target URL) or the chain isn't perfectly adjacent — even though
+  // chain_role: hop/final is present and correct. This mirrors the runtime's
+  // own position-based mapping (debugRequests.matchRedirectChainChildToNode),
+  // so a `chain_role: final` landing keeps its badge regardless of its 2xx
+  // status. Additive: it never overrides an entry the status/URL pass found.
+  const chains = new Map<string, YAMLNode[]>();
+  for (const node of requestNodes) {
+    const chainId = getChainId(node);
+    if (!chainId) continue;
+    const members = chains.get(chainId);
+    if (members) members.push(node);
+    else chains.set(chainId, [node]);
+  }
+  for (const members of chains.values()) {
+    for (let k = 0; k < members.length; k += 1) {
+      const node = members[k];
+      const role = getChainRole(node);
+      if (role !== 'hop' && role !== 'final') continue;
+      if (result[node.id]) continue;
+      // Attribute to the preceding chain member (its actual redirect source);
+      // fall back to the chain's parent when this is the first member seen.
+      const source =
+        (k > 0 ? members[k - 1] : null) ??
+        members.find(member => member !== node && getChainRole(member) === 'parent') ??
+        null;
+      if (!source) continue;
+      result[node.id] = {
+        sourceNodeId: source.id,
+        sourceRequestLabel: source.name,
+        matchedLocation: normalizeUrlForCompare(String(node.data?.url || '')),
+      };
+    }
   }
 
   return result;

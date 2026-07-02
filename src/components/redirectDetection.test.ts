@@ -81,6 +81,66 @@ describe('detectRedirectFollowUps', () => {
   });
 });
 
+// RLP-604: the tree badge must recognize redirect follow-ups by the recorded
+// chain_id/chain_role, not only by status 3xx + Location↔URL matching. When
+// correlation rewrites the redirect targets' query strings at runtime, the
+// source Location no longer equals the follow-up URL, so the status/URL pass
+// misses them — but chain_role: hop/final is still correct.
+describe('detectRedirectFollowUps — chain metadata (RLP-604)', () => {
+  function chainReq(
+    id: string,
+    url: string,
+    role: 'parent' | 'hop' | 'final',
+    chainId: string,
+    opts: { status?: number; location?: string } = {},
+  ): YAMLNode {
+    const response: Record<string, unknown> = {};
+    if (opts.status !== undefined) response.status = opts.status;
+    if (opts.location !== undefined) response.headers = { Location: opts.location };
+    return {
+      id,
+      type: 'request',
+      name: id,
+      data: {
+        url,
+        chain_id: chainId,
+        chain_role: role,
+        ...(Object.keys(response).length ? { response } : {}),
+      },
+    };
+  }
+
+  it('badges a chain_role: final (status 200) even when Location/URL no longer match', () => {
+    // Locations reference the RECORDED query strings; the follow-up URLs carry
+    // correlation-rewritten LIVE values, so the status/URL pass cannot link them.
+    const tree = root([
+      chainReq('r123', '/login', 'parent', 'rc-123', { status: 302, location: '/step?token=RECORDED' }),
+      chainReq('r124', '/step?token=LIVE1', 'hop', 'rc-123', { status: 302, location: '/done?token=RECORDED2' }),
+      chainReq('r125', '/done?token=LIVE2', 'final', 'rc-123', { status: 200 }),
+    ]);
+    const map = detectRedirectFollowUps(tree);
+    // The final (status 200) and the hop are badged via chain metadata...
+    expect(map.r124).toBeDefined();
+    expect(map.r125).toBeDefined();
+    // ...the parent (chain origin) is not a follow-up.
+    expect(map.r123).toBeUndefined();
+    // Each follow-up is attributed to its preceding chain member.
+    expect(map.r124.sourceNodeId).toBe('r123');
+    expect(map.r125.sourceNodeId).toBe('r124');
+  });
+
+  it('does not override a status/URL match that already resolved', () => {
+    const tree = root([
+      chainReq('a', '/old', 'parent', 'rc-1', { status: 302, location: '/new' }),
+      chainReq('b', '/new', 'final', 'rc-1', { status: 200 }),
+    ]);
+    const map = detectRedirectFollowUps(tree);
+    expect(map.b.sourceNodeId).toBe('a');
+    // matchedLocation comes from the status/URL pass (the resolved Location).
+    expect(map.b.matchedLocation).toBe('/new');
+  });
+});
+
 describe('nodesStillFormRedirect', () => {
   it('is true while the 3xx + Location still resolve to the target URL', () => {
     const source = req('a', '/old', { status: 302, location: '/new' });
