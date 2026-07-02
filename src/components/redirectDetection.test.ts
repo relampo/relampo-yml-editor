@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { detectRedirectFollowUps, nodesStillFormRedirect } from './yamlEditorHelpers';
+import { isRedirectStepEvent } from './debugRequests';
 import type { YAMLNode } from '../types/yaml';
 
 function req(
@@ -138,6 +139,42 @@ describe('detectRedirectFollowUps — chain metadata (RLP-604)', () => {
     expect(map.b.sourceNodeId).toBe('a');
     // matchedLocation comes from the status/URL pass (the resolved Location).
     expect(map.b.matchedLocation).toBe('/new');
+  });
+
+  it('badges chain members even when a non-chain request breaks document adjacency', () => {
+    // The status/URL pass only links immediate neighbours; chain metadata must
+    // survive an unrelated request landing between the chain members.
+    const tree = root([
+      chainReq('p', '/login', 'parent', 'rc-9', { status: 302, location: '/a' }),
+      req('unrelated', '/health', { status: 200 }),
+      chainReq('f', '/landing', 'final', 'rc-9', { status: 200 }),
+    ]);
+    const map = detectRedirectFollowUps(tree);
+    expect(map.f).toBeDefined();
+    expect(map.f.sourceNodeId).toBe('p');
+    expect(map.unrelated).toBeUndefined();
+  });
+
+  it('leaves a chain with no parent/no preceding member unbadged rather than guessing', () => {
+    // A lone final with no parent and no preceding chain member has no source to
+    // attribute to; it must not crash or invent one.
+    const tree = root([chainReq('only', '/done', 'final', 'rc-x', { status: 200 })]);
+    expect(detectRedirectFollowUps(tree)).toEqual({});
+  });
+
+  // Root-cause guard: the tree detector and the Debug summary counter must agree
+  // on what a redirect follow-up is. The regression happened because the tree
+  // used status+URL while the counter used chain_role. Assert both recognize a
+  // chain_role: final landing so the two predicates can't silently diverge again.
+  it('agrees with the Debug counter predicate on a chain_role: final (parity)', () => {
+    expect(
+      isRedirectStepEvent({ method: 'GET', name: '[125] GET /done', path: '/done', chain_id: 'rc-1', chain_role: 'final' }),
+    ).toBe(true);
+    const tree = root([
+      chainReq('p', '/login', 'parent', 'rc-1', { status: 302, location: '/x' }),
+      chainReq('f', '/done', 'final', 'rc-1', { status: 200 }),
+    ]);
+    expect(detectRedirectFollowUps(tree).f).toBeDefined();
   });
 });
 
