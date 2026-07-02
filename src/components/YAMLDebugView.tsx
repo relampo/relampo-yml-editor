@@ -218,13 +218,17 @@ export function YAMLDebugSession({
 
   const startRun = async () => {
     if (hasValidationErrors || isRunning) return;
-    // Flush any debounced tree edit so the run uses the YAML that matches the
-    // tree on screen, not a string that is up to 220 ms stale.
-    const scriptAtStart = flushPendingEdits ? flushPendingEdits() : yamlCode;
+    let scriptAtStart: string;
+    try {
+      scriptAtStart = flushPendingEdits ? flushPendingEdits() : yamlCode;
+    } catch (error) {
+      setRunError(error instanceof Error ? error.message : String(error));
+      return;
+    }
     if (!scriptAtStart.trim()) return;
     const token = (startTokenRef.current += 1);
     stopStreamRef.current?.();
-      setEntryEvents([]);
+    setEntryEvents([]);
     setRunError(null);
     setActiveId(null);
     setDetailTab('overview');

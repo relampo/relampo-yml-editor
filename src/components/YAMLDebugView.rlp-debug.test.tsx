@@ -32,6 +32,7 @@ vi.mock('../utils/debugApi', async importOriginal => {
 
 afterEach(() => {
   cleanup();
+  sessionStorage.clear();
   debugApiMock.handlers.length = 0;
   debugApiMock.startDebugRun.mockClear();
   debugApiMock.streamDebugRun.mockClear();
@@ -75,6 +76,27 @@ describe('YAMLDebugSession RLP debug fixes', () => {
     const heading = container.querySelector('h3');
     const titleColumn = heading?.parentElement?.parentElement;
     expect(titleColumn?.querySelector('p')).toBeNull();
+  });
+
+  it('does not start a debug run with stale YAML when pending serialization fails', async () => {
+    render(
+      <YAMLDebugSession
+        tree={null}
+        yamlCode={'test:\n  name: stale-debug\n'}
+        documentReady
+        validationErrors={[]}
+        flushPendingEdits={() => {
+          throw new Error('Error generating YAML: empty parallel');
+        }}
+        onSelectNode={vi.fn()}
+        onEditNode={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+
+    expect(await screen.findByText('Error generating YAML: empty parallel')).toBeInTheDocument();
+    expect(debugApiMock.startDebugRun).not.toHaveBeenCalled();
   });
 
   it('counts only redirect follow-up steps in the Redirects summary (RLP-588)', async () => {

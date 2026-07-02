@@ -1,6 +1,6 @@
 import { ChevronDown, ChevronUp, Search } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import type { RedirectSourceInfo, YAMLNode } from '../types/yaml';
+import type { RedirectSourceInfo, YAMLNode, YAMLNodeData, YAMLValue } from '../types/yaml';
 import { BodyTypeSelector } from './fields/BodyTypeSelector';
 import { MethodDropdown } from './fields/MethodDropdown';
 import { QueryParamsEditor } from './fields/QueryParamsEditor';
@@ -10,23 +10,41 @@ import { HighlightedInput } from './ui/HighlightedInput';
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { YAMLResponseDetails } from './YAMLResponseDetails';
+import type { SearchMode } from './debugSearch';
 
 const FALLBACK_BASE_URL_PLACEHOLDER = 'api.example.com';
+type YAMLRecord = { [key: string]: YAMLValue | undefined };
 
 interface YAMLRequestDetailsProps {
   node: YAMLNode;
   baseUrl?: string;
   redirectSourceInfo?: RedirectSourceInfo | null;
-  onNodeUpdate?: (nodeId: string, updatedData: any) => void;
+  onNodeUpdate?: (nodeId: string, updatedData: YAMLNodeData) => void;
   searchQuery?: string;
 }
 
 type Tab = 'request' | 'response';
-type SearchMode = 'text' | 'regex';
 const HTTP_METHOD_NODE_TYPES = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
 
 function getNodeMethodFallback(node: YAMLNode): string {
   return HTTP_METHOD_NODE_TYPES.includes(node.type) ? node.type.toUpperCase() : 'GET';
+}
+
+function getStringValue(value: YAMLValue, fallback = ''): string {
+  return typeof value === 'string' ? value : fallback;
+}
+
+function getNumberValue(value: YAMLValue): number | undefined {
+  return typeof value === 'number' ? value : undefined;
+}
+
+function getRecordValue(value: YAMLValue): YAMLRecord | undefined {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value : undefined;
+}
+
+function getBodyText(value: YAMLValue): string {
+  if (!value) return '';
+  return typeof value === 'string' ? value : JSON.stringify(value, null, 2);
 }
 
 export function YAMLRequestDetails({
@@ -54,16 +72,15 @@ export function YAMLRequestDetails({
   // The selected request itself is disabled: keep all fields visible but
   // non-editable so users can inspect without accidentally editing dead data.
   const isRequestDisabled = node.data?.enabled === false;
-  const requestMethod = formData.method || getNodeMethodFallback(node);
-  const effectiveRedirectAutomatically = !!formData.redirect_automatically;
-  const effectiveFollowRedirects = !!formData.follow_redirects;
+  const requestMethod = getStringValue(formData.method, getNodeMethodFallback(node));
+  const effectiveRedirectAutomatically = formData.redirect_automatically === true;
+  const effectiveFollowRedirects = formData.follow_redirects === true;
 
   useEffect(() => {
     setFormData(node.data || {});
   }, [node.id, node.data]);
 
-
-  const handleFieldChange = (field: string, value: any) => {
+  const handleFieldChange = (field: string, value: YAMLValue) => {
     const newData = { ...formData, [field]: value };
     // The two redirect modes are mutually exclusive.
     // Toggling one always clears the other so the YAML never carries both flags.
@@ -75,15 +92,6 @@ export function YAMLRequestDetails({
     setFormData(newData);
     if (onNodeUpdate) {
       onNodeUpdate(node.id, newData);
-    }
-  };
-
-  const handleBodyChange = (value: string) => {
-    try {
-      const parsed = JSON.parse(value);
-      handleFieldChange('body', parsed);
-    } catch {
-      handleFieldChange('body', value);
     }
   };
 
@@ -168,7 +176,6 @@ export function YAMLRequestDetails({
             effectiveFollowRedirects={effectiveFollowRedirects}
             requestMethod={requestMethod}
             onFieldChange={handleFieldChange}
-            onBodyChange={handleBodyChange}
             searchText={searchText}
             searchInputValue={requestSearch}
             searchMode={searchMode}
@@ -201,14 +208,13 @@ export function YAMLRequestDetails({
 }
 
 interface RequestContentProps {
-  formData: any;
+  formData: YAMLNodeData;
   baseUrl: string;
   hasRecordedRedirectFollowUp: boolean;
   effectiveRedirectAutomatically: boolean;
   effectiveFollowRedirects: boolean;
   requestMethod: string;
-  onFieldChange: (field: string, value: any) => void;
-  onBodyChange: (value: string) => void;
+  onFieldChange: (field: string, value: YAMLValue) => void;
   searchText: string;
   searchInputValue: string;
   searchMode: SearchMode;
@@ -228,7 +234,6 @@ function RequestContent({
   effectiveFollowRedirects,
   requestMethod,
   onFieldChange,
-  onBodyChange: _,
   searchText,
   searchInputValue,
   searchMode,
@@ -242,7 +247,14 @@ function RequestContent({
   const compactInputClass =
     'w-[14ch] max-w-full h-9.5 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono';
 
-  const urlParts = parseRequestUrl(formData.url || '');
+  const requestUrl = getStringValue(formData.url);
+  const timeoutValue = getStringValue(formData.timeout);
+  const cookieOverride = getStringValue(formData.cookie_override, 'inherit');
+  const cacheOverride = getStringValue(formData.cache_override, 'inherit');
+  const throughput = getRecordValue(formData.throughput);
+  const throughputEnabled = throughput?.enabled === true;
+  const targetRps = getNumberValue(throughput?.target_rps);
+  const urlParts = parseRequestUrl(requestUrl);
   // Host inherited from http_defaults.base_url. Base-host (relative) requests now
   // surface it as the field value too — not just as a placeholder — so every
   // request shows its host uniformly and editably, matching the secondary-host
@@ -250,13 +262,9 @@ function RequestContent({
   const inheritedHost = getRequestNodeHost(baseUrl) || baseUrl.trim();
   const baseUrlPlaceholder = inheritedHost || FALLBACK_BASE_URL_PLACEHOLDER;
   const displayBaseUrl = urlParts.baseUrl || inheritedHost;
-  const rawUrl = String(formData.url ?? '').trim();
+  const rawUrl = requestUrl.trim();
   const pathInputValue = rawUrl === '' ? '' : urlParts.path;
-  const requestBodyText = formData.body
-    ? typeof formData.body === 'string'
-      ? formData.body
-      : JSON.stringify(formData.body, null, 2)
-    : '';
+  const requestBodyText = getBodyText(formData.body);
 
   const handlePathChange = (value: string) => {
     if (value.trim() === '') {
@@ -265,11 +273,11 @@ function RequestContent({
         return;
       }
 
-      onFieldChange('url', buildRequestUrl(formData.url || '', { path: '' }));
+      onFieldChange('url', buildRequestUrl(requestUrl, { path: '' }));
       return;
     }
 
-    onFieldChange('url', buildRequestUrl(formData.url || '', { path: value }));
+    onFieldChange('url', buildRequestUrl(requestUrl, { path: value }));
   };
 
   const handleBaseUrlChange = (value: string) => {
@@ -278,7 +286,7 @@ function RequestContent({
     // request inherits from http_defaults instead of being pinned to an absolute
     // URL. A different (or empty) host writes it explicitly.
     const nextBaseUrl = trimmed === inheritedHost ? '' : trimmed;
-    onFieldChange('url', buildRequestUrl(formData.url || '', { baseUrl: nextBaseUrl }));
+    onFieldChange('url', buildRequestUrl(requestUrl, { baseUrl: nextBaseUrl }));
   };
 
   const buildSearchRegex = () => {
@@ -395,7 +403,7 @@ function RequestContent({
             </label>
             <Select
               value={urlParts.protocol}
-              onValueChange={value => onFieldChange('url', buildRequestUrl(formData.url || '', { protocol: value }))}
+              onValueChange={value => onFieldChange('url', buildRequestUrl(requestUrl, { protocol: value }))}
             >
               <SelectTrigger id="req-protocol" className={`${compactInputClass} w-full`}>
                 <SelectValue />
@@ -449,7 +457,7 @@ function RequestContent({
             <input
               type="checkbox"
               className="w-4 h-4 rounded border-white/10 bg-white/5 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-0"
-              checked={!!formData.retrieve_embedded_resources}
+              checked={formData.retrieve_embedded_resources === true}
               onChange={e => onFieldChange('retrieve_embedded_resources', e.target.checked)}
             />
             <span>Retrieve all Embedded Resources</span>
@@ -481,7 +489,7 @@ function RequestContent({
       </div>
 
       <QueryParamsEditor
-        url={formData.url || ''}
+        url={requestUrl}
         onUrlChange={url => onFieldChange('url', url)}
         showBaseUrl={false}
         searchText={searchText}
@@ -605,7 +613,7 @@ function RequestContent({
             </label>
             <Input
               id="req-timeout"
-              value={formData.timeout === '30s' ? '' : formData.timeout || ''}
+              value={timeoutValue === '30s' ? '' : timeoutValue}
               onChange={e => onFieldChange('timeout', e.target.value)}
               placeholder=""
               className="w-full h-9.5 bg-white/5 border border-white/10 text-zinc-300 text-sm font-mono"
@@ -619,7 +627,7 @@ function RequestContent({
               Cookie Override
             </label>
             <Select
-              value={formData.cookie_override || 'inherit'}
+              value={cookieOverride}
               onValueChange={value => onFieldChange('cookie_override', value)}
             >
               <SelectTrigger id="req-cookie-override" className={`${compactInputClass} w-full`}>
@@ -640,7 +648,7 @@ function RequestContent({
               Cache Override
             </label>
             <Select
-              value={formData.cache_override || 'inherit'}
+              value={cacheOverride}
               onValueChange={value => onFieldChange('cache_override', value)}
             >
               <SelectTrigger id="req-cache-override" className={`${compactInputClass} w-full`}>
@@ -661,12 +669,12 @@ function RequestContent({
               Throughput (Request)
             </label>
             <Select
-              value={formData.throughput?.enabled ? 'enabled' : 'disabled'}
+              value={throughputEnabled ? 'enabled' : 'disabled'}
               onValueChange={value => {
                 if (value === 'enabled') {
                   const next = {
                     enabled: true,
-                    target_rps: formData.throughput?.target_rps || 1,
+                    target_rps: targetRps ?? 1,
                   };
                   onFieldChange('throughput', next);
                 } else {
@@ -683,7 +691,7 @@ function RequestContent({
               </SelectContent>
             </Select>
           </div>
-          <div className={`min-w-0 ${formData.throughput?.enabled ? '' : 'opacity-55'}`}>
+          <div className={`min-w-0 ${throughputEnabled ? '' : 'opacity-55'}`}>
             <label
               htmlFor="req-target-rps"
               className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
@@ -695,13 +703,13 @@ function RequestContent({
               type="number"
               min="0.1"
               step="0.1"
-              value={formData.throughput?.target_rps ?? ''}
-              disabled={!formData.throughput?.enabled}
+              value={targetRps ?? ''}
+              disabled={!throughputEnabled}
               onChange={e => {
                 const raw = e.target.value;
                 const next = raw === '' ? undefined : Number(raw);
                 onFieldChange('throughput', {
-                  ...formData.throughput,
+                  ...throughput,
                   enabled: true,
                   target_rps: next,
                 });
@@ -709,7 +717,7 @@ function RequestContent({
               className="w-full h-9.5 bg-white/5 border border-white/10 text-zinc-300 text-sm font-mono"
             />
             <div className="mt-1 text-xs text-zinc-500">
-              Approx: {((Number(formData.throughput?.target_rps) || 0) * 60).toFixed(0)} req/min
+              Approx: {((targetRps || 0) * 60).toFixed(0)} req/min
             </div>
           </div>
         </div>

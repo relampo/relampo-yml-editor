@@ -28,6 +28,7 @@ vi.mock('../utils/runApi', async importOriginal => {
 
 afterEach(() => {
   cleanup();
+  sessionStorage.clear();
   runApiMock.handlers.length = 0;
   runApiMock.startLoadRun.mockClear();
   runApiMock.stopLoadRun.mockClear();
@@ -149,5 +150,21 @@ describe('YAMLLoadRunSession', () => {
 
     expect(screen.getByRole('button', { name: 'Run load test' })).toBeDisabled();
     expect(screen.getByText(/validation failed before the load run/i)).toBeInTheDocument();
+  });
+
+  it('does not start a load run with stale YAML when pending serialization fails', async () => {
+    render(
+      <YAMLLoadRunSession
+        {...baseProps}
+        flushPendingEdits={() => {
+          throw new Error('Error generating YAML: empty parallel');
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run load test' }));
+
+    expect(await screen.findByText('Error generating YAML: empty parallel')).toBeInTheDocument();
+    expect(runApiMock.startLoadRun).not.toHaveBeenCalled();
   });
 });

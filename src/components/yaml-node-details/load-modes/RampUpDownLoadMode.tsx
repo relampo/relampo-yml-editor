@@ -1,5 +1,12 @@
-import { limitedInputValue } from '../loadUtils';
-import { LoadField, LoadGrid, LoadModeProps, LoadSection } from './shared';
+import { LOAD_DURATION_HELP_TEXT, LoadFieldGroup, LoadGrid, LoadModeProps, LoadSection } from './shared';
+
+const RAMP_UP_DOWN_LOAD_FIELDS = [
+  { field: 'users', label: 'Virtual Users', placeholder: '50', type: 'number' },
+  { field: 'duration', label: 'Duration', placeholder: '10m', helpText: LOAD_DURATION_HELP_TEXT },
+  { field: 'iterations', label: 'Iterations', placeholder: '0', type: 'number' },
+  { field: 'ramp_up', label: 'Ramp Up', placeholder: '1m', helpText: LOAD_DURATION_HELP_TEXT },
+  { field: 'ramp_down', label: 'Ramp Down', placeholder: '1m', helpText: LOAD_DURATION_HELP_TEXT },
+] as const;
 
 export function RampUpDownLoadMode({ data, onChange }: LoadModeProps) {
   return (
@@ -8,40 +15,10 @@ export function RampUpDownLoadMode({ data, onChange }: LoadModeProps) {
       description="Climb to a steady user count, hold it, then ramp the load back down."
     >
       <LoadGrid>
-        <LoadField
-          label="Virtual Users"
-          value={data.users || ''}
-          placeholder="50"
-          onChange={value => onChange('users', limitedInputValue(value))}
-          type="number"
-        />
-        <LoadField
-          label="Duration"
-          value={data.duration || ''}
-          placeholder="10m"
-          onChange={value => onChange('duration', limitedInputValue(value))}
-          helpText="Format: 500ms, 5s, 5m"
-        />
-        <LoadField
-          label="Iterations"
-          value={data.iterations || ''}
-          placeholder="0"
-          onChange={value => onChange('iterations', limitedInputValue(value))}
-          type="number"
-        />
-        <LoadField
-          label="Ramp Up"
-          value={data.ramp_up || ''}
-          placeholder="1m"
-          onChange={value => onChange('ramp_up', limitedInputValue(value))}
-          helpText="Format: 500ms, 5s, 5m"
-        />
-        <LoadField
-          label="Ramp Down"
-          value={data.ramp_down || ''}
-          placeholder="1m"
-          onChange={value => onChange('ramp_down', limitedInputValue(value))}
-          helpText="Format: 500ms, 5s, 5m"
+        <LoadFieldGroup
+          data={data}
+          fields={RAMP_UP_DOWN_LOAD_FIELDS}
+          onChange={onChange}
         />
       </LoadGrid>
     </LoadSection>

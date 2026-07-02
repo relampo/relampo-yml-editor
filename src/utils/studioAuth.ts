@@ -20,11 +20,7 @@ const STUDIO_TOKEN_HEADER = 'X-Relampo-Studio-Token';
 // invalidate (and tests can vary the URL without module-load ordering games).
 export function studioToken(): string {
   if (typeof window === 'undefined' || !window.location) return '';
-  try {
-    return new URLSearchParams(window.location.search).get('token') ?? '';
-  } catch {
-    return '';
-  }
+  return new URLSearchParams(window.location.search).get('token') ?? '';
 }
 
 // Merges the studio token header into any existing fetch headers. Returns a

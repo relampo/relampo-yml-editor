@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { RedirectSourceInfo, RedirectedRequestInfo, YAMLNode } from '../types/yaml';
 import { collectScenarioHosts, getRequestNodeHost } from '../utils/requestNodeDisplay';
-import { detectRedirectFollowUps, findNodeById, nodesStillFormRedirect } from './yamlEditorHelpers';
+import {
+  detectRedirectFollowUps,
+  findNodeById,
+  nodesStillFormRedirect,
+  type ParseWorkerResponse,
+} from './yamlEditorHelpers';
 
 export function useRedirectMaps(yamlTree: YAMLNode | null) {
   const prevRedirectedMapRef = useRef<Record<string, RedirectedRequestInfo>>({});
@@ -77,8 +82,6 @@ export function useHttpDefaultsInfo(yamlTree: YAMLNode | null) {
 
   return { httpDefaultsBaseUrl, scenarioHosts, httpDefaultsBaseHost };
 }
-
-type ParseWorkerResponse = { id: number; ok: true; tree: YAMLNode | null } | { id: number; ok: false; error: string };
 
 type ParseWorkerDeps = {
   language: string;

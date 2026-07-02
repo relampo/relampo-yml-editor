@@ -40,7 +40,7 @@ function findUniqueTarget(nodes: YAMLNode[], predicate: (node: YAMLNode) => bool
 // chain after the parent's first hop: the intermediate hops and the final
 // landing response. The parent's own first request (redirect_index 0,
 // chain_role "parent") is NOT a follow-up — it matches its own node normally.
-export function isRedirectFollowUpEvent(event: DebugEventLike): boolean {
+function isRedirectFollowUpEvent(event: DebugEventLike): boolean {
   const role = String(event.chain_role ?? '').trim().toLowerCase();
   return role === 'hop' || role === 'final' || (event.redirect_index ?? 0) > 0;
 }
@@ -232,7 +232,7 @@ function extractorVariableName(node: YAMLNode): string | null {
   return null;
 }
 
-export function requestExtractorVariableNames(node: YAMLNode | null): string[] {
+function requestExtractorVariableNames(node: YAMLNode | null): string[] {
   if (!node?.children) return [];
   const names: string[] = [];
   node.children.forEach(child => {
@@ -279,7 +279,7 @@ function collectPlaceholderNames(value: unknown, into: Set<string>): void {
 // never widen back to "every variable in scope", which is what RLP-585 removed
 // to stop unrelated data-source columns leaking onto requests that don't touch
 // them.
-export function requestReferencedVariableNames(node: YAMLNode | null): string[] {
+function requestReferencedVariableNames(node: YAMLNode | null): string[] {
   if (!node) return [];
   const names = new Set<string>();
   collectPlaceholderNames(node.data, names);

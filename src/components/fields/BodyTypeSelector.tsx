@@ -3,10 +3,11 @@ import { AlertCircle, CheckCircle, Plus, Trash2 } from 'lucide-react';
 import type { editor as MonacoEditorNS } from 'monaco-editor';
 import { JSX, useEffect, useMemo, useRef, useState } from 'react';
 import type { StringMap } from '../../types/shared';
+import type { YAMLValue } from '../../types/yaml';
+import type { SearchMode } from '../debugSearch';
 import { Input } from '../ui/input';
 
 type BodyType = 'none' | 'json' | 'form' | 'raw';
-type SearchMode = 'text' | 'regex';
 
 interface HighlightedTextProps {
   text: string;
@@ -44,8 +45,8 @@ function HighlightedText({ text, searchText, searchMode, currentMatchIndex }: Hi
 }
 
 interface BodyTypeSelectorProps {
-  body: any;
-  onBodyChange: (body: any, type: BodyType) => void;
+  body: YAMLValue;
+  onBodyChange: (body: YAMLValue, type: BodyType) => void;
   className?: string;
   searchText?: string;
   searchMode?: SearchMode;
@@ -62,6 +63,23 @@ interface FormDataItem {
 const MONACO_SWITCH_LINE_THRESHOLD = 2000;
 const MONACO_SWITCH_SIZE_THRESHOLD = 120 * 1024;
 const BODY_FIXED_HEIGHT = 300;
+
+function isBodyRecord(value: unknown): value is Record<string, YAMLValue> {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isYAMLValue(value: unknown): value is YAMLValue {
+  if (value == null || ['string', 'number', 'boolean', 'undefined'].includes(typeof value)) {
+    return true;
+  }
+  if (Array.isArray(value)) {
+    return value.every(isYAMLValue);
+  }
+  if (typeof value === 'object') {
+    return Object.values(value).every(isYAMLValue);
+  }
+  return false;
+}
 
 export function BodyTypeSelector({
   body,
@@ -86,7 +104,7 @@ export function BodyTypeSelector({
   const rawHighlightRef = useRef<HTMLPreElement | null>(null);
 
   useEffect(() => {
-    if (!body || Object.keys(body).length === 0) {
+    if (!body || (isBodyRecord(body) && Object.keys(body).length === 0)) {
       setBodyType('none');
       return;
     }
@@ -100,7 +118,7 @@ export function BodyTypeSelector({
         setBodyType('raw');
         setRawValue(body);
       }
-    } else if (typeof body === 'object') {
+    } else if (isBodyRecord(body)) {
       const keys = Object.keys(body);
       const seemsLikeFormData = keys.every(k => typeof body[k] === 'string' || typeof body[k] === 'number');
 
@@ -152,14 +170,18 @@ export function BodyTypeSelector({
       onBodyChange(obj, newType);
     } else if (newType === 'form' && bodyType === 'json') {
       try {
-        const obj = JSON.parse(jsonValue);
-        const items: FormDataItem[] = Object.entries(obj).map(([k, v]) => ({
+        const parsed: unknown = JSON.parse(jsonValue);
+        if (!isBodyRecord(parsed)) {
+          setFormData([{ key: '', value: '', enabled: true }]);
+          return;
+        }
+        const items: FormDataItem[] = Object.entries(parsed).map(([k, v]) => ({
           key: k,
           value: String(v),
           enabled: true,
         }));
         setFormData(items.length > 0 ? items : [{ key: '', value: '', enabled: true }]);
-        onBodyChange(obj, newType);
+        onBodyChange(parsed, newType);
       } catch {
         setFormData([{ key: '', value: '', enabled: true }]);
       }
@@ -173,11 +195,16 @@ export function BodyTypeSelector({
     }
 
     try {
-      const parsed = JSON.parse(value);
+      const parsed: unknown = JSON.parse(value);
+      if (!isYAMLValue(parsed)) {
+        setJsonError('Unsupported JSON value');
+        onBodyChange(value, 'json');
+        return;
+      }
       setJsonError('');
       onBodyChange(parsed, 'json');
-    } catch (e: any) {
-      setJsonError(e.message);
+    } catch (error) {
+      setJsonError(error instanceof Error ? error.message : 'Invalid JSON');
       onBodyChange(value, 'json');
     }
   };

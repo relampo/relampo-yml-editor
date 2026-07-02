@@ -29,13 +29,13 @@ export interface RunMetricsSnapshot {
   errors: number;
 }
 
-export interface RunState {
+interface RunState {
   status: RunStatus;
   started_at: string;
   elapsed_ms: number;
 }
 
-export type RunLogLevel = 'request' | 'info' | 'error' | 'system';
+type RunLogLevel = 'request' | 'info' | 'error' | 'system';
 
 // One line of the live log feed. Request events carry the structured fields;
 // lifecycle/info events use `message`.
@@ -52,7 +52,7 @@ export interface RunLogLine {
 }
 
 // Per-request roll-up in the final summary (mirrors reporter.RequestStat).
-export interface RunRequestStat {
+interface RunRequestStat {
   name: string;
   method: string;
   path: string;
@@ -67,7 +67,7 @@ export interface RunRequestStat {
   p99_ms?: number;
 }
 
-export interface RunHistoryPoint {
+interface RunHistoryPoint {
   ts: number;
   rps: number;
   active_users: number;
@@ -90,7 +90,7 @@ export interface RunSummary {
   history?: RunHistoryPoint[];
 }
 
-export interface RunDone {
+interface RunDone {
   status: RunStatus;
   error: string | null;
   summary: RunSummary | null;

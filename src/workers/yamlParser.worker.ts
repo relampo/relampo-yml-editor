@@ -1,16 +1,7 @@
 /// <reference lib="webworker" />
 
 import { parseYAMLToTree } from '../utils/yamlParser';
-
-type ParseWorkerRequest = {
-  id: number;
-  yaml: string;
-  rootName?: string;
-};
-
-type ParseWorkerResponse =
-  | { id: number; ok: true; tree: ReturnType<typeof parseYAMLToTree> }
-  | { id: number; ok: false; error: string };
+import type { ParseWorkerRequest, ParseWorkerResponse } from '../components/yamlEditorHelpers';
 
 const ctx: DedicatedWorkerGlobalScope = self as unknown as DedicatedWorkerGlobalScope;
 

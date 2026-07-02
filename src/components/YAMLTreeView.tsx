@@ -18,8 +18,9 @@ import {
   wrapNodesInTransaction,
 } from './yaml-tree-view/treeOperations';
 import type { YAMLAddableNodeType } from './yaml-tree-view/addableItems';
+import { nodeMatchExpandsDescendants, subtreeHasMatch } from './yaml-tree-view/search';
 import { YAMLContextMenu } from './YAMLContextMenu';
-import { nodeMatchExpandsDescendants, subtreeHasMatch, YAMLTreeNode } from './YAMLTreeNode';
+import { YAMLTreeNode } from './YAMLTreeNode';
 
 const MIN_CONTEXT_MENU_HEIGHT = 700;
 

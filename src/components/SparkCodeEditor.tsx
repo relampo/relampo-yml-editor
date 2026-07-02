@@ -58,7 +58,9 @@ export function SparkCodeEditor({ value, onChange, minHeight = '250px' }: SparkC
           const markers = monacoRef.current.editor.getModelMarkers({
             resource: model.uri,
           });
-          const errors = markers.filter((m: { severity: any; }) => m.severity === monacoRef.current!.MarkerSeverity.Error);
+          const errors = markers.filter(
+            (marker: editor.IMarker) => marker.severity === monacoRef.current!.MarkerSeverity.Error,
+          );
 
           if (errors.length > 0) {
             const firstError = errors[0];
@@ -80,12 +82,13 @@ export function SparkCodeEditor({ value, onChange, minHeight = '250px' }: SparkC
           isValid: true,
           message: 'Syntax OK - No errors found!',
         });
-      } catch (error: any) {
-        const match = error.message.match(/line (\d+)/i) || error.message.match(/position (\d+)/i);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Invalid JavaScript syntax';
+        const match = message.match(/line (\d+)/i) || message.match(/position (\d+)/i);
 
         setValidationResult({
           isValid: false,
-          message: error.message,
+          message,
           line: match ? parseInt(match[1]) : undefined,
         });
       }

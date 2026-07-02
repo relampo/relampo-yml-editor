@@ -25,15 +25,12 @@ import { YAMLCodeEditor } from './YAMLCodeEditor';
 import { YAMLEditorDetailsPanel } from './YAMLEditorDetailsPanel';
 import { EditorViewModeTabs, type EditorViewMode } from './EditorViewModeTabs';
 import { YAMLEditorHeader } from './YAMLEditorHeader';
-import { createNodeByType } from './yaml-tree-view/nodeFactory';
 import {
-  addNodeToTree,
   refreshTreePaths,
   syncRedirectSourceFollowRedirects,
   updateNodeEnabled,
 } from './yaml-tree-view/treeOperations';
 import { autoRebalanceBalancedControllers } from '../utils/balancedController';
-import type { YAMLAddableNodeType } from './yaml-tree-view/addableItems';
 import { YAMLTreeView } from './YAMLTreeView';
 import { useHttpDefaultsInfo, useParseWorker, useRedirectMaps, useTreeSelection } from './useYamlEditorDerived';
 import {
@@ -369,9 +366,11 @@ export function YAMLEditor() {
       setError(null);
       setIsTreeOutdated(false);
       return code;
-    } catch {
-      // Keep the last serialized code if the current tree can't serialize.
-      return yamlCode;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Error generating YAML';
+      setError(message);
+      setIsTreeOutdated(true);
+      throw new Error(message);
     }
   };
 
@@ -440,20 +439,6 @@ export function YAMLEditor() {
     commitTreeChange(rebalanced, undefined, { serialization: 'debounced' });
   };
 
-  const handleAddChildNode = (parentId: string, nodeType: YAMLAddableNodeType) => {
-    if (!yamlTree) return;
-
-    const newNode = createNodeByType(nodeType, { balancedName: t('yamlEditor.balanced.name') });
-    const updatedTree = addNodeToTree(yamlTree, parentId, newNode);
-    if (!findNodeById(updatedTree, newNode.id)) return;
-
-    const rebalanced = autoRebalanceBalancedControllers(yamlTree, updatedTree);
-    commitTreeChange(rebalanced, {
-      primaryId: newNode.id,
-      nodeIds: [newNode.id],
-    });
-  };
-
   const handleTreeContextMenuOpened = ({
     nodeType,
     selectionCount,
@@ -468,22 +453,6 @@ export function YAMLEditor() {
       node_type: nodeType,
       selection_count: selectionCount,
       has_multi_selection: hasMultiSelection,
-    });
-  };
-
-  const handleDetailPanelAddClicked = ({
-    parentNodeType,
-    childNodeType,
-  }: {
-    parentNodeType: string;
-    childNodeType: YAMLAddableNodeType;
-  }) => {
-    const contextMenuDiscovered = hasDiscoveredTreeContextMenuRef.current;
-    logStatsigEvent('detail_panel_add_clicked', {
-      parent_node_type: parentNodeType,
-      child_node_type: childNodeType,
-      context_menu_discovered: contextMenuDiscovered,
-      is_discovery_friction: !contextMenuDiscovered,
     });
   };
 
@@ -810,8 +779,6 @@ export function YAMLEditor() {
           onNodeUpdate={handleNodeUpdate}
           onRenameHost={handleRenameHost}
           onToggleEnabled={handleToggleNodeEnabled}
-          onAddChildNode={handleAddChildNode}
-          onAddChildAction={handleDetailPanelAddClicked}
           searchQuery={activeViewMode === 'tree' ? treeSearchQuery : ''}
           dataSourceFileBrowseEnabled={dataSourceFileBrowseEnabled}
         />

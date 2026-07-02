@@ -2,12 +2,6 @@ import type { RedirectSourceInfo, RedirectedRequestInfo, YAMLNode } from '../typ
 import { YAMLDebugSession } from './YAMLDebugView';
 import { YAMLLoadRunSession } from './YAMLRunView';
 import { YAMLNodeDetails } from './YAMLNodeDetails';
-import type { YAMLAddableNodeType } from './yaml-tree-view/addableItems';
-
-type DetailPanelAddAction = {
-  parentNodeType: string;
-  childNodeType: YAMLAddableNodeType;
-};
 
 type YAMLEditorDetailsPanelProps = {
   isDebugViewActive: boolean;
@@ -30,8 +24,6 @@ type YAMLEditorDetailsPanelProps = {
   onNodeUpdate: (nodeId: string, updatedData: Record<string, unknown>) => void;
   onRenameHost: (oldHost: string, newHost: string) => void;
   onToggleEnabled: (nodeId: string, enabled: boolean) => void;
-  onAddChildNode: (parentId: string, nodeType: YAMLAddableNodeType) => void;
-  onAddChildAction: (metadata: DetailPanelAddAction) => void;
   searchQuery: string;
   dataSourceFileBrowseEnabled: boolean;
 };
@@ -57,8 +49,6 @@ export function YAMLEditorDetailsPanel({
   onNodeUpdate,
   onRenameHost,
   onToggleEnabled,
-  onAddChildNode,
-  onAddChildAction,
   searchQuery,
   dataSourceFileBrowseEnabled,
 }: YAMLEditorDetailsPanelProps) {
@@ -115,8 +105,6 @@ export function YAMLEditorDetailsPanel({
             onNodeUpdate={onNodeUpdate}
             onRenameHost={onRenameHost}
             onToggleEnabled={onToggleEnabled}
-            onAddChildNode={onAddChildNode}
-            onAddChildAction={onAddChildAction}
             searchQuery={searchQuery}
             dataSourceFileBrowseEnabled={dataSourceFileBrowseEnabled}
           />

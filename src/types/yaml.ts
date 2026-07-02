@@ -1,5 +1,9 @@
 import type { StringMap } from './shared';
 
+type YAMLScalar = string | number | boolean | null;
+export type YAMLValue = YAMLScalar | YAMLValue[] | { [key: string]: YAMLValue | undefined } | undefined;
+export type YAMLNodeData = Record<string, YAMLValue>;
+
 export type YAMLNodeType =
   | 'root'
   | 'test'
@@ -77,7 +81,7 @@ export interface RedirectSourceInfo {
 export interface DataSource {
   type: 'csv' | 'json' | 'inline';
   file?: string;
-  inline?: Record<string, unknown> | unknown[] | string | number | boolean | null;
+  inline?: YAMLValue;
   mode?: 'per_vu' | 'shared';
   strategy?: 'sequential' | 'random' | 'unique';
   bind: StringMap;

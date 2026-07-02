@@ -11,21 +11,16 @@ afterEach(() => {
 
 function renderDetails(
   node: YAMLNode,
-  onAddChildNode = vi.fn(),
-  onAddChildAction = vi.fn(),
   options: { dataSourceFileBrowseEnabled?: boolean } = {},
 ) {
   render(
     <LanguageProvider>
       <YAMLNodeDetails
         node={node}
-        onAddChildNode={onAddChildNode}
-        onAddChildAction={onAddChildAction}
         dataSourceFileBrowseEnabled={options.dataSourceFileBrowseEnabled}
       />
     </LanguageProvider>,
   );
-  return { onAddChildNode, onAddChildAction };
 }
 
 function StatefulDetails({
@@ -72,39 +67,6 @@ const fileNode: YAMLNode = {
   },
 };
 
-describe('YAMLNodeDetails add actions', () => {
-  //TODO - re-enable this test when the add child node functionality is implemented
-  it.skip('renders add actions for steps nodes', () => {
-    renderDetails({
-      id: 'scenario_steps',
-      type: 'steps',
-      name: 'Steps',
-      children: [],
-    });
-
-    expect(screen.getByRole('button', { name: 'Add HTTP Request' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Add SQL Request' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Add Group' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Add Think Time' })).toBeInTheDocument();
-  });
-  it.skip('adds a child node to the selected parent from details', () => {
-    const { onAddChildNode, onAddChildAction } = renderDetails({
-      id: 'scenario_steps',
-      type: 'steps',
-      name: 'Steps',
-      children: [],
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: 'Add HTTP Request' }));
-
-    expect(onAddChildNode).toHaveBeenCalledWith('scenario_steps', 'request');
-    expect(onAddChildAction).toHaveBeenCalledWith({
-      parentNodeType: 'steps',
-      childNodeType: 'request',
-    });
-  });
-});
-
 describe('YAMLNodeDetails data source file browsing', () => {
   it('disables data source file browsing outside local Studio', () => {
     renderDetails(dataSourceNode);
@@ -119,7 +81,7 @@ describe('YAMLNodeDetails data source file browsing', () => {
       vi.fn().mockResolvedValue({ ok: true, json: async () => ({ path: 'users.csv', lines: [], truncated: false }) }),
     );
 
-    renderDetails(dataSourceNode, vi.fn(), vi.fn(), { dataSourceFileBrowseEnabled: true });
+    renderDetails(dataSourceNode, { dataSourceFileBrowseEnabled: true });
 
     expect(screen.getByRole('button', { name: 'Browse' })).toBeEnabled();
     expect(
@@ -134,7 +96,7 @@ describe('YAMLNodeDetails data source file browsing', () => {
       vi.fn().mockResolvedValue({ ok: true, json: async () => ({ path: 'users.csv', lines: [], truncated: false }) }),
     );
 
-    renderDetails(dataSourceNode, vi.fn(), vi.fn(), { dataSourceFileBrowseEnabled: true });
+    renderDetails(dataSourceNode, { dataSourceFileBrowseEnabled: true });
 
     expect(screen.getByText('Each VU cycles through the list from the beginning.')).toBeInTheDocument();
     expect(screen.queryByText('Cada VU cicla sobre la lista desde el inicio.')).not.toBeInTheDocument();
@@ -149,7 +111,7 @@ describe('YAMLNodeDetails data source file browsing', () => {
       }),
     );
 
-    renderDetails(dataSourceNode, vi.fn(), vi.fn(), { dataSourceFileBrowseEnabled: true });
+    renderDetails(dataSourceNode, { dataSourceFileBrowseEnabled: true });
 
     expect(await screen.findByText('Data Preview')).toBeInTheDocument();
     expect(await screen.findByText('alice')).toBeInTheDocument();

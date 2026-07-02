@@ -218,8 +218,8 @@ describe('variableRowsForRequestNode', () => {
   });
 
   it('lists placeholders stored on the headers child node, not just node.data', () => {
-    // RLP-584 (Codex follow-up): headers edited through the UI live on the
-    // `headers` child and are serialized from there, so an Authorization header
+    // Headers edited through the UI live on the `headers` child and are
+    // serialized from there, so an Authorization header
     // referencing {{token}} must surface even though node.data has no headers.
     const node: YAMLNode = {
       id: 'r',

@@ -237,27 +237,32 @@ export function FileField({
 type EditableAuthType = 'none' | 'bearer' | 'api_key' | 'basic';
 type EditableAuthConfig = AuthConfig & { type: EditableAuthType };
 
-function normalizeAuthEditorValue(auth: any): EditableAuthConfig {
-  const type = typeof auth?.type === 'string' ? auth.type.trim().toLowerCase() : '';
+function isAuthRecord(auth: unknown): auth is Record<string, unknown> {
+  return !!auth && typeof auth === 'object' && !Array.isArray(auth);
+}
+
+function normalizeAuthEditorValue(auth: unknown): EditableAuthConfig {
+  const source = isAuthRecord(auth) ? auth : {};
+  const type = typeof source.type === 'string' ? source.type.trim().toLowerCase() : '';
 
   if (type === 'bearer') {
-    return { type, token: typeof auth?.token === 'string' ? auth.token : '' };
+    return { type, token: typeof source.token === 'string' ? source.token : '' };
   }
 
   if (type === 'api_key') {
     return {
       type,
-      name: typeof auth?.name === 'string' ? auth.name : '',
-      value: typeof auth?.value === 'string' ? auth.value : '',
-      in: auth?.in === 'query' ? 'query' : 'header',
+      name: typeof source.name === 'string' ? source.name : '',
+      value: typeof source.value === 'string' ? source.value : '',
+      in: source.in === 'query' ? 'query' : 'header',
     };
   }
 
   if (type === 'basic') {
     return {
       type,
-      username: typeof auth?.username === 'string' ? auth.username : '',
-      password: typeof auth?.password === 'string' ? auth.password : '',
+      username: typeof source.username === 'string' ? source.username : '',
+      password: typeof source.password === 'string' ? source.password : '',
     };
   }
 
@@ -430,11 +435,11 @@ export function AuthConfigEditor({ auth, onChange, scopeLabel }: AuthConfigEdito
 
 interface DetailFieldProps {
   label: string;
-  value: any;
+  value: string | number | boolean | null | undefined;
   mono?: boolean;
   small?: boolean;
   editable?: boolean;
-  onChange?: (value: any) => void;
+  onChange?: (value: string) => void;
   multiline?: boolean;
   noMargin?: boolean;
 }

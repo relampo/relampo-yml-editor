@@ -1,4 +1,8 @@
-export type LoadType = 'constant' | 'linear' | 'ramp_up_down' | 'throughput' | 'intent';
+const loadTypes = ['constant', 'linear', 'ramp_up_down', 'throughput', 'intent'] as const;
+
+export type LoadType = (typeof loadTypes)[number];
+export type LoadDataValue = string | number | undefined;
+export type LoadData = Record<string, LoadDataValue>;
 
 const intentTargetUnits = new Set(['rps', 'vus']);
 const intentAggressivenessLevels = new Set(['low', 'medium', 'high']);
@@ -38,7 +42,7 @@ const yamlLoadTypeAliases: Partial<Record<LoadType, string>> = {
   linear: 'ramp',
 };
 
-export function getYamlLoadType(loadType: LoadType): string {
+function getYamlLoadType(loadType: LoadType): string {
   return yamlLoadTypeAliases[loadType] ?? loadType;
 }
 
@@ -68,7 +72,7 @@ export function normalizeLoadType(rawType: unknown): LoadType {
   return 'constant';
 }
 
-const loadTypeDefaults: Record<LoadType, Record<string, any>> = {
+const loadTypeDefaults: Record<LoadType, LoadData> = {
   constant: {
     users: '10',
     duration: '5m',
@@ -139,46 +143,18 @@ const loadTypeAllowedKeys: Record<LoadType, string[]> = {
   ],
 };
 
-export const selectedLoadButtonStyle = {
-  constant: {
-    backgroundColor: 'rgba(250, 204, 21, 0.10)',
-    color: '#facc15',
-    borderColor: 'rgba(250, 204, 21, 0.35)',
-    boxShadow: '0 10px 22px rgba(250, 204, 21, 0.15)',
-  },
-  linear: {
-    backgroundColor: 'rgba(250, 204, 21, 0.10)',
-    color: '#facc15',
-    borderColor: 'rgba(250, 204, 21, 0.35)',
-    boxShadow: '0 10px 22px rgba(250, 204, 21, 0.15)',
-  },
-  ramp_up_down: {
-    backgroundColor: 'rgba(250, 204, 21, 0.10)',
-    color: '#facc15',
-    borderColor: 'rgba(250, 204, 21, 0.35)',
-    boxShadow: '0 10px 22px rgba(250, 204, 21, 0.15)',
-  },
-  throughput: {
-    backgroundColor: 'rgba(250, 204, 21, 0.10)',
-    color: '#facc15',
-    borderColor: 'rgba(250, 204, 21, 0.35)',
-    boxShadow: '0 10px 22px rgba(250, 204, 21, 0.15)',
-  },
-  intent: {
-    backgroundColor: 'rgba(250, 204, 21, 0.10)',
-    color: '#facc15',
-    borderColor: 'rgba(250, 204, 21, 0.35)',
-    boxShadow: '0 10px 22px rgba(250, 204, 21, 0.15)',
-  },
-} as const;
+function mapLoadTypes<T>(value: T): Record<LoadType, T> {
+  return Object.fromEntries(loadTypes.map(loadType => [loadType, value])) as Record<LoadType, T>;
+}
 
-export const loadColors = {
-  constant: { stroke: '#f59e0b', fill: '#f59e0b20' },
-  linear: { stroke: '#f59e0b', fill: '#f59e0b20' },
-  ramp_up_down: { stroke: '#f59e0b', fill: '#f59e0b20' },
-  throughput: { stroke: '#f59e0b', fill: '#f59e0b20' },
-  intent: { stroke: '#f59e0b', fill: '#f59e0b20' },
-} as const;
+export const selectedLoadButtonStyle = mapLoadTypes({
+  backgroundColor: 'rgba(250, 204, 21, 0.10)',
+  color: '#facc15',
+  borderColor: 'rgba(250, 204, 21, 0.35)',
+  boxShadow: '0 10px 22px rgba(250, 204, 21, 0.15)',
+});
+
+export const loadColors = mapLoadTypes({ stroke: '#f59e0b', fill: '#f59e0b20' });
 
 export function parseTimeToSeconds(timeStr: string): number {
   if (!timeStr) {
@@ -231,7 +207,7 @@ function formatPercent(value: number): string {
   return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
 }
 
-export function getIntentAutoConfig(data: Record<string, any> = {}): IntentAutoConfig {
+export function getIntentAutoConfig(data: LoadData = {}): IntentAutoConfig {
   const targetUnit = String(data.target_unit || 'rps').toLowerCase().trim() === 'vus' ? 'vus' : 'rps';
   const aggressiveness = intentAggressivenessLevels.has(String(data.aggressiveness || '').toLowerCase())
     ? String(data.aggressiveness).toLowerCase()
@@ -317,17 +293,17 @@ interface LoadDataBuildOptions {
 
 export function buildLoadDataForType(
   loadType: LoadType,
-  currentData: Record<string, any> = {},
+  currentData: LoadData = {},
   options: LoadDataBuildOptions = {},
-): Record<string, any> {
+): LoadData {
   const { coerceIntentEnums = true, preserveExplicitEmpty = false } = options;
   const defaults =
     loadType === 'intent'
       ? { ...loadTypeDefaults.intent, ...getIntentAutoConfig(currentData) }
       : loadTypeDefaults[loadType] || {};
   const allowed = new Set(loadTypeAllowedKeys[loadType] || ['type']);
-  const source: Record<string, any> = { ...currentData };
-  const normalized: Record<string, any> = { type: loadType };
+  const source: LoadData = { ...currentData };
+  const normalized: LoadData = { type: loadType };
   const explicitEmptyKeys = new Set<string>();
 
   if (loadType === 'intent') {
@@ -386,7 +362,7 @@ export function buildLoadDataForType(
   return normalized;
 }
 
-export function normalizeLoadDataForYaml(data: Record<string, any> = {}): Record<string, any> {
+export function normalizeLoadDataForYaml(data: LoadData = {}): LoadData {
   const loadType = normalizeLoadType(data.type);
 
   if (loadType === 'intent') {
@@ -399,7 +375,7 @@ export function normalizeLoadDataForYaml(data: Record<string, any> = {}): Record
     return normalizedIntent;
   }
 
-  const normalized: Record<string, any> = {
+  const normalized: LoadData = {
     ...data,
     type: getYamlLoadType(loadType),
   };

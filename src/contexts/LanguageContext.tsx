@@ -1,5 +1,13 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
-import { translations, Language } from '../i18n/translations';
+import { createContext, useContext, useState } from 'react';
+import type { ReactNode } from 'react';
+import { translations } from '../i18n/translations';
+import type { Language } from '../i18n/translations';
+
+type TranslationBranch = string | readonly TranslationBranch[] | { readonly [key: string]: TranslationBranch };
+
+function isTranslationBranch(value: TranslationBranch): value is { readonly [key: string]: TranslationBranch } {
+  return typeof value === 'object' && !Array.isArray(value);
+}
 
 interface LanguageContextType {
   language: Language;
@@ -14,10 +22,10 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
   const t = (key: string): string => {
     const keys = key.split('.');
-    let value: any = translations[language];
+    let value: TranslationBranch = translations[language];
 
     for (const k of keys) {
-      if (value && typeof value === 'object') {
+      if (isTranslationBranch(value)) {
         value = value[k];
       } else {
         return key; // Return key if translation not found

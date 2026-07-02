@@ -1,8 +1,8 @@
 import { useLanguage } from '../../contexts/LanguageContext';
-import { getIntentAutoConfig, loadColors, parseTimeToSeconds, type LoadType } from './loadUtils';
+import { getIntentAutoConfig, loadColors, parseTimeToSeconds, type LoadData, type LoadType } from './loadUtils';
 
 interface LoadVisualizationProps {
-  data: Record<string, any>;
+  data: LoadData;
   loadType: LoadType;
   // Elapsed seconds into a live run. When set, a vertical playhead glides across
   // the chart at the matching time position. Undefined hides it (default).
@@ -555,13 +555,13 @@ export function LoadVisualization({ data, loadType, progressSeconds }: LoadVisua
   );
 }
 
-function getVisualizationPoints(data: Record<string, any>, loadType: LoadType) {
+function getVisualizationPoints(data: LoadData, loadType: LoadType) {
   const points: { time: number; users: number }[] = [];
 
   if (loadType === 'constant') {
-    const users = parseInt(data.users, 10) || 10;
-    const rampUp = parseTimeToSeconds(data.ramp_up || '0s');
-    const duration = parseTimeToSeconds(data.duration || '60s');
+    const users = parseInt(String(data.users || '10'), 10) || 10;
+    const rampUp = parseTimeToSeconds(String(data.ramp_up || '0s'));
+    const duration = parseTimeToSeconds(String(data.duration || '60s'));
     if (rampUp > 0) {
       points.push({ time: 0, users: 0 }, { time: rampUp, users }, { time: duration, users });
     } else {
@@ -569,17 +569,17 @@ function getVisualizationPoints(data: Record<string, any>, loadType: LoadType) {
     }
   } else if (loadType === 'linear') {
     points.push(
-      { time: 0, users: parseInt(data.start_users, 10) || 1 },
+      { time: 0, users: parseInt(String(data.start_users || '1'), 10) || 1 },
       {
-        time: parseTimeToSeconds(data.duration || '60s'),
-        users: parseInt(data.end_users, 10) || 100,
+        time: parseTimeToSeconds(String(data.duration || '60s')),
+        users: parseInt(String(data.end_users || '100'), 10) || 100,
       },
     );
   } else if (loadType === 'ramp_up_down') {
-    const users = parseInt(data.users, 10) || 10;
-    const duration = parseTimeToSeconds(data.duration || '60s');
-    const rampUp = parseTimeToSeconds(data.ramp_up || '10s');
-    const rampDown = parseTimeToSeconds(data.ramp_down || '10s');
+    const users = parseInt(String(data.users || '10'), 10) || 10;
+    const duration = parseTimeToSeconds(String(data.duration || '60s'));
+    const rampUp = parseTimeToSeconds(String(data.ramp_up || '10s'));
+    const rampDown = parseTimeToSeconds(String(data.ramp_down || '10s'));
     const holdStart = Math.min(rampUp, duration);
     const holdEnd = Math.max(holdStart, duration - rampDown);
     points.push(
@@ -590,9 +590,9 @@ function getVisualizationPoints(data: Record<string, any>, loadType: LoadType) {
     );
   } else if (loadType === 'throughput') {
     const targetRps = parseFloat(String(data.target_rps || '0')) || 10;
-    const duration = parseTimeToSeconds(data.duration || '60s');
-    const rampUp = parseTimeToSeconds(data.ramp_up || '0s');
-    const rampDown = parseTimeToSeconds(data.ramp_down || '0s');
+    const duration = parseTimeToSeconds(String(data.duration || '60s'));
+    const rampUp = parseTimeToSeconds(String(data.ramp_up || '0s'));
+    const rampDown = parseTimeToSeconds(String(data.ramp_down || '0s'));
     const holdStart = Math.min(rampUp, duration);
     const holdEnd = Math.max(holdStart, duration - rampDown);
     points.push(
@@ -624,7 +624,7 @@ function getVisualizationPoints(data: Record<string, any>, loadType: LoadType) {
   return points;
 }
 
-function getTimeRanges(data: Record<string, any>, loadType: LoadType, maxTime: number) {
+function getTimeRanges(data: LoadData, loadType: LoadType, maxTime: number) {
   if (loadType === 'constant') {
     const rampUp = Math.max(0, parseTimeToSeconds(String(data.ramp_up || '0s')));
     return rampUp > 0
@@ -653,7 +653,7 @@ function getTimeRanges(data: Record<string, any>, loadType: LoadType, maxTime: n
   ].filter(range => range.end > range.start);
 }
 
-function getTransitionMarkers(data: Record<string, any>, loadType: LoadType, maxTime: number) {
+function getTransitionMarkers(data: LoadData, loadType: LoadType, maxTime: number) {
   if (loadType === 'constant') {
     const rampUp = Math.max(0, parseTimeToSeconds(String(data.ramp_up || '0s')));
     return rampUp > 0 && rampUp < maxTime ? [{ key: 'ramp-up', time: rampUp, label: formatTimeLabel(rampUp) }] : [];
