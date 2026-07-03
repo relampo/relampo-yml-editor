@@ -163,7 +163,7 @@ describe('variableRowsForRequestNode', () => {
       data: { method: 'GET', url: '/r' },
       children: [{ id: 'e', type: 'extractor', name: 'e', data: { type: 'regex', var: 'token', pattern: 't=(.*)' } }],
     };
-    expect(variableRowsForRequestNode(node, { token: 'abc', user: 'u', pass: 'p' })).toEqual([['token', 'abc']]);
+    expect(variableRowsForRequestNode(node, { token: 'abc', user: 'u', pass: 'p' })).toEqual([['token (RES)', 'abc']]);
   });
 
   it('also lists variables the request uses via {{placeholders}} in headers/url/body', () => {
@@ -184,8 +184,8 @@ describe('variableRowsForRequestNode', () => {
     // Order follows the request config traversal (url before headers), so
     // user_id (in the url) precedes tenant_id (in a header).
     expect(variableRowsForRequestNode(node, { tenant_id: 't-1', user_id: '42', unrelated: 'x' })).toEqual([
-      ['user_id', '42'],
-      ['tenant_id', 't-1'],
+      ['user_id (REQ)', '42'],
+      ['tenant_id (REQ)', 't-1'],
     ]);
   });
 
@@ -212,8 +212,8 @@ describe('variableRowsForRequestNode', () => {
         unrelated: 'x',
       }),
     ).toEqual([
-      ['javax.faces.ViewState', 'vs-token'],
-      ['x-correlation-id', 'cid-9'],
+      ['javax.faces.ViewState (REQ)', 'vs-token'],
+      ['x-correlation-id (REQ)', 'cid-9'],
     ]);
   });
 
@@ -228,7 +228,7 @@ describe('variableRowsForRequestNode', () => {
       data: { method: 'GET', url: '/me' },
       children: [{ id: 'h', type: 'headers', name: 'Headers', data: { Authorization: 'Bearer {{token}}' } }],
     };
-    expect(variableRowsForRequestNode(node, { token: 'abc', unrelated: 'x' })).toEqual([['token', 'abc']]);
+    expect(variableRowsForRequestNode(node, { token: 'abc', unrelated: 'x' })).toEqual([['token (REQ)', 'abc']]);
   });
 
   it('lists data-source bound variables for a request that owns the data source', () => {
@@ -249,8 +249,8 @@ describe('variableRowsForRequestNode', () => {
       ],
     };
     expect(variableRowsForRequestNode(node, { username: 'neo', password: 'pw', pass: 'leak' })).toEqual([
-      ['username', 'neo'],
-      ['password', 'pw'],
+      ['username (REQ)', 'neo'],
+      ['password (REQ)', 'pw'],
     ]);
   });
 
@@ -262,10 +262,41 @@ describe('variableRowsForRequestNode', () => {
       data: { method: 'GET', url: '/u/{{user_id}}', headers: { Authorization: 'Bearer {{token}}' } },
       children: [{ id: 'e', type: 'extractor', name: 'e', data: { type: 'regex', var: 'token', pattern: 't=(.*)' } }],
     };
-    // token is both extracted and referenced — it must appear once, extractor-first.
+    // token is both extracted and referenced — it must appear once, extractor-first,
+    // carrying both role tags.
     expect(variableRowsForRequestNode(node, { token: 'abc', user_id: '7' })).toEqual([
-      ['token', 'abc'],
-      ['user_id', '7'],
+      ['token (REQ, RES)', 'abc'],
+      ['user_id (REQ)', '7'],
     ]);
+  });
+
+  it('tags a correlation variable RES where it is extracted and REQ where it is used', () => {
+    // RLP-597: the same variable must surface in two Variables tabs — the request
+    // that captures it (RES) and the request that re-sends it (REQ) — so the user
+    // sees where it lives vs. where it is consumed. Mirrors request 2 (extracts
+    // javax.faces.ViewState) and request 8 (posts it back).
+    const extractor: YAMLNode = {
+      id: 'r2',
+      type: 'request',
+      name: '[2] GET /jsf/page',
+      data: { method: 'GET', url: '/jsf/page' },
+      children: [
+        {
+          id: 'e',
+          type: 'extractor',
+          name: 'e',
+          data: { type: 'regex', var: 'javax.faces.ViewState', pattern: 'ViewState" value="(.*?)"' },
+        },
+      ],
+    };
+    const consumer: YAMLNode = {
+      id: 'r8',
+      type: 'request',
+      name: '[8] POST /jsf/page',
+      data: { method: 'POST', url: '/jsf/page', body: 'javax.faces.ViewState={{javax.faces.ViewState}}' },
+    };
+    const snapshot = { 'javax.faces.ViewState': 'vs-token' };
+    expect(variableRowsForRequestNode(extractor, snapshot)).toEqual([['javax.faces.ViewState (RES)', 'vs-token']]);
+    expect(variableRowsForRequestNode(consumer, snapshot)).toEqual([['javax.faces.ViewState (REQ)', 'vs-token']]);
   });
 });
