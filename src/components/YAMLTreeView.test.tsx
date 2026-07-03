@@ -100,15 +100,40 @@ function renderInteractiveTreeView({
   return render(<Harness />);
 }
 
+/**
+ * Installs a window.matchMedia stub that answers the given media queries.
+ * jsdom has no matchMedia, so absent a stub every query resolves false.
+ */
+function mockMatchMedia(matches: Record<string, boolean>) {
+  Object.defineProperty(window, 'matchMedia', {
+    configurable: true,
+    writable: true,
+    value: vi.fn((query: string) => ({
+      matches: matches[query] ?? false,
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  });
+}
+
 describe('YAMLTreeView context menu', () => {
   afterEach(() => {
     Object.defineProperty(window, 'innerHeight', {
       configurable: true,
       value: originalInnerHeight,
     });
+    // Restore jsdom's default (no matchMedia) between tests.
+    Reflect.deleteProperty(window, 'matchMedia');
   });
 
-  it('does not open the context menu on short viewports', () => {
+  // RLP-587: a short viewport must NOT hide the menu — it self-clamps and
+  // scrolls. Windows display scaling routinely drops innerHeight below 700.
+  it('opens the context menu on short viewports (menu self-clamps)', () => {
     const onContextMenuOpened = vi.fn();
     Object.defineProperty(window, 'innerHeight', {
       configurable: true,
@@ -118,8 +143,34 @@ describe('YAMLTreeView context menu', () => {
     renderTreeView({ onContextMenuOpened });
     fireEvent.contextMenu(screen.getByRole('treeitem', { name: /Steps/i }));
 
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+    expect(onContextMenuOpened).toHaveBeenCalled();
+  });
+
+  // RLP-587: genuine touch-only devices (coarse pointer, no fine pointer) keep
+  // the menu suppressed, since a right-click gesture isn't natural there.
+  it('does not open the context menu on touch-only devices', () => {
+    const onContextMenuOpened = vi.fn();
+    mockMatchMedia({ '(pointer: coarse)': true, '(any-pointer: fine)': false });
+
+    renderTreeView({ onContextMenuOpened });
+    fireEvent.contextMenu(screen.getByRole('treeitem', { name: /Steps/i }));
+
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
     expect(onContextMenuOpened).not.toHaveBeenCalled();
+  });
+
+  // RLP-587: hybrid Windows laptops report a coarse primary pointer while a
+  // mouse (fine pointer) is attached — the menu must still open there.
+  it('opens the context menu on hybrid touch + mouse devices', () => {
+    const onContextMenuOpened = vi.fn();
+    mockMatchMedia({ '(pointer: coarse)': true, '(any-pointer: fine)': true });
+
+    renderTreeView({ onContextMenuOpened });
+    fireEvent.contextMenu(screen.getByRole('treeitem', { name: /Steps/i }));
+
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+    expect(onContextMenuOpened).toHaveBeenCalled();
   });
 
   it('tracks when the context menu opens', () => {
