@@ -626,7 +626,8 @@ describe('YAMLDebugSession tree selection sync', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'variables' }));
 
-    expect(await screen.findByText('request2')).toBeInTheDocument();
+    // The mapped node extracts request2 from its own response, so it is tagged RES.
+    expect(await screen.findByText('request2 (RES)')).toBeInTheDocument();
     expect(screen.getByText('current-request')).toBeInTheDocument();
     expect(screen.queryByText('REQUEST1')).not.toBeInTheDocument();
     expect(screen.queryByText('previous-request')).not.toBeInTheDocument();
@@ -680,7 +681,7 @@ describe('YAMLDebugSession tree selection sync', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'variables' }));
 
-    const nameCell = await screen.findByText(longName);
+    const nameCell = await screen.findByText(`${longName} (RES)`);
     const valueCell = screen.getByText(viewStateValue);
 
     // Name wraps to a second line instead of being clipped into the value.

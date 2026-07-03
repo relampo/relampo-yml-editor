@@ -312,18 +312,54 @@ export function requestVariableNames(node: YAMLNode | null): string[] {
   return names;
 }
 
+// How a request touches a variable. RES = the request extracts it from its own
+// response (an extractor/regex lives on this request). REQ = the request
+// sends/uses it — a {{placeholder}} in its url/headers/body/params, or a
+// data-source bind. RLP-597.
+export type VariableRole = 'REQ' | 'RES';
+
+// Classifies every variable a request touches by role. A correlation variable
+// is RES on the request that captures it and REQ on each request that consumes
+// it, so the same name surfaces in at least two Variables tabs tagged by where
+// it lives vs. where it's used. A variable that a request both extracts and
+// re-uses collapses to a single entry carrying both roles. RLP-597.
+function requestVariableRoles(node: YAMLNode | null): Map<string, Set<VariableRole>> {
+  const roles = new Map<string, Set<VariableRole>>();
+  const tag = (name: string, role: VariableRole) => {
+    const set = roles.get(name);
+    if (set) set.add(role);
+    else roles.set(name, new Set([role]));
+  };
+  requestExtractorVariableNames(node).forEach(name => tag(name, 'RES'));
+  requestReferencedVariableNames(node).forEach(name => tag(name, 'REQ'));
+  return roles;
+}
+
+// The 1st-column label for a Variables-tab row: the variable name followed by
+// its role tag(s), e.g. `javax.faces.ViewState (RES)` on the request that
+// extracts it and `javax.faces.ViewState (REQ)` on one that uses it. A name that
+// is both keeps one row tagged `(REQ, RES)`. RLP-597.
+export function variableRowLabel(name: string, roles: Set<VariableRole> | undefined): string {
+  const tags = (['REQ', 'RES'] as VariableRole[]).filter(role => roles?.has(role));
+  return tags.length ? `${name} (${tags.join(', ')})` : name;
+}
+
 export function variableRowsForRequestNode(
   node: YAMLNode | null,
   variables: Record<string, string>,
 ): Array<[string, string]> {
   // A request's Variables tab lists the variables that request extracts *and*
-  // the ones it uses (header/body/url placeholders, data-source binds). When
-  // the event can't be mapped to a tree node we show nothing rather than
-  // dumping every variable in scope — otherwise unrelated values (e.g.
-  // data-source columns like `user`/`pass`, which this request neither captures
-  // nor references) leak onto it. RLP-584 / RLP-585.
+  // the ones it uses (header/body/url placeholders, data-source binds), each
+  // tagged RES (extracted here) or REQ (used here). When the event can't be
+  // mapped to a tree node we show nothing rather than dumping every variable in
+  // scope — otherwise unrelated values (e.g. data-source columns like
+  // `user`/`pass`, which this request neither captures nor references) leak onto
+  // it. RLP-584 / RLP-585 / RLP-597.
   if (!node) return [];
+  const roles = requestVariableRoles(node);
   return requestVariableNames(node).flatMap(name =>
-    Object.prototype.hasOwnProperty.call(variables, name) ? [[name, variables[name]] as [string, string]] : [],
+    Object.prototype.hasOwnProperty.call(variables, name)
+      ? [[variableRowLabel(name, roles.get(name)), variables[name]] as [string, string]]
+      : [],
   );
 }
