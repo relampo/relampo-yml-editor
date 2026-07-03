@@ -22,8 +22,6 @@ import { nodeMatchExpandsDescendants, subtreeHasMatch } from './yaml-tree-view/s
 import { YAMLContextMenu } from './YAMLContextMenu';
 import { YAMLTreeNode } from './YAMLTreeNode';
 
-const MIN_CONTEXT_MENU_HEIGHT = 700;
-
 interface YAMLTreeViewProps {
   tree: YAMLNode | null;
   selectedNode: YAMLNode | null;
@@ -256,10 +254,19 @@ export function YAMLTreeView({
       onSelectionChange(node, [node.id]);
     }
 
-    const hasCoarsePointer =
-      typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches === true;
-    const hasShortViewport = typeof window !== 'undefined' && window.innerHeight < MIN_CONTEXT_MENU_HEIGHT;
-    if (hasCoarsePointer || hasShortViewport) {
+    // Only suppress the mouse-oriented context menu on genuine touch-only
+    // devices: a coarse primary pointer AND no fine pointer available at all.
+    // Hybrid Windows laptops report `pointer: coarse` while a mouse is attached,
+    // and display scaling (125%/150%) shrinks innerHeight below any fixed
+    // threshold — the previous `(pointer: coarse)` and `innerHeight < 700` gates
+    // both misfired on ordinary desktops and hid the menu inconsistently across
+    // browsers (RLP-587). The menu itself clamps to the viewport and scrolls
+    // (max-h-[80vh]), so a short viewport no longer needs special handling.
+    const isTouchOnlyDevice =
+      typeof window !== 'undefined' &&
+      window.matchMedia?.('(pointer: coarse)').matches === true &&
+      window.matchMedia?.('(any-pointer: fine)').matches !== true;
+    if (isTouchOnlyDevice) {
       setContextMenu(null);
       return;
     }
