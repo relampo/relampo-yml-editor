@@ -42,6 +42,15 @@ function getRecordValue(value: YAMLValue): YAMLRecord | undefined {
   return value && typeof value === 'object' && !Array.isArray(value) ? value : undefined;
 }
 
+function getHeaderValue(headers: YAMLRecord | undefined, name: string): string {
+  if (!headers) return '';
+
+  const target = name.toLowerCase();
+  const match = Object.entries(headers).find(([key]) => key.toLowerCase() === target);
+  const value = match?.[1];
+  return value == null || typeof value === 'object' ? '' : String(value);
+}
+
 function getBodyText(value: YAMLValue): string {
   if (!value) return '';
   return typeof value === 'string' ? value : JSON.stringify(value, null, 2);
@@ -254,6 +263,7 @@ function RequestContent({
   const throughput = getRecordValue(formData.throughput);
   const throughputEnabled = throughput?.enabled === true;
   const targetRps = getNumberValue(throughput?.target_rps);
+  const contentType = getHeaderValue(getRecordValue(formData.headers), 'Content-Type');
   const urlParts = parseRequestUrl(requestUrl);
   // Host inherited from http_defaults.base_url. Base-host (relative) requests now
   // surface it as the field value too — not just as a placeholder — so every
@@ -584,6 +594,8 @@ function RequestContent({
       </div>
       <BodyTypeSelector
         body={formData.body}
+        bodyRaw={formData.body_raw}
+        contentType={contentType}
         onBodyChange={body => onFieldChange('body', body)}
         searchText={searchText}
         searchMode={searchMode}

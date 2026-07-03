@@ -102,6 +102,74 @@ describe('YAMLRequestDetails', () => {
     expect(screen.getByPlaceholderText('api.example.com')).toBeInTheDocument();
   });
 
+  it('uses application/json Content-Type to display simple object bodies as JSON', async () => {
+    const node: YAMLNode = {
+      id: 'post-json',
+      type: 'post',
+      name: '[2] POST /api/auth',
+      data: {
+        method: 'POST',
+        url: '/api/auth',
+        headers: { 'Content-Type': 'application/json' },
+        body: {
+          password: 'Pass001!',
+          username: 'user001',
+        },
+      },
+      children: [],
+    };
+
+    render(<YAMLRequestDetails node={node} />);
+
+    expect(await screen.findByText('JSON Body')).toBeInTheDocument();
+    expect(screen.getByDisplayValue(/"username": "user001"/)).toBeInTheDocument();
+    expect(screen.queryByText('Form Data (application/x-www-form-urlencoded)')).not.toBeInTheDocument();
+  });
+
+  it('uses form-urlencoded Content-Type to display array bodies as form data', async () => {
+    const node: YAMLNode = {
+      id: 'post-form',
+      type: 'post',
+      name: '[12] POST /pay/start',
+      data: {
+        method: 'POST',
+        url: '/pay/start',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: [{ reservation_id: '{{reservationid}}' }, { relampo_token: '4b525459' }],
+      },
+      children: [],
+    };
+
+    render(<YAMLRequestDetails node={node} />);
+
+    expect(await screen.findByText('Form Data (application/x-www-form-urlencoded)')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('reservation_id')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('{{reservationid}}')).toBeInTheDocument();
+    expect(screen.queryByText('JSON Body')).not.toBeInTheDocument();
+  });
+
+  it('uses body_raw as the form representation when form-urlencoded body data is raw', async () => {
+    const node: YAMLNode = {
+      id: 'post-form-raw',
+      type: 'post',
+      name: '[12] POST /pay/start',
+      data: {
+        method: 'POST',
+        url: '/pay/start',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body_raw: 'reservation_id=RES-d7ffa616f697&relampo_token=4b525459',
+      },
+      children: [],
+    };
+
+    render(<YAMLRequestDetails node={node} />);
+
+    expect(await screen.findByText('Form Data (application/x-www-form-urlencoded)')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('reservation_id')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('RES-d7ffa616f697')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('relampo_token')).toBeInTheDocument();
+  });
+
   it('keeps blank path edits empty in editor state so export can normalize to slash', () => {
     const onNodeUpdate = vi.fn();
     const node: YAMLNode = {
