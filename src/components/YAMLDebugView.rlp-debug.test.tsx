@@ -280,6 +280,57 @@ describe('YAMLDebugSession RLP debug fixes', () => {
     expect(screen.getByText(/→ \/dashboard/)).toBeInTheDocument();
   });
 
+  it('omits the redundant launched-by line on a final 200 that shows the hop chain (RLP-598)', async () => {
+    const finalRequest: YAMLNode = {
+      id: 'final',
+      type: 'request',
+      name: '[11] GET /dashboard',
+      data: { request_id: 11, method: 'GET', url: '/dashboard', chain_id: 'rc-10', chain_role: 'final' },
+      path: ['scenarios', 0, 'steps', 11],
+    };
+    const tree: YAMLNode = { id: 'root', type: 'root', name: 'root', children: [finalRequest] };
+
+    render(
+      <YAMLDebugSession
+        tree={tree}
+        yamlCode={'test:\n  name: redirect-hops\n'}
+        documentReady
+        validationErrors={[]}
+        redirectedRequestMap={{
+          final: { sourceNodeId: 'parent', sourceRequestLabel: '[10] POST /login', matchedLocation: '/dashboard' },
+        }}
+        onSelectNode={vi.fn()}
+        onEditNode={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
+
+    act(() => {
+      debugApiMock.handlers[0].onEvent(
+        event({
+          name: '[10] GET /dashboard',
+          path: 'http://example.test/dashboard',
+          status: 200,
+          chain_id: 'rc-10',
+          chain_role: 'final',
+          redirect_index: 1,
+          redirects: [
+            { status: 302, method: 'POST', url: 'http://example.test/login', location: 'http://example.test/dashboard' },
+          ],
+        }),
+      );
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'logs' }));
+
+    // The full hop chain is shown for the final 200...
+    expect(await screen.findByText(/followed 1 redirect before this 200 response/)).toBeInTheDocument();
+    // ...so the redundant "redirected request launched by" line is dropped.
+    expect(screen.queryByText(/redirected request launched by/)).toBeNull();
+  });
+
   it('Overview shows the runtime URL, not the recorded one with the stale correlated value (RLP-593)', async () => {
     // The recorded step name bakes in the capture-time value of the {{NROEXP}}
     // placeholder. At runtime the extraction failed, so the request actually went

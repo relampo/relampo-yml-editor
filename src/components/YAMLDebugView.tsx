@@ -687,7 +687,7 @@ function DebugInspectorContent({
     const time = formatEventTime(event.ts);
     const redirectHops = event.redirects ?? [];
     return (
-      <div className="border border-white/10 bg-[#050505] p-4 font-mono text-xs leading-6 text-zinc-300">
+      <div className="border border-white/10 bg-[#050505] p-4 font-mono text-xs leading-6 text-zinc-300 wrap-break-word">
         <p className="text-emerald-300">[{time}] debug session received request event</p>
         <p className="text-blue-300">
           [{time}] {event.method} {event.path || event.name} - {event.status || '—'} ({formatLatency(event.latency_ms)})
@@ -703,11 +703,14 @@ function DebugInspectorContent({
           </p>
         )}
         {redirectHops.map((hop, index) => (
-          <p key={`${hop.status}-${hop.method ?? ''}-${hop.url ?? ''}-${hop.location ?? hop.target_url ?? ''}`} className="pl-6 text-zinc-400">
+          <p key={`${hop.status}-${hop.method ?? ''}-${hop.url ?? ''}-${hop.location ?? hop.target_url ?? ''}`} className="pl-6 text-zinc-400 break-all">
             ↳ hop {index + 1}: {hop.status} {hop.method ? `${hop.method} ` : ''}{hop.url || ''} → {hop.location || hop.target_url || ''}
           </p>
         ))}
-        {redirectedInfo && (
+        {/* RLP-598 #1: on the final 200 the full hop chain above already names the
+            immediate predecessor, so drop the redundant "launched by" line there.
+            Intermediate 302 children (no hop chain yet) still show it. */}
+        {redirectedInfo && redirectHops.length === 0 && (
           <p className="text-zinc-400">
             [{time}] redirected request launched by {redirectedInfo.sourceRequestLabel}
             {redirectedInfo.matchedLocation ? ` → ${redirectedInfo.matchedLocation}` : ''}
