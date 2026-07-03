@@ -47,6 +47,8 @@ function HighlightedText({ text, searchText, searchMode, currentMatchIndex }: Hi
 interface BodyTypeSelectorProps {
   body: YAMLValue;
   onBodyChange: (body: YAMLValue, type: BodyType) => void;
+  contentType?: string;
+  bodyRaw?: YAMLValue;
   className?: string;
   searchText?: string;
   searchMode?: SearchMode;
@@ -81,9 +83,120 @@ function isYAMLValue(value: unknown): value is YAMLValue {
   return false;
 }
 
+function hasBodyContent(body: YAMLValue): boolean {
+  return !(
+    body == null ||
+    body === '' ||
+    (Array.isArray(body) && body.length === 0) ||
+    (isBodyRecord(body) && Object.keys(body).length === 0)
+  );
+}
+
+function getContentTypeBodyType(contentType: string | undefined): BodyType | null {
+  const mime = contentType?.toLowerCase().split(';', 1)[0]?.trim();
+  if (!mime) return null;
+  if (mime === 'application/json' || mime.endsWith('+json')) return 'json';
+  if (mime === 'application/x-www-form-urlencoded' || mime === 'multipart/form-data') return 'form';
+  return null;
+}
+
+function getBodyEditorText(value: YAMLValue): string {
+  if (typeof value === 'string') return value;
+  if (value == null) return '';
+  return JSON.stringify(value, null, 2);
+}
+
+function getJsonEditorText(body: YAMLValue, bodyRaw: YAMLValue): string {
+  if ((body == null || body === '') && typeof bodyRaw === 'string') return bodyRaw;
+  return getBodyEditorText(body);
+}
+
+function parseFormText(value: string): FormDataItem[] | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  const params = new URLSearchParams(trimmed);
+  const items = Array.from(params.entries()).map(([key, itemValue]) => ({
+    key,
+    value: itemValue,
+    enabled: true,
+  }));
+
+  return items.length > 0 ? items : null;
+}
+
+function toFormDataItemsFromRecord(body: Record<string, YAMLValue>): FormDataItem[] {
+  return Object.entries(body).map(([key, value]) => ({
+    key,
+    value: value == null ? '' : String(value),
+    enabled: true,
+  }));
+}
+
+function getFormDataItems(body: YAMLValue, bodyRaw: YAMLValue): FormDataItem[] {
+  const stringItems = typeof body === 'string' ? parseFormText(body) : null;
+  if (stringItems) return stringItems;
+
+  if (Array.isArray(body)) {
+    const items = body.flatMap(item => (isBodyRecord(item) ? toFormDataItemsFromRecord(item) : []));
+    return items.length > 0 ? items : [{ key: '', value: '', enabled: true }];
+  }
+
+  if (isBodyRecord(body)) {
+    const items = toFormDataItemsFromRecord(body);
+    return items.length > 0 ? items : [{ key: '', value: '', enabled: true }];
+  }
+
+  const rawItems = typeof bodyRaw === 'string' ? parseFormText(bodyRaw) : null;
+  if (rawItems) return rawItems;
+
+  return [{ key: '', value: '', enabled: true }];
+}
+
+function inferBodyType(body: YAMLValue, bodyRaw: YAMLValue, contentType: string | undefined): BodyType {
+  const contentBodyType = getContentTypeBodyType(contentType);
+  if (contentBodyType) return contentBodyType;
+
+  if (!hasBodyContent(body) && typeof bodyRaw === 'string' && bodyRaw.trim()) return 'raw';
+
+  if (typeof body === 'string') {
+    try {
+      JSON.parse(body);
+      return 'json';
+    } catch {
+      return 'raw';
+    }
+  }
+
+  if (Array.isArray(body)) return 'json';
+
+  if (isBodyRecord(body)) {
+    const keys = Object.keys(body);
+    const seemsLikeFormData = keys.every(k => typeof body[k] === 'string' || typeof body[k] === 'number');
+    return seemsLikeFormData && keys.length <= 20 ? 'form' : 'json';
+  }
+
+  return 'raw';
+}
+
+function buildFormBody(items: FormDataItem[], asArray: boolean): YAMLValue {
+  const enabledItems = items.filter(item => item.enabled && item.key.trim());
+  if (asArray) {
+    return enabledItems.map(item => ({ [item.key]: item.value }));
+  }
+
+  const obj: StringMap = {};
+  enabledItems.forEach(item => {
+    obj[item.key] = item.value;
+  });
+  return obj;
+}
+
 export function BodyTypeSelector({
   body,
   onBodyChange,
+  contentType,
+  bodyRaw,
   className = '',
   searchText = '',
   searchMode = 'text',
@@ -104,38 +217,23 @@ export function BodyTypeSelector({
   const rawHighlightRef = useRef<HTMLPreElement | null>(null);
 
   useEffect(() => {
-    if (!body || (isBodyRecord(body) && Object.keys(body).length === 0)) {
+    const hasBodyRaw = typeof bodyRaw === 'string' && bodyRaw.trim().length > 0;
+    if (!hasBodyRaw && !hasBodyContent(body)) {
       setBodyType('none');
       return;
     }
 
-    if (typeof body === 'string') {
-      try {
-        JSON.parse(body);
-        setBodyType('json');
-        setJsonValue(body);
-      } catch {
-        setBodyType('raw');
-        setRawValue(body);
-      }
-    } else if (isBodyRecord(body)) {
-      const keys = Object.keys(body);
-      const seemsLikeFormData = keys.every(k => typeof body[k] === 'string' || typeof body[k] === 'number');
+    const nextBodyType = inferBodyType(body, bodyRaw, contentType);
+    setBodyType(nextBodyType);
 
-      if (seemsLikeFormData && keys.length <= 20) {
-        setBodyType('form');
-        const items: FormDataItem[] = keys.map(k => ({
-          key: k,
-          value: String(body[k]),
-          enabled: true,
-        }));
-        setFormData(items.length > 0 ? items : [{ key: '', value: '', enabled: true }]);
-      } else {
-        setBodyType('json');
-        setJsonValue(JSON.stringify(body, null, 2));
-      }
+    if (nextBodyType === 'json') {
+      setJsonValue(getJsonEditorText(body, bodyRaw));
+    } else if (nextBodyType === 'form') {
+      setFormData(getFormDataItems(body, bodyRaw));
+    } else {
+      setRawValue(!hasBodyContent(body) && typeof bodyRaw === 'string' ? bodyRaw : getBodyEditorText(body));
     }
-  }, [body]);
+  }, [body, bodyRaw, contentType]);
 
   const handleBodyTypeChange = (newType: BodyType) => {
     const hasCurrentBodyContent = () => {
@@ -233,13 +331,7 @@ export function BodyTypeSelector({
       if (!hasAny) setTypeSwitchError('');
     }
 
-    const obj: StringMap = {};
-    newFormData
-      .filter(item => item.enabled && item.key.trim())
-      .forEach(item => {
-        obj[item.key] = item.value;
-      });
-    onBodyChange(obj, 'form');
+    onBodyChange(buildFormBody(newFormData, Array.isArray(body)), 'form');
   };
 
   const handleAddFormDataItem = () => {
@@ -255,13 +347,7 @@ export function BodyTypeSelector({
       if (!hasAny) setTypeSwitchError('');
     }
 
-    const obj: StringMap = {};
-    newFormData
-      .filter(item => item.enabled && item.key.trim())
-      .forEach(item => {
-        obj[item.key] = item.value;
-      });
-    onBodyChange(obj, 'form');
+    onBodyChange(buildFormBody(newFormData, Array.isArray(body)), 'form');
   };
 
   const useMonacoForJson = useMemo(() => shouldUseMonaco(jsonValue), [jsonValue]);
@@ -449,7 +535,7 @@ export function BodyTypeSelector({
           <div className="space-y-2">
             {formData.map((item, index) => (
               <div
-                key={item.key || index}
+                key={`${item.key}-${index}`}
                 className="flex items-center gap-2"
               >
                 <input
