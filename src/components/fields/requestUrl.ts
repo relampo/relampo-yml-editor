@@ -122,11 +122,38 @@ export function buildRequestUrl(
   return `${base}${path}${current.query}`;
 }
 
+// Relampo variable placeholders: `{{ var }}` and `${ var }`. Their braces must
+// survive query-string encoding — otherwise `encodeURIComponent` rewrites them
+// to `%7B%7B…%7D%7D` / `%24%7B…%7D`, the runtime interpolator (which matches the
+// literal `{{`/`${`) never substitutes them, and the request is sent with the
+// raw placeholder instead of the variable's value (RLP-606).
+const VARIABLE_PLACEHOLDER = /\{\{.*?\}\}|\$\{.*?\}/g;
+
+/**
+ * URL-encode a single query key or value while leaving Relampo variable
+ * placeholders (`{{var}}`, `${var}`) verbatim, so they reach the runtime
+ * unencoded and get interpolated.
+ *
+ * @param component - Raw query key or value.
+ * @returns The component with literal segments percent-encoded and placeholders preserved.
+ */
+function encodeQueryComponentPreservingVars(component: string): string {
+  let encoded = '';
+  let lastIndex = 0;
+  for (const match of component.matchAll(VARIABLE_PLACEHOLDER)) {
+    const start = match.index ?? 0;
+    encoded += encodeURIComponent(component.slice(lastIndex, start)) + match[0];
+    lastIndex = start + match[0].length;
+  }
+  return encoded + encodeURIComponent(component.slice(lastIndex));
+}
+
 /**
  * Append URL-encoded query parameters to a base URL.
  *
- * Empty keys are ignored. Parameters are encoded with
- * `encodeURIComponent` and joined using `&`.
+ * Empty keys are ignored. Parameters are encoded with `encodeURIComponent`,
+ * except Relampo variable placeholders which are kept verbatim, and joined
+ * using `&`.
  *
  * @param baseUrl - Base URL string to append query params to.
  * @param params - Array of key/value pairs.
@@ -139,7 +166,7 @@ export function buildRequestUrlWithQuery(baseUrl: string, params: RequestQueryPa
   }
 
   const queryString = enabledParams
-    .map(param => `${encodeURIComponent(param.key)}=${encodeURIComponent(param.value)}`)
+    .map(param => `${encodeQueryComponentPreservingVars(param.key)}=${encodeQueryComponentPreservingVars(param.value)}`)
     .join('&');
 
   return `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}${queryString}`;
