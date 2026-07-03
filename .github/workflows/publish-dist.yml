@@ -18,6 +18,12 @@ on:
   push:
     tags:
       - "v*"
+  workflow_call:
+    inputs:
+      version:
+        description: "Version to publish under (e.g. v0.1.0)"
+        required: true
+        type: string
   workflow_dispatch:
     inputs:
       version:
@@ -48,9 +54,11 @@ jobs:
         run: bun run build
       - name: Package dist
         id: pkg
+        env:
+          RELEASE_VERSION: ${{ inputs.version || github.ref_name }}
         run: |
           set -euo pipefail
-          VER="${{ github.event.inputs.version || github.ref_name }}"
+          VER="$RELEASE_VERSION"
           if [ -z "$VER" ]; then
             echo "::error::could not resolve version to publish" >&2
             exit 1

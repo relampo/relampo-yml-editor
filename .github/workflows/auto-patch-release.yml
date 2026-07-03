@@ -1,0 +1,214 @@
+name: auto-patch-release
+
+# Create the next patch tag whenever main advances with build-impacting changes.
+# The tag is the release boundary; publish-dist consumes it and uploads
+# editor/<version>/dist.tar.gz. Manual major/minor tags remain supported: after
+# v0.4.0 is created manually, the next relevant main push will produce v0.4.1.
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: auto-patch-release-main
+  cancel-in-progress: false
+
+jobs:
+  create-tag:
+    runs-on: ubuntu-latest
+    outputs:
+      should_publish: ${{ steps.version.outputs.should_publish }}
+      next_tag: ${{ steps.version.outputs.next_tag }}
+      latest_tag: ${{ steps.version.outputs.latest_tag }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Resolve next patch tag
+        id: version
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          git fetch --force --tags origin
+
+          mapfile -t head_release_tags < <(
+            git tag --points-at HEAD --list 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' || true
+          )
+          if [[ ${#head_release_tags[@]} -gt 0 ]]; then
+            printf 'HEAD already has release tag(s): %s\n' "${head_release_tags[*]}"
+            {
+              echo "should_publish=false"
+              echo "latest_tag=${head_release_tags[0]}"
+              echo "next_tag="
+            } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          latest_tag=$(
+            git tag --list 'v*' --sort=version:refname |
+              grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' |
+              tail -n 1
+          ) || true
+
+          if [[ -z "$latest_tag" ]]; then
+            echo "::error::No semver release tags found. Create the first vX.Y.Z tag manually." >&2
+            exit 1
+          fi
+
+          zero_sha="0000000000000000000000000000000000000000"
+          if [[ "${{ github.event_name }}" == "push" && "${{ github.event.before }}" != "$zero_sha" ]]; then
+            base_ref="${{ github.event.before }}"
+          else
+            base_ref="$latest_tag"
+          fi
+
+          if ! git rev-parse --verify --quiet "$base_ref^{commit}" >/dev/null; then
+            echo "::error::Could not resolve comparison base: $base_ref" >&2
+            exit 1
+          fi
+
+          mapfile -t changed_files < <(git diff --name-only "$base_ref" HEAD)
+          if [[ ${#changed_files[@]} -eq 0 ]]; then
+            echo "No changed files between $base_ref and HEAD; skipping release."
+            {
+              echo "should_publish=false"
+              echo "latest_tag=$latest_tag"
+              echo "next_tag="
+            } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          release_needed=false
+          for path in "${changed_files[@]}"; do
+            case "$path" in
+              index.html|package.json|bun.lock|vite.config.*|tsconfig*.json|public/*)
+                release_needed=true
+                printf 'Release-relevant change: %s\n' "$path"
+                break
+                ;;
+              src/*)
+                case "$path" in
+                  *.test.*|*.spec.*|*.md|*.d.ts|*.sh|src/test/*)
+                    printf 'Ignoring non-runtime src change: %s\n' "$path"
+                    ;;
+                  *)
+                    release_needed=true
+                    printf 'Release-relevant change: %s\n' "$path"
+                    break
+                    ;;
+                esac
+                ;;
+              *)
+                printf 'Ignoring non-build change: %s\n' "$path"
+                ;;
+            esac
+          done
+
+          if [[ "$release_needed" != "true" ]]; then
+            echo "No build-impacting changes detected; skipping release tag."
+            {
+              echo "should_publish=false"
+              echo "latest_tag=$latest_tag"
+              echo "next_tag="
+            } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          previous_dir=$(mktemp -d "${RUNNER_TEMP:-/tmp}/previous-release.XXXXXX")
+          rm -rf "$previous_dir"
+          cleanup() {
+            git worktree remove --force "$previous_dir" >/dev/null 2>&1 || true
+            rm -rf "$previous_dir"
+          }
+          trap cleanup EXIT
+
+          hash_build_output() {
+            local -r repo_dir="$1"
+            (
+              cd "$repo_dir"
+              bun install --frozen-lockfile >&2
+              bun run build >&2
+              if [[ ! -f build/index.html ]]; then
+                echo "::error::build/index.html missing after build in $repo_dir" >&2
+                exit 1
+              fi
+              cd build
+              find . -type f -print0 |
+                sort -z |
+                xargs -0 sha256sum |
+                sha256sum |
+                awk '{print $1}'
+            )
+          }
+
+          git worktree add --detach "$previous_dir" "$latest_tag"
+          previous_build_hash=$(hash_build_output "$previous_dir")
+          current_build_hash=$(hash_build_output "$PWD")
+
+          printf 'Previous build hash (%s): %s\n' "$latest_tag" "$previous_build_hash"
+          printf 'Current build hash (HEAD): %s\n' "$current_build_hash"
+
+          if [[ "$previous_build_hash" == "$current_build_hash" ]]; then
+            echo "Build output is unchanged from $latest_tag; skipping release tag."
+            {
+              echo "should_publish=false"
+              echo "latest_tag=$latest_tag"
+              echo "next_tag="
+            } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          version="${latest_tag#v}"
+          IFS='.' read -r major minor patch <<< "$version"
+          if ! [[ "$major" =~ ^[0-9]+$ && "$minor" =~ ^[0-9]+$ && "$patch" =~ ^[0-9]+$ ]]; then
+            echo "::error::Latest tag is not numeric semver: $latest_tag" >&2
+            exit 1
+          fi
+
+          next_tag="v${major}.${minor}.$((patch + 1))"
+          if git rev-parse --verify --quiet "refs/tags/$next_tag" >/dev/null; then
+            echo "::error::Calculated next tag already exists: $next_tag" >&2
+            exit 1
+          fi
+
+          printf 'Latest release tag: %s\n' "$latest_tag"
+          printf 'Next patch tag: %s\n' "$next_tag"
+          {
+            echo "should_publish=true"
+            echo "latest_tag=$latest_tag"
+            echo "next_tag=$next_tag"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create and push tag
+        if: steps.version.outputs.should_publish == 'true'
+        env:
+          NEXT_TAG: ${{ steps.version.outputs.next_tag }}
+        run: |
+          set -Eeuo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$NEXT_TAG" -m "$NEXT_TAG"
+          git push origin "refs/tags/$NEXT_TAG"
+
+  publish-dist:
+    needs: create-tag
+    if: needs.create-tag.outputs.should_publish == 'true'
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/publish-dist.yml
+    with:
+      version: ${{ needs.create-tag.outputs.next_tag }}
