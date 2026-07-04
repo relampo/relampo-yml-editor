@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { debugEventRequestNumber, matchDebugEventTarget, variableRowsForRequestNode } from './debugRequests';
+import { debugEventRequestNumber, matchDebugEventTarget, skippedRedirectHops, variableRowsForRequestNode } from './debugRequests';
 import type { YAMLNode } from '../types/yaml';
 
 type EventInput = Parameters<typeof matchDebugEventTarget>[0] & { request_id?: number };
@@ -298,5 +298,72 @@ describe('variableRowsForRequestNode', () => {
     const snapshot = { 'javax.faces.ViewState': 'vs-token' };
     expect(variableRowsForRequestNode(extractor, snapshot)).toEqual([['javax.faces.ViewState (RES)', 'vs-token']]);
     expect(variableRowsForRequestNode(consumer, snapshot)).toEqual([['javax.faces.ViewState (REQ)', 'vs-token']]);
+  });
+});
+
+describe('skippedRedirectHops — recorded chain longer than the live run (RLP-607)', () => {
+  // Mirrors the RLP-607 OAuth flow: an enabled parent, one hop the engine
+  // follows, and further hops/final it does NOT (the callback is cross-site, so
+  // the redirect trust boundary — backend RLP-492 — stops the walk). The
+  // unfollowed children emit no event.
+  const chain = (): YAMLNode[] => [
+    {
+      id: 'p17',
+      type: 'request',
+      name: '[17] Home - POST /auth',
+      data: { request_id: 17, method: 'POST', url: '/auth', chain_id: 'rc-17', chain_role: 'parent' },
+      path: ['scenarios', 0, 'steps', 16],
+    },
+    {
+      id: 'h18',
+      type: 'request',
+      name: '[18] Home - GET /flow',
+      data: { request_id: 18, enabled: false, method: 'GET', url: '/flow', chain_id: 'rc-17', chain_role: 'hop' },
+      path: ['scenarios', 0, 'steps', 17],
+    },
+    {
+      id: 'f19',
+      type: 'request',
+      name: '[19] Home - GET /callback',
+      data: { request_id: 19, enabled: false, method: 'GET', url: '/callback', chain_id: 'rc-17', chain_role: 'final' },
+      path: ['scenarios', 0, 'steps', 18],
+    },
+  ];
+
+  it('reports the recorded children the live run never followed', () => {
+    const events = [
+      event({ chain_id: 'rc-17', chain_role: 'parent', redirect_index: 0, request_id: 17, vu: 1 }),
+      event({ chain_id: 'rc-17', chain_role: 'hop', redirect_index: 1, request_id: 17, vu: 1 }),
+    ];
+    const skipped = skippedRedirectHops(events, chain());
+    expect(skipped.map(hop => hop.node.id)).toEqual(['f19']);
+    expect(skipped[0].position).toBe(2); // #17.2
+    expect(skipped[0].afterEventIndex).toBe(1); // slots in after the last real row
+  });
+
+  it('reports nothing when every recorded hop executed', () => {
+    const events = [
+      event({ chain_id: 'rc-17', chain_role: 'parent', redirect_index: 0, request_id: 17, vu: 1 }),
+      event({ chain_id: 'rc-17', chain_role: 'hop', redirect_index: 1, request_id: 17, vu: 1 }),
+      event({ chain_id: 'rc-17', chain_role: 'final', redirect_index: 2, request_id: 17, vu: 1 }),
+    ];
+    expect(skippedRedirectHops(events, chain())).toEqual([]);
+  });
+
+  it('reports nothing for a chain that never ran', () => {
+    // No event carries the chain id (e.g. it sits in a disabled controller): do
+    // not invent skipped rows for a chain that did not execute.
+    expect(skippedRedirectHops([event({ chain_id: '', request_id: 99 })], chain())).toEqual([]);
+  });
+
+  it('keeps interleaved VUs independent', () => {
+    const events = [
+      event({ chain_id: 'rc-17', chain_role: 'parent', redirect_index: 0, request_id: 17, vu: 1 }),
+      event({ chain_id: 'rc-17', chain_role: 'parent', redirect_index: 0, request_id: 17, vu: 2 }),
+      event({ chain_id: 'rc-17', chain_role: 'hop', redirect_index: 1, request_id: 17, vu: 1 }),
+    ];
+    // VU1 followed one hop then stopped (skips f19); VU2 fired only the parent
+    // (skips h18 and f19). Two independent walks → 1 + 2 = 3 placeholders.
+    expect(skippedRedirectHops(events, chain())).toHaveLength(3);
   });
 });

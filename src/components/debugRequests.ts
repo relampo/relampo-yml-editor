@@ -1,6 +1,6 @@
 import type { YAMLNode } from '../types/yaml';
 
-export type DebugStatus = 'passed' | 'failed' | 'warning' | 'pending' | 'running';
+export type DebugStatus = 'passed' | 'failed' | 'warning' | 'pending' | 'running' | 'skipped';
 
 export type DebugEventLike = {
   method: string;
@@ -12,6 +12,7 @@ export type DebugEventLike = {
   redirect_index?: number;
   redirect_source?: string;
   step_path?: string;
+  vu?: number;
 };
 
 const REQUEST_TYPES = new Set(['request', 'get', 'post', 'put', 'delete', 'patch', 'head', 'options']);
@@ -125,6 +126,66 @@ export function debugEventRequestNumber(event: DebugEventLike, matchedNode: YAML
     return position > 0 ? `${base}.${position}` : base;
   }
   return String(matchedNode?.data?.request_id ?? event.request_id ?? '').trim();
+}
+
+// A recorded redirect chain child (hop or final landing) that a live run did
+// NOT execute even though its chain ran. The runtime emits one event per hop it
+// actually follows; when the live chain is shorter than the recording, the
+// unfollowed children produce no event and silently vanish from the timeline
+// (#123.1 shows, #123.2 disappears). This happens when the engine stops
+// following at a hop it won't cross — e.g. an OAuth callback recorded on a
+// different site than the IdP, which the redirect trust boundary blocks
+// (backend RLP-492). Surfacing them as skipped placeholders keeps the recorded
+// chain visible and honest about what ran vs. what was recorded. RLP-607.
+export type SkippedRedirectHop = {
+  node: YAMLNode;
+  // 1-based position within the chain, so the placeholder can carry the same
+  // `#parent.position` sub-index the executed hops use.
+  position: number;
+  // Index, into the same event list passed in, of the chain's last real event —
+  // the row the placeholder slots in after.
+  afterEventIndex: number;
+};
+
+// Given the timeline's engine events (in order) and the tree's request nodes,
+// return the recorded chain children that ran-chains left unexecuted. A chain is
+// "run" when it produced at least one event; within each run (keyed per VU so
+// interleaved chains don't cross-contaminate) any hop/final child never matched
+// by an event is reported skipped. RLP-607.
+export function skippedRedirectHops(events: DebugEventLike[], requestNodes: YAMLNode[]): SkippedRedirectHop[] {
+  const walks = new Map<string, { chainId: string; matched: Set<string>; lastIndex: number }>();
+  events.forEach((event, index) => {
+    const chainId = String(event.chain_id ?? '').trim();
+    if (!chainId) return;
+    const key = `${event.vu ?? 0}\u0000${chainId}`;
+    let walk = walks.get(key);
+    if (!walk) {
+      walk = { chainId, matched: new Set<string>(), lastIndex: index };
+      walks.set(key, walk);
+    }
+    walk.lastIndex = index;
+    if (isRedirectFollowUpEvent(event)) {
+      const matched = matchDebugEventTarget(event, requestNodes);
+      if (matched) walk.matched.add(matched.id);
+    }
+  });
+
+  const skipped: SkippedRedirectHop[] = [];
+  walks.forEach(walk => {
+    const children = requestNodes.filter(node => {
+      const role = chainRoleOf(node);
+      return String(node.data?.chain_id ?? '') === walk.chainId && (role === 'hop' || role === 'final');
+    });
+    children.forEach((child, index) => {
+      if (!walk.matched.has(child.id)) {
+        skipped.push({ node: child, position: index + 1, afterEventIndex: walk.lastIndex });
+      }
+    });
+  });
+
+  // Stable order: group each chain's skipped children after its last real row,
+  // ascending by sub-index (#N.2 before #N.3).
+  return skipped.sort((a, b) => a.afterEventIndex - b.afterEventIndex || a.position - b.position);
 }
 
 function matchRedirectFinalEventToNode(event: DebugEventLike, requestTargets: YAMLNode[], eventPath: string): YAMLNode | null {

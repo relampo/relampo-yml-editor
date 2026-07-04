@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   Circle,
+  CircleSlash,
   Clock3,
   Edit3,
   Eye,
@@ -22,6 +23,7 @@ import {
   isRedirectStepEvent,
   matchDebugEventTarget,
   requestVariableNames,
+  skippedRedirectHops,
   variableRowsForRequestNode,
   type DebugStatus,
 } from './debugRequests';
@@ -83,6 +85,8 @@ function statusTone(status: DebugStatus): string {
       return 'text-amber-300 border-amber-400/30 bg-amber-400/10';
     case 'running':
       return 'text-yellow-300 border-yellow-400/40 bg-yellow-400/10';
+    case 'skipped':
+      return 'text-zinc-400 border-white/10 bg-white/5';
     default:
       return 'text-zinc-500 border-white/10 bg-white/5';
   }
@@ -93,6 +97,7 @@ function StatusIcon({ status }: { status: DebugStatus }) {
   if (status === 'failed') return <XCircle className="h-4 w-4 text-red-300" />;
   if (status === 'warning') return <AlertTriangle className="h-4 w-4 text-amber-300" />;
   if (status === 'running') return <Clock3 className="h-4 w-4 text-yellow-300" />;
+  if (status === 'skipped') return <CircleSlash className="h-4 w-4 text-zinc-500" />;
   return <Circle className="h-4 w-4 text-zinc-600" />;
 }
 
@@ -122,6 +127,7 @@ export function YAMLDebugSession({
 }: YAMLDebugSessionProps) {
   const [entryEvents, setEntryEvents] = useState<StoredDebugEntry[]>([]);
   const [isRunning, setIsRunning] = useState(false);
+  const [runCompleted, setRunCompleted] = useState(false);
   const [runError, setRunError] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [detailTab, setDetailTab] = useState<DetailTab>('overview');
@@ -137,6 +143,58 @@ export function YAMLDebugSession({
       })),
     [debugEventTargets, entryEvents],
   );
+  // The timeline shows one row per engine event, but a recorded redirect chain
+  // can be longer than the live run walks: the engine stops following at a hop
+  // it won't cross (e.g. a cross-site OAuth callback blocked by the redirect
+  // trust boundary, backend RLP-492), so recorded-but-unfollowed children emit
+  // no event and would silently vanish (#123.1 shows, #123.2 disappears). Weave
+  // them back as read-only "skipped" placeholders right after their chain's last
+  // real row, so the timeline stays faithful to the recorded chain. RLP-607.
+  const timelineEntries = useMemo<DebugEntry[]>(() => {
+    if (!runCompleted) return entries;
+    const skipped = skippedRedirectHops(
+      entries.map(entry => entry.event),
+      debugEventTargets,
+    );
+    if (skipped.length === 0) return entries;
+    const placeholdersByAnchor = new Map<number, DebugEntry[]>();
+    skipped.forEach(hop => {
+      const anchor = entries[hop.afterEventIndex];
+      if (!anchor) return;
+      const child = hop.node;
+      const event: EngineEvent = {
+        ts: '',
+        name: child.name,
+        method: String(child.data?.method ?? anchor.event.method ?? 'GET').toUpperCase(),
+        path: String(child.data?.url ?? child.data?.path ?? child.name ?? ''),
+        status: 0,
+        latency_ms: 0,
+        concurrency: 0,
+        vu: anchor.event.vu,
+        request_id: anchor.event.request_id,
+        chain_id: String(child.data?.chain_id ?? anchor.event.chain_id ?? ''),
+        chain_role: String(child.data?.chain_role ?? ''),
+        redirect_index: hop.position,
+      };
+      const placeholder: DebugEntry = {
+        id: `skip-${anchor.id}-${child.id}`,
+        index: 0,
+        event,
+        node: child,
+        status: 'skipped',
+      };
+      const list = placeholdersByAnchor.get(hop.afterEventIndex);
+      if (list) list.push(placeholder);
+      else placeholdersByAnchor.set(hop.afterEventIndex, [placeholder]);
+    });
+    const woven: DebugEntry[] = [];
+    entries.forEach((entry, index) => {
+      woven.push(entry);
+      const extras = placeholdersByAnchor.get(index);
+      if (extras) woven.push(...extras);
+    });
+    return woven;
+  }, [debugEventTargets, entries, runCompleted]);
   const stopStreamRef = useRef<(() => void) | null>(null);
   // Bumped on every start and on Stop; a slow startDebugRun continuation checks
   // it and bails if it was superseded or stopped while the POST was in flight.
@@ -168,10 +226,12 @@ export function YAMLDebugSession({
       },
       onDone: error => {
         setIsRunning(false);
+        setRunCompleted(true);
         setRunError(error);
       },
       onConnectionError: () => {
         setIsRunning(false);
+        setRunCompleted(false);
         if (quiet) {
           runStore.clear();
           setEntryEvents([]);
@@ -203,7 +263,7 @@ export function YAMLDebugSession({
     subscribe(storedRun.id, true);
   }, [documentReady, subscribe, yamlCode]);
 
-  const activeEntry = entries.find(entry => entry.id === activeId) || entries[entries.length - 1];
+  const activeEntry = timelineEntries.find(entry => entry.id === activeId) || timelineEntries[timelineEntries.length - 1];
   const passed = entries.filter(entry => entry.status === 'passed').length;
   const failed = entries.filter(entry => entry.status === 'failed').length;
   // Count the same redirect follow-up steps the tree labels REDIRECTED, so the
@@ -232,6 +292,7 @@ export function YAMLDebugSession({
     setRunError(null);
     setActiveId(null);
     setDetailTab('overview');
+    setRunCompleted(false);
     setIsRunning(true);
     try {
       const runId = await startDebugRun(scriptAtStart, { vus: debugVUs });
@@ -242,6 +303,7 @@ export function YAMLDebugSession({
     } catch (error) {
       if (token !== startTokenRef.current) return;
       setIsRunning(false);
+      setRunCompleted(false);
       setRunError(error instanceof Error ? error.message : String(error));
     }
   };
@@ -251,6 +313,7 @@ export function YAMLDebugSession({
     stopStreamRef.current?.();
     stopStreamRef.current = null;
     setIsRunning(false);
+    setRunCompleted(false);
   };
 
   const selectEntry = (entry: DebugEntry) => {
@@ -259,13 +322,13 @@ export function YAMLDebugSession({
   };
 
   const moveTimelineSelection = (entry: DebugEntry, direction: -1 | 1) => {
-    const currentIndex = entries.findIndex(candidate => candidate.id === entry.id);
+    const currentIndex = timelineEntries.findIndex(candidate => candidate.id === entry.id);
     if (currentIndex < 0) return;
 
-    const nextIndex = Math.min(Math.max(currentIndex + direction, 0), entries.length - 1);
+    const nextIndex = Math.min(Math.max(currentIndex + direction, 0), timelineEntries.length - 1);
     if (nextIndex === currentIndex) return;
 
-    const nextEntry = entries[nextIndex];
+    const nextEntry = timelineEntries[nextIndex];
     selectEntry(nextEntry);
 
     window.requestAnimationFrame(() => {
@@ -405,7 +468,7 @@ export function YAMLDebugSession({
               <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">Execution timeline</p>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto p-2">
-              {entries.length === 0 ? (
+              {timelineEntries.length === 0 ? (
                 <div className="flex h-full items-center justify-center px-8 text-center text-sm text-zinc-500">
                   {isRunning
                     ? 'Running... waiting for the first engine event.'
@@ -413,7 +476,7 @@ export function YAMLDebugSession({
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {entries.map(entry => {
+                  {timelineEntries.map(entry => {
                     const active = activeEntry?.id === entry.id;
                     const requestNumber = debugEventRequestNumber(entry.event, entry.node, debugEventTargets);
                     return (
@@ -432,7 +495,7 @@ export function YAMLDebugSession({
                         aria-current={active ? 'true' : undefined}
                         className={`w-full border px-3 py-2.5 text-left transition-colors ${
                           active ? 'border-yellow-400/50 bg-yellow-400/10' : 'border-white/10 bg-[#111111] hover:border-white/20'
-                        } focus:outline-none focus-visible:border-yellow-400/70 focus-visible:ring-2 focus-visible:ring-yellow-400/40`}
+                        } ${entry.status === 'skipped' ? 'opacity-70' : ''} focus:outline-none focus-visible:border-yellow-400/70 focus-visible:ring-2 focus-visible:ring-yellow-400/40`}
                       >
                         <div className="flex min-w-0 items-center gap-3">
                           <StatusIcon status={entry.status} />
@@ -452,12 +515,23 @@ export function YAMLDebugSession({
                               <span className="truncate text-sm text-zinc-100">{entry.event.path || entry.event.name}</span>
                             </div>
                             <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] text-zinc-500">
-                              <span>{formatEventTime(entry.event.ts)}</span>
-                              {entry.event.vu ? <span>VU{entry.event.vu}</span> : null}
-                              <span>{formatLatency(entry.event.latency_ms)}</span>
-                              <span className={`rounded border px-1.5 py-0.5 ${statusTone(entry.status)}`}>
-                                {entry.event.status || '—'}
-                              </span>
+                              {entry.status === 'skipped' ? (
+                                <>
+                                  {entry.event.vu ? <span>VU{entry.event.vu}</span> : null}
+                                  <span className={`rounded border px-1.5 py-0.5 ${statusTone(entry.status)}`}>
+                                    Skipped · redirect not followed
+                                  </span>
+                                </>
+                              ) : (
+                                <>
+                                  <span>{formatEventTime(entry.event.ts)}</span>
+                                  {entry.event.vu ? <span>VU{entry.event.vu}</span> : null}
+                                  <span>{formatLatency(entry.event.latency_ms)}</span>
+                                  <span className={`rounded border px-1.5 py-0.5 ${statusTone(entry.status)}`}>
+                                    {entry.event.status || '—'}
+                                  </span>
+                                </>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -497,15 +571,17 @@ export function YAMLDebugSession({
                       </button>
                     )}
                     <span className={`rounded-full border px-2.5 py-1 text-xs ${statusTone(activeEntry.status)}`}>
-                      {activeEntry.status === 'failed'
-                        ? 'Failed'
-                        : // RLP-571: a 200 that closes a redirect chain is a redirect follow-up
-                          // (the same set the tree badges REDIRECTED), so label it Redirect here
-                          // too instead of the generic Passed. Keep the 3xx hops labeled Redirect.
-                          isRedirectStepEvent(activeEntry.event) ||
-                            (activeEntry.event.status >= 300 && activeEntry.event.status < 400)
-                          ? 'Redirect'
-                          : 'Passed'}
+                      {activeEntry.status === 'skipped'
+                        ? 'Skipped'
+                        : activeEntry.status === 'failed'
+                          ? 'Failed'
+                          : // RLP-571: a 200 that closes a redirect chain is a redirect follow-up
+                            // (the same set the tree badges REDIRECTED), so label it Redirect here
+                            // too instead of the generic Passed. Keep the 3xx hops labeled Redirect.
+                            isRedirectStepEvent(activeEntry.event) ||
+                              (activeEntry.event.status >= 300 && activeEntry.event.status < 400)
+                            ? 'Redirect'
+                            : 'Passed'}
                     </span>
                   </div>
                 </div>
@@ -529,6 +605,16 @@ export function YAMLDebugSession({
               </div>
 
               <div className="min-h-0 flex-1 overflow-y-auto p-4">
+                {activeEntry.status === 'skipped' && (
+                  <div className="mb-4 flex items-start gap-2 rounded border border-white/10 bg-white/[0.03] px-3 py-2.5 text-[13px] text-zinc-400">
+                    <CircleSlash className="mt-0.5 h-4 w-4 shrink-0 text-zinc-500" />
+                    <span>
+                      This redirect hop was recorded but not followed in this run — the engine stopped at the redirect
+                      trust boundary (e.g. a cross-site callback), so no live request was made. It is shown to keep the
+                      recorded chain visible; there is no live request or response to inspect.
+                    </span>
+                  </div>
+                )}
                 <DebugInspectorContent
                   key={activeEntry.id}
                   entry={activeEntry}
