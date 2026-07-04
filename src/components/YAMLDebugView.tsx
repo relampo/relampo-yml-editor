@@ -127,6 +127,7 @@ export function YAMLDebugSession({
 }: YAMLDebugSessionProps) {
   const [entryEvents, setEntryEvents] = useState<StoredDebugEntry[]>([]);
   const [isRunning, setIsRunning] = useState(false);
+  const [runCompleted, setRunCompleted] = useState(false);
   const [runError, setRunError] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [detailTab, setDetailTab] = useState<DetailTab>('overview');
@@ -150,6 +151,7 @@ export function YAMLDebugSession({
   // them back as read-only "skipped" placeholders right after their chain's last
   // real row, so the timeline stays faithful to the recorded chain. RLP-607.
   const timelineEntries = useMemo<DebugEntry[]>(() => {
+    if (!runCompleted) return entries;
     const skipped = skippedRedirectHops(
       entries.map(entry => entry.event),
       debugEventTargets,
@@ -192,7 +194,7 @@ export function YAMLDebugSession({
       if (extras) woven.push(...extras);
     });
     return woven;
-  }, [entries, debugEventTargets]);
+  }, [debugEventTargets, entries, runCompleted]);
   const stopStreamRef = useRef<(() => void) | null>(null);
   // Bumped on every start and on Stop; a slow startDebugRun continuation checks
   // it and bails if it was superseded or stopped while the POST was in flight.
@@ -224,10 +226,12 @@ export function YAMLDebugSession({
       },
       onDone: error => {
         setIsRunning(false);
+        setRunCompleted(true);
         setRunError(error);
       },
       onConnectionError: () => {
         setIsRunning(false);
+        setRunCompleted(false);
         if (quiet) {
           runStore.clear();
           setEntryEvents([]);
@@ -259,7 +263,7 @@ export function YAMLDebugSession({
     subscribe(storedRun.id, true);
   }, [documentReady, subscribe, yamlCode]);
 
-  const activeEntry = timelineEntries.find(entry => entry.id === activeId) || entries[entries.length - 1];
+  const activeEntry = timelineEntries.find(entry => entry.id === activeId) || timelineEntries[timelineEntries.length - 1];
   const passed = entries.filter(entry => entry.status === 'passed').length;
   const failed = entries.filter(entry => entry.status === 'failed').length;
   // Count the same redirect follow-up steps the tree labels REDIRECTED, so the
@@ -288,6 +292,7 @@ export function YAMLDebugSession({
     setRunError(null);
     setActiveId(null);
     setDetailTab('overview');
+    setRunCompleted(false);
     setIsRunning(true);
     try {
       const runId = await startDebugRun(scriptAtStart, { vus: debugVUs });
@@ -298,6 +303,7 @@ export function YAMLDebugSession({
     } catch (error) {
       if (token !== startTokenRef.current) return;
       setIsRunning(false);
+      setRunCompleted(false);
       setRunError(error instanceof Error ? error.message : String(error));
     }
   };
@@ -307,6 +313,7 @@ export function YAMLDebugSession({
     stopStreamRef.current?.();
     stopStreamRef.current = null;
     setIsRunning(false);
+    setRunCompleted(false);
   };
 
   const selectEntry = (entry: DebugEntry) => {

@@ -157,7 +157,7 @@ export function skippedRedirectHops(events: DebugEventLike[], requestNodes: YAML
   events.forEach((event, index) => {
     const chainId = String(event.chain_id ?? '').trim();
     if (!chainId) return;
-    const key = `${event.vu ?? 0} ${chainId}`;
+    const key = `${event.vu ?? 0}\u0000${chainId}`;
     let walk = walks.get(key);
     if (!walk) {
       walk = { chainId, matched: new Set<string>(), lastIndex: index };

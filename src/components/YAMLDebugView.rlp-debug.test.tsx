@@ -425,6 +425,12 @@ describe('YAMLDebugSession RLP debug fixes', () => {
       );
     });
 
+    expect(screen.queryByText('#123.2')).not.toBeInTheDocument();
+
+    act(() => {
+      debugApiMock.handlers[0].onDone(null);
+    });
+
     // The recorded-but-unfollowed final is woven back in as a skipped #123.2 row.
     expect(await screen.findByText('#123.2')).toBeInTheDocument();
     expect(screen.getByText('Skipped · redirect not followed')).toBeInTheDocument();
