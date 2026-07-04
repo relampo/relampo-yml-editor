@@ -370,6 +370,68 @@ describe('YAMLDebugSession RLP debug fixes', () => {
     expect(stepValue).toHaveTextContent('NROEXP=Regex+value+not+found');
     expect(stepValue).not.toHaveTextContent('2026-88-001-0168');
   });
+
+  it('weaves a skipped placeholder for a recorded redirect hop the run never followed (RLP-607)', async () => {
+    // The RLP-607 OAuth flow: [123] redirects to [124], which redirects to the
+    // cross-site callback [125]. The engine follows [124] but stops at the
+    // cross-site callback (redirect trust boundary, backend RLP-492), so [125]
+    // emits no event and used to vanish from the timeline (#123.1 then a jump to
+    // the next request). The recorded final must now show as a skipped #123.2.
+    const parent: YAMLNode = {
+      id: 'p123',
+      type: 'request',
+      name: '[123] Firmar - POST /authentication',
+      data: { request_id: 123, method: 'POST', url: '/authentication', chain_id: 'rc-123', chain_role: 'parent' },
+      path: ['scenarios', 0, 'steps', 122],
+    };
+    const hop: YAMLNode = {
+      id: 'h124',
+      type: 'request',
+      name: '[124] Firmar - GET /oauth/authz/flow',
+      data: { request_id: 124, enabled: false, method: 'GET', url: '/oauth/authz/flow', chain_id: 'rc-123', chain_role: 'hop' },
+      path: ['scenarios', 0, 'steps', 123],
+    };
+    const final: YAMLNode = {
+      id: 'f125',
+      type: 'request',
+      name: '[125] Firmar - GET /tuid/callback',
+      data: { request_id: 125, enabled: false, method: 'GET', url: '/tuid/callback', chain_id: 'rc-123', chain_role: 'final' },
+      path: ['scenarios', 0, 'steps', 124],
+    };
+    const tree: YAMLNode = { id: 'root', type: 'root', name: 'root', children: [parent, hop, final] };
+
+    render(
+      <YAMLDebugSession
+        tree={tree}
+        yamlCode={'test:\n  name: skipped-hop\n'}
+        documentReady
+        validationErrors={[]}
+        onSelectNode={vi.fn()}
+        onEditNode={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
+
+    act(() => {
+      // Parent (#123) and one hop (#123.1) fire; the callback [125] never does —
+      // the backend stamps the parent's request_id on every chain event.
+      debugApiMock.handlers[0].onEvent(
+        event({ name: '[123] Firmar - POST /authentication', path: '/authentication', method: 'POST', status: 302, chain_id: 'rc-123', chain_role: 'parent', request_id: 123 }),
+      );
+      debugApiMock.handlers[0].onEvent(
+        event({ name: '[123] -> redirect', path: '/oauth/authz/flow', status: 302, chain_id: 'rc-123', chain_role: 'hop', redirect_index: 1, request_id: 123 }),
+      );
+    });
+
+    // The recorded-but-unfollowed final is woven back in as a skipped #123.2 row.
+    expect(await screen.findByText('#123.2')).toBeInTheDocument();
+    expect(screen.getByText('Skipped · redirect not followed')).toBeInTheDocument();
+    // The two real rows are still there.
+    expect(screen.getByText('#123')).toBeInTheDocument();
+    expect(screen.getByText('#123.1')).toBeInTheDocument();
+  });
 });
 
 describe('DebugSection RLP body layout', () => {
