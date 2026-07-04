@@ -3,6 +3,7 @@ import { ChevronDown, ChevronUp, Search } from 'lucide-react';
 import type { editor as MonacoEditorNS } from 'monaco-editor';
 import { JSX, useEffect, useMemo, useRef, useState } from 'react';
 import type { YAMLValue } from '../types/yaml';
+import { binaryBodyDisplay } from '../utils/binaryBody';
 import type { SearchMode } from './debugSearch';
 import { Input } from './ui/input';
 
@@ -129,17 +130,15 @@ export function YAMLResponseDetails({
     return 'Unknown';
   };
 
-  const bodyText = useMemo(
-    () =>
-      !response
-        ? ''
-        : formData.body
-          ? typeof formData.body === 'string'
-            ? formData.body
-            : JSON.stringify(formData.body, null, 2)
-          : '',
-    [response, formData.body],
-  );
+  const bodyText = useMemo(() => {
+    if (!response || !formData.body) return '';
+    // A binary body — a recorded byte-indexed object ({"0":48,...}) or a mojibake
+    // string — collapses to a compact, tool-consistent notice instead of dumping
+    // the raw bytes. RLP-555.
+    const binary = binaryBodyDisplay(formData.body, formData.headers);
+    if (binary != null) return binary;
+    return typeof formData.body === 'string' ? formData.body : JSON.stringify(formData.body, null, 2);
+  }, [response, formData.body, formData.headers]);
 
   const shouldUseMonaco = (text: string) => {
     if (!text) return false;

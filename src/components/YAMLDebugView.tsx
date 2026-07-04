@@ -27,6 +27,7 @@ import {
   variableRowsForRequestNode,
   type DebugStatus,
 } from './debugRequests';
+import { binaryBodyDisplay } from '../utils/binaryBody';
 import { startDebugRun, streamDebugRun, type DebugVUs, type EngineEvent } from '../utils/debugApi';
 import { DebugSection } from './debugSection';
 import { buildSearchRegex, findMatchRanges, type SearchMode } from './debugSearch';
@@ -665,7 +666,12 @@ function DebugInspectorContent({
     ['Duration', formatLatency(event.latency_ms)],
     ...Object.entries(event.response_headers ?? {}),
   ];
-  const responseBody = event.response_body || '<empty>';
+  // Collapse a binary response body to the same notice the recorded Response
+  // view shows, so the live Debug body and the recording stay comparable instead
+  // of one dumping mojibake and the other {"0":48,...}. RLP-555.
+  const responseBody = event.response_body
+    ? (binaryBodyDisplay(event.response_body, event.response_headers) ?? event.response_body)
+    : '<empty>';
 
   if (tab === 'request') {
     const requestSearchText = [...requestRows.map(([label, value]) => `${label}: ${value}`), requestBody].join('\n');
