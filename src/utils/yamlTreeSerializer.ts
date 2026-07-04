@@ -18,6 +18,27 @@ import {
 
 const HTTP_METHODS = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
 
+// A Spark node's before/after timing lives in its node type (spark_before /
+// spark_after) — the detail panel only edits `script`, so node.data usually has
+// no `when`. The runtime defaults a missing `when` to `after`, so a "Spark
+// Before" would silently run *after* the request and any variables it sets
+// would be absent from that request's url/body/query/form (RLP-606). Persist the
+// timing explicitly from the node type so the runtime runs the script when the
+// editor shows it.
+function sparkDataWithWhen(node: YAMLNode): Record<string, unknown> {
+  const data = { ...(node.data as Record<string, unknown> | undefined) };
+  let when: string;
+  if (node.type === 'spark_after') {
+    when = 'after';
+  } else if (node.type === 'spark_before') {
+    when = 'before';
+  } else {
+    when = typeof data.when === 'string' && data.when ? (data.when as string) : 'before';
+  }
+  data.when = when;
+  return data;
+}
+
 function stripControllerSerializationMetadata<T>(data: T, internalKeys: string[] = []): T {
   if (!data || typeof data !== 'object' || Array.isArray(data)) {
     return data;
@@ -370,7 +391,7 @@ function stepNodeToObject(node: YAMLNode): any {
   }
 
   if (node.type === 'spark_before' || node.type === 'spark_after' || node.type === 'spark') {
-    const res: any = { spark: node.data };
+    const res: any = { spark: sparkDataWithWhen(node) };
     if (node.data?.enabled === false) {
       res.enabled = false;
     }
@@ -447,7 +468,7 @@ function requestNodeToObject(node: YAMLNode, methodFallback?: string): any {
   if (node.children) {
     const sparkNodes = node.children.filter(child => child.type === 'spark_before' || child.type === 'spark_after');
     if (sparkNodes.length > 0) {
-      request.request.spark = sparkNodes.map(spark => spark.data);
+      request.request.spark = sparkNodes.map(spark => sparkDataWithWhen(spark));
     }
 
     const extractorNodes = node.children.filter(child => child.type === 'extractor');
