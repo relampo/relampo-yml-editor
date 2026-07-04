@@ -370,6 +370,44 @@ describe('YAMLDebugSession RLP debug fixes', () => {
     expect(stepValue).toHaveTextContent('NROEXP=Regex+value+not+found');
     expect(stepValue).not.toHaveTextContent('2026-88-001-0168');
   });
+
+  it('shows a binary response body as a compact notice, not mojibake (RLP-555)', async () => {
+    render(
+      <YAMLDebugSession
+        tree={null}
+        yamlCode={'test:\n  name: binary-body\n'}
+        documentReady
+        validationErrors={[]}
+        onSelectNode={vi.fn()}
+        onEditNode={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
+
+    const mojibake = '0' + String.fromCharCode(0xfffd) + String.fromCharCode(0xfffd) + 'B';
+    act(() => {
+      debugApiMock.handlers[0].onEvent(
+        event({
+          name: '[7] GET /cert.cer',
+          path: '/cert.cer',
+          response_body: mojibake,
+          response_headers: { 'Content-Type': 'application/octet-stream', 'Content-Length': '1765' },
+        }),
+      );
+    });
+
+    await screen.findByRole('heading', { name: '/cert.cer' });
+    fireEvent.click(screen.getByRole('button', { name: 'response' }));
+
+    const notice = '[binary content · 1765 bytes · application/octet-stream]';
+    expect(
+      await screen.findByText((_, el) => el?.tagName === 'PRE' && (el.textContent ?? '').includes(notice)),
+    ).toBeInTheDocument();
+    // The raw mojibake is not dumped.
+    expect(screen.queryByText((_, el) => (el?.textContent ?? '').includes(mojibake))).toBeNull();
+  });
 });
 
 describe('DebugSection RLP body layout', () => {
