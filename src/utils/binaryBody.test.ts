@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { binaryBodyDisplay, binaryBodyNotice, byteIndexedLength, looksBinaryText } from './binaryBody';
+import {
+  binaryBodyDisplay,
+  binaryBodyDownload,
+  binaryBodyNotice,
+  byteIndexedBytes,
+  byteIndexedLength,
+  looksBinaryText,
+} from './binaryBody';
 
 const NUL = String.fromCharCode(0);
 const FFFD = String.fromCharCode(0xfffd);
@@ -18,6 +25,18 @@ describe('byteIndexedLength', () => {
     expect(byteIndexedLength({ '0': 48, '1': 999 })).toBeNull(); // value out of byte range
     expect(byteIndexedLength({})).toBeNull();
     expect(byteIndexedLength(null)).toBeNull();
+  });
+});
+
+describe('byteIndexedBytes', () => {
+  it('reconstructs the exact byte sequence from a recorded byte-indexed body', () => {
+    const bytes = byteIndexedBytes({ '0': 48, '1': 130, '2': 6, '3': 206 });
+    expect(bytes).toBeInstanceOf(Uint8Array);
+    expect(Array.from(bytes ?? [])).toEqual([48, 130, 6, 206]);
+  });
+
+  it('rejects live mojibake strings because their original bytes are already lost', () => {
+    expect(byteIndexedBytes('0' + FFFD + FFFD + '0')).toBeNull();
   });
 });
 
@@ -43,6 +62,24 @@ describe('binaryBodyNotice', () => {
     expect(binaryBodyNotice(1765, 'application/octet-stream')).toBe('[binary content · 1765 bytes · application/octet-stream]');
     expect(binaryBodyNotice(1)).toBe('[binary content · 1 byte]');
     expect(binaryBodyNotice(null, 'image/png')).toBe('[binary content · binary data · image/png]');
+  });
+});
+
+describe('binaryBodyDownload', () => {
+  it('prepares exact recorded bytes with a content type and file extension', () => {
+    const download = binaryBodyDownload(
+      { '0': 48, '1': 130, '2': 6, '3': 206 },
+      { 'Content-Disposition': 'attachment; filename=Certificado.cer', 'Content-Type': 'application/pkix-cert' },
+    );
+
+    expect(download?.contentType).toBe('application/pkix-cert');
+    expect(download?.extension).toBe('.cer');
+    expect(download?.filename).toBe('Certificado.cer');
+    expect(Array.from(download?.bytes ?? [])).toEqual([48, 130, 6, 206]);
+  });
+
+  it('does not offer a download for non-recorded binary text', () => {
+    expect(binaryBodyDownload('0' + FFFD + FFFD + '0', { 'Content-Type': 'application/octet-stream' })).toBeNull();
   });
 });
 
