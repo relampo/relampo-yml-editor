@@ -830,7 +830,7 @@ describe('YAMLDebugSession tree selection sync', () => {
     fireEvent.click(screen.getByRole('button', { name: 'logs' }));
 
     expect(await screen.findByText(/followed 1 redirect before this 200 response:/)).toBeInTheDocument();
-    expect(screen.getByText(/↳ hop 1: 302/)).toBeInTheDocument();
+    expect(screen.getByText(/↳ hop 1: 302 GET https:\/\/example.test\/start → 200 GET https:\/\/example.test\/landing/)).toBeInTheDocument();
     expect(screen.queryByText(/\] redirect 1: 302/)).not.toBeInTheDocument();
   });
 
