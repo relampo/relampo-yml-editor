@@ -59,6 +59,14 @@ function chainRoleOf(node: YAMLNode): string {
   return String(node.data?.chain_role ?? '').trim().toLowerCase();
 }
 
+function redirectChainParent(chainId: string, requestNodes: YAMLNode[]): YAMLNode | null {
+  return requestNodes.find(node => String(node.data?.chain_id ?? '') === chainId && chainRoleOf(node) === 'parent') ?? null;
+}
+
+function redirectChainParentDisablesFollow(chainId: string, requestNodes: YAMLNode[]): boolean {
+  return redirectChainParent(chainId, requestNodes)?.data?.follow_redirects === false;
+}
+
 // Maps a redirect follow-up event to the specific recorded REDIRECTED-DISABLED
 // child node it corresponds to. The runtime walks the recorded redirect
 // children in document order, emitting redirect_index 1 for the first child, 2
@@ -113,8 +121,8 @@ function redirectChainPosition(
 // keeps the bare number (#32). RLP-586 (was: every follow-up shared #32, RLP-570).
 export function debugEventRequestNumber(event: DebugEventLike, matchedNode: YAMLNode | null, requestNodes: YAMLNode[]): string {
   const chainId = String(event.chain_id ?? '').trim();
-  if (chainId && isRedirectFollowUpEvent(event)) {
-    const parent = requestNodes.find(node => String(node.data?.chain_id ?? '') === chainId && chainRoleOf(node) === 'parent');
+  if (chainId && isRedirectFollowUpEvent(event) && !redirectChainParentDisablesFollow(chainId, requestNodes)) {
+    const parent = redirectChainParent(chainId, requestNodes);
     const parentId = parent?.data?.request_id;
     // The backend stamps the parent's request_id on every chain event, so fall
     // back to it when the parent node can't be found in the tree.
@@ -157,6 +165,15 @@ export function skippedRedirectHops(events: DebugEventLike[], requestNodes: YAML
   events.forEach((event, index) => {
     const chainId = String(event.chain_id ?? '').trim();
     if (!chainId) return;
+    if (redirectChainParentDisablesFollow(chainId, requestNodes)) return;
+    const isFollowUp = isRedirectFollowUpEvent(event);
+    const eventRole = String(event.chain_role ?? '').trim().toLowerCase();
+    const matched = matchDebugEventTarget(event, requestNodes);
+    const startsRedirectWalk =
+      isFollowUp ||
+      eventRole === 'parent' ||
+      (matched !== null && chainRoleOf(matched) === 'parent' && matched.data?.follow_redirects !== false);
+    if (!startsRedirectWalk) return;
     const key = `${event.vu ?? 0}\u0000${chainId}`;
     let walk = walks.get(key);
     if (!walk) {
@@ -164,9 +181,8 @@ export function skippedRedirectHops(events: DebugEventLike[], requestNodes: YAML
       walks.set(key, walk);
     }
     walk.lastIndex = index;
-    if (isRedirectFollowUpEvent(event)) {
-      const matched = matchDebugEventTarget(event, requestNodes);
-      if (matched) walk.matched.add(matched.id);
+    if (isFollowUp && matched) {
+      walk.matched.add(matched.id);
     }
   });
 
@@ -247,7 +263,7 @@ export function matchDebugEventTarget(event: DebugEventLike, requestNodes: YAMLN
   // the final one). When the chain can't be resolved we return null — leaving
   // the Tree unmarked — rather than guessing. RLP-570.
   const eventChainId = String(event.chain_id ?? '').trim();
-  if (eventChainId && isRedirectFollowUpEvent(event)) {
+  if (eventChainId && isRedirectFollowUpEvent(event) && !redirectChainParentDisablesFollow(eventChainId, requestTargets)) {
     return matchRedirectChainChildToNode(event, eventChainId, requestTargets);
   }
   const redirectFinalTarget = matchRedirectFinalEventToNode(event, requestTargets, eventPath);

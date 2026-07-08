@@ -477,6 +477,139 @@ describe('YAMLDebugSession RLP debug fixes', () => {
     expect(screen.getByText('#123.1')).toBeInTheDocument();
   });
 
+  it('does not weave parent-subindexed rows when the redirect parent has Follow Redirects off', async () => {
+    const parent: YAMLNode = {
+      id: 'p2',
+      type: 'request',
+      name: '[2] Login - GET /user/auth/login',
+      data: {
+        request_id: 2,
+        method: 'GET',
+        url: '/user/auth/login',
+        follow_redirects: false,
+        chain_id: 'rc-2',
+        chain_role: 'parent',
+      },
+      path: ['scenarios', 0, 'steps', 1],
+    };
+    const hop3: YAMLNode = {
+      id: 'h3',
+      type: 'request',
+      name: '[3] Login - GET /trustedx-authserver/oauth/as-gestion',
+      data: {
+        request_id: 3,
+        enabled: true,
+        method: 'GET',
+        url: '/trustedx-authserver/oauth/as-gestion',
+        follow_redirects: false,
+        chain_id: 'rc-2',
+        chain_role: 'hop',
+      },
+      path: ['scenarios', 0, 'steps', 2],
+    };
+    const hop4: YAMLNode = {
+      id: 'h4',
+      type: 'request',
+      name: '[4] Login - GET /trustedx-authserver/TuID-idp/oauth/as-gestion',
+      data: {
+        request_id: 4,
+        enabled: true,
+        method: 'GET',
+        url: '/trustedx-authserver/TuID-idp/oauth/as-gestion',
+        follow_redirects: false,
+        chain_id: 'rc-2',
+        chain_role: 'hop',
+      },
+      path: ['scenarios', 0, 'steps', 3],
+    };
+    const final5: YAMLNode = {
+      id: 'f5',
+      type: 'request',
+      name: '[5] Login - GET /trustedx-authserver/TuID-idp/flowSelector.xhtml',
+      data: {
+        request_id: 5,
+        enabled: true,
+        method: 'GET',
+        url: '/trustedx-authserver/TuID-idp/flowSelector.xhtml',
+        follow_redirects: false,
+        chain_id: 'rc-2',
+        chain_role: 'final',
+      },
+      path: ['scenarios', 0, 'steps', 4],
+    };
+    const tree: YAMLNode = { id: 'root', type: 'root', name: 'root', children: [parent, hop3, hop4, final5] };
+
+    render(
+      <YAMLDebugSession
+        tree={tree}
+        yamlCode={'test:\n  name: no-follow-standalone-hops\n'}
+        documentReady
+        validationErrors={[]}
+        onSelectNode={vi.fn()}
+        onEditNode={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
+
+    act(() => {
+      debugApiMock.handlers[0].onEvent(
+        event({
+          name: '[2] Login - GET /user/auth/login',
+          path: '/user/auth/login',
+          status: 302,
+          chain_id: 'rc-2',
+          chain_role: 'parent',
+          request_id: 2,
+        }),
+      );
+      debugApiMock.handlers[0].onEvent(
+        event({
+          name: '[3] Login - GET /trustedx-authserver/oauth/as-gestion',
+          path: '/trustedx-authserver/oauth/as-gestion',
+          status: 302,
+          chain_id: 'rc-2',
+          chain_role: 'hop',
+          redirect_index: 1,
+          request_id: 2,
+        }),
+      );
+      debugApiMock.handlers[0].onEvent(
+        event({
+          name: '[4] Login - GET /trustedx-authserver/TuID-idp/oauth/as-gestion',
+          path: '/trustedx-authserver/TuID-idp/oauth/as-gestion',
+          status: 302,
+          chain_id: 'rc-2',
+          chain_role: 'hop',
+          redirect_index: 2,
+          request_id: 2,
+        }),
+      );
+      debugApiMock.handlers[0].onEvent(
+        event({
+          name: '[5] Login - GET /trustedx-authserver/TuID-idp/flowSelector.xhtml',
+          path: '/trustedx-authserver/TuID-idp/flowSelector.xhtml',
+          status: 200,
+          chain_id: 'rc-2',
+          chain_role: 'final',
+          redirect_index: 3,
+          request_id: 2,
+        }),
+      );
+      debugApiMock.handlers[0].onDone(null);
+    });
+
+    expect(await screen.findByText('#2')).toBeInTheDocument();
+    expect(screen.getByText('#3')).toBeInTheDocument();
+    expect(screen.getByText('#4')).toBeInTheDocument();
+    expect(screen.getByText('#5')).toBeInTheDocument();
+    expect(screen.queryByText('#2.1')).not.toBeInTheDocument();
+    expect(screen.queryByText('#2.2')).not.toBeInTheDocument();
+    expect(screen.queryByText('#2.3')).not.toBeInTheDocument();
+    expect(screen.queryByText('Skipped · redirect not followed')).not.toBeInTheDocument();
+  });
+
   it('shows a binary response body as a compact notice, not mojibake (RLP-555)', async () => {
     render(
       <YAMLDebugSession

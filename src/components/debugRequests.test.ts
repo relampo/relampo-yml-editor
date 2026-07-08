@@ -124,6 +124,26 @@ describe('matchDebugEventTarget — redirect chain follow-ups', () => {
     const normal = nodes[0];
     expect(debugEventRequestNumber(event({ request_id: 99 }), normal, nodes)).toBe('17');
   });
+
+  it('treats chain metadata as standalone requests when the parent does not follow redirects', () => {
+    const nodes = chainNodes().map(node =>
+      node.id === 'p17'
+        ? { ...node, data: { ...node.data, follow_redirects: false } }
+        : { ...node, data: { ...node.data, enabled: true } },
+    );
+    const finalEvent = event({
+      name: '[21] Home - GET /landing',
+      path: '/landing',
+      chain_id: 'rc-17',
+      chain_role: 'final',
+      redirect_index: 4,
+      request_id: 21,
+    });
+
+    const matched = matchDebugEventTarget(finalEvent, nodes);
+    expect(matched?.id).toBe('f21');
+    expect(debugEventRequestNumber(finalEvent, matched, nodes)).toBe('21');
+  });
 });
 
 describe('variableRowsForRequestNode', () => {
@@ -397,6 +417,21 @@ describe('skippedRedirectHops — recorded chain longer than the live run (RLP-6
     // No event carries the chain id (e.g. it sits in a disabled controller): do
     // not invent skipped rows for a chain that did not execute.
     expect(skippedRedirectHops([event({ chain_id: '', request_id: 99 })], chain())).toEqual([]);
+  });
+
+  it('reports nothing when redirect children run as enabled standalone requests and the parent does not follow redirects', () => {
+    const nodes = chain().map(node =>
+      node.id === 'p17'
+        ? { ...node, data: { ...node.data, follow_redirects: false } }
+        : { ...node, data: { ...node.data, enabled: true } },
+    );
+    const events = [
+      event({ name: '[17] Home - POST /auth', path: '/auth', chain_id: 'rc-17', chain_role: 'parent', redirect_index: 0, request_id: 17, vu: 1 }),
+      event({ name: '[18] Home - GET /flow', path: '/flow', chain_id: 'rc-17', request_id: 18, vu: 1 }),
+      event({ name: '[19] Home - GET /callback', path: '/callback', chain_id: 'rc-17', request_id: 19, vu: 1 }),
+    ];
+
+    expect(skippedRedirectHops(events, nodes)).toEqual([]);
   });
 
   it('keeps interleaved VUs independent', () => {
