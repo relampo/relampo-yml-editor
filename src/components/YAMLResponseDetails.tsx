@@ -1,9 +1,9 @@
 import Editor from '@monaco-editor/react';
-import { ChevronDown, ChevronUp, Search } from 'lucide-react';
+import { ChevronDown, ChevronUp, Download, Search } from 'lucide-react';
 import type { editor as MonacoEditorNS } from 'monaco-editor';
 import { JSX, useEffect, useMemo, useRef, useState } from 'react';
 import type { YAMLValue } from '../types/yaml';
-import { binaryBodyDisplay } from '../utils/binaryBody';
+import { binaryBodyDisplay, binaryBodyDownload } from '../utils/binaryBody';
 import type { SearchMode } from './debugSearch';
 import { Input } from './ui/input';
 
@@ -139,6 +139,24 @@ export function YAMLResponseDetails({
     if (binary != null) return binary;
     return typeof formData.body === 'string' ? formData.body : JSON.stringify(formData.body, null, 2);
   }, [response, formData.body, formData.headers]);
+
+  const binaryDownload = useMemo(
+    () => (response ? binaryBodyDownload(formData.body, formData.headers) : null),
+    [response, formData.body, formData.headers],
+  );
+
+  const downloadResponseBody = () => {
+    if (!binaryDownload) return;
+    const blob = new Blob([binaryDownload.bytes], { type: binaryDownload.contentType });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = binaryDownload.filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  };
 
   const shouldUseMonaco = (text: string) => {
     if (!text) return false;
@@ -590,6 +608,18 @@ export function YAMLResponseDetails({
             <span className="text-xs text-yellow-400 flex items-center gap-1">
               <span>✓</span> {totalMatches} match(es)
             </span>
+          )}
+          {binaryDownload && (
+            <button
+              type="button"
+              onClick={downloadResponseBody}
+              className="ml-auto inline-flex h-7 items-center gap-1 rounded border border-white/10 bg-white/5 px-2 text-xs font-medium text-zinc-300 hover:border-sky-400/40 hover:bg-sky-400/10 hover:text-sky-100"
+              title="Download exact recorded response bytes"
+              aria-label="Download response body bytes"
+            >
+              <Download className="h-3.5 w-3.5" aria-hidden="true" />
+              <span>Download body</span>
+            </button>
           )}
         </div>
         {responseSearchControls}
