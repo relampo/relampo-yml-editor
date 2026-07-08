@@ -170,6 +170,44 @@ describe('YAMLRequestDetails', () => {
     expect(screen.getByDisplayValue('relampo_token')).toBeInTheDocument();
   });
 
+  it('replaces stale body_raw when editing form data placeholders from Spark variables', async () => {
+    const onNodeUpdate = vi.fn();
+    const node: YAMLNode = {
+      id: 'post-form-raw-edit',
+      type: 'post',
+      name: '[12] POST /pay/start',
+      data: {
+        method: 'POST',
+        url: '/pay/start/{{relampo_token1}}',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body_raw: 'reservation_id=RES-d7ffa616f697&relampo_token=4b525459',
+      },
+      children: [
+        {
+          id: 'spark-before',
+          type: 'spark_before',
+          name: 'Spark Before',
+          data: { script: 'vars.set("relampo_token1", "signed")' },
+        },
+      ],
+    };
+
+    render(<YAMLRequestDetails node={node} onNodeUpdate={onNodeUpdate} />);
+
+    fireEvent.change(await screen.findByDisplayValue('4b525459'), { target: { value: '{{relampo_token1}}' } });
+
+    expect(onNodeUpdate).toHaveBeenLastCalledWith(
+      'post-form-raw-edit',
+      expect.objectContaining({
+        body: {
+          reservation_id: 'RES-d7ffa616f697',
+          relampo_token: '{{relampo_token1}}',
+        },
+      }),
+    );
+    expect(onNodeUpdate.mock.lastCall?.[1]).not.toHaveProperty('body_raw');
+  });
+
   it('keeps blank path edits empty in editor state so export can normalize to slash', () => {
     const onNodeUpdate = vi.fn();
     const node: YAMLNode = {

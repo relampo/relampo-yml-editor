@@ -1,7 +1,7 @@
 import { ChevronDown, ChevronUp, Search } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { RedirectSourceInfo, YAMLNode, YAMLNodeData, YAMLValue } from '../types/yaml';
-import { BodyTypeSelector } from './fields/BodyTypeSelector';
+import { BodyTypeSelector, type BodyType } from './fields/BodyTypeSelector';
 import { MethodDropdown } from './fields/MethodDropdown';
 import { QueryParamsEditor } from './fields/QueryParamsEditor';
 import { buildRequestUrl, parseRequestUrl } from './fields/requestUrl';
@@ -89,6 +89,13 @@ export function YAMLRequestDetails({
     setFormData(node.data || {});
   }, [node.id, node.data]);
 
+  const commitFormData = (newData: YAMLNodeData) => {
+    setFormData(newData);
+    if (onNodeUpdate) {
+      onNodeUpdate(node.id, newData);
+    }
+  };
+
   const handleFieldChange = (field: string, value: YAMLValue) => {
     const newData = { ...formData, [field]: value };
     // The two redirect modes are mutually exclusive.
@@ -98,10 +105,26 @@ export function YAMLRequestDetails({
     } else if (field === 'follow_redirects') {
       delete newData.redirect_automatically;
     }
-    setFormData(newData);
-    if (onNodeUpdate) {
-      onNodeUpdate(node.id, newData);
+    commitFormData(newData);
+  };
+
+  const handleBodyChange = (body: YAMLValue, type: BodyType) => {
+    const newData = { ...formData };
+
+    if (type === 'none') {
+      delete newData.body;
+      delete newData.body_raw;
+    } else if (type === 'raw' && typeof formData.body_raw === 'string') {
+      newData.body_raw = typeof body === 'string' ? body : getBodyText(body);
+      delete newData.body;
+    } else {
+      newData.body = body;
+      if (type === 'json' || type === 'form') {
+        delete newData.body_raw;
+      }
     }
+
+    commitFormData(newData);
   };
 
   const manualSearch = activeTab === 'request' ? requestSearch : responseSearch;
@@ -185,6 +208,7 @@ export function YAMLRequestDetails({
             effectiveFollowRedirects={effectiveFollowRedirects}
             requestMethod={requestMethod}
             onFieldChange={handleFieldChange}
+            onBodyChange={handleBodyChange}
             searchText={searchText}
             searchInputValue={requestSearch}
             searchMode={searchMode}
@@ -224,6 +248,7 @@ interface RequestContentProps {
   effectiveFollowRedirects: boolean;
   requestMethod: string;
   onFieldChange: (field: string, value: YAMLValue) => void;
+  onBodyChange: (body: YAMLValue, type: BodyType) => void;
   searchText: string;
   searchInputValue: string;
   searchMode: SearchMode;
@@ -243,6 +268,7 @@ function RequestContent({
   effectiveFollowRedirects,
   requestMethod,
   onFieldChange,
+  onBodyChange,
   searchText,
   searchInputValue,
   searchMode,
@@ -596,7 +622,7 @@ function RequestContent({
         body={formData.body}
         bodyRaw={formData.body_raw}
         contentType={contentType}
-        onBodyChange={body => onFieldChange('body', body)}
+        onBodyChange={onBodyChange}
         searchText={searchText}
         searchMode={searchMode}
         currentMatchIndex={currentMatchIndex}

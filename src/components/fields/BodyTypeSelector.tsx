@@ -7,7 +7,7 @@ import type { YAMLValue } from '../../types/yaml';
 import type { SearchMode } from '../debugSearch';
 import { Input } from '../ui/input';
 
-type BodyType = 'none' | 'json' | 'form' | 'raw';
+export type BodyType = 'none' | 'json' | 'form' | 'raw';
 
 interface HighlightedTextProps {
   text: string;
