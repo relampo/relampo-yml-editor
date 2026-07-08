@@ -576,13 +576,7 @@ export function YAMLDebugSession({
                         ? 'Skipped'
                         : activeEntry.status === 'failed'
                           ? 'Failed'
-                          : // RLP-571: a 200 that closes a redirect chain is a redirect follow-up
-                            // (the same set the tree badges REDIRECTED), so label it Redirect here
-                            // too instead of the generic Passed. Keep the 3xx hops labeled Redirect.
-                            isRedirectStepEvent(activeEntry.event) ||
-                              (activeEntry.event.status >= 300 && activeEntry.event.status < 400)
-                            ? 'Redirect'
-                            : 'Passed'}
+                          : 'Passed'}
                     </span>
                   </div>
                 </div>

@@ -51,6 +51,12 @@ function event(overrides: Partial<EngineEvent>): EngineEvent {
   };
 }
 
+function expectPassedStatusPill() {
+  expect(screen.getAllByText('Passed', { exact: true }).some(element => element.tagName.toLowerCase() === 'span')).toBe(
+    true,
+  );
+}
+
 describe('YAMLDebugSession RLP debug fixes', () => {
   it('does not render explanatory text under the selected debug request title', async () => {
     const { container } = render(
@@ -135,7 +141,7 @@ describe('YAMLDebugSession RLP debug fixes', () => {
     expect(redirectsValue.previousElementSibling).toHaveTextContent('1');
   });
 
-  it('labels a redirect-chain final 200 as Redirect, not Passed (RLP-571)', async () => {
+  it('labels a redirect-chain final 200 as Passed in Debug (RLP-571)', async () => {
     render(
       <YAMLDebugSession
         tree={null}
@@ -151,15 +157,47 @@ describe('YAMLDebugSession RLP debug fixes', () => {
     await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
 
     act(() => {
-      // A 200 that closes a redirect chain (chain_role "final"). The tree badges
-      // it REDIRECTED, so the Debug status pill must read Redirect, not Passed.
+      // The tree can badge this recorded child as REDIRECTED, but Debug reports
+      // the execution result family. A successful 200 remains Passed.
       debugApiMock.handlers[0].onEvent(
-        event({ name: '[14] GET /catalog', status: 200, chain_id: 'rc-13', chain_role: 'final', redirect_index: 1 }),
+        event({
+          name: '[14] GET /catalog',
+          path: '/catalog',
+          status: 200,
+          chain_id: 'rc-13',
+          chain_role: 'final',
+          redirect_index: 1,
+        }),
       );
     });
 
-    // Exact "Redirect" is unique to the status pill (the summary uses "Redirects").
-    expect(await screen.findByText('Redirect', { exact: true })).toBeInTheDocument();
+    await screen.findByRole('heading', { name: '/catalog' });
+    expectPassedStatusPill();
+    expect(screen.queryByText('Redirect', { exact: true })).toBeNull();
+  });
+
+  it('labels a successful 302 as Passed in Debug (RLP-571)', async () => {
+    render(
+      <YAMLDebugSession
+        tree={null}
+        yamlCode={'test:\n  name: redirect-status\n'}
+        documentReady
+        validationErrors={[]}
+        onSelectNode={vi.fn()}
+        onEditNode={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
+
+    act(() => {
+      debugApiMock.handlers[0].onEvent(event({ name: '[1] GET /logout', path: '/logout', status: 302 }));
+    });
+
+    await screen.findByRole('heading', { name: '/logout' });
+    expectPassedStatusPill();
+    expect(screen.queryByText('Redirect', { exact: true })).toBeNull();
   });
 
   it('still labels a plain 200 as Passed (RLP-571)', async () => {
