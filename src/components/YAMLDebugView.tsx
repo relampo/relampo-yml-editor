@@ -788,11 +788,16 @@ function DebugInspectorContent({
             {event.status || ''} response:
           </p>
         )}
-        {redirectHops.map((hop, index) => (
-          <p key={`${hop.status}-${hop.method ?? ''}-${hop.url ?? ''}-${hop.location ?? hop.target_url ?? ''}`} className="pl-6 text-zinc-400 break-all">
-            ↳ hop {index + 1}: {hop.status} {hop.method ? `${hop.method} ` : ''}{hop.url || ''} → {hop.location || hop.target_url || ''}
-          </p>
-        ))}
+        {redirectHops.map((hop, index) => {
+          const targetStatus = redirectHops[index + 1]?.status ?? event.status;
+          const targetMethod = redirectHops[index + 1]?.method ?? event.method;
+          return (
+            <p key={`${hop.status}-${hop.method ?? ''}-${hop.url ?? ''}-${hop.location ?? hop.target_url ?? ''}`} className="pl-6 text-zinc-400 break-all">
+              ↳ hop {index + 1}: {hop.status || '—'} {hop.method ? `${hop.method} ` : ''}{hop.url || ''} →{' '}
+              {targetStatus || '—'} {targetMethod ? `${targetMethod} ` : ''}{hop.location || hop.target_url || ''}
+            </p>
+          );
+        })}
         {/* RLP-598 #1: on the final 200 the full hop chain above already names the
             immediate predecessor, so drop the redundant "launched by" line there.
             Intermediate 302 children (no hop chain yet) still show it. */}
