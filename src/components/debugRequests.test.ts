@@ -166,6 +166,34 @@ describe('variableRowsForRequestNode', () => {
     expect(variableRowsForRequestNode(node, { token: 'abc', user: 'u', pass: 'p' })).toEqual([['token (RES)', 'abc']]);
   });
 
+  it('lists extracted variables even when the debug snapshot has no captured value', () => {
+    const node: YAMLNode = {
+      id: 'r2',
+      type: 'request',
+      name: '[2] GET /user/auth/login',
+      data: { method: 'GET', url: '/user/auth/login' },
+      children: [
+        {
+          id: 'viewstate',
+          type: 'extractor',
+          name: 'Extract: javax.faces.ViewState',
+          data: { type: 'regex', var: 'javax.faces.ViewState', pattern: 'ViewState" value="(.*?)"' },
+        },
+        {
+          id: 'session',
+          type: 'extractor',
+          name: 'Extract: USERSESSIONDATA',
+          data: { type: 'regex', var: 'USERSESSIONDATA', pattern: 'USERSESSIONDATA=([^;]+)' },
+        },
+      ],
+    };
+
+    expect(variableRowsForRequestNode(node, {})).toEqual([
+      ['javax.faces.ViewState (RES)', 'Not captured'],
+      ['USERSESSIONDATA (RES)', 'Not captured'],
+    ]);
+  });
+
   it('also lists variables the request uses via {{placeholders}} in headers/url/body', () => {
     // RLP-584: a request that references {{tenant_id}} in a header and {{user_id}}
     // in its url consumes those variables even though it extracts nothing — they
@@ -187,6 +215,21 @@ describe('variableRowsForRequestNode', () => {
       ['user_id (REQ)', '42'],
       ['tenant_id (REQ)', 't-1'],
     ]);
+  });
+
+  it('lists used variables even when the debug snapshot has no captured value', () => {
+    const node: YAMLNode = {
+      id: 'r',
+      type: 'request',
+      name: 'r',
+      data: {
+        method: 'POST',
+        url: '/flow',
+        body: 'javax.faces.ViewState={{javax.faces.ViewState}}',
+      },
+    };
+
+    expect(variableRowsForRequestNode(node, {})).toEqual([['javax.faces.ViewState (REQ)', 'Not captured']]);
   });
 
   it('surfaces correlation variables whose names contain dots or hyphens', () => {

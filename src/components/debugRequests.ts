@@ -405,6 +405,8 @@ export function variableRowLabel(name: string, roles: Set<VariableRole> | undefi
   return tags.length ? `${name} (${tags.join(', ')})` : name;
 }
 
+const MISSING_VARIABLE_VALUE = 'Not captured';
+
 export function variableRowsForRequestNode(
   node: YAMLNode | null,
   variables: Record<string, string>,
@@ -418,9 +420,8 @@ export function variableRowsForRequestNode(
   // it. RLP-584 / RLP-585 / RLP-597.
   if (!node) return [];
   const roles = requestVariableRoles(node);
-  return requestVariableNames(node).flatMap(name =>
-    Object.prototype.hasOwnProperty.call(variables, name)
-      ? [[variableRowLabel(name, roles.get(name)), variables[name]] as [string, string]]
-      : [],
-  );
+  return requestVariableNames(node).map<[string, string]>(name => [
+    variableRowLabel(name, roles.get(name)),
+    Object.prototype.hasOwnProperty.call(variables, name) ? variables[name] : MISSING_VARIABLE_VALUE,
+  ]);
 }
