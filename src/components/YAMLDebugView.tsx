@@ -27,7 +27,7 @@ import {
   variableRowsForRequestNode,
   type DebugStatus,
 } from './debugRequests';
-import { binaryBodyDisplay } from '../utils/binaryBody';
+import { binaryBodyDisplay, binaryBodyDownloadFromBase64 } from '../utils/binaryBody';
 import { startDebugRun, streamDebugRun, type DebugVUs, type EngineEvent } from '../utils/debugApi';
 import { DebugSection } from './debugSection';
 import { buildSearchRegex, findMatchRanges, type SearchMode } from './debugSearch';
@@ -669,6 +669,7 @@ function DebugInspectorContent({
   const responseBody = event.response_body
     ? (binaryBodyDisplay(event.response_body, event.response_headers) ?? event.response_body)
     : '<empty>';
+  const responseBodyDownload = binaryBodyDownloadFromBase64(event.response_body_base64, event.response_headers);
 
   if (tab === 'request') {
     const requestSearchText = [...requestRows.map(([label, value]) => `${label}: ${value}`), requestBody].join('\n');
@@ -726,6 +727,7 @@ function DebugInspectorContent({
         <DebugSection
           rows={responseRows}
           body={responseBody}
+          bodyDownload={responseBodyDownload}
           searchText={responseSearch}
           searchMode={responseSearchMode}
           currentMatchIndex={responseMatchIndex}

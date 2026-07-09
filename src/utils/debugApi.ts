@@ -40,6 +40,7 @@ export interface EngineEvent {
   transaction_id?: number;
   request_body?: string;
   response_body?: string;
+  response_body_base64?: string;
   request_headers?: Record<string, string>;
   response_headers?: Record<string, string>;
   redirects?: EngineRedirectHop[];

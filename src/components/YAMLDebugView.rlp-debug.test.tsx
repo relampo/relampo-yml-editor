@@ -742,6 +742,67 @@ describe('YAMLDebugSession RLP debug fixes', () => {
     ).toBeInTheDocument();
     // The raw mojibake is not dumped.
     expect(screen.queryByText((_, el) => (el?.textContent ?? '').includes(mojibake))).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Download response body bytes' })).not.toBeInTheDocument();
+  });
+
+  it('downloads exact response bytes when the debug event includes base64 bytes', async () => {
+    const originalCreateObjectURL = URL.createObjectURL;
+    const originalRevokeObjectURL = URL.revokeObjectURL;
+    const createObjectURL = vi.fn(() => 'blob:debug-response-body');
+    const revokeObjectURL = vi.fn();
+    Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: createObjectURL });
+    Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: revokeObjectURL });
+    let downloadedFilename = '';
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      downloadedFilename = this.download;
+    });
+
+    try {
+      render(
+        <YAMLDebugSession
+          tree={null}
+          yamlCode={'test:\n  name: binary-body-download\n'}
+          documentReady
+          validationErrors={[]}
+          onSelectNode={vi.fn()}
+          onEditNode={vi.fn()}
+        />,
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+      await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
+
+      const mojibake = '0' + String.fromCharCode(0xfffd) + String.fromCharCode(0xfffd) + 'B';
+      act(() => {
+        debugApiMock.handlers[0].onEvent(
+          event({
+            name: '[7] GET /cert.cer',
+            path: '/cert.cer',
+            response_body: mojibake,
+            response_body_base64: 'MIIGzg==',
+            response_headers: {
+              'Content-Disposition': 'attachment; filename=Certificado.cer',
+              'Content-Type': 'application/octet-stream',
+              'Content-Length': '4',
+            },
+          }),
+        );
+      });
+
+      await screen.findByRole('heading', { name: '/cert.cer' });
+      fireEvent.click(screen.getByRole('button', { name: 'response' }));
+      fireEvent.click(await screen.findByRole('button', { name: 'Download response body bytes' }));
+
+      expect(createObjectURL).toHaveBeenCalledTimes(1);
+      const blob = createObjectURL.mock.calls[0][0] as Blob;
+      expect(blob.type).toBe('application/octet-stream');
+      expect(Array.from(new Uint8Array(await blob.arrayBuffer()))).toEqual([48, 130, 6, 206]);
+      expect(downloadedFilename).toBe('Certificado.cer');
+      expect(revokeObjectURL).toHaveBeenCalledWith('blob:debug-response-body');
+    } finally {
+      Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: originalCreateObjectURL });
+      Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: originalRevokeObjectURL });
+    }
   });
 });
 

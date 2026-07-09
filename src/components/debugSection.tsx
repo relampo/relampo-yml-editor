@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { Download } from 'lucide-react';
 import { findMatchRanges, type SearchMode } from './debugSearch';
+import type { BinaryBodyDownload } from '../utils/binaryBody';
 
 export function DebugSection({
   rows,
   body,
+  bodyDownload,
   searchText = '',
   searchMode = 'text',
   currentMatchIndex = 0,
@@ -11,6 +14,7 @@ export function DebugSection({
 }: {
   rows: Array<[string, string]>;
   body?: string;
+  bodyDownload?: BinaryBodyDownload | null;
   searchText?: string;
   searchMode?: SearchMode;
   currentMatchIndex?: number;
@@ -25,6 +29,19 @@ export function DebugSection({
   ].join('\n');
   const hasBody = body !== undefined;
   const hasActiveSearch = searchText.trim().length > 0;
+
+  const downloadBody = () => {
+    if (!bodyDownload) return;
+    const blob = new Blob([bodyDownload.bytes], { type: bodyDownload.contentType });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = bodyDownload.filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="space-y-3">
@@ -51,7 +68,21 @@ export function DebugSection({
       )}
       {body !== undefined && (
         <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">Body</p>
+          <div className="mb-2 flex items-center gap-2">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">Body</p>
+            {bodyDownload && (
+              <button
+                type="button"
+                onClick={downloadBody}
+                className="ml-auto inline-flex h-7 items-center gap-1 rounded border border-white/10 bg-white/5 px-2 text-xs font-medium text-zinc-300 hover:border-sky-400/40 hover:bg-sky-400/10 hover:text-sky-100"
+                title="Download exact response bytes"
+                aria-label="Download response body bytes"
+              >
+                <Download className="h-3.5 w-3.5" aria-hidden="true" />
+                <span>Download body</span>
+              </button>
+            )}
+          </div>
           <pre className="min-h-72 max-h-[56vh] overflow-auto whitespace-pre-wrap break-words border border-white/10 bg-[#050505] p-3 text-xs leading-6 text-zinc-300">
             <HighlightedDebugText
               text={body}

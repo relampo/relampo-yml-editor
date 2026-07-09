@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   binaryBodyDisplay,
   binaryBodyDownload,
+  binaryBodyDownloadFromBase64,
   binaryBodyNotice,
   byteIndexedBytes,
   byteIndexedLength,
@@ -80,6 +81,21 @@ describe('binaryBodyDownload', () => {
 
   it('does not offer a download for non-recorded binary text', () => {
     expect(binaryBodyDownload('0' + FFFD + FFFD + '0', { 'Content-Type': 'application/octet-stream' })).toBeNull();
+  });
+
+  it('prepares exact debug bytes from base64', () => {
+    const download = binaryBodyDownloadFromBase64('MIIGzg==', {
+      'Content-Disposition': 'attachment; filename=Certificado.cer',
+      'Content-Type': 'application/pkix-cert',
+    });
+
+    expect(download?.contentType).toBe('application/pkix-cert');
+    expect(download?.filename).toBe('Certificado.cer');
+    expect(Array.from(download?.bytes ?? [])).toEqual([48, 130, 6, 206]);
+  });
+
+  it('does not offer a download for invalid base64', () => {
+    expect(binaryBodyDownloadFromBase64('not base64 %%%')).toBeNull();
   });
 });
 

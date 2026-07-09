@@ -90,6 +90,22 @@ export function binaryBodyDisplay(body: unknown, headers?: unknown): string | nu
 export function binaryBodyDownload(body: unknown, headers?: unknown): BinaryBodyDownload | null {
   const bytes = byteIndexedBytes(body);
   if (!bytes) return null;
+  return binaryBodyDownloadFromBytes(bytes, headers);
+}
+
+export function binaryBodyDownloadFromBase64(bodyBase64: unknown, headers?: unknown): BinaryBodyDownload | null {
+  if (typeof bodyBase64 !== 'string' || !bodyBase64.trim()) return null;
+  try {
+    const raw = atob(bodyBase64);
+    const bytes = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+    return binaryBodyDownloadFromBytes(bytes, headers);
+  } catch {
+    return null;
+  }
+}
+
+function binaryBodyDownloadFromBytes(bytes: Uint8Array, headers?: unknown): BinaryBodyDownload {
   const contentType = headerValue(headers, 'Content-Type').trim() || 'application/octet-stream';
   const extension = binaryBodyExtension(contentType);
   return {
