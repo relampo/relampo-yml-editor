@@ -635,6 +635,61 @@ describe('YAMLDebugSession tree selection sync', () => {
     expect(screen.queryByText('javax.faces.ViewState')).not.toBeInTheDocument();
   });
 
+  it('shows regex extractor values from the selected response body in the variables tab', async () => {
+    const requestA: YAMLNode = {
+      id: 'a',
+      type: 'request',
+      name: 'Request A',
+      data: { method: 'GET', url: '/user/auth/login' },
+      children: [
+        {
+          id: 'a_extract_viewstate',
+          type: 'extractor',
+          name: 'Extract: javax.faces.ViewState',
+          data: {
+            type: 'regex',
+            from: 'body',
+            var: 'javax.faces.ViewState',
+            pattern: 'name="javax\\.faces\\.ViewState" value="([^"]+)"',
+          },
+        },
+      ],
+    };
+    const tree: YAMLNode = { id: 'root', type: 'root', name: 'root', children: [requestA] };
+
+    render(
+      <YAMLDebugSession
+        tree={tree}
+        yamlCode={'test:\n  name: variables\n'}
+        documentReady
+        validationErrors={[]}
+        onSelectNode={vi.fn()}
+        onEditNode={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
+
+    act(() => {
+      debugApiMock.handlers[0].onEvent(
+        event({
+          name: 'Request A',
+          method: 'GET',
+          path: '/user/auth/login',
+          response_body: '<input name="javax.faces.ViewState" value="vs-token-123">',
+          variables: {},
+        }),
+      );
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'variables' }));
+
+    expect(await screen.findByText('javax.faces.ViewState (RES)')).toBeInTheDocument();
+    expect(screen.getByText('vs-token-123')).toBeInTheDocument();
+    expect(screen.queryByText('Not captured')).not.toBeInTheDocument();
+  });
+
   // RLP-576: long variable names (e.g. javax.faces.ViewState) must stay fully
   // readable and never collapse into the value column. The original report
   // showed clipped names glued to their value ("JAVAX.FACES.VIE517301297...").

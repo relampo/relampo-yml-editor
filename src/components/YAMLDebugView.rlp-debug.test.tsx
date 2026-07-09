@@ -256,7 +256,7 @@ describe('YAMLDebugSession RLP debug fixes', () => {
     expect(redirectsValue.previousElementSibling).toHaveTextContent('1');
   });
 
-  it('shows redirected follow-up context in logs instead of a separate banner', async () => {
+  it('shows redirected follow-up context in logs with the execution timeline number', async () => {
     const parentRequest: YAMLNode = {
       id: 'parent',
       type: 'request',
@@ -314,8 +314,104 @@ describe('YAMLDebugSession RLP debug fixes', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'logs' }));
 
-    expect(await screen.findByText(/redirected request launched by \[10\] POST \/login/)).toBeInTheDocument();
+    expect(await screen.findByText(/redirected request launched by \[10\]/)).toBeInTheDocument();
+    expect(screen.queryByText(/redirected request launched by \[10\] POST \/login/)).not.toBeInTheDocument();
     expect(screen.getByText(/→ \/dashboard/)).toBeInTheDocument();
+  });
+
+  it('uses the source hop execution number for redirected follow-up logs (RLP-598)', async () => {
+    const parentRequest: YAMLNode = {
+      id: 'parent',
+      type: 'request',
+      name: '[10] POST /login',
+      data: { request_id: 10, method: 'POST', url: '/login', chain_id: 'rc-10', chain_role: 'parent' },
+      path: ['scenarios', 0, 'steps', 10],
+    };
+    const hopRequest: YAMLNode = {
+      id: 'hop',
+      type: 'request',
+      name: '[11] GET /oauth/as-gestion',
+      data: { request_id: 11, method: 'GET', url: '/oauth/as-gestion', chain_id: 'rc-10', chain_role: 'hop' },
+      path: ['scenarios', 0, 'steps', 11],
+    };
+    const finalRequest: YAMLNode = {
+      id: 'final',
+      type: 'request',
+      name: '[12] GET /flowSelector.xhtml',
+      data: { request_id: 12, method: 'GET', url: '/flowSelector.xhtml', chain_id: 'rc-10', chain_role: 'final' },
+      path: ['scenarios', 0, 'steps', 12],
+    };
+    const tree: YAMLNode = { id: 'root', type: 'root', name: 'root', children: [parentRequest, hopRequest, finalRequest] };
+
+    render(
+      <YAMLDebugSession
+        tree={tree}
+        yamlCode={'test:\n  name: redirect-hop-log\n'}
+        documentReady
+        validationErrors={[]}
+        redirectedRequestMap={{
+          final: {
+            sourceNodeId: 'hop',
+            sourceRequestLabel: '[11] GET /oauth/as-gestion',
+            matchedLocation: '/flowSelector.xhtml',
+          },
+        }}
+        onSelectNode={vi.fn()}
+        onEditNode={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
+
+    act(() => {
+      debugApiMock.handlers[0].onEvent(
+        event({
+          name: '[10] GET /flowSelector.xhtml',
+          path: 'http://example.test/flowSelector.xhtml',
+          request_id: 10,
+          step_path: 'scenarios[0].steps[10].redirects[2]',
+          chain_id: 'rc-10',
+          chain_role: 'final',
+          redirect_index: 2,
+        }),
+      );
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'logs' }));
+
+    expect(await screen.findByText(/redirected request launched by \[10\.1\]/)).toBeInTheDocument();
+    expect(screen.queryByText(/redirected request launched by \[11\] GET \/oauth\/as-gestion/)).not.toBeInTheDocument();
+  });
+
+  it('breaks long redirect log URLs inside the log panel (RLP-598)', async () => {
+    const longUrl = `https://example.test/oauth/as-gestion?${'state=abcdef'.repeat(20)}`;
+
+    render(
+      <YAMLDebugSession
+        tree={null}
+        yamlCode={'test:\n  name: redirect-wrap\n'}
+        documentReady
+        validationErrors={[]}
+        onSelectNode={vi.fn()}
+        onEditNode={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
+
+    act(() => {
+      debugApiMock.handlers[0].onEvent(event({ name: longUrl, path: longUrl, status: 302 }));
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'logs' }));
+
+    const requestLine = await screen.findByText((content, element) => {
+      return element?.tagName.toLowerCase() === 'p' && content.includes(longUrl);
+    });
+    expect(requestLine).toHaveClass('break-all');
+    expect(requestLine.closest('div')).toHaveClass('overflow-hidden');
   });
 
   it('omits the redundant launched-by line on a final 200 that shows the hop chain (RLP-598)', async () => {

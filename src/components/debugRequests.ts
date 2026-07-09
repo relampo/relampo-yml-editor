@@ -395,6 +395,15 @@ export function requestVariableNames(node: YAMLNode | null): string[] {
 // data-source bind. RLP-597.
 export type VariableRole = 'REQ' | 'RES';
 
+export type VariableValueContext = {
+  requestBody?: string;
+  requestHeaders?: Record<string, string>;
+  requestUrl?: string;
+  responseBody?: string;
+  responseHeaders?: Record<string, string>;
+  statusLine?: string;
+};
+
 // Classifies every variable a request touches by role. A correlation variable
 // is RES on the request that captures it and REQ on each request that consumes
 // it, so the same name surfaces in at least two Variables tabs tagged by where
@@ -423,9 +432,82 @@ export function variableRowLabel(name: string, roles: Set<VariableRole> | undefi
 
 const MISSING_VARIABLE_VALUE = 'Not captured';
 
+function extractorSourceText(data: Record<string, unknown>, context: VariableValueContext): string {
+  const source = String(data.from || 'body').toLowerCase();
+  if (source === 'headers' || source === 'response_headers') return headersToText(context.responseHeaders);
+  if (source === 'status_line') return context.statusLine ?? '';
+  if (source === 'request_url') return context.requestUrl ?? '';
+  if (source === 'request_headers') return headersToText(context.requestHeaders);
+  return context.responseBody ?? '';
+}
+
+function headersToText(headers: Record<string, string> | undefined): string {
+  if (!headers) return '';
+  return Object.entries(headers)
+    .map(([name, value]) => `${name}: ${value}`)
+    .join('\n');
+}
+
+function compileExtractorRegex(pattern: string): RegExp | null {
+  let source = pattern;
+  let flags = 's';
+  const inlineFlags = source.match(/^\(\?([ims]+)\)/);
+  if (inlineFlags) {
+    for (const flag of inlineFlags[1]) {
+      if (!flags.includes(flag)) flags += flag;
+    }
+    source = source.slice(inlineFlags[0].length);
+  }
+  try {
+    return new RegExp(source, flags);
+  } catch {
+    return null;
+  }
+}
+
+function captureGroupIndex(data: Record<string, unknown>): number {
+  const group = Number(data.group ?? 1);
+  return Number.isFinite(group) && group >= 0 ? Math.floor(group) : 1;
+}
+
+function captureMatchIndex(data: Record<string, unknown>): number {
+  if (String(data.capture_mode || '').toLowerCase() !== 'index') return 0;
+  const index = Number(data.capture_index ?? data.match_no);
+  return Number.isFinite(index) && index > 0 ? Math.floor(index) - 1 : 0;
+}
+
+function regexExtractorValue(data: Record<string, unknown>, context: VariableValueContext): string | null {
+  const pattern = typeof data.pattern === 'string' ? data.pattern : typeof data.expression === 'string' ? data.expression : '';
+  if (!pattern) return null;
+  const source = extractorSourceText(data, context);
+  if (!source) return typeof data.default === 'string' && data.default ? data.default : null;
+  const regex = compileExtractorRegex(pattern);
+  if (!regex) return typeof data.default === 'string' && data.default ? data.default : null;
+  const matches = [...source.matchAll(new RegExp(regex.source, regex.flags.includes('g') ? regex.flags : `${regex.flags}g`))];
+  const match = matches[captureMatchIndex(data)];
+  if (!match) return typeof data.default === 'string' && data.default ? data.default : null;
+  const group = captureGroupIndex(data);
+  return match[group] ?? match[0] ?? null;
+}
+
+function responseExtractorValues(node: YAMLNode | null, context: VariableValueContext): Map<string, string> {
+  const values = new Map<string, string>();
+  node?.children?.forEach(child => {
+    if (child.type !== 'extractor' && child.type !== 'extract') return;
+    const name = extractorVariableName(child);
+    if (!name || values.has(name)) return;
+    const data = child.data && typeof child.data === 'object' ? (child.data as Record<string, unknown>) : {};
+    if (String(data.type || 'regex').toLowerCase() !== 'regex') return;
+    const value = regexExtractorValue(data, context);
+    if (value !== null) values.set(name, value);
+  });
+  return values;
+}
+
 export function variableRowsForRequestNode(
   node: YAMLNode | null,
   variables: Record<string, string>,
+  context: VariableValueContext = {},
 ): Array<[string, string]> {
   // A request's Variables tab lists the variables that request extracts *and*
   // the ones it uses (header/body/url placeholders, data-source binds), each
@@ -436,8 +518,15 @@ export function variableRowsForRequestNode(
   // it. RLP-584 / RLP-585 / RLP-597.
   if (!node) return [];
   const roles = requestVariableRoles(node);
-  return requestVariableNames(node).map<[string, string]>(name => [
-    variableRowLabel(name, roles.get(name)),
-    Object.prototype.hasOwnProperty.call(variables, name) ? variables[name] : MISSING_VARIABLE_VALUE,
-  ]);
+  const extracted = responseExtractorValues(node, context);
+  return requestVariableNames(node).map<[string, string]>(name => {
+    const variableRoles = roles.get(name);
+    const resolvedValue =
+      variableRoles?.has('RES') && extracted.has(name)
+        ? extracted.get(name)
+        : Object.prototype.hasOwnProperty.call(variables, name)
+          ? variables[name]
+          : MISSING_VARIABLE_VALUE;
+    return [variableRowLabel(name, variableRoles), resolvedValue ?? MISSING_VARIABLE_VALUE];
+  });
 }

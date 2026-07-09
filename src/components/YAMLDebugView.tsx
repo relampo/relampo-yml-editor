@@ -615,6 +615,7 @@ export function YAMLDebugSession({
                   entry={activeEntry}
                   tab={detailTab}
                   redirectedInfo={activeEntry.node ? (redirectedRequestMap[activeEntry.node.id] ?? null) : null}
+                  requestTargets={debugEventTargets}
                 />
               </div>
             </div>
@@ -636,10 +637,12 @@ function DebugInspectorContent({
   entry,
   tab,
   redirectedInfo,
+  requestTargets,
 }: {
   entry: DebugEntry;
   tab: DetailTab;
   redirectedInfo?: RedirectedRequestInfo | null;
+  requestTargets: YAMLNode[];
 }) {
   const [requestSearch, setRequestSearch] = useState('');
   const [requestSearchMode, setRequestSearchMode] = useState<SearchMode>('text');
@@ -757,7 +760,14 @@ function DebugInspectorContent({
   }
 
   if (tab === 'variables') {
-    const variables = variableRowsForRequestNode(entry.node, event.variables ?? {});
+    const variables = variableRowsForRequestNode(entry.node, event.variables ?? {}, {
+      requestBody: event.request_body,
+      requestHeaders: event.request_headers,
+      requestUrl: event.path,
+      responseBody: event.response_body,
+      responseHeaders: event.response_headers,
+      statusLine: event.status ? String(event.status) : undefined,
+    });
     if (variables.length === 0) {
       const usedNames = requestVariableNames(entry.node);
       const message =
@@ -772,10 +782,11 @@ function DebugInspectorContent({
   if (tab === 'logs') {
     const time = formatEventTime(event.ts);
     const redirectHops = event.redirects ?? [];
+    const sourceTimelineLabel = redirectedInfo ? redirectSourceTimelineLabel(redirectedInfo, requestTargets) : '';
     return (
-      <div className="border border-white/10 bg-[#050505] p-4 font-mono text-xs leading-6 text-zinc-300 wrap-break-word">
-        <p className="text-emerald-300">[{time}] debug session received request event</p>
-        <p className="text-blue-300">
+      <div className="max-w-full overflow-hidden border border-white/10 bg-[#050505] p-4 font-mono text-xs leading-6 text-zinc-300 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+        <p className="text-emerald-300 break-words">[{time}] debug session received request event</p>
+        <p className="text-blue-300 break-all">
           [{time}] {event.method} {event.path || event.name} - {event.status || '—'} ({formatLatency(event.latency_ms)})
         </p>
         {redirectHops.length > 0 && (
@@ -783,7 +794,7 @@ function DebugInspectorContent({
           // not the request's own status. Spell that out so a final 200 that
           // followed 302s no longer reads as if the request itself were a 302.
           // RLP-585 #7.
-          <p className="text-zinc-400">
+          <p className="text-zinc-400 break-words">
             [{time}] followed {redirectHops.length} redirect{redirectHops.length === 1 ? '' : 's'} before this{' '}
             {event.status || ''} response:
           </p>
@@ -802,8 +813,8 @@ function DebugInspectorContent({
             immediate predecessor, so drop the redundant "launched by" line there.
             Intermediate 302 children (no hop chain yet) still show it. */}
         {redirectedInfo && redirectHops.length === 0 && (
-          <p className="text-zinc-400">
-            [{time}] redirected request launched by {redirectedInfo.sourceRequestLabel}
+          <p className="text-zinc-400 break-all">
+            [{time}] redirected request launched by {sourceTimelineLabel || redirectedInfo.sourceRequestLabel}
             {redirectedInfo.matchedLocation ? ` → ${redirectedInfo.matchedLocation}` : ''}
           </p>
         )}
@@ -840,6 +851,21 @@ function DebugInspectorContent({
       />
     </div>
   );
+}
+
+function redirectSourceTimelineLabel(redirectedInfo: RedirectedRequestInfo, requestTargets: YAMLNode[]): string {
+  const source = requestTargets.find(node => node.id === redirectedInfo.sourceNodeId);
+  if (!source) return '';
+  const sourceEvent = {
+    method: String(source.data?.method ?? source.type ?? 'GET').toUpperCase(),
+    name: source.name,
+    path: String(source.data?.url ?? source.data?.path ?? source.name ?? ''),
+    request_id: source.data?.request_id,
+    chain_id: String(source.data?.chain_id ?? ''),
+    chain_role: String(source.data?.chain_role ?? ''),
+  };
+  const requestNumber = debugEventRequestNumber(sourceEvent, source, requestTargets);
+  return requestNumber ? `[${requestNumber}]` : '';
 }
 
 function DebugLine({ icon, title, value }: { icon: ReactNode; title: string; value: string }) {

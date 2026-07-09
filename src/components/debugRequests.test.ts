@@ -214,6 +214,58 @@ describe('variableRowsForRequestNode', () => {
     ]);
   });
 
+  it('resolves extracted regex variables from the selected response body when the snapshot is empty', () => {
+    const node: YAMLNode = {
+      id: 'r2',
+      type: 'request',
+      name: '[2] GET /user/auth/login',
+      data: { method: 'GET', url: '/user/auth/login' },
+      children: [
+        {
+          id: 'viewstate',
+          type: 'extractor',
+          name: 'Extract: javax.faces.ViewState',
+          data: {
+            type: 'regex',
+            from: 'body',
+            var: 'javax.faces.ViewState',
+            pattern: 'name="javax\\.faces\\.ViewState" value="([^"]+)"',
+            group: 1,
+          },
+        },
+      ],
+    };
+
+    expect(
+      variableRowsForRequestNode(node, {}, { responseBody: '<input name="javax.faces.ViewState" value="vs-token-123">' }),
+    ).toEqual([['javax.faces.ViewState (RES)', 'vs-token-123']]);
+  });
+
+  it('shows the value from the current response for RES rows instead of a stale accumulated snapshot value', () => {
+    const node: YAMLNode = {
+      id: 'r2',
+      type: 'request',
+      name: '[2] GET /user/auth/login',
+      data: { method: 'GET', url: '/user/auth/login' },
+      children: [
+        {
+          id: 'viewstate',
+          type: 'extractor',
+          name: 'Extract: javax.faces.ViewState',
+          data: { type: 'regex', var: 'javax.faces.ViewState', pattern: 'ViewState=([^&]+)' },
+        },
+      ],
+    };
+
+    expect(
+      variableRowsForRequestNode(
+        node,
+        { 'javax.faces.ViewState': 'previous-token' },
+        { responseBody: 'javax.faces.ViewState=actual-token' },
+      ),
+    ).toEqual([['javax.faces.ViewState (RES)', 'actual-token']]);
+  });
+
   it('also lists variables the request uses via {{placeholders}} in headers/url/body', () => {
     // RLP-584: a request that references {{tenant_id}} in a header and {{user_id}}
     // in its url consumes those variables even though it extracts nothing — they
