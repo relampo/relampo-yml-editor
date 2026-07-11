@@ -96,4 +96,31 @@ describe('YAMLContextMenu', () => {
 
     expect(screen.queryByRole('button', { name: 'Duplicate' })).not.toBeInTheDocument();
   });
+
+  it('offers copy and compatible paste actions for request children', () => {
+    const onCopy = vi.fn();
+    const onPaste = vi.fn();
+
+    render(
+      <LanguageProvider>
+        <YAMLContextMenu
+          x={10}
+          y={10}
+          node={{ id: 'headers', type: 'headers', name: 'Headers', data: {} }}
+          onClose={vi.fn()}
+          onAddNode={vi.fn()}
+          onRemove={vi.fn()}
+          onCopy={onCopy}
+          onPaste={onPaste}
+          canPaste
+        />
+      </LanguageProvider>,
+    );
+
+    screen.getByRole('button', { name: 'Copy' }).click();
+    screen.getByRole('button', { name: 'Paste' }).click();
+
+    expect(onCopy).toHaveBeenCalledWith('headers');
+    expect(onPaste).toHaveBeenCalledWith('headers');
+  });
 });

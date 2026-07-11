@@ -538,6 +538,49 @@ describe('YAMLTreeView search filtering', () => {
     });
   });
 
+  it('pastes copied headers inside another request', async () => {
+    let latestTree: YAMLNode | null = null;
+    const headers = {
+      id: 'headers',
+      type: 'headers' as const,
+      name: 'Headers',
+      data: { Accept: 'application/json', 'Accept-Language': 'en-US' },
+    };
+
+    renderInteractiveTreeView({
+      tree: {
+        id: 'steps',
+        type: 'steps',
+        name: 'Steps',
+        expanded: true,
+        children: [
+          { id: 'source', type: 'request', name: 'Source request', expanded: true, children: [headers] },
+          { id: 'target', type: 'request', name: 'Target request', expanded: true, children: [] },
+        ],
+      },
+      selectedNodeIds: ['headers'],
+      selectedNodeId: 'headers',
+      onTreeStateChange: tree => {
+        latestTree = tree;
+      },
+    });
+
+    const treeElement = screen.getByRole('tree');
+    fireEvent.keyDown(treeElement, { key: 'c', ctrlKey: true });
+    fireEvent.click(screen.getByRole('treeitem', { name: 'Target request' }));
+    fireEvent.keyDown(treeElement, { key: 'v', ctrlKey: true });
+
+    await waitFor(() => {
+      const target = latestTree?.children?.find(node => node.id === 'target');
+      expect(target?.children).toHaveLength(1);
+      expect(target?.children?.[0]).toMatchObject({
+        type: 'headers',
+        name: 'Headers (Copy)',
+        data: headers.data,
+      });
+    });
+  });
+
   it('does not duplicate the scenarios container from the keyboard shortcut', async () => {
     let latestTree: YAMLNode | null = null;
 
