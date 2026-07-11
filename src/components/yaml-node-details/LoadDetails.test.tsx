@@ -58,6 +58,8 @@ describe('LoadDetails', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Throughput' }));
 
+    expect(screen.queryByRole('button', { name: 'Intent' })).not.toBeInTheDocument();
+
     expect(onNodeUpdate).toHaveBeenCalledWith(
       'load-2',
       expect.objectContaining({
