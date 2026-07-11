@@ -125,6 +125,10 @@ export function YAMLLoadRunSession({
   const plannedLoadNode = loadNodes[0] ?? null;
   const hasValidationErrors = validationErrors.length > 0;
   const latest = snapshots[snapshots.length - 1] ?? null;
+  const executedRequests = useMemo(
+    () => logs.filter(line => line.level === 'request' && Boolean(line.method)),
+    [logs],
+  );
   const hasRunActivity = snapshots.length > 0 || logs.length > 0 || summary != null;
 
   // Wires a run's SSE stream into the dashboard. Shared by a fresh Run and by
@@ -408,7 +412,7 @@ export function YAMLLoadRunSession({
               </div>
             )}
 
-            <LiveLogPanel logs={logs} scrollRef={logScrollRef} />
+            {executedRequests.length > 0 && <ExecutedRequestsPanel requests={executedRequests} />}
 
             {summary && (
               <RunSummaryPanel
@@ -417,6 +421,8 @@ export function YAMLLoadRunSession({
                 reportUrl={activeRunIdRef.current ? loadRunReportUrl(activeRunIdRef.current) : undefined}
               />
             )}
+
+            <LiveLogPanel logs={logs} scrollRef={logScrollRef} />
           </div>
         )}
       </div>
@@ -515,6 +521,41 @@ function logLineText(line: RunLogLine): string {
     return `${vu}${line.method} ${line.path || ''}${status}${latency}${error}`;
   }
   return line.message || '';
+}
+
+function ExecutedRequestsPanel({ requests }: { requests: RunLogLine[] }) {
+  return (
+    <div className="border border-white/10 bg-[#111111]">
+      <div className="flex items-center gap-2 border-b border-white/5 px-4 py-3">
+        <Activity className="h-4 w-4 text-blue-300" />
+        <p className="text-sm font-semibold text-zinc-100">Executed requests</p>
+        <span className="ml-auto font-mono text-[10px] text-zinc-500">{requests.length}</span>
+      </div>
+      <div className="max-h-72 overflow-y-auto">
+        {requests.map(request => (
+          <div
+            key={request.seq}
+            className="grid grid-cols-[auto_auto_minmax(0,1fr)_auto_auto] items-center gap-3 border-b border-white/5 px-4 py-2 text-xs last:border-b-0"
+          >
+            <span className="font-mono text-[10px] text-zinc-600">#{request.seq + 1}</span>
+            <span className="font-mono text-[10px] text-zinc-500">{request.vu ? `VU${request.vu}` : '—'}</span>
+            <span className="min-w-0 truncate text-zinc-200" title={`${request.method} ${request.path ?? ''}`}>
+              <span className="mr-2 rounded border border-blue-400/25 bg-blue-400/10 px-1.5 py-0.5 text-[10px] font-semibold text-blue-300">
+                {request.method}
+              </span>
+              {request.path || '—'}
+            </span>
+            <span className={request.status && request.status >= 400 ? 'font-mono text-red-300' : 'font-mono text-emerald-300'}>
+              {request.status || '—'}
+            </span>
+            <span className="font-mono text-zinc-400">
+              {request.latency_ms != null ? formatMs(request.latency_ms) : '—'}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 // A live-tailing log feed of engine events (one panel, capped client-side and
