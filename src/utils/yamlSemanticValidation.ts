@@ -33,6 +33,10 @@ export function validateYAMLSemantics(tree: YAMLNode | null): YAMLSemanticIssue[
   }
 
   const walk = (node: YAMLNode) => {
+    if (node.data?.enabled === false) {
+      return;
+    }
+
     if (node.type === 'transaction' && (node.children?.length || 0) < 1) {
       issues.push({
         nodeId: node.id,
