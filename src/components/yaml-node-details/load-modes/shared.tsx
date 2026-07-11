@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
 import { Input } from '../../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
 import { limitedInputValue, type LoadData, type LoadDataValue } from '../loadUtils';
@@ -35,7 +35,7 @@ export function LoadGrid({ children }: { children: ReactNode }) {
 interface LoadFieldProps {
   label: string;
   value: string | number;
-  placeholder: string;
+  placeholder?: string;
   onChange: (value: string) => void;
   helpText?: string;
   type?: 'text' | 'number';
@@ -49,30 +49,49 @@ export function LoadField({
   onChange,
   helpText,
   type = 'text',
-  maxLength = 5,
+  maxLength = 16,
 }: LoadFieldProps) {
+  const inputId = useId();
+  const helpId = `${inputId}-help`;
+
   return (
     <div className="space-y-2">
-      <label className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">{label}</label>
+      <label
+        htmlFor={inputId}
+        className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500"
+      >
+        {label}
+      </label>
       <Input
+        id={inputId}
         type={type}
         maxLength={maxLength}
         value={value}
         onChange={event => onChange(event.target.value)}
         placeholder={placeholder}
+        aria-describedby={helpText ? helpId : undefined}
         className="h-10 w-full rounded-md border border-white/10 bg-[#151515] px-3 py-2 text-sm font-mono text-zinc-200"
       />
-      {helpText && <p className="text-[11px] leading-relaxed text-zinc-500">{helpText}</p>}
+      {helpText && (
+        <p
+          id={helpId}
+          className="text-[11px] leading-relaxed text-zinc-500"
+        >
+          {helpText}
+        </p>
+      )}
     </div>
   );
 }
 
-export const LOAD_DURATION_HELP_TEXT = 'Format: 500ms, 5s, 5m';
+export const LOAD_DURATION_HELP_TEXT = 'Default unit: seconds. Examples: 500ms, 5s, 5m.';
+export const LOAD_USERS_HELP_TEXT = 'Number of concurrent virtual users.';
+export const LOAD_ITERATIONS_HELP_TEXT = 'Optional limit for how many times each virtual user repeats the scenario.';
 
 interface LoadFieldConfig {
   field: string;
   label: string;
-  placeholder: string;
+  placeholder?: string;
   helpText?: string;
   type?: 'text' | 'number';
   maxLength?: number;

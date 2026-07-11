@@ -160,7 +160,7 @@ export function parseTimeToSeconds(timeStr: string): number {
   if (!timeStr) {
     return 0;
   }
-  const match = timeStr.trim().match(/^(\d+(?:\.\d+)?)(ms|s|m|h)$/);
+  const match = timeStr.trim().match(/^(\d+(?:\.\d+)?)(ms|s|m|h)?$/);
   if (!match) {
     return 60;
   }
@@ -177,7 +177,7 @@ export function parseTimeToSeconds(timeStr: string): number {
     case 'h':
       return num * 3600;
     default:
-      return 60;
+      return num;
   }
 }
 
@@ -283,7 +283,7 @@ export function getIntentAutoConfig(data: LoadData = {}): IntentAutoConfig {
 }
 
 export function limitedInputValue(value: string): string {
-  return value.slice(0, 5);
+  return value.slice(0, 16);
 }
 
 interface LoadDataBuildOptions {
