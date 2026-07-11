@@ -1,4 +1,4 @@
-import { Copy, Eye, EyeOff, Plus, Trash2 } from 'lucide-react';
+import { ClipboardPaste, Copy, Eye, EyeOff, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import type { YAMLNode } from '../types/yaml';
@@ -11,6 +11,9 @@ interface YAMLContextMenuProps {
   onClose: () => void;
   onAddNode: (nodeType: YAMLAddableNodeType) => void;
   onRemove: () => void;
+  onCopy?: (nodeId: string) => void;
+  onPaste?: (nodeId: string) => void;
+  canPaste?: boolean;
   onDuplicate?: (nodeId: string) => void;
   onToggleEnabled?: (nodeId: string, enabled: boolean) => void;
 }
@@ -22,6 +25,9 @@ export function YAMLContextMenu({
   onClose,
   onAddNode,
   onRemove,
+  onCopy,
+  onPaste,
+  canPaste = false,
   onDuplicate,
   onToggleEnabled,
 }: YAMLContextMenuProps) {
@@ -79,6 +85,7 @@ export function YAMLContextMenu({
   const canShowNodeActions = node.type !== 'root' && node.type !== 'test' && node.type !== 'scenarios' && node.type !== 'steps';
   const canToggleEnabled = canShowNodeActions && Boolean(onToggleEnabled);
   const canDuplicate = canShowNodeActions && node.type !== 'scenario' && Boolean(onDuplicate);
+  const canCopy = canShowNodeActions && node.type !== 'scenario' && Boolean(onCopy);
   const canRemove = canShowNodeActions;
 
   if (!canAddChildren && !canToggleEnabled && !canDuplicate && !canRemove) {
@@ -151,6 +158,32 @@ export function YAMLContextMenu({
       {canRemove && (
         <>
           <div className="h-px bg-white/5 my-1" />
+
+          {canCopy && (
+            <button
+              onClick={() => {
+                onCopy?.(node.id);
+                onClose();
+              }}
+              className="w-full px-3 py-2 flex items-center gap-3 hover:bg-white/5 text-left transition-colors text-zinc-300"
+            >
+              <Copy className="w-4 h-4" />
+              <span className="text-sm">{t('yamlEditor.common.copy') || 'Copy'}</span>
+            </button>
+          )}
+
+          {canPaste && onPaste && (
+            <button
+              onClick={() => {
+                onPaste(node.id);
+                onClose();
+              }}
+              className="w-full px-3 py-2 flex items-center gap-3 hover:bg-white/5 text-left transition-colors text-zinc-300"
+            >
+              <ClipboardPaste className="w-4 h-4" />
+              <span className="text-sm">Paste</span>
+            </button>
+          )}
 
           {canDuplicate && (
             <button

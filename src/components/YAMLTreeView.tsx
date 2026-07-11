@@ -2,6 +2,7 @@ import { BetweenHorizontalStart, Plus, Search, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import type { RedirectedRequestInfo, YAMLNode } from '../types/yaml';
+import { canContain } from '../utils/yamlDragDropRules';
 import { createNodeByType } from './yaml-tree-view/nodeFactory';
 import {
   addNodeToTree,
@@ -453,10 +454,10 @@ export function YAMLTreeView({
     });
   };
 
-  const handleCopySelection = () => {
-    if (effectiveSelectedIds.length === 0) return;
+  const handleCopySelection = (nodeIds = effectiveSelectedIds) => {
+    if (nodeIds.length === 0) return;
 
-    const copied = effectiveSelectedIds
+    const copied = nodeIds
       .map(id => nodeById.get(id))
       .filter(Boolean)
       .map(node => cloneNodeSnapshot(node as YAMLNode));
@@ -464,7 +465,7 @@ export function YAMLTreeView({
     setClipboardNodes(copied);
   };
 
-  const handlePasteSelection = () => {
+  const handlePasteSelection = (targetOverride?: YAMLNode) => {
     if (!tree || clipboardNodes.length === 0) return;
 
     const copySuffix = t('yamlEditor.common.copy') || 'Copy';
@@ -473,12 +474,23 @@ export function YAMLTreeView({
       .map(node => cloneNodeWithNewIds(node, copySuffix));
     if (pastedNodes.length === 0) return;
 
-    const targetNode = selectedNode && nodeById.get(selectedNode.id) ? selectedNode : tree;
+    const targetNode = targetOverride ?? (selectedNode && nodeById.get(selectedNode.id) ? selectedNode : tree);
+    const canPasteInside = pastedNodes.every(node => canContain(targetNode.type, node.type));
 
-    const updatedTree =
-      targetNode.id === tree.id
-        ? [...pastedNodes].reverse().reduce((currentTree, node) => addNodeToTree(currentTree, tree.id, node), tree)
-        : insertNodesAfterTarget(tree, targetNode.id, pastedNodes);
+    let updatedTree: YAMLNode;
+    if (canPasteInside) {
+      updatedTree = [...pastedNodes].reverse().reduce(
+        (currentTree, node) => addNodeToTree(currentTree, targetNode.id, node),
+        tree,
+      );
+    } else if (targetNode.id === tree.id) {
+      updatedTree = [...pastedNodes].reverse().reduce(
+        (currentTree, node) => addNodeToTree(currentTree, tree.id, node),
+        tree,
+      );
+    } else {
+      updatedTree = insertNodesAfterTarget(tree, targetNode.id, pastedNodes);
+    }
 
     onTreeChange(updatedTree);
     onSelectionChange(
@@ -654,6 +666,15 @@ export function YAMLTreeView({
           onClose={handleCloseContextMenu}
           onAddNode={handleAddNode}
           onRemove={handleRemoveNode}
+          onCopy={nodeId => handleCopySelection(getContextActionTargetIds(nodeId))}
+          onPaste={nodeId => {
+            const target = findNodeById(tree, nodeId);
+            if (target) handlePasteSelection(target);
+          }}
+          canPaste={
+            clipboardNodes.some(canDuplicateNode) &&
+            clipboardNodes.filter(canDuplicateNode).every(node => canContain(contextMenu.node.type, node.type))
+          }
           onDuplicate={handleDuplicateNode}
           onToggleEnabled={handleToggleEnabled}
         />
