@@ -487,10 +487,7 @@ function getNodeBadge(node: YAMLNode, options: { mutedMethod?: boolean } = {}): 
   const { mutedMethod = false } = options;
   const httpMethods = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
 
-  if (
-    node.data?.enabled === false &&
-    (httpMethods.includes(node.type) || node.type === 'request' || node.type === 'sql')
-  ) {
+  if (node.data?.enabled === false) {
     return (
       <span className="text-xs px-1.5 py-0.5 rounded bg-zinc-700/30 text-zinc-400 font-mono font-medium border border-zinc-600/30 uppercase">
         disabled
