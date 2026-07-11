@@ -104,8 +104,11 @@ describe('YAMLLoadRunSession', () => {
 
     // The req/s value appears on the stat card (and the sparkline header).
     expect(screen.getAllByText('123').length).toBeGreaterThan(0);
-    expect(screen.getByText('200')).toBeInTheDocument();
-    // The live log feed renders the streamed engine line.
+    expect(screen.getAllByText('200').length).toBeGreaterThan(0);
+    // Requests appear as soon as their SSE log event arrives, before onDone.
+    expect(screen.getByText('Executed requests')).toBeInTheDocument();
+    expect(screen.getByText('/api/x')).toBeInTheDocument();
+    // The live log feed still renders the streamed engine line.
     expect(screen.getByText('Live logs')).toBeInTheDocument();
     expect(screen.getByText(/GET \/api\/x/)).toBeInTheDocument();
 
@@ -115,6 +118,10 @@ describe('YAMLLoadRunSession', () => {
 
     expect(await screen.findByText('Run summary')).toBeInTheDocument();
     expect(screen.getByText('3.0s')).toBeInTheDocument();
+
+    const summaryHeading = screen.getByText('Run summary');
+    const logsHeading = screen.getByText('Live logs');
+    expect(summaryHeading.compareDocumentPosition(logsHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('asks the server to stop the active run when Stop is clicked', async () => {
