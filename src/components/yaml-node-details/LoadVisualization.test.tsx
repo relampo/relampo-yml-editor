@@ -55,4 +55,21 @@ describe('LoadVisualization', () => {
     expect(screen.getByText(/warmup 30s/i)).toBeInTheDocument();
     expect(screen.getByText(/Total:\s*10m/i)).toBeInTheDocument();
   });
+
+  it('shows an unbounded total when constant load has no duration', () => {
+    renderWithLanguage(
+      <LoadVisualization
+        loadType="constant"
+        data={{
+          type: 'constant',
+          users: '15',
+          duration: '',
+          ramp_up: '15s',
+        }}
+      />,
+    );
+
+    expect(screen.getByText(/Peak Users:\s*15\s*\|\s*Total:\s*∞/i)).toBeInTheDocument();
+    expect(screen.getAllByText('∞')).not.toHaveLength(0);
+  });
 });

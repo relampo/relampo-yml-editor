@@ -24,6 +24,7 @@ export function LoadVisualization({ data, loadType, progressSeconds }: LoadVisua
       t(key),
     );
   const visualizationPoints = getVisualizationPoints(effectiveData, loadType);
+  const hasKnownDuration = String(effectiveData.duration ?? '').trim() !== '';
   const intentTargetUnit = String(effectiveData.target_unit || 'rps').toLowerCase();
   const intentTargetValue = Math.max(0, parseFloat(String(effectiveData.target_value || '0')) || 0);
   const isIntent = loadType === 'intent';
@@ -53,7 +54,7 @@ export function LoadVisualization({ data, loadType, progressSeconds }: LoadVisua
 
   const timeAxisTicks = [0, 1, 2, 3, 4].map(index => ({
     x: 40 + index * 85,
-    label: formatTimeLabel(Math.round((maxTime / 4) * index)),
+    label: !hasKnownDuration && index === 4 ? '∞' : formatTimeLabel(Math.round((maxTime / 4) * index)),
   }));
 
   const timeRanges = getTimeRanges(effectiveData, loadType, maxTime).map(range => ({
@@ -180,7 +181,7 @@ export function LoadVisualization({ data, loadType, progressSeconds }: LoadVisua
             {format('yamlEditor.loadVisualization.summary', {
               axis: yAxisLabel,
               peak: maxUsers.toFixed(0),
-              total: formatTimeLabel(maxTime),
+              total: hasKnownDuration ? formatTimeLabel(maxTime) : '∞',
             })}
           </span>
         </div>
