@@ -702,7 +702,7 @@ describe('YAMLDebugSession RLP debug fixes', () => {
     expect(screen.getByText('#123.1')).toBeInTheDocument();
   });
 
-  it('does not weave parent-subindexed rows when the redirect parent has Follow Redirects off', async () => {
+  it('keeps no-follow redirect children standalone in rows and variable snapshots (RLP-597)', async () => {
     const parent: YAMLNode = {
       id: 'p2',
       type: 'request',
@@ -716,6 +716,14 @@ describe('YAMLDebugSession RLP debug fixes', () => {
         chain_role: 'parent',
       },
       path: ['scenarios', 0, 'steps', 1],
+      children: [
+        {
+          id: 'parent-extractor',
+          type: 'extractor',
+          name: 'Extract token',
+          data: { type: 'regex', var: 'token', pattern: 'token=([^&]+)' },
+        },
+      ],
     };
     const hop3: YAMLNode = {
       id: 'h3',
@@ -787,6 +795,7 @@ describe('YAMLDebugSession RLP debug fixes', () => {
           chain_id: 'rc-2',
           chain_role: 'parent',
           request_id: 2,
+          variables: { token: 'parent-value' },
         }),
       );
       debugApiMock.handlers[0].onEvent(
@@ -798,6 +807,7 @@ describe('YAMLDebugSession RLP debug fixes', () => {
           chain_role: 'hop',
           redirect_index: 1,
           request_id: 2,
+          variables: { token: 'future-child-value' },
         }),
       );
       debugApiMock.handlers[0].onEvent(
@@ -833,6 +843,12 @@ describe('YAMLDebugSession RLP debug fixes', () => {
     expect(screen.queryByText('#2.2')).not.toBeInTheDocument();
     expect(screen.queryByText('#2.3')).not.toBeInTheDocument();
     expect(screen.queryByText('Skipped · redirect not followed')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('#2').closest('button')!);
+    fireEvent.click(screen.getByRole('button', { name: 'variables' }));
+    expect(await screen.findByText('token (RES)')).toBeInTheDocument();
+    expect(screen.getByText('parent-value')).toBeInTheDocument();
+    expect(screen.queryByText('future-child-value')).toBeNull();
   });
 
   it('shows a binary response body as a compact notice, not mojibake (RLP-555)', async () => {
