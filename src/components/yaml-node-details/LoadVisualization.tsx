@@ -35,12 +35,12 @@ export function LoadVisualization({ data, loadType, progressSeconds }: LoadVisua
   const intentRpsBandHalf = isIntentRps ? Math.max(0.3, intentTargetValue * 0.12) : 0;
   const intentRpsBandMin = Math.max(0, intentTargetValue - intentRpsBandHalf);
   const intentRpsBandMax = intentTargetValue + intentRpsBandHalf;
-  const maxUsers = Math.max(
+  const peakUsers = Math.max(
     ...visualizationPoints.map(point => point.users),
     showIntentVuBand ? intentMaxVus : 0,
     isIntentRps ? intentRpsBandMax : 0,
-    10,
   );
+  const maxUsers = Math.max(peakUsers, 10);
   const totalTime = Math.max(...visualizationPoints.map(point => point.time), 0);
   const maxTime = Math.max(totalTime, 60);
   const hasFiniteDuration = String(effectiveData.duration ?? '').trim() !== '';
@@ -181,7 +181,7 @@ export function LoadVisualization({ data, loadType, progressSeconds }: LoadVisua
           <span className="font-mono">
             {format('yamlEditor.loadVisualization.summary', {
               axis: yAxisLabel,
-              peak: maxUsers.toFixed(0),
+              peak: peakUsers.toFixed(0),
               total: hasFiniteDuration ? formatTimeLabel(totalTime) : '∞',
             })}
           </span>
@@ -563,9 +563,14 @@ function getVisualizationPoints(data: LoadData, loadType: LoadType) {
   if (loadType === 'constant') {
     const users = parseInt(String(data.users || '10'), 10) || 10;
     const rampUp = parseTimeToSeconds(String(data.ramp_up || '0s'));
-    const duration = parseTimeToSeconds(String(data.duration || '60s'));
+    const durationValue = String(data.duration ?? '').trim();
+    const duration = durationValue ? parseTimeToSeconds(durationValue) : Math.max(60, rampUp);
     if (rampUp > 0) {
-      points.push({ time: 0, users: 0 }, { time: rampUp, users }, { time: duration, users });
+      const rampEnd = Math.min(rampUp, duration);
+      points.push({ time: 0, users: 0 }, { time: rampEnd, users: users * (rampEnd / rampUp) });
+      if (rampEnd < duration) {
+        points.push({ time: duration, users });
+      }
     } else {
       points.push({ time: 0, users }, { time: duration, users });
     }
@@ -633,7 +638,7 @@ function getTimeRanges(data: LoadData, loadType: LoadType, maxTime: number) {
       ? [
           { key: 'rampUp', label: 'Ramp Up', start: 0, end: Math.min(rampUp, maxTime) },
           { key: 'steady', label: 'Steady', start: Math.min(rampUp, maxTime), end: maxTime },
-        ]
+        ].filter(range => range.end > range.start)
       : [{ key: 'steady', label: 'Steady', start: 0, end: maxTime }];
   }
   if (loadType === 'linear') {
