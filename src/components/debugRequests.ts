@@ -480,12 +480,12 @@ function regexExtractorValue(data: Record<string, unknown>, context: VariableVal
   const pattern = typeof data.pattern === 'string' ? data.pattern : typeof data.expression === 'string' ? data.expression : '';
   if (!pattern) return null;
   const source = extractorSourceText(data, context);
-  if (!source) return typeof data.default === 'string' && data.default ? data.default : null;
+  if (!source) return null;
   const regex = compileExtractorRegex(pattern);
-  if (!regex) return typeof data.default === 'string' && data.default ? data.default : null;
+  if (!regex) return null;
   const matches = [...source.matchAll(new RegExp(regex.source, regex.flags.includes('g') ? regex.flags : `${regex.flags}g`))];
   const match = matches[captureMatchIndex(data)];
-  if (!match) return typeof data.default === 'string' && data.default ? data.default : null;
+  if (!match) return null;
   const group = captureGroupIndex(data);
   return match[group] ?? match[0] ?? null;
 }

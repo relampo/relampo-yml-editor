@@ -266,6 +266,36 @@ describe('variableRowsForRequestNode', () => {
     ).toEqual([['javax.faces.ViewState (RES)', 'actual-token']]);
   });
 
+  it('keeps a captured snapshot value when the selected response only yields the extractor default', () => {
+    const node: YAMLNode = {
+      id: 'r2',
+      type: 'request',
+      name: '[2] GET /user/auth/login',
+      data: { method: 'GET', url: '/user/auth/login' },
+      children: [
+        {
+          id: 'viewstate',
+          type: 'extractor',
+          name: 'Extract: javax.faces.ViewState',
+          data: {
+            type: 'regex',
+            var: 'javax.faces.ViewState',
+            pattern: 'ViewState=([^&]+)',
+            default: 'Regex value not found: javax.faces.ViewState',
+          },
+        },
+      ],
+    };
+
+    expect(
+      variableRowsForRequestNode(
+        node,
+        { 'javax.faces.ViewState': 'captured-child-value' },
+        { responseBody: '<html>redirect parent</html>' },
+      ),
+    ).toEqual([['javax.faces.ViewState (RES)', 'captured-child-value']]);
+  });
+
   it('also lists variables the request uses via {{placeholders}} in headers/url/body', () => {
     // RLP-584: a request that references {{tenant_id}} in a header and {{user_id}}
     // in its url consumes those variables even though it extracts nothing — they
