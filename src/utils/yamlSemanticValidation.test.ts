@@ -70,6 +70,57 @@ describe('validateYAMLSemantics', () => {
     expect(validateYAMLSemantics(tree)).toEqual([]);
   });
 
+  it('ignores an empty disabled transaction', () => {
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'test',
+      name: 'Test',
+      children: [
+        {
+          id: 'transaction-1',
+          type: 'transaction',
+          name: 'Group 03 - demo',
+          data: { name: 'Group 03 - demo', enabled: false },
+          children: [],
+        },
+      ],
+    };
+
+    expect(validateYAMLSemantics(tree)).toEqual([]);
+  });
+
+  it('flags an enabled transaction whose children are all disabled', () => {
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'test',
+      name: 'Test',
+      children: [
+        {
+          id: 'transaction-1',
+          type: 'transaction',
+          name: 'Group 03 - demo',
+          data: { name: 'Group 03 - demo' },
+          children: [
+            {
+              id: 'request-1',
+              type: 'get',
+              name: 'GET /disabled',
+              data: { url: '/disabled', enabled: false },
+              children: [],
+            },
+          ],
+        },
+      ],
+    };
+
+    expect(validateYAMLSemantics(tree)).toEqual([
+      {
+        nodeId: 'transaction-1',
+        message: '"Group 03 - demo" must contain at least 1 related step.',
+      },
+    ]);
+  });
+
   it('flags more than one scenario', () => {
     const tree: YAMLNode = {
       id: 'root',
