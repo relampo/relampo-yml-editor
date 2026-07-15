@@ -314,9 +314,11 @@ describe('YAMLDebugSession RLP debug fixes', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'logs' }));
 
-    expect(await screen.findByText(/redirected request launched by \[10\]/)).toBeInTheDocument();
-    expect(screen.queryByText(/redirected request launched by \[10\] POST \/login/)).not.toBeInTheDocument();
-    expect(screen.getByText(/→ \/dashboard/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        /redirected request: \[10\] POST http:\/\/example\.test\/login → 200 GET http:\/\/example\.test\/dashboard/,
+      ),
+    ).toBeInTheDocument();
   });
 
   it('uses the source hop execution number for redirected follow-up logs (RLP-598)', async () => {
@@ -380,8 +382,11 @@ describe('YAMLDebugSession RLP debug fixes', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'logs' }));
 
-    expect(await screen.findByText(/redirected request launched by \[10\.1\]/)).toBeInTheDocument();
-    expect(screen.queryByText(/redirected request launched by \[11\] GET \/oauth\/as-gestion/)).not.toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        /redirected request: \[10\.1\] GET http:\/\/example\.test\/oauth\/as-gestion → 200 GET http:\/\/example\.test\/flowSelector\.xhtml/,
+      ),
+    ).toBeInTheDocument();
   });
 
   it('breaks long redirect log URLs inside the log panel (RLP-598)', async () => {
@@ -463,6 +468,43 @@ describe('YAMLDebugSession RLP debug fixes', () => {
     expect(await screen.findByText(/followed 1 redirect before this 200 response/)).toBeInTheDocument();
     // ...so the redundant "redirected request launched by" line is dropped.
     expect(screen.queryByText(/redirected request launched by/)).toBeNull();
+  });
+
+  it('uses absolute URLs for the final target in redirect hop logs (RLP-598)', async () => {
+    render(
+      <YAMLDebugSession
+        tree={null}
+        yamlCode={'test:\n  name: redirect-hosts\n'}
+        documentReady
+        validationErrors={[]}
+        onSelectNode={vi.fn()}
+        onEditNode={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
+
+    act(() => {
+      debugApiMock.handlers[0].onEvent(
+        event({
+          name: 'GET /landing',
+          path: 'https://app.example.test/landing',
+          status: 200,
+          redirects: [
+            { status: 302, method: 'GET', url: 'https://app.example.test/start', location: '/landing' },
+          ],
+        }),
+      );
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'logs' }));
+
+    expect(
+      await screen.findByText(
+        /↳ hop 1: 302 GET https:\/\/app\.example\.test\/start → 200 GET https:\/\/app\.example\.test\/landing/,
+      ),
+    ).toBeInTheDocument();
   });
 
   it('Overview shows the runtime URL, not the recorded one with the stale correlated value (RLP-593)', async () => {
