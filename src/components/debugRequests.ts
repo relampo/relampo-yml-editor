@@ -133,7 +133,10 @@ export function debugEventRequestNumber(event: DebugEventLike, matchedNode: YAML
     const position = redirectChainPosition(event, matchedNode, chainId, requestNodes);
     return position > 0 ? `${base}.${position}` : base;
   }
-  return String(matchedNode?.data?.request_id ?? event.request_id ?? '').trim();
+  if (chainId && redirectChainParentDisablesFollow(chainId, requestNodes)) {
+    return String(matchedNode?.data?.request_id ?? event.request_id ?? '').trim();
+  }
+  return String(event.request_id ?? matchedNode?.data?.request_id ?? '').trim();
 }
 
 // A recorded redirect chain child (hop or final landing) that a live run did
@@ -275,6 +278,11 @@ export function matchDebugEventTarget(event: DebugEventLike, requestNodes: YAMLN
     if (byStepPath) return byStepPath;
   }
   if (event.method === 'THINK_TIME') return matchThinkTimeEventToNode(event, requestNodes, rawWithSuffix);
+  const byRequestId =
+    event.request_id === undefined || (eventChainId && redirectChainParentDisablesFollow(eventChainId, requestTargets))
+      ? null
+      : findUniqueTarget(requestTargets, node => String(node.data?.request_id ?? '') === String(event.request_id));
+  if (byRequestId) return byRequestId;
   return (
     findUniqueTarget(requestTargets, node => {
       const url = String(node.data?.url ?? '');
