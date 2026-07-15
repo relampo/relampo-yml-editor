@@ -37,7 +37,7 @@ export function validateYAMLSemantics(tree: YAMLNode | null): YAMLSemanticIssue[
       return;
     }
 
-    if (node.type === 'transaction' && (node.children?.length || 0) < 1) {
+    if (node.type === 'transaction' && !(node.children ?? []).some(child => child.data?.enabled !== false)) {
       issues.push({
         nodeId: node.id,
         message: `"${node.name || 'Transaction'}" must contain at least 1 related step.`,
