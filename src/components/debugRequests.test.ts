@@ -119,10 +119,10 @@ describe('matchDebugEventTarget — redirect chain follow-ups', () => {
     expect(debugEventRequestNumber(finalEvent, finalNode, nodes)).toBe('17.4');
   });
 
-  it('keeps the normal node number for non-redirect rows', () => {
+  it('uses the runtime number for non-redirect rows', () => {
     const nodes = chainNodes();
     const normal = nodes[0];
-    expect(debugEventRequestNumber(event({ request_id: 99 }), normal, nodes)).toBe('17');
+    expect(debugEventRequestNumber(event({ request_id: 99 }), normal, nodes)).toBe('99');
   });
 
   it('treats chain metadata as standalone requests when the parent does not follow redirects', () => {
@@ -143,6 +143,32 @@ describe('matchDebugEventTarget — redirect chain follow-ups', () => {
     const matched = matchDebugEventTarget(finalEvent, nodes);
     expect(matched?.id).toBe('f21');
     expect(debugEventRequestNumber(finalEvent, matched, nodes)).toBe('21');
+  });
+
+  it('uses the runtime request id before an ambiguous URL match', () => {
+    const request8: YAMLNode = {
+      id: 'request-8',
+      type: 'request',
+      name: '[8] POST /same-path',
+      data: { request_id: 8, method: 'POST', url: '/same-path' },
+    };
+    const request10: YAMLNode = {
+      id: 'request-10',
+      type: 'request',
+      name: '[10] POST /same-path',
+      data: { request_id: 10, method: 'POST', url: '/same-path' },
+    };
+
+    const runtimeEvent = event({
+      name: '[8] POST /same-path',
+      method: 'POST',
+      path: '/same-path',
+      request_id: 8,
+    });
+    const matched = matchDebugEventTarget(runtimeEvent, [request8, request10]);
+
+    expect(matched?.id).toBe('request-8');
+    expect(debugEventRequestNumber(runtimeEvent, request10, [request8, request10])).toBe('8');
   });
 });
 
