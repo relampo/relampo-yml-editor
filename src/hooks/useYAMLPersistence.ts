@@ -79,6 +79,7 @@ interface UseYAMLPersistenceParams {
   setHasDocumentActivity: (v: boolean) => void;
   setError: (v: string | null) => void;
   serializeDebounceRef: React.MutableRefObject<number | null>;
+  editRevisionRef: React.MutableRefObject<number>;
 }
 
 export function useYAMLPersistence({
@@ -93,12 +94,18 @@ export function useYAMLPersistence({
   setHasDocumentActivity,
   setError,
   serializeDebounceRef,
+  editRevisionRef,
 }: UseYAMLPersistenceParams) {
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState('');
   const actionMessageTimeoutRef = useRef<number | null>(null);
   const autosaveDebounceRef = useRef<number | null>(null);
   const bypassUnloadWarningRef = useRef(false);
+  const saveInFlightRef = useRef<Promise<void> | null>(null);
+  const latestSaveInputsRef = useRef({ getPersistableYaml, currentFileName, language });
+  useEffect(() => {
+    latestSaveInputsRef.current = { getPersistableYaml, currentFileName, language };
+  }, [currentFileName, getPersistableYaml, language]);
   // Bumped whenever the document is reset (New document). A save that was
   // already in flight when the reset happened compares against this and bails
   // out instead of resurrecting the discarded draft / stale "saved" status.
@@ -110,52 +117,68 @@ export function useYAMLPersistence({
     actionMessageTimeoutRef.current = window.setTimeout(() => setActionMessage(''), 1800);
   };
 
-  const handleSave = async () => {
-    if (serializeDebounceRef.current) {
-      window.clearTimeout(serializeDebounceRef.current);
-      serializeDebounceRef.current = null;
-    }
+  const handleSave = (): Promise<void> => {
+    if (saveInFlightRef.current) return saveInFlightRef.current;
 
-    let yamlToPersist: string;
-    try {
-      yamlToPersist = getPersistableYaml();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Error generating YAML';
-      if (message.includes(EMPTY_PARALLEL_ERROR)) {
+    const savePromise = (async () => {
+      while (true) {
+        if (serializeDebounceRef.current) {
+          window.clearTimeout(serializeDebounceRef.current);
+          serializeDebounceRef.current = null;
+        }
+
+        const saveGeneration = saveGenerationRef.current;
+        const editRevision = editRevisionRef.current;
+        const inputs = latestSaveInputsRef.current;
+        let yamlToPersist: string;
+        try {
+          yamlToPersist = inputs.getPersistableYaml();
+        } catch (err) {
+          const message = err instanceof Error ? err.message : 'Error generating YAML';
+          if (message.includes(EMPTY_PARALLEL_ERROR)) {
+            setError(null);
+            return;
+          }
+          setError(message);
+          return;
+        }
+
+        const now = new Date();
+        try {
+          await saveActiveDraft({
+            yaml: yamlToPersist,
+            fileName: inputs.currentFileName,
+            updatedAt: now.toISOString(),
+          });
+        } catch {
+          if (saveGenerationRef.current !== saveGeneration) return;
+          setError(getDraftStorageError(inputs.language));
+          return;
+        }
+
+        // A reset invalidates this write. A normal edit queues no competing
+        // write: this loop snapshots the latest render and persists it next.
+        if (saveGenerationRef.current !== saveGeneration) {
+          await clearActiveDraft();
+          if (editRevisionRef.current !== editRevision) continue;
+          return;
+        }
+        if (editRevisionRef.current !== editRevision) continue;
+
         setError(null);
+        setHasDocumentActivity(true);
+        setIsDirty(false);
+        setLastSavedAt(now.toLocaleTimeString());
+        showActionMessage(inputs.language === 'es' ? 'Cambios guardados' : 'Changes saved');
         return;
       }
-      setError(message);
-      return;
-    }
+    })();
 
-    const saveGeneration = saveGenerationRef.current;
-    const now = new Date();
-    try {
-      await saveActiveDraft({
-        yaml: yamlToPersist,
-        fileName: currentFileName,
-        updatedAt: now.toISOString(),
-      });
-    } catch {
-      if (saveGenerationRef.current !== saveGeneration) return;
-      setError(getDraftStorageError(language));
-      return;
-    }
-
-    // The document was reset (New) while this save was in flight: undo the
-    // draft we just wrote and skip the stale UI updates so a reload doesn't
-    // restore the discarded content.
-    if (saveGenerationRef.current !== saveGeneration) {
-      void clearActiveDraft();
-      return;
-    }
-
-    setError(null);
-    setHasDocumentActivity(true);
-    setIsDirty(false);
-    setLastSavedAt(now.toLocaleTimeString());
-    showActionMessage(language === 'es' ? 'Cambios guardados' : 'Changes saved');
+    saveInFlightRef.current = savePromise;
+    void savePromise.finally(() => {
+      if (saveInFlightRef.current === savePromise) saveInFlightRef.current = null;
+    });
+    return savePromise;
   };
 
   useEffect(() => {

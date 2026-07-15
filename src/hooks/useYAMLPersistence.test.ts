@@ -36,6 +36,7 @@ function makeParams(overrides: Partial<Parameters<typeof useYAMLPersistence>[0]>
     setHasDocumentActivity: vi.fn(),
     setError: vi.fn(),
     serializeDebounceRef: { current: null } as React.MutableRefObject<number | null>,
+    editRevisionRef: { current: 0 } as React.MutableRefObject<number>,
     ...overrides,
   };
 }
@@ -98,6 +99,58 @@ describe('handleSave', () => {
     });
 
     expect(result.current.lastSavedAt).not.toBeNull();
+  });
+
+  it('persists an edit made during a save before marking the document clean', async () => {
+    let resolveFirstSave: (() => void) | undefined;
+    saveActiveDraftMock.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          resolveFirstSave = () => resolve(undefined as never);
+        }),
+    );
+
+    const editRevisionRef = { current: 0 } as React.MutableRefObject<number>;
+    const setIsDirty = vi.fn();
+    const { result, rerender } = renderHook(
+      (props: { yaml: string }) =>
+        useYAMLPersistence({
+          ...makeParams({
+            editRevisionRef,
+            setIsDirty,
+            getPersistableYaml: () => props.yaml,
+          }),
+        }),
+      { initialProps: { yaml: 'iterations: 1\n' } },
+    );
+
+    let savePromise = Promise.resolve();
+    act(() => {
+      savePromise = result.current.handleSave();
+    });
+    expect(saveActiveDraftMock).toHaveBeenCalledWith({
+      yaml: 'iterations: 1\n',
+      fileName: 'my-script.yaml',
+      updatedAt: expect.any(String),
+    });
+
+    act(() => {
+      editRevisionRef.current += 1;
+      rerender({ yaml: 'iterations: 3\n' });
+    });
+    await act(async () => {
+      resolveFirstSave?.();
+      await savePromise;
+    });
+
+    expect(saveActiveDraftMock).toHaveBeenCalledTimes(2);
+    expect(saveActiveDraftMock).toHaveBeenLastCalledWith({
+      yaml: 'iterations: 3\n',
+      fileName: 'my-script.yaml',
+      updatedAt: expect.any(String),
+    });
+    expect(setIsDirty).toHaveBeenCalledTimes(1);
+    expect(setIsDirty).toHaveBeenCalledWith(false);
   });
 
   it('calls setIsDirty(false) after save', async () => {
