@@ -556,7 +556,8 @@ export function ThinkTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
           </div>
           <div className="p-3 bg-yellow-400/5 border border-yellow-400/20 rounded text-xs text-zinc-400">
             <AlertTriangle className="inline-block h-3 w-3 mr-1" />
-            Distribution mode applies normal(mean/std_dev) in runtime, bounded by min/max guardrails.
+            Normal samples around mean/std_dev; uniform samples directly between min and max. Both respect the min/max
+            guardrails.
           </div>
         </>
       )}

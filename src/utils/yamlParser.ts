@@ -263,31 +263,13 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
 
   // Think time (standalone - can be between requests)
   if (step.think_time !== undefined) {
-    let duration: string;
-    let data: any;
-
-    if (typeof step.think_time === 'string') {
-      // Simple format: "2s"
-      duration = step.think_time;
-      data = { duration: step.think_time };
-    } else if (step.think_time.duration) {
-      // Converter format: {name: "...", duration: "1s"}
-      duration = step.think_time.duration;
-      data = step.think_time;
-    } else if (step.think_time.min) {
-      // Variable format: {min: "1s", max: "3s"}
-      duration = `${step.think_time.min}-${step.think_time.max}`;
-      data = step.think_time;
-    } else {
-      duration = '?';
-      data = step.think_time;
-    }
+    const data = typeof step.think_time === 'string' ? { duration: step.think_time } : step.think_time;
 
     return {
       id: stepId,
       type: 'think_time',
       name: 'Think Time', // SOLO el nombre, duración va en el badge
-      data: { ...data, duration }, // Asegurar que duration esté en data para el badge
+      data,
       path,
     };
   }
@@ -782,7 +764,7 @@ function createRequestNode(
       id: `${stepId}_think_time`,
       type: 'think_time',
       name: 'Think Time', // SOLO el nombre, duración va en el badge
-      data: { duration: req.think_time },
+      data: typeof req.think_time === 'string' ? { duration: req.think_time } : req.think_time,
       path: [...path, 'think_time'],
     });
   }
