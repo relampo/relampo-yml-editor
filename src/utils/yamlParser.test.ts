@@ -663,6 +663,69 @@ metrics:
   });
 });
 
+describe('think time distribution round-trip', () => {
+  it('preserves every standalone distribution field without fabricating a fixed duration', () => {
+    const input = `
+test:
+  name: distribution
+scenarios:
+  - name: standalone
+    steps:
+      - think_time:
+          distribution: normal
+          mean: 7s
+          std_dev: 1s
+          min: 5s
+          max: 10s
+`;
+
+    const tree = parseYAMLToTree(input)!;
+    const output = treeToYAML(tree);
+    const reparsed = parseYAMLToTree(output)!;
+    const scenarios = reparsed.children!.find(child => child.type === 'scenarios')!;
+    const steps = scenarios.children![0].children!.find(child => child.type === 'steps')!;
+    const thinkTime = steps.children![0];
+
+    expect(thinkTime.data).toMatchObject({
+      distribution: 'normal',
+      mean: '7s',
+      std_dev: '1s',
+      min: '5s',
+      max: '10s',
+    });
+    expect(thinkTime.data.duration).toBeUndefined();
+    expect(output).not.toContain('think_time: 5s-10s');
+  });
+
+  it('preserves a map-form distribution nested under a request', () => {
+    const input = `
+test:
+  name: inline distribution
+scenarios:
+  - name: inline
+    steps:
+      - request:
+          method: GET
+          url: https://example.test
+          think_time:
+            distribution: uniform
+            mean: 7s
+            std_dev: 1s
+            min: 5s
+            max: 10s
+`;
+
+    const output = treeToYAML(parseYAMLToTree(input)!);
+
+    expect(output).toContain('distribution: uniform');
+    expect(output).toContain('mean: 7s');
+    expect(output).toContain('std_dev: 1s');
+    expect(output).toContain('min: 5s');
+    expect(output).toContain('max: 10s');
+    expect(output).not.toContain('[object Object]');
+  });
+});
+
 // ─── treeToYAML ───────────────────────────────────────────────────────────
 
 describe('treeToYAML', () => {

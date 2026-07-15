@@ -549,10 +549,14 @@ function getNodeBadge(node: YAMLNode, options: { mutedMethod?: boolean } = {}): 
     );
   }
 
-  if (node.type === 'think_time' && node.data?.duration) {
+  if (node.type === 'think_time') {
+    const durationLabel =
+      node.data?.duration ||
+      (node.data?.min && node.data?.max ? `${node.data.min}-${node.data.max}` : node.data?.mean);
+    if (!durationLabel) return null;
     return (
       <span className="text-xs px-1.5 py-0.5 rounded bg-orange-400/15 text-orange-400 font-mono font-medium border border-orange-400/30">
-        {node.data.duration}
+        {durationLabel}
       </span>
     );
   }
