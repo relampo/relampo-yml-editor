@@ -784,7 +784,7 @@ function DebugInspectorContent({
   if (tab === 'logs') {
     const time = formatEventTime(event.ts);
     const redirectHops = event.redirects ?? [];
-    const sourceTimelineLabel = redirectedInfo ? redirectSourceTimelineLabel(redirectedInfo, requestTargets) : '';
+    const sourceLogLabel = redirectedInfo ? redirectSourceLogLabel(redirectedInfo, requestTargets, event.path) : '';
     return (
       <div className="max-w-full overflow-hidden border border-white/10 bg-[#050505] p-4 font-mono text-xs leading-6 text-zinc-300 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
         <p className="text-emerald-300 break-words">[{time}] debug session received request event</p>
@@ -804,10 +804,17 @@ function DebugInspectorContent({
         {redirectHops.map((hop, index) => {
           const targetStatus = redirectHops[index + 1]?.status ?? event.status;
           const targetMethod = redirectHops[index + 1]?.method ?? event.method;
+          const sourceUrl = absoluteDebugUrl(hop.url, event.path);
+          const targetUrl = absoluteDebugUrl(
+            index === redirectHops.length - 1
+              ? event.path
+              : (redirectHops[index + 1]?.url ?? hop.location ?? hop.target_url),
+            sourceUrl || event.path,
+          );
           return (
             <p key={`${hop.status}-${hop.method ?? ''}-${hop.url ?? ''}-${hop.location ?? hop.target_url ?? ''}`} className="pl-6 text-zinc-400 break-all">
-              ↳ hop {index + 1}: {hop.status || '—'} {hop.method ? `${hop.method} ` : ''}{hop.url || ''} →{' '}
-              {targetStatus || '—'} {targetMethod ? `${targetMethod} ` : ''}{hop.location || hop.target_url || ''}
+              ↳ hop {index + 1}: {hop.status || '—'} {hop.method ? `${hop.method} ` : ''}{sourceUrl} →{' '}
+              {targetStatus || '—'} {targetMethod ? `${targetMethod} ` : ''}{targetUrl}
             </p>
           );
         })}
@@ -816,8 +823,8 @@ function DebugInspectorContent({
             Intermediate 302 children (no hop chain yet) still show it. */}
         {redirectedInfo && redirectHops.length === 0 && (
           <p className="text-zinc-400 break-all">
-            [{time}] redirected request launched by {sourceTimelineLabel || redirectedInfo.sourceRequestLabel}
-            {redirectedInfo.matchedLocation ? ` → ${redirectedInfo.matchedLocation}` : ''}
+            [{time}] redirected request: {sourceLogLabel || redirectedInfo.sourceRequestLabel} → {event.status || '—'}{' '}
+            {event.method} {absoluteDebugUrl(event.path || redirectedInfo.matchedLocation, event.path)}
           </p>
         )}
         {event.err && <p className="text-red-300">[{time}] {event.err}</p>}
@@ -855,7 +862,21 @@ function DebugInspectorContent({
   );
 }
 
-function redirectSourceTimelineLabel(redirectedInfo: RedirectedRequestInfo, requestTargets: YAMLNode[]): string {
+function absoluteDebugUrl(value: unknown, baseUrl: string): string {
+  const raw = String(value ?? '').trim();
+  if (!raw) return '';
+  try {
+    return new URL(raw, /^https?:\/\//i.test(baseUrl) ? baseUrl : undefined).href;
+  } catch {
+    return raw;
+  }
+}
+
+function redirectSourceLogLabel(
+  redirectedInfo: RedirectedRequestInfo,
+  requestTargets: YAMLNode[],
+  targetUrl: string,
+): string {
   const source = requestTargets.find(node => node.id === redirectedInfo.sourceNodeId);
   if (!source) return '';
   const sourceEvent = {
@@ -867,7 +888,9 @@ function redirectSourceTimelineLabel(redirectedInfo: RedirectedRequestInfo, requ
     chain_role: String(source.data?.chain_role ?? ''),
   };
   const requestNumber = debugEventRequestNumber(sourceEvent, source, requestTargets);
-  return requestNumber ? `[${requestNumber}]` : '';
+  const prefix = requestNumber ? `[${requestNumber}] ` : '';
+  const method = sourceEvent.method ? `${sourceEvent.method} ` : '';
+  return `${prefix}${method}${absoluteDebugUrl(sourceEvent.path, targetUrl)}`.trim();
 }
 
 function DebugLine({ icon, title, value }: { icon: ReactNode; title: string; value: string }) {
