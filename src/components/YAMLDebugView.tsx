@@ -616,6 +616,7 @@ export function YAMLDebugSession({
                   tab={detailTab}
                   redirectedInfo={activeEntry.node ? (redirectedRequestMap[activeEntry.node.id] ?? null) : null}
                   requestTargets={debugEventTargets}
+                  variableSnapshot={debugVariableSnapshot(activeEntry, timelineEntries)}
                 />
               </div>
             </div>
@@ -638,11 +639,13 @@ function DebugInspectorContent({
   tab,
   redirectedInfo,
   requestTargets,
+  variableSnapshot,
 }: {
   entry: DebugEntry;
   tab: DetailTab;
   redirectedInfo?: RedirectedRequestInfo | null;
   requestTargets: YAMLNode[];
+  variableSnapshot: Record<string, string>;
 }) {
   const [requestSearch, setRequestSearch] = useState('');
   const [requestSearchMode, setRequestSearchMode] = useState<SearchMode>('text');
@@ -762,7 +765,7 @@ function DebugInspectorContent({
   }
 
   if (tab === 'variables') {
-    const variables = variableRowsForRequestNode(entry.node, event.variables ?? {}, {
+    const variables = variableRowsForRequestNode(entry.node, variableSnapshot, {
       requestBody: event.request_body,
       requestHeaders: event.request_headers,
       requestUrl: event.path,
@@ -860,6 +863,28 @@ function DebugInspectorContent({
       />
     </div>
   );
+}
+
+function debugVariableSnapshot(activeEntry: DebugEntry, entries: DebugEntry[]): Record<string, string> {
+  const snapshot = { ...(activeEntry.event.variables ?? {}) };
+  const chainId = String(activeEntry.event.chain_id ?? activeEntry.node?.data?.chain_id ?? '').trim();
+  const chainRole = String(activeEntry.event.chain_role ?? activeEntry.node?.data?.chain_role ?? '').toLowerCase();
+  if (!chainId || chainRole !== 'parent') return snapshot;
+
+  const activeIndex = entries.findIndex(entry => entry.id === activeEntry.id);
+  if (activeIndex < 0) return snapshot;
+  const activeVu = activeEntry.event.vu ?? 0;
+
+  for (let index = activeIndex + 1; index < entries.length; index += 1) {
+    const candidate = entries[index];
+    if ((candidate.event.vu ?? 0) !== activeVu) continue;
+    const candidateChainId = String(candidate.event.chain_id ?? candidate.node?.data?.chain_id ?? '').trim();
+    const candidateRole = String(candidate.event.chain_role ?? candidate.node?.data?.chain_role ?? '').toLowerCase();
+    if (candidateChainId !== chainId || candidateRole === 'parent') break;
+    Object.assign(snapshot, candidate.event.variables ?? {});
+  }
+
+  return snapshot;
 }
 
 function absoluteDebugUrl(value: unknown, baseUrl: string): string {

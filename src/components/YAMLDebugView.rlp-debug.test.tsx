@@ -507,6 +507,93 @@ describe('YAMLDebugSession RLP debug fixes', () => {
     ).toBeInTheDocument();
   });
 
+  it('shows on a parent extractor the value captured by its redirected child (RLP-597)', async () => {
+    const parentRequest: YAMLNode = {
+      id: 'parent',
+      type: 'request',
+      name: '[2] GET /login',
+      data: { request_id: 2, method: 'GET', url: '/login', chain_id: 'rc-2', chain_role: 'parent' },
+      children: [
+        {
+          id: 'extractor',
+          type: 'extractor',
+          name: 'Extract ViewState',
+          data: {
+            type: 'regex',
+            var: 'javax.faces.ViewState',
+            pattern: 'name="javax\\.faces\\.ViewState" value="([^"]+)"',
+            default: 'Regex value not found: javax.faces.ViewState',
+          },
+        },
+      ],
+    };
+    const redirectedChild: YAMLNode = {
+      id: 'child',
+      type: 'request',
+      name: '[3] GET /flowSelector.xhtml',
+      data: {
+        request_id: 3,
+        method: 'GET',
+        url: '/flowSelector.xhtml',
+        enabled: false,
+        chain_id: 'rc-2',
+        chain_role: 'final',
+      },
+    };
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'root',
+      name: 'root',
+      children: [parentRequest, redirectedChild],
+    };
+
+    render(
+      <YAMLDebugSession
+        tree={tree}
+        yamlCode={'test:\n  name: child-extractor\n'}
+        documentReady
+        validationErrors={[]}
+        onSelectNode={vi.fn()}
+        onEditNode={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
+
+    act(() => {
+      debugApiMock.handlers[0].onEvent(
+        event({
+          name: '[2] GET /login',
+          path: 'https://example.test/login',
+          request_id: 2,
+          chain_id: 'rc-2',
+          chain_role: 'parent',
+          variables: { 'javax.faces.ViewState': 'Regex value not found: javax.faces.ViewState' },
+        }),
+      );
+      debugApiMock.handlers[0].onEvent(
+        event({
+          name: '[2] GET /flowSelector.xhtml',
+          path: 'https://example.test/flowSelector.xhtml',
+          request_id: 2,
+          chain_id: 'rc-2',
+          chain_role: 'final',
+          redirect_index: 1,
+          variables: { 'javax.faces.ViewState': 'captured-child-value' },
+        }),
+      );
+    });
+
+    const parentNumber = await screen.findByText('#2');
+    fireEvent.click(parentNumber.closest('button')!);
+    fireEvent.click(screen.getByRole('button', { name: 'variables' }));
+
+    expect(await screen.findByText('javax.faces.ViewState (RES)')).toBeInTheDocument();
+    expect(screen.getByText('captured-child-value')).toBeInTheDocument();
+    expect(screen.queryByText('Regex value not found: javax.faces.ViewState')).toBeNull();
+  });
+
   it('Overview shows the runtime URL, not the recorded one with the stale correlated value (RLP-593)', async () => {
     // The recorded step name bakes in the capture-time value of the {{NROEXP}}
     // placeholder. At runtime the extraction failed, so the request actually went
