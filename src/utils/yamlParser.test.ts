@@ -582,6 +582,31 @@ scenarios:
     expect(load!.data.users).toBe(10);
   });
 
+  it('round-trips the explicit manual-stop contract', () => {
+    const yaml = `
+test:
+  name: soak
+scenarios:
+  - name: indefinite
+    load:
+      type: constant
+      users: 3
+      run_until_stopped: true
+    steps: []
+`;
+
+    const tree = parseYAMLToTree(yaml)!;
+    const output = treeToYAML(tree);
+    const load = tree.children!.find(c => c.type === 'scenarios')!.children![0].children!.find(c => c.type === 'load');
+
+    expect(load!.data.run_until_stopped).toBe(true);
+    expect(load!.data.duration).toBeUndefined();
+    expect(load!.data.iterations).toBeUndefined();
+    expect(output).toContain('run_until_stopped: true');
+    expect(output).not.toContain('duration:');
+    expect(output).not.toContain('iterations:');
+  });
+
   it('normalizes intent load nodes to the backend contract shape', () => {
     const yaml = `
 test:

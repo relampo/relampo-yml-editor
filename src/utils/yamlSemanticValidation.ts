@@ -44,6 +44,31 @@ export function validateYAMLSemantics(tree: YAMLNode | null): YAMLSemanticIssue[
       });
     }
 
+    if (node.type === 'load') {
+      const duration = String(node.data?.duration ?? '').trim();
+      const rawIterations = String(node.data?.iterations ?? '').trim();
+      const iterations = Number(rawIterations || 0);
+      const hasFiniteLimit = duration !== '' || (Number.isFinite(iterations) && iterations > 0);
+      const hasConfiguredLimit = duration !== '' || rawIterations !== '';
+      const runsUntilStopped = node.data?.run_until_stopped === true;
+      const hasExplicitStopFields =
+        Object.hasOwn(node.data ?? {}, 'duration') ||
+        Object.hasOwn(node.data ?? {}, 'iterations') ||
+        Object.hasOwn(node.data ?? {}, 'run_until_stopped');
+
+      if (runsUntilStopped && hasConfiguredLimit) {
+        issues.push({
+          nodeId: node.id,
+          message: 'Run until manually stopped cannot be combined with Duration or Iterations.',
+        });
+      } else if (hasExplicitStopFields && !runsUntilStopped && !hasFiniteLimit) {
+        issues.push({
+          nodeId: node.id,
+          message: 'Define Duration or Iterations, or explicitly enable Run until manually stopped.',
+        });
+      }
+    }
+
     node.children?.forEach(walk);
   };
 

@@ -1,7 +1,7 @@
 const loadTypes = ['constant', 'linear', 'ramp_up_down', 'throughput', 'intent'] as const;
 
 export type LoadType = (typeof loadTypes)[number];
-export type LoadDataValue = string | number | undefined;
+export type LoadDataValue = string | number | boolean | undefined;
 export type LoadData = Record<string, LoadDataValue>;
 
 const intentTargetUnits = new Set(['rps', 'vus']);
@@ -116,10 +116,10 @@ const loadTypeDefaults: Record<LoadType, LoadData> = {
 };
 
 const loadTypeAllowedKeys: Record<LoadType, string[]> = {
-  constant: ['type', 'users', 'duration', 'iterations', 'ramp_up'],
-  linear: ['type', 'start_users', 'end_users', 'duration', 'iterations'],
-  ramp_up_down: ['type', 'users', 'duration', 'iterations', 'ramp_up', 'ramp_down'],
-  throughput: ['type', 'target_rps', 'duration', 'iterations', 'ramp_up', 'ramp_down'],
+  constant: ['type', 'users', 'duration', 'iterations', 'ramp_up', 'run_until_stopped'],
+  linear: ['type', 'start_users', 'end_users', 'duration', 'iterations', 'run_until_stopped'],
+  ramp_up_down: ['type', 'users', 'duration', 'iterations', 'ramp_up', 'ramp_down', 'run_until_stopped'],
+  throughput: ['type', 'target_rps', 'duration', 'iterations', 'ramp_up', 'ramp_down', 'run_until_stopped'],
   intent: [
     'type',
     'target_unit',
@@ -305,6 +305,7 @@ export function buildLoadDataForType(
   const source: LoadData = { ...currentData };
   const normalized: LoadData = { type: loadType };
   const explicitEmptyKeys = new Set<string>();
+  const runsUntilStopped = source.run_until_stopped === true;
 
   if (loadType === 'intent') {
     const requestedTargetUnit = String(source.target_unit || defaults.target_unit || 'rps').toLowerCase().trim();
@@ -352,6 +353,9 @@ export function buildLoadDataForType(
       continue;
     }
     if (explicitEmptyKeys.has(key)) {
+      continue;
+    }
+    if (runsUntilStopped && (key === 'duration' || key === 'iterations')) {
       continue;
     }
     if (normalized[key] === undefined || normalized[key] === '') {

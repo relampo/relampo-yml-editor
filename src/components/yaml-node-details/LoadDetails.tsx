@@ -1,6 +1,16 @@
 import { Gauge, Mountain, TrendingUp, Users } from 'lucide-react';
+import { useId } from 'react';
 import { LoadVisualization } from './LoadVisualization';
-import { buildLoadDataForType, getIntentAutoConfig, getLoadTypeLabel, normalizeLoadType, selectedLoadButtonStyle, type LoadData, type LoadDataValue, type LoadType } from './loadUtils';
+import {
+  buildLoadDataForType,
+  getIntentAutoConfig,
+  getLoadTypeLabel,
+  normalizeLoadType,
+  selectedLoadButtonStyle,
+  type LoadData,
+  type LoadDataValue,
+  type LoadType,
+} from './loadUtils';
 import { ConstantLoadMode } from './load-modes/ConstantLoadMode';
 import { IntentLoadMode } from './load-modes/IntentLoadMode';
 import { RampLoadMode } from './load-modes/RampLoadMode';
@@ -31,6 +41,19 @@ export function LoadDetails({ node, onNodeUpdate }: NodeDetailProps) {
         ...buildLoadDataForType(selectedType, data),
         __name: `Load: ${getLoadTypeLabel(selectedType)}`,
       });
+      return;
+    }
+
+    if (field === 'run_until_stopped') {
+      const nextData = { ...data };
+      if (value === true) {
+        nextData.run_until_stopped = true;
+        nextData.duration = '';
+        nextData.iterations = '';
+      } else {
+        delete nextData.run_until_stopped;
+      }
+      updateData(nextData);
       return;
     }
 
@@ -75,12 +98,47 @@ export function LoadDetails({ node, onNodeUpdate }: NodeDetailProps) {
         onChange={handleChange}
       />
 
+      {loadType !== 'intent' && (
+        <ManualStopControl
+          checked={data.run_until_stopped === true}
+          onChange={checked => handleChange('run_until_stopped', checked)}
+        />
+      )}
+
       <div className="h-px bg-white/10" />
 
       <LoadVisualization
         data={data}
         loadType={loadType}
       />
+    </div>
+  );
+}
+
+function ManualStopControl({ checked, onChange }: { checked: boolean; onChange: (checked: boolean) => void }) {
+  const helpId = useId();
+
+  return (
+    <div className="rounded-xl border border-amber-400/20 bg-amber-400/[0.04] p-4">
+      <label className="flex cursor-pointer items-start gap-3 text-sm text-zinc-100">
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={event => onChange(event.target.checked)}
+          aria-describedby={helpId}
+          className="mt-0.5 h-4 w-4 rounded border-white/20 bg-[#151515] accent-amber-400"
+        />
+        <span>
+          <span className="block font-medium">Run until manually stopped</span>
+          <span
+            id={helpId}
+            className="mt-1 block text-xs leading-relaxed text-zinc-400"
+          >
+            Explicitly runs until Stop or Ctrl+C, subject to the active license duration limit. Duration and iterations
+            are cleared.
+          </span>
+        </span>
+      </label>
     </div>
   );
 }

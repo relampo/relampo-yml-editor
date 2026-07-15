@@ -120,4 +120,31 @@ describe('LoadDetails', () => {
       }),
     );
   });
+
+  it('requires a deliberate manual-stop opt-in and clears finite limits', () => {
+    const onNodeUpdate = vi.fn();
+
+    renderWithLanguage(
+      <LoadDetails
+        node={{
+          id: 'load-manual',
+          type: 'load',
+          name: 'Load Config',
+          data: { type: 'constant', users: 3, duration: '1m', iterations: '10' },
+        }}
+        onNodeUpdate={onNodeUpdate}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /Run until manually stopped/i }));
+
+    expect(onNodeUpdate).toHaveBeenCalledWith(
+      'load-manual',
+      expect.objectContaining({
+        run_until_stopped: true,
+        duration: '',
+        iterations: '',
+      }),
+    );
+  });
 });
