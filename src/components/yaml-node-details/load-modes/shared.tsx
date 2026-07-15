@@ -40,6 +40,7 @@ interface LoadFieldProps {
   helpText?: string;
   type?: 'text' | 'number';
   maxLength?: number;
+  disabled?: boolean;
 }
 
 export function LoadField({
@@ -50,6 +51,7 @@ export function LoadField({
   helpText,
   type = 'text',
   maxLength = 16,
+  disabled = false,
 }: LoadFieldProps) {
   const inputId = useId();
   const helpId = `${inputId}-help`;
@@ -66,6 +68,7 @@ export function LoadField({
         id={inputId}
         type={type}
         maxLength={maxLength}
+        disabled={disabled}
         value={value}
         onChange={event => onChange(event.target.value)}
         placeholder={placeholder}
@@ -115,6 +118,7 @@ export function LoadFieldGroup({ data, fields, onChange }: LoadFieldGroupProps) 
           onChange={value => onChange(field.field, limitedInputValue(value))}
           type={field.type}
           maxLength={field.maxLength}
+          disabled={Boolean(data.run_until_stopped) && (field.field === 'duration' || field.field === 'iterations')}
           helpText={field.helpText}
         />
       ))}

@@ -35,4 +35,17 @@ describe('ConstantLoadMode', () => {
     expect(onChange).toHaveBeenCalledWith('duration', '3600000ms');
     expect(onChange).toHaveBeenCalledWith('ramp_up', '3600000ms');
   });
+
+  it('disables finite stop fields during an explicit manual-stop run', () => {
+    render(
+      <ConstantLoadMode
+        data={{ users: '3', duration: '', iterations: '', run_until_stopped: true }}
+        onChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText('Duration')).toBeDisabled();
+    expect(screen.getByLabelText('Iterations')).toBeDisabled();
+    expect(screen.getByLabelText('Virtual Users')).toBeEnabled();
+  });
 });

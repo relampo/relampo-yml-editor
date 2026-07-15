@@ -1,3 +1,4 @@
+import { normalizeLoadType } from '../components/yaml-node-details/loadUtils';
 import type { YAMLNode } from '../types/yaml';
 
 interface YAMLSemanticIssue {
@@ -42,6 +43,35 @@ export function validateYAMLSemantics(tree: YAMLNode | null): YAMLSemanticIssue[
         nodeId: node.id,
         message: `"${node.name || 'Transaction'}" must contain at least 1 related step.`,
       });
+    }
+
+    // Manual-stop is a non-intent contract; intent loads have no such control,
+    // so keep this validation off them to avoid a message they can't act on.
+    if (node.type === 'load' && normalizeLoadType(node.data?.type) !== 'intent') {
+      const duration = String(node.data?.duration ?? '').trim();
+      const rawIterations = String(node.data?.iterations ?? '').trim();
+      const iterations = Number(rawIterations || 0);
+      const hasFiniteLimit = duration !== '' || (Number.isFinite(iterations) && iterations > 0);
+      const runsUntilStopped = node.data?.run_until_stopped === true;
+      const hasExplicitStopFields =
+        Object.hasOwn(node.data ?? {}, 'duration') ||
+        Object.hasOwn(node.data ?? {}, 'iterations') ||
+        Object.hasOwn(node.data ?? {}, 'run_until_stopped');
+
+      // Only a real limit (a duration or a positive iteration count) conflicts;
+      // iterations: 0 is the finite-type default and means "unlimited", not a
+      // configured limit.
+      if (runsUntilStopped && hasFiniteLimit) {
+        issues.push({
+          nodeId: node.id,
+          message: 'Run until manually stopped cannot be combined with Duration or Iterations.',
+        });
+      } else if (hasExplicitStopFields && !runsUntilStopped && !hasFiniteLimit) {
+        issues.push({
+          nodeId: node.id,
+          message: 'Define Duration or Iterations, or explicitly enable Run until manually stopped.',
+        });
+      }
     }
 
     node.children?.forEach(walk);

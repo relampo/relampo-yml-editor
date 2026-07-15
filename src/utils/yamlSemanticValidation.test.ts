@@ -165,4 +165,68 @@ describe('validateYAMLSemantics', () => {
       },
     ]);
   });
+
+  it('blocks explicitly empty duration and iterations', () => {
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'test',
+      name: 'Test',
+      children: [
+        {
+          id: 'load-1',
+          type: 'load',
+          name: 'Load Config',
+          data: { users: 3, duration: '', iterations: '' },
+        },
+      ],
+    };
+
+    expect(validateYAMLSemantics(tree)).toEqual([
+      {
+        nodeId: 'load-1',
+        message: 'Define Duration or Iterations, or explicitly enable Run until manually stopped.',
+      },
+    ]);
+  });
+
+  it('accepts an explicit manual-stop load without finite limits', () => {
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'test',
+      name: 'Test',
+      children: [
+        {
+          id: 'load-1',
+          type: 'load',
+          name: 'Load Config',
+          data: { users: 3, duration: '', iterations: '', run_until_stopped: true },
+        },
+      ],
+    };
+
+    expect(validateYAMLSemantics(tree)).toEqual([]);
+  });
+
+  it('rejects manual-stop mode combined with a finite limit', () => {
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'test',
+      name: 'Test',
+      children: [
+        {
+          id: 'load-1',
+          type: 'load',
+          name: 'Load Config',
+          data: { users: 3, duration: '1m', iterations: '', run_until_stopped: true },
+        },
+      ],
+    };
+
+    expect(validateYAMLSemantics(tree)).toEqual([
+      {
+        nodeId: 'load-1',
+        message: 'Run until manually stopped cannot be combined with Duration or Iterations.',
+      },
+    ]);
+  });
 });
