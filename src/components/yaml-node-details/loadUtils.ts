@@ -389,5 +389,14 @@ export function normalizeLoadDataForYaml(data: LoadData = {}): LoadData {
   }
 
   delete normalized.vusers;
+
+  // A manual-stop run has no finite limit: drop duration/iterations so the
+  // editor never emits contradictory empty-string keys alongside
+  // run_until_stopped (the checkbox clears them to '' rather than deleting).
+  if (normalized.run_until_stopped === true) {
+    delete normalized.duration;
+    delete normalized.iterations;
+  }
+
   return normalized;
 }
