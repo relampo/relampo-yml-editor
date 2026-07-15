@@ -55,7 +55,7 @@ export function LoadVisualization({ data, loadType, progressSeconds }: LoadVisua
 
   const timeAxisTicks = [0, 1, 2, 3, 4].map(index => ({
     x: 40 + index * 85,
-    label: formatTimeLabel(Math.round((maxTime / 4) * index)),
+    label: !hasFiniteDuration && index === 4 ? '∞' : formatTimeLabel(Math.round((maxTime / 4) * index)),
   }));
 
   const timeRanges = getTimeRanges(effectiveData, loadType, totalTime).map(range => ({
