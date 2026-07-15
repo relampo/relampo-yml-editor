@@ -1,10 +1,18 @@
-import { LOAD_DURATION_HELP_TEXT, LoadFieldGroup, LoadGrid, LoadModeProps, LoadSection } from './shared';
+import {
+  LOAD_DURATION_HELP_TEXT,
+  LOAD_ITERATIONS_HELP_TEXT,
+  LOAD_USERS_HELP_TEXT,
+  LoadFieldGroup,
+  LoadGrid,
+  LoadModeProps,
+  LoadSection,
+} from './shared';
 
 const CONSTANT_LOAD_FIELDS = [
-  { field: 'users', label: 'Virtual Users', placeholder: '10', type: 'number' },
-  { field: 'duration', label: 'Duration', placeholder: '5m', helpText: LOAD_DURATION_HELP_TEXT },
-  { field: 'iterations', label: 'Iterations', placeholder: '0', type: 'number' },
-  { field: 'ramp_up', label: 'Ramp Up', placeholder: '0s', helpText: LOAD_DURATION_HELP_TEXT },
+  { field: 'users', label: 'Virtual Users', type: 'number', helpText: LOAD_USERS_HELP_TEXT },
+  { field: 'duration', label: 'Duration', helpText: LOAD_DURATION_HELP_TEXT },
+  { field: 'iterations', label: 'Iterations', type: 'number', helpText: LOAD_ITERATIONS_HELP_TEXT },
+  { field: 'ramp_up', label: 'Ramp Up', helpText: LOAD_DURATION_HELP_TEXT },
 ] as const;
 
 export function ConstantLoadMode({ data, onChange }: LoadModeProps) {

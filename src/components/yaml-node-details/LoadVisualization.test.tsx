@@ -56,20 +56,38 @@ describe('LoadVisualization', () => {
     expect(screen.getByText(/Total:\s*10m/i)).toBeInTheDocument();
   });
 
-  it('shows an unbounded total when constant load has no duration', () => {
+  it('shows an infinite total when no duration is configured', () => {
     renderWithLanguage(
       <LoadVisualization
         loadType="constant"
-        data={{
-          type: 'constant',
-          users: '15',
-          duration: '',
-          ramp_up: '15s',
-        }}
+        data={{ type: 'constant', users: '15', duration: '', ramp_up: '15' }}
       />,
     );
 
     expect(screen.getByText(/Peak Users:\s*15\s*\|\s*Total:\s*∞/i)).toBeInTheDocument();
     expect(screen.getAllByText('∞')).not.toHaveLength(0);
+  });
+
+  it('treats unitless duration and ramp up values as seconds', () => {
+    renderWithLanguage(
+      <LoadVisualization
+        loadType="constant"
+        data={{ type: 'constant', users: '15', duration: '15', ramp_up: '5' }}
+      />,
+    );
+
+    expect(screen.getByText(/Total:\s*15s/i)).toBeInTheDocument();
+    expect(screen.getByText('5s')).toBeInTheDocument();
+  });
+
+  it('formats sub-second totals in milliseconds', () => {
+    renderWithLanguage(
+      <LoadVisualization
+        loadType="constant"
+        data={{ type: 'constant', users: '15', duration: '15ms' }}
+      />,
+    );
+
+    expect(screen.getByText(/Total:\s*15ms/i)).toBeInTheDocument();
   });
 });

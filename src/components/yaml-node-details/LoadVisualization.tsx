@@ -24,7 +24,6 @@ export function LoadVisualization({ data, loadType, progressSeconds }: LoadVisua
       t(key),
     );
   const visualizationPoints = getVisualizationPoints(effectiveData, loadType);
-  const hasKnownDuration = String(effectiveData.duration ?? '').trim() !== '';
   const intentTargetUnit = String(effectiveData.target_unit || 'rps').toLowerCase();
   const intentTargetValue = Math.max(0, parseFloat(String(effectiveData.target_value || '0')) || 0);
   const isIntent = loadType === 'intent';
@@ -42,7 +41,9 @@ export function LoadVisualization({ data, loadType, progressSeconds }: LoadVisua
     isIntentRps ? intentRpsBandMax : 0,
     10,
   );
-  const maxTime = Math.max(...visualizationPoints.map(point => point.time), 60);
+  const totalTime = Math.max(...visualizationPoints.map(point => point.time), 0);
+  const maxTime = Math.max(totalTime, 60);
+  const hasFiniteDuration = String(effectiveData.duration ?? '').trim() !== '';
   const chartHeightPx = 184;
   const yAxisLabel =
     loadType === 'throughput' || (loadType === 'intent' && intentTargetUnit === 'rps')
@@ -54,14 +55,14 @@ export function LoadVisualization({ data, loadType, progressSeconds }: LoadVisua
 
   const timeAxisTicks = [0, 1, 2, 3, 4].map(index => ({
     x: 40 + index * 85,
-    label: !hasKnownDuration && index === 4 ? '∞' : formatTimeLabel(Math.round((maxTime / 4) * index)),
+    label: !hasFiniteDuration && index === 4 ? '∞' : formatTimeLabel(Math.round((maxTime / 4) * index)),
   }));
 
-  const timeRanges = getTimeRanges(effectiveData, loadType, maxTime).map(range => ({
+  const timeRanges = getTimeRanges(effectiveData, loadType, totalTime).map(range => ({
     ...range,
     label: t(`yamlEditor.loadVisualization.ranges.${range.key}`),
   }));
-  const transitionMarkers = getTransitionMarkers(effectiveData, loadType, maxTime);
+  const transitionMarkers = getTransitionMarkers(effectiveData, loadType, totalTime);
   const horizontalRanges = timeRanges.filter(
     range =>
       range.key === 'steady' ||
@@ -181,7 +182,7 @@ export function LoadVisualization({ data, loadType, progressSeconds }: LoadVisua
             {format('yamlEditor.loadVisualization.summary', {
               axis: yAxisLabel,
               peak: maxUsers.toFixed(0),
-              total: hasKnownDuration ? formatTimeLabel(maxTime) : '∞',
+              total: hasFiniteDuration ? formatTimeLabel(totalTime) : '∞',
             })}
           </span>
         </div>
@@ -681,6 +682,9 @@ function getTransitionMarkers(data: LoadData, loadType: LoadType, maxTime: numbe
 }
 
 function formatTimeLabel(seconds: number): string {
+  if (seconds > 0 && seconds < 1) {
+    return `${Math.max(1, Math.round(seconds * 1000))}ms`;
+  }
   const rounded = Math.max(0, Math.round(seconds));
   return rounded >= 60 ? `${Math.round(rounded / 60)}m` : `${rounded}s`;
 }

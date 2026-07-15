@@ -48,6 +48,25 @@ describe('validateYAMLSemantics', () => {
     expect(validateYAMLSemantics(tree)).toEqual([]);
   });
 
+  it('ignores empty disabled transactions', () => {
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'test',
+      name: 'Test',
+      children: [
+        {
+          id: 'transaction-1',
+          type: 'transaction',
+          name: 'Group 03 - demo',
+          data: { name: 'Group 03 - demo', enabled: false },
+          children: [],
+        },
+      ],
+    };
+
+    expect(validateYAMLSemantics(tree)).toEqual([]);
+  });
+
   it('accepts transactions with multiple steps', () => {
     const tree: YAMLNode = {
       id: 'root',

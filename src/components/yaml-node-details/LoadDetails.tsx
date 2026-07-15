@@ -1,4 +1,4 @@
-import { Gauge, Mountain, Target, TrendingUp, Users } from 'lucide-react';
+import { Gauge, Mountain, TrendingUp, Users } from 'lucide-react';
 import { LoadVisualization } from './LoadVisualization';
 import { buildLoadDataForType, getIntentAutoConfig, getLoadTypeLabel, normalizeLoadType, selectedLoadButtonStyle, type LoadData, type LoadDataValue, type LoadType } from './loadUtils';
 import { ConstantLoadMode } from './load-modes/ConstantLoadMode';
@@ -18,7 +18,6 @@ const LOAD_MODE_OPTIONS: Array<{
   { type: 'linear', label: 'Linear', icon: TrendingUp },
   { type: 'ramp_up_down', label: 'Ramp Up/Down', icon: Mountain },
   { type: 'throughput', label: 'Throughput', icon: Gauge },
-  { type: 'intent', label: 'Intent', icon: Target },
 ];
 
 export function LoadDetails({ node, onNodeUpdate }: NodeDetailProps) {
