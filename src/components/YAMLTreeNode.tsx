@@ -224,7 +224,7 @@ export function YAMLTreeNode({
   };
 
   const icon = getNodeIcon(node.type);
-  const color = getNodeColor(node.type, node, isRedirectedFollowUp);
+  const color = getNodeColor(node.type, node);
   const IconComponent = icon;
   const searchHitFlags = getNodeSearchHitFlags(node, searchQuery);
   const hasRequestHit = searchHitFlags.request;
@@ -298,7 +298,7 @@ export function YAMLTreeNode({
             {redirectedLabel}
           </span>
         )}
-        {getNodeBadge(node, { mutedMethod: isRedirectedFollowUp })}
+        {getNodeBadge(node, { mutedMethod: isRedirectedFollowUp && node.data?.enabled === false })}
         {hasRequestHit && (
           <span className="inline-flex h-5 items-center shrink-0 text-xs leading-none px-1.5 py-0.5 rounded bg-yellow-400/15 text-yellow-400 font-mono font-medium border border-yellow-400/30 uppercase">
             req
@@ -395,10 +395,10 @@ function getNodeIcon(type: YAMLNodeType): LucideIcon {
   return iconMap[type] || FileText;
 }
 
-function getNodeColor(type: YAMLNodeType, node?: YAMLNode, isRedirectedFollowUp = false): string {
+function getNodeColor(type: YAMLNodeType, node?: YAMLNode): string {
   const isDisabled = node?.data?.enabled === false;
 
-  if (isDisabled || isRedirectedFollowUp) {
+  if (isDisabled) {
     return 'text-zinc-400';
   }
 
