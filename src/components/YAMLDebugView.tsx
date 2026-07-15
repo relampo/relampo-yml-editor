@@ -869,7 +869,7 @@ function debugVariableSnapshot(activeEntry: DebugEntry, entries: DebugEntry[]): 
   const snapshot = { ...(activeEntry.event.variables ?? {}) };
   const chainId = String(activeEntry.event.chain_id ?? activeEntry.node?.data?.chain_id ?? '').trim();
   const chainRole = String(activeEntry.event.chain_role ?? activeEntry.node?.data?.chain_role ?? '').toLowerCase();
-  if (!chainId || chainRole !== 'parent') return snapshot;
+  if (!chainId || chainRole !== 'parent' || activeEntry.node?.data?.follow_redirects === false) return snapshot;
 
   const activeIndex = entries.findIndex(entry => entry.id === activeEntry.id);
   if (activeIndex < 0) return snapshot;
