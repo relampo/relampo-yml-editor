@@ -65,6 +65,7 @@ describe('LoadVisualization', () => {
     );
 
     expect(screen.getByText(/Peak Users:\s*15\s*\|\s*Total:\s*∞/i)).toBeInTheDocument();
+    expect(screen.getAllByText('∞')).not.toHaveLength(0);
   });
 
   it('treats unitless duration and ramp up values as seconds', () => {
