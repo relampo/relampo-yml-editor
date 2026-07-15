@@ -1,5 +1,5 @@
 import { AlertTriangle, Loader2 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useYAML } from '../contexts/YAMLContext';
 import { useResizePanel } from '../hooks/useResizePanel';
@@ -75,6 +75,7 @@ export function YAMLEditor() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const parseDebounceRef = useRef<number | null>(null);
   const serializeDebounceRef = useRef<number | null>(null);
+  const editRevisionRef = useRef(0);
   const parseWorkerRef = useRef<Worker | null>(null);
   const parseRequestIdRef = useRef(0);
   const activeParseRequestIdRef = useRef(0);
@@ -110,7 +111,7 @@ export function YAMLEditor() {
     setValidationErrors(validateYAMLSemantics(tree).map(issue => issue.message));
   };
 
-  const lockTypedNodeSelectionForCurrentTree = (): YAMLNode | null => {
+  const lockTypedNodeSelectionForCurrentTree = useCallback((): YAMLNode | null => {
     if (!yamlTree) return null;
     const [lockedTree, changed] = lockTypedNodeSelectionInNode(yamlTree);
     if (!changed) return yamlTree;
@@ -120,9 +121,9 @@ export function YAMLEditor() {
       if (refreshedNode) setSelectedNode(refreshedNode);
     }
     return lockedTree;
-  };
+  }, [selectedNode, setSelectedNode, yamlTree]);
 
-  const retrieveYamlForSaving = (): string => {
+  const retrieveYamlForSaving = useCallback((): string => {
     if (isTreeOutdated || isParsing) return yamlCode;
 
     const activeTree = lockTypedNodeSelectionForCurrentTree();
@@ -131,7 +132,7 @@ export function YAMLEditor() {
     setYamlCode(serialized);
     setYamlContent(serialized);
     return serialized;
-  };
+  }, [isParsing, isTreeOutdated, lockTypedNodeSelectionForCurrentTree, setYamlContent, yamlCode]);
 
   const { lastSavedAt, actionMessage, handleDownload, resetForNewDocument } = useYAMLPersistence({
     isDirty,
@@ -145,6 +146,7 @@ export function YAMLEditor() {
     setHasDocumentActivity,
     setError,
     serializeDebounceRef,
+    editRevisionRef,
   });
 
   const { redirectedRequestMap, redirectSourceMap } = useRedirectMaps(yamlTree);
@@ -311,6 +313,7 @@ export function YAMLEditor() {
   }, []);
 
   const handleCodeChange = (newCode: string) => {
+    editRevisionRef.current += 1;
     setYamlCode(newCode);
     setYamlContent(newCode);
     if (isInitialized) {
@@ -350,15 +353,15 @@ export function YAMLEditor() {
     syncTreeToCode(tree);
   };
 
-  // Force a pending debounced tree→code serialization to run now and return the
-  // freshest YAML. Debug/Run snapshot the script string, so a still-pending
-  // 220 ms serialization (handleNodeUpdate / handleRenameHost /
-  // handleToggleNodeEnabled commit debounced) would otherwise hand them stale
-  // YAML while the tree already reflects the edit.
+  // Debug/Run always serialize the current tree as one immutable snapshot. The
+  // debounce timer is only an optimization for updating the code view; it must
+  // never decide which document version gets executed.
   const flushPendingTreeSerialization = (): string => {
-    if (!serializeDebounceRef.current || !yamlTree) return yamlCode;
-    window.clearTimeout(serializeDebounceRef.current);
-    serializeDebounceRef.current = null;
+    if (!yamlTree) return yamlCode;
+    if (serializeDebounceRef.current) {
+      window.clearTimeout(serializeDebounceRef.current);
+      serializeDebounceRef.current = null;
+    }
     try {
       const code = treeToYAML(yamlTree);
       setYamlCode(code);
@@ -379,6 +382,7 @@ export function YAMLEditor() {
     nextSelection?: TreeSelection,
     options: CommitTreeChangeOptions = {},
   ) => {
+    editRevisionRef.current += 1;
     const normalizedTree = refreshTreePaths(newTree);
     setYamlTree(normalizedTree);
     if (nextSelection) {
