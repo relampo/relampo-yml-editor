@@ -57,15 +57,16 @@ describe('LoadVisualization', () => {
   });
 
   it('shows an infinite total when no duration is configured', () => {
-    renderWithLanguage(
+    const { container } = renderWithLanguage(
       <LoadVisualization
         loadType="constant"
-        data={{ type: 'constant', users: '15', duration: '', ramp_up: '15' }}
+        data={{ type: 'constant', users: '15', duration: '', ramp_up: '75' }}
       />,
     );
 
     expect(screen.getByText(/Peak Users:\s*15\s*\|\s*Total:\s*∞/i)).toBeInTheDocument();
     expect(screen.getAllByText('∞')).not.toHaveLength(0);
+    expect(container.querySelector('svg polyline[stroke-width="3"]')).toHaveAttribute('points', '40,170 380,10');
   });
 
   it('treats unitless duration and ramp up values as seconds', () => {
@@ -89,5 +90,21 @@ describe('LoadVisualization', () => {
     );
 
     expect(screen.getByText(/Total:\s*15ms/i)).toBeInTheDocument();
+  });
+
+  it('truncates a constant ramp at the run duration without reaching or turning back from the target', () => {
+    const { container } = renderWithLanguage(
+      <LoadVisualization
+        loadType="constant"
+        data={{ type: 'constant', users: '15', duration: '30000ms', ramp_up: '50' }}
+      />,
+    );
+
+    expect(screen.getByText(/Peak Users:\s*9\s*\|\s*Total:\s*30s/i)).toBeInTheDocument();
+    expect(container.querySelector('svg polyline[stroke-width="3"]')).toHaveAttribute(
+      'points',
+      '40,170 210,26',
+    );
+    expect(screen.queryByText('Steady')).not.toBeInTheDocument();
   });
 });
