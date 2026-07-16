@@ -23,6 +23,7 @@ const MAX_LIVE_POINTS = 600;
 // The live log feed keeps the most recent lines; older ones scroll off. The
 // server already caps emission, but a long run still produces many lines.
 const MAX_LIVE_LOGS = 1000;
+const RUN_REQUEST_TYPES = new Set(['request', 'get', 'post', 'put', 'delete', 'patch', 'head', 'options']);
 
 // The last load run is parked in sessionStorage so a reload can re-attach and
 // let the studio replay it (history + final summary).
@@ -39,6 +40,46 @@ function collectLoadNodes(node: YAMLNode | null): YAMLNode[] {
   };
   walk(node);
   return found;
+}
+
+type PlannedRunRequest = {
+  key: string;
+  name: string;
+  method: string;
+  path: string;
+  pathPattern: RegExp;
+  queryPatterns: Array<[string, RegExp]>;
+};
+
+function templatePattern(value: string, placeholderPattern: string): RegExp {
+  const pattern = value
+    .split(/(\{\{[^{}]+\}\})/g)
+    .map(part => (/^\{\{[^{}]+\}\}$/.test(part) ? placeholderPattern : part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
+    .join('');
+  return new RegExp(`^${pattern}$`);
+}
+
+function collectPlannedRunRequests(node: YAMLNode | null): PlannedRunRequest[] {
+  const requests: PlannedRunRequest[] = [];
+  const walk = (current: YAMLNode) => {
+    if (current.data?.enabled === false) return;
+    if (RUN_REQUEST_TYPES.has(current.type)) {
+      const rawPath = String(current.data?.url ?? current.data?.path ?? '');
+      const path = rawPath.replace(/^https?:\/\/[^/]+/i, '') || '/';
+      const [pathname, query = ''] = path.split('?', 2);
+      requests.push({
+        key: current.id,
+        name: current.name,
+        method: String(current.data?.method ?? current.type).toUpperCase(),
+        path,
+        pathPattern: templatePattern(pathname, '[^/]+'),
+        queryPatterns: [...new URLSearchParams(query)].map(([name, value]) => [name, templatePattern(value, '[^&#]+')]),
+      });
+    }
+    current.children?.forEach(walk);
+  };
+  if (node) walk(node);
+  return requests;
 }
 
 function formatRps(value: number): string {
@@ -122,13 +163,15 @@ export function YAMLLoadRunSession({
   }
 
   const loadNodes = useMemo(() => collectLoadNodes(tree), [tree]);
+  const plannedRunRequests = useMemo(() => collectPlannedRunRequests(tree), [tree]);
   const plannedLoadNode = loadNodes[0] ?? null;
   const hasValidationErrors = validationErrors.length > 0;
   const latest = snapshots[snapshots.length - 1] ?? null;
-  const executedRequests = useMemo(
-    () => logs.filter(line => line.level === 'request' && Boolean(line.method)),
-    [logs],
+  const liveSummary = useMemo(
+    () => buildLiveRunSummary(logs, latest, plannedRunRequests),
+    [logs, latest, plannedRunRequests],
   );
+  const visibleSummary = summary ?? liveSummary;
   const hasRunActivity = snapshots.length > 0 || logs.length > 0 || summary != null;
 
   // Wires a run's SSE stream into the dashboard. Shared by a fresh Run and by
@@ -412,13 +455,11 @@ export function YAMLLoadRunSession({
               </div>
             )}
 
-            {executedRequests.length > 0 && <ExecutedRequestsPanel requests={executedRequests} />}
-
-            {summary && (
+            {visibleSummary && (
               <RunSummaryPanel
-                summary={summary}
+                summary={visibleSummary}
                 status={runStatus}
-                reportUrl={activeRunIdRef.current ? loadRunReportUrl(activeRunIdRef.current) : undefined}
+                reportUrl={summary && activeRunIdRef.current ? loadRunReportUrl(activeRunIdRef.current) : undefined}
               />
             )}
 
@@ -523,41 +564,6 @@ function logLineText(line: RunLogLine): string {
   return line.message || '';
 }
 
-function ExecutedRequestsPanel({ requests }: { requests: RunLogLine[] }) {
-  return (
-    <div className="border border-white/10 bg-[#111111]">
-      <div className="flex items-center gap-2 border-b border-white/5 px-4 py-3">
-        <Activity className="h-4 w-4 text-blue-300" />
-        <p className="text-sm font-semibold text-zinc-100">Executed requests</p>
-        <span className="ml-auto font-mono text-[10px] text-zinc-500">{requests.length}</span>
-      </div>
-      <div className="max-h-72 overflow-y-auto">
-        {requests.map(request => (
-          <div
-            key={request.seq}
-            className="grid grid-cols-[auto_auto_minmax(0,1fr)_auto_auto] items-center gap-3 border-b border-white/5 px-4 py-2 text-xs last:border-b-0"
-          >
-            <span className="font-mono text-[10px] text-zinc-600">#{request.seq + 1}</span>
-            <span className="font-mono text-[10px] text-zinc-500">{request.vu ? `VU${request.vu}` : '—'}</span>
-            <span className="min-w-0 truncate text-zinc-200" title={`${request.method} ${request.path ?? ''}`}>
-              <span className="mr-2 rounded border border-blue-400/25 bg-blue-400/10 px-1.5 py-0.5 text-[10px] font-semibold text-blue-300">
-                {request.method}
-              </span>
-              {request.path || '—'}
-            </span>
-            <span className={request.status && request.status >= 400 ? 'font-mono text-red-300' : 'font-mono text-emerald-300'}>
-              {request.status || '—'}
-            </span>
-            <span className="font-mono text-zinc-400">
-              {request.latency_ms != null ? formatMs(request.latency_ms) : '—'}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 // A live-tailing log feed of engine events (one panel, capped client-side and
 // server-side). Auto-scrolls to the newest line via the parent's scroll ref.
 function LiveLogPanel({ logs, scrollRef }: { logs: RunLogLine[]; scrollRef: RefObject<HTMLDivElement | null> }) {
@@ -612,7 +618,9 @@ function RunSummaryPanel({
   return (
     <div className="border border-white/10 bg-[#111111]">
       <div className="flex items-center gap-2 border-b border-white/5 px-4 py-3">
-        {status === 'stopped' ? (
+        {status === 'running' ? (
+          <Activity className="h-4 w-4 text-blue-300" />
+        ) : status === 'stopped' ? (
           <TimerReset className="h-4 w-4 text-amber-300" />
         ) : status === 'errored' ? (
           <XCircle className="h-4 w-4 text-red-300" />
@@ -681,6 +689,69 @@ function RunSummaryPanel({
       )}
     </div>
   );
+}
+
+function buildLiveRunSummary(
+  logs: RunLogLine[],
+  latest: RunMetricsSnapshot | null,
+  plannedRequests: PlannedRunRequest[],
+): RunSummary | null {
+  const requestLines = logs.filter(line => line.level === 'request' && Boolean(line.method));
+  if (!latest && requestLines.length === 0) return null;
+
+  const groups = new Map<string, { lines: RunLogLine[]; planned?: PlannedRunRequest }>();
+  requestLines.forEach(line => {
+    const runtimePath = String(line.path ?? '').replace(/^https?:\/\/[^/]+/i, '') || '/';
+    const runtimeUrl = new URL(runtimePath, 'http://relampo.local');
+    const runtimeQueryCount = [...runtimeUrl.searchParams].length;
+    const planned = plannedRequests.find(
+      request =>
+        request.method === line.method?.toUpperCase() &&
+        request.pathPattern.test(runtimeUrl.pathname) &&
+        request.queryPatterns.length === runtimeQueryCount &&
+        request.queryPatterns.every(([name, pattern]) => runtimeUrl.searchParams.getAll(name).some(value => pattern.test(value))),
+    );
+    const key = planned?.key ?? `${line.method}\u0000${runtimePath}`;
+    const group = groups.get(key) ?? { lines: [], planned };
+    group.lines.push(line);
+    groups.set(key, group);
+  });
+  const percentile = (values: number[], ratio: number) => {
+    if (values.length === 0) return 0;
+    const sorted = [...values].sort((a, b) => a - b);
+    return sorted[Math.max(0, Math.ceil(sorted.length * ratio) - 1)];
+  };
+  const requests = [...groups.values()].map(({ lines, planned }) => {
+    const first = lines[0];
+    const latencies = lines.flatMap(line => (line.latency_ms == null ? [] : [line.latency_ms]));
+    const failures = lines.filter(line => (line.status ?? 0) >= 400 || Boolean(line.message)).length;
+    const totalLatency = latencies.reduce((total, value) => total + value, 0);
+    return {
+      name: planned?.name ?? `${first.method} ${first.path ?? ''}`,
+      method: planned?.method ?? first.method ?? '',
+      path: planned?.path ?? first.path ?? '',
+      count: lines.length,
+      failures,
+      avg_ms: latencies.length ? totalLatency / latencies.length : 0,
+      min_ms: latencies.length ? Math.min(...latencies) : 0,
+      max_ms: latencies.length ? Math.max(...latencies) : 0,
+      p90_ms: percentile(latencies, 0.9),
+      p95_ms: percentile(latencies, 0.95),
+      p99_ms: percentile(latencies, 0.99),
+    };
+  });
+  const executedVus = new Set(requestLines.flatMap(line => (line.vu ? [line.vu] : []))).size;
+  const observedFailures = requests.reduce((total, request) => total + request.failures, 0);
+  return {
+    test_name: 'Live run',
+    start_time: '',
+    end_time: '',
+    duration: (latest?.elapsed_ms ?? 0) * 1e6,
+    total_requests: latest?.total_requests ?? requestLines.length,
+    total_failures: latest?.total_failures ?? observedFailures,
+    executed_vus: executedVus || undefined,
+    requests,
+  };
 }
 
 function SummaryStat({ label, value, tone }: { label: string; value: string; tone?: string }) {

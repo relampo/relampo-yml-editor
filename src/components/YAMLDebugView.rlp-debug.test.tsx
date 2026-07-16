@@ -962,6 +962,88 @@ describe('YAMLDebugSession RLP debug fixes', () => {
     expect(screen.queryByText('future-child-value')).toBeNull();
   });
 
+  it('keeps completed redirect timeline numbers stable after Tree edits (RLP-442)', async () => {
+    const parent: YAMLNode = {
+      id: 'p2',
+      type: 'request',
+      name: '[2] Login - GET /login',
+      data: {
+        request_id: 2,
+        method: 'GET',
+        url: '/login',
+        follow_redirects: true,
+        chain_id: 'rc-2',
+        chain_role: 'parent',
+      },
+    };
+    const child = (requestId: number, role: 'hop' | 'final'): YAMLNode => ({
+      id: `r${requestId}`,
+      type: 'request',
+      name: `[${requestId}] Login - GET /redirect-${requestId}`,
+      data: {
+        request_id: requestId,
+        enabled: false,
+        method: 'GET',
+        url: `/redirect-${requestId}`,
+        chain_id: 'rc-2',
+        chain_role: role,
+      },
+    });
+    const children = [child(3, 'hop'), child(4, 'hop'), child(5, 'final')];
+    const followedTree: YAMLNode = { id: 'root', type: 'root', name: 'root', children: [parent, ...children] };
+    const props = {
+      documentReady: true,
+      validationErrors: [] as string[],
+      onSelectNode: vi.fn(),
+      onEditNode: vi.fn(),
+    };
+
+    const { rerender } = render(
+      <YAMLDebugSession tree={followedTree} yamlCode={'test:\n  name: followed\n'} {...props} />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
+
+    act(() => {
+      debugApiMock.handlers[0].onEvent(
+        event({ name: '[2] GET /login', path: '/login', chain_id: 'rc-2', chain_role: 'parent', request_id: 2 }),
+      );
+      children.forEach((request, index) => {
+        debugApiMock.handlers[0].onEvent(
+          event({
+            name: `[2] -> redirect`,
+            path: String(request.data?.url),
+            chain_id: 'rc-2',
+            chain_role: String(request.data?.chain_role),
+            redirect_index: index + 1,
+            request_id: 2,
+          }),
+        );
+      });
+      debugApiMock.handlers[0].onDone(null);
+    });
+
+    expect(await screen.findByText('#2.1')).toBeInTheDocument();
+    expect(screen.getByText('#2.2')).toBeInTheDocument();
+    expect(screen.getByText('#2.3')).toBeInTheDocument();
+
+    const standaloneTree: YAMLNode = {
+      ...followedTree,
+      children: [
+        { ...parent, data: { ...parent.data, follow_redirects: false } },
+        ...children.map(request => ({ ...request, data: { ...request.data, enabled: true, follow_redirects: false } })),
+      ],
+    };
+    rerender(<YAMLDebugSession tree={standaloneTree} yamlCode={'test:\n  name: edited-after-run\n'} {...props} />);
+
+    expect(screen.getByText('#2.1')).toBeInTheDocument();
+    expect(screen.getByText('#2.2')).toBeInTheDocument();
+    expect(screen.getByText('#2.3')).toBeInTheDocument();
+    expect(screen.queryByText('#3')).not.toBeInTheDocument();
+    expect(screen.queryByText('#4')).not.toBeInTheDocument();
+    expect(screen.queryByText('#5')).not.toBeInTheDocument();
+  });
+
   it('shows a binary response body as a compact notice, not mojibake (RLP-555)', async () => {
     render(
       <YAMLDebugSession

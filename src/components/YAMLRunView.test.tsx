@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { YAMLLoadRunSession } from './YAMLRunView';
 import type { RunMetricsSnapshot, RunStreamHandlers, RunSummary } from '../utils/runApi';
+import type { YAMLNode } from '../types/yaml';
 
 const runApiMock = vi.hoisted(() => {
   const handlers: RunStreamHandlers[] = [];
@@ -99,18 +100,22 @@ describe('YAMLLoadRunSession', () => {
       runApiMock.handlers[0].onMetrics(metric({ rps: 123, total_requests: 200, active_users: 8 }));
       runApiMock.handlers[0].onLog([
         { seq: 0, ts: 1782249308000, level: 'request', vu: 1, method: 'GET', path: '/api/x', status: 200, latency_ms: 12 },
+        { seq: 1, ts: 1782249309000, level: 'request', vu: 1, method: 'GET', path: '/api/x', status: 200, latency_ms: 18 },
       ]);
     });
 
     // The req/s value appears on the stat card (and the sparkline header).
     expect(screen.getAllByText('123').length).toBeGreaterThan(0);
     expect(screen.getAllByText('200').length).toBeGreaterThan(0);
-    // Requests appear as soon as their SSE log event arrives, before onDone.
-    expect(screen.getByText('Executed requests')).toBeInTheDocument();
-    expect(screen.getByText('/api/x')).toBeInTheDocument();
+    // The summary appears before onDone, with repeated iterations aggregated.
+    expect(screen.getByText('Run summary')).toBeInTheDocument();
+    expect(screen.queryByText('Executed requests')).not.toBeInTheDocument();
+    const liveSummaryTable = screen.getByRole('table');
+    expect(within(liveSummaryTable).getByText('/api/x')).toBeInTheDocument();
+    expect(within(liveSummaryTable).getByText('2')).toBeInTheDocument();
     // The live log feed still renders the streamed engine line.
     expect(screen.getByText('Live logs')).toBeInTheDocument();
-    expect(screen.getByText(/GET \/api\/x/)).toBeInTheDocument();
+    expect(screen.getAllByText(/GET \/api\/x/)).toHaveLength(2);
 
     act(() => {
       runApiMock.handlers[0].onDone({ status: 'completed', error: null, summary: summary() });
@@ -122,6 +127,37 @@ describe('YAMLLoadRunSession', () => {
     const summaryHeading = screen.getByText('Run summary');
     const logsHeading = screen.getByText('Live logs');
     expect(summaryHeading.compareDocumentPosition(logsHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('groups dynamic request paths by their script request', async () => {
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'root',
+      name: 'root',
+      children: [
+        {
+          id: 'request-1',
+          type: 'request',
+          name: 'GET item',
+          data: { method: 'GET', url: '/api/items/{{item}}?vu={{__vu_idx}}&iteration={{__iteration_idx}}' },
+        },
+      ],
+    };
+    render(<YAMLLoadRunSession {...baseProps} tree={tree} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run load test' }));
+    await waitFor(() => expect(runApiMock.handlers).toHaveLength(1));
+    act(() => {
+      runApiMock.handlers[0].onLog([
+        { seq: 0, ts: 1, level: 'request', method: 'GET', path: '/api/items/a?iteration=1&vu=1', status: 200, latency_ms: 10 },
+        { seq: 1, ts: 2, level: 'request', method: 'GET', path: '/api/items/b?iteration=2&vu=2', status: 200, latency_ms: 20 },
+      ]);
+    });
+
+    const table = await screen.findByRole('table');
+    expect(within(table).getByText('/api/items/{{item}}?vu={{__vu_idx}}&iteration={{__iteration_idx}}')).toBeInTheDocument();
+    expect(within(table).getByText('2')).toBeInTheDocument();
+    expect(within(table).getAllByRole('row')).toHaveLength(2);
   });
 
   it('asks the server to stop the active run when Stop is clicked', async () => {

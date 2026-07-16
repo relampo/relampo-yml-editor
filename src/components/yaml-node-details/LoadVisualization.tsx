@@ -691,7 +691,10 @@ function formatTimeLabel(seconds: number): string {
     return `${Math.max(1, Math.round(seconds * 1000))}ms`;
   }
   const rounded = Math.max(0, Math.round(seconds));
-  return rounded >= 60 ? `${Math.round(rounded / 60)}m` : `${rounded}s`;
+  if (rounded < 60) return `${rounded}s`;
+  const minutes = Math.floor(rounded / 60);
+  const remainingSeconds = rounded % 60;
+  return remainingSeconds ? `${minutes}m ${remainingSeconds}s` : `${minutes}m`;
 }
 
 function buildIntentVariationLine({
