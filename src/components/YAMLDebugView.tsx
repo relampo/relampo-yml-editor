@@ -140,9 +140,9 @@ export function YAMLDebugSession({
     () =>
       entryEvents.map(entry => ({
         ...entry,
-        node: matchDebugEventTarget(entry.event, debugEventTargets),
+        node: matchDebugEventTarget(entry.event, debugEventTargets, redirectedRequestMap),
       })),
-    [debugEventTargets, entryEvents],
+    [debugEventTargets, entryEvents, redirectedRequestMap],
   );
   // The timeline shows one row per engine event, but a recorded redirect chain
   // can be longer than the live run walks: the engine stops following at a hop
@@ -250,31 +250,32 @@ export function YAMLDebugSession({
   // document did not come back (no draft restored), the run is orphaned and
   // its stored id is dropped instead of reviving a timeline with no script.
   const reattachedRef = useRef(false);
-  const reattachStoredRun = useCallback((element: HTMLSpanElement | null) => {
-    if (!element || !documentReady || reattachedRef.current) return;
-    const storedRun = storedRunRef.current;
-    if (!storedRun) return;
-    if (!yamlCode.trim() || storedRun.fp !== fingerprint(yamlCode)) {
-      runStore.clear();
-      storedRunRef.current = null;
-      return;
-    }
-    reattachedRef.current = true;
-    setIsRunning(true);
-    subscribe(storedRun.id, true);
-  }, [documentReady, subscribe, yamlCode]);
+  const reattachStoredRun = useCallback(
+    (element: HTMLSpanElement | null) => {
+      if (!element || !documentReady || reattachedRef.current) return;
+      const storedRun = storedRunRef.current;
+      if (!storedRun) return;
+      if (!yamlCode.trim() || storedRun.fp !== fingerprint(yamlCode)) {
+        runStore.clear();
+        storedRunRef.current = null;
+        return;
+      }
+      reattachedRef.current = true;
+      setIsRunning(true);
+      subscribe(storedRun.id, true);
+    },
+    [documentReady, subscribe, yamlCode],
+  );
 
-  const activeEntry = timelineEntries.find(entry => entry.id === activeId) || timelineEntries[timelineEntries.length - 1];
+  const activeEntry =
+    timelineEntries.find(entry => entry.id === activeId) || timelineEntries[timelineEntries.length - 1];
   const passed = entries.filter(entry => entry.status === 'passed').length;
   const failed = entries.filter(entry => entry.status === 'failed').length;
   // Count the same redirect follow-up steps the tree labels REDIRECTED, so the
   // summary reconciles with the tree (RLP-588). Counting 3xx response statuses
   // instead diverged: it swept in 304 Not Modified and standalone 302s (e.g. a
   // sign-off) that never produced a labeled follow-up step.
-  const redirects = entries.reduce(
-    (count, entry) => count + (isRedirectStepEvent(entry.event) ? 1 : 0),
-    0,
-  );
+  const redirects = entries.reduce((count, entry) => count + (isRedirectStepEvent(entry.event) ? 1 : 0), 0);
   const hasValidationErrors = validationErrors.length > 0;
 
   const startRun = async () => {
@@ -345,7 +346,13 @@ export function YAMLDebugSession({
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-[#0d0d0d]">
-      {storedRunRef.current && <span ref={reattachStoredRun} hidden aria-hidden="true" />}
+      {storedRunRef.current && (
+        <span
+          ref={reattachStoredRun}
+          hidden
+          aria-hidden="true"
+        />
+      )}
       <div className="border-b border-white/5 px-5 py-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -383,7 +390,10 @@ export function YAMLDebugSession({
             </button>
             <fieldset className="m-0 inline-flex h-9 min-w-0 items-center rounded border border-white/10 bg-[#161616] p-0 text-xs text-zinc-400">
               <legend className="sr-only">Debug VUs</legend>
-              <span aria-hidden="true" className="inline-flex h-full items-center gap-1.5 border-r border-white/10 px-2">
+              <span
+                aria-hidden="true"
+                className="inline-flex h-full items-center gap-1.5 border-r border-white/10 px-2"
+              >
                 <Users className="h-3.5 w-3.5" />
                 VUs
               </span>
@@ -398,9 +408,7 @@ export function YAMLDebugSession({
                     disabled={isRunning}
                     aria-pressed={selected}
                     className={`h-full min-w-14 px-2.5 font-semibold transition-colors ${
-                      selected
-                        ? 'bg-yellow-400 text-black'
-                        : 'text-zinc-300 hover:bg-white/6 hover:text-zinc-100'
+                      selected ? 'bg-yellow-400 text-black' : 'text-zinc-300 hover:bg-white/6 hover:text-zinc-100'
                     } disabled:cursor-not-allowed disabled:opacity-50`}
                   >
                     {vus} {vus === 1 ? 'VU' : 'VUs'}
@@ -423,7 +431,10 @@ export function YAMLDebugSession({
               </p>
               <div className="mt-2 space-y-1">
                 {validationErrors.slice(0, 4).map((error, index) => (
-                  <p key={`${error}-${index}`} className="wrap-break-word font-mono text-xs text-red-100/90">
+                  <p
+                    key={`${error}-${index}`}
+                    className="wrap-break-word font-mono text-xs text-red-100/90"
+                  >
                     {error}
                   </p>
                 ))}
@@ -455,7 +466,10 @@ export function YAMLDebugSession({
           ['Failed', failed, 'text-red-300'],
           ['Redirects', redirects, 'text-blue-300'],
         ].map(([label, value, tone]) => (
-          <div key={label} className="border-r border-white/5 px-5 py-3 last:border-r-0">
+          <div
+            key={label}
+            className="border-r border-white/5 px-5 py-3 last:border-r-0"
+          >
             <p className={`text-lg font-semibold ${tone}`}>{value}</p>
             <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-500">{label}</p>
           </div>
@@ -495,7 +509,9 @@ export function YAMLDebugSession({
                         onKeyDown={event => handleTimelineEntryKeyDown(event, entry)}
                         aria-current={active ? 'true' : undefined}
                         className={`w-full border px-3 py-2.5 text-left transition-colors ${
-                          active ? 'border-yellow-400/50 bg-yellow-400/10' : 'border-white/10 bg-[#111111] hover:border-white/20'
+                          active
+                            ? 'border-yellow-400/50 bg-yellow-400/10'
+                            : 'border-white/10 bg-[#111111] hover:border-white/20'
                         } ${entry.status === 'skipped' ? 'opacity-70' : ''} focus:outline-none focus-visible:border-yellow-400/70 focus-visible:ring-2 focus-visible:ring-yellow-400/40`}
                       >
                         <div className="flex min-w-0 items-center gap-3">
@@ -513,7 +529,9 @@ export function YAMLDebugSession({
                               <span className="rounded border border-blue-400/25 bg-blue-400/10 px-1.5 py-0.5 text-[10px] font-semibold text-blue-300">
                                 {entry.event.method}
                               </span>
-                              <span className="truncate text-sm text-zinc-100">{entry.event.path || entry.event.name}</span>
+                              <span className="truncate text-sm text-zinc-100">
+                                {entry.event.path || entry.event.name}
+                              </span>
                             </div>
                             <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] text-zinc-500">
                               {entry.status === 'skipped' ? (
@@ -781,7 +799,12 @@ function DebugInspectorContent({
           : 'No variable values were captured for this request.';
       return <p className="text-sm text-zinc-500">{message}</p>;
     }
-    return <DebugSection rows={variables} wrapLabels />;
+    return (
+      <DebugSection
+        rows={variables}
+        wrapLabels
+      />
+    );
   }
 
   if (tab === 'logs') {
@@ -815,9 +838,13 @@ function DebugInspectorContent({
             sourceUrl || event.path,
           );
           return (
-            <p key={`${hop.status}-${hop.method ?? ''}-${hop.url ?? ''}-${hop.location ?? hop.target_url ?? ''}`} className="pl-6 text-zinc-400 break-all">
-              ↳ hop {index + 1}: {hop.status || '—'} {hop.method ? `${hop.method} ` : ''}{sourceUrl} →{' '}
-              {targetStatus || '—'} {targetMethod ? `${targetMethod} ` : ''}{targetUrl}
+            <p
+              key={`${hop.status}-${hop.method ?? ''}-${hop.url ?? ''}-${hop.location ?? hop.target_url ?? ''}`}
+              className="pl-6 text-zinc-400 break-all"
+            >
+              ↳ hop {index + 1}: {hop.status || '—'} {hop.method ? `${hop.method} ` : ''}
+              {sourceUrl} → {targetStatus || '—'} {targetMethod ? `${targetMethod} ` : ''}
+              {targetUrl}
             </p>
           );
         })}
@@ -830,7 +857,11 @@ function DebugInspectorContent({
             {event.method} {absoluteDebugUrl(event.path || redirectedInfo.matchedLocation, event.path)}
           </p>
         )}
-        {event.err && <p className="text-red-300">[{time}] {event.err}</p>}
+        {event.err && (
+          <p className="text-red-300">
+            [{time}] {event.err}
+          </p>
+        )}
       </div>
     );
   }
@@ -848,7 +879,11 @@ function DebugInspectorContent({
         // from the node made Overview contradict the Request tab. RLP-593.
         value={event.path || event.name}
       />
-      <DebugLine icon={<Clock3 className="h-4 w-4 text-zinc-300" />} title="Latency" value={formatLatency(event.latency_ms)} />
+      <DebugLine
+        icon={<Clock3 className="h-4 w-4 text-zinc-300" />}
+        title="Latency"
+        value={formatLatency(event.latency_ms)}
+      />
       <DebugLine
         icon={<TerminalSquare className="h-4 w-4 text-zinc-300" />}
         title="VU"
@@ -856,7 +891,11 @@ function DebugInspectorContent({
       />
       <DebugLine
         icon={
-          event.err ? <XCircle className="h-4 w-4 text-red-300" /> : <ShieldCheck className="h-4 w-4 text-emerald-300" />
+          event.err ? (
+            <XCircle className="h-4 w-4 text-red-300" />
+          ) : (
+            <ShieldCheck className="h-4 w-4 text-emerald-300" />
+          )
         }
         title="Result"
         value={event.err || (event.status ? `HTTP ${event.status}` : 'Completed')}
@@ -867,23 +906,36 @@ function DebugInspectorContent({
 
 function debugVariableSnapshot(activeEntry: DebugEntry, entries: DebugEntry[]): Record<string, string> {
   const snapshot = { ...(activeEntry.event.variables ?? {}) };
-  const chainId = String(activeEntry.event.chain_id ?? activeEntry.node?.data?.chain_id ?? '').trim();
+  const eventChainId = String(activeEntry.event.chain_id ?? '').trim();
+  const chainId = eventChainId || String(activeEntry.node?.data?.chain_id ?? '').trim();
   const chainRole = String(activeEntry.event.chain_role ?? activeEntry.node?.data?.chain_role ?? '').toLowerCase();
+  const requestId = activeEntry.event.request_id;
   const activeIndex = entries.findIndex(entry => entry.id === activeEntry.id);
-  if (!chainId || activeIndex < 0) return snapshot;
+  if ((!chainId && requestId == null) || activeIndex < 0) return snapshot;
   const activeVu = activeEntry.event.vu ?? 0;
+  const isSameChain = (candidate: DebugEntry) => {
+    if ((candidate.event.vu ?? 0) !== activeVu) return false;
+    const candidateEventChainId = String(candidate.event.chain_id ?? '').trim();
+    // Some engine versions omit chain_id from the parent event while still
+    // stamping it on redirect follow-ups. Prefer explicit IDs when both sides
+    // have one, then use the shared runtime request_id for partial payloads.
+    if (eventChainId && candidateEventChainId) return candidateEventChainId === eventChainId;
+    if (requestId != null) return candidate.event.request_id === requestId;
+    return String(candidate.node?.data?.chain_id ?? '').trim() === chainId;
+  };
+  const isParent = (entry: DebugEntry) => {
+    const role = String(entry.event.chain_role ?? entry.node?.data?.chain_role ?? '').toLowerCase();
+    return role === 'parent' || (!role && Number(entry.event.redirect_index ?? 0) === 0);
+  };
 
-  if (chainRole !== 'parent') {
+  if (chainRole !== 'parent' && !isParent(activeEntry)) {
     for (let index = activeIndex - 1; index >= 0; index -= 1) {
       const candidate = entries[index];
-      if ((candidate.event.vu ?? 0) !== activeVu) continue;
-      const candidateChainId = String(candidate.event.chain_id ?? candidate.node?.data?.chain_id ?? '').trim();
-      if (candidateChainId !== chainId) continue;
+      if (!isSameChain(candidate)) continue;
       Object.entries(candidate.event.variables ?? {}).forEach(([name, value]) => {
         if (!Object.prototype.hasOwnProperty.call(snapshot, name)) snapshot[name] = value;
       });
-      const candidateRole = String(candidate.event.chain_role ?? candidate.node?.data?.chain_role ?? '').toLowerCase();
-      if (candidateRole === 'parent') break;
+      if (isParent(candidate)) break;
     }
     return snapshot;
   }
@@ -892,10 +944,7 @@ function debugVariableSnapshot(activeEntry: DebugEntry, entries: DebugEntry[]): 
 
   for (let index = activeIndex + 1; index < entries.length; index += 1) {
     const candidate = entries[index];
-    if ((candidate.event.vu ?? 0) !== activeVu) continue;
-    const candidateChainId = String(candidate.event.chain_id ?? candidate.node?.data?.chain_id ?? '').trim();
-    const candidateRole = String(candidate.event.chain_role ?? candidate.node?.data?.chain_role ?? '').toLowerCase();
-    if (candidateChainId !== chainId || candidateRole === 'parent') break;
+    if (!isSameChain(candidate) || isParent(candidate)) break;
     Object.assign(snapshot, candidate.event.variables ?? {});
   }
 
