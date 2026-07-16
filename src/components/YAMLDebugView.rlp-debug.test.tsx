@@ -343,7 +343,12 @@ describe('YAMLDebugSession RLP debug fixes', () => {
       data: { request_id: 12, method: 'GET', url: '/flowSelector.xhtml', chain_id: 'rc-10', chain_role: 'final' },
       path: ['scenarios', 0, 'steps', 12],
     };
-    const tree: YAMLNode = { id: 'root', type: 'root', name: 'root', children: [parentRequest, hopRequest, finalRequest] };
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'root',
+      name: 'root',
+      children: [parentRequest, hopRequest, finalRequest],
+    };
 
     render(
       <YAMLDebugSession
@@ -456,7 +461,12 @@ describe('YAMLDebugSession RLP debug fixes', () => {
           chain_role: 'final',
           redirect_index: 1,
           redirects: [
-            { status: 302, method: 'POST', url: 'http://example.test/login', location: 'http://example.test/dashboard' },
+            {
+              status: 302,
+              method: 'POST',
+              url: 'http://example.test/login',
+              location: 'http://example.test/dashboard',
+            },
           ],
         }),
       );
@@ -491,9 +501,7 @@ describe('YAMLDebugSession RLP debug fixes', () => {
           name: 'GET /landing',
           path: 'https://app.example.test/landing',
           status: 200,
-          redirects: [
-            { status: 302, method: 'GET', url: 'https://app.example.test/start', location: '/landing' },
-          ],
+          redirects: [{ status: 302, method: 'GET', url: 'https://app.example.test/start', location: '/landing' }],
         }),
       );
     });
@@ -594,6 +602,79 @@ describe('YAMLDebugSession RLP debug fixes', () => {
     expect(screen.queryByText('Regex value not found: javax.faces.ViewState')).toBeNull();
   });
 
+  it('shows variables captured earlier in a redirect even when its recorded URL is already resolved (RLP-597)', async () => {
+    const parent: YAMLNode = {
+      id: 'parent',
+      type: 'request',
+      name: '[2] GET /login',
+      data: { request_id: 2, method: 'GET', url: '/login', chain_id: 'rc-2', chain_role: 'parent' },
+    };
+    const child: YAMLNode = {
+      id: 'child',
+      type: 'request',
+      name: '[3] GET /oauth',
+      data: {
+        request_id: 3,
+        method: 'GET',
+        // Recorded redirect children contain the capture-time values, not the
+        // original placeholders. The Variables tab must correlate those literal
+        // values with the runtime snapshot, as in request #2.1 from the report.
+        url: '/oauth?state=captured-state&code=captured-code',
+        enabled: false,
+        chain_id: 'rc-2',
+        chain_role: 'hop',
+      },
+    };
+    const tree: YAMLNode = { id: 'root', type: 'root', name: 'root', children: [parent, child] };
+
+    render(
+      <YAMLDebugSession
+        tree={tree}
+        yamlCode={'test:\n  name: child-variable-snapshot\n'}
+        documentReady
+        validationErrors={[]}
+        onSelectNode={vi.fn()}
+        onEditNode={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
+
+    act(() => {
+      debugApiMock.handlers[0].onEvent(
+        event({
+          name: '[2] GET /login',
+          path: '/login',
+          request_id: 2,
+          chain_role: 'parent',
+          variables: { state1: 'captured-state', unrelated: 'must-not-leak' },
+        }),
+      );
+      debugApiMock.handlers[0].onEvent(
+        event({
+          name: '[2] GET /oauth',
+          path: '/oauth?state=captured-state&code=captured-code',
+          request_id: 2,
+          chain_id: 'legacy:scenarios[0].steps[0]',
+          chain_role: 'hop',
+          redirect_index: 1,
+          variables: { code1: 'captured-code' },
+        }),
+      );
+    });
+
+    fireEvent.click((await screen.findByText('#2.1')).closest('button')!);
+    fireEvent.click(screen.getByRole('button', { name: 'variables' }));
+
+    expect(await screen.findByText('state1 (REQ)')).toBeInTheDocument();
+    expect(screen.getByText('captured-state')).toBeInTheDocument();
+    expect(screen.getByText('code1 (REQ)')).toBeInTheDocument();
+    expect(screen.getByText('captured-code')).toBeInTheDocument();
+    expect(screen.queryByText(/unrelated/i)).toBeNull();
+    expect(screen.queryByText('Not captured')).toBeNull();
+  });
+
   it('Overview shows the runtime URL, not the recorded one with the stale correlated value (RLP-593)', async () => {
     // The recorded step name bakes in the capture-time value of the {{NROEXP}}
     // placeholder. At runtime the extraction failed, so the request actually went
@@ -651,14 +732,28 @@ describe('YAMLDebugSession RLP debug fixes', () => {
       id: 'h124',
       type: 'request',
       name: '[124] Firmar - GET /oauth/authz/flow',
-      data: { request_id: 124, enabled: false, method: 'GET', url: '/oauth/authz/flow', chain_id: 'rc-123', chain_role: 'hop' },
+      data: {
+        request_id: 124,
+        enabled: false,
+        method: 'GET',
+        url: '/oauth/authz/flow',
+        chain_id: 'rc-123',
+        chain_role: 'hop',
+      },
       path: ['scenarios', 0, 'steps', 123],
     };
     const final: YAMLNode = {
       id: 'f125',
       type: 'request',
       name: '[125] Firmar - GET /tuid/callback',
-      data: { request_id: 125, enabled: false, method: 'GET', url: '/tuid/callback', chain_id: 'rc-123', chain_role: 'final' },
+      data: {
+        request_id: 125,
+        enabled: false,
+        method: 'GET',
+        url: '/tuid/callback',
+        chain_id: 'rc-123',
+        chain_role: 'final',
+      },
       path: ['scenarios', 0, 'steps', 124],
     };
     const tree: YAMLNode = { id: 'root', type: 'root', name: 'root', children: [parent, hop, final] };
@@ -681,10 +776,26 @@ describe('YAMLDebugSession RLP debug fixes', () => {
       // Parent (#123) and one hop (#123.1) fire; the callback [125] never does —
       // the backend stamps the parent's request_id on every chain event.
       debugApiMock.handlers[0].onEvent(
-        event({ name: '[123] Firmar - POST /authentication', path: '/authentication', method: 'POST', status: 302, chain_id: 'rc-123', chain_role: 'parent', request_id: 123 }),
+        event({
+          name: '[123] Firmar - POST /authentication',
+          path: '/authentication',
+          method: 'POST',
+          status: 302,
+          chain_id: 'rc-123',
+          chain_role: 'parent',
+          request_id: 123,
+        }),
       );
       debugApiMock.handlers[0].onEvent(
-        event({ name: '[123] -> redirect', path: '/oauth/authz/flow', status: 302, chain_id: 'rc-123', chain_role: 'hop', redirect_index: 1, request_id: 123 }),
+        event({
+          name: '[123] -> redirect',
+          path: '/oauth/authz/flow',
+          status: 302,
+          chain_id: 'rc-123',
+          chain_role: 'hop',
+          redirect_index: 1,
+          request_id: 123,
+        }),
       );
     });
 

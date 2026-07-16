@@ -1,4 +1,4 @@
-import type { YAMLNode } from '../types/yaml';
+import type { RedirectedRequestInfo, YAMLNode } from '../types/yaml';
 
 export type DebugStatus = 'passed' | 'failed' | 'warning' | 'pending' | 'running' | 'skipped';
 
@@ -42,7 +42,9 @@ function findUniqueTarget(nodes: YAMLNode[], predicate: (node: YAMLNode) => bool
 // landing response. The parent's own first request (redirect_index 0,
 // chain_role "parent") is NOT a follow-up — it matches its own node normally.
 function isRedirectFollowUpEvent(event: DebugEventLike): boolean {
-  const role = String(event.chain_role ?? '').trim().toLowerCase();
+  const role = String(event.chain_role ?? '')
+    .trim()
+    .toLowerCase();
   return role === 'hop' || role === 'final' || (event.redirect_index ?? 0) > 0;
 }
 
@@ -56,11 +58,15 @@ export function isRedirectStepEvent(event: DebugEventLike): boolean {
 }
 
 function chainRoleOf(node: YAMLNode): string {
-  return String(node.data?.chain_role ?? '').trim().toLowerCase();
+  return String(node.data?.chain_role ?? '')
+    .trim()
+    .toLowerCase();
 }
 
 function redirectChainParent(chainId: string, requestNodes: YAMLNode[]): YAMLNode | null {
-  return requestNodes.find(node => String(node.data?.chain_id ?? '') === chainId && chainRoleOf(node) === 'parent') ?? null;
+  return (
+    requestNodes.find(node => String(node.data?.chain_id ?? '') === chainId && chainRoleOf(node) === 'parent') ?? null
+  );
 }
 
 function redirectChainParentDisablesFollow(chainId: string, requestNodes: YAMLNode[]): boolean {
@@ -77,7 +83,11 @@ function redirectChainParentDisablesFollow(chainId: string, requestNodes: YAMLNo
 // final one — resolves to its own node. Returns null when the chain can't be
 // resolved (e.g. the recording and the live run disagree on hop count) so the
 // Tree shows no selection instead of a wrong one. RLP-570.
-function matchRedirectChainChildToNode(event: DebugEventLike, chainId: string, requestTargets: YAMLNode[]): YAMLNode | null {
+function matchRedirectChainChildToNode(
+  event: DebugEventLike,
+  chainId: string,
+  requestTargets: YAMLNode[],
+): YAMLNode | null {
   const children = requestTargets.filter(node => {
     const role = chainRoleOf(node);
     return String(node.data?.chain_id ?? '') === chainId && (role === 'hop' || role === 'final');
@@ -88,7 +98,11 @@ function matchRedirectChainChildToNode(event: DebugEventLike, chainId: string, r
   // optional and omitempty drops a 0). Map it to the chain's recorded 'final'
   // child so the landing still selects its node and keeps its redirect context,
   // rather than going unmatched. RLP-585.
-  if (String(event.chain_role ?? '').trim().toLowerCase() === 'final') {
+  if (
+    String(event.chain_role ?? '')
+      .trim()
+      .toLowerCase() === 'final'
+  ) {
     return children.find(node => chainRoleOf(node) === 'final') ?? null;
   }
   return null;
@@ -119,7 +133,11 @@ function redirectChainPosition(
 // children stay grouped under one number yet remain individually identifiable —
 // critical when multiple VUs interleave their chains. The parent's own row
 // keeps the bare number (#32). RLP-586 (was: every follow-up shared #32, RLP-570).
-export function debugEventRequestNumber(event: DebugEventLike, matchedNode: YAMLNode | null, requestNodes: YAMLNode[]): string {
+export function debugEventRequestNumber(
+  event: DebugEventLike,
+  matchedNode: YAMLNode | null,
+  requestNodes: YAMLNode[],
+): string {
   const chainId = String(event.chain_id ?? '').trim();
   if (chainId && isRedirectFollowUpEvent(event) && !redirectChainParentDisablesFollow(chainId, requestNodes)) {
     const parent = redirectChainParent(chainId, requestNodes);
@@ -170,7 +188,9 @@ export function skippedRedirectHops(events: DebugEventLike[], requestNodes: YAML
     if (!chainId) return;
     if (redirectChainParentDisablesFollow(chainId, requestNodes)) return;
     const isFollowUp = isRedirectFollowUpEvent(event);
-    const eventRole = String(event.chain_role ?? '').trim().toLowerCase();
+    const eventRole = String(event.chain_role ?? '')
+      .trim()
+      .toLowerCase();
     const matched = matchDebugEventTarget(event, requestNodes);
     const startsRedirectWalk =
       isFollowUp ||
@@ -207,9 +227,15 @@ export function skippedRedirectHops(events: DebugEventLike[], requestNodes: YAML
   return skipped.sort((a, b) => a.afterEventIndex - b.afterEventIndex || a.position - b.position);
 }
 
-function matchRedirectFinalEventToNode(event: DebugEventLike, requestTargets: YAMLNode[], eventPath: string): YAMLNode | null {
+function matchRedirectFinalEventToNode(
+  event: DebugEventLike,
+  requestTargets: YAMLNode[],
+  eventPath: string,
+): YAMLNode | null {
   const isRedirectFinal =
-    event.chain_role === 'final' || event.redirect_index !== undefined || String(event.step_path ?? '').includes('.redirects[');
+    event.chain_role === 'final' ||
+    event.redirect_index !== undefined ||
+    String(event.step_path ?? '').includes('.redirects[');
   if (!isRedirectFinal || !eventPath) return null;
   const eventChainId = String(event.chain_id ?? '');
   return findUniqueTarget(
@@ -254,7 +280,11 @@ export function collectDebugEventTargets(tree: YAMLNode | null): YAMLNode[] {
   return nodes;
 }
 
-export function matchDebugEventTarget(event: DebugEventLike, requestNodes: YAMLNode[]): YAMLNode | null {
+export function matchDebugEventTarget(
+  event: DebugEventLike,
+  requestNodes: YAMLNode[],
+  redirectedRequestMap: Record<string, RedirectedRequestInfo> = {},
+): YAMLNode | null {
   const rawWithSuffix = event.name.replace(/^\[[^\]]+\]\s*/, '');
   const raw = rawWithSuffix.replace(/\s+#\d+$/, '');
   const base = raw.includes(':') ? raw.slice(raw.lastIndexOf(':') + 1) : raw;
@@ -266,8 +296,47 @@ export function matchDebugEventTarget(event: DebugEventLike, requestNodes: YAMLN
   // the final one). When the chain can't be resolved we return null — leaving
   // the Tree unmarked — rather than guessing. RLP-570.
   const eventChainId = String(event.chain_id ?? '').trim();
-  if (eventChainId && isRedirectFollowUpEvent(event) && !redirectChainParentDisablesFollow(eventChainId, requestTargets)) {
-    return matchRedirectChainChildToNode(event, eventChainId, requestTargets);
+  let unresolvedRedirectFollowUp = false;
+  if (
+    eventChainId &&
+    isRedirectFollowUpEvent(event) &&
+    !redirectChainParentDisablesFollow(eventChainId, requestTargets)
+  ) {
+    const directMatch = matchRedirectChainChildToNode(event, eventChainId, requestTargets);
+    if (directMatch) return directMatch;
+    // Runtime-discovered redirects can use a synthetic `legacy:...` chain ID
+    // that differs from the recording's chain ID. The engine still preserves
+    // the enabled parent's request_id and redirect position, which uniquely
+    // recover the recorded child without guessing by its resolved URL.
+    const recordedParent = findUniqueTarget(
+      requestTargets,
+      node => chainRoleOf(node) === 'parent' && String(node.data?.request_id ?? '') === String(event.request_id ?? ''),
+    );
+    const recordedChainId = String(recordedParent?.data?.chain_id ?? '').trim();
+    if (recordedChainId) {
+      const recordedMatch = matchRedirectChainChildToNode(event, recordedChainId, requestTargets);
+      if (recordedMatch) return recordedMatch;
+    }
+    const redirectParent = findUniqueTarget(
+      requestTargets,
+      node => String(node.data?.request_id ?? '') === String(event.request_id ?? ''),
+    );
+    if (redirectParent && (event.redirect_index ?? 0) > 0) {
+      const linkedChildren: YAMLNode[] = [];
+      let sourceId = redirectParent.id;
+      for (let index = 0; index < requestTargets.length; index += 1) {
+        const linked = requestTargets.filter(node => redirectedRequestMap[node.id]?.sourceNodeId === sourceId);
+        if (linked.length !== 1) break;
+        linkedChildren.push(linked[0]);
+        sourceId = linked[0].id;
+      }
+      const linkedMatch = linkedChildren[(event.redirect_index ?? 0) - 1];
+      if (linkedMatch) return linkedMatch;
+    }
+    // A precise step_path match below remains safe even when neither chain ID
+    // agrees. Do not fall through to request_id/name matching afterward: those
+    // identify the parent and can select the wrong redirect hop.
+    unresolvedRedirectFollowUp = true;
   }
   const redirectFinalTarget = matchRedirectFinalEventToNode(event, requestTargets, eventPath);
   if (redirectFinalTarget) return redirectFinalTarget;
@@ -278,6 +347,7 @@ export function matchDebugEventTarget(event: DebugEventLike, requestNodes: YAMLN
     if (byStepPath) return byStepPath;
   }
   if (event.method === 'THINK_TIME') return matchThinkTimeEventToNode(event, requestNodes, rawWithSuffix);
+  if (unresolvedRedirectFollowUp) return null;
   const byRequestId =
     event.request_id === undefined || (eventChainId && redirectChainParentDisablesFollow(eventChainId, requestTargets))
       ? null
@@ -293,7 +363,11 @@ export function matchDebugEventTarget(event: DebugEventLike, requestNodes: YAMLN
   );
 }
 
-function matchThinkTimeEventToNode(event: DebugEventLike, requestNodes: YAMLNode[], rawWithSuffix: string): YAMLNode | null {
+function matchThinkTimeEventToNode(
+  event: DebugEventLike,
+  requestNodes: YAMLNode[],
+  rawWithSuffix: string,
+): YAMLNode | null {
   const timers = requestNodes.filter(node => node.type === 'think_time');
   const eventStepPath = String(event.step_path ?? '');
   if (eventStepPath) {
@@ -306,7 +380,10 @@ function matchThinkTimeEventToNode(event: DebugEventLike, requestNodes: YAMLNode
 function debugNodeStepPath(node: YAMLNode): string {
   const path = [...(node.path ?? [])];
   if (path[path.length - 1] === node.type) path.pop();
-  return path.reduce<string>((out, part) => (typeof part === 'number' ? `${out}[${part}]` : out ? `${out}.${part}` : part), '');
+  return path.reduce<string>(
+    (out, part) => (typeof part === 'number' ? `${out}[${part}]` : out ? `${out}.${part}` : part),
+    '',
+  );
 }
 
 function extractorVariableName(node: YAMLNode): string | null {
@@ -417,7 +494,70 @@ export type VariableValueContext = {
 // it, so the same name surfaces in at least two Variables tabs tagged by where
 // it lives vs. where it's used. A variable that a request both extracts and
 // re-uses collapses to a single entry carrying both roles. RLP-597.
-function requestVariableRoles(node: YAMLNode | null): Map<string, Set<VariableRole>> {
+function collectScalarValues(value: unknown, into: Set<string>): void {
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    const scalar = String(value);
+    if (scalar) into.add(scalar);
+    return;
+  }
+  if (Array.isArray(value)) {
+    value.forEach(item => collectScalarValues(item, into));
+    return;
+  }
+  if (value && typeof value === 'object') {
+    Object.values(value as Record<string, unknown>).forEach(item => collectScalarValues(item, into));
+  }
+}
+
+function runtimeRequestValues(context: VariableValueContext): Set<string> {
+  const values = new Set<string>();
+  if (context.requestUrl) {
+    try {
+      const url = new URL(context.requestUrl, 'http://relampo.local');
+      url.pathname.split('/').forEach(segment => segment && values.add(decodeURIComponent(segment)));
+      url.searchParams.forEach(value => values.add(value));
+    } catch {
+      // A malformed runtime URL cannot safely prove that a variable was used.
+    }
+  }
+  Object.values(context.requestHeaders ?? {}).forEach(value => {
+    values.add(value);
+    const schemeValue = value.match(/^\S+\s+(.+)$/)?.[1];
+    if (schemeValue) values.add(schemeValue);
+  });
+  if (context.requestBody) {
+    values.add(context.requestBody);
+    try {
+      collectScalarValues(JSON.parse(context.requestBody), values);
+    } catch {
+      if (context.requestBody.includes('=')) {
+        new URLSearchParams(context.requestBody).forEach(value => values.add(value));
+      }
+    }
+  }
+  return values;
+}
+
+function runtimeRequestVariableNames(variables: Record<string, string>, context: VariableValueContext): string[] {
+  const requestValues = runtimeRequestValues(context);
+  const namesByValue = new Map<string, string[]>();
+  Object.entries(variables).forEach(([name, value]) => {
+    if (!value) return;
+    const names = namesByValue.get(value);
+    if (names) names.push(name);
+    else namesByValue.set(value, [name]);
+  });
+  // Reverse correlation is only trustworthy when a runtime value identifies a
+  // single variable. Two captures can legitimately share a value (e.g. code1
+  // and code2), so ambiguous matches remain driven by explicit placeholders.
+  return [...namesByValue].flatMap(([value, names]) => (requestValues.has(value) && names.length === 1 ? names : []));
+}
+
+function requestVariableRoles(
+  node: YAMLNode | null,
+  variables: Record<string, string>,
+  context: VariableValueContext,
+): Map<string, Set<VariableRole>> {
   const roles = new Map<string, Set<VariableRole>>();
   const tag = (name: string, role: VariableRole) => {
     const set = roles.get(name);
@@ -426,6 +566,7 @@ function requestVariableRoles(node: YAMLNode | null): Map<string, Set<VariableRo
   };
   requestExtractorVariableNames(node).forEach(name => tag(name, 'RES'));
   requestReferencedVariableNames(node).forEach(name => tag(name, 'REQ'));
+  runtimeRequestVariableNames(variables, context).forEach(name => tag(name, 'REQ'));
   return roles;
 }
 
@@ -485,13 +626,16 @@ function captureMatchIndex(data: Record<string, unknown>): number {
 }
 
 function regexExtractorValue(data: Record<string, unknown>, context: VariableValueContext): string | null {
-  const pattern = typeof data.pattern === 'string' ? data.pattern : typeof data.expression === 'string' ? data.expression : '';
+  const pattern =
+    typeof data.pattern === 'string' ? data.pattern : typeof data.expression === 'string' ? data.expression : '';
   if (!pattern) return null;
   const source = extractorSourceText(data, context);
   if (!source) return null;
   const regex = compileExtractorRegex(pattern);
   if (!regex) return null;
-  const matches = [...source.matchAll(new RegExp(regex.source, regex.flags.includes('g') ? regex.flags : `${regex.flags}g`))];
+  const matches = [
+    ...source.matchAll(new RegExp(regex.source, regex.flags.includes('g') ? regex.flags : `${regex.flags}g`)),
+  ];
   const match = matches[captureMatchIndex(data)];
   if (!match) return null;
   const group = captureGroupIndex(data);
@@ -525,10 +669,9 @@ export function variableRowsForRequestNode(
   // `user`/`pass`, which this request neither captures nor references) leak onto
   // it. RLP-584 / RLP-585 / RLP-597.
   if (!node) return [];
-  const roles = requestVariableRoles(node);
+  const roles = requestVariableRoles(node, variables, context);
   const extracted = responseExtractorValues(node, context);
-  return requestVariableNames(node).map<[string, string]>(name => {
-    const variableRoles = roles.get(name);
+  return [...roles].map<[string, string]>(([name, variableRoles]) => {
     const resolvedValue =
       variableRoles?.has('RES') && extracted.has(name)
         ? extracted.get(name)

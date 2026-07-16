@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { debugEventRequestNumber, matchDebugEventTarget, skippedRedirectHops, variableRowsForRequestNode } from './debugRequests';
+import {
+  debugEventRequestNumber,
+  matchDebugEventTarget,
+  skippedRedirectHops,
+  variableRowsForRequestNode,
+} from './debugRequests';
 import type { YAMLNode } from '../types/yaml';
 
 type EventInput = Parameters<typeof matchDebugEventTarget>[0] & { request_id?: number };
@@ -52,7 +57,14 @@ describe('matchDebugEventTarget — redirect chain follow-ups', () => {
     const nodes = chainNodes();
     const matchAt = (redirect_index: number, chain_role: string) =>
       matchDebugEventTarget(
-        event({ name: '[17] Home -> redirect', path: 'https://live.test/anything', chain_id: 'rc-17', chain_role, redirect_index, request_id: 17 }),
+        event({
+          name: '[17] Home -> redirect',
+          path: 'https://live.test/anything',
+          chain_id: 'rc-17',
+          chain_role,
+          redirect_index,
+          request_id: 17,
+        }),
         nodes,
       );
 
@@ -67,10 +79,47 @@ describe('matchDebugEventTarget — redirect chain follow-ups', () => {
     // Correlation rewrote the live URL so it now equals hop20's recorded URL,
     // but redirect_index 1 must still resolve to the first hop, not /home.
     const match = matchDebugEventTarget(
-      event({ name: '[17] Home -> redirect', path: 'https://live.test/home', chain_id: 'rc-17', chain_role: 'hop', redirect_index: 1, request_id: 17 }),
+      event({
+        name: '[17] Home -> redirect',
+        path: 'https://live.test/home',
+        chain_id: 'rc-17',
+        chain_role: 'hop',
+        redirect_index: 1,
+        request_id: 17,
+      }),
       nodes,
     );
     expect(match?.id).toBe('h18');
+  });
+
+  it('maps runtime legacy chains through recorded redirect links when tree nodes have no chain metadata', () => {
+    const parent: YAMLNode = {
+      id: 'parent',
+      type: 'request',
+      name: '[2] GET /login',
+      data: { request_id: 2, method: 'GET', url: '/login' },
+    };
+    const child: YAMLNode = {
+      id: 'child',
+      type: 'request',
+      name: '[3] GET /oauth',
+      data: { request_id: 3, method: 'GET', url: '/oauth?state=recorded', enabled: false },
+    };
+
+    const match = matchDebugEventTarget(
+      event({
+        name: '[2] GET /login -> final 1',
+        path: '/oauth?state=runtime',
+        request_id: 2,
+        chain_id: 'legacy:scenarios[0].steps[0]',
+        chain_role: 'final',
+        redirect_index: 1,
+      }),
+      [parent, child],
+      { child: { sourceNodeId: 'parent', sourceRequestLabel: parent.name, matchedLocation: child.data.url } },
+    );
+
+    expect(match?.id).toBe('child');
   });
 
   it('maps a final event with no redirect_index to the recorded final child', () => {
@@ -78,7 +127,13 @@ describe('matchDebugEventTarget — redirect chain follow-ups', () => {
     // chain_role 'final' but redirect_index omitted (the field is optional /
     // omitempty drops a 0): must still resolve to the chain's final child.
     const match = matchDebugEventTarget(
-      event({ name: '[17] Home -> redirect', path: 'https://live.test/landing', chain_id: 'rc-17', chain_role: 'final', request_id: 17 }),
+      event({
+        name: '[17] Home -> redirect',
+        path: 'https://live.test/landing',
+        chain_id: 'rc-17',
+        chain_role: 'final',
+        request_id: 17,
+      }),
       nodes,
     );
     expect(match?.id).toBe('f21');
@@ -87,7 +142,14 @@ describe('matchDebugEventTarget — redirect chain follow-ups', () => {
   it('leaves the Tree unmarked when the chain has fewer children than the live run', () => {
     const nodes = chainNodes();
     const match = matchDebugEventTarget(
-      event({ name: '[17] Home -> redirect', path: 'https://live.test/extra', chain_id: 'rc-17', chain_role: 'hop', redirect_index: 9, request_id: 17 }),
+      event({
+        name: '[17] Home -> redirect',
+        path: 'https://live.test/extra',
+        chain_id: 'rc-17',
+        chain_role: 'hop',
+        redirect_index: 9,
+        request_id: 17,
+      }),
       nodes,
     );
     expect(match).toBeNull();
@@ -189,7 +251,14 @@ describe('variableRowsForRequestNode', () => {
       id: 'h',
       type: 'request',
       name: '[19] Home - GET /user/authCode/response',
-      data: { request_id: 19, enabled: false, method: 'GET', url: '/user/authCode/response', chain_id: 'rc-17', chain_role: 'hop' },
+      data: {
+        request_id: 19,
+        enabled: false,
+        method: 'GET',
+        url: '/user/authCode/response',
+        chain_id: 'rc-17',
+        chain_role: 'hop',
+      },
     };
     const accumulated = {
       'javax.faces.ViewState': 'v',
@@ -263,7 +332,11 @@ describe('variableRowsForRequestNode', () => {
     };
 
     expect(
-      variableRowsForRequestNode(node, {}, { responseBody: '<input name="javax.faces.ViewState" value="vs-token-123">' }),
+      variableRowsForRequestNode(
+        node,
+        {},
+        { responseBody: '<input name="javax.faces.ViewState" value="vs-token-123">' },
+      ),
     ).toEqual([['javax.faces.ViewState (RES)', 'vs-token-123']]);
   });
 
@@ -385,6 +458,38 @@ describe('variableRowsForRequestNode', () => {
     ).toEqual([
       ['javax.faces.ViewState (REQ)', 'vs-token'],
       ['x-correlation-id (REQ)', 'cid-9'],
+    ]);
+  });
+
+  it('correlates uniquely resolved runtime values without leaking ambiguous or unrelated variables', () => {
+    const node: YAMLNode = {
+      id: 'redirect',
+      type: 'request',
+      name: '[3] resolved redirect',
+      data: { method: 'POST', url: '/oauth?state=captured-state&code=shared-code' },
+    };
+
+    expect(
+      variableRowsForRequestNode(
+        node,
+        {
+          state1: 'captured-state',
+          unrelated: 'must-not-leak',
+          code1: 'shared-code',
+          code2: 'shared-code',
+          token: 'auth-token',
+          bodyId: '42',
+        },
+        {
+          requestUrl: '/oauth?code=shared-code&state=captured-state',
+          requestHeaders: { Authorization: 'Bearer auth-token' },
+          requestBody: '{"id":42}',
+        },
+      ),
+    ).toEqual([
+      ['state1 (REQ)', 'captured-state'],
+      ['token (REQ)', 'auth-token'],
+      ['bodyId (REQ)', '42'],
     ]);
   });
 
@@ -534,7 +639,15 @@ describe('skippedRedirectHops — recorded chain longer than the live run (RLP-6
         : { ...node, data: { ...node.data, enabled: true } },
     );
     const events = [
-      event({ name: '[17] Home - POST /auth', path: '/auth', chain_id: 'rc-17', chain_role: 'parent', redirect_index: 0, request_id: 17, vu: 1 }),
+      event({
+        name: '[17] Home - POST /auth',
+        path: '/auth',
+        chain_id: 'rc-17',
+        chain_role: 'parent',
+        redirect_index: 0,
+        request_id: 17,
+        vu: 1,
+      }),
       event({ name: '[18] Home - GET /flow', path: '/flow', chain_id: 'rc-17', request_id: 18, vu: 1 }),
       event({ name: '[19] Home - GET /callback', path: '/callback', chain_id: 'rc-17', request_id: 19, vu: 1 }),
     ];
