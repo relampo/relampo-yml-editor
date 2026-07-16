@@ -594,6 +594,76 @@ describe('YAMLDebugSession RLP debug fixes', () => {
     expect(screen.queryByText('Regex value not found: javax.faces.ViewState')).toBeNull();
   });
 
+  it('shows variables captured earlier in the redirect chain on child requests (RLP-597)', async () => {
+    const parent: YAMLNode = {
+      id: 'parent',
+      type: 'request',
+      name: '[2] GET /login',
+      data: { request_id: 2, method: 'GET', url: '/login', chain_id: 'rc-2', chain_role: 'parent' },
+    };
+    const child: YAMLNode = {
+      id: 'child',
+      type: 'request',
+      name: '[3] GET /oauth',
+      data: {
+        request_id: 3,
+        method: 'GET',
+        url: '/oauth?state={{state1}}&code={{code1}}',
+        enabled: false,
+        chain_id: 'rc-2',
+        chain_role: 'hop',
+      },
+    };
+    const tree: YAMLNode = { id: 'root', type: 'root', name: 'root', children: [parent, child] };
+
+    render(
+      <YAMLDebugSession
+        tree={tree}
+        yamlCode={'test:\n  name: child-variable-snapshot\n'}
+        documentReady
+        validationErrors={[]}
+        onSelectNode={vi.fn()}
+        onEditNode={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
+
+    act(() => {
+      debugApiMock.handlers[0].onEvent(
+        event({
+          name: '[2] GET /login',
+          path: '/login',
+          request_id: 2,
+          chain_id: 'rc-2',
+          chain_role: 'parent',
+          variables: { state1: 'captured-state' },
+        }),
+      );
+      debugApiMock.handlers[0].onEvent(
+        event({
+          name: '[2] GET /oauth',
+          path: '/oauth?state=captured-state&code=captured-code',
+          request_id: 2,
+          chain_id: 'rc-2',
+          chain_role: 'hop',
+          redirect_index: 1,
+          variables: { code1: 'captured-code' },
+        }),
+      );
+    });
+
+    fireEvent.click((await screen.findByText('#2.1')).closest('button')!);
+    fireEvent.click(screen.getByRole('button', { name: 'variables' }));
+
+    expect(await screen.findByText('state1 (REQ)')).toBeInTheDocument();
+    expect(screen.getByText('captured-state')).toBeInTheDocument();
+    expect(screen.getByText('code1 (REQ)')).toBeInTheDocument();
+    expect(screen.getByText('captured-code')).toBeInTheDocument();
+    expect(screen.queryByText('Not captured')).toBeNull();
+  });
+
   it('Overview shows the runtime URL, not the recorded one with the stale correlated value (RLP-593)', async () => {
     // The recorded step name bakes in the capture-time value of the {{NROEXP}}
     // placeholder. At runtime the extraction failed, so the request actually went

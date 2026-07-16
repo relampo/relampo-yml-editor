@@ -869,11 +869,26 @@ function debugVariableSnapshot(activeEntry: DebugEntry, entries: DebugEntry[]): 
   const snapshot = { ...(activeEntry.event.variables ?? {}) };
   const chainId = String(activeEntry.event.chain_id ?? activeEntry.node?.data?.chain_id ?? '').trim();
   const chainRole = String(activeEntry.event.chain_role ?? activeEntry.node?.data?.chain_role ?? '').toLowerCase();
-  if (!chainId || chainRole !== 'parent' || activeEntry.node?.data?.follow_redirects === false) return snapshot;
-
   const activeIndex = entries.findIndex(entry => entry.id === activeEntry.id);
-  if (activeIndex < 0) return snapshot;
+  if (!chainId || activeIndex < 0) return snapshot;
   const activeVu = activeEntry.event.vu ?? 0;
+
+  if (chainRole !== 'parent') {
+    for (let index = activeIndex - 1; index >= 0; index -= 1) {
+      const candidate = entries[index];
+      if ((candidate.event.vu ?? 0) !== activeVu) continue;
+      const candidateChainId = String(candidate.event.chain_id ?? candidate.node?.data?.chain_id ?? '').trim();
+      if (candidateChainId !== chainId) continue;
+      Object.entries(candidate.event.variables ?? {}).forEach(([name, value]) => {
+        if (!Object.prototype.hasOwnProperty.call(snapshot, name)) snapshot[name] = value;
+      });
+      const candidateRole = String(candidate.event.chain_role ?? candidate.node?.data?.chain_role ?? '').toLowerCase();
+      if (candidateRole === 'parent') break;
+    }
+    return snapshot;
+  }
+
+  if (activeEntry.node?.data?.follow_redirects === false) return snapshot;
 
   for (let index = activeIndex + 1; index < entries.length; index += 1) {
     const candidate = entries[index];
