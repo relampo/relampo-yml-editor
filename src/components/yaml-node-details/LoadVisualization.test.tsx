@@ -92,6 +92,20 @@ describe('LoadVisualization', () => {
     expect(screen.getByText(/Total:\s*15ms/i)).toBeInTheDocument();
   });
 
+  it('keeps non-minute duration ticks distinct', () => {
+    renderWithLanguage(
+      <LoadVisualization
+        loadType="constant"
+        data={{ type: 'constant', users: '15', duration: '200', ramp_up: '0' }}
+      />,
+    );
+
+    expect(screen.getByText(/Total:\s*3m 20s/i)).toBeInTheDocument();
+    expect(screen.getByText('1m 40s')).toBeInTheDocument();
+    expect(screen.getByText('2m 30s')).toBeInTheDocument();
+    expect(screen.getByText('3m 20s')).toBeInTheDocument();
+  });
+
   it('truncates a constant ramp at the run duration without reaching or turning back from the target', () => {
     const { container } = renderWithLanguage(
       <LoadVisualization
