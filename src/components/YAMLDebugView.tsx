@@ -135,7 +135,13 @@ export function YAMLDebugSession({
   const [debugVUs, setDebugVUs] = useState<DebugVUs>(1);
   const timelineButtonRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
 
-  const debugEventTargets = useMemo(() => collectDebugEventTargets(tree), [tree]);
+  const currentDebugEventTargets = useMemo(() => collectDebugEventTargets(tree), [tree]);
+  // A completed run belongs to the script snapshot that started it. Keep its
+  // request targets stable so later Tree edits cannot renumber or remap old
+  // timeline rows (for example #2.1..#2.3 collapsing to repeated #2 rows when
+  // Follow Redirects is disabled after the run). RLP-442.
+  const [runDebugEventTargets, setRunDebugEventTargets] = useState<YAMLNode[] | null>(null);
+  const debugEventTargets = runDebugEventTargets ?? currentDebugEventTargets;
   const entries = useMemo<DebugEntry[]>(
     () =>
       entryEvents.map(entry => ({
@@ -260,9 +266,10 @@ export function YAMLDebugSession({
       return;
     }
     reattachedRef.current = true;
+    setRunDebugEventTargets(currentDebugEventTargets);
     setIsRunning(true);
     subscribe(storedRun.id, true);
-  }, [documentReady, subscribe, yamlCode]);
+  }, [currentDebugEventTargets, documentReady, subscribe, yamlCode]);
 
   const activeEntry = timelineEntries.find(entry => entry.id === activeId) || timelineEntries[timelineEntries.length - 1];
   const passed = entries.filter(entry => entry.status === 'passed').length;
@@ -287,6 +294,7 @@ export function YAMLDebugSession({
       return;
     }
     if (!scriptAtStart.trim()) return;
+    setRunDebugEventTargets(currentDebugEventTargets);
     const token = (startTokenRef.current += 1);
     stopStreamRef.current?.();
     setEntryEvents([]);
