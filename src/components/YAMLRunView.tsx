@@ -14,6 +14,7 @@ import {
 import { LoadVisualization } from './yaml-node-details/LoadVisualization';
 import { normalizeLoadType } from './yaml-node-details/loadUtils';
 import { createStoredRunStore, fingerprint, type StoredRun } from '../utils/studioRunStore';
+import { collectDebugEventTargets, matchDebugEventTarget } from './debugRequests';
 
 // The live sparklines only need a recent window; keeping every snapshot for a
 // long run would bloat state and slow re-render. Cumulative totals live on the
@@ -23,7 +24,6 @@ const MAX_LIVE_POINTS = 600;
 // The live log feed keeps the most recent lines; older ones scroll off. The
 // server already caps emission, but a long run still produces many lines.
 const MAX_LIVE_LOGS = 1000;
-const RUN_REQUEST_TYPES = new Set(['request', 'get', 'post', 'put', 'delete', 'patch', 'head', 'options']);
 
 // The last load run is parked in sessionStorage so a reload can re-attach and
 // let the studio replay it (history + final summary).
@@ -40,46 +40,6 @@ function collectLoadNodes(node: YAMLNode | null): YAMLNode[] {
   };
   walk(node);
   return found;
-}
-
-type PlannedRunRequest = {
-  key: string;
-  name: string;
-  method: string;
-  path: string;
-  pathPattern: RegExp;
-  queryPatterns: Array<[string, RegExp]>;
-};
-
-function templatePattern(value: string, placeholderPattern: string): RegExp {
-  const pattern = value
-    .split(/(\{\{[^{}]+\}\})/g)
-    .map(part => (/^\{\{[^{}]+\}\}$/.test(part) ? placeholderPattern : part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
-    .join('');
-  return new RegExp(`^${pattern}$`);
-}
-
-function collectPlannedRunRequests(node: YAMLNode | null): PlannedRunRequest[] {
-  const requests: PlannedRunRequest[] = [];
-  const walk = (current: YAMLNode) => {
-    if (current.data?.enabled === false) return;
-    if (RUN_REQUEST_TYPES.has(current.type)) {
-      const rawPath = String(current.data?.url ?? current.data?.path ?? '');
-      const path = rawPath.replace(/^https?:\/\/[^/]+/i, '') || '/';
-      const [pathname, query = ''] = path.split('?', 2);
-      requests.push({
-        key: current.id,
-        name: current.name,
-        method: String(current.data?.method ?? current.type).toUpperCase(),
-        path,
-        pathPattern: templatePattern(pathname, '[^/]+'),
-        queryPatterns: [...new URLSearchParams(query)].map(([name, value]) => [name, templatePattern(value, '[^&#]+')]),
-      });
-    }
-    current.children?.forEach(walk);
-  };
-  if (node) walk(node);
-  return requests;
 }
 
 function formatRps(value: number): string {
@@ -163,15 +123,16 @@ export function YAMLLoadRunSession({
   }
 
   const loadNodes = useMemo(() => collectLoadNodes(tree), [tree]);
-  const plannedRunRequests = useMemo(() => collectPlannedRunRequests(tree), [tree]);
+  const runRequestTargets = useMemo(() => collectDebugEventTargets(tree), [tree]);
   const plannedLoadNode = loadNodes[0] ?? null;
   const hasValidationErrors = validationErrors.length > 0;
   const latest = snapshots[snapshots.length - 1] ?? null;
-  const liveSummary = useMemo(
-    () => buildLiveRunSummary(logs, latest, plannedRunRequests),
-    [logs, latest, plannedRunRequests],
-  );
-  const visibleSummary = summary ?? liveSummary;
+  const liveSummary = useMemo(() => buildLiveRunSummary(latest, runRequestTargets), [latest, runRequestTargets]);
+  const visibleSummary = useMemo(() => {
+    if (!summary) return liveSummary;
+    if (!liveSummary?.requests.length) return summary;
+    return { ...summary, requests: liveSummary.requests };
+  }, [liveSummary, summary]);
   const hasRunActivity = snapshots.length > 0 || logs.length > 0 || summary != null;
 
   // Wires a run's SSE stream into the dashboard. Shared by a fresh Run and by
@@ -692,64 +653,38 @@ function RunSummaryPanel({
 }
 
 function buildLiveRunSummary(
-  logs: RunLogLine[],
   latest: RunMetricsSnapshot | null,
-  plannedRequests: PlannedRunRequest[],
+  requestTargets: YAMLNode[],
 ): RunSummary | null {
-  const requestLines = logs.filter(line => line.level === 'request' && Boolean(line.method));
-  if (!latest && requestLines.length === 0) return null;
-
-  const groups = new Map<string, { lines: RunLogLine[]; planned?: PlannedRunRequest }>();
-  requestLines.forEach(line => {
-    const runtimePath = String(line.path ?? '').replace(/^https?:\/\/[^/]+/i, '') || '/';
-    const runtimeUrl = new URL(runtimePath, 'http://relampo.local');
-    const runtimeQueryCount = [...runtimeUrl.searchParams].length;
-    const planned = plannedRequests.find(
-      request =>
-        request.method === line.method?.toUpperCase() &&
-        request.pathPattern.test(runtimeUrl.pathname) &&
-        request.queryPatterns.length === runtimeQueryCount &&
-        request.queryPatterns.every(([name, pattern]) => runtimeUrl.searchParams.getAll(name).some(value => pattern.test(value))),
+  if (!latest) return null;
+  const requests = (latest.requests ?? []).map(request => {
+    const target = matchDebugEventTarget(request, requestTargets);
+    if (target) {
+      return {
+        ...request,
+        name: target.name,
+        method: String(target.data?.method ?? target.type ?? request.method).toUpperCase(),
+        path: String(target.data?.url ?? target.data?.path ?? request.path),
+      };
+    }
+    const redirectStep = request.step_path?.match(/^(.*)\.redirects\[(\d+)\]$/);
+    if (!redirectStep) return request;
+    const parent = matchDebugEventTarget(
+      { ...request, step_path: redirectStep[1], chain_role: 'parent', redirect_index: 0 },
+      requestTargets,
     );
-    const key = planned?.key ?? `${line.method}\u0000${runtimePath}`;
-    const group = groups.get(key) ?? { lines: [], planned };
-    group.lines.push(line);
-    groups.set(key, group);
+    if (!parent) return request;
+    const label = `Redirect ${redirectStep[2]} from ${parent.name}`;
+    return { ...request, name: label, path: label };
   });
-  const percentile = (values: number[], ratio: number) => {
-    if (values.length === 0) return 0;
-    const sorted = [...values].sort((a, b) => a - b);
-    return sorted[Math.max(0, Math.ceil(sorted.length * ratio) - 1)];
-  };
-  const requests = [...groups.values()].map(({ lines, planned }) => {
-    const first = lines[0];
-    const latencies = lines.flatMap(line => (line.latency_ms == null ? [] : [line.latency_ms]));
-    const failures = lines.filter(line => (line.status ?? 0) >= 400 || Boolean(line.message)).length;
-    const totalLatency = latencies.reduce((total, value) => total + value, 0);
-    return {
-      name: planned?.name ?? `${first.method} ${first.path ?? ''}`,
-      method: planned?.method ?? first.method ?? '',
-      path: planned?.path ?? first.path ?? '',
-      count: lines.length,
-      failures,
-      avg_ms: latencies.length ? totalLatency / latencies.length : 0,
-      min_ms: latencies.length ? Math.min(...latencies) : 0,
-      max_ms: latencies.length ? Math.max(...latencies) : 0,
-      p90_ms: percentile(latencies, 0.9),
-      p95_ms: percentile(latencies, 0.95),
-      p99_ms: percentile(latencies, 0.99),
-    };
-  });
-  const executedVus = new Set(requestLines.flatMap(line => (line.vu ? [line.vu] : []))).size;
-  const observedFailures = requests.reduce((total, request) => total + request.failures, 0);
   return {
     test_name: 'Live run',
     start_time: '',
     end_time: '',
-    duration: (latest?.elapsed_ms ?? 0) * 1e6,
-    total_requests: latest?.total_requests ?? requestLines.length,
-    total_failures: latest?.total_failures ?? observedFailures,
-    executed_vus: executedVus || undefined,
+    duration: latest.elapsed_ms * 1e6,
+    total_requests: latest.total_requests,
+    total_failures: latest.total_failures,
+    executed_vus: latest.executed_vus,
     requests,
   };
 }
