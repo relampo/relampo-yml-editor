@@ -119,7 +119,7 @@ describe('LoadVisualization', () => {
       'points',
       '40,170 380,26',
     );
-    expect(screen.getAllByText('30s')).not.toHaveLength(0);
+    expect(screen.getByText('30s')).toBeInTheDocument();
     expect(screen.queryByText('Steady')).not.toBeInTheDocument();
   });
 });
