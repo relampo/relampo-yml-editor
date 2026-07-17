@@ -1,4 +1,4 @@
-import { normalizeLoadType } from '../components/yaml-node-details/loadUtils';
+import { normalizeLoadType, parseTimeToSeconds } from '../components/yaml-node-details/loadUtils';
 import type { YAMLNode } from '../types/yaml';
 
 interface YAMLSemanticIssue {
@@ -51,7 +51,7 @@ export function validateYAMLSemantics(tree: YAMLNode | null): YAMLSemanticIssue[
       const duration = String(node.data?.duration ?? '').trim();
       const rawIterations = String(node.data?.iterations ?? '').trim();
       const iterations = Number(rawIterations || 0);
-      const hasFiniteLimit = duration !== '' || (Number.isFinite(iterations) && iterations > 0);
+      const hasFiniteLimit = parseTimeToSeconds(duration) > 0 || (Number.isFinite(iterations) && iterations > 0);
       const runsUntilStopped = node.data?.run_until_stopped === true;
       const hasExplicitStopFields =
         Object.hasOwn(node.data ?? {}, 'duration') ||
