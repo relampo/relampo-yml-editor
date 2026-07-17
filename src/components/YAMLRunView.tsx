@@ -128,6 +128,13 @@ export function YAMLLoadRunSession({
   const hasValidationErrors = validationErrors.length > 0;
   const latest = snapshots[snapshots.length - 1] ?? null;
   const liveSummary = useMemo(() => buildLiveRunSummary(latest, runRequestTargets), [latest, runRequestTargets]);
+  // After `done` we keep the final summary's cumulative totals but override its
+  // per-request rows with the last live snapshot's. The backend's final summary
+  // records resolved literal URLs that carry no step_path/chain identity, so it
+  // can't be correlated back to YAML template steps; the live snapshot can. Rows
+  // therefore come from the last mapped snapshot, which — being cumulative up to
+  // `done` — matches the totals in practice, at the cost of not being the literal
+  // `done.summary` request list.
   const visibleSummary = useMemo(() => {
     if (!summary) return liveSummary;
     if (!liveSummary?.requests.length) return summary;
@@ -669,6 +676,11 @@ function buildLiveRunSummary(
     }
     const redirectStep = request.step_path?.match(/^(.*)\.redirects\[(\d+)\]$/);
     if (!redirectStep) return request;
+    // An unexpected redirect has no recorded chain child to map onto, so it
+    // stays unmatched above. Re-run the matcher against the redirect's *parent*
+    // step (step_path takes priority inside matchDebugEventTarget) to recover
+    // the stable YAML request that spawned it, then label the row by its
+    // position rather than the volatile resolved landing URL.
     const parent = matchDebugEventTarget(
       { ...request, step_path: redirectStep[1], chain_role: 'parent', redirect_index: 0 },
       requestTargets,

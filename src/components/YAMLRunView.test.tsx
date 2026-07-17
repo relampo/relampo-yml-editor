@@ -324,6 +324,28 @@ describe('YAMLLoadRunSession', () => {
     expect(within(completedTable).queryByText('/callback?code=runtime-value-3')).not.toBeInTheDocument();
   });
 
+  it('falls back to the final summary rows when snapshots carry no per-request aggregate', async () => {
+    // A backend older than the RLP-629 contract streams metrics without the
+    // `requests` field. buildLiveRunSummary then yields no rows, so once the run
+    // finishes the completed view must fall back to the final summary's own rows
+    // instead of rendering an empty table.
+    render(<YAMLLoadRunSession {...baseProps} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run load test' }));
+    await waitFor(() => expect(runApiMock.handlers).toHaveLength(1));
+
+    act(() => {
+      runApiMock.handlers[0].onState({ status: 'running', started_at: '2026-06-23T00:00:00Z', elapsed_ms: 0 });
+      // metric() intentionally omits `requests` — the pre-contract snapshot shape.
+      runApiMock.handlers[0].onMetrics(metric({ total_requests: 200 }));
+      runApiMock.handlers[0].onDone({ status: 'completed', error: null, summary: summary() });
+    });
+
+    const table = await screen.findByRole('table');
+    expect(within(table).getByText('/x')).toBeInTheDocument();
+    expect(within(table).getByText('200')).toBeInTheDocument();
+  });
+
   it('asks the server to stop the active run when Stop is clicked', async () => {
     render(<YAMLLoadRunSession {...baseProps} />);
 
