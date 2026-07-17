@@ -189,6 +189,29 @@ describe('validateYAMLSemantics', () => {
     ]);
   });
 
+  it.each([0, '0', '0s'])('blocks zero duration %p with zero iterations', duration => {
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'test',
+      name: 'Test',
+      children: [
+        {
+          id: 'load-1',
+          type: 'load',
+          name: 'Load Config',
+          data: { users: 3, duration, iterations: 0 },
+        },
+      ],
+    };
+
+    expect(validateYAMLSemantics(tree)).toEqual([
+      {
+        nodeId: 'load-1',
+        message: 'Define Duration or Iterations, or explicitly enable Run until manually stopped.',
+      },
+    ]);
+  });
+
   it('accepts an explicit manual-stop load without finite limits', () => {
     const tree: YAMLNode = {
       id: 'root',
