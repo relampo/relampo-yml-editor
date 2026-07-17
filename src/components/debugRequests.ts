@@ -553,6 +553,36 @@ function runtimeRequestVariableNames(variables: Record<string, string>, context:
   return [...namesByValue].flatMap(([value, names]) => (requestValues.has(value) && names.length === 1 ? names : []));
 }
 
+function resolvedRequestUrlVariables(node: YAMLNode | null, context: VariableValueContext): Map<string, string> {
+  const values = new Map<string, string>();
+  const template = String(node?.data?.url ?? node?.data?.path ?? '');
+  if (!template || !context.requestUrl) return values;
+
+  try {
+    const templateUrl = new URL(template, 'http://relampo.local');
+    const runtimeUrl = new URL(context.requestUrl, 'http://relampo.local');
+    templateUrl.searchParams.forEach((templateValue, key) => {
+      const match = templateValue.match(/^\{\{([^{}]+)\}\}$/);
+      const runtimeValue = runtimeUrl.searchParams.get(key);
+      const name = match?.[1].trim();
+      if (name && runtimeValue !== null) values.set(name, runtimeValue);
+    });
+
+    const templateSegments = templateUrl.pathname.split('/');
+    const runtimeSegments = runtimeUrl.pathname.split('/');
+    if (templateSegments.length === runtimeSegments.length) {
+      templateSegments.forEach((segment, index) => {
+        const match = segment.match(/^\{\{([^{}]+)\}\}$/);
+        const name = match?.[1].trim();
+        if (name) values.set(name, decodeURIComponent(runtimeSegments[index]));
+      });
+    }
+  } catch {
+    // Malformed URLs cannot safely prove which runtime value filled a placeholder.
+  }
+  return values;
+}
+
 function requestVariableRoles(
   node: YAMLNode | null,
   variables: Record<string, string>,
@@ -671,13 +701,16 @@ export function variableRowsForRequestNode(
   if (!node) return [];
   const roles = requestVariableRoles(node, variables, context);
   const extracted = responseExtractorValues(node, context);
+  const sent = resolvedRequestUrlVariables(node, context);
   return [...roles].map<[string, string]>(([name, variableRoles]) => {
     const resolvedValue =
       variableRoles?.has('RES') && extracted.has(name)
         ? extracted.get(name)
-        : Object.prototype.hasOwnProperty.call(variables, name)
-          ? variables[name]
-          : MISSING_VARIABLE_VALUE;
+        : variableRoles?.has('REQ') && sent.has(name)
+          ? sent.get(name)
+          : Object.prototype.hasOwnProperty.call(variables, name)
+            ? variables[name]
+            : MISSING_VARIABLE_VALUE;
     return [variableRowLabel(name, variableRoles), resolvedValue ?? MISSING_VARIABLE_VALUE];
   });
 }

@@ -433,6 +433,31 @@ describe('variableRowsForRequestNode', () => {
     expect(variableRowsForRequestNode(node, {})).toEqual([['javax.faces.ViewState (REQ)', 'Not captured']]);
   });
 
+  it('shows URL placeholder values from the request that was actually sent when the snapshot omitted them', () => {
+    const node: YAMLNode = {
+      id: 'redirect-child',
+      type: 'request',
+      name: 'GET callback',
+      data: {
+        method: 'GET',
+        url: '/user/authCode/response?code={{code1}}&state={{state1}}',
+      },
+    };
+
+    expect(
+      variableRowsForRequestNode(
+        node,
+        { code1: 'Regex value not found' },
+        {
+          requestUrl: '/user/authCode/response?code=captured-code&state=captured-state',
+        },
+      ),
+    ).toEqual([
+      ['code1 (REQ)', 'captured-code'],
+      ['state1 (REQ)', 'captured-state'],
+    ]);
+  });
+
   it('surfaces correlation variables whose names contain dots or hyphens', () => {
     // RLP-597: JSF/correlation variables are named `javax.faces.ViewState`,
     // `x-correlation-id`, etc. The placeholder scan used to require an identifier
