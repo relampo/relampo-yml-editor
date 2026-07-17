@@ -22,11 +22,13 @@ export interface RunMetricsSnapshot {
   elapsed_ms: number;
   rps: number;
   active_users: number;
+  executed_vus?: number;
   avg_latency: number;
   p95_latency: number;
   total_requests: number;
   total_failures: number;
   errors: number;
+  requests?: RunRequestStat[];
 }
 
 interface RunState {
@@ -51,11 +53,19 @@ export interface RunLogLine {
   message?: string;
 }
 
-// Per-request roll-up in the final summary (mirrors reporter.RequestStat).
-interface RunRequestStat {
+// Per-logical-request roll-up. Final summaries mirror reporter.RequestStat;
+// live snapshots additionally carry runtime identity fields so the editor can
+// map resolved URLs and redirects back to their stable YAML steps.
+export interface RunRequestStat {
   name: string;
   method: string;
   path: string;
+  request_id?: number;
+  step_path?: string;
+  chain_id?: string;
+  chain_role?: string;
+  redirect_index?: number;
+  redirect_source?: string;
   count: number;
   failures: number;
   avg_ms: number;

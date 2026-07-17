@@ -97,7 +97,30 @@ describe('YAMLLoadRunSession', () => {
 
     act(() => {
       runApiMock.handlers[0].onState({ status: 'running', started_at: '2026-06-23T00:00:00Z', elapsed_ms: 0 });
-      runApiMock.handlers[0].onMetrics(metric({ rps: 123, total_requests: 200, active_users: 8 }));
+      runApiMock.handlers[0].onMetrics(
+        metric({
+          rps: 123,
+          total_requests: 200,
+          active_users: 8,
+          executed_vus: 8,
+          requests: [
+            {
+              name: 'GET /api/x',
+              method: 'GET',
+              path: '/api/x',
+              step_path: 'scenarios[0].steps[0]',
+              count: 200,
+              failures: 0,
+              avg_ms: 15,
+              min_ms: 12,
+              max_ms: 18,
+              p90_ms: 18,
+              p95_ms: 18,
+              p99_ms: 18,
+            },
+          ],
+        }),
+      );
       runApiMock.handlers[0].onLog([
         { seq: 0, ts: 1782249308000, level: 'request', vu: 1, method: 'GET', path: '/api/x', status: 200, latency_ms: 12 },
         { seq: 1, ts: 1782249309000, level: 'request', vu: 1, method: 'GET', path: '/api/x', status: 200, latency_ms: 18 },
@@ -107,12 +130,13 @@ describe('YAMLLoadRunSession', () => {
     // The req/s value appears on the stat card (and the sparkline header).
     expect(screen.getAllByText('123').length).toBeGreaterThan(0);
     expect(screen.getAllByText('200').length).toBeGreaterThan(0);
-    // The summary appears before onDone, with repeated iterations aggregated.
+    // The summary appears before onDone from the backend's exact cumulative
+    // aggregate rather than recounting the bounded log tail.
     expect(screen.getByText('Run summary')).toBeInTheDocument();
     expect(screen.queryByText('Executed requests')).not.toBeInTheDocument();
     const liveSummaryTable = screen.getByRole('table');
     expect(within(liveSummaryTable).getByText('/api/x')).toBeInTheDocument();
-    expect(within(liveSummaryTable).getByText('2')).toBeInTheDocument();
+    expect(within(liveSummaryTable).getByText('200')).toBeInTheDocument();
     // The live log feed still renders the streamed engine line.
     expect(screen.getByText('Live logs')).toBeInTheDocument();
     expect(screen.getAllByText(/GET \/api\/x/)).toHaveLength(2);
@@ -129,7 +153,7 @@ describe('YAMLLoadRunSession', () => {
     expect(summaryHeading.compareDocumentPosition(logsHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it('groups dynamic request paths by their script request', async () => {
+  it('keeps dynamic redirects grouped by stable script steps and exact backend counts', async () => {
     const tree: YAMLNode = {
       id: 'root',
       type: 'root',
@@ -138,8 +162,42 @@ describe('YAMLLoadRunSession', () => {
         {
           id: 'request-1',
           type: 'request',
-          name: 'GET item',
-          data: { method: 'GET', url: '/api/items/{{item}}?vu={{__vu_idx}}&iteration={{__iteration_idx}}' },
+          name: 'Start login',
+          path: ['scenarios', 0, 'steps', 0, 'request'],
+          data: {
+            method: 'GET',
+            url: '/login?vu={{__vu_idx}}',
+            request_id: 41,
+            chain_id: 'login',
+            chain_role: 'parent',
+          },
+        },
+        {
+          id: 'request-2',
+          type: 'request',
+          name: 'Login callback',
+          path: ['scenarios', 0, 'steps', 1, 'request'],
+          data: {
+            method: 'GET',
+            url: '/callback?code={{code}}',
+            request_id: 42,
+            chain_id: 'login',
+            chain_role: 'final',
+            enabled: false,
+          },
+        },
+        {
+          id: 'request-3',
+          type: 'request',
+          name: 'Unexpected redirect',
+          path: ['scenarios', 0, 'steps', 2, 'request'],
+          data: {
+            method: 'GET',
+            url: '/unexpected?vu={{__vu_idx}}',
+            request_id: 43,
+            chain_id: 'unexpected',
+            chain_role: 'parent',
+          },
         },
       ],
     };
@@ -148,16 +206,144 @@ describe('YAMLLoadRunSession', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Run load test' }));
     await waitFor(() => expect(runApiMock.handlers).toHaveLength(1));
     act(() => {
+      runApiMock.handlers[0].onMetrics(
+        metric({
+          total_requests: 6,
+          executed_vus: 3,
+          requests: [
+            {
+              name: 'Start login',
+              method: 'GET',
+              path: '/login?vu=1',
+              request_id: 41,
+              step_path: 'scenarios[0].steps[0]',
+              chain_id: 'login',
+              chain_role: 'parent',
+              count: 3,
+              failures: 0,
+              avg_ms: 10,
+              min_ms: 9,
+              max_ms: 11,
+              p90_ms: 11,
+              p95_ms: 11,
+              p99_ms: 11,
+            },
+            {
+              name: 'Follow redirect',
+              method: 'GET',
+              path: '/callback?code=runtime-value-3',
+              request_id: 41,
+              step_path: 'scenarios[0].steps[0].redirects[1]',
+              chain_id: 'login',
+              chain_role: 'final',
+              redirect_index: 1,
+              count: 3,
+              failures: 1,
+              avg_ms: 20,
+              min_ms: 18,
+              max_ms: 22,
+              p90_ms: 22,
+              p95_ms: 22,
+              p99_ms: 22,
+            },
+            {
+              name: 'Unexpected redirect landing',
+              method: 'GET',
+              path: '/unknown?token=runtime-value-3',
+              request_id: 43,
+              step_path: 'scenarios[0].steps[2].redirects[1]',
+              chain_id: 'unexpected',
+              chain_role: 'final',
+              redirect_index: 1,
+              count: 3,
+              failures: 0,
+              avg_ms: 20,
+              min_ms: 18,
+              max_ms: 22,
+              p90_ms: 22,
+              p95_ms: 22,
+              p99_ms: 22,
+            },
+          ],
+        }),
+      );
       runApiMock.handlers[0].onLog([
-        { seq: 0, ts: 1, level: 'request', method: 'GET', path: '/api/items/a?iteration=1&vu=1', status: 200, latency_ms: 10 },
-        { seq: 1, ts: 2, level: 'request', method: 'GET', path: '/api/items/b?iteration=2&vu=2', status: 200, latency_ms: 20 },
+        { seq: 0, ts: 1, level: 'request', method: 'GET', path: '/callback?code=runtime-value-1', status: 302, latency_ms: 10 },
+        { seq: 1, ts: 2, level: 'error', method: 'GET', path: '/callback?code=runtime-value-2', status: 502, latency_ms: 20 },
       ]);
     });
 
     const table = await screen.findByRole('table');
-    expect(within(table).getByText('/api/items/{{item}}?vu={{__vu_idx}}&iteration={{__iteration_idx}}')).toBeInTheDocument();
-    expect(within(table).getByText('2')).toBeInTheDocument();
-    expect(within(table).getAllByRole('row')).toHaveLength(2);
+    expect(within(table).getByText('/login?vu={{__vu_idx}}')).toBeInTheDocument();
+    expect(within(table).getByText('/callback?code={{code}}')).toBeInTheDocument();
+    expect(within(table).getByText('Redirect 1 from Unexpected redirect')).toBeInTheDocument();
+    expect(within(table).getAllByText('3')).toHaveLength(3);
+    expect(within(table).getAllByRole('row')).toHaveLength(4);
+
+    act(() => {
+      runApiMock.handlers[0].onDone({
+        status: 'completed',
+        error: null,
+        summary: summary({
+          total_requests: 6,
+          requests: [
+            {
+              name: 'GET /login?vu=1',
+              method: 'GET',
+              path: '/login?vu=1',
+              count: 3,
+              failures: 0,
+              avg_ms: 10,
+              min_ms: 9,
+              max_ms: 11,
+              p90_ms: 11,
+              p95_ms: 11,
+              p99_ms: 11,
+            },
+            {
+              name: 'GET /callback?code=runtime-value-3',
+              method: 'GET',
+              path: '/callback?code=runtime-value-3',
+              count: 3,
+              failures: 1,
+              avg_ms: 20,
+              min_ms: 18,
+              max_ms: 22,
+              p90_ms: 22,
+              p95_ms: 22,
+              p99_ms: 22,
+            },
+          ],
+        }),
+      });
+    });
+
+    const completedTable = await screen.findByRole('table');
+    expect(within(completedTable).getByText('/login?vu={{__vu_idx}}')).toBeInTheDocument();
+    expect(within(completedTable).getByText('/callback?code={{code}}')).toBeInTheDocument();
+    expect(within(completedTable).queryByText('/callback?code=runtime-value-3')).not.toBeInTheDocument();
+  });
+
+  it('falls back to the final summary rows when snapshots carry no per-request aggregate', async () => {
+    // A backend older than the RLP-629 contract streams metrics without the
+    // `requests` field. buildLiveRunSummary then yields no rows, so once the run
+    // finishes the completed view must fall back to the final summary's own rows
+    // instead of rendering an empty table.
+    render(<YAMLLoadRunSession {...baseProps} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run load test' }));
+    await waitFor(() => expect(runApiMock.handlers).toHaveLength(1));
+
+    act(() => {
+      runApiMock.handlers[0].onState({ status: 'running', started_at: '2026-06-23T00:00:00Z', elapsed_ms: 0 });
+      // metric() intentionally omits `requests` — the pre-contract snapshot shape.
+      runApiMock.handlers[0].onMetrics(metric({ total_requests: 200 }));
+      runApiMock.handlers[0].onDone({ status: 'completed', error: null, summary: summary() });
+    });
+
+    const table = await screen.findByRole('table');
+    expect(within(table).getByText('/x')).toBeInTheDocument();
+    expect(within(table).getByText('200')).toBeInTheDocument();
   });
 
   it('asks the server to stop the active run when Stop is clicked', async () => {
