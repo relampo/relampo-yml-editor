@@ -117,8 +117,9 @@ describe('LoadVisualization', () => {
     expect(screen.getByText(/Peak Users:\s*9\s*\|\s*Total:\s*30s/i)).toBeInTheDocument();
     expect(container.querySelector('svg polyline[stroke-width="3"]')).toHaveAttribute(
       'points',
-      '40,170 210,26',
+      '40,170 380,26',
     );
+    expect(screen.getAllByText('30s')).not.toHaveLength(0);
     expect(screen.queryByText('Steady')).not.toBeInTheDocument();
   });
 });

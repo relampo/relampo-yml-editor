@@ -42,8 +42,8 @@ export function LoadVisualization({ data, loadType, progressSeconds }: LoadVisua
   );
   const maxUsers = Math.max(peakUsers, 10);
   const totalTime = Math.max(...visualizationPoints.map(point => point.time), 0);
-  const maxTime = Math.max(totalTime, 60);
   const hasFiniteDuration = String(effectiveData.duration ?? '').trim() !== '';
+  const maxTime = hasFiniteDuration ? totalTime || 1 : Math.max(totalTime, 60);
   const chartHeightPx = 184;
   const yAxisLabel =
     loadType === 'throughput' || (loadType === 'intent' && intentTargetUnit === 'rps')
