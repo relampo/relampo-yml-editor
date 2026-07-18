@@ -33,6 +33,14 @@ export function normalizeBalancedExecutionMode(value: unknown): BalancedExecutio
   return BALANCED_MODE_ALIASES[value.trim().toLowerCase()] || 'iteraciones';
 }
 
+export function serializeBalancedDistributionType(value: unknown): 'total' | 'partial' {
+  return normalizeBalancedDistributionType(value) === 'parcial' ? 'partial' : 'total';
+}
+
+export function serializeBalancedExecutionMode(value: unknown): 'iterations' | 'virtual_users' {
+  return normalizeBalancedExecutionMode(value) === 'usuarios_virtuales' ? 'virtual_users' : 'iterations';
+}
+
 export function readBalancedPercentage(value: unknown): number | null {
   if (typeof value === 'number') {
     return Number.isFinite(value) ? value : null;
