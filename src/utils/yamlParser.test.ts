@@ -1029,7 +1029,8 @@ scenarios:
       .children![0].children!.find(c => c.type === 'steps')!.children![0];
 
     expect(output).toContain('balanced:');
-    expect(output).toContain('mode: usuarios_virtuales');
+    expect(output).toContain('mode: virtual_users');
+    expect(output).not.toContain('mode: usuarios_virtuales');
     expect(output).toContain('percentage: 55');
     expect(output).toContain('percentage: 45');
     expect(balanced.type).toBe('balanced');
@@ -1107,7 +1108,10 @@ scenarios:
       .children!.find(c => c.type === 'scenarios')!
       .children![0].children!.find(c => c.type === 'steps')!.children![0];
 
-    expect(output).toContain('type: parcial');
+    expect(output).toContain('type: partial');
+    expect(output).toContain('mode: iterations');
+    expect(output).not.toContain('type: parcial');
+    expect(output).not.toContain('mode: iteraciones');
     expect(output).toContain('percentage: 20');
     expect(output).toContain('percentage: 35');
     expect(balanced.data.type).toBe('parcial');
