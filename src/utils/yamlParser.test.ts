@@ -346,8 +346,9 @@ scenarios:
                 enabled: true
 `;
     const tree = parseYAMLToTree(yaml)!;
-    const group = tree.children!.find(c => c.type === 'scenarios')!.children![0].children!.find(c => c.type === 'steps')!
-      .children![0];
+    const group = tree
+      .children!.find(c => c.type === 'scenarios')!
+      .children![0].children!.find(c => c.type === 'steps')!.children![0];
 
     expect(group.type).toBe('group');
     expect(group.data.enabled).toBe(false);
@@ -457,8 +458,8 @@ scenarios:
             percentage: 40
 `;
     const tree = parseYAMLToTree(yaml)!;
-    const balanced = tree.children!
-      .find(c => c.type === 'scenarios')!
+    const balanced = tree
+      .children!.find(c => c.type === 'scenarios')!
       .children![0].children!.find(c => c.type === 'steps')!.children![0];
 
     expect(balanced.type).toBe('balanced');
@@ -487,8 +488,8 @@ scenarios:
             percentage: 10
 `;
     const tree = parseYAMLToTree(yaml)!;
-    const balanced = tree.children!
-      .find(c => c.type === 'scenarios')!
+    const balanced = tree
+      .children!.find(c => c.type === 'scenarios')!
       .children![0].children!.find(c => c.type === 'steps')!.children![0];
 
     expect(balanced.type).toBe('balanced');
@@ -514,8 +515,8 @@ scenarios:
             percentage: 100
 `;
     const tree = parseYAMLToTree(yaml)!;
-    const balanced = tree.children!
-      .find(c => c.type === 'scenarios')!
+    const balanced = tree
+      .children!.find(c => c.type === 'scenarios')!
       .children![0].children!.find(c => c.type === 'steps')!.children![0];
 
     expect(balanced.type).toBe('balanced');
@@ -1001,7 +1002,6 @@ scenarios:
     expect(step.data.params).toEqual(['success']);
   });
 
-
   it('round-trips balanced controllers', () => {
     const input = `
 test:
@@ -1029,7 +1029,8 @@ scenarios:
       .children![0].children!.find(c => c.type === 'steps')!.children![0];
 
     expect(output).toContain('balanced:');
-    expect(output).toContain('mode: usuarios_virtuales');
+    expect(output).toContain('mode: virtual_users');
+    expect(output).not.toContain('mode: usuarios_virtuales');
     expect(output).toContain('percentage: 55');
     expect(output).toContain('percentage: 45');
     expect(balanced.type).toBe('balanced');
@@ -1107,7 +1108,10 @@ scenarios:
       .children!.find(c => c.type === 'scenarios')!
       .children![0].children!.find(c => c.type === 'steps')!.children![0];
 
-    expect(output).toContain('type: parcial');
+    expect(output).toContain('type: partial');
+    expect(output).toContain('mode: iterations');
+    expect(output).not.toContain('type: parcial');
+    expect(output).not.toContain('mode: iteraciones');
     expect(output).toContain('percentage: 20');
     expect(output).toContain('percentage: 35');
     expect(balanced.data.type).toBe('parcial');
@@ -1327,7 +1331,6 @@ scenarios:
     expect(output).toContain('one_time:');
     expect(output).not.toContain('one_time:\n        enabled: false');
   });
-
 
   it('normalizes legacy sql aliases to spec field names on round-trip', () => {
     const input = `

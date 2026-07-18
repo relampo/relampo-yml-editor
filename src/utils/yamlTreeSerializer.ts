@@ -3,9 +3,10 @@ import { normalizeLoadDataForYaml } from '../components/yaml-node-details/loadUt
 import {
   isBalancedLoadBearingChild,
   normalizeBalancedDistributionType,
-  normalizeBalancedExecutionMode,
   readBalancedPercentage,
   sanitizeBalancedNodeData,
+  serializeBalancedDistributionType,
+  serializeBalancedExecutionMode,
   validateBalancedController,
 } from './balancedController';
 import {
@@ -279,8 +280,8 @@ function stepNodeToObject(node: YAMLNode): any {
     const res: any = {
       balanced: {
         name: node.name || balancedData?.name || 'Balanced Controller',
-        type: balancedType,
-        mode: normalizeBalancedExecutionMode(balancedData?.mode),
+        type: serializeBalancedDistributionType(balancedType),
+        mode: serializeBalancedExecutionMode(balancedData?.mode),
       },
       steps:
         node.children?.map(child => {
