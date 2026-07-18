@@ -365,6 +365,61 @@ describe('variableRowsForRequestNode', () => {
     ).toEqual([['javax.faces.ViewState (RES)', 'actual-token']]);
   });
 
+  it('shows URL-encoded response captures as their decoded variable value', () => {
+    const node: YAMLNode = {
+      id: 'logout',
+      type: 'request',
+      name: '[42] GET logout',
+      data: { method: 'GET', url: '/logout' },
+      children: [
+        {
+          id: 'redirect-uri',
+          type: 'extractor',
+          name: 'Extract: redirect_uri',
+          data: {
+            type: 'regex',
+            from: 'headers',
+            var: 'redirect_uri',
+            pattern: 'redirect_uri=([^\\s]+)',
+            group: 1,
+          },
+        },
+      ],
+    };
+
+    expect(
+      variableRowsForRequestNode(
+        node,
+        {},
+        {
+          responseHeaders: {
+            Location:
+              'https://eidas.test/logout?redirect_uri=https%3A%2F%2Fwww.tuid.test%2Fuser%2Fauth',
+          },
+        },
+      ),
+    ).toEqual([['redirect_uri (RES)', 'https://www.tuid.test/user/auth']]);
+  });
+
+  it('keeps malformed percent sequences unchanged instead of hiding the captured value', () => {
+    const node: YAMLNode = {
+      id: 'response',
+      type: 'request',
+      name: 'response',
+      data: { method: 'GET', url: '/response' },
+      children: [
+        {
+          id: 'token',
+          type: 'extractor',
+          name: 'Extract: token',
+          data: { type: 'regex', var: 'token', pattern: 'token=(.*)' },
+        },
+      ],
+    };
+
+    expect(variableRowsForRequestNode(node, { token: '100% valid' })).toEqual([['token (RES)', '100% valid']]);
+  });
+
   it('keeps a captured snapshot value when the selected response only yields the extractor default', () => {
     const node: YAMLNode = {
       id: 'r2',
