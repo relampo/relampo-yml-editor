@@ -1,5 +1,6 @@
 import { normalizeLoadType, parseTimeToSeconds } from '../components/yaml-node-details/loadUtils';
 import type { YAMLNode } from '../types/yaml';
+import { normalizeBalancedExecutionMode } from './balancedController';
 
 interface YAMLSemanticIssue {
   nodeId: string;
@@ -33,15 +34,31 @@ export function validateYAMLSemantics(tree: YAMLNode | null): YAMLSemanticIssue[
     });
   }
 
-  const walk = (node: YAMLNode) => {
+  const walk = (node: YAMLNode, scenarioIterations = 0) => {
     if (node.data?.enabled === false) {
       return;
+    }
+
+    if (node.type === 'scenario') {
+      const loadNode = node.children?.find(child => child.type === 'load');
+      scenarioIterations = Number(String(loadNode?.data?.iterations ?? '').trim() || 0);
     }
 
     if (node.type === 'transaction' && !(node.children ?? []).some(child => child.data?.enabled !== false)) {
       issues.push({
         nodeId: node.id,
         message: `"${node.name || 'Transaction'}" must contain at least 1 related step.`,
+      });
+    }
+
+    if (
+      node.type === 'balanced' &&
+      normalizeBalancedExecutionMode(node.data?.mode) === 'iteraciones' &&
+      !(Number.isFinite(scenarioIterations) && scenarioIterations > 0)
+    ) {
+      issues.push({
+        nodeId: node.id,
+        message: `"${node.name || 'Balanced Controller'}" in Iterations mode requires scenario load Iterations greater than 0.`,
       });
     }
 
@@ -74,7 +91,7 @@ export function validateYAMLSemantics(tree: YAMLNode | null): YAMLSemanticIssue[
       }
     }
 
-    node.children?.forEach(walk);
+    node.children?.forEach(child => walk(child, scenarioIterations));
   };
 
   walk(tree);

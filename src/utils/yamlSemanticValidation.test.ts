@@ -38,9 +38,7 @@ describe('validateYAMLSemantics', () => {
           type: 'transaction',
           name: 'Checkout',
           data: { name: 'Checkout' },
-          children: [
-            { id: 'req-1', type: 'post', name: 'POST /cart', data: { url: '/cart' }, children: [] },
-          ],
+          children: [{ id: 'req-1', type: 'post', name: 'POST /cart', data: { url: '/cart' }, children: [] }],
         },
       ],
     };
