@@ -38,9 +38,7 @@ describe('validateYAMLSemantics', () => {
           type: 'transaction',
           name: 'Checkout',
           data: { name: 'Checkout' },
-          children: [
-            { id: 'req-1', type: 'post', name: 'POST /cart', data: { url: '/cart' }, children: [] },
-          ],
+          children: [{ id: 'req-1', type: 'post', name: 'POST /cart', data: { url: '/cart' }, children: [] }],
         },
       ],
     };
@@ -251,5 +249,103 @@ describe('validateYAMLSemantics', () => {
         message: 'Run until manually stopped cannot be combined with Duration or Iterations.',
       },
     ]);
+  });
+
+  it('requires scenario iterations for an enabled balanced controller in iterations mode', () => {
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'test',
+      name: 'Test',
+      children: [
+        {
+          id: 'scenario-1',
+          type: 'scenario',
+          name: 'Recorded Scenario',
+          children: [
+            {
+              id: 'load-1',
+              type: 'load',
+              name: 'Load Config',
+              data: { users: 20, duration: '5m', iterations: '' },
+            },
+            {
+              id: 'balanced-1',
+              type: 'balanced',
+              name: 'Balanced Controller',
+              data: { type: 'total', mode: 'iteraciones' },
+            },
+          ],
+        },
+      ],
+    };
+
+    expect(validateYAMLSemantics(tree)).toEqual([
+      {
+        nodeId: 'balanced-1',
+        message: '"Balanced Controller" in Iterations mode requires scenario load Iterations greater than 0.',
+      },
+    ]);
+  });
+
+  it('accepts balanced iterations mode when scenario iterations are positive', () => {
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'test',
+      name: 'Test',
+      children: [
+        {
+          id: 'scenario-1',
+          type: 'scenario',
+          name: 'Recorded Scenario',
+          children: [
+            {
+              id: 'load-1',
+              type: 'load',
+              name: 'Load Config',
+              data: { users: 20, duration: '5m', iterations: 3 },
+            },
+            {
+              id: 'balanced-1',
+              type: 'balanced',
+              name: 'Balanced Controller',
+              data: { type: 'total', mode: 'iterations' },
+            },
+          ],
+        },
+      ],
+    };
+
+    expect(validateYAMLSemantics(tree)).toEqual([]);
+  });
+
+  it('ignores disabled balanced controllers in iterations mode', () => {
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'test',
+      name: 'Test',
+      children: [
+        {
+          id: 'scenario-1',
+          type: 'scenario',
+          name: 'Recorded Scenario',
+          children: [
+            {
+              id: 'load-1',
+              type: 'load',
+              name: 'Load Config',
+              data: { users: 20, duration: '5m', iterations: '' },
+            },
+            {
+              id: 'balanced-1',
+              type: 'balanced',
+              name: 'Balanced Controller',
+              data: { type: 'total', mode: 'iteraciones', enabled: false },
+            },
+          ],
+        },
+      ],
+    };
+
+    expect(validateYAMLSemantics(tree)).toEqual([]);
   });
 });
