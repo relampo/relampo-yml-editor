@@ -324,6 +324,63 @@ describe('YAMLLoadRunSession', () => {
     expect(within(completedTable).queryByText('/callback?code=runtime-value-3')).not.toBeInTheDocument();
   });
 
+  it('collapses rows that resolve to the same script request without moving them after logout', async () => {
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'root',
+      name: 'root',
+      children: [
+        {
+          id: 'download',
+          type: 'request',
+          name: 'Download identity',
+          path: ['scenarios', 0, 'steps', 0, 'request'],
+          data: { method: 'GET', url: '/user/signIdentities/download?idGroup={{idGroup}}', request_id: 10 },
+        },
+        {
+          id: 'logout',
+          type: 'request',
+          name: 'Logout redirect landing',
+          path: ['scenarios', 0, 'steps', 1, 'request'],
+          data: { method: 'GET', url: '/user/auth', request_id: 11 },
+        },
+      ],
+    };
+    render(<YAMLLoadRunSession {...baseProps} tree={tree} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run load test' }));
+    await waitFor(() => expect(runApiMock.handlers).toHaveLength(1));
+    act(() => {
+      runApiMock.handlers[0].onMetrics(
+        metric({
+          total_requests: 21,
+          requests: [
+            {
+              name: 'Download identity', method: 'GET', path: '/user/signIdentities/download?idGroup=first', request_id: 10,
+              step_path: 'scenarios[0].steps[0]', count: 10, failures: 0, avg_ms: 10, min_ms: 5, max_ms: 20, p90_ms: 18, p95_ms: 19, p99_ms: 20,
+            },
+            {
+              name: 'Logout redirect landing', method: 'GET', path: '/user/auth', request_id: 11,
+              step_path: 'scenarios[0].steps[1]', count: 10, failures: 0, avg_ms: 12, min_ms: 8, max_ms: 30, p90_ms: 25, p95_ms: 28, p99_ms: 30,
+            },
+            {
+              name: 'Download identity duplicate', method: 'GET', path: '/user/signIdentities/download?idGroup=late', request_id: 10,
+              count: 1, failures: 1, avg_ms: 100, min_ms: 100, max_ms: 100, p90_ms: 100, p95_ms: 100, p99_ms: 100,
+            },
+          ],
+        }),
+      );
+    });
+
+    const table = await screen.findByRole('table');
+    const rows = within(table).getAllByRole('row');
+    expect(rows).toHaveLength(3);
+    expect(within(rows[1]).getByText('/user/signIdentities/download?idGroup={{idGroup}}')).toBeInTheDocument();
+    expect(within(rows[1]).getByText('11')).toBeInTheDocument();
+    expect(within(rows[1]).getByText('1')).toBeInTheDocument();
+    expect(within(rows[2]).getByText('/user/auth')).toBeInTheDocument();
+  });
+
   it('falls back to the final summary rows when snapshots carry no per-request aggregate', async () => {
     // A backend older than the RLP-629 contract streams metrics without the
     // `requests` field. buildLiveRunSummary then yields no rows, so once the run

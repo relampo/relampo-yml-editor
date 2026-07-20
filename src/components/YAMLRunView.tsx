@@ -8,6 +8,7 @@ import {
   streamLoadRun,
   type RunLogLine,
   type RunMetricsSnapshot,
+  type RunRequestStat,
   type RunStatus,
   type RunSummary,
 } from '../utils/runApi';
@@ -664,18 +665,23 @@ function buildLiveRunSummary(
   requestTargets: YAMLNode[],
 ): RunSummary | null {
   if (!latest) return null;
-  const requests = (latest.requests ?? []).map(request => {
+  const requests = new Map<string, RunRequestStat>();
+  (latest.requests ?? []).forEach(request => {
     const target = matchDebugEventTarget(request, requestTargets);
     if (target) {
-      return {
+      addLiveRunSummaryRequest(requests, `target:${target.id}`, {
         ...request,
         name: target.name,
         method: String(target.data?.method ?? target.type ?? request.method).toUpperCase(),
         path: String(target.data?.url ?? target.data?.path ?? request.path),
-      };
+      });
+      return;
     }
     const redirectStep = request.step_path?.match(/^(.*)\.redirects\[(\d+)\]$/);
-    if (!redirectStep) return request;
+    if (!redirectStep) {
+      addLiveRunSummaryRequest(requests, liveRunSummaryFallbackKey(request), request);
+      return;
+    }
     // An unexpected redirect has no recorded chain child to map onto, so it
     // stays unmatched above. Re-run the matcher against the redirect's *parent*
     // step (step_path takes priority inside matchDebugEventTarget) to recover
@@ -685,9 +691,12 @@ function buildLiveRunSummary(
       { ...request, step_path: redirectStep[1], chain_role: 'parent', redirect_index: 0 },
       requestTargets,
     );
-    if (!parent) return request;
+    if (!parent) {
+      addLiveRunSummaryRequest(requests, liveRunSummaryFallbackKey(request), request);
+      return;
+    }
     const label = `Redirect ${redirectStep[2]} from ${parent.name}`;
-    return { ...request, name: label, path: label };
+    addLiveRunSummaryRequest(requests, `redirect:${request.step_path}`, { ...request, name: label, path: label });
   });
   return {
     test_name: 'Live run',
@@ -697,8 +706,53 @@ function buildLiveRunSummary(
     total_requests: latest.total_requests,
     total_failures: latest.total_failures,
     executed_vus: latest.executed_vus,
-    requests,
+    requests: [...requests.values()],
   };
+}
+
+function liveRunSummaryFallbackKey(request: RunRequestStat): string {
+  if (request.step_path) return `step:${request.step_path}`;
+  return [
+    'request',
+    request.request_id ?? '',
+    request.chain_id ?? '',
+    request.chain_role ?? '',
+    request.redirect_index ?? '',
+    request.method,
+    request.path,
+  ].join('\u0000');
+}
+
+function addLiveRunSummaryRequest(
+  requests: Map<string, RunRequestStat>,
+  key: string,
+  request: RunRequestStat,
+): void {
+  const previous = requests.get(key);
+  if (!previous) {
+    requests.set(key, request);
+    return;
+  }
+  const totalCount = previous.count + request.count;
+  const weighted = (field: keyof RunRequestStat): number | undefined => {
+    const previousValue = previous[field];
+    const requestValue = request[field];
+    if (typeof previousValue !== 'number') return typeof requestValue === 'number' ? requestValue : undefined;
+    if (typeof requestValue !== 'number') return previousValue;
+    return (previousValue * previous.count + requestValue * request.count) / totalCount;
+  };
+  requests.set(key, {
+    ...previous,
+    count: totalCount,
+    failures: previous.failures + request.failures,
+    avg_ms: weighted('avg_ms') ?? 0,
+    min_ms: Math.min(previous.min_ms, request.min_ms),
+    max_ms: Math.max(previous.max_ms, request.max_ms),
+    p50_ms: weighted('p50_ms'),
+    p90_ms: weighted('p90_ms') ?? 0,
+    p95_ms: weighted('p95_ms') ?? 0,
+    p99_ms: weighted('p99_ms'),
+  });
 }
 
 function SummaryStat({ label, value, tone }: { label: string; value: string; tone?: string }) {
