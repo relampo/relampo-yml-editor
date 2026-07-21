@@ -192,6 +192,62 @@ describe('YAMLTreeView context menu', () => {
   });
 });
 
+describe('YAMLTreeView selection scrolling', () => {
+  it('does not scroll back to the selected request when expanding a different request', async () => {
+    const scrollIntoView = vi.mocked(HTMLElement.prototype.scrollIntoView);
+
+    renderInteractiveTreeView({
+      tree: {
+        id: 'steps',
+        type: 'steps',
+        name: 'Steps',
+        expanded: true,
+        children: [
+          {
+            id: 'request-to-inspect',
+            type: 'request',
+            name: 'Request to inspect',
+            expanded: false,
+            data: { method: 'GET', url: '/inspect' },
+            children: [
+              {
+                id: 'request-to-inspect-headers',
+                type: 'headers',
+                name: 'Headers',
+                data: { Accept: 'application/json' },
+                children: [],
+              },
+            ],
+          },
+          {
+            id: 'selected-request',
+            type: 'request',
+            name: 'Selected request',
+            expanded: false,
+            data: { method: 'GET', url: '/selected' },
+            children: [],
+          },
+        ],
+      },
+      selectedNodeIds: ['selected-request'],
+      selectedNodeId: 'selected-request',
+    });
+
+    await waitFor(() => {
+      expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    });
+    scrollIntoView.mockClear();
+
+    const inspectNode = screen.getByRole('treeitem', { name: /Request to inspect/i });
+    const toggleButton = inspectNode.querySelector('button');
+    expect(toggleButton).not.toBeNull();
+    fireEvent.click(toggleButton!);
+
+    expect(screen.getByRole('treeitem', { name: /Headers/i })).toBeInTheDocument();
+    expect(scrollIntoView).not.toHaveBeenCalled();
+  });
+});
+
 describe('YAMLTreeView search filtering', () => {
   it('keeps nodes visible when the search only matches request data', () => {
     renderInteractiveTreeView({

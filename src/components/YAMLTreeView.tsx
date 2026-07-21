@@ -155,7 +155,7 @@ export function YAMLTreeView({
     const el = treeContainerRef.current.querySelector(`[data-node-id="${selectedNode.id}"]`) as HTMLElement | null;
     if (!el) return;
     el.scrollIntoView({ block: 'nearest' });
-  }, [selectedNode?.id, visibleNodes.length]);
+  }, [selectedNode?.id]);
 
   const handleTreeKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (!visibleNodes.length) return;
