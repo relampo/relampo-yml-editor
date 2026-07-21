@@ -686,6 +686,14 @@ function responseExtractorValues(node: YAMLNode | null, context: VariableValueCo
   return values;
 }
 
+function displayVariableValue(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
 export function variableRowsForRequestNode(
   node: YAMLNode | null,
   variables: Record<string, string>,
@@ -711,6 +719,9 @@ export function variableRowsForRequestNode(
           : Object.prototype.hasOwnProperty.call(variables, name)
             ? variables[name]
             : MISSING_VARIABLE_VALUE;
-    return [variableRowLabel(name, variableRoles), resolvedValue ?? MISSING_VARIABLE_VALUE];
+    return [
+      variableRowLabel(name, variableRoles),
+      resolvedValue === undefined ? MISSING_VARIABLE_VALUE : displayVariableValue(resolvedValue),
+    ];
   });
 }
