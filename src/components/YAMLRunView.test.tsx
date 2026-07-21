@@ -3,6 +3,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import { YAMLLoadRunSession } from './YAMLRunView';
 import type { RunMetricsSnapshot, RunStreamHandlers, RunSummary } from '../utils/runApi';
 import type { YAMLNode } from '../types/yaml';
+import { LanguageProvider } from '../contexts/LanguageContext';
 
 const runApiMock = vi.hoisted(() => {
   const handlers: RunStreamHandlers[] = [];
@@ -151,6 +152,77 @@ describe('YAMLLoadRunSession', () => {
     const summaryHeading = screen.getByText('Run summary');
     const logsHeading = screen.getByText('Live logs');
     expect(summaryHeading.compareDocumentPosition(logsHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  function balancedScenarioTree(mode: string): YAMLNode {
+    return {
+      id: 'root',
+      type: 'root',
+      name: 'root',
+      children: [
+        {
+          id: 'scenarios',
+          type: 'scenarios',
+          name: 'Scenarios',
+          children: [
+            {
+              id: 'scenario-0',
+              type: 'scenario',
+              name: 'Recorded Scenario',
+              children: [
+                {
+                  id: 'load-0',
+                  type: 'load',
+                  name: 'Load',
+                  data: { type: 'constant', users: '20', duration: '40s', iterations: '20' },
+                },
+                {
+                  id: 'steps-0',
+                  type: 'steps',
+                  name: 'Steps',
+                  children: [
+                    { id: 'balanced-0', type: 'balanced', name: 'Balanced Controller', data: { type: 'total', mode } },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+  }
+
+  it('flags on the planned profile when a Balanced Controller in Iterations mode caps the duration', async () => {
+    render(
+      <LanguageProvider>
+        <YAMLLoadRunSession {...baseProps} tree={balancedScenarioTree('iteraciones')} />
+      </LanguageProvider>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Run load test' }));
+    await waitFor(() => expect(runApiMock.handlers).toHaveLength(1));
+    act(() => {
+      runApiMock.handlers[0].onState({ status: 'running', started_at: '2026-06-23T00:00:00Z', elapsed_ms: 0 });
+      runApiMock.handlers[0].onMetrics(metric());
+    });
+
+    expect(screen.getByText(/Balanced Controller in Iterations mode/i)).toBeInTheDocument();
+    expect(screen.getByText(/Duration is only an upper bound/i)).toBeInTheDocument();
+  });
+
+  it('does not flag the planned profile when the Balanced Controller runs in Virtual Users mode', async () => {
+    render(
+      <LanguageProvider>
+        <YAMLLoadRunSession {...baseProps} tree={balancedScenarioTree('usuarios_virtuales')} />
+      </LanguageProvider>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Run load test' }));
+    await waitFor(() => expect(runApiMock.handlers).toHaveLength(1));
+    act(() => {
+      runApiMock.handlers[0].onState({ status: 'running', started_at: '2026-06-23T00:00:00Z', elapsed_ms: 0 });
+      runApiMock.handlers[0].onMetrics(metric());
+    });
+
+    expect(screen.queryByText(/Duration is only an upper bound/i)).not.toBeInTheDocument();
   });
 
   it('keeps dynamic redirects grouped by stable script steps and exact backend counts', async () => {

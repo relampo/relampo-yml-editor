@@ -13,7 +13,8 @@ import {
   type RunSummary,
 } from '../utils/runApi';
 import { LoadVisualization } from './yaml-node-details/LoadVisualization';
-import { normalizeLoadType } from './yaml-node-details/loadUtils';
+import { normalizeLoadType, parseTimeToSeconds } from './yaml-node-details/loadUtils';
+import { normalizeBalancedExecutionMode } from '../utils/balancedController';
 import { createStoredRunStore, fingerprint, type StoredRun } from '../utils/studioRunStore';
 import { collectDebugEventTargets, matchDebugEventTarget } from './debugRequests';
 
@@ -41,6 +42,19 @@ function collectLoadNodes(node: YAMLNode | null): YAMLNode[] {
   };
   walk(node);
   return found;
+}
+
+// A Balanced Controller in Iterations mode ends the run once its iteration
+// budget is consumed, so a configured Duration is only an upper bound: the run
+// (and its live metrics) can stop well before the duration elapses. Detecting
+// it lets the planned-profile preview flag that an early finish is expected, not
+// a bug. Studio supports a single scenario, so a tree-wide walk is sufficient.
+function hasIterationBudgetController(node: YAMLNode | null): boolean {
+  if (!node || node.data?.enabled === false) return false;
+  if (node.type === 'balanced' && normalizeBalancedExecutionMode(node.data?.mode) === 'iteraciones') {
+    return true;
+  }
+  return (node.children ?? []).some(hasIterationBudgetController);
 }
 
 function formatRps(value: number): string {
@@ -126,6 +140,11 @@ export function YAMLLoadRunSession({
   const loadNodes = useMemo(() => collectLoadNodes(tree), [tree]);
   const runRequestTargets = useMemo(() => collectDebugEventTargets(tree), [tree]);
   const plannedLoadNode = loadNodes[0] ?? null;
+  const iterationBudgetCapsDuration = useMemo(() => {
+    if (!plannedLoadNode) return false;
+    const duration = parseTimeToSeconds(String(plannedLoadNode.data?.duration ?? '').trim());
+    return duration > 0 && hasIterationBudgetController(tree);
+  }, [tree, plannedLoadNode]);
   const hasValidationErrors = validationErrors.length > 0;
   const latest = snapshots[snapshots.length - 1] ?? null;
   const liveSummary = useMemo(() => buildLiveRunSummary(latest, runRequestTargets), [latest, runRequestTargets]);
@@ -416,6 +435,16 @@ export function YAMLLoadRunSession({
                     </span>
                   )}
                 </div>
+                {iterationBudgetCapsDuration && (
+                  <div className="mb-3 flex items-start gap-2 rounded border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-[11px] text-amber-200">
+                    <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                    <span>
+                      This scenario uses a Balanced Controller in Iterations mode. The run ends once the
+                      iteration budget is reached, so Duration is only an upper bound — the run and its live
+                      metrics may stop before the duration shown below elapses.
+                    </span>
+                  </div>
+                )}
                 <LoadVisualization
                   data={plannedLoadNode.data ?? {}}
                   loadType={normalizeLoadType(plannedLoadNode.data?.type)}
