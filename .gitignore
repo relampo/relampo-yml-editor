@@ -26,3 +26,6 @@ npm-debug.log*
 .playwright-cli*
 output/*
 examples/atenea.correlated.yaml
+
+#AI Agents
+.codex/config.toml
