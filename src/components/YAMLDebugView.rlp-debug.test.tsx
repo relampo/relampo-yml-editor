@@ -675,6 +675,164 @@ describe('YAMLDebugSession RLP debug fixes', () => {
     expect(screen.queryByText('Not captured')).toBeNull();
   });
 
+  it('keeps a real redirect capture when a later hop reports an extractor miss (RLP-597)', async () => {
+    const parent: YAMLNode = {
+      id: 'parent-miss',
+      type: 'request',
+      name: '[17] GET /login',
+      data: { request_id: 17, method: 'GET', url: '/login', chain_id: 'rc-17', chain_role: 'parent' },
+      children: [
+        {
+          id: 'extract-code',
+          type: 'extractor',
+          name: 'Extract code1',
+          data: { type: 'regex', var: 'code1', pattern: 'code=([^&]+)' },
+        },
+      ],
+    };
+    const child: YAMLNode = {
+      id: 'child-capture',
+      type: 'request',
+      name: '[17.1] GET /callback',
+      data: { request_id: 17, method: 'GET', url: '/callback', chain_id: 'rc-17', chain_role: 'hop' },
+    };
+    const final: YAMLNode = {
+      id: 'final-miss',
+      type: 'request',
+      name: '[17.2] GET /done',
+      data: {
+        request_id: 17,
+        method: 'GET',
+        url: '/done?code={{code1}}',
+        chain_id: 'rc-17',
+        chain_role: 'final',
+      },
+    };
+
+    render(
+      <YAMLDebugSession
+        tree={{ id: 'root', type: 'root', name: 'root', children: [parent, child, final] }}
+        yamlCode={'test:\n  name: redirect-capture-with-later-miss\n'}
+        documentReady
+        validationErrors={[]}
+        onSelectNode={vi.fn()}
+        onEditNode={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
+    act(() => {
+      debugApiMock.handlers[0].onEvent(
+        event({
+          name: '[17] GET /login',
+          path: '/login',
+          request_id: 17,
+          chain_id: 'rc-17',
+          chain_role: 'parent',
+          variables: { code1: 'Regex value not found: code1' },
+        }),
+      );
+      debugApiMock.handlers[0].onEvent(
+        event({
+          name: '[17.1] GET /callback',
+          path: '/callback?code=real-code',
+          request_id: 17,
+          chain_id: 'rc-17',
+          chain_role: 'hop',
+          redirect_index: 1,
+          variables: { code1: 'real-code' },
+        }),
+      );
+      debugApiMock.handlers[0].onEvent(
+        event({
+          name: '[17.2] GET /done',
+          path: '/done',
+          request_id: 17,
+          chain_id: 'rc-17',
+          chain_role: 'final',
+          redirect_index: 2,
+          variables: { code1: 'Regex value not found: code1' },
+        }),
+      );
+    });
+
+    fireEvent.click(screen.getByText('#17').closest('button')!);
+    fireEvent.click(screen.getByRole('button', { name: 'variables' }));
+    expect(await screen.findByText('code1 (RES)')).toBeInTheDocument();
+    expect(screen.getByText('real-code')).toBeInTheDocument();
+    expect(screen.queryByText('Regex value not found: code1')).toBeNull();
+
+    fireEvent.click(screen.getByText('#17.2').closest('button')!);
+    expect(screen.getByText('real-code')).toBeInTheDocument();
+    expect(screen.queryByText('Regex value not found: code1')).toBeNull();
+  });
+
+  it('shows the last capture when a redirect hop re-extracts the same variable (RLP-597)', async () => {
+    const parent: YAMLNode = {
+      id: 'parent-recapture',
+      type: 'request',
+      name: '[18] GET /login',
+      data: { request_id: 18, method: 'GET', url: '/login', chain_id: 'rc-18', chain_role: 'parent' },
+      children: [
+        {
+          id: 'extract-token',
+          type: 'extractor',
+          name: 'Extract token',
+          data: { type: 'regex', var: 'token', pattern: 'token=([^&]+)' },
+        },
+      ],
+    };
+    const hop: YAMLNode = {
+      id: 'hop-recapture',
+      type: 'request',
+      name: '[18.1] GET /callback',
+      data: { request_id: 18, method: 'GET', url: '/callback', chain_id: 'rc-18', chain_role: 'final' },
+    };
+
+    render(
+      <YAMLDebugSession
+        tree={{ id: 'root', type: 'root', name: 'root', children: [parent, hop] }}
+        yamlCode={'test:\n  name: redirect-recapture\n'}
+        documentReady
+        validationErrors={[]}
+        onSelectNode={vi.fn()}
+        onEditNode={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
+    act(() => {
+      debugApiMock.handlers[0].onEvent(
+        event({
+          name: '[18] GET /login',
+          path: '/login',
+          request_id: 18,
+          chain_id: 'rc-18',
+          chain_role: 'parent',
+          variables: { token: 'stale-token' },
+        }),
+      );
+      debugApiMock.handlers[0].onEvent(
+        event({
+          name: '[18.1] GET /callback',
+          path: '/callback?token=fresh-token',
+          request_id: 18,
+          chain_id: 'rc-18',
+          chain_role: 'final',
+          redirect_index: 1,
+          variables: { token: 'fresh-token' },
+        }),
+      );
+    });
+
+    fireEvent.click(screen.getByText('#18').closest('button')!);
+    fireEvent.click(screen.getByRole('button', { name: 'variables' }));
+    expect(await screen.findByText('fresh-token')).toBeInTheDocument();
+    expect(screen.queryByText('stale-token')).toBeNull();
+  });
+
   it('Overview shows the runtime URL, not the recorded one with the stale correlated value (RLP-593)', async () => {
     // The recorded step name bakes in the capture-time value of the {{NROEXP}}
     // placeholder. At runtime the extraction failed, so the request actually went

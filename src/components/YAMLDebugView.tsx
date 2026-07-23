@@ -935,14 +935,24 @@ function debugVariableSnapshot(activeEntry: DebugEntry, entries: DebugEntry[]): 
     const role = String(entry.event.chain_role ?? entry.node?.data?.chain_role ?? '').toLowerCase();
     return role === 'parent' || (!role && Number(entry.event.redirect_index ?? 0) === 0);
   };
+  // `preferSource` follows the scan direction: walking forward through a chain the
+  // latest capture wins, walking backwards the nearest one does. Either way a miss
+  // never overwrites a value that was really captured somewhere in the chain.
+  const mergeCapturedVariables = (source: Record<string, string> | undefined, preferSource: boolean) => {
+    Object.entries(source ?? {}).forEach(([name, value]) => {
+      if (isMissingDebugVariableValue(value)) {
+        if (!Object.prototype.hasOwnProperty.call(snapshot, name)) snapshot[name] = value;
+        return;
+      }
+      if (preferSource || isMissingDebugVariableValue(snapshot[name])) snapshot[name] = value;
+    });
+  };
 
   if (chainRole !== 'parent' && !isParent(activeEntry)) {
     for (let index = activeIndex - 1; index >= 0; index -= 1) {
       const candidate = entries[index];
       if (!isSameChain(candidate)) continue;
-      Object.entries(candidate.event.variables ?? {}).forEach(([name, value]) => {
-        if (!Object.prototype.hasOwnProperty.call(snapshot, name)) snapshot[name] = value;
-      });
+      mergeCapturedVariables(candidate.event.variables, false);
       if (isParent(candidate)) break;
     }
     return snapshot;
@@ -953,10 +963,15 @@ function debugVariableSnapshot(activeEntry: DebugEntry, entries: DebugEntry[]): 
   for (let index = activeIndex + 1; index < entries.length; index += 1) {
     const candidate = entries[index];
     if (!isSameChain(candidate) || isParent(candidate)) break;
-    Object.assign(snapshot, candidate.event.variables ?? {});
+    mergeCapturedVariables(candidate.event.variables, true);
   }
 
   return snapshot;
+}
+
+function isMissingDebugVariableValue(value: string | undefined): boolean {
+  const normalized = String(value ?? '').trim().toLowerCase();
+  return normalized === '' || normalized === 'not captured' || normalized.includes('value not found');
 }
 
 function absoluteDebugUrl(value: unknown, baseUrl: string): string {
