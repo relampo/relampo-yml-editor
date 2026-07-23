@@ -206,7 +206,7 @@ describe('YAMLLoadRunSession', () => {
     });
 
     expect(screen.getByText(/Balanced Controller in Iterations mode/i)).toBeInTheDocument();
-    expect(screen.getByText(/Duration is only an upper bound/i)).toBeInTheDocument();
+    expect(screen.getByText(/first configured limit.*Duration or Iterations/i)).toBeInTheDocument();
   });
 
   it('does not flag the planned profile when the Balanced Controller runs in Virtual Users mode', async () => {
@@ -222,7 +222,7 @@ describe('YAMLLoadRunSession', () => {
       runApiMock.handlers[0].onMetrics(metric());
     });
 
-    expect(screen.queryByText(/Duration is only an upper bound/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/first configured limit.*Duration or Iterations/i)).not.toBeInTheDocument();
   });
 
   it('keeps dynamic redirects grouped by stable script steps and exact backend counts', async () => {

@@ -439,9 +439,9 @@ export function YAMLLoadRunSession({
                   <div className="mb-3 flex items-start gap-2 rounded border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-[11px] text-amber-200">
                     <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                     <span>
-                      This scenario uses a Balanced Controller in Iterations mode. The run ends once the
-                      iteration budget is reached, so Duration is only an upper bound — the run and its live
-                      metrics may stop before the duration shown below elapses.
+                      This scenario uses a Balanced Controller in Iterations mode. The run stops when the first
+                      configured limit — Duration or Iterations — is reached, so the run and its live metrics
+                      may stop before the duration shown below elapses.
                     </span>
                   </div>
                 )}
