@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { translations } from '../i18n/translations';
 import type { Language } from '../i18n/translations';
@@ -20,22 +20,27 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLanguage] = useState<Language>('en');
 
-  const t = (key: string): string => {
-    const keys = key.split('.');
-    let value: TranslationBranch = translations[language];
+  const t = useCallback(
+    (key: string): string => {
+      const keys = key.split('.');
+      let value: TranslationBranch = translations[language];
 
-    for (const k of keys) {
-      if (isTranslationBranch(value)) {
-        value = value[k];
-      } else {
-        return key; // Return key if translation not found
+      for (const k of keys) {
+        if (isTranslationBranch(value)) {
+          value = value[k];
+        } else {
+          return key; // Return key if translation not found
+        }
       }
-    }
 
-    return typeof value === 'string' ? value : key;
-  };
+      return typeof value === 'string' ? value : key;
+    },
+    [language],
+  );
 
-  return <LanguageContext.Provider value={{ language, setLanguage, t }}>{children}</LanguageContext.Provider>;
+  const value = useMemo(() => ({ language, setLanguage, t }), [language, t]);
+
+  return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;
 }
 
 export function useLanguage() {

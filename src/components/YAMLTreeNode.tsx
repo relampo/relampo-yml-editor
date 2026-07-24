@@ -55,6 +55,11 @@ function clearDragIndicatorsGlobally() {
   window.dispatchEvent(new Event(DND_CLEAR_EVENT));
 }
 
+function handleDragEnd() {
+  clearDragIndicatorsGlobally();
+  setDraggedNode(null);
+}
+
 interface YAMLTreeNodeProps {
   node: YAMLNode;
   depth: number;
@@ -97,6 +102,15 @@ export function YAMLTreeNode({
   const showChildrenWhileSearching = Boolean(searchQuery.trim()) &&
     (passAncestor || node.children?.some(child => subtreeHasMatch(child, searchQuery)));
   const showChildren = hasChildren && (isExpanded || showChildrenWhileSearching);
+  const selectedIdSet = new Set(selectedNodeIds);
+  const visibleChildren = node.children
+    ? node.children.reduce<YAMLNode[]>((acc, child) => {
+        if (!searchQuery.trim() || passAncestor || subtreeHasMatch(child, searchQuery)) {
+          acc.push(child);
+        }
+        return acc;
+      }, [])
+    : [];
 
   useEffect(() => {
     const clearIndicator = () => {
@@ -122,11 +136,6 @@ export function YAMLTreeNode({
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', node.id);
     setDraggedNode({ id: node.id, type: node.type });
-  };
-
-  const handleDragEnd = () => {
-    clearDragIndicatorsGlobally();
-    setDraggedNode(null);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -265,11 +274,12 @@ export function YAMLTreeNode({
         {/* Left indicator removed to avoid visible corner artifact */}
         {/* Expand/Collapse */}
         {hasChildren && (
-          <button
+          <button type="button"
             onClick={e => {
               e.stopPropagation();
               onNodeToggle(node.id);
             }}
+            aria-label={isExpanded ? 'Collapse' : 'Expand'}
             className="shrink-0 w-4 h-4 flex items-center justify-center text-zinc-500 hover:text-zinc-300"
           >
             {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
@@ -314,31 +324,24 @@ export function YAMLTreeNode({
       {/* Children */}
       {showChildren && (
         <div className="ml-2 border-l border-white/5">
-          {node.children!
-            .filter(
-              child =>
-                !searchQuery.trim() ||
-                passAncestor ||
-                subtreeHasMatch(child, searchQuery)
-            )
-            .map(child => (
-              <YAMLTreeNode
-                key={child.id}
-                node={child}
-                depth={depth + 1}
-                parentType={node.type}
-                isSelected={selectedNodeIds.includes(child.id)}
-                selectedNodeIds={selectedNodeIds}
-                redirectedRequestMap={redirectedRequestMap}
-                baseHost={baseHost}
-                onNodeSelect={onNodeSelect}
-                onNodeToggle={onNodeToggle}
-                onContextMenu={onContextMenu}
-                onNodeMove={onNodeMove}
-                searchQuery={searchQuery}
-                ancestorMatchesSearch={passAncestor}
-              />
-            ))}
+          {visibleChildren.map(child => (
+            <YAMLTreeNode
+              key={child.id}
+              node={child}
+              depth={depth + 1}
+              parentType={node.type}
+              isSelected={selectedIdSet.has(child.id)}
+              selectedNodeIds={selectedNodeIds}
+              redirectedRequestMap={redirectedRequestMap}
+              baseHost={baseHost}
+              onNodeSelect={onNodeSelect}
+              onNodeToggle={onNodeToggle}
+              onContextMenu={onContextMenu}
+              onNodeMove={onNodeMove}
+              searchQuery={searchQuery}
+              ancestorMatchesSearch={passAncestor}
+            />
+          ))}
         </div>
       )}
     </div>

@@ -1,5 +1,5 @@
 import { Eye, EyeOff, FileText } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import type { RedirectSourceInfo, RedirectedRequestInfo, YAMLNode } from '../types/yaml';
 import { YAMLRequestDetails } from './YAMLRequestDetails';
@@ -64,15 +64,22 @@ export function YAMLNodeDetails({
   dataSourceFileBrowseEnabled = false,
 }: YAMLNodeDetailsProps) {
   const { t } = useLanguage();
+  // nodeName is a local edit buffer (not purely derived from node.name)
+  // because onNodeUpdate is optional: without it, node.name never changes,
+  // and the field must still be typeable. It re-syncs to the prop below
+  // whenever the selected node or its upstream name changes, using the
+  // store-previous-prop-and-compare-during-render pattern instead of an
+  // effect so the reset lands in the same render as the prop change.
   const [nodeName, setNodeName] = useState(node?.name || '');
+  const [trackedNode, setTrackedNode] = useState({ id: node?.id, name: node?.name });
+  if (node?.id !== trackedNode.id || node?.name !== trackedNode.name) {
+    setTrackedNode({ id: node?.id, name: node?.name });
+    setNodeName(node?.name || '');
+  }
   const isRequestNode = REQUEST_NODE_TYPES.includes(node?.type || '');
   const isNodeEnabled = node?.data?.enabled !== false;
   const canToggleEnabled = Boolean(onToggleEnabled) && !!node && !NON_TOGGLEABLE_NODE_TYPES.includes(node.type);
   const isCompactDetailsNode = node?.type === 'balanced';
-
-  useEffect(() => {
-    setNodeName(node?.name || '');
-  }, [node?.id, node?.name]);
 
   if (!node) {
     return (
@@ -127,10 +134,11 @@ export function YAMLNodeDetails({
       <div className={`flex-1 overflow-y-auto ${isCompactDetailsNode ? 'p-4' : 'p-6'}`}>
         {node.type !== 'test' && node.type !== 'data_source' && (
           <div className={isCompactDetailsNode ? 'mb-4' : 'mb-6'}>
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+            <label htmlFor="nodedetails-node-name" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
               {t('yamlEditor.common.name')}
             </label>
             <HighlightedInput
+              id="nodedetails-node-name"
               value={nodeName}
               onChange={event => {
                 const nextName = event.target.value;

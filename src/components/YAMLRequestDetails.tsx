@@ -38,6 +38,19 @@ function getNumberValue(value: YAMLValue): number | undefined {
   return typeof value === 'number' ? value : undefined;
 }
 
+// Regex-mode search intentionally hands the user's raw text to `new RegExp` —
+// the whole point of the Text/Regex toggle is that Regex mode matches real
+// regex syntax, so escaping metacharacters here would silently make it behave
+// like Text mode. `pattern` (rather than "search term") reflects that intent;
+// invalid syntax is caught and surfaced via the null return. RLP.
+function buildDynamicRegex(pattern: string, flags: string): RegExp | null {
+  try {
+    return new RegExp(pattern, flags);
+  } catch {
+    return null;
+  }
+}
+
 function getRecordValue(value: YAMLValue): YAMLRecord | undefined {
   return value && typeof value === 'object' && !Array.isArray(value) ? value : undefined;
 }
@@ -135,9 +148,17 @@ export function YAMLRequestDetails({
 
   // The tree search can change searchText without going through
   // handleSearchChange; keep the match cursor in range when that happens.
-  useEffect(() => {
+  // Derived here during render (React-sanctioned "adjust state on prop
+  // change" pattern: store the last-seen searchText and conditionally
+  // setState when it differs) rather than in an effect, so the reset lands
+  // before paint. handleSearchChange/handleSearchModeChange/handleTabChange
+  // already reset the cursor for their own triggers; this catches the
+  // remaining case where searchText changes without going through them.
+  const [prevSearchText, setPrevSearchText] = useState(searchText);
+  if (searchText !== prevSearchText) {
+    setPrevSearchText(searchText);
     setCurrentMatchIndex(0);
-  }, [searchText]);
+  }
   const searchMode = activeTab === 'request' ? requestSearchMode : responseSearchMode;
   const replaceValue = activeTab === 'request' ? requestReplace : responseReplace;
 
@@ -167,7 +188,7 @@ export function YAMLRequestDetails({
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center border-b border-white/5 bg-[#111111] shrink-0">
-        <button
+        <button type="button"
           onClick={() => handleTabChange('request')}
           className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${
             activeTab === 'request'
@@ -178,7 +199,7 @@ export function YAMLRequestDetails({
           Request
         </button>
         {formData.response && (
-          <button
+          <button type="button"
             onClick={() => handleTabChange('response')}
             className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${
               activeTab === 'response'
@@ -260,6 +281,363 @@ interface RequestContentProps {
   onNavigate: (index: number) => void;
 }
 
+interface RequestUrlRowProps {
+  requestMethod: string;
+  onMethodChange: (method: string) => void;
+  protocol: string;
+  onProtocolChange: (value: string) => void;
+  displayBaseUrl: string;
+  baseUrlPlaceholder: string;
+  onBaseUrlChange: (value: string) => void;
+  pathInputValue: string;
+  onPathChange: (value: string) => void;
+  searchText: string;
+  compactInputClass: string;
+}
+
+function RequestUrlRow({
+  requestMethod,
+  onMethodChange,
+  protocol,
+  onProtocolChange,
+  displayBaseUrl,
+  baseUrlPlaceholder,
+  onBaseUrlChange,
+  pathInputValue,
+  onPathChange,
+  searchText,
+  compactInputClass,
+}: RequestUrlRowProps) {
+  return (
+    <div>
+      <div className="grid grid-cols-12 gap-3 items-end">
+        <div className="col-span-2">
+          <label
+            htmlFor="req-method"
+            className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
+          >
+            Method
+          </label>
+          <MethodDropdown
+            id="req-method"
+            value={requestMethod}
+            onChange={onMethodChange}
+            className="w-full"
+          />
+        </div>
+        <div className="col-span-2">
+          <label
+            htmlFor="req-protocol"
+            className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
+          >
+            Protocol
+          </label>
+          <Select
+            value={protocol}
+            onValueChange={onProtocolChange}
+          >
+            <SelectTrigger id="req-protocol" className={`${compactInputClass} w-full`}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="border-white/10 use-accent-yellow">
+              <SelectItem value="https" className="font-mono">https</SelectItem>
+              <SelectItem value="http" className="font-mono">http</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="col-span-4">
+          <label
+            htmlFor="req-base-url"
+            className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
+          >
+            Base URL
+          </label>
+          <HighlightedInput
+            id="req-base-url"
+            value={displayBaseUrl}
+            onChange={e => onBaseUrlChange(e.target.value)}
+            placeholder={baseUrlPlaceholder}
+            className="w-full h-9.5 bg-white/5 border border-white/10 text-zinc-300 text-sm font-mono"
+            searchText={searchText}
+            overlayClass="px-3 text-sm text-zinc-300 font-mono"
+          />
+        </div>
+        <div className="col-span-4">
+          <label
+            htmlFor="req-path"
+            className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
+          >
+            Path
+          </label>
+          <HighlightedInput
+            id="req-path"
+            value={pathInputValue}
+            onChange={e => onPathChange(e.target.value)}
+            placeholder="/api/endpoint"
+            className="w-full h-9.5 bg-white/5 border border-white/10 text-zinc-300 text-sm font-mono"
+            searchText={searchText}
+            overlayClass="px-3 text-sm text-zinc-300 font-mono"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface RequestBodySearchToolbarProps {
+  searchInputValue: string;
+  onSearchChange: (value: string) => void;
+  searchMode: SearchMode;
+  onSearchModeChange: (mode: SearchMode) => void;
+  replaceValue: string;
+  onReplaceValueChange: (value: string) => void;
+  onReplaceCurrent: () => void;
+  onReplaceAll: () => void;
+  totalMatches: number;
+  currentMatchIndex: number;
+  searchText: string;
+  onPrevious: () => void;
+  onNext: () => void;
+  regexInvalid: boolean;
+}
+
+function RequestBodySearchToolbar({
+  searchInputValue,
+  onSearchChange,
+  searchMode,
+  onSearchModeChange,
+  replaceValue,
+  onReplaceValueChange,
+  onReplaceCurrent,
+  onReplaceAll,
+  totalMatches,
+  currentMatchIndex,
+  searchText,
+  onPrevious,
+  onNext,
+  regexInvalid,
+}: RequestBodySearchToolbarProps) {
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-2">
+        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Request Body</p>
+      </div>
+      <div className="p-3 border border-white/10 rounded bg-[#0a0a0a]">
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+            <Input
+              value={searchInputValue}
+              onChange={e => onSearchChange(e.target.value)}
+              placeholder="Search in request body..."
+              className="pl-9 pr-3 bg-white/5 border-white/10 text-zinc-300 text-sm focus-visible:border-yellow-400/60 focus-visible:ring-yellow-400/30"
+            />
+          </div>
+          <div className="flex items-center rounded-md border border-white/10 bg-white/5 p-0.5">
+            <button type="button"
+              onClick={() => onSearchModeChange('text')}
+              className={`px-2 py-1 text-xs rounded transition-colors ${
+                searchMode === 'text'
+                  ? 'bg-yellow-400/20 text-yellow-400 border border-yellow-400/40'
+                  : 'text-zinc-400 hover:text-zinc-200'
+              }`}
+            >
+              Text
+            </button>
+            <button type="button"
+              onClick={() => onSearchModeChange('regex')}
+              className={`px-2 py-1 text-xs rounded transition-colors ${
+                searchMode === 'regex'
+                  ? 'bg-yellow-400/20 text-yellow-400 border border-yellow-400/40'
+                  : 'text-zinc-400 hover:text-zinc-200'
+              }`}
+            >
+              Regex
+            </button>
+          </div>
+          <Input
+            value={replaceValue}
+            onChange={e => onReplaceValueChange(e.target.value)}
+            placeholder="Replace"
+            className="w-[18ch] bg-white/5 border-white/10 text-zinc-300 text-sm"
+          />
+          <button type="button"
+            onClick={onReplaceCurrent}
+            disabled={totalMatches === 0}
+            className="px-2 py-1.5 text-xs rounded border border-white/10 text-zinc-300 disabled:opacity-40"
+          >
+            Replace
+          </button>
+          <button type="button"
+            onClick={onReplaceAll}
+            disabled={totalMatches === 0}
+            className="px-2 py-1.5 text-xs rounded border border-white/10 text-zinc-300 disabled:opacity-40"
+          >
+            Replace All
+          </button>
+          {searchText && (
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-zinc-400 px-2 min-w-15 text-center font-mono">
+                {totalMatches > 0 ? `${currentMatchIndex + 1}/${totalMatches}` : '0/0'}
+              </span>
+              <button type="button"
+                onClick={onPrevious}
+                disabled={totalMatches === 0}
+                className="p-1.5 hover:bg-white/10 rounded border border-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                title="Previous match"
+              >
+                <ChevronUp className="w-4 h-4 text-zinc-400" />
+              </button>
+              <button type="button"
+                onClick={onNext}
+                disabled={totalMatches === 0}
+                className="p-1.5 hover:bg-white/10 rounded border border-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                title="Next match"
+              >
+                <ChevronDown className="w-4 h-4 text-zinc-400" />
+              </button>
+            </div>
+          )}
+        </div>
+        {regexInvalid && <div className="mt-2 text-xs text-red-400">Invalid regex pattern</div>}
+      </div>
+    </div>
+  );
+}
+
+interface RequestAdvancedOptionsRowProps {
+  compactInputClass: string;
+  timeoutValue: string;
+  onTimeoutChange: (value: string) => void;
+  cookieOverride: string;
+  onCookieOverrideChange: (value: string) => void;
+  cacheOverride: string;
+  onCacheOverrideChange: (value: string) => void;
+  throughputEnabled: boolean;
+  onThroughputToggle: (value: string) => void;
+  targetRps: number | undefined;
+  onTargetRpsChange: (value: string) => void;
+}
+
+function RequestAdvancedOptionsRow({
+  compactInputClass,
+  timeoutValue,
+  onTimeoutChange,
+  cookieOverride,
+  onCookieOverrideChange,
+  cacheOverride,
+  onCacheOverrideChange,
+  throughputEnabled,
+  onThroughputToggle,
+  targetRps,
+  onTargetRpsChange,
+}: RequestAdvancedOptionsRowProps) {
+  return (
+    <div>
+      <div className="grid grid-cols-5 gap-3 items-start w-full">
+        <div className="min-w-0">
+          <label
+            htmlFor="req-timeout"
+            className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
+          >
+            Timeout
+          </label>
+          <Input
+            id="req-timeout"
+            value={timeoutValue === '30s' ? '' : timeoutValue}
+            onChange={e => onTimeoutChange(e.target.value)}
+            placeholder=""
+            className="w-full h-9.5 bg-white/5 border border-white/10 text-zinc-300 text-sm font-mono"
+          />
+        </div>
+        <div className="min-w-0">
+          <label
+            htmlFor="req-cookie-override"
+            className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
+          >
+            Cookie Override
+          </label>
+          <Select
+            value={cookieOverride}
+            onValueChange={onCookieOverrideChange}
+          >
+            <SelectTrigger id="req-cookie-override" className={`${compactInputClass} w-full`}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="border-white/10 use-accent-yellow">
+              <SelectItem value="inherit">inherit</SelectItem>
+              <SelectItem value="enabled">enabled</SelectItem>
+              <SelectItem value="disabled">disabled</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="min-w-0">
+          <label
+            htmlFor="req-cache-override"
+            className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
+          >
+            Cache Override
+          </label>
+          <Select
+            value={cacheOverride}
+            onValueChange={onCacheOverrideChange}
+          >
+            <SelectTrigger id="req-cache-override" className={`${compactInputClass} w-full`}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="border-white/10 use-accent-yellow">
+              <SelectItem value="inherit">inherit</SelectItem>
+              <SelectItem value="enabled">enabled</SelectItem>
+              <SelectItem value="disabled">disabled</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="min-w-0">
+          <label
+            htmlFor="req-throughput"
+            className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
+          >
+            Throughput (Request)
+          </label>
+          <Select
+            value={throughputEnabled ? 'enabled' : 'disabled'}
+            onValueChange={onThroughputToggle}
+          >
+            <SelectTrigger id="req-throughput" className={`${compactInputClass} w-full`}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="border-white/10">
+              <SelectItem value="enabled">enabled</SelectItem>
+              <SelectItem value="disabled">disabled</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className={`min-w-0 ${throughputEnabled ? '' : 'opacity-55'}`}>
+          <label
+            htmlFor="req-target-rps"
+            className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
+          >
+            Target RPS
+          </label>
+          <Input
+            id="req-target-rps"
+            type="number"
+            min="0.1"
+            step="0.1"
+            value={targetRps ?? ''}
+            disabled={!throughputEnabled}
+            onChange={e => onTargetRpsChange(e.target.value)}
+            className="w-full h-9.5 bg-white/5 border border-white/10 text-zinc-300 text-sm font-mono"
+          />
+          <div className="mt-1 text-xs text-zinc-500">
+            Approx: {((targetRps || 0) * 60).toFixed(0)} req/min
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function RequestContent({
   formData,
   baseUrl,
@@ -327,11 +705,7 @@ function RequestContent({
 
   const buildSearchRegex = () => {
     if (!searchText || searchMode !== 'regex') return null;
-    try {
-      return new RegExp(searchText, 'gi');
-    } catch {
-      return null;
-    }
+    return buildDynamicRegex(searchText, 'gi');
   };
   const collectMatches = (text: string) => {
     if (!text || !searchText) return [] as Array<{ start: number; end: number }>;
@@ -411,81 +785,35 @@ function RequestContent({
     onNavigate(newIndex);
   };
 
+  const handleThroughputToggle = (value: string) => {
+    if (value === 'enabled') {
+      onFieldChange('throughput', { enabled: true, target_rps: targetRps ?? 1 });
+    } else {
+      onFieldChange('throughput', undefined);
+    }
+  };
+
+  const handleTargetRpsChange = (value: string) => {
+    const next = value === '' ? undefined : Number(value);
+    onFieldChange('throughput', { ...throughput, enabled: true, target_rps: next });
+  };
+
   return (
     <div className="space-y-4">
       {/* Method / Protocol / Base URL / Path */}
-      <div>
-        <div className="grid grid-cols-12 gap-3 items-end">
-          <div className="col-span-2">
-            <label
-              htmlFor="req-method"
-              className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
-            >
-              Method
-            </label>
-            <MethodDropdown
-              id="req-method"
-              value={requestMethod}
-              onChange={method => onFieldChange('method', method)}
-              className="w-full"
-            />
-          </div>
-          <div className="col-span-2">
-            <label
-              htmlFor="req-protocol"
-              className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
-            >
-              Protocol
-            </label>
-            <Select
-              value={urlParts.protocol}
-              onValueChange={value => onFieldChange('url', buildRequestUrl(requestUrl, { protocol: value }))}
-            >
-              <SelectTrigger id="req-protocol" className={`${compactInputClass} w-full`}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="border-white/10 use-accent-yellow">
-                <SelectItem value="https" className="font-mono">https</SelectItem>
-                <SelectItem value="http" className="font-mono">http</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="col-span-4">
-            <label
-              htmlFor="req-base-url"
-              className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
-            >
-              Base URL
-            </label>
-            <HighlightedInput
-              id="req-base-url"
-              value={displayBaseUrl}
-              onChange={e => handleBaseUrlChange(e.target.value)}
-              placeholder={baseUrlPlaceholder}
-              className="w-full h-9.5 bg-white/5 border border-white/10 text-zinc-300 text-sm font-mono"
-              searchText={searchText}
-              overlayClass="px-3 text-sm text-zinc-300 font-mono"
-            />
-          </div>
-          <div className="col-span-4">
-            <label
-              htmlFor="req-path"
-              className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
-            >
-              Path
-            </label>
-            <HighlightedInput
-              id="req-path"
-              value={pathInputValue}
-              onChange={e => handlePathChange(e.target.value)}
-              placeholder="/api/endpoint"
-              className="w-full h-9.5 bg-white/5 border border-white/10 text-zinc-300 text-sm font-mono"
-              searchText={searchText}
-              overlayClass="px-3 text-sm text-zinc-300 font-mono"
-            />
-          </div>
-        </div>
-      </div>
+      <RequestUrlRow
+        requestMethod={requestMethod}
+        onMethodChange={method => onFieldChange('method', method)}
+        protocol={urlParts.protocol}
+        onProtocolChange={value => onFieldChange('url', buildRequestUrl(requestUrl, { protocol: value }))}
+        displayBaseUrl={displayBaseUrl}
+        baseUrlPlaceholder={baseUrlPlaceholder}
+        onBaseUrlChange={handleBaseUrlChange}
+        pathInputValue={pathInputValue}
+        onPathChange={handlePathChange}
+        searchText={searchText}
+        compactInputClass={compactInputClass}
+      />
 
       <div>
         <div className="flex items-center gap-6 flex-wrap">
@@ -531,90 +859,22 @@ function RequestContent({
         searchText={searchText}
       />
 
-      <div>
-        <div className="flex items-center gap-2 mb-2">
-          <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Request Body</p>
-        </div>
-        <div className="p-3 border border-white/10 rounded bg-[#0a0a0a]">
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-              <Input
-                value={searchInputValue}
-                onChange={e => onSearchChange(e.target.value)}
-                placeholder="Search in request body..."
-                className="pl-9 pr-3 bg-white/5 border-white/10 text-zinc-300 text-sm focus-visible:border-yellow-400/60 focus-visible:ring-yellow-400/30"
-              />
-            </div>
-            <div className="flex items-center rounded-md border border-white/10 bg-white/5 p-0.5">
-              <button
-                onClick={() => onSearchModeChange('text')}
-                className={`px-2 py-1 text-xs rounded transition-colors ${
-                  searchMode === 'text'
-                    ? 'bg-yellow-400/20 text-yellow-400 border border-yellow-400/40'
-                    : 'text-zinc-400 hover:text-zinc-200'
-                }`}
-              >
-                Text
-              </button>
-              <button
-                onClick={() => onSearchModeChange('regex')}
-                className={`px-2 py-1 text-xs rounded transition-colors ${
-                  searchMode === 'regex'
-                    ? 'bg-yellow-400/20 text-yellow-400 border border-yellow-400/40'
-                    : 'text-zinc-400 hover:text-zinc-200'
-                }`}
-              >
-                Regex
-              </button>
-            </div>
-            <Input
-              value={replaceValue}
-              onChange={e => onReplaceValueChange(e.target.value)}
-              placeholder="Replace"
-              className="w-[18ch] bg-white/5 border-white/10 text-zinc-300 text-sm"
-            />
-            <button
-              onClick={handleReplaceCurrent}
-              disabled={totalMatches === 0}
-              className="px-2 py-1.5 text-xs rounded border border-white/10 text-zinc-300 disabled:opacity-40"
-            >
-              Replace
-            </button>
-            <button
-              onClick={handleReplaceAll}
-              disabled={totalMatches === 0}
-              className="px-2 py-1.5 text-xs rounded border border-white/10 text-zinc-300 disabled:opacity-40"
-            >
-              Replace All
-            </button>
-            {searchText && (
-              <div className="flex items-center gap-1">
-                <span className="text-xs text-zinc-400 px-2 min-w-15 text-center font-mono">
-                  {totalMatches > 0 ? `${currentMatchIndex + 1}/${totalMatches}` : '0/0'}
-                </span>
-                <button
-                  onClick={handlePrevious}
-                  disabled={totalMatches === 0}
-                  className="p-1.5 hover:bg-white/10 rounded border border-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                  title="Previous match"
-                >
-                  <ChevronUp className="w-4 h-4 text-zinc-400" />
-                </button>
-                <button
-                  onClick={handleNext}
-                  disabled={totalMatches === 0}
-                  className="p-1.5 hover:bg-white/10 rounded border border-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                  title="Next match"
-                >
-                  <ChevronDown className="w-4 h-4 text-zinc-400" />
-                </button>
-              </div>
-            )}
-          </div>
-          {regexInvalid && <div className="mt-2 text-xs text-red-400">Invalid regex pattern</div>}
-        </div>
-      </div>
+      <RequestBodySearchToolbar
+        searchInputValue={searchInputValue}
+        onSearchChange={onSearchChange}
+        searchMode={searchMode}
+        onSearchModeChange={onSearchModeChange}
+        replaceValue={replaceValue}
+        onReplaceValueChange={onReplaceValueChange}
+        onReplaceCurrent={handleReplaceCurrent}
+        onReplaceAll={handleReplaceAll}
+        totalMatches={totalMatches}
+        currentMatchIndex={currentMatchIndex}
+        searchText={searchText}
+        onPrevious={handlePrevious}
+        onNext={handleNext}
+        regexInvalid={regexInvalid}
+      />
       <div className="flex items-center gap-2 mb-2 mt-3">
         <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Format / Body Type</p>
       </div>
@@ -640,126 +900,19 @@ function RequestContent({
         </div>
       )}
 
-      <div>
-        <div className="grid grid-cols-5 gap-3 items-start w-full">
-          <div className="min-w-0">
-            <label
-              htmlFor="req-timeout"
-              className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
-            >
-              Timeout
-            </label>
-            <Input
-              id="req-timeout"
-              value={timeoutValue === '30s' ? '' : timeoutValue}
-              onChange={e => onFieldChange('timeout', e.target.value)}
-              placeholder=""
-              className="w-full h-9.5 bg-white/5 border border-white/10 text-zinc-300 text-sm font-mono"
-            />
-          </div>
-          <div className="min-w-0">
-            <label
-              htmlFor="req-cookie-override"
-              className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
-            >
-              Cookie Override
-            </label>
-            <Select
-              value={cookieOverride}
-              onValueChange={value => onFieldChange('cookie_override', value)}
-            >
-              <SelectTrigger id="req-cookie-override" className={`${compactInputClass} w-full`}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="border-white/10 use-accent-yellow">
-                <SelectItem value="inherit">inherit</SelectItem>
-                <SelectItem value="enabled">enabled</SelectItem>
-                <SelectItem value="disabled">disabled</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="min-w-0">
-            <label
-              htmlFor="req-cache-override"
-              className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
-            >
-              Cache Override
-            </label>
-            <Select
-              value={cacheOverride}
-              onValueChange={value => onFieldChange('cache_override', value)}
-            >
-              <SelectTrigger id="req-cache-override" className={`${compactInputClass} w-full`}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="border-white/10 use-accent-yellow">
-                <SelectItem value="inherit">inherit</SelectItem>
-                <SelectItem value="enabled">enabled</SelectItem>
-                <SelectItem value="disabled">disabled</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="min-w-0">
-            <label
-              htmlFor="req-throughput"
-              className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
-            >
-              Throughput (Request)
-            </label>
-            <Select
-              value={throughputEnabled ? 'enabled' : 'disabled'}
-              onValueChange={value => {
-                if (value === 'enabled') {
-                  const next = {
-                    enabled: true,
-                    target_rps: targetRps ?? 1,
-                  };
-                  onFieldChange('throughput', next);
-                } else {
-                  onFieldChange('throughput', undefined);
-                }
-              }}
-            >
-              <SelectTrigger id="req-throughput" className={`${compactInputClass} w-full`}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="border-white/10">
-                <SelectItem value="enabled">enabled</SelectItem>
-                <SelectItem value="disabled">disabled</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className={`min-w-0 ${throughputEnabled ? '' : 'opacity-55'}`}>
-            <label
-              htmlFor="req-target-rps"
-              className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
-            >
-              Target RPS
-            </label>
-            <Input
-              id="req-target-rps"
-              type="number"
-              min="0.1"
-              step="0.1"
-              value={targetRps ?? ''}
-              disabled={!throughputEnabled}
-              onChange={e => {
-                const raw = e.target.value;
-                const next = raw === '' ? undefined : Number(raw);
-                onFieldChange('throughput', {
-                  ...throughput,
-                  enabled: true,
-                  target_rps: next,
-                });
-              }}
-              className="w-full h-9.5 bg-white/5 border border-white/10 text-zinc-300 text-sm font-mono"
-            />
-            <div className="mt-1 text-xs text-zinc-500">
-              Approx: {((targetRps || 0) * 60).toFixed(0)} req/min
-            </div>
-          </div>
-        </div>
-      </div>
+      <RequestAdvancedOptionsRow
+        compactInputClass={compactInputClass}
+        timeoutValue={timeoutValue}
+        onTimeoutChange={value => onFieldChange('timeout', value)}
+        cookieOverride={cookieOverride}
+        onCookieOverrideChange={value => onFieldChange('cookie_override', value)}
+        cacheOverride={cacheOverride}
+        onCacheOverrideChange={value => onFieldChange('cache_override', value)}
+        throughputEnabled={throughputEnabled}
+        onThroughputToggle={handleThroughputToggle}
+        targetRps={targetRps}
+        onTargetRpsChange={handleTargetRpsChange}
+      />
     </div>
   );
 }

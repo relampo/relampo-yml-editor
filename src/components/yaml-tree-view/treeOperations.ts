@@ -167,7 +167,9 @@ export function removeNodeFromTree(tree: YAMLNode, nodeId: string): YAMLNode {
   if (tree.children) {
     return {
       ...tree,
-      children: tree.children.filter(child => child.id !== nodeId).map(child => removeNodeFromTree(child, nodeId)),
+      children: tree.children.flatMap(child =>
+        child.id === nodeId ? [] : [removeNodeFromTree(child, nodeId)],
+      ),
     };
   }
 
@@ -394,7 +396,8 @@ export function moveNodeInTree(
 }
 
 export function getTransactionWrapValidation(tree: YAMLNode, nodeIds: string[]): TransactionWrapValidationResult {
-  const uniqueNodeIds = Array.from(new Set(nodeIds));
+  const uniqueNodeIdSet = new Set(nodeIds);
+  const uniqueNodeIds = Array.from(uniqueNodeIdSet);
   if (uniqueNodeIds.length < 2) {
     return {
       valid: false,
@@ -442,7 +445,7 @@ export function getTransactionWrapValidation(tree: YAMLNode, nodeIds: string[]):
     };
   }
 
-  const orderedSelection = (parentNode.children || []).filter(child => uniqueNodeIds.includes(child.id));
+  const orderedSelection = (parentNode.children || []).filter(child => uniqueNodeIdSet.has(child.id));
   if (orderedSelection.length !== uniqueNodeIds.length) {
     return {
       valid: false,

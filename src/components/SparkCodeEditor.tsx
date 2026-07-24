@@ -69,30 +69,24 @@ export function SparkCodeEditor({ value, onChange, minHeight = '250px' }: SparkC
               message: firstError.message,
               line: firstError.startLineNumber,
             });
-            setIsValidating(false);
-            return;
+          } else {
+            setValidationResult({
+              isValid: true,
+              message: 'Syntax OK - No errors found!',
+            });
           }
+          setIsValidating(false);
+          return;
         }
       }
 
-      // Fallback: also try Function constructor for runtime errors
-      try {
-        new Function('vars', 'response', 'console', value);
-        setValidationResult({
-          isValid: true,
-          message: 'Syntax OK - No errors found!',
-        });
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Invalid JavaScript syntax';
-        const match = message.match(/line (\d+)/i) || message.match(/position (\d+)/i);
-
-        setValidationResult({
-          isValid: false,
-          message,
-          line: match ? parseInt(match[1]) : undefined,
-        });
-      }
-
+      // Editor/model not ready yet — validation relies on Monaco's own JS
+      // diagnostics rather than executing the script, so there is nothing to
+      // check until the editor has mounted.
+      setValidationResult({
+        isValid: false,
+        message: 'Editor still loading — try again in a moment',
+      });
       setIsValidating(false);
     }, 200);
   };
@@ -116,7 +110,7 @@ export function SparkCodeEditor({ value, onChange, minHeight = '250px' }: SparkC
           </div>
 
           {/* Validate Button */}
-          <button
+          <button type="button"
             onClick={validateSyntax}
             disabled={isValidating}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-all ${

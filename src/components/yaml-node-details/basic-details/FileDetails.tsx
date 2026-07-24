@@ -3,25 +3,26 @@ import { createNodeDataUpdater } from '../nodeDetailHelpers';
 import type { NodeDetailProps } from '../types';
 import type { YAMLNodeData, YAMLValue } from '../../../types/yaml';
 
+const commonMimeTypes = [
+  'application/pdf',
+  'application/json',
+  'application/xml',
+  'application/zip',
+  'text/plain',
+  'text/csv',
+  'text/html',
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+  'image/svg+xml',
+  'video/mp4',
+  'audio/mpeg',
+];
+
 export function FileDetails({ node, onNodeUpdate }: NodeDetailProps) {
   const { data, updateData, updateField } = createNodeDataUpdater(node, onNodeUpdate);
   const pathValue = String(data.path || '').trim();
   const mimeValue = String(data.mime || data.mime_type || '').trim();
-  const commonMimeTypes = [
-    'application/pdf',
-    'application/json',
-    'application/xml',
-    'application/zip',
-    'text/plain',
-    'text/csv',
-    'text/html',
-    'image/jpeg',
-    'image/png',
-    'image/gif',
-    'image/svg+xml',
-    'video/mp4',
-    'audio/mpeg',
-  ];
 
   const handleChange = (field: string, value: YAMLValue) => {
     const raw = String(value ?? '');

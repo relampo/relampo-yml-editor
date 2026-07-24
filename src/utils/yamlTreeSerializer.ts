@@ -57,7 +57,8 @@ function hasOnlyKeys(value: unknown, keys: string[]): value is Record<string, un
   }
 
   const valueKeys = Object.keys(value);
-  return valueKeys.length > 0 && valueKeys.every(key => keys.includes(key));
+  const keySet = new Set(keys);
+  return valueKeys.length > 0 && valueKeys.every(key => keySet.has(key));
 }
 
 function hasRequestChildren(node: YAMLNode): boolean {

@@ -1,65 +1,30 @@
-import { AlertTriangle, Loader2 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useYAML } from '../contexts/YAMLContext';
 import { useResizePanel } from '../hooks/useResizePanel';
 import { useYAMLPersistence } from '../hooks/useYAMLPersistence';
-import type { YAMLNode } from '../types/yaml';
 import { logStatsigEvent } from '../utils/analytics';
 import { applyNodeUpdateToTree, renameRequestHost } from '../utils/nodeUpdate';
-import { getActiveDraft } from '../utils/yamlDraftStorage';
 import { getDocumentMetrics } from '../utils/yamlDocumentLimits';
-import { parseYAMLToTree, treeToYAML } from '../utils/yamlParser';
-import { validateYAMLSemantics } from '../utils/yamlSemanticValidation';
-import { Button } from './ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from './ui/dialog';
-import { probeStudio } from '../utils/debugApi';
-import { YAMLCodeEditor } from './YAMLCodeEditor';
-import { YAMLEditorDetailsPanel } from './YAMLEditorDetailsPanel';
-import { EditorViewModeTabs, type EditorViewMode } from './EditorViewModeTabs';
 import { YAMLEditorHeader } from './YAMLEditorHeader';
-import {
-  refreshTreePaths,
-  syncRedirectSourceFollowRedirects,
-  updateNodeEnabled,
-} from './yaml-tree-view/treeOperations';
+import { YAMLEditorNewDocumentDialog } from './YAMLEditorNewDocumentDialog';
+import { YAMLEditorBusyOverlay } from './YAMLEditorBusyOverlay';
+import { YAMLEditorDragOverlay } from './YAMLEditorDragOverlay';
+import { YAMLEditorStatusBanners } from './YAMLEditorStatusBanners';
+import { YAMLEditorMainLayout } from './YAMLEditorMainLayout';
+import { syncRedirectSourceFollowRedirects, updateNodeEnabled } from './yaml-tree-view/treeOperations';
 import { autoRebalanceBalancedControllers } from '../utils/balancedController';
-import { YAMLTreeView } from './YAMLTreeView';
-import { useHttpDefaultsInfo, useParseWorker, useRedirectMaps, useTreeSelection } from './useYamlEditorDerived';
-import {
-  findNodeById,
-  getDraftRestoreError,
-  lockTypedNodeSelectionInNode,
-  normalizeYamlFileName,
-  type ParseWorkerRequest,
-  type TreeSelection,
-} from './yamlEditorHelpers';
-
-const EMPTY_PARALLEL_ERROR = 'Parallel controller must contain at least one child step';
-const TREE_SERIALIZE_DEBOUNCE_MS = 220;
-// Dev-time override; in production the Debug view unlocks itself at runtime
-// when the app detects it is being served by `relampo studio`.
-const DEBUG_VIEW_FORCED = import.meta.env.VITE_DEBUG_VIEW_ENABLED === 'true';
-const RUN_VIEW_FORCED = import.meta.env.VITE_RUN_VIEW_ENABLED === 'true';
-
-type CommitTreeChangeOptions = {
-  serialization?: 'immediate' | 'debounced';
-};
+import { useHttpDefaultsInfo, useRedirectMaps, useTreeSelection } from './useYamlEditorDerived';
+import { useYamlDocumentLifecycle } from './yaml-editor/useYamlDocumentLifecycle';
+import { useYamlDocumentSync } from './yaml-editor/useYamlDocumentSync';
+import { useYamlFileUpload } from './yaml-editor/useYamlFileUpload';
+import { useYamlViewMode } from './yaml-editor/useYamlViewMode';
 
 export function YAMLEditor() {
   const { language, setLanguage, t } = useLanguage();
   const { yamlContent, setYamlContent } = useYAML();
   const { leftPanelWidth, isResizing: _isResizing, setIsResizing } = useResizePanel(30);
 
-  const [yamlCode, setYamlCode] = useState<string>('');
-  const [yamlTree, setYamlTree] = useState<YAMLNode | null>(null);
   const {
     selectedNode,
     setSelectedNode,
@@ -69,70 +34,124 @@ export function YAMLEditor() {
     selectedNodeIdsRef,
     syncSelectionWithTree,
   } = useTreeSelection();
+
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
-  const [viewMode, setViewMode] = useState<EditorViewMode>('tree');
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const parseDebounceRef = useRef<number | null>(null);
-  const serializeDebounceRef = useRef<number | null>(null);
-  const editRevisionRef = useRef(0);
-  const parseWorkerRef = useRef<Worker | null>(null);
-  const parseRequestIdRef = useRef(0);
-  const activeParseRequestIdRef = useRef(0);
   const [isInitialized, setIsInitialized] = useState(false);
-  const [currentFileName, setCurrentFileName] = useState('relampo-script.yaml');
-  const [isDirty, setIsDirty] = useState(false);
-  const [isDragOver, setIsDragOver] = useState(false);
-  const [hasDocumentActivity, setHasDocumentActivity] = useState(false);
-  const [isParsing, setIsParsing] = useState(false);
-  const [isFileLoading, setIsFileLoading] = useState(false);
-  const [isTreeOutdated, setIsTreeOutdated] = useState(false);
-  const [restoredDraftUpdatedAt, setRestoredDraftUpdatedAt] = useState<string | null>(null);
-  const [isNewDialogOpen, setIsNewDialogOpen] = useState(false);
-  const [treeSearchQuery, setTreeSearchQuery] = useState('');
   const fallbackRootNameRef = useRef<string | null>(null);
   const hasDiscoveredTreeContextMenuRef = useRef(false);
 
-  // Studio detection + the optional CLI-mounted script are resolved together in
-  // the init effect below (one /api/studio/info probe).
-  const [debugViewEnabled, setDebugViewEnabled] = useState(DEBUG_VIEW_FORCED);
-  const [runViewEnabled, setRunViewEnabled] = useState(RUN_VIEW_FORCED);
-  const [dataSourceFileBrowseEnabled, setDataSourceFileBrowseEnabled] = useState(false);
+  const {
+    yamlCode,
+    setYamlCode,
+    yamlTree,
+    setYamlTree,
+    isDirty,
+    setIsDirty,
+    hasDocumentActivity,
+    setHasDocumentActivity,
+    isParsing,
+    isFileLoading,
+    setIsFileLoading,
+    parseDebounceRef,
+    serializeDebounceRef,
+    editRevisionRef,
+    syncCodeToTree,
+    handleCodeChange,
+    commitTreeChange,
+    handleTreeChange,
+    flushPendingTreeSerialization,
+    retrieveYamlForSaving,
+    resetDocument,
+  } = useYamlDocumentSync({
+    language,
+    isInitialized,
+    fallbackRootNameRef,
+    setYamlContent,
+    setError,
+    setValidationErrors,
+    selectedNode,
+    setSelectedNode,
+    setSelectedNodeIds,
+    selectedNodeRef,
+    selectedNodeIdsRef,
+    syncSelectionWithTree,
+  });
+
+  const {
+    currentFileName,
+    setCurrentFileName,
+    restoredDraftUpdatedAt,
+    isNewDialogOpen,
+    setIsNewDialogOpen,
+    handleNewOpen,
+    resetIdentityForNewDocument,
+    debugViewEnabled,
+    runViewEnabled,
+    dataSourceFileBrowseEnabled,
+  } = useYamlDocumentLifecycle({
+    language,
+    initialYamlContent: yamlContent,
+    setYamlContent,
+    setError,
+    isInitialized,
+    setIsInitialized,
+    fallbackRootNameRef,
+    setYamlCode,
+    syncCodeToTree,
+    setHasDocumentActivity,
+    setIsDirty,
+    setIsFileLoading,
+  });
+
+  const {
+    setViewMode,
+    treeSearchQuery,
+    setTreeSearchQuery,
+    activeViewMode,
+    isDebugViewActive,
+    isRunViewActive,
+    handleSelectionChange,
+    handleTreeSelectionChange,
+  } = useYamlViewMode({
+    debugViewEnabled,
+    runViewEnabled,
+    setSelectedNode,
+    setSelectedNodeIds,
+    selectedNodeRef,
+    selectedNodeIdsRef,
+  });
+
+  const {
+    fileInputRef,
+    isDragOver,
+    handleUpload,
+    handleFileChange,
+    handleDragOver,
+    handleDragLeave,
+    handleDrop,
+  } = useYamlFileUpload({
+    language,
+    setError,
+    setSelectedNode,
+    setSelectedNodeIds,
+    setYamlTree,
+    setYamlCode,
+    setYamlContent,
+    setViewMode,
+    fallbackRootNameRef,
+    syncCodeToTree,
+    setCurrentFileName,
+    setHasDocumentActivity,
+    setIsDirty,
+    setIsFileLoading,
+    parseDebounceRef,
+    serializeDebounceRef,
+  });
 
   const documentMetrics = useMemo(() => getDocumentMetrics(yamlCode), [yamlCode]);
   const isLargeFileMode = documentMetrics.large;
   const isEditorBusy = isFileLoading || isParsing;
-  const activeViewMode: EditorViewMode =
-    (!debugViewEnabled && viewMode === 'debug') || (!runViewEnabled && viewMode === 'run') ? 'tree' : viewMode;
-  const isDebugViewActive = debugViewEnabled && activeViewMode === 'debug';
-  const isRunViewActive = runViewEnabled && activeViewMode === 'run';
-
-  const applySemanticValidation = (tree: YAMLNode | null) => {
-    setValidationErrors(validateYAMLSemantics(tree).map(issue => issue.message));
-  };
-
-  const lockTypedNodeSelectionForCurrentTree = useCallback((): YAMLNode | null => {
-    if (!yamlTree) return null;
-    const [lockedTree, changed] = lockTypedNodeSelectionInNode(yamlTree);
-    if (!changed) return yamlTree;
-    setYamlTree(lockedTree);
-    if (selectedNode) {
-      const refreshedNode = findNodeById(lockedTree, selectedNode.id);
-      if (refreshedNode) setSelectedNode(refreshedNode);
-    }
-    return lockedTree;
-  }, [selectedNode, setSelectedNode, yamlTree]);
-
-  const retrieveYamlForSaving = useCallback((): string => {
-    if (isTreeOutdated || isParsing) return yamlCode;
-
-    const activeTree = lockTypedNodeSelectionForCurrentTree();
-    if (!activeTree) return yamlCode;
-    const serialized = treeToYAML(activeTree);
-    setYamlCode(serialized);
-    setYamlContent(serialized);
-    return serialized;
-  }, [isParsing, isTreeOutdated, lockTypedNodeSelectionForCurrentTree, setYamlContent, yamlCode]);
 
   const { lastSavedAt, actionMessage, handleDownload, resetForNewDocument } = useYAMLPersistence({
     isDirty,
@@ -151,273 +170,6 @@ export function YAMLEditor() {
 
   const { redirectedRequestMap, redirectSourceMap } = useRedirectMaps(yamlTree);
   const { httpDefaultsBaseUrl, scenarioHosts, httpDefaultsBaseHost } = useHttpDefaultsInfo(yamlTree);
-
-  useParseWorker({
-    language,
-    activeParseRequestIdRef,
-    parseWorkerRef,
-    setIsParsing,
-    setIsFileLoading,
-    setError,
-    setYamlTree,
-    syncSelectionWithTree,
-    setValidationErrors,
-    setIsTreeOutdated,
-    applySemanticValidation,
-    normalizeParsedTree: tree => (tree ? lockTypedNodeSelectionInNode(tree)[0] : tree),
-  });
-
-  const syncCodeToTree = (code: string, options?: { force?: boolean; defaultRootName?: string }) => {
-    if (!code || code.trim() === '') {
-      activeParseRequestIdRef.current = ++parseRequestIdRef.current;
-      setYamlTree(null);
-      syncSelectionWithTree(null);
-      setError(null);
-      setValidationErrors([]);
-      setIsParsing(false);
-      setIsFileLoading(false);
-      setIsTreeOutdated(false);
-      return;
-    }
-
-    const shouldSkipAutoParse = getDocumentMetrics(code).large && !options?.force;
-    if (shouldSkipAutoParse) {
-      activeParseRequestIdRef.current = ++parseRequestIdRef.current;
-      setError(null);
-      setValidationErrors([]);
-      setIsParsing(false);
-      setIsFileLoading(false);
-      setIsTreeOutdated(Boolean(code.trim()));
-      return;
-    }
-
-    const requestId = ++parseRequestIdRef.current;
-    activeParseRequestIdRef.current = requestId;
-    setIsParsing(true);
-    setIsTreeOutdated(false);
-
-    const worker = parseWorkerRef.current;
-    if (worker) {
-      worker.postMessage({ id: requestId, yaml: code, rootName: options?.defaultRootName } as ParseWorkerRequest);
-      return;
-    }
-
-    try {
-      const parsedTree = parseYAMLToTree(code, options?.defaultRootName);
-      if (activeParseRequestIdRef.current !== requestId) return;
-      const [normalizedTree] = parsedTree ? lockTypedNodeSelectionInNode(parsedTree) : [parsedTree, false];
-      setYamlTree(normalizedTree);
-      syncSelectionWithTree(normalizedTree);
-      setError(null);
-      applySemanticValidation(normalizedTree);
-      setIsTreeOutdated(false);
-    } catch (err) {
-      if (activeParseRequestIdRef.current !== requestId) return;
-      setError(err instanceof Error ? err.message : 'Error parsing YAML');
-      setYamlTree(null);
-      syncSelectionWithTree(null);
-      setValidationErrors([]);
-      setIsTreeOutdated(true);
-    } finally {
-      if (activeParseRequestIdRef.current === requestId) setIsParsing(false);
-      setIsFileLoading(false);
-    }
-  };
-
-  const syncTreeToCode = (tree: YAMLNode) => {
-    try {
-      const code = treeToYAML(tree);
-      setYamlCode(code);
-      setYamlContent(code);
-      setError(null);
-      setIsTreeOutdated(false);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Error generating YAML';
-      if (message.includes(EMPTY_PARALLEL_ERROR)) {
-        setError(null);
-        setIsTreeOutdated(true);
-        return;
-      }
-      setError(message);
-    }
-  };
-
-  // Initialize on mount
-  useEffect(() => {
-    if (isInitialized) return;
-
-    let isCancelled = false;
-
-    const initializeDocument = async () => {
-      let initialYaml = yamlContent || '';
-      let initialFileName = 'relampo-script.yaml';
-      let initialUpdatedAt: string | null = null;
-      let restoreError: string | null = null;
-
-      try {
-        const draft = await getActiveDraft();
-        if (draft) {
-          initialYaml = draft.yaml;
-          initialFileName = normalizeYamlFileName(draft.fileName);
-          initialUpdatedAt = draft.updatedAt;
-        }
-      } catch {
-        restoreError = getDraftRestoreError(language);
-      }
-
-      // `relampo studio` probe: unlock Debug, and mount a CLI-passed script
-      // (`relampo studio file.yaml`) — it wins over the restored draft. A
-      // standalone editor returns null here, leaving the draft untouched.
-      const studioInfo = await probeStudio();
-      if (studioInfo?.studio) {
-        setDataSourceFileBrowseEnabled(true);
-        if (!DEBUG_VIEW_FORCED) setDebugViewEnabled(true);
-        if (!RUN_VIEW_FORCED && studioInfo.capabilities?.loadRun) setRunViewEnabled(true);
-      }
-      if (studioInfo?.initialScript) {
-        initialYaml = studioInfo.initialScript.yaml;
-        initialFileName = normalizeYamlFileName(studioInfo.initialScript.name);
-        initialUpdatedAt = null;
-        restoreError = null;
-      }
-
-      if (isCancelled) return;
-
-      if (initialYaml.trim()) setIsFileLoading(true);
-      setYamlCode(initialYaml);
-      setYamlContent(initialYaml);
-      setCurrentFileName(initialFileName);
-      setRestoredDraftUpdatedAt(initialUpdatedAt);
-      setHasDocumentActivity(Boolean(initialUpdatedAt));
-      setIsDirty(false);
-      const restoredDisplayName = initialFileName.replace(/\.(ya?ml)$/i, '');
-      fallbackRootNameRef.current = restoredDisplayName;
-      syncCodeToTree(initialYaml, { force: true, defaultRootName: restoredDisplayName });
-      if (restoreError) setError(restoreError);
-      setIsInitialized(true);
-    };
-
-    void initializeDocument();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, []);
-
-  // Cleanup debounce timers
-  useEffect(() => {
-    return () => {
-      if (parseDebounceRef.current) window.clearTimeout(parseDebounceRef.current);
-      if (serializeDebounceRef.current) window.clearTimeout(serializeDebounceRef.current);
-    };
-  }, []);
-
-  const handleCodeChange = (newCode: string) => {
-    editRevisionRef.current += 1;
-    setYamlCode(newCode);
-    setYamlContent(newCode);
-    if (isInitialized) {
-      setHasDocumentActivity(true);
-      setIsDirty(true);
-    }
-    if (parseDebounceRef.current) window.clearTimeout(parseDebounceRef.current);
-
-    const isLarge = getDocumentMetrics(newCode).large;
-    if (isLarge) {
-      setIsTreeOutdated(Boolean(newCode.trim()));
-    }
-
-    parseDebounceRef.current = window.setTimeout(() => {
-      const opts = {
-        ...(fallbackRootNameRef.current ? { defaultRootName: fallbackRootNameRef.current } : {}),
-        ...(isLarge ? { force: true } : {}),
-      };
-      syncCodeToTree(newCode, Object.keys(opts).length ? opts : undefined);
-    }, 350);
-  };
-
-  const scheduleTreeSerialization = (tree: YAMLNode, mode: CommitTreeChangeOptions['serialization'] = 'immediate') => {
-    if (serializeDebounceRef.current) {
-      window.clearTimeout(serializeDebounceRef.current);
-      serializeDebounceRef.current = null;
-    }
-
-    if (mode === 'debounced') {
-      serializeDebounceRef.current = window.setTimeout(() => {
-        serializeDebounceRef.current = null;
-        syncTreeToCode(tree);
-      }, TREE_SERIALIZE_DEBOUNCE_MS);
-      return;
-    }
-
-    syncTreeToCode(tree);
-  };
-
-  // Debug/Run always serialize the current tree as one immutable snapshot. The
-  // debounce timer is only an optimization for updating the code view; it must
-  // never decide which document version gets executed.
-  const flushPendingTreeSerialization = (): string => {
-    if (!yamlTree) return yamlCode;
-    if (serializeDebounceRef.current) {
-      window.clearTimeout(serializeDebounceRef.current);
-      serializeDebounceRef.current = null;
-    }
-    try {
-      const code = treeToYAML(yamlTree);
-      setYamlCode(code);
-      setYamlContent(code);
-      setError(null);
-      setIsTreeOutdated(false);
-      return code;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Error generating YAML';
-      setError(message);
-      setIsTreeOutdated(true);
-      throw new Error(message);
-    }
-  };
-
-  const commitTreeChange = (
-    newTree: YAMLNode,
-    nextSelection?: TreeSelection,
-    options: CommitTreeChangeOptions = {},
-  ) => {
-    editRevisionRef.current += 1;
-    const normalizedTree = refreshTreePaths(newTree);
-    setYamlTree(normalizedTree);
-    if (nextSelection) {
-      const nextSelectedIds = nextSelection.nodeIds.filter(Boolean);
-      const nextPrimary = nextSelection.primaryId ? findNodeById(normalizedTree, nextSelection.primaryId) : null;
-      setSelectedNode(nextPrimary);
-      setSelectedNodeIds(nextSelectedIds);
-      selectedNodeRef.current = nextPrimary;
-      selectedNodeIdsRef.current = nextSelectedIds;
-    } else {
-      syncSelectionWithTree(normalizedTree);
-    }
-    applySemanticValidation(normalizedTree);
-    scheduleTreeSerialization(normalizedTree, options.serialization);
-    setHasDocumentActivity(true);
-    setIsDirty(true);
-    setIsTreeOutdated(false);
-  };
-
-  const handleTreeChange = (newTree: YAMLNode, nextSelection?: TreeSelection) => {
-    const rebalanced = yamlTree ? autoRebalanceBalancedControllers(yamlTree, newTree) : newTree;
-    commitTreeChange(rebalanced, nextSelection);
-  };
-
-  const handleSelectionChange = (primaryNode: YAMLNode | null, nodeIds: string[]) => {
-    setSelectedNode(primaryNode);
-    setSelectedNodeIds(nodeIds);
-    selectedNodeRef.current = primaryNode;
-    selectedNodeIdsRef.current = nodeIds;
-  };
-
-  const handleTreeSelectionChange = (primaryNode: YAMLNode | null, nodeIds: string[]) => {
-    handleSelectionChange(primaryNode, nodeIds);
-    setViewMode('tree');
-  };
 
   const handleNodeUpdate = (nodeId: string, updatedData: Record<string, unknown>) => {
     if (!yamlTree) return;
@@ -460,118 +212,14 @@ export function YAMLEditor() {
     });
   };
 
-  const handleNewOpen = () => {
-    setIsNewDialogOpen(true);
-  };
-
   const handleNewConfirm = () => {
-    setIsNewDialogOpen(false);
-
-    if (parseDebounceRef.current) {
-      window.clearTimeout(parseDebounceRef.current);
-      parseDebounceRef.current = null;
-    }
-    if (serializeDebounceRef.current) {
-      window.clearTimeout(serializeDebounceRef.current);
-      serializeDebounceRef.current = null;
-    }
-
-    setYamlCode('');
-    setYamlContent('');
-    setYamlTree(null);
-    setSelectedNode(null);
-    setSelectedNodeIds([]);
-    selectedNodeRef.current = null;
-    selectedNodeIdsRef.current = [];
-    setError(null);
-    setValidationErrors([]);
-    setCurrentFileName('relampo-script.yaml');
-    setIsDirty(false);
-    setHasDocumentActivity(false);
-    setIsTreeOutdated(false);
-    setRestoredDraftUpdatedAt(null);
+    resetDocument();
+    resetIdentityForNewDocument();
     setViewMode('tree');
-
-    activeParseRequestIdRef.current = ++parseRequestIdRef.current;
-    setIsParsing(false);
-    setIsFileLoading(false);
 
     // Bumps the save generation, cancels any pending autosave, and clears the
     // stored draft so an in-flight save can't resurrect the discarded content.
     void resetForNewDocument();
-  };
-
-  const handleUpload = () => {
-    fileInputRef.current?.click();
-  };
-
-  const isYamlFile = (file: File) => /\.(ya?ml)$/i.test(file.name);
-
-  const loadYamlFile = (file: File, clearInput?: () => void) => {
-    if (parseDebounceRef.current) window.clearTimeout(parseDebounceRef.current);
-    if (serializeDebounceRef.current) window.clearTimeout(serializeDebounceRef.current);
-    setIsFileLoading(true);
-    setError(null);
-    setSelectedNode(null);
-    setSelectedNodeIds([]);
-    setYamlTree(null);
-
-    const reader = new FileReader();
-    reader.onload = event => {
-      const content = event.target?.result as string;
-      setYamlCode(content);
-      setYamlContent(content);
-      setViewMode('tree');
-      const displayName = file.name.replace(/\.(ya?ml)$/i, '');
-      fallbackRootNameRef.current = displayName;
-      syncCodeToTree(content, { force: true, defaultRootName: displayName });
-      setCurrentFileName(normalizeYamlFileName(file.name));
-      setHasDocumentActivity(true);
-      setIsDirty(false);
-      clearInput?.();
-    };
-    reader.onerror = () => {
-      setIsFileLoading(false);
-      setError(language === 'es' ? 'Error al leer el archivo cargado' : 'Error reading uploaded file');
-    };
-    reader.readAsText(file);
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!isYamlFile(file)) {
-      setError(language === 'es' ? 'Solo se permiten archivos .yaml o .yml' : 'Only .yaml or .yml files are supported');
-      e.target.value = '';
-      return;
-    }
-    loadYamlFile(file, () => {
-      e.target.value = '';
-    });
-  };
-
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    if (!e.dataTransfer.types.includes('Files')) return;
-    e.dataTransfer.dropEffect = 'copy';
-    setIsDragOver(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
-    if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
-    setIsDragOver(false);
-  };
-
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDragOver(false);
-    const file = e.dataTransfer.files?.[0];
-    if (!file) return;
-    if (!isYamlFile(file)) {
-      setError(language === 'es' ? 'Solo se permiten archivos .yaml o .yml' : 'Only .yaml or .yml files are supported');
-      return;
-    }
-    loadYamlFile(file);
   };
 
   return (
@@ -581,20 +229,7 @@ export function YAMLEditor() {
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      {isDragOver && (
-        <div className="absolute inset-0 z-50 bg-[#0a0a0a]/88 backdrop-blur-sm flex items-center justify-center pointer-events-none">
-          <div className="px-8 py-6 rounded-2xl border border-yellow-400/40 bg-[#111111] shadow-2xl shadow-yellow-400/10 text-center">
-            <p className="text-base font-bold text-yellow-400">
-              {language === 'es' ? 'Suelta tu archivo YAML aquí' : 'Drop your YAML file here'}
-            </p>
-            <p className="mt-2 text-sm text-zinc-400">
-              {language === 'es'
-                ? 'El árbol y el editor se actualizarán automáticamente'
-                : 'The tree and code editor will update automatically'}
-            </p>
-          </div>
-        </div>
-      )}
+      {isDragOver && <YAMLEditorDragOverlay language={language} />}
 
       <YAMLEditorHeader
         language={language}
@@ -612,181 +247,63 @@ export function YAMLEditor() {
         onFileChange={handleFileChange}
       />
 
-      <Dialog open={isNewDialogOpen} onOpenChange={setIsNewDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t('yamlEditor.newDocumentTitle')}</DialogTitle>
-            <DialogDescription>{t('yamlEditor.confirmNewDocument')}</DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsNewDialogOpen(false)}
-              className="border-white/10 bg-white/5 hover:bg-white/10 text-zinc-300"
-            >
-              {t('yamlEditor.cancel')}
-            </Button>
-            <Button
-              size="sm"
-              onClick={handleNewConfirm}
-              className="bg-yellow-400 hover:bg-yellow-300 text-black font-bold"
-            >
-              {t('yamlEditor.newDocumentConfirm')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <YAMLEditorNewDocumentDialog
+        open={isNewDialogOpen}
+        onOpenChange={setIsNewDialogOpen}
+        t={t}
+        onCancel={() => setIsNewDialogOpen(false)}
+        onConfirm={handleNewConfirm}
+      />
 
-      {isEditorBusy && (
-        <div
-          className="absolute inset-0 z-60 bg-[#050505]/82 backdrop-blur-sm flex items-center justify-center"
-          role="status"
-          aria-live="polite"
-          aria-busy="true"
-        >
-          <div className="w-[min(420px,calc(100%-32px))] rounded-lg border border-yellow-400/25 bg-[#111111] shadow-2xl shadow-black/50 px-6 py-5 text-center">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-yellow-400/30 bg-yellow-400/10 text-yellow-300">
-              <Loader2 className="h-6 w-6 animate-spin" />
-            </div>
-            <p className="text-sm font-semibold text-zinc-100">
-              {isFileLoading
-                ? language === 'es'
-                  ? 'Cargando YAML completo'
-                  : 'Loading full YAML'
-                : language === 'es'
-                  ? 'Procesando árbol en memoria'
-                  : 'Processing tree in memory'}
-            </p>
-            <p className="mt-2 text-xs leading-5 text-zinc-400">
-              {language === 'es'
-                ? 'La interfaz se pausa momentáneamente para evitar acciones duplicadas y mantener el archivo íntegro.'
-                : 'The interface is paused briefly to prevent duplicate actions and keep the file intact.'}
-            </p>
-          </div>
-        </div>
-      )}
+      {isEditorBusy && <YAMLEditorBusyOverlay isFileLoading={isFileLoading} language={language} />}
 
-      {error && (
-        <div className="px-6 py-3 bg-red-500/10 border-b border-red-500/20 shrink-0">
-          <p className="text-sm text-red-400">⚠️ {error}</p>
-        </div>
-      )}
+      <YAMLEditorStatusBanners
+        error={error}
+        validationErrors={validationErrors}
+        language={language}
+      />
 
-      {!error && validationErrors.length > 0 && (
-        <div className="alert-warning px-6 py-3 border-b-0 shrink-0 flex items-start gap-2.5">
-          <AlertTriangle className="alert-warning-icon w-4 h-4 mt-0.5 shrink-0" />
-          <div className="min-w-0">
-            <p className="text-sm font-medium">
-              {language === 'es'
-                ? 'Problemas de validación semántica detectados.'
-                : 'Semantic validation issues detected.'}
-            </p>
-            <p className="mt-0.5 text-xs opacity-80">
-              {validationErrors[0]}
-              {validationErrors.length > 1 ? ` (+${validationErrors.length - 1})` : ''}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Main Resizable Layout */}
-      <div className="flex flex-1 overflow-hidden min-h-0 min-w-0 bg-[#0a0a0a]">
-        {/* Left Panel */}
-        <div
-          className="min-w-0 flex flex-col bg-[#0a0a0a]"
-          style={{ width: `${leftPanelWidth}%` }}
-        >
-          <EditorViewModeTabs
-            activeViewMode={activeViewMode}
-            onSelect={setViewMode}
-            language={language}
-            debugViewEnabled={debugViewEnabled}
-            runViewEnabled={runViewEnabled}
-          />
-
-          <div className="flex-1 overflow-hidden min-h-0 bg-[#0a0a0a]">
-            {activeViewMode === 'tree' ? (
-              <YAMLTreeView
-                tree={yamlTree}
-                selectedNode={selectedNode}
-                selectedNodeIds={selectedNodeIds}
-                redirectedRequestMap={redirectedRequestMap}
-                baseHost={httpDefaultsBaseHost}
-                onSelectionChange={handleTreeSelectionChange}
-                onTreeChange={handleTreeChange}
-                onContextMenuOpened={handleTreeContextMenuOpened}
-                onSearchChange={setTreeSearchQuery}
-              />
-            ) : activeViewMode === 'code' ? (
-              <YAMLCodeEditor
-                value={yamlCode}
-                onChange={handleCodeChange}
-                readOnly={true}
-                active={activeViewMode === 'code'}
-                largeFileMode={isLargeFileMode}
-              />
-            ) : (
-              <YAMLTreeView
-                tree={yamlTree}
-                selectedNode={selectedNode}
-                selectedNodeIds={selectedNodeIds}
-                redirectedRequestMap={redirectedRequestMap}
-                onSelectionChange={handleTreeSelectionChange}
-                onTreeChange={handleTreeChange}
-                onContextMenuOpened={handleTreeContextMenuOpened}
-              />
-            )}
-          </div>
-        </div>
-
-        {/* Resize Handle */}
-        <div
-          role="separator"
-          aria-orientation="vertical"
-          aria-label="Resize panel"
-          tabIndex={0}
-          onMouseDown={() => setIsResizing(true)}
-          className="w-1 bg-white/5 hover:bg-yellow-400/40 shrink-0 transition-colors relative active:bg-yellow-400/60 z-20 group"
-          style={{ cursor: 'col-resize' }}
-        >
-          <div
-            className="absolute inset-y-0 -left-1 -right-1 z-20"
-            style={{ cursor: 'col-resize' }}
-          />
-          <div className="absolute inset-y-0 left-1/2 -ml-px w-0.5 bg-white/20 group-hover:bg-yellow-400/80 transition-colors" />
-        </div>
-
-        <YAMLEditorDetailsPanel
-          isDebugViewActive={isDebugViewActive}
-          isRunViewActive={isRunViewActive}
-          language={language}
-          debugViewEnabled={debugViewEnabled}
-          runViewEnabled={runViewEnabled}
-          yamlTree={yamlTree}
-          yamlCode={yamlCode}
-          flushPendingEdits={flushPendingTreeSerialization}
-          documentReady={isInitialized}
-          selectedNode={selectedNode}
-          validationErrors={validationErrors}
-          onDebugSelectNode={node => {
-            handleSelectionChange(node, node ? [node.id] : []);
-          }}
-          onDebugEditNode={node => {
-            handleSelectionChange(node, [node.id]);
-            setViewMode('tree');
-          }}
-          baseUrl={httpDefaultsBaseUrl}
-          hosts={scenarioHosts}
-          redirectedRequestMap={redirectedRequestMap}
-          redirectSourceMap={redirectSourceMap}
-          onNodeUpdate={handleNodeUpdate}
-          onRenameHost={handleRenameHost}
-          onToggleEnabled={handleToggleNodeEnabled}
-          searchQuery={activeViewMode === 'tree' ? treeSearchQuery : ''}
-          dataSourceFileBrowseEnabled={dataSourceFileBrowseEnabled}
-        />
-      </div>
+      <YAMLEditorMainLayout
+        leftPanelWidth={leftPanelWidth}
+        onResizeStart={() => setIsResizing(true)}
+        activeViewMode={activeViewMode}
+        onSelectViewMode={setViewMode}
+        language={language}
+        debugViewEnabled={debugViewEnabled}
+        runViewEnabled={runViewEnabled}
+        isDebugViewActive={isDebugViewActive}
+        isRunViewActive={isRunViewActive}
+        yamlTree={yamlTree}
+        yamlCode={yamlCode}
+        selectedNode={selectedNode}
+        selectedNodeIds={selectedNodeIds}
+        redirectedRequestMap={redirectedRequestMap}
+        redirectSourceMap={redirectSourceMap}
+        baseHost={httpDefaultsBaseHost}
+        baseUrl={httpDefaultsBaseUrl}
+        hosts={scenarioHosts}
+        validationErrors={validationErrors}
+        treeSearchQuery={treeSearchQuery}
+        documentReady={isInitialized}
+        dataSourceFileBrowseEnabled={dataSourceFileBrowseEnabled}
+        largeFileMode={isLargeFileMode}
+        onSelectionChange={handleTreeSelectionChange}
+        onTreeChange={handleTreeChange}
+        onContextMenuOpened={handleTreeContextMenuOpened}
+        onSearchChange={setTreeSearchQuery}
+        onCodeChange={handleCodeChange}
+        flushPendingEdits={flushPendingTreeSerialization}
+        onDebugSelectNode={node => {
+          handleSelectionChange(node, node ? [node.id] : []);
+        }}
+        onDebugEditNode={node => {
+          handleSelectionChange(node, [node.id]);
+          setViewMode('tree');
+        }}
+        onNodeUpdate={handleNodeUpdate}
+        onRenameHost={handleRenameHost}
+        onToggleEnabled={handleToggleNodeEnabled}
+      />
     </div>
   );
 }

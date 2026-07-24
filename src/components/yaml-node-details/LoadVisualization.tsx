@@ -11,6 +11,73 @@ interface LoadVisualizationProps {
 
 export function LoadVisualization({ data, loadType, progressSeconds }: LoadVisualizationProps) {
   const { t } = useLanguage();
+  const format = (key: string, values: Record<string, string | number> = {}) => formatTemplate(t, key, values);
+  const model = computeLoadVisualizationModel(data, loadType, progressSeconds, t);
+  const { yAxisLabel, peakUsers, hasFiniteDuration, totalTime, throughputPerMinute, showIntentVuBand, isIntentRps, intentMinVus, intentMaxVus, isIntent } =
+    model;
+
+  return (
+    <div>
+      <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
+        {t('yamlEditor.loadVisualization.title')}
+      </div>
+      <div className="bg-zinc-900/50 border border-white/10 rounded-lg p-3">
+        <div className="mb-2 flex items-center justify-between text-[11px] text-zinc-500">
+          <span>{t('yamlEditor.loadVisualization.preview')}</span>
+          <span className="font-mono">
+            {format('yamlEditor.loadVisualization.summary', {
+              axis: yAxisLabel,
+              peak: peakUsers.toFixed(0),
+              total: hasFiniteDuration ? formatTimeLabel(totalTime) : '∞',
+            })}
+          </span>
+        </div>
+        <div className="mb-2 text-[11px] text-zinc-400">
+          {t('yamlEditor.loadVisualization.reference')}
+        </div>
+        {loadType === 'throughput' && (
+          <div className="mb-2 text-[11px] text-zinc-400">
+            {format('yamlEditor.loadVisualization.throughputTarget', { value: throughputPerMinute.toFixed(0) })}
+          </div>
+        )}
+        {showIntentVuBand && (
+          <div className="mb-2 text-[11px] text-amber-300/90">
+            {t('yamlEditor.loadVisualization.intent.vuBand')}
+          </div>
+        )}
+        {isIntentRps && (
+          <div className="mb-2 rounded border border-yellow-400/20 bg-yellow-400/5 px-3 py-2 text-[11px] text-yellow-300/90">
+            {format('yamlEditor.loadVisualization.intent.rpsBand', {
+              min: intentMinVus.toFixed(0),
+              max: intentMaxVus.toFixed(0),
+            })}
+          </div>
+        )}
+        {isIntent && <IntentPhasesPanel model={model} t={t} />}
+        <LoadChartSvg model={model} t={t} />
+      </div>
+    </div>
+  );
+}
+
+function formatTemplate(
+  t: (key: string) => string,
+  key: string,
+  values: Record<string, string | number> = {},
+): string {
+  return Object.entries(values).reduce(
+    (text, [token, value]) => text.replace(new RegExp(`\\{${token}\\}`, 'g'), String(value)),
+    t(key),
+  );
+}
+
+function computeLoadVisualizationModel(
+  data: LoadData,
+  loadType: LoadType,
+  progressSeconds: number | undefined,
+  t: (key: string) => string,
+) {
+  const format = (key: string, values: Record<string, string | number> = {}) => formatTemplate(t, key, values);
   const effectiveData =
     loadType === 'intent'
       ? {
@@ -18,11 +85,6 @@ export function LoadVisualization({ data, loadType, progressSeconds }: LoadVisua
           ...Object.fromEntries(Object.entries(data).filter(([, value]) => value !== '' && value !== undefined)),
         }
       : data;
-  const format = (key: string, values: Record<string, string | number> = {}) =>
-    Object.entries(values).reduce(
-      (text, [token, value]) => text.replace(new RegExp(`\\{${token}\\}`, 'g'), String(value)),
-      t(key),
-    );
   const visualizationPoints = getVisualizationPoints(effectiveData, loadType);
   const intentTargetUnit = String(effectiveData.target_unit || 'rps').toLowerCase();
   const intentTargetValue = Math.max(0, parseFloat(String(effectiveData.target_value || '0')) || 0);
@@ -170,390 +232,468 @@ export function LoadVisualization({ data, loadType, progressSeconds }: LoadVisua
   const showPlayhead = progressSeconds != null && maxTime > 0;
   const playheadX = showPlayhead ? 40 + (Math.min(Math.max(progressSeconds, 0), maxTime) / maxTime) * 340 : 0;
 
+  return {
+    effectiveData,
+    visualizationPoints,
+    intentTargetUnit,
+    intentTargetValue,
+    isIntent,
+    isIntentVus,
+    isIntentRps,
+    intentMinVus,
+    intentMaxVus,
+    showIntentVuBand,
+    intentRpsBandHalf,
+    intentRpsBandMin,
+    intentRpsBandMax,
+    peakUsers,
+    maxUsers,
+    totalTime,
+    hasFiniteDuration,
+    maxTime,
+    chartHeightPx,
+    yAxisLabel,
+    vizColor,
+    throughputPerMinute,
+    intentTargetPerMinute,
+    timeAxisTicks,
+    timeRanges,
+    transitionMarkers,
+    horizontalRanges,
+    verticalRanges,
+    chartPoints,
+    firstChartPoint,
+    secondChartPoint,
+    linePoints,
+    areaPoints,
+    horizontalRangeLabels,
+    angledRangeLabels,
+    intentBandY,
+    intentBandHeight,
+    intentTargetY,
+    intentRpsBandY,
+    intentRpsBandHeight,
+    intentWarmupSec,
+    intentWarmupX,
+    intentMinY,
+    intentWarmupIdleLine,
+    intentVuVariationLine,
+    intentRpsWarmupLine,
+    intentRpsVariationLine,
+    intentWarmupPct,
+    intentControlPct,
+    intentBehaviorHint,
+    showPlayhead,
+    playheadX,
+  };
+}
+
+type LoadVisualizationModel = ReturnType<typeof computeLoadVisualizationModel>;
+
+function IntentPhasesPanel({ model, t }: { model: LoadVisualizationModel; t: (key: string) => string }) {
+  const format = (key: string, values: Record<string, string | number> = {}) => formatTemplate(t, key, values);
+  const { isIntentVus, isIntentRps, intentWarmupPct, intentControlPct, intentBehaviorHint, intentWarmupSec, maxTime, intentTargetPerMinute } =
+    model;
+
   return (
-    <div>
-      <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
-        {t('yamlEditor.loadVisualization.title')}
-      </label>
-      <div className="bg-zinc-900/50 border border-white/10 rounded-lg p-3">
-        <div className="mb-2 flex items-center justify-between text-[11px] text-zinc-500">
-          <span>{t('yamlEditor.loadVisualization.preview')}</span>
-          <span className="font-mono">
-            {format('yamlEditor.loadVisualization.summary', {
-              axis: yAxisLabel,
-              peak: peakUsers.toFixed(0),
-              total: hasFiniteDuration ? formatTimeLabel(totalTime) : '∞',
-            })}
-          </span>
+    <div className="mb-3 rounded-lg border border-white/10 bg-white/3 p-2.5">
+      <div className="mb-2 flex items-center justify-between text-[10px] uppercase tracking-wider text-zinc-400">
+        <span>{t('yamlEditor.loadVisualization.executionPhases')}</span>
+        <span className="font-mono text-[10px] normal-case">{intentBehaviorHint}</span>
+      </div>
+      <div className="mb-2 flex flex-wrap items-center gap-1.5 text-[10px]">
+        <span className="inline-flex items-center gap-1 rounded-full border border-cyan-300/40 bg-cyan-400/15 px-2 py-0.5 text-cyan-200">
+          <span className="h-1.5 w-1.5 rounded-full bg-cyan-300" />
+          {t('yamlEditor.loadVisualization.phases.warmup')}
+        </span>
+        <span className="inline-flex items-center gap-1 rounded-full border border-rose-300/40 bg-rose-400/15 px-2 py-0.5 text-rose-200">
+          <span className="h-1.5 w-1.5 rounded-full bg-rose-300" />
+          {t('yamlEditor.loadVisualization.phases.violating')}
+        </span>
+        <span className="inline-flex items-center gap-1 rounded-full border border-amber-300/40 bg-amber-400/15 px-2 py-0.5 text-amber-200">
+          <span className="h-1.5 w-1.5 rounded-full bg-amber-300" />
+          {t('yamlEditor.loadVisualization.phases.recovering')}
+        </span>
+        <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300/40 bg-emerald-400/15 px-2 py-0.5 text-emerald-200">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
+          {t('yamlEditor.loadVisualization.phases.stable')}
+        </span>
+      </div>
+      <div className="relative h-2.5 rounded-full bg-zinc-800/80 overflow-hidden">
+        <div
+          className="absolute inset-y-0 left-0 bg-cyan-400/70"
+          style={{ width: `${intentWarmupPct}%` }}
+        />
+        <div
+          className={`absolute inset-y-0 ${isIntentVus ? 'bg-amber-400/70' : 'bg-emerald-400/70'}`}
+          style={{
+            left: `${intentWarmupPct}%`,
+            width: `${intentControlPct}%`,
+          }}
+        />
+        <div
+          className="absolute -top-0.5 h-3.5 w-0.5 bg-cyan-200/90"
+          style={{ left: `calc(${intentWarmupPct}% - 1px)` }}
+        />
+      </div>
+      <div className="mt-2 grid grid-cols-3 text-[10px] text-zinc-400">
+        <div className="text-left">{formatTimeLabel(0)}</div>
+        <div className="text-center font-mono">
+          {format('yamlEditor.loadVisualization.warmupSummary', { value: Math.round(intentWarmupSec) })}
         </div>
-        <div className="mb-2 text-[11px] text-zinc-400">
-          {t('yamlEditor.loadVisualization.reference')}
+        <div className="text-right font-mono">
+          {format('yamlEditor.loadVisualization.durationSummary', { value: Math.round(maxTime) })}
         </div>
-        {loadType === 'throughput' && (
-          <div className="mb-2 text-[11px] text-zinc-400">
-            {format('yamlEditor.loadVisualization.throughputTarget', { value: throughputPerMinute.toFixed(0) })}
-          </div>
-        )}
-        {showIntentVuBand && (
-          <div className="mb-2 text-[11px] text-amber-300/90">
-            {t('yamlEditor.loadVisualization.intent.vuBand')}
-          </div>
-        )}
-        {isIntentRps && (
-          <div className="mb-2 rounded border border-yellow-400/20 bg-yellow-400/5 px-3 py-2 text-[11px] text-yellow-300/90">
-            {format('yamlEditor.loadVisualization.intent.rpsBand', {
-              min: intentMinVus.toFixed(0),
-              max: intentMaxVus.toFixed(0),
-            })}
-          </div>
-        )}
-        {isIntent && (
-          <div className="mb-3 rounded-lg border border-white/10 bg-white/3 p-2.5">
-            <div className="mb-2 flex items-center justify-between text-[10px] uppercase tracking-wider text-zinc-400">
-              <span>{t('yamlEditor.loadVisualization.executionPhases')}</span>
-              <span className="font-mono text-[10px] normal-case">{intentBehaviorHint}</span>
-            </div>
-            <div className="mb-2 flex flex-wrap items-center gap-1.5 text-[10px]">
-              <span className="inline-flex items-center gap-1 rounded-full border border-cyan-300/40 bg-cyan-400/15 px-2 py-0.5 text-cyan-200">
-                <span className="h-1.5 w-1.5 rounded-full bg-cyan-300" />
-                {t('yamlEditor.loadVisualization.phases.warmup')}
-              </span>
-              <span className="inline-flex items-center gap-1 rounded-full border border-rose-300/40 bg-rose-400/15 px-2 py-0.5 text-rose-200">
-                <span className="h-1.5 w-1.5 rounded-full bg-rose-300" />
-                {t('yamlEditor.loadVisualization.phases.violating')}
-              </span>
-              <span className="inline-flex items-center gap-1 rounded-full border border-amber-300/40 bg-amber-400/15 px-2 py-0.5 text-amber-200">
-                <span className="h-1.5 w-1.5 rounded-full bg-amber-300" />
-                {t('yamlEditor.loadVisualization.phases.recovering')}
-              </span>
-              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300/40 bg-emerald-400/15 px-2 py-0.5 text-emerald-200">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
-                {t('yamlEditor.loadVisualization.phases.stable')}
-              </span>
-            </div>
-            <div className="relative h-2.5 rounded-full bg-zinc-800/80 overflow-hidden">
-              <div
-                className="absolute inset-y-0 left-0 bg-cyan-400/70"
-                style={{ width: `${intentWarmupPct}%` }}
-              />
-              <div
-                className={`absolute inset-y-0 ${isIntentVus ? 'bg-amber-400/70' : 'bg-emerald-400/70'}`}
-                style={{
-                  left: `${intentWarmupPct}%`,
-                  width: `${intentControlPct}%`,
-                }}
-              />
-              <div
-                className="absolute -top-0.5 h-3.5 w-0.5 bg-cyan-200/90"
-                style={{ left: `calc(${intentWarmupPct}% - 1px)` }}
-              />
-            </div>
-            <div className="mt-2 grid grid-cols-3 text-[10px] text-zinc-400">
-              <div className="text-left">{formatTimeLabel(0)}</div>
-              <div className="text-center font-mono">
-                {format('yamlEditor.loadVisualization.warmupSummary', { value: Math.round(intentWarmupSec) })}
-              </div>
-              <div className="text-right font-mono">
-                {format('yamlEditor.loadVisualization.durationSummary', { value: Math.round(maxTime) })}
-              </div>
-            </div>
-            {isIntentRps && (
-              <div className="mt-2 text-[10px] text-zinc-400">
-                {format('yamlEditor.loadVisualization.intent.targetReqPerMinute', {
-                  value: intentTargetPerMinute.toFixed(0),
-                })}
-              </div>
-            )}
-          </div>
-        )}
-        <svg
-          viewBox="0 0 400 200"
-          className="w-full"
-          style={{ height: `${chartHeightPx}px` }}
-        >
-          <defs>
-            <linearGradient
-              id="loadAreaGradient"
-              x1="0"
-              y1="0"
-              x2="0"
-              y2="1"
-            >
-              <stop
-                offset="0%"
-                stopColor={vizColor.stroke}
-                stopOpacity="0.32"
-              />
-              <stop
-                offset="100%"
-                stopColor={vizColor.stroke}
-                stopOpacity="0.04"
-              />
-            </linearGradient>
-          </defs>
-
-          <line
-            x1="40"
-            y1="10"
-            x2="40"
-            y2="170"
-            stroke="#3f3f46"
-            strokeWidth="2"
-          />
-          <line
-            x1="40"
-            y1="170"
-            x2="380"
-            y2="170"
-            stroke="#3f3f46"
-            strokeWidth="2"
-          />
-
-          {[0, 1, 2, 3, 4].map(index => (
-            <line
-              key={`h-${index}`}
-              x1="40"
-              y1={10 + index * 40}
-              x2="380"
-              y2={10 + index * 40}
-              stroke="#27272a"
-              strokeWidth="1"
-              strokeDasharray={index === 4 ? '0' : '3 5'}
-            />
-          ))}
-
-          {[0, 1, 2, 3, 4].map(index => (
-            <text
-              key={`y-${index}`}
-              x="35"
-              y={14 + index * 40}
-              fill="#71717a"
-              fontSize="10"
-              textAnchor="end"
-              fontFamily="monospace"
-            >
-              {Math.round((maxUsers / 4) * (4 - index))}
-            </text>
-          ))}
-
-          {timeAxisTicks.map((tick, index) => (
-            <text
-              key={`x-${index}`}
-              x={tick.x}
-              y="185"
-              fill="#71717a"
-              fontSize="10"
-              textAnchor="middle"
-              fontFamily="monospace"
-            >
-              {tick.label}
-            </text>
-          ))}
-
-          {transitionMarkers.map(marker => {
-            const x = 40 + (marker.time / maxTime) * 340;
-            return (
-              <g key={marker.key}>
-                <line
-                  x1={x}
-                  y1="18"
-                  x2={x}
-                  y2="170"
-                  stroke={vizColor.stroke}
-                  strokeOpacity="0.5"
-                  strokeWidth="1.4"
-                  strokeDasharray="4 4"
-                />
-                <text
-                  x={x}
-                  y="184"
-                  fill={vizColor.stroke}
-                  fontSize="9"
-                  textAnchor="middle"
-                  fontWeight="700"
-                  fontFamily="monospace"
-                  paintOrder="stroke"
-                  stroke="#09090b"
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  {marker.label}
-                </text>
-              </g>
-            );
+      </div>
+      {isIntentRps && (
+        <div className="mt-2 text-[10px] text-zinc-400">
+          {format('yamlEditor.loadVisualization.intent.targetReqPerMinute', {
+            value: intentTargetPerMinute.toFixed(0),
           })}
+        </div>
+      )}
+    </div>
+  );
+}
 
-          {horizontalRangeLabels.map((range, index) => (
-            <g key={`range-${index}`}>
-              <text
-                x={range.centerX}
-                y={range.y}
-                fill="#e4e4e7"
-                fontSize="9"
-                textAnchor="middle"
-                fontWeight="700"
-                paintOrder="stroke"
-                stroke="#09090b"
-                strokeWidth="4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                {range.label}
-              </text>
-            </g>
-          ))}
+function LoadChartSvg({ model, t }: { model: LoadVisualizationModel; t: (key: string) => string }) {
+  const { chartHeightPx, vizColor } = model;
 
-          {angledRangeLabels.map((range, index) => (
-            <g key={`vertical-range-${index}`}>
-              <text
-                x={range.x}
-                y={range.y}
-                fill="#a1a1aa"
-                fontSize="9"
-                textAnchor="middle"
-                fontWeight="600"
-                paintOrder="stroke"
-                stroke="#09090b"
-                strokeWidth="4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                transform={`rotate(${range.angle} ${range.x} ${range.y})`}
-              >
-                {range.label}
-              </text>
-            </g>
-          ))}
-
-          {showIntentVuBand && (
-            <g>
-              <rect
-                x="40"
-                y={intentBandY.max}
-                width="340"
-                height={intentBandHeight}
-                fill="#f59e0b18"
-                stroke="#f59e0b55"
-                strokeDasharray="4 4"
-              />
-              <line
-                x1="40"
-                y1={intentTargetY}
-                x2="380"
-                y2={intentTargetY}
-                stroke="#fbbf24"
-                strokeWidth="1.5"
-                strokeDasharray="6 5"
-              />
-              {intentWarmupIdleLine && (
-                <polyline
-                  points={intentWarmupIdleLine}
-                  fill="none"
-                  stroke="#67e8f9"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-              )}
-              {intentVuVariationLine && (
-                <polyline
-                  points={intentVuVariationLine}
-                  fill="none"
-                  stroke="#f59e0b"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  opacity="0.95"
-                />
-              )}
-            </g>
-          )}
-
-          {isIntentRps && (
-            <g>
-              <rect
-                x="40"
-                y={intentRpsBandY.max}
-                width="340"
-                height={intentRpsBandHeight}
-                fill="#10b98118"
-                stroke="#10b98150"
-                strokeDasharray="4 4"
-              />
-              <line
-                x1="40"
-                y1={intentTargetY}
-                x2="380"
-                y2={intentTargetY}
-                stroke="#34d399"
-                strokeWidth="1.5"
-                strokeDasharray="6 5"
-              />
-              {intentRpsWarmupLine && (
-                <polyline
-                  points={intentRpsWarmupLine}
-                  fill="none"
-                  stroke="#67e8f9"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-              )}
-              {intentRpsVariationLine && (
-                <polyline
-                  points={intentRpsVariationLine}
-                  fill="none"
-                  stroke="#10b981"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  opacity="0.95"
-                />
-              )}
-            </g>
-          )}
-
-          <polygon
-            points={areaPoints}
-            fill="url(#loadAreaGradient)"
+  return (
+    <svg
+      viewBox="0 0 400 200"
+      className="w-full"
+      style={{ height: `${chartHeightPx}px` }}
+    >
+      <defs>
+        <linearGradient
+          id="loadAreaGradient"
+          x1="0"
+          y1="0"
+          x2="0"
+          y2="1"
+        >
+          <stop
+            offset="0%"
+            stopColor={vizColor.stroke}
+            stopOpacity="0.32"
           />
-          <polyline
-            points={linePoints}
-            fill="none"
-            stroke={vizColor.stroke}
-            strokeWidth="3"
+          <stop
+            offset="100%"
+            stopColor={vizColor.stroke}
+            stopOpacity="0.04"
+          />
+        </linearGradient>
+      </defs>
+
+      <ChartAxesAndGridlines model={model} />
+      <ChartRangeAndTransitionLabels model={model} />
+      <IntentVuBandOverlay model={model} />
+      <IntentRpsBandOverlay model={model} />
+      <ChartSeriesWithPlayhead model={model} t={t} />
+    </svg>
+  );
+}
+
+function ChartAxesAndGridlines({ model }: { model: LoadVisualizationModel }) {
+  const { maxUsers, timeAxisTicks } = model;
+
+  return (
+    <>
+      <line
+        x1="40"
+        y1="10"
+        x2="40"
+        y2="170"
+        stroke="#3f3f46"
+        strokeWidth="2"
+      />
+      <line
+        x1="40"
+        y1="170"
+        x2="380"
+        y2="170"
+        stroke="#3f3f46"
+        strokeWidth="2"
+      />
+
+      {[0, 1, 2, 3, 4].map(index => (
+        <line
+          key={`h-${index}`}
+          x1="40"
+          y1={10 + index * 40}
+          x2="380"
+          y2={10 + index * 40}
+          stroke="#27272a"
+          strokeWidth="1"
+          strokeDasharray={index === 4 ? '0' : '3 5'}
+        />
+      ))}
+
+      {[0, 1, 2, 3, 4].map(index => (
+        <text
+          key={`y-${index}`}
+          x="35"
+          y={14 + index * 40}
+          fill="#71717a"
+          fontSize="10"
+          textAnchor="end"
+          fontFamily="monospace"
+        >
+          {Math.round((maxUsers / 4) * (4 - index))}
+        </text>
+      ))}
+
+      {timeAxisTicks.map((tick, index) => (
+        <text
+          key={`x-${index}`}
+          x={tick.x}
+          y="185"
+          fill="#71717a"
+          fontSize="10"
+          textAnchor="middle"
+          fontFamily="monospace"
+        >
+          {tick.label}
+        </text>
+      ))}
+    </>
+  );
+}
+
+function ChartRangeAndTransitionLabels({ model }: { model: LoadVisualizationModel }) {
+  const { transitionMarkers, maxTime, vizColor, horizontalRangeLabels, angledRangeLabels } = model;
+
+  return (
+    <>
+      {transitionMarkers.map(marker => {
+        const x = 40 + (marker.time / maxTime) * 340;
+        return (
+          <g key={marker.key}>
+            <line
+              x1={x}
+              y1="18"
+              x2={x}
+              y2="170"
+              stroke={vizColor.stroke}
+              strokeOpacity="0.5"
+              strokeWidth="1.4"
+              strokeDasharray="4 4"
+            />
+            <text
+              x={x}
+              y="184"
+              fill={vizColor.stroke}
+              fontSize="9"
+              textAnchor="middle"
+              fontWeight="700"
+              fontFamily="monospace"
+              paintOrder="stroke"
+              stroke="#09090b"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              {marker.label}
+            </text>
+          </g>
+        );
+      })}
+
+      {horizontalRangeLabels.map((range, index) => (
+        <g key={`range-${index}`}>
+          <text
+            x={range.centerX}
+            y={range.y}
+            fill="#e4e4e7"
+            fontSize="9"
+            textAnchor="middle"
+            fontWeight="700"
+            paintOrder="stroke"
+            stroke="#09090b"
+            strokeWidth="4"
             strokeLinecap="round"
             strokeLinejoin="round"
-          />
+          >
+            {range.label}
+          </text>
+        </g>
+      ))}
 
+      {angledRangeLabels.map((range, index) => (
+        <g key={`vertical-range-${index}`}>
           <text
-            x="200"
-            y="198"
+            x={range.x}
+            y={range.y}
             fill="#a1a1aa"
-            fontSize="11"
+            fontSize="9"
             textAnchor="middle"
             fontWeight="600"
+            paintOrder="stroke"
+            stroke="#09090b"
+            strokeWidth="4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            transform={`rotate(${range.angle} ${range.x} ${range.y})`}
           >
-            {t('yamlEditor.loadVisualization.labels.time')}
+            {range.label}
           </text>
-          <text
-            x="15"
-            y="100"
-            fill="#a1a1aa"
-            fontSize="11"
-            textAnchor="middle"
-            fontWeight="600"
-            transform="rotate(-90 15 100)"
-          >
-            {yAxisLabel}
-          </text>
-          {showPlayhead && (
-            <g style={{ transform: `translateX(${playheadX}px)`, transition: 'transform 1s linear' }}>
-              <line x1={0} y1={8} x2={0} y2={170} stroke="#fde047" strokeWidth={2} strokeOpacity={0.9} />
-              <circle cx={0} cy={8} r={3.5} fill="#fde047" />
-            </g>
-          )}
-        </svg>
-      </div>
-    </div>
+        </g>
+      ))}
+    </>
+  );
+}
+
+function IntentVuBandOverlay({ model }: { model: LoadVisualizationModel }) {
+  const { showIntentVuBand, intentBandY, intentBandHeight, intentTargetY, intentWarmupIdleLine, intentVuVariationLine } =
+    model;
+
+  if (!showIntentVuBand) {
+    return null;
+  }
+
+  return (
+    <g>
+      <rect
+        x="40"
+        y={intentBandY.max}
+        width="340"
+        height={intentBandHeight}
+        fill="#f59e0b18"
+        stroke="#f59e0b55"
+        strokeDasharray="4 4"
+      />
+      <line
+        x1="40"
+        y1={intentTargetY}
+        x2="380"
+        y2={intentTargetY}
+        stroke="#fbbf24"
+        strokeWidth="1.5"
+        strokeDasharray="6 5"
+      />
+      {intentWarmupIdleLine && (
+        <polyline
+          points={intentWarmupIdleLine}
+          fill="none"
+          stroke="#67e8f9"
+          strokeWidth="2"
+          strokeLinecap="round"
+        />
+      )}
+      {intentVuVariationLine && (
+        <polyline
+          points={intentVuVariationLine}
+          fill="none"
+          stroke="#f59e0b"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          opacity="0.95"
+        />
+      )}
+    </g>
+  );
+}
+
+function IntentRpsBandOverlay({ model }: { model: LoadVisualizationModel }) {
+  const { isIntentRps, intentRpsBandY, intentRpsBandHeight, intentTargetY, intentRpsWarmupLine, intentRpsVariationLine } =
+    model;
+
+  if (!isIntentRps) {
+    return null;
+  }
+
+  return (
+    <g>
+      <rect
+        x="40"
+        y={intentRpsBandY.max}
+        width="340"
+        height={intentRpsBandHeight}
+        fill="#10b98118"
+        stroke="#10b98150"
+        strokeDasharray="4 4"
+      />
+      <line
+        x1="40"
+        y1={intentTargetY}
+        x2="380"
+        y2={intentTargetY}
+        stroke="#34d399"
+        strokeWidth="1.5"
+        strokeDasharray="6 5"
+      />
+      {intentRpsWarmupLine && (
+        <polyline
+          points={intentRpsWarmupLine}
+          fill="none"
+          stroke="#67e8f9"
+          strokeWidth="2"
+          strokeLinecap="round"
+        />
+      )}
+      {intentRpsVariationLine && (
+        <polyline
+          points={intentRpsVariationLine}
+          fill="none"
+          stroke="#10b981"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          opacity="0.95"
+        />
+      )}
+    </g>
+  );
+}
+
+function ChartSeriesWithPlayhead({ model, t }: { model: LoadVisualizationModel; t: (key: string) => string }) {
+  const { areaPoints, linePoints, vizColor, yAxisLabel, showPlayhead, playheadX } = model;
+
+  return (
+    <>
+      <polygon
+        points={areaPoints}
+        fill="url(#loadAreaGradient)"
+      />
+      <polyline
+        points={linePoints}
+        fill="none"
+        stroke={vizColor.stroke}
+        strokeWidth="3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+
+      <text
+        x="200"
+        y="198"
+        fill="#a1a1aa"
+        fontSize="11"
+        textAnchor="middle"
+        fontWeight="600"
+      >
+        {t('yamlEditor.loadVisualization.labels.time')}
+      </text>
+      <text
+        x="15"
+        y="100"
+        fill="#a1a1aa"
+        fontSize="11"
+        textAnchor="middle"
+        fontWeight="600"
+        transform="rotate(-90 15 100)"
+      >
+        {yAxisLabel}
+      </text>
+      {showPlayhead && (
+        <g style={{ transform: `translateX(${playheadX}px)`, transition: 'transform 1s linear' }}>
+          <line x1={0} y1={8} x2={0} y2={170} stroke="#fde047" strokeWidth={2} strokeOpacity={0.9} />
+          <circle cx={0} cy={8} r={3.5} fill="#fde047" />
+        </g>
+      )}
+    </>
   );
 }
 

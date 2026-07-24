@@ -1,4 +1,14 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type MutableRefObject,
+  type ReactNode,
+} from 'react';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -116,20 +126,79 @@ interface YAMLDebugSessionProps {
   onEditNode: (node: YAMLNode) => void;
 }
 
+const EMPTY_REDIRECTED_REQUEST_MAP: Record<string, RedirectedRequestInfo> = {};
+
+// Run status/results/error genuinely change together (every transition below
+// touches two or more of them at once), so they live in one reducer instead
+// of four separate useState calls. Selection state (activeId, detailTab) and
+// the VU picker are updated independently of a run's lifecycle and stay as
+// plain useState in the component.
+type RunState = {
+  entryEvents: StoredDebugEntry[];
+  isRunning: boolean;
+  runCompleted: boolean;
+  runError: string | null;
+};
+
+type RunAction =
+  | { type: 'run/started' }
+  | { type: 'run/reattaching' }
+  | { type: 'run/eventReceived'; event: EngineEvent }
+  | { type: 'run/done'; error: string | null }
+  | { type: 'run/connectionError'; quiet: boolean }
+  | { type: 'run/startFailed'; message: string }
+  | { type: 'run/stopped' };
+
+const initialRunState: RunState = { entryEvents: [], isRunning: false, runCompleted: false, runError: null };
+
+function runStateReducer(state: RunState, action: RunAction): RunState {
+  switch (action.type) {
+    case 'run/started':
+      return { entryEvents: [], isRunning: true, runCompleted: false, runError: null };
+    case 'run/reattaching':
+      return { ...state, isRunning: true };
+    case 'run/eventReceived': {
+      const previous = state.entryEvents;
+      return {
+        ...state,
+        entryEvents: [
+          ...previous,
+          {
+            id: `evt-${previous.length}`,
+            index: previous.length + 1,
+            event: action.event,
+            status: entryStatus(action.event),
+          },
+        ],
+      };
+    }
+    case 'run/done':
+      return { ...state, isRunning: false, runCompleted: true, runError: action.error };
+    case 'run/connectionError':
+      return action.quiet
+        ? { ...state, isRunning: false, runCompleted: false, entryEvents: [] }
+        : { ...state, isRunning: false, runCompleted: false, runError: 'Lost connection to the studio server.' };
+    case 'run/startFailed':
+      return { ...state, isRunning: false, runCompleted: false, runError: action.message };
+    case 'run/stopped':
+      return { ...state, isRunning: false, runCompleted: false };
+    default:
+      return state;
+  }
+}
+
 export function YAMLDebugSession({
   tree,
   yamlCode,
   flushPendingEdits,
   documentReady,
   validationErrors,
-  redirectedRequestMap = {},
+  redirectedRequestMap = EMPTY_REDIRECTED_REQUEST_MAP,
   onSelectNode,
   onEditNode,
 }: YAMLDebugSessionProps) {
-  const [entryEvents, setEntryEvents] = useState<StoredDebugEntry[]>([]);
-  const [isRunning, setIsRunning] = useState(false);
-  const [runCompleted, setRunCompleted] = useState(false);
-  const [runError, setRunError] = useState<string | null>(null);
+  const [runState, dispatchRunState] = useReducer(runStateReducer, initialRunState);
+  const { entryEvents, isRunning, runCompleted, runError } = runState;
   const [activeId, setActiveId] = useState<string | null>(null);
   const [detailTab, setDetailTab] = useState<DetailTab>('overview');
   const [debugVUs, setDebugVUs] = useState<DebugVUs>(1);
@@ -221,30 +290,14 @@ export function YAMLDebugSession({
     stopStreamRef.current = streamDebugRun(runId, {
       onEvent: event => {
         if (!isTimelineEvent(event)) return;
-        setEntryEvents(previous => [
-          ...previous,
-          {
-            id: `evt-${previous.length}`,
-            index: previous.length + 1,
-            event,
-            status: entryStatus(event),
-          },
-        ]);
+        dispatchRunState({ type: 'run/eventReceived', event });
       },
       onDone: error => {
-        setIsRunning(false);
-        setRunCompleted(true);
-        setRunError(error);
+        dispatchRunState({ type: 'run/done', error });
       },
       onConnectionError: () => {
-        setIsRunning(false);
-        setRunCompleted(false);
-        if (quiet) {
-          runStore.clear();
-          setEntryEvents([]);
-        } else {
-          setRunError('Lost connection to the studio server.');
-        }
+        if (quiet) runStore.clear();
+        dispatchRunState({ type: 'run/connectionError', quiet });
       },
     });
   }, []);
@@ -268,7 +321,7 @@ export function YAMLDebugSession({
       }
       reattachedRef.current = true;
       setRunDebugEventTargets(currentDebugEventTargets);
-      setIsRunning(true);
+      dispatchRunState({ type: 'run/reattaching' });
       subscribe(storedRun.id, true);
     },
     [currentDebugEventTargets, documentReady, subscribe, yamlCode],
@@ -291,19 +344,19 @@ export function YAMLDebugSession({
     try {
       scriptAtStart = flushPendingEdits ? flushPendingEdits() : yamlCode;
     } catch (error) {
-      setRunError(error instanceof Error ? error.message : String(error));
+      dispatchRunState({
+        type: 'run/startFailed',
+        message: error instanceof Error ? error.message : String(error),
+      });
       return;
     }
     if (!scriptAtStart.trim()) return;
     setRunDebugEventTargets(currentDebugEventTargets);
     const token = (startTokenRef.current += 1);
     stopStreamRef.current?.();
-    setEntryEvents([]);
-    setRunError(null);
     setActiveId(null);
     setDetailTab('overview');
-    setRunCompleted(false);
-    setIsRunning(true);
+    dispatchRunState({ type: 'run/started' });
     try {
       const runId = await startDebugRun(scriptAtStart, { vus: debugVUs });
       if (token === startTokenRef.current) {
@@ -312,9 +365,10 @@ export function YAMLDebugSession({
       }
     } catch (error) {
       if (token !== startTokenRef.current) return;
-      setIsRunning(false);
-      setRunCompleted(false);
-      setRunError(error instanceof Error ? error.message : String(error));
+      dispatchRunState({
+        type: 'run/startFailed',
+        message: error instanceof Error ? error.message : String(error),
+      });
     }
   };
 
@@ -322,8 +376,7 @@ export function YAMLDebugSession({
     startTokenRef.current += 1; // invalidate any in-flight start
     stopStreamRef.current?.();
     stopStreamRef.current = null;
-    setIsRunning(false);
-    setRunCompleted(false);
+    dispatchRunState({ type: 'run/stopped' });
   };
 
   const selectEntry = (entry: DebugEntry) => {
@@ -361,73 +414,152 @@ export function YAMLDebugSession({
           aria-hidden="true"
         />
       )}
-      <div className="border-b border-white/5 px-5 py-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">Debug session</p>
-            <h2 className="mt-1 text-base font-semibold text-zinc-100">Run the current YAML with request visibility</h2>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={startRun}
-              disabled={isRunning || hasValidationErrors || !yamlCode.trim()}
-              className="inline-flex h-9 items-center gap-2 rounded border border-yellow-400/40 bg-yellow-400 px-3 text-sm font-semibold text-black transition-colors hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-50"
+      <DebugToolbar
+        isRunning={isRunning}
+        hasValidationErrors={hasValidationErrors}
+        yamlCode={yamlCode}
+        onRun={startRun}
+        onStop={stopRun}
+        debugVUs={debugVUs}
+        onDebugVUsChange={setDebugVUs}
+      />
+
+      <DebugRunAlerts
+        hasValidationErrors={hasValidationErrors}
+        validationErrors={validationErrors}
+        runError={runError}
+      />
+
+      <DebugStatsBar
+        total={entries.length}
+        passed={passed}
+        failed={failed}
+        redirects={redirects}
+      />
+
+      <div className="grid min-h-0 flex-1 grid-cols-[minmax(280px,32%)_1fr]">
+        <DebugTimelinePanel
+          timelineEntries={timelineEntries}
+          activeEntry={activeEntry}
+          isRunning={isRunning}
+          debugEventTargets={debugEventTargets}
+          onSelect={selectEntry}
+          onEntryKeyDown={handleTimelineEntryKeyDown}
+          timelineButtonRefs={timelineButtonRefs}
+        />
+
+        <DebugDetailPanel
+          activeEntry={activeEntry}
+          detailTab={detailTab}
+          onTabChange={setDetailTab}
+          onEditNode={onEditNode}
+          redirectedRequestMap={redirectedRequestMap}
+          debugEventTargets={debugEventTargets}
+          timelineEntries={timelineEntries}
+        />
+      </div>
+    </div>
+  );
+}
+
+function DebugToolbar({
+  isRunning,
+  hasValidationErrors,
+  yamlCode,
+  onRun,
+  onStop,
+  debugVUs,
+  onDebugVUsChange,
+}: {
+  isRunning: boolean;
+  hasValidationErrors: boolean;
+  yamlCode: string;
+  onRun: () => void;
+  onStop: () => void;
+  debugVUs: DebugVUs;
+  onDebugVUsChange: (vus: DebugVUs) => void;
+}) {
+  return (
+    <div className="border-b border-white/5 px-5 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">Debug session</p>
+          <h2 className="mt-1 text-base font-semibold text-zinc-100">Run the current YAML with request visibility</h2>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={onRun}
+            disabled={isRunning || hasValidationErrors || !yamlCode.trim()}
+            className="inline-flex h-9 items-center gap-2 rounded border border-yellow-400/40 bg-yellow-400 px-3 text-sm font-semibold text-black transition-colors hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Play className="h-4 w-4" />
+            Run Debug
+          </button>
+          <button
+            type="button"
+            onClick={onStop}
+            disabled={!isRunning}
+            className="inline-flex h-9 items-center gap-2 rounded border border-white/10 bg-white/3 px-3 text-sm text-zinc-300 transition-colors hover:bg-white/6 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <Square className="h-4 w-4" />
+            Stop
+          </button>
+          <button
+            type="button"
+            onClick={onRun}
+            disabled={isRunning || hasValidationErrors || !yamlCode.trim()}
+            className="inline-flex h-9 w-9 items-center justify-center rounded border border-white/10 bg-white/3 text-zinc-300 transition-colors hover:bg-white/6 disabled:opacity-40"
+            aria-label="Re-run debug"
+            title="Re-run debug"
+          >
+            <RotateCcw className="h-4 w-4" />
+          </button>
+          <fieldset className="m-0 inline-flex h-9 min-w-0 items-center rounded border border-white/10 bg-[#161616] p-0 text-xs text-zinc-400">
+            <legend className="sr-only">Debug VUs</legend>
+            <span
+              aria-hidden="true"
+              className="inline-flex h-full items-center gap-1.5 border-r border-white/10 px-2"
             >
-              <Play className="h-4 w-4" />
-              Run Debug
-            </button>
-            <button
-              type="button"
-              onClick={stopRun}
-              disabled={!isRunning}
-              className="inline-flex h-9 items-center gap-2 rounded border border-white/10 bg-white/3 px-3 text-sm text-zinc-300 transition-colors hover:bg-white/6 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              <Square className="h-4 w-4" />
-              Stop
-            </button>
-            <button
-              type="button"
-              onClick={startRun}
-              disabled={isRunning || hasValidationErrors || !yamlCode.trim()}
-              className="inline-flex h-9 w-9 items-center justify-center rounded border border-white/10 bg-white/3 text-zinc-300 transition-colors hover:bg-white/6 disabled:opacity-40"
-              aria-label="Re-run debug"
-              title="Re-run debug"
-            >
-              <RotateCcw className="h-4 w-4" />
-            </button>
-            <fieldset className="m-0 inline-flex h-9 min-w-0 items-center rounded border border-white/10 bg-[#161616] p-0 text-xs text-zinc-400">
-              <legend className="sr-only">Debug VUs</legend>
-              <span
-                aria-hidden="true"
-                className="inline-flex h-full items-center gap-1.5 border-r border-white/10 px-2"
-              >
-                <Users className="h-3.5 w-3.5" />
-                VUs
-              </span>
-              {[1, 2].map(value => {
-                const vus = value as DebugVUs;
-                const selected = debugVUs === vus;
-                return (
-                  <button
-                    key={vus}
-                    type="button"
-                    onClick={() => setDebugVUs(vus)}
-                    disabled={isRunning}
-                    aria-pressed={selected}
-                    className={`h-full min-w-14 px-2.5 font-semibold transition-colors ${
-                      selected ? 'bg-yellow-400 text-black' : 'text-zinc-300 hover:bg-white/6 hover:text-zinc-100'
-                    } disabled:cursor-not-allowed disabled:opacity-50`}
-                  >
-                    {vus} {vus === 1 ? 'VU' : 'VUs'}
-                  </button>
-                );
-              })}
-            </fieldset>
-          </div>
+              <Users className="h-3.5 w-3.5" />
+              VUs
+            </span>
+            {[1, 2].map(value => {
+              const vus = value as DebugVUs;
+              const selected = debugVUs === vus;
+              return (
+                <button
+                  key={vus}
+                  type="button"
+                  onClick={() => onDebugVUsChange(vus)}
+                  disabled={isRunning}
+                  aria-pressed={selected}
+                  className={`h-full min-w-14 px-2.5 font-semibold transition-colors ${
+                    selected ? 'bg-yellow-400 text-black' : 'text-zinc-300 hover:bg-white/6 hover:text-zinc-100'
+                  } disabled:cursor-not-allowed disabled:opacity-50`}
+                >
+                  {vus} {vus === 1 ? 'VU' : 'VUs'}
+                </button>
+              );
+            })}
+          </fieldset>
         </div>
       </div>
+    </div>
+  );
+}
 
+function DebugRunAlerts({
+  hasValidationErrors,
+  validationErrors,
+  runError,
+}: {
+  hasValidationErrors: boolean;
+  validationErrors: string[];
+  runError: string | null;
+}) {
+  return (
+    <>
       {hasValidationErrors && (
         <div className="border-b border-red-400/20 bg-red-500/10 px-5 py-3">
           <div className="flex items-start gap-3">
@@ -466,196 +598,248 @@ export function YAMLDebugSession({
           </div>
         </div>
       )}
+    </>
+  );
+}
 
-      <div className="grid grid-cols-4 border-b border-white/5 bg-[#0a0a0a]">
-        {[
-          ['Requests', entries.length, 'text-zinc-100'],
-          ['Passed', passed, 'text-emerald-300'],
-          ['Failed', failed, 'text-red-300'],
-          ['Redirects', redirects, 'text-blue-300'],
-        ].map(([label, value, tone]) => (
-          <div
-            key={label}
-            className="border-r border-white/5 px-5 py-3 last:border-r-0"
-          >
-            <p className={`text-lg font-semibold ${tone}`}>{value}</p>
-            <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-500">{label}</p>
-          </div>
-        ))}
-      </div>
-
-      <div className="grid min-h-0 flex-1 grid-cols-[minmax(280px,32%)_1fr]">
-        <div className="min-h-0 border-r border-white/5">
-          <div className="flex h-full min-h-0 flex-col">
-            <div className="border-b border-white/5 px-4 py-2.5">
-              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">Execution timeline</p>
-            </div>
-            <div className="min-h-0 flex-1 overflow-y-auto p-2">
-              {timelineEntries.length === 0 ? (
-                <div className="flex h-full items-center justify-center px-8 text-center text-sm text-zinc-500">
-                  {isRunning
-                    ? 'Running... waiting for the first engine event.'
-                    : 'Press Run Debug to execute this YAML against the engine.'}
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {timelineEntries.map(entry => {
-                    const active = activeEntry?.id === entry.id;
-                    const requestNumber = debugEventRequestNumber(entry.event, entry.node, debugEventTargets);
-                    return (
-                      <button
-                        key={entry.id}
-                        ref={element => {
-                          if (element) {
-                            timelineButtonRefs.current.set(entry.id, element);
-                          } else {
-                            timelineButtonRefs.current.delete(entry.id);
-                          }
-                        }}
-                        type="button"
-                        onClick={() => selectEntry(entry)}
-                        onKeyDown={event => handleTimelineEntryKeyDown(event, entry)}
-                        aria-current={active ? 'true' : undefined}
-                        className={`w-full border px-3 py-2.5 text-left transition-colors ${
-                          active
-                            ? 'border-yellow-400/50 bg-yellow-400/10'
-                            : 'border-white/10 bg-[#111111] hover:border-white/20'
-                        } ${entry.status === 'skipped' ? 'opacity-70' : ''} focus:outline-none focus-visible:border-yellow-400/70 focus-visible:ring-2 focus-visible:ring-yellow-400/40`}
-                      >
-                        <div className="flex min-w-0 items-center gap-3">
-                          <StatusIcon status={entry.status} />
-                          <div className="min-w-0 flex-1">
-                            <div className="flex min-w-0 items-center gap-2">
-                              {requestNumber && (
-                                <span
-                                  className="shrink-0 rounded border border-zinc-500/25 bg-white/4 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-zinc-300"
-                                  title="Request ID"
-                                >
-                                  #{requestNumber}
-                                </span>
-                              )}
-                              <span className="rounded border border-blue-400/25 bg-blue-400/10 px-1.5 py-0.5 text-[10px] font-semibold text-blue-300">
-                                {entry.event.method}
-                              </span>
-                              <span className="truncate text-sm text-zinc-100">
-                                {entry.event.path || entry.event.name}
-                              </span>
-                            </div>
-                            <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] text-zinc-500">
-                              {entry.status === 'skipped' ? (
-                                <>
-                                  {entry.event.vu ? <span>VU{entry.event.vu}</span> : null}
-                                  <span className={`rounded border px-1.5 py-0.5 ${statusTone(entry.status)}`}>
-                                    Skipped · redirect not followed
-                                  </span>
-                                </>
-                              ) : (
-                                <>
-                                  <span>{formatEventTime(entry.event.ts)}</span>
-                                  {entry.event.vu ? <span>VU{entry.event.vu}</span> : null}
-                                  <span>{formatLatency(entry.event.latency_ms)}</span>
-                                  <span className={`rounded border px-1.5 py-0.5 ${statusTone(entry.status)}`}>
-                                    {entry.event.status || '—'}
-                                  </span>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
+function DebugStatsBar({
+  total,
+  passed,
+  failed,
+  redirects,
+}: {
+  total: number;
+  passed: number;
+  failed: number;
+  redirects: number;
+}) {
+  return (
+    <div className="grid grid-cols-4 border-b border-white/5 bg-[#0a0a0a]">
+      {[
+        ['Requests', total, 'text-zinc-100'],
+        ['Passed', passed, 'text-emerald-300'],
+        ['Failed', failed, 'text-red-300'],
+        ['Redirects', redirects, 'text-blue-300'],
+      ].map(([label, value, tone]) => (
+        <div
+          key={label}
+          className="border-r border-white/5 px-5 py-3 last:border-r-0"
+        >
+          <p className={`text-lg font-semibold ${tone}`}>{value}</p>
+          <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-500">{label}</p>
         </div>
+      ))}
+    </div>
+  );
+}
 
-        <div className="min-w-0 min-h-0 overflow-hidden">
-          {activeEntry ? (
-            <div className="flex h-full min-h-0 flex-col">
-              <div className="border-b border-white/5 px-4 py-3">
-                <div className="flex min-w-0 items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <div className="flex min-w-0 items-center gap-2">
-                      <span className="rounded border border-blue-400/25 bg-blue-400/10 px-2 py-1 text-xs font-semibold text-blue-300">
-                        {activeEntry.event.method}
-                      </span>
-                      <h3 className="truncate text-base font-semibold text-zinc-100">
-                        {activeEntry.event.path || activeEntry.event.name}
-                      </h3>
-                    </div>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    {activeEntry.node && (
-                      <button
-                        type="button"
-                        onClick={() => onEditNode(activeEntry.node!)}
-                        className="inline-flex h-8 items-center gap-2 rounded border border-white/10 bg-white/3 px-2.5 text-xs text-zinc-300 transition-colors hover:bg-white/6"
-                      >
-                        <Edit3 className="h-3.5 w-3.5" />
-                        Edit
-                      </button>
-                    )}
-                    <span className={`rounded-full border px-2.5 py-1 text-xs ${statusTone(activeEntry.status)}`}>
-                      {activeEntry.status === 'skipped'
-                        ? 'Skipped'
-                        : activeEntry.status === 'failed'
-                          ? 'Failed'
-                          : 'Passed'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center border-b border-white/5 px-3">
-                {(['overview', 'request', 'response', 'assertions', 'variables', 'logs'] as DetailTab[]).map(tab => (
-                  <button
-                    key={tab}
-                    type="button"
-                    onClick={() => setDetailTab(tab)}
-                    className={`px-2.5 py-2.5 text-xs font-semibold capitalize transition-colors ${
-                      detailTab === tab
-                        ? 'border-b-2 border-yellow-400 text-yellow-300'
-                        : 'border-b-2 border-transparent text-zinc-500 hover:text-zinc-300'
-                    }`}
-                  >
-                    {tab}
-                  </button>
-                ))}
-              </div>
-
-              <div className="min-h-0 flex-1 overflow-y-auto p-4">
-                {activeEntry.status === 'skipped' && (
-                  <div className="mb-4 flex items-start gap-2 rounded border border-white/10 bg-white/[0.03] px-3 py-2.5 text-[13px] text-zinc-400">
-                    <CircleSlash className="mt-0.5 h-4 w-4 shrink-0 text-zinc-500" />
-                    <span>
-                      This redirect hop was recorded but not followed in this run — the engine stopped at the redirect
-                      trust boundary (e.g. a cross-site callback), so no live request was made. It is shown to keep the
-                      recorded chain visible; there is no live request or response to inspect.
-                    </span>
-                  </div>
-                )}
-                <DebugInspectorContent
-                  key={activeEntry.id}
-                  entry={activeEntry}
-                  tab={detailTab}
-                  redirectedInfo={activeEntry.node ? (redirectedRequestMap[activeEntry.node.id] ?? null) : null}
-                  requestTargets={debugEventTargets}
-                  variableSnapshot={debugVariableSnapshot(activeEntry, timelineEntries)}
-                />
-              </div>
+function DebugTimelinePanel({
+  timelineEntries,
+  activeEntry,
+  isRunning,
+  debugEventTargets,
+  onSelect,
+  onEntryKeyDown,
+  timelineButtonRefs,
+}: {
+  timelineEntries: DebugEntry[];
+  activeEntry: DebugEntry | undefined;
+  isRunning: boolean;
+  debugEventTargets: YAMLNode[];
+  onSelect: (entry: DebugEntry) => void;
+  onEntryKeyDown: (event: KeyboardEvent<HTMLButtonElement>, entry: DebugEntry) => void;
+  timelineButtonRefs: MutableRefObject<Map<string, HTMLButtonElement>>;
+}) {
+  return (
+    <div className="min-h-0 border-r border-white/5">
+      <div className="flex h-full min-h-0 flex-col">
+        <div className="border-b border-white/5 px-4 py-2.5">
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">Execution timeline</p>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto p-2">
+          {timelineEntries.length === 0 ? (
+            <div className="flex h-full items-center justify-center px-8 text-center text-sm text-zinc-500">
+              {isRunning
+                ? 'Running... waiting for the first engine event.'
+                : 'Press Run Debug to execute this YAML against the engine.'}
             </div>
           ) : (
-            <div className="flex h-full items-center justify-center px-8 text-center">
-              <div>
-                <TerminalSquare className="mx-auto h-10 w-10 text-zinc-700" />
-                <p className="mt-4 text-sm text-zinc-400">Select a debug event to inspect request and response data.</p>
-              </div>
+            <div className="space-y-2">
+              {timelineEntries.map(entry => {
+                const active = activeEntry?.id === entry.id;
+                const requestNumber = debugEventRequestNumber(entry.event, entry.node, debugEventTargets);
+                return (
+                  <button
+                    key={entry.id}
+                    ref={element => {
+                      if (element) {
+                        timelineButtonRefs.current.set(entry.id, element);
+                      } else {
+                        timelineButtonRefs.current.delete(entry.id);
+                      }
+                    }}
+                    type="button"
+                    onClick={() => onSelect(entry)}
+                    onKeyDown={event => onEntryKeyDown(event, entry)}
+                    aria-current={active ? 'true' : undefined}
+                    className={`w-full border px-3 py-2.5 text-left transition-colors ${
+                      active
+                        ? 'border-yellow-400/50 bg-yellow-400/10'
+                        : 'border-white/10 bg-[#111111] hover:border-white/20'
+                    } ${entry.status === 'skipped' ? 'opacity-70' : ''} focus:outline-none focus-visible:border-yellow-400/70 focus-visible:ring-2 focus-visible:ring-yellow-400/40`}
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <StatusIcon status={entry.status} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex min-w-0 items-center gap-2">
+                          {requestNumber && (
+                            <span
+                              className="shrink-0 rounded border border-zinc-500/25 bg-white/4 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-zinc-300"
+                              title="Request ID"
+                            >
+                              #{requestNumber}
+                            </span>
+                          )}
+                          <span className="rounded border border-blue-400/25 bg-blue-400/10 px-1.5 py-0.5 text-[10px] font-semibold text-blue-300">
+                            {entry.event.method}
+                          </span>
+                          <span className="truncate text-sm text-zinc-100">
+                            {entry.event.path || entry.event.name}
+                          </span>
+                        </div>
+                        <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] text-zinc-500">
+                          {entry.status === 'skipped' ? (
+                            <>
+                              {entry.event.vu ? <span>VU{entry.event.vu}</span> : null}
+                              <span className={`rounded border px-1.5 py-0.5 ${statusTone(entry.status)}`}>
+                                Skipped · redirect not followed
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <span>{formatEventTime(entry.event.ts)}</span>
+                              {entry.event.vu ? <span>VU{entry.event.vu}</span> : null}
+                              <span>{formatLatency(entry.event.latency_ms)}</span>
+                              <span className={`rounded border px-1.5 py-0.5 ${statusTone(entry.status)}`}>
+                                {entry.event.status || '—'}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function DebugDetailPanel({
+  activeEntry,
+  detailTab,
+  onTabChange,
+  onEditNode,
+  redirectedRequestMap,
+  debugEventTargets,
+  timelineEntries,
+}: {
+  activeEntry: DebugEntry | undefined;
+  detailTab: DetailTab;
+  onTabChange: (tab: DetailTab) => void;
+  onEditNode: (node: YAMLNode) => void;
+  redirectedRequestMap: Record<string, RedirectedRequestInfo>;
+  debugEventTargets: YAMLNode[];
+  timelineEntries: DebugEntry[];
+}) {
+  return (
+    <div className="min-w-0 min-h-0 overflow-hidden">
+      {activeEntry ? (
+        <div className="flex h-full min-h-0 flex-col">
+          <div className="border-b border-white/5 px-4 py-3">
+            <div className="flex min-w-0 items-start justify-between gap-4">
+              <div className="min-w-0">
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="rounded border border-blue-400/25 bg-blue-400/10 px-2 py-1 text-xs font-semibold text-blue-300">
+                    {activeEntry.event.method}
+                  </span>
+                  <h3 className="truncate text-base font-semibold text-zinc-100">
+                    {activeEntry.event.path || activeEntry.event.name}
+                  </h3>
+                </div>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                {activeEntry.node && (
+                  <button
+                    type="button"
+                    onClick={() => onEditNode(activeEntry.node!)}
+                    className="inline-flex h-8 items-center gap-2 rounded border border-white/10 bg-white/3 px-2.5 text-xs text-zinc-300 transition-colors hover:bg-white/6"
+                  >
+                    <Edit3 className="h-3.5 w-3.5" />
+                    Edit
+                  </button>
+                )}
+                <span className={`rounded-full border px-2.5 py-1 text-xs ${statusTone(activeEntry.status)}`}>
+                  {activeEntry.status === 'skipped'
+                    ? 'Skipped'
+                    : activeEntry.status === 'failed'
+                      ? 'Failed'
+                      : 'Passed'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center border-b border-white/5 px-3">
+            {(['overview', 'request', 'response', 'assertions', 'variables', 'logs'] as DetailTab[]).map(tab => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => onTabChange(tab)}
+                className={`px-2.5 py-2.5 text-xs font-semibold capitalize transition-colors ${
+                  detailTab === tab
+                    ? 'border-b-2 border-yellow-400 text-yellow-300'
+                    : 'border-b-2 border-transparent text-zinc-500 hover:text-zinc-300'
+                }`}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto p-4">
+            {activeEntry.status === 'skipped' && (
+              <div className="mb-4 flex items-start gap-2 rounded border border-white/10 bg-white/[0.03] px-3 py-2.5 text-[13px] text-zinc-400">
+                <CircleSlash className="mt-0.5 h-4 w-4 shrink-0 text-zinc-500" />
+                <span>
+                  This redirect hop was recorded but not followed in this run — the engine stopped at the redirect
+                  trust boundary (e.g. a cross-site callback), so no live request was made. It is shown to keep the
+                  recorded chain visible; there is no live request or response to inspect.
+                </span>
+              </div>
+            )}
+            <DebugInspectorContent
+              key={activeEntry.id}
+              entry={activeEntry}
+              tab={detailTab}
+              redirectedInfo={activeEntry.node ? (redirectedRequestMap[activeEntry.node.id] ?? null) : null}
+              requestTargets={debugEventTargets}
+              variableSnapshot={debugVariableSnapshot(activeEntry, timelineEntries)}
+            />
+          </div>
+        </div>
+      ) : (
+        <div className="flex h-full items-center justify-center px-8 text-center">
+          <div>
+            <TerminalSquare className="mx-auto h-10 w-10 text-zinc-700" />
+            <p className="mt-4 text-sm text-zinc-400">Select a debug event to inspect request and response data.</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -772,9 +956,9 @@ function DebugInspectorContent({
     }
     return (
       <div className="space-y-3">
-        {assertions.map((assertion, index) => (
+        {assertions.map(assertion => (
           <DebugLine
-            key={`${assertion.Name}-${index}`}
+            key={`${assertion.Name}-${assertion.Passed}-${assertion.Message}`}
             icon={
               assertion.Passed ? (
                 <CheckCircle2 className="h-4 w-4 text-emerald-300" />

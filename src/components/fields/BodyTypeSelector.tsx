@@ -1,7 +1,7 @@
 import Editor from '@monaco-editor/react';
 import { AlertCircle, CheckCircle, Plus, Trash2 } from 'lucide-react';
 import type { editor as MonacoEditorNS } from 'monaco-editor';
-import { JSX, useEffect, useMemo, useRef, useState } from 'react';
+import { JSX, RefObject, useEffect, useMemo, useRef, useState } from 'react';
 import type { StringMap } from '../../types/shared';
 import type { YAMLValue } from '../../types/yaml';
 import type { SearchMode } from '../debugSearch';
@@ -27,7 +27,7 @@ function HighlightedText({ text, searchText, searchMode, currentMatchIndex }: Hi
     const isActive = idx === currentMatchIndex;
     nodes.push(
       <mark
-        key={`${r.start}-${r.end}-${idx}`}
+        key={`${r.start}-${r.end}`}
         data-match-index={idx}
         className={
           isActive
@@ -57,14 +57,20 @@ interface BodyTypeSelectorProps {
 }
 
 interface FormDataItem {
+  id: string;
   key: string;
   value: string;
   enabled: boolean;
 }
 
+function createFormDataItem(overrides: Partial<Omit<FormDataItem, 'id'>> = {}): FormDataItem {
+  return { id: crypto.randomUUID(), key: '', value: '', enabled: true, ...overrides };
+}
+
 const MONACO_SWITCH_LINE_THRESHOLD = 2000;
 const MONACO_SWITCH_SIZE_THRESHOLD = 120 * 1024;
 const BODY_FIXED_HEIGHT = 300;
+const BODY_SYNC_UNSET = Symbol('body-sync-unset');
 
 function isBodyRecord(value: unknown): value is Record<string, YAMLValue> {
   return !!value && typeof value === 'object' && !Array.isArray(value);
@@ -116,21 +122,13 @@ function parseFormText(value: string): FormDataItem[] | null {
   if (!trimmed) return null;
 
   const params = new URLSearchParams(trimmed);
-  const items = Array.from(params.entries()).map(([key, itemValue]) => ({
-    key,
-    value: itemValue,
-    enabled: true,
-  }));
+  const items = Array.from(params.entries()).map(([key, itemValue]) => createFormDataItem({ key, value: itemValue }));
 
   return items.length > 0 ? items : null;
 }
 
 function toFormDataItemsFromRecord(body: Record<string, YAMLValue>): FormDataItem[] {
-  return Object.entries(body).map(([key, value]) => ({
-    key,
-    value: value == null ? '' : String(value),
-    enabled: true,
-  }));
+  return Object.entries(body).map(([key, value]) => createFormDataItem({ key, value: value == null ? '' : String(value) }));
 }
 
 function getFormDataItems(body: YAMLValue, bodyRaw: YAMLValue): FormDataItem[] {
@@ -139,18 +137,18 @@ function getFormDataItems(body: YAMLValue, bodyRaw: YAMLValue): FormDataItem[] {
 
   if (Array.isArray(body)) {
     const items = body.flatMap(item => (isBodyRecord(item) ? toFormDataItemsFromRecord(item) : []));
-    return items.length > 0 ? items : [{ key: '', value: '', enabled: true }];
+    return items.length > 0 ? items : [createFormDataItem()];
   }
 
   if (isBodyRecord(body)) {
     const items = toFormDataItemsFromRecord(body);
-    return items.length > 0 ? items : [{ key: '', value: '', enabled: true }];
+    return items.length > 0 ? items : [createFormDataItem()];
   }
 
   const rawItems = typeof bodyRaw === 'string' ? parseFormText(bodyRaw) : null;
   if (rawItems) return rawItems;
 
-  return [{ key: '', value: '', enabled: true }];
+  return [createFormDataItem()];
 }
 
 function inferBodyType(body: YAMLValue, bodyRaw: YAMLValue, contentType: string | undefined): BodyType {
@@ -179,6 +177,13 @@ function inferBodyType(body: YAMLValue, bodyRaw: YAMLValue, contentType: string 
   return 'raw';
 }
 
+function shouldUseMonaco(text: string): boolean {
+  if (!text) return false;
+  const lines = text.split('\n').length;
+  const bytes = new Blob([text]).size;
+  return lines > MONACO_SWITCH_LINE_THRESHOLD || bytes > MONACO_SWITCH_SIZE_THRESHOLD;
+}
+
 function buildFormBody(items: FormDataItem[], asArray: boolean): YAMLValue {
   const enabledItems = items.filter(item => item.enabled && item.key.trim());
   if (asArray) {
@@ -190,6 +195,268 @@ function buildFormBody(items: FormDataItem[], asArray: boolean): YAMLValue {
     obj[item.key] = item.value;
   });
   return obj;
+}
+
+interface TextBodyEditorProps {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  ariaLabel: string;
+  language: 'json' | 'plaintext';
+  useMonaco: boolean;
+  searchText: string;
+  searchMode: SearchMode;
+  currentMatchIndex: number;
+  textareaRef: RefObject<HTMLTextAreaElement | null>;
+  highlightRef: RefObject<HTMLPreElement | null>;
+  onFocus: () => void;
+  onBlur: () => void;
+  onScroll: () => void;
+}
+
+function TextBodyEditor({
+  value,
+  onChange,
+  placeholder,
+  ariaLabel,
+  language,
+  useMonaco,
+  searchText,
+  searchMode,
+  currentMatchIndex,
+  textareaRef,
+  highlightRef,
+  onFocus,
+  onBlur,
+  onScroll,
+}: TextBodyEditorProps) {
+  if (useMonaco) {
+    return (
+      <div
+        className="w-full h-75 rounded-md border border-white/10 bg-white/5 overflow-hidden"
+        style={{
+          height: BODY_FIXED_HEIGHT,
+          minHeight: BODY_FIXED_HEIGHT,
+        }}
+      >
+        <MonacoBodyEditor
+          value={value}
+          onChange={onChange}
+          language={language}
+          searchText={searchText}
+          searchMode={searchMode}
+          currentMatchIndex={currentMatchIndex}
+        />
+      </div>
+    );
+  }
+
+  if (searchText) {
+    return (
+      <div
+        className="relative w-full h-75 rounded-md border border-white/10 bg-white/5 overflow-hidden"
+        style={{
+          height: BODY_FIXED_HEIGHT,
+          minHeight: BODY_FIXED_HEIGHT,
+        }}
+      >
+        <pre
+          ref={highlightRef}
+          className="absolute inset-0 m-0 p-3 text-sm font-mono text-zinc-300 whitespace-pre-wrap overflow-y-auto overflow-x-auto pointer-events-none"
+        >
+          <HighlightedText
+            text={value}
+            searchText={searchText}
+            searchMode={searchMode}
+            currentMatchIndex={currentMatchIndex}
+          />
+        </pre>
+        <textarea
+          ref={textareaRef}
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          onScroll={onScroll}
+          onFocus={onFocus}
+          onBlur={onBlur}
+          placeholder={placeholder}
+          aria-label={ariaLabel}
+          style={{ height: '100%', minHeight: '100%' }}
+          className="relative w-full h-full bg-transparent border-0 text-transparent caret-zinc-200 text-sm font-mono resize-none overflow-y-auto overflow-x-auto selection:bg-yellow-200/40 outline-none p-3"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <textarea
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      placeholder={placeholder}
+      aria-label={ariaLabel}
+      style={{
+        height: BODY_FIXED_HEIGHT,
+        minHeight: BODY_FIXED_HEIGHT,
+      }}
+      className="w-full bg-white/5 border border-white/10 rounded text-zinc-300 text-sm font-mono h-75 resize-none overflow-y-auto overflow-x-auto outline-none p-3"
+    />
+  );
+}
+
+interface FormDataFieldsProps {
+  items: FormDataItem[];
+  onFieldChange: (index: number, field: 'key' | 'value' | 'enabled', value: string | boolean) => void;
+  onAdd: () => void;
+  onRemove: (index: number) => void;
+}
+
+function FormDataFields({ items, onFieldChange, onAdd, onRemove }: FormDataFieldsProps) {
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+          Form Data (application/x-www-form-urlencoded)
+        </span>
+        <button type="button"
+          onClick={onAdd}
+          className="flex items-center gap-1 px-2 py-1 text-xs text-amber-500 hover:text-amber-400 hover:bg-amber-500/10 rounded transition-colors"
+        >
+          <Plus className="w-3 h-3" />
+          Add Field
+        </button>
+      </div>
+      <div className="space-y-2">
+        {items.map((item, index) => (
+          <div
+            key={item.id}
+            className="flex items-center gap-2"
+          >
+            <input
+              type="checkbox"
+              checked={item.enabled}
+              onChange={e => onFieldChange(index, 'enabled', e.target.checked)}
+              aria-label={item.key ? `Enable ${item.key}` : 'Enable field'}
+              className="w-4 h-4 rounded border-white/10 bg-white/5 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-0"
+            />
+            <Input
+              value={item.key}
+              onChange={e => onFieldChange(index, 'key', e.target.value)}
+              placeholder="field_name"
+              className="flex-1 bg-white/5 border-white/10 text-zinc-300 text-sm font-mono"
+            />
+            <span className="text-zinc-600">=</span>
+            <Input
+              value={item.value}
+              onChange={e => onFieldChange(index, 'value', e.target.value)}
+              placeholder="value"
+              className="flex-1 bg-white/5 border-white/10 text-zinc-300 text-sm font-mono"
+            />
+            <button type="button"
+              onClick={() => onRemove(index)}
+              aria-label={item.key ? `Remove ${item.key}` : 'Remove field'}
+              className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const BODY_TYPE_OPTIONS: Array<{ type: BodyType; label: string }> = [
+  { type: 'none', label: 'None' },
+  { type: 'json', label: 'JSON' },
+  { type: 'form', label: 'Form Data' },
+  { type: 'raw', label: 'Raw Text' },
+];
+
+interface BodyTypeToggleProps {
+  bodyType: BodyType;
+  onChange: (type: BodyType) => void;
+  hideLabel: boolean;
+  error: string;
+}
+
+function BodyTypeToggle({ bodyType, onChange, hideLabel, error }: BodyTypeToggleProps) {
+  return (
+    <div className="mb-4">
+      {!hideLabel && (
+        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">Body Type</p>
+      )}
+      <div className="flex gap-2">
+        {BODY_TYPE_OPTIONS.map(({ type, label }) => (
+          <button type="button"
+            key={type}
+            onClick={() => onChange(type)}
+            className={`px-4 py-2 text-sm font-medium rounded transition-colors ${
+              bodyType === type
+                ? 'bg-yellow-400/20 text-yellow-400 border border-yellow-400/30'
+                : 'bg-white/5 text-zinc-400 border border-white/10 hover:text-zinc-300 hover:bg-white/10'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {error && (
+        <div className="mt-2 p-2 bg-amber-500/10 border border-amber-500/20 rounded text-xs text-amber-300">
+          {error}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function useBodySearchSync(
+  bodyType: BodyType,
+  searchText: string,
+  searchMode: SearchMode,
+  currentMatchIndex: number,
+  jsonValue: string,
+  rawValue: string,
+  jsonTextareaRef: RefObject<HTMLTextAreaElement | null>,
+  rawTextareaRef: RefObject<HTMLTextAreaElement | null>,
+  jsonHighlightRef: RefObject<HTMLPreElement | null>,
+  rawHighlightRef: RefObject<HTMLPreElement | null>,
+) {
+  useEffect(() => {
+    if (!searchText) return;
+    if (bodyType !== 'json' && bodyType !== 'raw') return;
+    const highlight =
+      bodyType === 'json' ? jsonHighlightRef.current : bodyType === 'raw' ? rawHighlightRef.current : null;
+    const textarea = bodyType === 'json' ? jsonTextareaRef.current : bodyType === 'raw' ? rawTextareaRef.current : null;
+    if (!highlight) return;
+
+    const raf = requestAnimationFrame(() => {
+      const activeMark = highlight.querySelector(`mark[data-match-index="${currentMatchIndex}"]`) as HTMLElement | null;
+      if (!activeMark) return;
+      activeMark.scrollIntoView({ block: 'center', inline: 'nearest' });
+
+      if (textarea) {
+        textarea.scrollTop = highlight.scrollTop;
+        textarea.scrollLeft = highlight.scrollLeft;
+      }
+    });
+
+    return () => cancelAnimationFrame(raf);
+  }, [searchText, currentMatchIndex, bodyType, jsonValue, rawValue, jsonHighlightRef, rawHighlightRef, jsonTextareaRef, rawTextareaRef]);
+
+  useEffect(() => {
+    if (!searchText) return;
+    if (bodyType !== 'json' && bodyType !== 'raw') return;
+    const text = bodyType === 'json' ? jsonValue : rawValue;
+    const ranges = findMatchRanges(text, searchText, searchMode);
+    const current = ranges[currentMatchIndex];
+    const textarea = bodyType === 'json' ? jsonTextareaRef.current : rawTextareaRef.current;
+    if (!textarea || !current) return;
+
+    const raf = requestAnimationFrame(() => {
+      textarea.setSelectionRange(current.start, current.end);
+    });
+
+    return () => cancelAnimationFrame(raf);
+  }, [searchText, searchMode, currentMatchIndex, bodyType, jsonValue, rawValue, jsonTextareaRef, rawTextareaRef]);
 }
 
 export function BodyTypeSelector({
@@ -210,30 +477,45 @@ export function BodyTypeSelector({
   const [typeSwitchError, setTypeSwitchError] = useState('');
   const [, setIsEditingJson] = useState(false);
   const [, setIsEditingRaw] = useState(false);
-  const [formData, setFormData] = useState<FormDataItem[]>([{ key: '', value: '', enabled: true }]);
+  const [formData, setFormData] = useState<FormDataItem[]>([createFormDataItem()]);
   const jsonTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const rawTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const jsonHighlightRef = useRef<HTMLPreElement | null>(null);
   const rawHighlightRef = useRef<HTMLPreElement | null>(null);
 
-  useEffect(() => {
+  // Body/bodyRaw/contentType are the source of truth (e.g. switching between
+  // YAML nodes); the local editing buffers below mirror them. Re-derived here
+  // during render rather than in an effect (the React-sanctioned
+  // "adjust state on prop change" pattern: store the last-seen props and
+  // conditionally setState when they differ) so the sync lands before paint.
+  const [syncedProps, setSyncedProps] = useState<
+    { body: YAMLValue; bodyRaw: YAMLValue | undefined; contentType: string | undefined } | typeof BODY_SYNC_UNSET
+  >(BODY_SYNC_UNSET);
+
+  if (
+    syncedProps === BODY_SYNC_UNSET ||
+    body !== syncedProps.body ||
+    bodyRaw !== syncedProps.bodyRaw ||
+    contentType !== syncedProps.contentType
+  ) {
+    setSyncedProps({ body, bodyRaw, contentType });
+
     const hasBodyRaw = typeof bodyRaw === 'string' && bodyRaw.trim().length > 0;
     if (!hasBodyRaw && !hasBodyContent(body)) {
       setBodyType('none');
-      return;
-    }
-
-    const nextBodyType = inferBodyType(body, bodyRaw, contentType);
-    setBodyType(nextBodyType);
-
-    if (nextBodyType === 'json') {
-      setJsonValue(getJsonEditorText(body, bodyRaw));
-    } else if (nextBodyType === 'form') {
-      setFormData(getFormDataItems(body, bodyRaw));
     } else {
-      setRawValue(!hasBodyContent(body) && typeof bodyRaw === 'string' ? bodyRaw : getBodyEditorText(body));
+      const nextBodyType = inferBodyType(body, bodyRaw, contentType);
+      setBodyType(nextBodyType);
+
+      if (nextBodyType === 'json') {
+        setJsonValue(getJsonEditorText(body, bodyRaw));
+      } else if (nextBodyType === 'form') {
+        setFormData(getFormDataItems(body, bodyRaw));
+      } else {
+        setRawValue(!hasBodyContent(body) && typeof bodyRaw === 'string' ? bodyRaw : getBodyEditorText(body));
+      }
     }
-  }, [body, bodyRaw, contentType]);
+  }
 
   const handleBodyTypeChange = (newType: BodyType) => {
     const hasCurrentBodyContent = () => {
@@ -259,29 +541,25 @@ export function BodyTypeSelector({
       onBodyChange(null, newType);
     } else if (newType === 'json' && bodyType === 'form') {
       const obj: StringMap = {};
-      formData
-        .filter(item => item.enabled && item.key)
-        .forEach(item => {
+      formData.forEach(item => {
+        if (item.enabled && item.key) {
           obj[item.key] = item.value;
-        });
+        }
+      });
       setJsonValue(JSON.stringify(obj, null, 2));
       onBodyChange(obj, newType);
     } else if (newType === 'form' && bodyType === 'json') {
       try {
         const parsed: unknown = JSON.parse(jsonValue);
         if (!isBodyRecord(parsed)) {
-          setFormData([{ key: '', value: '', enabled: true }]);
+          setFormData([createFormDataItem()]);
           return;
         }
-        const items: FormDataItem[] = Object.entries(parsed).map(([k, v]) => ({
-          key: k,
-          value: String(v),
-          enabled: true,
-        }));
-        setFormData(items.length > 0 ? items : [{ key: '', value: '', enabled: true }]);
+        const items: FormDataItem[] = Object.entries(parsed).map(([k, v]) => createFormDataItem({ key: k, value: String(v) }));
+        setFormData(items.length > 0 ? items : [createFormDataItem()]);
         onBodyChange(parsed, newType);
       } catch {
-        setFormData([{ key: '', value: '', enabled: true }]);
+        setFormData([createFormDataItem()]);
       }
     }
   };
@@ -315,13 +593,6 @@ export function BodyTypeSelector({
     onBodyChange(value, 'raw');
   };
 
-  const shouldUseMonaco = (text: string) => {
-    if (!text) return false;
-    const lines = text.split('\n').length;
-    const bytes = new Blob([text]).size;
-    return lines > MONACO_SWITCH_LINE_THRESHOLD || bytes > MONACO_SWITCH_SIZE_THRESHOLD;
-  };
-
   const handleFormDataChange = (index: number, field: 'key' | 'value' | 'enabled', value: string | boolean) => {
     const newFormData = [...formData];
     newFormData[index] = { ...newFormData[index], [field]: value };
@@ -335,12 +606,12 @@ export function BodyTypeSelector({
   };
 
   const handleAddFormDataItem = () => {
-    setFormData([...formData, { key: '', value: '', enabled: true }]);
+    setFormData([...formData, createFormDataItem()]);
   };
 
   const handleRemoveFormDataItem = (index: number) => {
     const newFormData = formData.filter((_, i) => i !== index);
-    const normalized = newFormData.length > 0 ? newFormData : [{ key: '', value: '', enabled: true }];
+    const normalized = newFormData.length > 0 ? newFormData : [createFormDataItem()];
     setFormData(normalized);
     if (typeSwitchError) {
       const hasAny = normalized.some(item => item.key.trim().length > 0 || item.value.trim().length > 0);
@@ -361,76 +632,27 @@ export function BodyTypeSelector({
     highlight.scrollLeft = textarea.scrollLeft;
   };
 
-  useEffect(() => {
-    if (!searchText) return;
-    if (bodyType !== 'json' && bodyType !== 'raw') return;
-    const highlight =
-      bodyType === 'json' ? jsonHighlightRef.current : bodyType === 'raw' ? rawHighlightRef.current : null;
-    const textarea = bodyType === 'json' ? jsonTextareaRef.current : bodyType === 'raw' ? rawTextareaRef.current : null;
-    if (!highlight) return;
-
-    const raf = requestAnimationFrame(() => {
-      const activeMark = highlight.querySelector(`mark[data-match-index="${currentMatchIndex}"]`) as HTMLElement | null;
-      if (!activeMark) return;
-      activeMark.scrollIntoView({ block: 'center', inline: 'nearest' });
-
-      if (textarea) {
-        textarea.scrollTop = highlight.scrollTop;
-        textarea.scrollLeft = highlight.scrollLeft;
-      }
-    });
-
-    return () => cancelAnimationFrame(raf);
-  }, [searchText, currentMatchIndex, bodyType, jsonValue, rawValue]);
-
-  useEffect(() => {
-    if (!searchText) return;
-    if (bodyType !== 'json' && bodyType !== 'raw') return;
-    const text = bodyType === 'json' ? jsonValue : rawValue;
-    const ranges = findMatchRanges(text, searchText, searchMode);
-    const current = ranges[currentMatchIndex];
-    const textarea = bodyType === 'json' ? jsonTextareaRef.current : rawTextareaRef.current;
-    if (!textarea || !current) return;
-
-    const raf = requestAnimationFrame(() => {
-      textarea.setSelectionRange(current.start, current.end);
-    });
-
-    return () => cancelAnimationFrame(raf);
-  }, [searchText, searchMode, currentMatchIndex, bodyType, jsonValue, rawValue]);
+  useBodySearchSync(
+    bodyType,
+    searchText,
+    searchMode,
+    currentMatchIndex,
+    jsonValue,
+    rawValue,
+    jsonTextareaRef,
+    rawTextareaRef,
+    jsonHighlightRef,
+    rawHighlightRef,
+  );
 
   return (
     <div className={className}>
-      <div className="mb-4">
-        {!hideTypeLabel && (
-          <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">Body Type</p>
-        )}
-        <div className="flex gap-2">
-          {[
-            { type: 'none' as BodyType, label: 'None' },
-            { type: 'json' as BodyType, label: 'JSON' },
-            { type: 'form' as BodyType, label: 'Form Data' },
-            { type: 'raw' as BodyType, label: 'Raw Text' },
-          ].map(({ type, label }) => (
-            <button
-              key={type}
-              onClick={() => handleBodyTypeChange(type)}
-              className={`px-4 py-2 text-sm font-medium rounded transition-colors ${
-                bodyType === type
-                  ? 'bg-yellow-400/20 text-yellow-400 border border-yellow-400/30'
-                  : 'bg-white/5 text-zinc-400 border border-white/10 hover:text-zinc-300 hover:bg-white/10'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        {typeSwitchError && (
-          <div className="mt-2 p-2 bg-amber-500/10 border border-amber-500/20 rounded text-xs text-amber-300">
-            {typeSwitchError}
-          </div>
-        )}
-      </div>
+      <BodyTypeToggle
+        bodyType={bodyType}
+        onChange={handleBodyTypeChange}
+        hideLabel={hideTypeLabel}
+        error={typeSwitchError}
+      />
 
       {bodyType === 'json' && (
         <div>
@@ -450,66 +672,22 @@ export function BodyTypeSelector({
               )
             )}
           </div>
-          {useMonacoForJson ? (
-            <div
-              className="w-full h-75 rounded-md border border-white/10 bg-white/5 overflow-hidden"
-              style={{
-                height: BODY_FIXED_HEIGHT,
-                minHeight: BODY_FIXED_HEIGHT,
-              }}
-            >
-              <MonacoBodyEditor
-                value={jsonValue}
-                onChange={handleJsonChange}
-                language="json"
-                searchText={searchText}
-                searchMode={searchMode}
-                currentMatchIndex={currentMatchIndex}
-              />
-            </div>
-          ) : searchText ? (
-            <div
-              className="relative w-full h-75 rounded-md border border-white/10 bg-white/5 overflow-hidden"
-              style={{
-                height: BODY_FIXED_HEIGHT,
-                minHeight: BODY_FIXED_HEIGHT,
-              }}
-            >
-              <pre
-                ref={jsonHighlightRef}
-                className="absolute inset-0 m-0 p-3 text-sm font-mono text-zinc-300 whitespace-pre-wrap overflow-y-auto overflow-x-auto pointer-events-none"
-              >
-                <HighlightedText
-                  text={jsonValue}
-                  searchText={searchText}
-                  searchMode={searchMode}
-                  currentMatchIndex={currentMatchIndex}
-                />
-              </pre>
-              <textarea
-                ref={jsonTextareaRef}
-                value={jsonValue}
-                onChange={e => handleJsonChange(e.target.value)}
-                onScroll={() => syncScroll('json')}
-                onFocus={() => setIsEditingJson(true)}
-                onBlur={() => setIsEditingJson(false)}
-                placeholder='{\n  "key": "value"\n}'
-                style={{ height: '100%', minHeight: '100%' }}
-                className="relative w-full h-full bg-transparent border-0 text-transparent caret-zinc-200 text-sm font-mono resize-none overflow-y-auto overflow-x-auto selection:bg-yellow-200/40 outline-none p-3"
-              />
-            </div>
-          ) : (
-            <textarea
-              value={jsonValue}
-              onChange={e => handleJsonChange(e.target.value)}
-              placeholder='{\n  "key": "value"\n}'
-              style={{
-                height: BODY_FIXED_HEIGHT,
-                minHeight: BODY_FIXED_HEIGHT,
-              }}
-              className="w-full bg-white/5 border border-white/10 rounded text-zinc-300 text-sm font-mono h-75 resize-none overflow-y-auto overflow-x-auto outline-none p-3"
-            />
-          )}
+          <TextBodyEditor
+            value={jsonValue}
+            onChange={handleJsonChange}
+            placeholder='{\n  "key": "value"\n}'
+            ariaLabel="JSON body"
+            language="json"
+            useMonaco={useMonacoForJson}
+            searchText={searchText}
+            searchMode={searchMode}
+            currentMatchIndex={currentMatchIndex}
+            textareaRef={jsonTextareaRef}
+            highlightRef={jsonHighlightRef}
+            onFocus={() => setIsEditingJson(true)}
+            onBlur={() => setIsEditingJson(false)}
+            onScroll={() => syncScroll('json')}
+          />
           {jsonError && (
             <div className="mt-2 p-2 bg-red-500/10 border border-red-500/20 rounded text-xs text-red-400 font-mono">
               {jsonError}
@@ -519,54 +697,12 @@ export function BodyTypeSelector({
       )}
 
       {bodyType === 'form' && (
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-              Form Data (application/x-www-form-urlencoded)
-            </span>
-            <button
-              onClick={handleAddFormDataItem}
-              className="flex items-center gap-1 px-2 py-1 text-xs text-amber-500 hover:text-amber-400 hover:bg-amber-500/10 rounded transition-colors"
-            >
-              <Plus className="w-3 h-3" />
-              Add Field
-            </button>
-          </div>
-          <div className="space-y-2">
-            {formData.map((item, index) => (
-              <div
-                key={`${item.key}-${index}`}
-                className="flex items-center gap-2"
-              >
-                <input
-                  type="checkbox"
-                  checked={item.enabled}
-                  onChange={e => handleFormDataChange(index, 'enabled', e.target.checked)}
-                  className="w-4 h-4 rounded border-white/10 bg-white/5 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-0"
-                />
-                <Input
-                  value={item.key}
-                  onChange={e => handleFormDataChange(index, 'key', e.target.value)}
-                  placeholder="field_name"
-                  className="flex-1 bg-white/5 border-white/10 text-zinc-300 text-sm font-mono"
-                />
-                <span className="text-zinc-600">=</span>
-                <Input
-                  value={item.value}
-                  onChange={e => handleFormDataChange(index, 'value', e.target.value)}
-                  placeholder="value"
-                  className="flex-1 bg-white/5 border-white/10 text-zinc-300 text-sm font-mono"
-                />
-                <button
-                  onClick={() => handleRemoveFormDataItem(index)}
-                  className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
+        <FormDataFields
+          items={formData}
+          onFieldChange={handleFormDataChange}
+          onAdd={handleAddFormDataItem}
+          onRemove={handleRemoveFormDataItem}
+        />
       )}
 
       {bodyType === 'raw' && (
@@ -574,66 +710,22 @@ export function BodyTypeSelector({
           <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
             Raw Body (text/plain)
           </p>
-          {useMonacoForRaw ? (
-            <div
-              className="w-full h-75 rounded-md border border-white/10 bg-white/5 overflow-hidden"
-              style={{
-                height: BODY_FIXED_HEIGHT,
-                minHeight: BODY_FIXED_HEIGHT,
-              }}
-            >
-              <MonacoBodyEditor
-                value={rawValue}
-                onChange={handleRawChange}
-                language="plaintext"
-                searchText={searchText}
-                searchMode={searchMode}
-                currentMatchIndex={currentMatchIndex}
-              />
-            </div>
-          ) : searchText ? (
-            <div
-              className="relative w-full h-75 rounded-md border border-white/10 bg-white/5 overflow-hidden"
-              style={{
-                height: BODY_FIXED_HEIGHT,
-                minHeight: BODY_FIXED_HEIGHT,
-              }}
-            >
-              <pre
-                ref={rawHighlightRef}
-                className="absolute inset-0 m-0 p-3 text-sm font-mono text-zinc-300 whitespace-pre-wrap overflow-y-auto overflow-x-auto pointer-events-none"
-              >
-                <HighlightedText
-                  text={rawValue}
-                  searchText={searchText}
-                  searchMode={searchMode}
-                  currentMatchIndex={currentMatchIndex}
-                />
-              </pre>
-              <textarea
-                ref={rawTextareaRef}
-                value={rawValue}
-                onChange={e => handleRawChange(e.target.value)}
-                onScroll={() => syncScroll('raw')}
-                onFocus={() => setIsEditingRaw(true)}
-                onBlur={() => setIsEditingRaw(false)}
-                placeholder="Enter raw text content..."
-                style={{ height: '100%', minHeight: '100%' }}
-                className="relative w-full h-full bg-transparent border-0 text-transparent caret-zinc-200 text-sm font-mono resize-none overflow-y-auto overflow-x-auto selection:bg-yellow-200/40 outline-none p-3"
-              />
-            </div>
-          ) : (
-            <textarea
-              value={rawValue}
-              onChange={e => handleRawChange(e.target.value)}
-              placeholder="Enter raw text content..."
-              style={{
-                height: BODY_FIXED_HEIGHT,
-                minHeight: BODY_FIXED_HEIGHT,
-              }}
-              className="w-full bg-white/5 border border-white/10 rounded text-zinc-300 text-sm font-mono h-75 resize-none overflow-y-auto overflow-x-auto outline-none p-3"
-            />
-          )}
+          <TextBodyEditor
+            value={rawValue}
+            onChange={handleRawChange}
+            placeholder="Enter raw text content..."
+            ariaLabel="Raw body text"
+            language="plaintext"
+            useMonaco={useMonacoForRaw}
+            searchText={searchText}
+            searchMode={searchMode}
+            currentMatchIndex={currentMatchIndex}
+            textareaRef={rawTextareaRef}
+            highlightRef={rawHighlightRef}
+            onFocus={() => setIsEditingRaw(true)}
+            onBlur={() => setIsEditingRaw(false)}
+            onScroll={() => syncScroll('raw')}
+          />
         </div>
       )}
 
@@ -655,6 +747,21 @@ interface MonacoBodyEditorProps {
   currentMatchIndex: number;
 }
 
+function offsetToPosition(text: string, offset: number) {
+  const safeOffset = Math.max(0, Math.min(offset, text.length));
+  let lineNumber = 1;
+  let column = 1;
+  for (let i = 0; i < safeOffset; i += 1) {
+    if (text[i] === '\n') {
+      lineNumber += 1;
+      column = 1;
+    } else {
+      column += 1;
+    }
+  }
+  return { lineNumber, column };
+}
+
 function MonacoBodyEditor({
   value,
   onChange,
@@ -667,21 +774,6 @@ function MonacoBodyEditor({
   const decorationsRef = useRef<MonacoEditorNS.IEditorDecorationsCollection | null>(null);
 
   const matchRanges = useMemo(() => findMatchRanges(value, searchText, searchMode), [value, searchText, searchMode]);
-
-  const offsetToPosition = (text: string, offset: number) => {
-    const safeOffset = Math.max(0, Math.min(offset, text.length));
-    let lineNumber = 1;
-    let column = 1;
-    for (let i = 0; i < safeOffset; i += 1) {
-      if (text[i] === '\n') {
-        lineNumber += 1;
-        column = 1;
-      } else {
-        column += 1;
-      }
-    }
-    return { lineNumber, column };
-  };
 
   useEffect(() => {
     const editor = editorRef.current;
@@ -774,12 +866,17 @@ function MonacoBodyEditor({
   );
 }
 
-function findMatchRanges(text: string, query: string, mode: SearchMode): Array<{ start: number; end: number }> {
-  if (!text || !query) return [];
+// The regex `pattern` here is intentionally used unescaped: this branch only runs when
+// `mode === 'regex'`, i.e. the user explicitly opted into regex search and is authoring
+// the pattern themselves (mirrors the canonical implementation in debugSearch.ts).
+// Escaping it would defeat the regex-search feature; literal search is handled by the
+// `mode === 'text'` branch above. Invalid patterns are caught and yield no matches.
+function findMatchRanges(text: string, pattern: string, mode: SearchMode): Array<{ start: number; end: number }> {
+  if (!text || !pattern) return [];
   if (mode === 'text') {
     const ranges: Array<{ start: number; end: number }> = [];
     const hay = text.toLowerCase();
-    const needle = query.toLowerCase();
+    const needle = pattern.toLowerCase();
     let pos = 0;
     while (pos <= hay.length - needle.length) {
       const idx = hay.indexOf(needle, pos);
@@ -791,7 +888,7 @@ function findMatchRanges(text: string, query: string, mode: SearchMode): Array<{
   }
   let re: RegExp;
   try {
-    re = new RegExp(query, 'gi');
+    re = new RegExp(pattern, 'gi');
   } catch {
     return [];
   }

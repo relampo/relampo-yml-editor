@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { Activity, AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, ExternalLink, Gauge, OctagonX, Play, Square, Terminal, TimerReset, Users, XCircle, Zap } from 'lucide-react';
 import type { YAMLNode } from '../types/yaml';
 import {
@@ -102,6 +102,98 @@ function statusTone(status: RunStatus): string {
   }
 }
 
+// All these fields transition together off the same run-lifecycle events
+// (start, SSE state/metrics/log/done, connection loss, stop) so they live in
+// one reducer instead of seven independent useState calls.
+interface LoadRunState {
+  snapshots: RunMetricsSnapshot[];
+  isRunning: boolean;
+  isStopping: boolean;
+  runError: string | null;
+  runStatus: RunStatus | null;
+  summary: RunSummary | null;
+  logs: RunLogLine[];
+}
+
+const initialLoadRunState: LoadRunState = {
+  snapshots: [],
+  isRunning: false,
+  isStopping: false,
+  runError: null,
+  runStatus: null,
+  summary: null,
+  logs: [],
+};
+
+type LoadRunAction =
+  | { type: 'run_started' }
+  | { type: 'run_start_failed'; error: string }
+  | { type: 'flush_failed'; error: string }
+  | { type: 'reattach_started' }
+  | { type: 'state_changed'; status: RunStatus }
+  | { type: 'metrics_received'; snapshot: RunMetricsSnapshot }
+  | { type: 'log_received'; lines: RunLogLine[] }
+  | { type: 'run_done'; status: RunStatus; summary: RunSummary | null; error: string | null }
+  | { type: 'connection_error'; quiet: boolean }
+  | { type: 'stop_requested' };
+
+function loadRunReducer(state: LoadRunState, action: LoadRunAction): LoadRunState {
+  switch (action.type) {
+    case 'run_started':
+      return {
+        ...state,
+        snapshots: [],
+        logs: [],
+        summary: null,
+        runError: null,
+        runStatus: 'running',
+        isStopping: false,
+        isRunning: true,
+      };
+    case 'run_start_failed':
+      return { ...state, isRunning: false, isStopping: false, runStatus: 'errored', runError: action.error };
+    case 'flush_failed':
+      return { ...state, runStatus: 'errored', runError: action.error };
+    case 'reattach_started':
+      return { ...state, isRunning: true };
+    case 'state_changed':
+      return {
+        ...state,
+        runStatus: action.status,
+        isRunning: action.status === 'running',
+        isStopping: action.status === 'running' ? state.isStopping : false,
+      };
+    case 'metrics_received': {
+      const trimmed =
+        state.snapshots.length >= MAX_LIVE_POINTS
+          ? state.snapshots.slice(state.snapshots.length - MAX_LIVE_POINTS + 1)
+          : state.snapshots;
+      return { ...state, snapshots: [...trimmed, action.snapshot] };
+    }
+    case 'log_received': {
+      const merged = [...state.logs, ...action.lines];
+      return { ...state, logs: merged.length > MAX_LIVE_LOGS ? merged.slice(merged.length - MAX_LIVE_LOGS) : merged };
+    }
+    case 'run_done':
+      return {
+        ...state,
+        isRunning: false,
+        isStopping: false,
+        runStatus: action.status,
+        summary: action.summary,
+        runError: action.status === 'errored' ? (action.error ?? 'Load run failed.') : null,
+      };
+    case 'connection_error':
+      return action.quiet
+        ? { ...state, isRunning: false, isStopping: false, snapshots: [], logs: [], runStatus: null }
+        : { ...state, isRunning: false, isStopping: false, runError: 'Lost connection to the studio server.' };
+    case 'stop_requested':
+      return { ...state, isStopping: true };
+    default:
+      return state;
+  }
+}
+
 interface YAMLLoadRunSessionProps {
   tree: YAMLNode | null;
   yamlCode: string;
@@ -119,13 +211,8 @@ export function YAMLLoadRunSession({
   documentReady,
   validationErrors,
 }: YAMLLoadRunSessionProps) {
-  const [snapshots, setSnapshots] = useState<RunMetricsSnapshot[]>([]);
-  const [isRunning, setIsRunning] = useState(false);
-  const [isStopping, setIsStopping] = useState(false);
-  const [runError, setRunError] = useState<string | null>(null);
-  const [runStatus, setRunStatus] = useState<RunStatus | null>(null);
-  const [summary, setSummary] = useState<RunSummary | null>(null);
-  const [logs, setLogs] = useState<RunLogLine[]>([]);
+  const [runState, dispatch] = useReducer(loadRunReducer, initialLoadRunState);
+  const { snapshots, isRunning, isStopping, runError, runStatus, summary, logs } = runState;
 
   const logScrollRef = useRef<HTMLDivElement | null>(null);
   const stopStreamRef = useRef<(() => void) | null>(null);
@@ -171,42 +258,24 @@ export function YAMLLoadRunSession({
     activeRunIdRef.current = runId;
     stopStreamRef.current = streamLoadRun(runId, {
       onState: state => {
-        setRunStatus(state.status);
-        setIsRunning(state.status === 'running');
-        if (state.status !== 'running') setIsStopping(false);
+        dispatch({ type: 'state_changed', status: state.status });
       },
       onMetrics: snapshot => {
-        setSnapshots(previous => {
-          const next = previous.length >= MAX_LIVE_POINTS ? previous.slice(previous.length - MAX_LIVE_POINTS + 1) : previous;
-          return [...next, snapshot];
-        });
+        dispatch({ type: 'metrics_received', snapshot });
       },
       onLog: lines => {
-        setLogs(previous => {
-          const merged = [...previous, ...lines];
-          return merged.length > MAX_LIVE_LOGS ? merged.slice(merged.length - MAX_LIVE_LOGS) : merged;
-        });
+        dispatch({ type: 'log_received', lines });
       },
       onDone: done => {
-        setIsRunning(false);
-        setIsStopping(false);
-        setRunStatus(done.status);
-        setSummary(done.summary);
-        setRunError(done.status === 'errored' ? (done.error ?? 'Load run failed.') : null);
+        dispatch({ type: 'run_done', status: done.status, summary: done.summary, error: done.error });
       },
       onConnectionError: () => {
-        setIsRunning(false);
-        setIsStopping(false);
         if (quiet) {
           runStore.clear();
           storedRunRef.current = null;
           activeRunIdRef.current = null;
-          setSnapshots([]);
-          setLogs([]);
-          setRunStatus(null);
-        } else {
-          setRunError('Lost connection to the studio server.');
         }
+        dispatch({ type: 'connection_error', quiet });
       },
     });
   }, []);
@@ -234,7 +303,7 @@ export function YAMLLoadRunSession({
         return;
       }
       reattachedRef.current = true;
-      setIsRunning(true);
+      dispatch({ type: 'reattach_started' });
       subscribe(storedRun.id, true);
     },
     [documentReady, subscribe, yamlCode],
@@ -246,8 +315,7 @@ export function YAMLLoadRunSession({
     try {
       scriptAtStart = flushPendingEdits ? flushPendingEdits() : yamlCode;
     } catch (error) {
-      setRunStatus('errored');
-      setRunError(error instanceof Error ? error.message : String(error));
+      dispatch({ type: 'flush_failed', error: error instanceof Error ? error.message : String(error) });
       return;
     }
     if (!scriptAtStart.trim()) return;
@@ -255,13 +323,7 @@ export function YAMLLoadRunSession({
     stopStreamRef.current?.();
     activeRunIdRef.current = null;
     stopRequestedRef.current = false;
-    setSnapshots([]);
-    setLogs([]);
-    setSummary(null);
-    setRunError(null);
-    setRunStatus('running');
-    setIsStopping(false);
-    setIsRunning(true);
+    dispatch({ type: 'run_started' });
     try {
       const runId = await startLoadRun(scriptAtStart);
       if (token !== startTokenRef.current) return;
@@ -270,15 +332,12 @@ export function YAMLLoadRunSession({
       // The user hit Stop while the start request was in flight: the run now
       // exists on the server, so cancel it (the SSE delivers the stopped summary).
       if (stopRequestedRef.current) {
-        setIsStopping(true);
+        dispatch({ type: 'stop_requested' });
         void stopLoadRun(runId);
       }
     } catch (error) {
       if (token !== startTokenRef.current) return;
-      setIsRunning(false);
-      setIsStopping(false);
-      setRunStatus('errored');
-      setRunError(error instanceof Error ? error.message : String(error));
+      dispatch({ type: 'run_start_failed', error: error instanceof Error ? error.message : String(error) });
     }
   };
 
@@ -287,7 +346,7 @@ export function YAMLLoadRunSession({
   // unmount cleanup never stops a run — Stop is a deliberate user action.
   const stopRun = async () => {
     if (!isRunning || isStopping) return;
-    setIsStopping(true);
+    dispatch({ type: 'stop_requested' });
     const runId = activeRunIdRef.current;
     if (!runId) {
       // The start request is still in flight; cancel as soon as we get the id.
@@ -306,91 +365,21 @@ export function YAMLLoadRunSession({
   return (
     <div className="flex h-full min-h-0 flex-col bg-[#0d0d0d]">
       {storedRunRef.current && <span ref={reattachStoredRun} hidden aria-hidden="true" />}
-      <div className="border-b border-white/5 px-5 py-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">Load test session</p>
-            <h2 className="mt-1 text-base font-semibold text-zinc-100">Run the scenario's full load profile</h2>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {runStatus && (
-              <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${statusTone(runStatus)}`}>
-                {isStopping ? 'Stopping…' : STATUS_LABELS[runStatus]}
-              </span>
-            )}
-            <button
-              type="button"
-              onClick={startRun}
-              disabled={isRunning || hasValidationErrors || !yamlCode.trim()}
-              className="inline-flex h-9 items-center gap-2 rounded border border-yellow-400/40 bg-yellow-400 px-3 text-sm font-semibold text-black transition-colors hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <Play className="h-4 w-4" />
-              Run load test
-            </button>
-            <button
-              type="button"
-              onClick={stopRun}
-              disabled={!isRunning || isStopping}
-              className="inline-flex h-9 items-center gap-2 rounded border border-white/10 bg-white/3 px-3 text-sm text-zinc-300 transition-colors hover:bg-white/6 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              <Square className="h-4 w-4" />
-              Stop
-            </button>
-          </div>
-        </div>
-      </div>
+      <RunToolbar
+        runStatus={runStatus}
+        isStopping={isStopping}
+        isRunning={isRunning}
+        hasValidationErrors={hasValidationErrors}
+        yamlCode={yamlCode}
+        onStartRun={startRun}
+        onStopRun={stopRun}
+      />
 
-      {hasValidationErrors && (
-        <div className="border-b border-red-400/20 bg-red-500/10 px-5 py-3">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-300" />
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-red-200">YAML semantic validation failed before the load run</p>
-              <p className="mt-1 text-xs text-red-200/80">Fix these issues in the tree or code before running the load test.</p>
-              <div className="mt-2 space-y-1">
-                {validationErrors.slice(0, 4).map((error, index) => (
-                  <p key={`${error}-${index}`} className="wrap-break-word font-mono text-xs text-red-100/90">
-                    {error}
-                  </p>
-                ))}
-                {validationErrors.length > 4 && (
-                  <p className="text-xs text-red-200/70">+{validationErrors.length - 4} more validation issues</p>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {hasValidationErrors && <ValidationErrorBanner errors={validationErrors} />}
 
-      {runError && (
-        <div className="border-b border-red-400/20 bg-red-500/10 px-5 py-3">
-          <div className="flex items-start gap-3">
-            <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-300" />
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-red-200">Load run error</p>
-              <p className="mt-1 wrap-break-word font-mono text-xs text-red-100/90">{runError}</p>
-            </div>
-          </div>
-        </div>
-      )}
+      {runError && <RunErrorBanner message={runError} />}
 
-      <div className="grid grid-cols-2 border-b border-white/5 bg-[#0a0a0a] sm:grid-cols-3 lg:grid-cols-6">
-        <StatCell icon={<Zap className="h-4 w-4 text-yellow-300" />} label="Req/s" value={latest ? formatRps(latest.rps) : '—'} />
-        <StatCell icon={<Gauge className="h-4 w-4 text-blue-300" />} label="p95" value={latest ? formatMs(latest.p95_latency) : '—'} />
-        <StatCell icon={<Activity className="h-4 w-4 text-emerald-300" />} label="Avg" value={latest ? formatMs(latest.avg_latency) : '—'} />
-        <StatCell
-          icon={<OctagonX className="h-4 w-4 text-red-300" />}
-          label="Error rate"
-          value={errorRate}
-          tone={latest && latest.total_failures > 0 ? 'text-red-300' : 'text-zinc-100'}
-        />
-        <StatCell icon={<Users className="h-4 w-4 text-zinc-300" />} label="VUs" value={latest ? String(latest.active_users) : '—'} />
-        <StatCell
-          icon={<CheckCircle2 className="h-4 w-4 text-zinc-300" />}
-          label="Requests"
-          value={latest ? latest.total_requests.toLocaleString() : '—'}
-        />
-      </div>
+      <StatsRow latest={latest} errorRate={errorRate} />
 
       <div className="min-h-0 flex-1 overflow-y-auto p-4">
         {!hasRunActivity ? (
@@ -401,56 +390,16 @@ export function YAMLLoadRunSession({
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="grid gap-3 lg:grid-cols-3">
-              <Sparkline
-                title="Throughput"
-                unit="req/s"
-                color="#fde047"
-                values={snapshots.map(s => s.rps)}
-                format={formatRps}
-              />
-              <Sparkline
-                title="Latency p95"
-                unit="ms"
-                color="#60a5fa"
-                values={snapshots.map(s => s.p95_latency)}
-                format={v => (v < 10 ? v.toFixed(1) : String(Math.round(v)))}
-              />
-              <Sparkline
-                title="Active VUs"
-                unit="VUs"
-                color="#a3a3a3"
-                values={snapshots.map(s => s.active_users)}
-                format={v => String(Math.round(v))}
-              />
-            </div>
+            <MetricsCharts snapshots={snapshots} />
 
             {plannedLoadNode && (
-              <div className="border border-white/10 bg-[#111111] p-4">
-                <div className="mb-3 flex items-center justify-between">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">Planned load profile</p>
-                  {loadNodes.length > 1 && (
-                    <span className="rounded border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 text-[10px] font-semibold text-amber-300">
-                      {loadNodes.length} scenarios — showing the first
-                    </span>
-                  )}
-                </div>
-                {iterationBudgetCapsDuration && (
-                  <div className="mb-3 flex items-start gap-2 rounded border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-[11px] text-amber-200">
-                    <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                    <span>
-                      This scenario uses a Balanced Controller in Iterations mode. The run stops when the first
-                      configured limit — Duration or Iterations — is reached, so the run and its live metrics
-                      may stop before the duration shown below elapses.
-                    </span>
-                  </div>
-                )}
-                <LoadVisualization
-                  data={plannedLoadNode.data ?? {}}
-                  loadType={normalizeLoadType(plannedLoadNode.data?.type)}
-                  progressSeconds={isRunning ? (latest?.elapsed_ms ?? 0) / 1000 : undefined}
-                />
-              </div>
+              <PlannedLoadProfilePanel
+                plannedLoadNode={plannedLoadNode}
+                scenarioCount={loadNodes.length}
+                iterationBudgetCapsDuration={iterationBudgetCapsDuration}
+                isRunning={isRunning}
+                elapsedMs={latest?.elapsed_ms ?? 0}
+              />
             )}
 
             {visibleSummary && (
@@ -465,6 +414,185 @@ export function YAMLLoadRunSession({
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// Header/toolbar: title plus the status badge and Run/Stop controls.
+function RunToolbar({
+  runStatus,
+  isStopping,
+  isRunning,
+  hasValidationErrors,
+  yamlCode,
+  onStartRun,
+  onStopRun,
+}: {
+  runStatus: RunStatus | null;
+  isStopping: boolean;
+  isRunning: boolean;
+  hasValidationErrors: boolean;
+  yamlCode: string;
+  onStartRun: () => void;
+  onStopRun: () => void;
+}) {
+  return (
+    <div className="border-b border-white/5 px-5 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">Load test session</p>
+          <h2 className="mt-1 text-base font-semibold text-zinc-100">Run the scenario's full load profile</h2>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {runStatus && (
+            <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${statusTone(runStatus)}`}>
+              {isStopping ? 'Stopping…' : STATUS_LABELS[runStatus]}
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={onStartRun}
+            disabled={isRunning || hasValidationErrors || !yamlCode.trim()}
+            className="inline-flex h-9 items-center gap-2 rounded border border-yellow-400/40 bg-yellow-400 px-3 text-sm font-semibold text-black transition-colors hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Play className="h-4 w-4" />
+            Run load test
+          </button>
+          <button
+            type="button"
+            onClick={onStopRun}
+            disabled={!isRunning || isStopping}
+            className="inline-flex h-9 items-center gap-2 rounded border border-white/10 bg-white/3 px-3 text-sm text-zinc-300 transition-colors hover:bg-white/6 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <Square className="h-4 w-4" />
+            Stop
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ValidationErrorBanner({ errors }: { errors: string[] }) {
+  return (
+    <div className="border-b border-red-400/20 bg-red-500/10 px-5 py-3">
+      <div className="flex items-start gap-3">
+        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-300" />
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-red-200">YAML semantic validation failed before the load run</p>
+          <p className="mt-1 text-xs text-red-200/80">Fix these issues in the tree or code before running the load test.</p>
+          <div className="mt-2 space-y-1">
+            {errors.slice(0, 4).map((error, index) => (
+              <p key={`${error}-${index}`} className="wrap-break-word font-mono text-xs text-red-100/90">
+                {error}
+              </p>
+            ))}
+            {errors.length > 4 && <p className="text-xs text-red-200/70">+{errors.length - 4} more validation issues</p>}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RunErrorBanner({ message }: { message: string }) {
+  return (
+    <div className="border-b border-red-400/20 bg-red-500/10 px-5 py-3">
+      <div className="flex items-start gap-3">
+        <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-300" />
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-red-200">Load run error</p>
+          <p className="mt-1 wrap-break-word font-mono text-xs text-red-100/90">{message}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// The six live stat cards (req/s, p95, avg, error rate, VUs, requests).
+function StatsRow({ latest, errorRate }: { latest: RunMetricsSnapshot | null; errorRate: string }) {
+  return (
+    <div className="grid grid-cols-2 border-b border-white/5 bg-[#0a0a0a] sm:grid-cols-3 lg:grid-cols-6">
+      <StatCell icon={<Zap className="h-4 w-4 text-yellow-300" />} label="Req/s" value={latest ? formatRps(latest.rps) : '—'} />
+      <StatCell icon={<Gauge className="h-4 w-4 text-blue-300" />} label="p95" value={latest ? formatMs(latest.p95_latency) : '—'} />
+      <StatCell icon={<Activity className="h-4 w-4 text-emerald-300" />} label="Avg" value={latest ? formatMs(latest.avg_latency) : '—'} />
+      <StatCell
+        icon={<OctagonX className="h-4 w-4 text-red-300" />}
+        label="Error rate"
+        value={errorRate}
+        tone={latest && latest.total_failures > 0 ? 'text-red-300' : 'text-zinc-100'}
+      />
+      <StatCell icon={<Users className="h-4 w-4 text-zinc-300" />} label="VUs" value={latest ? String(latest.active_users) : '—'} />
+      <StatCell
+        icon={<CheckCircle2 className="h-4 w-4 text-zinc-300" />}
+        label="Requests"
+        value={latest ? latest.total_requests.toLocaleString() : '—'}
+      />
+    </div>
+  );
+}
+
+// Throughput / p95 latency / active VUs sparkline row.
+function MetricsCharts({ snapshots }: { snapshots: RunMetricsSnapshot[] }) {
+  return (
+    <div className="grid gap-3 lg:grid-cols-3">
+      <Sparkline title="Throughput" unit="req/s" color="#fde047" values={snapshots.map(s => s.rps)} format={formatRps} />
+      <Sparkline
+        title="Latency p95"
+        unit="ms"
+        color="#60a5fa"
+        values={snapshots.map(s => s.p95_latency)}
+        format={v => (v < 10 ? v.toFixed(1) : String(Math.round(v)))}
+      />
+      <Sparkline
+        title="Active VUs"
+        unit="VUs"
+        color="#a3a3a3"
+        values={snapshots.map(s => s.active_users)}
+        format={v => String(Math.round(v))}
+      />
+    </div>
+  );
+}
+
+function PlannedLoadProfilePanel({
+  plannedLoadNode,
+  scenarioCount,
+  iterationBudgetCapsDuration,
+  isRunning,
+  elapsedMs,
+}: {
+  plannedLoadNode: YAMLNode;
+  scenarioCount: number;
+  iterationBudgetCapsDuration: boolean;
+  isRunning: boolean;
+  elapsedMs: number;
+}) {
+  return (
+    <div className="border border-white/10 bg-[#111111] p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">Planned load profile</p>
+        {scenarioCount > 1 && (
+          <span className="rounded border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 text-[10px] font-semibold text-amber-300">
+            {scenarioCount} scenarios — showing the first
+          </span>
+        )}
+      </div>
+      {iterationBudgetCapsDuration && (
+        <div className="mb-3 flex items-start gap-2 rounded border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-[11px] text-amber-200">
+          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span>
+            This scenario uses a Balanced Controller in Iterations mode. The run stops when the first
+            configured limit — Duration or Iterations — is reached, so the run and its live metrics
+            may stop before the duration shown below elapses.
+          </span>
+        </div>
+      )}
+      <LoadVisualization
+        data={plannedLoadNode.data ?? {}}
+        loadType={normalizeLoadType(plannedLoadNode.data?.type)}
+        progressSeconds={isRunning ? elapsedMs / 1000 : undefined}
+      />
     </div>
   );
 }
@@ -663,8 +791,11 @@ function RunSummaryPanel({
               </tr>
             </thead>
             <tbody>
-              {requests.map((request, index) => (
-                <tr key={`${request.name}-${index}`} className="border-b border-white/5 last:border-b-0">
+              {requests.map(request => (
+                <tr
+                  key={`${request.method}-${request.name}-${request.path ?? ''}-${request.step_path ?? ''}`}
+                  className="border-b border-white/5 last:border-b-0"
+                >
                   <td className="max-w-72 truncate px-4 py-2 text-zinc-200" title={request.name}>
                     <span className="mr-2 rounded border border-blue-400/25 bg-blue-400/10 px-1.5 py-0.5 text-[10px] font-semibold text-blue-300">
                       {request.method}

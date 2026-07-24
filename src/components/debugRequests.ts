@@ -396,13 +396,13 @@ function extractorVariableName(node: YAMLNode): string | null {
 
 function requestExtractorVariableNames(node: YAMLNode | null): string[] {
   if (!node?.children) return [];
-  const names: string[] = [];
+  const names = new Set<string>();
   node.children.forEach(child => {
     if (child.type !== 'extractor' && child.type !== 'extract') return;
     const name = extractorVariableName(child);
-    if (name && !names.includes(name)) names.push(name);
+    if (name) names.add(name);
   });
-  return names;
+  return [...names];
 }
 
 // Match `{{name}}` where the inner name is anything but a brace (trimmed by the
@@ -467,11 +467,11 @@ function requestReferencedVariableNames(node: YAMLNode | null): string[] {
 // followed by what it references. Order is stable (extractors first) and
 // duplicates collapse. RLP-584.
 export function requestVariableNames(node: YAMLNode | null): string[] {
-  const names: string[] = [];
+  const names = new Set<string>();
   for (const name of [...requestExtractorVariableNames(node), ...requestReferencedVariableNames(node)]) {
-    if (!names.includes(name)) names.push(name);
+    names.add(name);
   }
-  return names;
+  return [...names];
 }
 
 // How a request touches a variable. RES = the request extracts it from its own

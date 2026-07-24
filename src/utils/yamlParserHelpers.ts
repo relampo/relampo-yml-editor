@@ -379,9 +379,10 @@ export function normalizeSQLForYaml(step: Partial<SQLLike> | undefined): SQLLike
 }
 
 function mergeQueryParamsIntoUrl(url: string, queryParams: PlainRecord): string {
-  const pairs = Object.entries(queryParams)
-    .filter(([key]) => key.trim() !== '')
-    .map(([key, value]) => `${key}=${value ?? ''}`);
+  const pairs = Object.entries(queryParams).reduce<string[]>((acc, [key, value]) => {
+    if (key.trim() !== '') acc.push(`${key}=${value ?? ''}`);
+    return acc;
+  }, []);
   if (pairs.length === 0) return url;
   const separator = url.includes('?') ? '&' : '?';
   return `${url}${separator}${pairs.join('&')}`;
