@@ -2,11 +2,11 @@ export type SearchMode = 'text' | 'regex';
 
 export type MatchRange = { start: number; end: number };
 
-export function buildSearchRegex(query: string): RegExp | null {
+export function buildSearchRegex(pattern: string): RegExp | null {
   try {
     // The `d` flag exposes per-group match indices so a pattern with capturing
     // groups can highlight only the captured value, not the whole match. RLP-582.
-    return new RegExp(query, 'gid');
+    return new RegExp(pattern, 'gid');
   } catch {
     return null;
   }

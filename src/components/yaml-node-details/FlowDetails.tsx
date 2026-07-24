@@ -12,10 +12,11 @@ export function IfDetails({ node, onNodeUpdate }: NodeDetailProps) {
   return (
     <div className="space-y-6">
       <div>
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+        <label htmlFor="flow-condition" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
           Condition Expression
         </label>
         <Textarea
+          id="flow-condition"
           value={data.condition || ''}
           onChange={event => updateField('condition', event.target.value)}
           placeholder="${'{'}status${'}'} === 200\n${'{'}user_id${'}'} != null\n${'{'}count${'}'} > 10"
@@ -50,8 +51,9 @@ export function LoopDetails({ node, onNodeUpdate }: NodeDetailProps) {
   return (
     <div className="space-y-6">
       <div>
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Loop Count</label>
+        <label htmlFor="flow-loop-count" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Loop Count</label>
         <Input
+          id="flow-loop-count"
           type="number"
           value={data.count !== undefined ? data.count : 1}
           onChange={event => updateField('count', parseInt(event.target.value, 10) || 1)}
@@ -64,10 +66,11 @@ export function LoopDetails({ node, onNodeUpdate }: NodeDetailProps) {
       </div>
 
       <div>
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+        <label htmlFor="flow-break-condition" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
           Break Condition (optional)
         </label>
         <Input
+          id="flow-break-condition"
           value={data.break_on || ''}
           onChange={event => updateField('break_on', event.target.value)}
           placeholder="${'{'}error${'}'} || ${'{'}stop${'}'}"
@@ -98,8 +101,9 @@ export function RetryDetails({ node, onNodeUpdate }: NodeDetailProps) {
   return (
     <div className="space-y-6">
       <div>
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Max Attempts</label>
+        <label htmlFor="flow-max-attempts" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Max Attempts</label>
         <Input
+          id="flow-max-attempts"
           type="number"
           value={retryData.attempts !== undefined ? retryData.attempts : 3}
           onChange={event => updateField('attempts', parseInt(event.target.value, 10) || 3)}
@@ -109,14 +113,14 @@ export function RetryDetails({ node, onNodeUpdate }: NodeDetailProps) {
       </div>
 
       <div>
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+        <label htmlFor="flow-backoff-strategy" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
           Backoff Strategy
         </label>
         <Select
           value={backoffType}
           onValueChange={value => updateField('backoff', value)}
         >
-          <SelectTrigger className="w-full h-9.5 px-3 py-2 bg-yellow-400/10 text-yellow-400 border border-yellow-400/20 rounded text-sm font-mono">
+          <SelectTrigger id="flow-backoff-strategy" className="w-full h-9.5 px-3 py-2 bg-yellow-400/10 text-yellow-400 border border-yellow-400/20 rounded text-sm font-mono">
             <SelectValue placeholder="Select strategy" />
           </SelectTrigger>
           <SelectContent>
@@ -129,8 +133,9 @@ export function RetryDetails({ node, onNodeUpdate }: NodeDetailProps) {
 
       {backoffType === 'constant' && (
         <div>
-          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Delay</label>
+          <label htmlFor="flow-delay" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Delay</label>
           <Input
+            id="flow-delay"
             value={retryData.initial_delay || retryData.delay || ''}
             onChange={event => updateField('initial_delay', event.target.value)}
             placeholder="1s"
@@ -143,10 +148,11 @@ export function RetryDetails({ node, onNodeUpdate }: NodeDetailProps) {
       {backoffType === 'linear' && (
         <>
           <div className="mb-4">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+            <label htmlFor="flow-initial-delay-linear" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
               Initial Delay
             </label>
             <Input
+              id="flow-initial-delay-linear"
               value={retryData.initial_delay || ''}
               onChange={event => updateField('initial_delay', event.target.value)}
               placeholder="1s"
@@ -154,8 +160,9 @@ export function RetryDetails({ node, onNodeUpdate }: NodeDetailProps) {
             />
           </div>
           <div className="mb-4">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Increment</label>
+            <label htmlFor="flow-increment" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Increment</label>
             <Input
+              id="flow-increment"
               value={retryData.increment || ''}
               onChange={event => updateField('increment', event.target.value)}
               placeholder="1s"
@@ -169,10 +176,11 @@ export function RetryDetails({ node, onNodeUpdate }: NodeDetailProps) {
       {backoffType === 'exponential' && (
         <>
           <div className="mb-4">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+            <label htmlFor="flow-initial-delay-exponential" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
               Initial Delay
             </label>
             <Input
+              id="flow-initial-delay-exponential"
               value={retryData.initial_delay || ''}
               onChange={event => updateField('initial_delay', event.target.value)}
               placeholder="1s"
@@ -180,10 +188,11 @@ export function RetryDetails({ node, onNodeUpdate }: NodeDetailProps) {
             />
           </div>
           <div className="mb-4">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+            <label htmlFor="flow-multiplier" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
               Multiplier
             </label>
             <Input
+              id="flow-multiplier"
               type="number"
               value={retryData.multiplier !== undefined ? retryData.multiplier : 2}
               onChange={event => updateField('multiplier', parseFloat(event.target.value) || 2)}
@@ -193,10 +202,11 @@ export function RetryDetails({ node, onNodeUpdate }: NodeDetailProps) {
             <div className="mt-1 text-xs text-zinc-500">Delay multiplied each retry (1s, 2s, 4s, 8s...)</div>
           </div>
           <div className="mb-4">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+            <label htmlFor="flow-max-delay" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
               Max Delay (optional)
             </label>
             <Input
+              id="flow-max-delay"
               value={retryData.max_delay || ''}
               onChange={event => updateField('max_delay', event.target.value)}
               placeholder="30s"
@@ -223,10 +233,11 @@ export function OneTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
     <div className="space-y-6">
 
       <div>
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+        <label htmlFor="flow-purpose" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
           Purpose (optional)
         </label>
         <Textarea
+          id="flow-purpose"
           value={data.description || ''}
           onChange={event => updateField('description', event.target.value)}
           placeholder="Initialize session tokens, shared IDs, warm caches, bootstrap environment..."
@@ -357,6 +368,12 @@ export function ParallelDetails({ node }: NodeDetailProps) {
   );
 }
 
+const thinkTimeModes = [
+  { value: 'fixed', label: 'Fixed', icon: Clock3 },
+  { value: 'range', label: 'Range', icon: BetweenHorizontalStart },
+  { value: 'distribution', label: 'Distribution', icon: Binary },
+] as const;
+
 export function ThinkTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
   const { data, updateField, updateData } = createNodeDataUpdater(node, onNodeUpdate);
   const hasFixed = data.duration !== undefined && String(data.duration).trim() !== '';
@@ -366,11 +383,6 @@ export function ThinkTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
   const fixedDuration = String(data.duration || '');
   const variableMin = String(data.min || '');
   const variableMax = String(data.max || '');
-  const thinkTimeModes = [
-    { value: 'fixed', label: 'Fixed', icon: Clock3 },
-    { value: 'range', label: 'Range', icon: BetweenHorizontalStart },
-    { value: 'distribution', label: 'Distribution', icon: Binary },
-  ] as const;
   const thinkTimeActiveTabColor = 'text-yellow-400 bg-yellow-400/10 border-b-2 border-yellow-400';
 
   const handleModeChange = (newMode: 'fixed' | 'range' | 'distribution') => {
@@ -445,10 +457,11 @@ export function ThinkTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+              <label htmlFor="flow-duration" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
                 Duration
               </label>
               <Input
+                id="flow-duration"
                 value={fixedDuration}
                 onChange={event => updateField('duration', event.target.value)}
                 placeholder="2s"
@@ -462,10 +475,11 @@ export function ThinkTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+              <label htmlFor="flow-minimum-duration-range" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
                 Minimum Duration
               </label>
               <Input
+                id="flow-minimum-duration-range"
                 value={variableMin}
                 onChange={event => updateField('min', event.target.value)}
                 placeholder="1s"
@@ -473,10 +487,11 @@ export function ThinkTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
               />
             </div>
             <div>
-              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+              <label htmlFor="flow-maximum-duration-range" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
                 Maximum Duration
               </label>
               <Input
+                id="flow-maximum-duration-range"
                 value={variableMax}
                 onChange={event => updateField('max', event.target.value)}
                 placeholder="3s"
@@ -493,8 +508,9 @@ export function ThinkTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Mean</label>
+              <label htmlFor="flow-mean" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Mean</label>
               <Input
+                id="flow-mean"
                 value={String(data.mean || '')}
                 onChange={event => updateField('mean', event.target.value)}
                 placeholder="2s"
@@ -502,8 +518,9 @@ export function ThinkTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
               />
             </div>
             <div>
-              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Std Dev</label>
+              <label htmlFor="flow-std-dev" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Std Dev</label>
               <Input
+                id="flow-std-dev"
                 value={String(data.std_dev || '')}
                 onChange={event => updateField('std_dev', event.target.value)}
                 placeholder="500ms"
@@ -513,10 +530,11 @@ export function ThinkTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+              <label htmlFor="flow-minimum-duration-distribution" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
                 Minimum Duration
               </label>
               <Input
+                id="flow-minimum-duration-distribution"
                 value={variableMin}
                 onChange={event => updateField('min', event.target.value)}
                 placeholder="1s"
@@ -524,10 +542,11 @@ export function ThinkTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
               />
             </div>
             <div>
-              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+              <label htmlFor="flow-maximum-duration-distribution" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
                 Maximum Duration
               </label>
               <Input
+                id="flow-maximum-duration-distribution"
                 value={variableMax}
                 onChange={event => updateField('max', event.target.value)}
                 placeholder="3s"
@@ -537,14 +556,14 @@ export function ThinkTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+              <label htmlFor="flow-distribution" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
                 Distribution
               </label>
               <Select
                 value={String(data.distribution || 'normal')}
                 onValueChange={value => updateField('distribution', value)}
               >
-                <SelectTrigger className="w-full h-9.5 px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono">
+                <SelectTrigger id="flow-distribution" className="w-full h-9.5 px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono">
                   <SelectValue placeholder="Select distribution" />
                 </SelectTrigger>
                 <SelectContent>

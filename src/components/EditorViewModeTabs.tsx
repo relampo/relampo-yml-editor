@@ -19,31 +19,29 @@ export function EditorViewModeTabs({
   debugViewEnabled,
   runViewEnabled,
 }: EditorViewModeTabsProps) {
-  const tabs: Array<{ mode: EditorViewMode; icon: ReactNode; label: string; enabled: boolean }> = [
-    { mode: 'tree', icon: <GitBranch className="w-4 h-4" />, label: language === 'es' ? 'Árbol' : 'Tree', enabled: true },
-    { mode: 'code', icon: <Code2 className="w-4 h-4" />, label: language === 'es' ? 'Código' : 'Code', enabled: true },
-    { mode: 'debug', icon: <Bug className="w-4 h-4" />, label: 'Debug', enabled: debugViewEnabled },
-    { mode: 'run', icon: <Gauge className="w-4 h-4" />, label: language === 'es' ? 'Carga' : 'Run', enabled: runViewEnabled },
+  const tabs: Array<{ mode: EditorViewMode; icon: ReactNode; label: string }> = [
+    { mode: 'tree', icon: <GitBranch className="w-4 h-4" />, label: language === 'es' ? 'Árbol' : 'Tree' },
+    { mode: 'code', icon: <Code2 className="w-4 h-4" />, label: language === 'es' ? 'Código' : 'Code' },
+    ...(debugViewEnabled ? [{ mode: 'debug' as const, icon: <Bug className="w-4 h-4" />, label: 'Debug' }] : []),
+    ...(runViewEnabled ? [{ mode: 'run' as const, icon: <Gauge className="w-4 h-4" />, label: language === 'es' ? 'Carga' : 'Run' }] : []),
   ];
 
   return (
     <div className="flex items-center bg-[#111111] border-b border-white/5 shrink-0">
-      {tabs
-        .filter(tab => tab.enabled)
-        .map(tab => (
-          <button
-            key={tab.mode}
-            onClick={() => onSelect(tab.mode)}
-            className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 text-sm font-bold transition-all duration-200 ${
-              activeViewMode === tab.mode
-                ? 'text-yellow-400 bg-yellow-400/10 border-b-2 border-yellow-400 shadow-[inset_0_-2px_0_rgba(250,204,21,0.5)]'
-                : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'
-            }`}
-          >
-            {tab.icon}
-            {tab.label}
-          </button>
-        ))}
+      {tabs.map(tab => (
+        <button type="button"
+          key={tab.mode}
+          onClick={() => onSelect(tab.mode)}
+          className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 text-sm font-bold transition-all duration-200 ${
+            activeViewMode === tab.mode
+              ? 'text-yellow-400 bg-yellow-400/10 border-b-2 border-yellow-400 shadow-[inset_0_-2px_0_rgba(250,204,21,0.5)]'
+              : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'
+          }`}
+        >
+          {tab.icon}
+          {tab.label}
+        </button>
+      ))}
     </div>
   );
 }

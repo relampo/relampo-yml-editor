@@ -114,11 +114,19 @@ function DebugMetadataDetails({
   currentMatchIndex: number;
   hasActiveSearch: boolean;
 }) {
-  const [open, setOpen] = useState(hasActiveSearch);
-
-  useEffect(() => {
+  // `open` is otherwise fully user-controlled via the native <details>
+  // onToggle below. The only prop-driven adjustment is: when a search
+  // becomes active (false -> true transition), force it open so matches are
+  // visible; a search going inactive, or the user manually collapsing while
+  // a search stays active, does not touch it. Tracked via the
+  // store-previous-prop-and-compare-during-render pattern rather than an
+  // effect so the forced reopen lands in the same render as the transition.
+  const [open, setOpen] = useState(() => hasActiveSearch);
+  const [prevHasActiveSearch, setPrevHasActiveSearch] = useState(() => hasActiveSearch);
+  if (hasActiveSearch !== prevHasActiveSearch) {
+    setPrevHasActiveSearch(hasActiveSearch);
     if (hasActiveSearch) setOpen(true);
-  }, [hasActiveSearch]);
+  }
 
   return (
     <details
@@ -244,7 +252,7 @@ function HighlightedDebugText({
     const active = precedingMatches + index === currentMatchIndex;
     nodes.push(
       <mark
-        key={`${range.start}-${range.end}-${index}`}
+        key={`${range.start}-${range.end}`}
         ref={active ? activeMatchRef : undefined}
         data-match-index={precedingMatches + index}
         className={active ? 'rounded-sm bg-yellow-300 text-black ring-2 ring-amber-500' : 'rounded-sm bg-blue-500/40 text-blue-100'}

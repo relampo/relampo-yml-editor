@@ -34,9 +34,15 @@ export function useRedirectMaps(yamlTree: YAMLNode | null) {
       }
     }
 
-    prevRedirectedMapRef.current = merged;
     return merged;
   }, [yamlTree]);
+
+  // Sync the "previous merged map" after commit rather than during render:
+  // writing a ref mid-render is impure and can leave a stale value if React
+  // discards the render. The memo above reads the last committed value.
+  useEffect(() => {
+    prevRedirectedMapRef.current = redirectedRequestMap;
+  }, [redirectedRequestMap]);
 
   const redirectSourceMap = useMemo<Record<string, RedirectSourceInfo>>(() => {
     if (!yamlTree) return {};
@@ -114,6 +120,37 @@ export function useParseWorker({
   applySemanticValidation,
   normalizeParsedTree,
 }: ParseWorkerDeps) {
+  // Several of the callbacks above (syncSelectionWithTree, applySemanticValidation,
+  // normalizeParsedTree) are recreated by the caller on every render and aren't
+  // memoized there. Keeping the worker effect scoped to [language] (so the worker
+  // itself isn't torn down/recreated on every unrelated render) while still calling
+  // the *latest* versions of these callbacks requires reading them through a ref
+  // instead of closing over them directly.
+  const latestRef = useRef({
+    setIsParsing,
+    setIsFileLoading,
+    setError,
+    setYamlTree,
+    syncSelectionWithTree,
+    setValidationErrors,
+    setIsTreeOutdated,
+    applySemanticValidation,
+    normalizeParsedTree,
+  });
+  useEffect(() => {
+    latestRef.current = {
+      setIsParsing,
+      setIsFileLoading,
+      setError,
+      setYamlTree,
+      syncSelectionWithTree,
+      setValidationErrors,
+      setIsTreeOutdated,
+      applySemanticValidation,
+      normalizeParsedTree,
+    };
+  });
+
   useEffect(() => {
     if (typeof Worker === 'undefined') return;
     const worker = new Worker(new URL('../workers/yamlParser.worker.ts', import.meta.url), {
@@ -124,34 +161,35 @@ export function useParseWorker({
     worker.onmessage = (event: MessageEvent<ParseWorkerResponse>) => {
       const message = event.data;
       if (!message || message.id !== activeParseRequestIdRef.current) return;
-      setIsParsing(false);
-      setIsFileLoading(false);
+      const current = latestRef.current;
+      current.setIsParsing(false);
+      current.setIsFileLoading(false);
       if (!message.ok) {
-        setError(message.error || (language === 'es' ? 'Error al parsear YAML' : 'Error parsing YAML'));
-        setYamlTree(null);
-        syncSelectionWithTree(null);
-        setValidationErrors([]);
-        setIsTreeOutdated(true);
+        current.setError(message.error || (language === 'es' ? 'Error al parsear YAML' : 'Error parsing YAML'));
+        current.setYamlTree(null);
+        current.syncSelectionWithTree(null);
+        current.setValidationErrors([]);
+        current.setIsTreeOutdated(true);
         return;
       }
-      const normalizedTree = normalizeParsedTree(message.tree);
-      setYamlTree(normalizedTree);
-      syncSelectionWithTree(normalizedTree);
-      setError(null);
-      applySemanticValidation(normalizedTree);
-      setIsTreeOutdated(false);
+      const normalizedTree = current.normalizeParsedTree(message.tree);
+      current.setYamlTree(normalizedTree);
+      current.syncSelectionWithTree(normalizedTree);
+      current.setError(null);
+      current.applySemanticValidation(normalizedTree);
+      current.setIsTreeOutdated(false);
     };
 
     worker.onerror = () => {
-      setIsParsing(false);
-      setIsFileLoading(false);
+      latestRef.current.setIsParsing(false);
+      latestRef.current.setIsFileLoading(false);
     };
 
     return () => {
       worker.terminate();
       if (parseWorkerRef.current === worker) parseWorkerRef.current = null;
     };
-  }, [language]);
+  }, [language, activeParseRequestIdRef, parseWorkerRef]);
 }
 
 export function useTreeSelection() {

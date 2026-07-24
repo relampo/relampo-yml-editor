@@ -1,8 +1,130 @@
 import { AlertTriangle, Clock3, Cookie, Cpu, Hand, Plus, ServerCrash, Trash2 } from 'lucide-react';
+import { useState } from 'react';
 import { Input } from '../ui/input';
 import { SelectField } from './SharedFields';
 import { createNodeDataUpdater } from './nodeDetailHelpers';
 import type { NodeDetailProps } from './types';
+
+function SeedCookiesEditor({
+  cookies,
+  disabled,
+  nodeId,
+  onChange,
+}: {
+  cookies: any[];
+  disabled: boolean;
+  nodeId: string;
+  onChange: (cookies: any[]) => void;
+}) {
+  // Seed cookies have no id in the YAML, so we hold stable synthetic React keys
+  // in state, kept in lockstep with add/remove below. Reset when the node changes;
+  // fall back to length-syncing (append/trim) if the array changes some other way.
+  const [rowKeys, setRowKeys] = useState<string[]>(() => cookies.map(() => crypto.randomUUID()));
+  const [rowKeysNodeId, setRowKeysNodeId] = useState(() => nodeId);
+  if (rowKeysNodeId !== nodeId) {
+    setRowKeysNodeId(nodeId);
+    setRowKeys(cookies.map(() => crypto.randomUUID()));
+  } else if (rowKeys.length !== cookies.length) {
+    setRowKeys(prev =>
+      prev.length < cookies.length
+        ? [...prev, ...Array.from({ length: cookies.length - prev.length }, () => crypto.randomUUID())]
+        : prev.slice(0, cookies.length),
+    );
+  }
+
+  const invalidSeedRows = cookies.reduce((invalidIndexes: number[], cookie: any, index: number) => {
+    if (!String(cookie?.name || '').trim() || !String(cookie?.domain || '').trim()) {
+      invalidIndexes.push(index);
+    }
+    return invalidIndexes;
+  }, [] as number[]);
+
+  const updateSeedCookie = (index: number, field: string, value: string) => {
+    const next = [...cookies];
+    next[index] = { ...(next[index] || {}), [field]: value };
+    onChange(next);
+  };
+
+  return (
+    <div className={`rounded border border-white/10 bg-white/5 p-3 ${disabled ? 'opacity-50' : ''}`}>
+      <div className="mb-2 flex items-center justify-between">
+        <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Seed Cookies</span>
+        <button
+          type="button"
+          onClick={() => {
+            setRowKeys(keys => [...keys, crypto.randomUUID()]);
+            onChange([...cookies, { name: '', value: '', domain: '', path: '/' }]);
+          }}
+          disabled={disabled}
+          className="flex items-center gap-1 px-2 py-1 text-xs text-amber-500 hover:text-amber-400 border border-yellow-400/20 bg-yellow-400/5 hover:bg-yellow-400/10 hover:border-yellow-400/35 rounded transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <Plus className="w-3 h-3" />
+          Add
+        </button>
+      </div>
+
+      {cookies.length === 0 ? (
+        <div className="text-xs text-zinc-500">No seed cookies configured.</div>
+      ) : (
+        <div className="space-y-2">
+          {cookies.map((cookie: any, index: number) => (
+            <div
+              key={rowKeys[index]}
+              className="grid grid-cols-12 gap-2"
+            >
+              <Input
+                value={cookie?.name || ''}
+                disabled={disabled}
+                onChange={event => updateSeedCookie(index, 'name', event.target.value)}
+                placeholder="name"
+                className="col-span-3 h-8.5 bg-[#1a1a1a] border-white/10 text-zinc-300 text-xs font-mono"
+              />
+              <Input
+                value={cookie?.value || ''}
+                disabled={disabled}
+                onChange={event => updateSeedCookie(index, 'value', event.target.value)}
+                placeholder="value"
+                className="col-span-3 h-8.5 bg-[#1a1a1a] border-white/10 text-zinc-300 text-xs font-mono"
+              />
+              <Input
+                value={cookie?.domain || ''}
+                disabled={disabled}
+                onChange={event => updateSeedCookie(index, 'domain', event.target.value)}
+                placeholder="domain"
+                className="col-span-3 h-8.5 bg-[#1a1a1a] border-white/10 text-zinc-300 text-xs font-mono"
+              />
+              <Input
+                value={cookie?.path || '/'}
+                disabled={disabled}
+                onChange={event => updateSeedCookie(index, 'path', event.target.value)}
+                placeholder="/"
+                className="col-span-2 h-8.5 bg-[#1a1a1a] border-white/10 text-zinc-300 text-xs font-mono"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  setRowKeys(keys => keys.filter((_, rowIndex) => rowIndex !== index));
+                  onChange(cookies.filter((_: any, rowIndex: number) => rowIndex !== index));
+                }}
+                disabled={disabled}
+                className="col-span-1 flex items-center justify-center rounded text-zinc-500 hover:text-zinc-300 hover:bg-white/10 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                title="Remove cookie"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      {invalidSeedRows.length > 0 && (
+        <div className="mt-2 rounded border border-amber-400/30 bg-amber-400/10 px-2 py-1.5 text-xs text-amber-200">
+          Seed cookie validation: rows {invalidSeedRows.map((index: number) => index + 1).join(', ')} require both name
+          and domain.
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
   const { data, updateData, updateField } = createNodeDataUpdater(node, onNodeUpdate);
@@ -14,10 +136,6 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
   const seedCookies = Array.isArray(data.cookies) ? data.cookies : [];
   const isIgnorePolicy = policy === 'ignore_cookies';
   const effectiveClearEachIteration = persistAcrossIterations ? false : clearEachIteration;
-  const invalidSeedRows = seedCookies
-    .map((cookie: any, index: number) => ({ cookie, index }))
-    .filter(({ cookie }: { cookie: any }) => !String(cookie?.name || '').trim() || !String(cookie?.domain || '').trim())
-    .map(({ index }: { index: number }) => index);
   const summaryLine =
     normalizedMode === 'auto'
       ? 'Auto + Standard + VU scope'
@@ -59,18 +177,13 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
     });
   };
 
-  const updateSeedCookie = (index: number, field: string, value: string) => {
-    const next = [...seedCookies];
-    next[index] = { ...(next[index] || {}), [field]: value };
-    handleChange('cookies', next);
-  };
 
   return (
     <div className="space-y-6">
       <div>
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">Mode</label>
+        <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">Mode</div>
         <div className="flex flex-wrap items-center gap-1">
-          <button
+          <button type="button"
             onClick={() => handleModeChange('auto')}
             className={`px-3 py-1.5 text-sm font-medium ${normalizedMode === 'auto' ? activePillClass : inactivePillClass}`}
           >
@@ -80,7 +193,7 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
               <span>Auto (Recommended)</span>
             </span>
           </button>
-          <button
+          <button type="button"
             onClick={() => handleModeChange('manual')}
             className={`px-3 py-1.5 text-sm font-medium ${normalizedMode === 'manual' ? activePillClass : inactivePillClass}`}
           >
@@ -101,15 +214,15 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
       ) : (
         <>
           <div className="mb-4">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Policy</label>
+            <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Policy</div>
             <div className="flex flex-wrap items-center gap-1">
-              <button
+              <button type="button"
                 onClick={() => handlePolicyChange('standard')}
                 className={`px-3 py-1.5 text-sm font-medium ${!isIgnorePolicy ? activePillClass : inactivePillClass}`}
               >
                 Standard
               </button>
-              <button
+              <button type="button"
                 onClick={() => handlePolicyChange('ignore_cookies')}
                 className={`px-3 py-1.5 text-sm font-medium ${isIgnorePolicy ? activePillClass : inactivePillClass}`}
               >
@@ -119,11 +232,11 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
           </div>
 
           <div className="mb-2">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+            <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
               Quick Presets
-            </label>
+            </div>
             <div className="flex flex-wrap items-center gap-1">
-              <button
+              <button type="button"
                 onClick={() =>
                   updateData({
                     ...data,
@@ -134,11 +247,11 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
                     clear_each_iteration: false,
                   })
                 }
-                className="px-3 py-1.5 text-sm font-medium rounded-full border border-transparent text-zinc-400 hover:text-zinc-100 hover:bg-white/6 transition-all duration-200"
+                className="px-3 py-1.5 text-sm font-medium rounded-full border border-transparent text-zinc-400 hover:text-zinc-100 hover:bg-white/6 transition-colors duration-200"
               >
                 Default
               </button>
-              <button
+              <button type="button"
                 onClick={() =>
                   updateData({
                     ...data,
@@ -146,11 +259,11 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
                     policy: 'ignore_cookies',
                   })
                 }
-                className="px-3 py-1.5 text-sm font-medium rounded-full border border-transparent text-zinc-400 hover:text-zinc-100 hover:bg-white/6 transition-all duration-200"
+                className="px-3 py-1.5 text-sm font-medium rounded-full border border-transparent text-zinc-400 hover:text-zinc-100 hover:bg-white/6 transition-colors duration-200"
               >
                 Stateless
               </button>
-              <button
+              <button type="button"
                 onClick={() =>
                   updateData({
                     ...data,
@@ -161,7 +274,7 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
                     clear_each_iteration: true,
                   })
                 }
-                className="px-3 py-1.5 text-sm font-medium rounded-full border border-transparent text-zinc-400 hover:text-zinc-100 hover:bg-white/6 transition-all duration-200"
+                className="px-3 py-1.5 text-sm font-medium rounded-full border border-transparent text-zinc-400 hover:text-zinc-100 hover:bg-white/6 transition-colors duration-200"
               >
                 Clean Iteration
               </button>
@@ -213,82 +326,12 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
             />
           </div>
 
-          <div className={`rounded border border-white/10 bg-white/5 p-3 ${isIgnorePolicy ? 'opacity-50' : ''}`}>
-            <div className="mb-2 flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Seed Cookies</span>
-              <button
-                onClick={() =>
-                  handleChange('cookies', [...seedCookies, { name: '', value: '', domain: '', path: '/' }])
-                }
-                disabled={isIgnorePolicy}
-                className="flex items-center gap-1 px-2 py-1 text-xs text-amber-500 hover:text-amber-400 border border-yellow-400/20 bg-yellow-400/5 hover:bg-yellow-400/10 hover:border-yellow-400/35 rounded transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <Plus className="w-3 h-3" />
-                Add
-              </button>
-            </div>
-
-            {seedCookies.length === 0 ? (
-              <div className="text-xs text-zinc-500">No seed cookies configured.</div>
-            ) : (
-              <div className="space-y-2">
-                {seedCookies.map((cookie: any, index: number) => (
-                  <div
-                    key={`${index}-${cookie?.name || 'cookie'}`}
-                    className="grid grid-cols-12 gap-2"
-                  >
-                    <Input
-                      value={cookie?.name || ''}
-                      disabled={isIgnorePolicy}
-                      onChange={event => updateSeedCookie(index, 'name', event.target.value)}
-                      placeholder="name"
-                      className="col-span-3 h-8.5 bg-[#1a1a1a] border-white/10 text-zinc-300 text-xs font-mono"
-                    />
-                    <Input
-                      value={cookie?.value || ''}
-                      disabled={isIgnorePolicy}
-                      onChange={event => updateSeedCookie(index, 'value', event.target.value)}
-                      placeholder="value"
-                      className="col-span-3 h-8.5 bg-[#1a1a1a] border-white/10 text-zinc-300 text-xs font-mono"
-                    />
-                    <Input
-                      value={cookie?.domain || ''}
-                      disabled={isIgnorePolicy}
-                      onChange={event => updateSeedCookie(index, 'domain', event.target.value)}
-                      placeholder="domain"
-                      className="col-span-3 h-8.5 bg-[#1a1a1a] border-white/10 text-zinc-300 text-xs font-mono"
-                    />
-                    <Input
-                      value={cookie?.path || '/'}
-                      disabled={isIgnorePolicy}
-                      onChange={event => updateSeedCookie(index, 'path', event.target.value)}
-                      placeholder="/"
-                      className="col-span-2 h-8.5 bg-[#1a1a1a] border-white/10 text-zinc-300 text-xs font-mono"
-                    />
-                    <button
-                      onClick={() =>
-                        handleChange(
-                          'cookies',
-                          seedCookies.filter((_: any, rowIndex: number) => rowIndex !== index),
-                        )
-                      }
-                      disabled={isIgnorePolicy}
-                      className="col-span-1 flex items-center justify-center rounded text-zinc-500 hover:text-zinc-300 hover:bg-white/10 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-                      title="Remove cookie"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-            {invalidSeedRows.length > 0 && (
-              <div className="mt-2 rounded border border-amber-400/30 bg-amber-400/10 px-2 py-1.5 text-xs text-amber-200">
-                Seed cookie validation: rows {invalidSeedRows.map((index: number) => index + 1).join(', ')} require both
-                name and domain.
-              </div>
-            )}
-          </div>
+          <SeedCookiesEditor
+            cookies={seedCookies}
+            disabled={isIgnorePolicy}
+            nodeId={node.id}
+            onChange={next => handleChange('cookies', next)}
+          />
         </>
       )}
 
@@ -306,7 +349,7 @@ export function CacheManagerDetails({ node, onNodeUpdate }: NodeDetailProps) {
   return (
     <div className="space-y-6">
       <div>
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">Cache</label>
+        <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">Cache</div>
         <div className="flex flex-wrap items-center gap-1">
           <TogglePill
             active={enabled}
@@ -349,15 +392,19 @@ export function CacheManagerDetails({ node, onNodeUpdate }: NodeDetailProps) {
             noMargin
           />
           <div>
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+            <label
+              htmlFor="ops-max-elements"
+              className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
+            >
               Max Elements
             </label>
             <Input
+              id="ops-max-elements"
               type="number"
               value={maxElements}
               disabled={!enabled}
               onChange={event => updateField('max_elements', Math.max(1, parseInt(event.target.value || '1', 10) || 1))}
-              className="w-full h-9.5 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono focus:border-white/30 transition-all"
+              className="w-full h-9.5 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono focus:border-white/30 transition-colors"
             />
           </div>
         </div>
@@ -370,6 +417,27 @@ export function CacheManagerDetails({ node, onNodeUpdate }: NodeDetailProps) {
   );
 }
 
+const errorPolicyTabStyle = {
+  on_4xx: {
+    backgroundColor: 'rgba(245, 158, 11, 0.20)',
+    color: '#fcd34d',
+    borderColor: 'rgba(252, 211, 77, 0.50)',
+    boxShadow: '0 10px 22px rgba(245, 158, 11, 0.20)',
+  },
+  on_5xx: {
+    backgroundColor: 'rgba(244, 63, 94, 0.20)',
+    color: '#fda4af',
+    borderColor: 'rgba(253, 164, 175, 0.55)',
+    boxShadow: '0 10px 22px rgba(244, 63, 94, 0.20)',
+  },
+  on_timeout: {
+    backgroundColor: 'rgba(56, 189, 248, 0.20)',
+    color: '#7dd3fc',
+    borderColor: 'rgba(125, 211, 252, 0.55)',
+    boxShadow: '0 10px 22px rgba(56, 189, 248, 0.20)',
+  },
+} as const;
+
 export function ErrorPolicyDetails({ node, onNodeUpdate }: NodeDetailProps) {
   const { data, updateData } = createNodeDataUpdater(node, onNodeUpdate);
   const activeRules = Array.isArray(data.active_rules)
@@ -377,26 +445,6 @@ export function ErrorPolicyDetails({ node, onNodeUpdate }: NodeDetailProps) {
     : [];
   const currentValueForRule = (rule: 'on_4xx' | 'on_5xx' | 'on_timeout') =>
     String(data[rule] || (rule === 'on_4xx' ? 'continue' : 'stop'));
-  const tabStyle = {
-    on_4xx: {
-      backgroundColor: 'rgba(245, 158, 11, 0.20)',
-      color: '#fcd34d',
-      borderColor: 'rgba(252, 211, 77, 0.50)',
-      boxShadow: '0 10px 22px rgba(245, 158, 11, 0.20)',
-    },
-    on_5xx: {
-      backgroundColor: 'rgba(244, 63, 94, 0.20)',
-      color: '#fda4af',
-      borderColor: 'rgba(253, 164, 175, 0.55)',
-      boxShadow: '0 10px 22px rgba(244, 63, 94, 0.20)',
-    },
-    on_timeout: {
-      backgroundColor: 'rgba(56, 189, 248, 0.20)',
-      color: '#7dd3fc',
-      borderColor: 'rgba(125, 211, 252, 0.55)',
-      boxShadow: '0 10px 22px rgba(56, 189, 248, 0.20)',
-    },
-  } as const;
 
   const toggleRule = (rule: 'on_4xx' | 'on_5xx' | 'on_timeout') => {
     updateData({
@@ -410,32 +458,32 @@ export function ErrorPolicyDetails({ node, onNodeUpdate }: NodeDetailProps) {
   return (
     <div className="space-y-6">
       <div>
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">Rules</label>
+        <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">Rules</div>
         <div className="flex flex-wrap items-center gap-1">
-          <button
+          <button type="button"
             onClick={() => toggleRule('on_4xx')}
             className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${activeRules.includes('on_4xx') ? 'border-current text-white ring-1 ring-white/30' : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/6'}`}
-            style={activeRules.includes('on_4xx') ? tabStyle.on_4xx : undefined}
+            style={activeRules.includes('on_4xx') ? errorPolicyTabStyle.on_4xx : undefined}
           >
             <span className="inline-flex items-center gap-1.5">
               <AlertTriangle className="h-3.5 w-3.5" />
               <span>On 4xx</span>
             </span>
           </button>
-          <button
+          <button type="button"
             onClick={() => toggleRule('on_5xx')}
             className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${activeRules.includes('on_5xx') ? 'border-current text-white ring-1 ring-white/30' : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/6'}`}
-            style={activeRules.includes('on_5xx') ? tabStyle.on_5xx : undefined}
+            style={activeRules.includes('on_5xx') ? errorPolicyTabStyle.on_5xx : undefined}
           >
             <span className="inline-flex items-center gap-1.5">
               <ServerCrash className="h-3.5 w-3.5" />
               <span>On 5xx</span>
             </span>
           </button>
-          <button
+          <button type="button"
             onClick={() => toggleRule('on_timeout')}
             className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${activeRules.includes('on_timeout') ? 'border-current text-white ring-1 ring-white/30' : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/6'}`}
-            style={activeRules.includes('on_timeout') ? tabStyle.on_timeout : undefined}
+            style={activeRules.includes('on_timeout') ? errorPolicyTabStyle.on_timeout : undefined}
           >
             <span className="inline-flex items-center gap-1.5">
               <Clock3 className="h-3.5 w-3.5" />
@@ -486,7 +534,7 @@ function TogglePill({
   activeStyle: React.CSSProperties;
 }) {
   return (
-    <button
+    <button type="button"
       onClick={onClick}
       className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${active ? 'border-current text-white' : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/6'}`}
       style={active ? activeStyle : undefined}

@@ -3,19 +3,20 @@ import { Input } from '../../ui/input';
 import { createNodeDataUpdater } from '../nodeDetailHelpers';
 import type { NodeDetailProps } from '../types';
 
+const commonHeaders = [
+  'Authorization',
+  'Content-Type',
+  'Accept',
+  'User-Agent',
+  'Accept-Language',
+  'Accept-Encoding',
+  'Cache-Control',
+  'X-Api-Key',
+  'X-Requested-With',
+];
+
 export function HeaderDetails({ node, onNodeUpdate }: NodeDetailProps) {
   const { data, updateField } = createNodeDataUpdater(node, onNodeUpdate);
-  const commonHeaders = [
-    'Authorization',
-    'Content-Type',
-    'Accept',
-    'User-Agent',
-    'Accept-Language',
-    'Accept-Encoding',
-    'Cache-Control',
-    'X-Api-Key',
-    'X-Requested-With',
-  ];
 
   return (
     <div className="space-y-4">

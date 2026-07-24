@@ -114,7 +114,7 @@ export function YAMLContextMenu({
           </div>
 
           {addableItems.map(item => (
-            <button
+            <button type="button"
               key={item.type}
               onClick={() => onAddNode(item.type)}
               className="w-full px-3 py-2 flex items-center gap-3 hover:bg-white/5 text-left transition-colors"
@@ -133,7 +133,7 @@ export function YAMLContextMenu({
 
       {/* Enable/Disable option */}
       {canToggleEnabled && (
-          <button
+          <button type="button"
             onClick={() => {
               const isCurrentlyEnabled = node.data?.enabled !== false;
               onToggleEnabled(node.id, !isCurrentlyEnabled);
@@ -160,7 +160,7 @@ export function YAMLContextMenu({
           <div className="h-px bg-white/5 my-1" />
 
           {canCopy && (
-            <button
+            <button type="button"
               onClick={() => {
                 onCopy?.(node.id);
                 onClose();
@@ -173,7 +173,7 @@ export function YAMLContextMenu({
           )}
 
           {canPaste && onPaste && (
-            <button
+            <button type="button"
               onClick={() => {
                 onPaste(node.id);
                 onClose();
@@ -186,7 +186,7 @@ export function YAMLContextMenu({
           )}
 
           {canDuplicate && (
-            <button
+            <button type="button"
               onClick={() => {
                 onDuplicate?.(node.id);
                 onClose();
@@ -198,7 +198,7 @@ export function YAMLContextMenu({
             </button>
           )}
 
-          <button
+          <button type="button"
             onClick={onRemove}
             className="w-full px-3 py-2 flex items-center gap-3 hover:bg-red-500/10 text-left transition-colors text-red-400"
           >

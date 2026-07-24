@@ -1,25 +1,14 @@
-import { BetweenHorizontalStart, Plus, Search, X } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import type { RedirectedRequestInfo, YAMLNode } from '../types/yaml';
 import { canContain } from '../utils/yamlDragDropRules';
 import { createNodeByType } from './yaml-tree-view/nodeFactory';
-import {
-  addNodeToTree,
-  cloneNodeSnapshot,
-  cloneNodeWithNewIds,
-  duplicateNodeInTree,
-  getTransactionWrapValidation,
-  insertNodesAfterTarget,
-  moveNodeInTree,
-  removeNodeFromTree,
-  syncRedirectSourceFollowRedirects,
-  toggleNodeInTree,
-  updateNodeEnabled,
-  wrapNodesInTransaction,
-} from './yaml-tree-view/treeOperations';
-import type { YAMLAddableNodeType } from './yaml-tree-view/addableItems';
-import { nodeMatchExpandsDescendants, subtreeHasMatch } from './yaml-tree-view/search';
+import { TreeBulkActionsBar } from './yaml-tree-view/TreeBulkActionsBar';
+import { TreeEmptyState } from './yaml-tree-view/TreeEmptyState';
+import { TreeSearchBar } from './yaml-tree-view/TreeSearchBar';
+import { useTreeContextMenu } from './yaml-tree-view/useTreeContextMenu';
+import { useTreeMutations } from './yaml-tree-view/useTreeMutations';
+import { useTreeViewSelection } from './yaml-tree-view/useTreeViewSelection';
+import { canDuplicateNode, findNodeById, getTransactionValidationMessage } from './yaml-tree-view/treeViewHelpers';
 import { YAMLContextMenu } from './YAMLContextMenu';
 import { YAMLTreeNode } from './YAMLTreeNode';
 
@@ -47,115 +36,56 @@ export function YAMLTreeView({
   onSearchChange,
 }: YAMLTreeViewProps) {
   const { t } = useLanguage();
-  const [contextMenu, setContextMenu] = useState<{
-    x: number;
-    y: number;
-    node: YAMLNode;
-  } | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
 
-  useEffect(() => {
-    onSearchChange?.(searchQuery);
-  }, [searchQuery, onSearchChange]);
-  const [clipboardNodes, setClipboardNodes] = useState<YAMLNode[]>([]);
-  const treeContainerRef = useRef<HTMLDivElement | null>(null);
-  const isFiltering = searchQuery.trim().length > 0;
+  const {
+    searchQuery,
+    handleSearchChange,
+    handleClearSearch,
+    visibleNodes,
+    nodeById,
+    activeSelectedIds,
+    effectiveSelectedIds,
+    allSelectedDisabled,
+    transactionWrapValidation,
+    treeContainerRef,
+  } = useTreeViewSelection({ tree, selectedNode, selectedNodeIds, onSelectionChange, onSearchChange });
 
-  const visibleNodes = useMemo(() => {
-    if (!tree) return [] as YAMLNode[];
-    const out: YAMLNode[] = [];
-    const walk = (node: YAMLNode, ancestorMatches: boolean) => {
-      out.push(node);
-      const expanded = node.expanded ?? true;
-      const passAncestor = ancestorMatches || nodeMatchExpandsDescendants(node, searchQuery);
-      const showChildrenWhileSearching = Boolean(searchQuery.trim()) &&
-        (passAncestor || node.children?.some(child => subtreeHasMatch(child, searchQuery)));
-      if (node.children && node.children.length > 0 && (expanded || showChildrenWhileSearching)) {
-        const children = searchQuery.trim()
-          ? node.children.filter(child => passAncestor || subtreeHasMatch(child, searchQuery))
-          : node.children;
-        children.forEach(child => walk(child, passAncestor));
-      }
-    };
-    walk(tree, false);
-    return out;
-  }, [tree, searchQuery]);
+  const { contextMenu, handleContextMenu, handleCloseContextMenu, getContextActionTargetIds } = useTreeContextMenu({
+    activeSelectedIds,
+    effectiveSelectedIds,
+    onSelectionChange,
+    onContextMenuOpened,
+  });
 
-  const parentMap = useMemo(() => {
-    const map = new Map<string, string | null>();
-    if (!tree) return map;
-
-    const walk = (node: YAMLNode, parentId: string | null) => {
-      map.set(node.id, parentId);
-      node.children?.forEach(child => walk(child, node.id));
-    };
-
-    walk(tree, null);
-    return map;
-  }, [tree]);
-
-  const nodeById = useMemo(() => {
-    const map = new Map<string, YAMLNode>();
-    visibleNodes.forEach(node => map.set(node.id, node));
-    return map;
-  }, [visibleNodes]);
-
-  const visibleSelectedIds = useMemo(
-    () => selectedNodeIds.filter(id => nodeById.has(id)),
-    [selectedNodeIds, nodeById],
-  );
-
-  const activeSelectedIds = isFiltering ? visibleSelectedIds : selectedNodeIds;
-
-  const selectedNodes = useMemo(
-    () => activeSelectedIds.map(id => nodeById.get(id)).filter(Boolean) as YAMLNode[],
-    [activeSelectedIds, nodeById],
-  );
-
-  const effectiveSelectedIds = useMemo(() => {
-    if (!tree) return [] as string[];
-    const selectedSet = new Set(activeSelectedIds);
-
-    const hasSelectedAncestor = (nodeId: string) => {
-      let parentId = parentMap.get(nodeId) ?? null;
-      while (parentId) {
-        if (selectedSet.has(parentId)) return true;
-        parentId = parentMap.get(parentId) ?? null;
-      }
-      return false;
-    };
-
-    return activeSelectedIds.filter(id => id !== tree.id && !hasSelectedAncestor(id));
-  }, [activeSelectedIds, parentMap, tree]);
-
-  useEffect(() => {
-    if (!isFiltering || visibleSelectedIds.length === selectedNodeIds.length) {
-      return;
-    }
-
-    const nextPrimary =
-      selectedNode && nodeById.has(selectedNode.id)
-        ? selectedNode
-        : visibleSelectedIds
-            .map(id => nodeById.get(id))
-            .filter(Boolean)
-            .at(-1) ?? null;
-
-    onSelectionChange(nextPrimary, visibleSelectedIds);
-  }, [isFiltering, nodeById, onSelectionChange, selectedNode, selectedNodeIds.length, visibleSelectedIds]);
-
-  const allSelectedDisabled = selectedNodes.length > 0 && selectedNodes.every(node => node.data?.enabled === false);
-  const transactionWrapValidation = useMemo(
-    () => (tree ? getTransactionWrapValidation(tree, effectiveSelectedIds) : null),
-    [effectiveSelectedIds, tree],
-  );
-
-  useEffect(() => {
-    if (!selectedNode?.id || !treeContainerRef.current) return;
-    const el = treeContainerRef.current.querySelector(`[data-node-id="${selectedNode.id}"]`) as HTMLElement | null;
-    if (!el) return;
-    el.scrollIntoView({ block: 'nearest' });
-  }, [selectedNode?.id]);
+  const {
+    clipboardNodes,
+    handleNodeToggle,
+    handleAddNode,
+    handleDuplicateNode,
+    handleRemoveNode,
+    handleNodeMove,
+    handleToggleEnabled,
+    handleBulkDelete,
+    handleCreateTransaction,
+    handleCopySelection,
+    handlePasteSelection,
+    handleBulkDuplicate,
+    handleBulkToggleEnabled,
+  } = useTreeMutations({
+    tree,
+    onTreeChange,
+    onSelectionChange,
+    redirectedRequestMap,
+    effectiveSelectedIds,
+    visibleNodes,
+    nodeById,
+    selectedNode,
+    allSelectedDisabled,
+    t,
+    contextMenu,
+    getContextActionTargetIds,
+    handleCloseContextMenu,
+  });
 
   const handleTreeKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (!visibleNodes.length) return;
@@ -247,382 +177,35 @@ export function YAMLTreeView({
     onSelectionChange(node, [node.id]);
   };
 
-  const handleContextMenu = (e: React.MouseEvent, node: YAMLNode) => {
-    e.preventDefault();
-
-    // If right-clicking an unselected node, target only that node for context actions.
-    if (!activeSelectedIds.includes(node.id)) {
-      onSelectionChange(node, [node.id]);
-    }
-
-    // Only suppress the mouse-oriented context menu on genuine touch-only
-    // devices: a coarse primary pointer AND no fine pointer available at all.
-    // Hybrid Windows laptops report `pointer: coarse` while a mouse is attached,
-    // and display scaling (125%/150%) shrinks innerHeight below any fixed
-    // threshold — the previous `(pointer: coarse)` and `innerHeight < 700` gates
-    // both misfired on ordinary desktops and hid the menu inconsistently across
-    // browsers (RLP-587). The menu itself clamps to the viewport and scrolls
-    // (max-h-[80vh]), so a short viewport no longer needs special handling.
-    const isTouchOnlyDevice =
-      typeof window !== 'undefined' &&
-      window.matchMedia?.('(pointer: coarse)').matches === true &&
-      window.matchMedia?.('(any-pointer: fine)').matches !== true;
-    if (isTouchOnlyDevice) {
-      setContextMenu(null);
-      return;
-    }
-
-    setContextMenu({
-      x: e.clientX,
-      y: e.clientY,
-      node,
-    });
-
-    const contextSelectionIds =
-      activeSelectedIds.includes(node.id) && effectiveSelectedIds.includes(node.id) && effectiveSelectedIds.length > 1
-        ? effectiveSelectedIds
-        : [node.id];
-    onContextMenuOpened?.({
-      nodeType: node.type,
-      selectionCount: contextSelectionIds.length,
-      hasMultiSelection: contextSelectionIds.length > 1,
-    });
-  };
-
-  const handleCloseContextMenu = () => {
-    setContextMenu(null);
-  };
-
-  const getContextActionTargetIds = (fallbackNodeId?: string): string[] => {
-    const fallback = fallbackNodeId ? [fallbackNodeId] : [];
-    if (!contextMenu) return fallback;
-
-    const contextNodeId = contextMenu.node.id;
-    const contextInSelection = effectiveSelectedIds.includes(contextNodeId);
-
-    if (contextInSelection && effectiveSelectedIds.length > 1) {
-      return effectiveSelectedIds;
-    }
-
-    return [contextNodeId];
-  };
-
-  const handleNodeToggle = (nodeId: string) => {
-    if (!tree) return;
-
-    const updatedTree = toggleNodeInTree(tree, nodeId);
-    onTreeChange(updatedTree);
-  };
-
-  const canAddNodeToTarget = (target: YAMLNode, nodeType: YAMLAddableNodeType) =>
-    !(nodeType === 'scenario' && target.type === 'scenarios' && target.children?.some(child => child.type === 'scenario'));
-
-  const canDuplicateNode = (node: YAMLNode | null | undefined) => node?.type !== 'scenario' && node?.type !== 'scenarios';
-
-  const handleAddNode = (nodeType: YAMLAddableNodeType) => {
-    if (!contextMenu || !tree) return;
-
-    const targetIds = getContextActionTargetIds();
-    const createdNodes: YAMLNode[] = [];
-
-    const updatedTree = targetIds.reduce((currentTree, targetId) => {
-      const target = findNodeById(currentTree, targetId);
-      if (!target) return currentTree;
-      if (!canAddNodeToTarget(target, nodeType)) return currentTree;
-
-      const newNode = createNodeByType(nodeType, { balancedName: t('yamlEditor.balanced.name') });
-      createdNodes.push(newNode);
-      return addNodeToTree(currentTree, targetId, newNode);
-    }, tree);
-    onTreeChange(updatedTree);
-    if (createdNodes.length > 0) {
-      onSelectionChange(
-        createdNodes[createdNodes.length - 1],
-        createdNodes.map(node => node.id),
-      );
-    }
-    handleCloseContextMenu();
-  };
-
-  const handleDuplicateNode = (nodeId: string) => {
-    if (!tree) return;
-
-    const copySuffix = t('yamlEditor.common.copy') || 'Copy';
-    const targetIds = getContextActionTargetIds(nodeId);
-    const updatedTree = targetIds.reduce(
-      (currentTree, targetId) => {
-        const target = findNodeById(currentTree, targetId);
-        if (!canDuplicateNode(target)) return currentTree;
-        return duplicateNodeInTree(currentTree, targetId, copySuffix);
-      },
-      tree,
-    );
-    onTreeChange(updatedTree);
-    handleCloseContextMenu();
-  };
-
-  const handleRemoveNode = () => {
-    if (!contextMenu || !tree) return;
-
-    const targetIds = getContextActionTargetIds();
-    const updatedTree = targetIds.reduce((currentTree, nodeId) => removeNodeFromTree(currentTree, nodeId), tree);
-    onSelectionChange(null, []);
-    onTreeChange(updatedTree);
-    handleCloseContextMenu();
-  };
-
-  const handleNodeMove = (nodeId: string, targetId: string, position: 'before' | 'after' | 'inside') => {
-    if (!tree) return;
-
-    const draggedSelection = effectiveSelectedIds.includes(nodeId)
-      ? visibleNodes.map(node => node.id).filter(id => effectiveSelectedIds.includes(id))
-      : [nodeId];
-
-    if (draggedSelection.includes(targetId)) {
-      return;
-    }
-
-    const moveOrder = position === 'after' ? [...draggedSelection].reverse() : draggedSelection;
-
-    const updatedTree = moveOrder.reduce(
-      (currentTree, draggedId) => moveNodeInTree(currentTree, draggedId, targetId, position),
-      tree,
-    );
-    onTreeChange(updatedTree);
-  };
-
-  const handleToggleEnabled = (nodeId: string, enabled: boolean) => {
-    if (!tree) return;
-
-    const targetIds = getContextActionTargetIds(nodeId);
-    const updatedTree = targetIds.reduce(
-      (currentTree, targetId) =>
-        syncRedirectSourceFollowRedirects(
-          updateNodeEnabled(currentTree, targetId, enabled),
-          targetId,
-          enabled,
-          redirectedRequestMap,
-        ),
-      tree,
-    );
-    onTreeChange(updatedTree);
-  };
-
-  const handleBulkDelete = () => {
-    if (!tree || effectiveSelectedIds.length === 0) return;
-
-    const updatedTree = effectiveSelectedIds.reduce(
-      (currentTree, nodeId) => removeNodeFromTree(currentTree, nodeId),
-      tree,
-    );
-    onSelectionChange(null, []);
-    onTreeChange(updatedTree);
-  };
-
-  const getTransactionValidationMessage = () => {
-    if (!transactionWrapValidation || transactionWrapValidation.valid) {
-      return null;
-    }
-
-    switch (transactionWrapValidation.reason) {
-      case 'minimum_selection':
-        return 'Select at least 2 sibling steps';
-      case 'same_parent':
-        return 'Selection must share the same parent';
-      case 'contiguous':
-        return 'Selection must be contiguous in the current order';
-      case 'supported_parent':
-        return 'Selection must be inside a compatible steps container';
-      case 'supported_child':
-        return 'Only step elements can be wrapped in a transaction';
-      default:
-        return 'Selection is not valid for transaction grouping';
-    }
-  };
-
-  const handleCreateTransaction = () => {
-    if (!tree) return;
-
-    const result = wrapNodesInTransaction(tree, effectiveSelectedIds);
-    if (!result) {
-      return;
-    }
-
-    onTreeChange(result.tree, {
-      primaryId: result.transactionNode.id,
-      nodeIds: [result.transactionNode.id],
-    });
-  };
-
-  const handleCopySelection = (nodeIds = effectiveSelectedIds) => {
-    if (nodeIds.length === 0) return;
-
-    const copied = nodeIds
-      .map(id => nodeById.get(id))
-      .filter(Boolean)
-      .map(node => cloneNodeSnapshot(node as YAMLNode));
-
-    setClipboardNodes(copied);
-  };
-
-  const handlePasteSelection = (targetOverride?: YAMLNode) => {
-    if (!tree || clipboardNodes.length === 0) return;
-
-    const copySuffix = t('yamlEditor.common.copy') || 'Copy';
-    const pastedNodes = clipboardNodes
-      .filter(node => canDuplicateNode(node))
-      .map(node => cloneNodeWithNewIds(node, copySuffix));
-    if (pastedNodes.length === 0) return;
-
-    const targetNode = targetOverride ?? (selectedNode && nodeById.get(selectedNode.id) ? selectedNode : tree);
-    const canPasteInside = pastedNodes.every(node => canContain(targetNode.type, node.type));
-
-    let updatedTree: YAMLNode;
-    if (canPasteInside) {
-      updatedTree = [...pastedNodes].reverse().reduce(
-        (currentTree, node) => addNodeToTree(currentTree, targetNode.id, node),
-        tree,
-      );
-    } else if (targetNode.id === tree.id) {
-      updatedTree = [...pastedNodes].reverse().reduce(
-        (currentTree, node) => addNodeToTree(currentTree, tree.id, node),
-        tree,
-      );
-    } else {
-      updatedTree = insertNodesAfterTarget(tree, targetNode.id, pastedNodes);
-    }
-
-    onTreeChange(updatedTree);
-    onSelectionChange(
-      pastedNodes[pastedNodes.length - 1] || null,
-      pastedNodes.map(node => node.id),
-    );
-  };
-
-  const handleBulkDuplicate = () => {
-    if (!tree || effectiveSelectedIds.length === 0) return;
-
-    const copySuffix = t('yamlEditor.common.copy') || 'Copy';
-    const updatedTree = effectiveSelectedIds.reduce(
-      (currentTree, nodeId) => {
-        const target = findNodeById(currentTree, nodeId);
-        if (!canDuplicateNode(target)) return currentTree;
-        return duplicateNodeInTree(currentTree, nodeId, copySuffix);
-      },
-      tree,
-    );
-    onTreeChange(updatedTree);
-  };
-
-  const handleBulkToggleEnabled = () => {
-    if (!tree || effectiveSelectedIds.length === 0) return;
-
-    const nextEnabled = allSelectedDisabled;
-    const updatedTree = effectiveSelectedIds.reduce(
-      (currentTree, nodeId) =>
-        syncRedirectSourceFollowRedirects(
-          updateNodeEnabled(currentTree, nodeId, nextEnabled),
-          nodeId,
-          nextEnabled,
-          redirectedRequestMap,
-        ),
-      tree,
-    );
-    onTreeChange(updatedTree);
-  };
-
   if (!tree) {
     return (
-      <div className="h-full w-full bg-[#0a0a0a] flex items-center justify-center">
-        <div className="text-center px-6">
-          <p className="text-sm text-zinc-500 mb-8 max-w-70 mx-auto">{t('yamlEditor.emptyState.description')}</p>
-
-          <button
-            onClick={() => {
-              const rootPlan = createNodeByType('root_plan', { balancedName: t('yamlEditor.balanced.name') });
-              onTreeChange(rootPlan);
-            }}
-            className="group relative px-6 py-3 bg-yellow-400 hover:bg-yellow-300 text-black font-bold rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 flex items-center gap-3 mx-auto shadow-xl shadow-yellow-400/10"
-          >
-            <Plus className="w-5 h-5" />
-            <span>{t('yamlEditor.emptyState.addBtn')}</span>
-            <div className="absolute inset-0 rounded-xl bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
-          </button>
-        </div>
-      </div>
+      <TreeEmptyState
+        description={t('yamlEditor.emptyState.description')}
+        buttonLabel={t('yamlEditor.emptyState.addBtn')}
+        onCreateRoot={() => {
+          const rootPlan = createNodeByType('root_plan', { balancedName: t('yamlEditor.balanced.name') });
+          onTreeChange(rootPlan);
+        }}
+      />
     );
   }
 
   return (
     <div className="h-full w-full bg-[#0a0a0a] flex flex-col">
-      {/* Search Bar - Estilo exacto del converter */}
-      <div className="shrink-0 px-3 pt-3 pb-2">
-        <div className="flex items-center gap-2 p-3 bg-[#111111] border border-white/10 rounded-lg">
-          {/* Input container */}
-          <div className="flex-1 flex items-center gap-2 bg-[#0a0a0a] border border-white/10 rounded px-3 py-1.5">
-            <Search className="w-4 h-4 text-zinc-500 shrink-0" />
-            <input
-              type="text"
-              placeholder="Search nodes..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="flex-1 bg-transparent border-none text-sm text-zinc-300 placeholder-zinc-500 outline-none"
-            />
-          </div>
-
-          {/* Close button */}
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="p-1.5 bg-[#0a0a0a] border border-white/10 rounded text-zinc-500 hover:border-yellow-400 hover:text-yellow-400 transition-all flex items-center justify-center"
-              title="Close search"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-      </div>
+      <TreeSearchBar value={searchQuery} onChange={handleSearchChange} onClear={handleClearSearch} />
 
       {activeSelectedIds.length > 1 && (
-        <div className="shrink-0 px-3 pb-2">
-          <div className="flex flex-wrap items-center gap-2 p-3 bg-[#111111] border border-white/10 rounded-lg">
-            <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
-              {activeSelectedIds.length} selected
-            </span>
-            <button
-              onClick={handleCreateTransaction}
-              disabled={!transactionWrapValidation?.valid}
-              className="px-2.5 py-1.5 text-xs font-semibold rounded border border-teal-400/20 text-teal-200 hover:bg-teal-400/10 disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-1.5"
-            >
-              <BetweenHorizontalStart className="w-3.5 h-3.5" />
-              Create Transaction
-            </button>
-            <button
-              onClick={handleBulkDuplicate}
-              disabled={effectiveSelectedIds.length === 0}
-              className="px-2.5 py-1.5 text-xs font-semibold rounded border border-white/10 text-zinc-300 hover:bg-white/5 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              Duplicate
-            </button>
-            <button
-              onClick={handleBulkToggleEnabled}
-              disabled={effectiveSelectedIds.length === 0}
-              className="px-2.5 py-1.5 text-xs font-semibold rounded border border-white/10 text-zinc-300 hover:bg-white/5 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {allSelectedDisabled ? 'Enable' : 'Disable'}
-            </button>
-            <button
-              onClick={handleBulkDelete}
-              disabled={effectiveSelectedIds.length === 0}
-              className="px-2.5 py-1.5 text-xs font-semibold rounded border border-red-400/20 text-red-300 hover:bg-red-400/10 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              Delete
-            </button>
-            {!transactionWrapValidation?.valid && (
-              <span className="text-xs text-zinc-500">{getTransactionValidationMessage()}</span>
-            )}
-          </div>
-        </div>
+        <TreeBulkActionsBar
+          selectedCount={activeSelectedIds.length}
+          hasActionableSelection={effectiveSelectedIds.length > 0}
+          allSelectedDisabled={allSelectedDisabled}
+          canCreateTransaction={Boolean(transactionWrapValidation?.valid)}
+          validationMessage={getTransactionValidationMessage(transactionWrapValidation?.reason)}
+          onCreateTransaction={handleCreateTransaction}
+          onDuplicate={handleBulkDuplicate}
+          onToggleEnabled={handleBulkToggleEnabled}
+          onDelete={handleBulkDelete}
+        />
       )}
 
       {/* Tree */}
@@ -681,17 +264,4 @@ export function YAMLTreeView({
       )}
     </div>
   );
-}
-
-function findNodeById(tree: YAMLNode, targetId: string): YAMLNode | null {
-  if (tree.id === targetId) return tree;
-
-  if (!tree.children) return null;
-
-  for (const child of tree.children) {
-    const found = findNodeById(child, targetId);
-    if (found) return found;
-  }
-
-  return null;
 }
