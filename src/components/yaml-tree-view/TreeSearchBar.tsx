@@ -25,7 +25,8 @@ export function TreeSearchBar({ value, onChange, onClear }: TreeSearchBarProps) 
 
         {/* Close button */}
         {value && (
-          <button type="button"
+          <button
+            type="button"
             onClick={onClear}
             className="p-1.5 bg-[#0a0a0a] border border-white/10 rounded text-zinc-500 hover:border-yellow-400 hover:text-yellow-400 transition-colors flex items-center justify-center"
             title="Close search"

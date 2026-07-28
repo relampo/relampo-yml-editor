@@ -274,7 +274,8 @@ export function YAMLTreeNode({
         {/* Left indicator removed to avoid visible corner artifact */}
         {/* Expand/Collapse */}
         {hasChildren && (
-          <button type="button"
+          <button
+            type="button"
             onClick={e => {
               e.stopPropagation();
               onNodeToggle(node.id);

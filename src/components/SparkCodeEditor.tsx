@@ -110,7 +110,8 @@ export function SparkCodeEditor({ value, onChange, minHeight = '250px' }: SparkC
           </div>
 
           {/* Validate Button */}
-          <button type="button"
+          <button
+            type="button"
             onClick={validateSyntax}
             disabled={isValidating}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-all ${

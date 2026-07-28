@@ -40,9 +40,14 @@ export function useRedirectMaps(yamlTree: YAMLNode | null) {
   // Sync the "previous merged map" after commit rather than during render:
   // writing a ref mid-render is impure and can leave a stale value if React
   // discards the render. The memo above reads the last committed value.
+  //
+  // Skipped while the tree is null (parse error, file load in flight) because
+  // the memo short-circuits to `{}` there — recording that would erase the
+  // preserved entries the memo exists to carry across re-parses.
   useEffect(() => {
+    if (!yamlTree) return;
     prevRedirectedMapRef.current = redirectedRequestMap;
-  }, [redirectedRequestMap]);
+  }, [redirectedRequestMap, yamlTree]);
 
   const redirectSourceMap = useMemo<Record<string, RedirectSourceInfo>>(() => {
     if (!yamlTree) return {};

@@ -253,7 +253,8 @@ function SearchBar({
           />
         </div>
         <div className="flex items-center rounded-md border border-white/10 bg-white/5 p-0.5">
-          <button type="button"
+          <button
+            type="button"
             onClick={() => onModeChange('text')}
             className={`px-2 py-1 text-xs rounded transition-colors ${
               mode === 'text'
@@ -263,7 +264,8 @@ function SearchBar({
           >
             Text
           </button>
-          <button type="button"
+          <button
+            type="button"
             onClick={() => onModeChange('regex')}
             className={`px-2 py-1 text-xs rounded transition-colors ${
               mode === 'regex'
@@ -279,7 +281,8 @@ function SearchBar({
             <span className="text-xs text-zinc-400 px-2 min-w-15 text-center font-mono">
               {totalMatches > 0 ? `${currentMatchIndex + 1}/${totalMatches}` : '0/0'}
             </span>
-            <button type="button"
+            <button
+              type="button"
               onClick={onPrevious}
               disabled={totalMatches === 0}
               className="p-1.5 hover:bg-white/10 rounded border border-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
@@ -287,7 +290,8 @@ function SearchBar({
             >
               <ChevronUp className="w-4 h-4 text-zinc-400" />
             </button>
-            <button type="button"
+            <button
+              type="button"
               onClick={onNext}
               disabled={totalMatches === 0}
               className="p-1.5 hover:bg-white/10 rounded border border-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
@@ -441,7 +445,8 @@ function ResponseHeadersPanel({ headers, httpVersion, status, statusText, fallba
 
   return (
     <div className="border border-white/10 rounded bg-[#0a0a0a] overflow-hidden">
-      <button type="button"
+      <button
+        type="button"
         onClick={() => setHeadersCollapsed(prev => !prev)}
         className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-white/5 transition-colors"
       >

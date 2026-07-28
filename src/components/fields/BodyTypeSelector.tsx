@@ -316,7 +316,8 @@ function FormDataFields({ items, onFieldChange, onAdd, onRemove }: FormDataField
         <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
           Form Data (application/x-www-form-urlencoded)
         </span>
-        <button type="button"
+        <button
+          type="button"
           onClick={onAdd}
           className="flex items-center gap-1 px-2 py-1 text-xs text-amber-500 hover:text-amber-400 hover:bg-amber-500/10 rounded transition-colors"
         >
@@ -350,7 +351,8 @@ function FormDataFields({ items, onFieldChange, onAdd, onRemove }: FormDataField
               placeholder="value"
               className="flex-1 bg-white/5 border-white/10 text-zinc-300 text-sm font-mono"
             />
-            <button type="button"
+            <button
+              type="button"
               onClick={() => onRemove(index)}
               aria-label={item.key ? `Remove ${item.key}` : 'Remove field'}
               className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded transition-colors"
@@ -386,7 +388,8 @@ function BodyTypeToggle({ bodyType, onChange, hideLabel, error }: BodyTypeToggle
       )}
       <div className="flex gap-2">
         {BODY_TYPE_OPTIONS.map(({ type, label }) => (
-          <button type="button"
+          <button
+            type="button"
             key={type}
             onClick={() => onChange(type)}
             className={`px-4 py-2 text-sm font-medium rounded transition-colors ${

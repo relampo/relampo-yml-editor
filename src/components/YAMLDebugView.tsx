@@ -141,23 +141,23 @@ type RunState = {
 };
 
 type RunAction =
-  | { type: 'run/started' }
-  | { type: 'run/reattaching' }
-  | { type: 'run/eventReceived'; event: EngineEvent }
-  | { type: 'run/done'; error: string | null }
-  | { type: 'run/connectionError'; quiet: boolean }
-  | { type: 'run/startFailed'; message: string }
-  | { type: 'run/stopped' };
+  | { type: 'run_started' }
+  | { type: 'reattach_started' }
+  | { type: 'event_received'; event: EngineEvent }
+  | { type: 'run_done'; error: string | null }
+  | { type: 'connection_error'; quiet: boolean }
+  | { type: 'run_start_failed'; message: string }
+  | { type: 'run_stopped' };
 
 const initialRunState: RunState = { entryEvents: [], isRunning: false, runCompleted: false, runError: null };
 
 function runStateReducer(state: RunState, action: RunAction): RunState {
   switch (action.type) {
-    case 'run/started':
+    case 'run_started':
       return { entryEvents: [], isRunning: true, runCompleted: false, runError: null };
-    case 'run/reattaching':
+    case 'reattach_started':
       return { ...state, isRunning: true };
-    case 'run/eventReceived': {
+    case 'event_received': {
       const previous = state.entryEvents;
       return {
         ...state,
@@ -172,15 +172,15 @@ function runStateReducer(state: RunState, action: RunAction): RunState {
         ],
       };
     }
-    case 'run/done':
+    case 'run_done':
       return { ...state, isRunning: false, runCompleted: true, runError: action.error };
-    case 'run/connectionError':
+    case 'connection_error':
       return action.quiet
         ? { ...state, isRunning: false, runCompleted: false, entryEvents: [] }
         : { ...state, isRunning: false, runCompleted: false, runError: 'Lost connection to the studio server.' };
-    case 'run/startFailed':
+    case 'run_start_failed':
       return { ...state, isRunning: false, runCompleted: false, runError: action.message };
-    case 'run/stopped':
+    case 'run_stopped':
       return { ...state, isRunning: false, runCompleted: false };
     default:
       return state;
@@ -290,14 +290,14 @@ export function YAMLDebugSession({
     stopStreamRef.current = streamDebugRun(runId, {
       onEvent: event => {
         if (!isTimelineEvent(event)) return;
-        dispatchRunState({ type: 'run/eventReceived', event });
+        dispatchRunState({ type: 'event_received', event });
       },
       onDone: error => {
-        dispatchRunState({ type: 'run/done', error });
+        dispatchRunState({ type: 'run_done', error });
       },
       onConnectionError: () => {
         if (quiet) runStore.clear();
-        dispatchRunState({ type: 'run/connectionError', quiet });
+        dispatchRunState({ type: 'connection_error', quiet });
       },
     });
   }, []);
@@ -321,7 +321,7 @@ export function YAMLDebugSession({
       }
       reattachedRef.current = true;
       setRunDebugEventTargets(currentDebugEventTargets);
-      dispatchRunState({ type: 'run/reattaching' });
+      dispatchRunState({ type: 'reattach_started' });
       subscribe(storedRun.id, true);
     },
     [currentDebugEventTargets, documentReady, subscribe, yamlCode],
@@ -345,7 +345,7 @@ export function YAMLDebugSession({
       scriptAtStart = flushPendingEdits ? flushPendingEdits() : yamlCode;
     } catch (error) {
       dispatchRunState({
-        type: 'run/startFailed',
+        type: 'run_start_failed',
         message: error instanceof Error ? error.message : String(error),
       });
       return;
@@ -356,7 +356,7 @@ export function YAMLDebugSession({
     stopStreamRef.current?.();
     setActiveId(null);
     setDetailTab('overview');
-    dispatchRunState({ type: 'run/started' });
+    dispatchRunState({ type: 'run_started' });
     try {
       const runId = await startDebugRun(scriptAtStart, { vus: debugVUs });
       if (token === startTokenRef.current) {
@@ -366,7 +366,7 @@ export function YAMLDebugSession({
     } catch (error) {
       if (token !== startTokenRef.current) return;
       dispatchRunState({
-        type: 'run/startFailed',
+        type: 'run_start_failed',
         message: error instanceof Error ? error.message : String(error),
       });
     }
@@ -376,7 +376,7 @@ export function YAMLDebugSession({
     startTokenRef.current += 1; // invalidate any in-flight start
     stopStreamRef.current?.();
     stopStreamRef.current = null;
-    dispatchRunState({ type: 'run/stopped' });
+    dispatchRunState({ type: 'run_stopped' });
   };
 
   const selectEntry = (entry: DebugEntry) => {

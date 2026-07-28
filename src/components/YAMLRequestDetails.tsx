@@ -188,7 +188,8 @@ export function YAMLRequestDetails({
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center border-b border-white/5 bg-[#111111] shrink-0">
-        <button type="button"
+        <button
+          type="button"
           onClick={() => handleTabChange('request')}
           className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${
             activeTab === 'request'
@@ -199,7 +200,8 @@ export function YAMLRequestDetails({
           Request
         </button>
         {formData.response && (
-          <button type="button"
+          <button
+            type="button"
             onClick={() => handleTabChange('response')}
             className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${
               activeTab === 'response'
@@ -434,7 +436,8 @@ function RequestBodySearchToolbar({
             />
           </div>
           <div className="flex items-center rounded-md border border-white/10 bg-white/5 p-0.5">
-            <button type="button"
+            <button
+              type="button"
               onClick={() => onSearchModeChange('text')}
               className={`px-2 py-1 text-xs rounded transition-colors ${
                 searchMode === 'text'
@@ -444,7 +447,8 @@ function RequestBodySearchToolbar({
             >
               Text
             </button>
-            <button type="button"
+            <button
+              type="button"
               onClick={() => onSearchModeChange('regex')}
               className={`px-2 py-1 text-xs rounded transition-colors ${
                 searchMode === 'regex'
@@ -461,14 +465,16 @@ function RequestBodySearchToolbar({
             placeholder="Replace"
             className="w-[18ch] bg-white/5 border-white/10 text-zinc-300 text-sm"
           />
-          <button type="button"
+          <button
+            type="button"
             onClick={onReplaceCurrent}
             disabled={totalMatches === 0}
             className="px-2 py-1.5 text-xs rounded border border-white/10 text-zinc-300 disabled:opacity-40"
           >
             Replace
           </button>
-          <button type="button"
+          <button
+            type="button"
             onClick={onReplaceAll}
             disabled={totalMatches === 0}
             className="px-2 py-1.5 text-xs rounded border border-white/10 text-zinc-300 disabled:opacity-40"
@@ -480,7 +486,8 @@ function RequestBodySearchToolbar({
               <span className="text-xs text-zinc-400 px-2 min-w-15 text-center font-mono">
                 {totalMatches > 0 ? `${currentMatchIndex + 1}/${totalMatches}` : '0/0'}
               </span>
-              <button type="button"
+              <button
+                type="button"
                 onClick={onPrevious}
                 disabled={totalMatches === 0}
                 className="p-1.5 hover:bg-white/10 rounded border border-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
@@ -488,7 +495,8 @@ function RequestBodySearchToolbar({
               >
                 <ChevronUp className="w-4 h-4 text-zinc-400" />
               </button>
-              <button type="button"
+              <button
+                type="button"
                 onClick={onNext}
                 disabled={totalMatches === 0}
                 className="p-1.5 hover:bg-white/10 rounded border border-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"

@@ -29,7 +29,8 @@ export function EditorViewModeTabs({
   return (
     <div className="flex items-center bg-[#111111] border-b border-white/5 shrink-0">
       {tabs.map(tab => (
-        <button type="button"
+        <button
+          type="button"
           key={tab.mode}
           onClick={() => onSelect(tab.mode)}
           className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 text-sm font-bold transition-all duration-200 ${

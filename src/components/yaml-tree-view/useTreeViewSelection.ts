@@ -27,6 +27,19 @@ export function useTreeViewSelection({
   const treeContainerRef = useRef<HTMLDivElement | null>(null);
   const isFiltering = searchQuery.trim().length > 0;
 
+  // The parent owns a mirror of this query (it feeds the details panel's
+  // highlighting), but the query itself is local state that dies with this
+  // component. Switching to the Code tab unmounts the tree, so without a
+  // mount-time reset the parent would keep highlighting a query the user can
+  // no longer see or clear.
+  // Deliberately mount-only (empty deps): later changes are pushed from the
+  // handlers below, and re-running this on an `onSearchChange` identity change
+  // would clobber an active query.
+  const notifyInitialSearchRef = useRef(onSearchChange);
+  useEffect(() => {
+    notifyInitialSearchRef.current?.('');
+  }, []);
+
   // Notify the parent from the handler that actually changes searchQuery
   // (not from an effect watching it).
   const handleSearchChange = (value: string) => {

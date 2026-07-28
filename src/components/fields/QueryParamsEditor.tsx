@@ -10,8 +10,16 @@ interface QueryParam {
   value: string;
 }
 
+// Row identity for React keys only — never persisted, never compared across
+// instances. A counter rather than `crypto.randomUUID()` because these are
+// minted during render (see the prop-sync block below): a counter is cheap and
+// works everywhere, while `randomUUID` is non-deterministic mid-render and
+// needs a secure context (absent when `relampo studio` is reached over plain
+// HTTP from another machine on the LAN).
+let queryParamIdCounter = 0;
+
 function createQueryParam(overrides: Partial<Omit<QueryParam, 'id'>> = {}): QueryParam {
-  return { id: crypto.randomUUID(), key: '', value: '', ...overrides };
+  return { id: `qp-${++queryParamIdCounter}`, key: '', value: '', ...overrides };
 }
 
 interface QueryParamsEditorProps {
@@ -157,7 +165,8 @@ export function QueryParamsEditor({ url, onUrlChange, className = '', showBaseUr
       <div>
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Query Parameters</span>
-          <button type="button"
+          <button
+            type="button"
             onClick={handleAddParam}
             className="flex items-center gap-1 px-2 py-1 text-xs text-amber-500 hover:text-amber-400 border border-yellow-400/20 bg-yellow-400/5 hover:bg-yellow-400/10 hover:border-yellow-400/35 rounded transition-colors"
           >
@@ -196,7 +205,8 @@ export function QueryParamsEditor({ url, onUrlChange, className = '', showBaseUr
                   />
                 </div>
               </div>
-              <button type="button"
+              <button
+                type="button"
                 onClick={() => handleRemoveParam(index)}
                 className="p-2 h-9 text-zinc-500 hover:text-red-400 bg-white/5 hover:bg-white/10 rounded shrink-0 transition-colors"
                 title="Remove parameter"

@@ -183,7 +183,8 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
       <div>
         <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">Mode</div>
         <div className="flex flex-wrap items-center gap-1">
-          <button type="button"
+          <button
+            type="button"
             onClick={() => handleModeChange('auto')}
             className={`px-3 py-1.5 text-sm font-medium ${normalizedMode === 'auto' ? activePillClass : inactivePillClass}`}
           >
@@ -193,7 +194,8 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
               <span>Auto (Recommended)</span>
             </span>
           </button>
-          <button type="button"
+          <button
+            type="button"
             onClick={() => handleModeChange('manual')}
             className={`px-3 py-1.5 text-sm font-medium ${normalizedMode === 'manual' ? activePillClass : inactivePillClass}`}
           >
@@ -216,13 +218,15 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
           <div className="mb-4">
             <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Policy</div>
             <div className="flex flex-wrap items-center gap-1">
-              <button type="button"
+              <button
+                type="button"
                 onClick={() => handlePolicyChange('standard')}
                 className={`px-3 py-1.5 text-sm font-medium ${!isIgnorePolicy ? activePillClass : inactivePillClass}`}
               >
                 Standard
               </button>
-              <button type="button"
+              <button
+                type="button"
                 onClick={() => handlePolicyChange('ignore_cookies')}
                 className={`px-3 py-1.5 text-sm font-medium ${isIgnorePolicy ? activePillClass : inactivePillClass}`}
               >
@@ -236,7 +240,8 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
               Quick Presets
             </div>
             <div className="flex flex-wrap items-center gap-1">
-              <button type="button"
+              <button
+                type="button"
                 onClick={() =>
                   updateData({
                     ...data,
@@ -251,7 +256,8 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
               >
                 Default
               </button>
-              <button type="button"
+              <button
+                type="button"
                 onClick={() =>
                   updateData({
                     ...data,
@@ -263,7 +269,8 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
               >
                 Stateless
               </button>
-              <button type="button"
+              <button
+                type="button"
                 onClick={() =>
                   updateData({
                     ...data,
@@ -460,7 +467,8 @@ export function ErrorPolicyDetails({ node, onNodeUpdate }: NodeDetailProps) {
       <div>
         <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">Rules</div>
         <div className="flex flex-wrap items-center gap-1">
-          <button type="button"
+          <button
+            type="button"
             onClick={() => toggleRule('on_4xx')}
             className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${activeRules.includes('on_4xx') ? 'border-current text-white ring-1 ring-white/30' : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/6'}`}
             style={activeRules.includes('on_4xx') ? errorPolicyTabStyle.on_4xx : undefined}
@@ -470,7 +478,8 @@ export function ErrorPolicyDetails({ node, onNodeUpdate }: NodeDetailProps) {
               <span>On 4xx</span>
             </span>
           </button>
-          <button type="button"
+          <button
+            type="button"
             onClick={() => toggleRule('on_5xx')}
             className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${activeRules.includes('on_5xx') ? 'border-current text-white ring-1 ring-white/30' : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/6'}`}
             style={activeRules.includes('on_5xx') ? errorPolicyTabStyle.on_5xx : undefined}
@@ -480,7 +489,8 @@ export function ErrorPolicyDetails({ node, onNodeUpdate }: NodeDetailProps) {
               <span>On 5xx</span>
             </span>
           </button>
-          <button type="button"
+          <button
+            type="button"
             onClick={() => toggleRule('on_timeout')}
             className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${activeRules.includes('on_timeout') ? 'border-current text-white ring-1 ring-white/30' : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/6'}`}
             style={activeRules.includes('on_timeout') ? errorPolicyTabStyle.on_timeout : undefined}
@@ -534,7 +544,8 @@ function TogglePill({
   activeStyle: React.CSSProperties;
 }) {
   return (
-    <button type="button"
+    <button
+      type="button"
       onClick={onClick}
       className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${active ? 'border-current text-white' : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/6'}`}
       style={active ? activeStyle : undefined}

@@ -791,9 +791,13 @@ function RunSummaryPanel({
               </tr>
             </thead>
             <tbody>
-              {requests.map(request => (
+              {/* The index is part of the key on purpose: this table is a static,
+                  never-reordered snapshot, and the same request can legitimately
+                  appear twice (reached through two scenarios), which would make a
+                  purely field-derived key collide. */}
+              {requests.map((request, index) => (
                 <tr
-                  key={`${request.method}-${request.name}-${request.path ?? ''}-${request.step_path ?? ''}`}
+                  key={`${request.method}-${request.name}-${request.path ?? ''}-${request.step_path ?? ''}-${index}`}
                   className="border-b border-white/5 last:border-b-0"
                 >
                   <td className="max-w-72 truncate px-4 py-2 text-zinc-200" title={request.name}>

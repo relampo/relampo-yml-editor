@@ -70,7 +70,8 @@ function EditableListToolbar({
         <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">{title}</span>
 
         {enableCheckboxes && itemCount > 0 && (
-          <button type="button"
+          <button
+            type="button"
             onClick={onSelectAll}
             className="text-xs text-zinc-400 hover:text-zinc-300 transition-colors"
           >
@@ -81,7 +82,8 @@ function EditableListToolbar({
 
       <div className="flex items-center gap-2">
         {enableBulkActions && selectedCount > 0 && (
-          <button type="button"
+          <button
+            type="button"
             onClick={onBulkDelete}
             className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-red-400 bg-red-400/10 hover:bg-red-400/20 border border-red-400/20 rounded transition-colors"
           >
@@ -90,7 +92,8 @@ function EditableListToolbar({
           </button>
         )}
 
-        <button type="button"
+        <button
+          type="button"
           onClick={onAdd}
           className={addButtonClass}
         >
@@ -149,7 +152,8 @@ function EditableListRow({
     <div className={getItemStyles(variant, selectedKeys.has(item.originalKey))}>
       <div className="flex items-center gap-3 w-full min-w-0">
         {enableCheckboxes && (
-          <button type="button"
+          <button
+            type="button"
             onClick={() => onCheckToggle(item.key)}
             className="text-purple-400 hover:text-purple-300 transition-colors shrink-0"
             title={selectedKeys.has(item.key) ? 'Deselect' : 'Select'}
@@ -209,7 +213,8 @@ function EditableListRow({
               </div>
             </div>
 
-            <button type="button"
+            <button
+              type="button"
               onClick={() => onDelete(item.originalKey)}
               className="p-2 h-9 text-zinc-500 hover:text-red-400 bg-white/5 hover:bg-white/10 rounded shrink-0 transition-colors"
               title="Remove"
@@ -245,7 +250,8 @@ function EditableListRow({
                   maxLength={50}
                 />
                 <div className="flex items-center gap-1">
-                  <button type="button"
+                  <button
+                    type="button"
                     onClick={() => {
                       onKeyChange(item.originalKey, item.key);
                     }}
@@ -254,7 +260,8 @@ function EditableListRow({
                   >
                     <Check className="w-4 h-4" />
                   </button>
-                  <button type="button"
+                  <button
+                    type="button"
                     onClick={() => {
                       onResetKey(item.originalKey);
                     }}
@@ -268,7 +275,8 @@ function EditableListRow({
             ) : (
               <>
                 <div className="flex items-center gap-2 shrink-0 w-40">
-                  <button type="button"
+                  <button
+                    type="button"
                     onClick={() => onEditKey(item.originalKey)}
                     className="text-xs font-mono text-purple-400 font-bold bg-purple-400/10 hover:bg-purple-400/20 px-2 py-1 rounded transition-colors cursor-pointer truncate w-full"
                     title="Click to edit name"
@@ -300,14 +308,16 @@ function EditableListRow({
                       placeholder={valuePlaceholder}
                     />
                     <div className="flex items-center gap-1">
-                      <button type="button"
+                      <button
+                        type="button"
                         onClick={onValueSave}
                         className="p-1.5 bg-green-500/20 hover:bg-green-500/30 text-green-400 hover:text-green-300 rounded-md transition-colors"
                         title="Save"
                       >
                         <Check className="w-4 h-4" />
                       </button>
-                      <button type="button"
+                      <button
+                        type="button"
                         onClick={() => onEditValue(null)}
                         className="p-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 hover:text-red-300 rounded-md transition-colors"
                         title="Cancel"
@@ -324,7 +334,8 @@ function EditableListRow({
                       </span>
                     </div>
                     <div className="flex items-center gap-1 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button type="button"
+                      <button
+                        type="button"
                         onClick={() =>
                           onEditValue({
                             key: item.originalKey,
@@ -336,7 +347,8 @@ function EditableListRow({
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
-                      <button type="button"
+                      <button
+                        type="button"
                         onClick={() => onDelete(item.originalKey)}
                         className="p-1.5 text-red-400 hover:bg-red-400/20 hover:text-red-300 rounded-md transition-colors"
                         title="Delete"
