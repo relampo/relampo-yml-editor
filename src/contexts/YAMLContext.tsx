@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 
 interface YAMLContextType {
@@ -14,11 +14,12 @@ export function YAMLProvider({ children }: { children: ReactNode }) {
   const [yamlContent, setYamlContent] = useState('');
   const [fileName, setFileName] = useState('');
 
-  return (
-    <YAMLContext.Provider value={{ yamlContent, setYamlContent, fileName, setFileName }}>
-      {children}
-    </YAMLContext.Provider>
+  const value = useMemo(
+    () => ({ yamlContent, setYamlContent, fileName, setFileName }),
+    [yamlContent, fileName],
   );
+
+  return <YAMLContext.Provider value={value}>{children}</YAMLContext.Provider>;
 }
 
 export function useYAML() {

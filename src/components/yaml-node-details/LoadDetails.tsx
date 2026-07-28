@@ -70,7 +70,7 @@ export function LoadDetails({ node, onNodeUpdate }: NodeDetailProps) {
   return (
     <div className="space-y-6">
       <div>
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">Load Pattern</label>
+        <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">Load Pattern</div>
         <div className="flex flex-wrap gap-2">
           {LOAD_MODE_OPTIONS.map(option => {
             const Icon = option.icon;

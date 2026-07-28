@@ -1,12 +1,25 @@
 import { AlertCircle, Info, Plus, Trash2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { HighlightedInput } from '../ui/HighlightedInput';
 import { Input } from '../ui/input';
 import { buildRequestUrlWithQuery, parseRequestQueryParams, parseRequestUrl } from './requestUrl';
 
 interface QueryParam {
+  id: string;
   key: string;
   value: string;
+}
+
+// Row identity for React keys only — never persisted, never compared across
+// instances. A counter rather than `crypto.randomUUID()` because these are
+// minted during render (see the prop-sync block below): a counter is cheap and
+// works everywhere, while `randomUUID` is non-deterministic mid-render and
+// needs a secure context (absent when `relampo studio` is reached over plain
+// HTTP from another machine on the LAN).
+let queryParamIdCounter = 0;
+
+function createQueryParam(overrides: Partial<Omit<QueryParam, 'id'>> = {}): QueryParam {
+  return { id: `qp-${++queryParamIdCounter}`, key: '', value: '', ...overrides };
 }
 
 interface QueryParamsEditorProps {
@@ -24,22 +37,29 @@ export function QueryParamsEditor({ url, onUrlChange, className = '', showBaseUr
     type: 'error' | 'warning' | 'info' | null;
     message: string;
   }>({ type: null, message: '' });
+  const [trackedUrl, setTrackedUrl] = useState<string | undefined>(undefined);
 
-  useEffect(() => {
+  // Re-derives baseUrl/params whenever `url` changes identity: switching to
+  // a different request, or `url` round-tripping back through onUrlChange
+  // after an edit below. Uses the store-previous-prop-and-compare-during
+  // -render pattern instead of an effect so the parse lands in the same
+  // render as the prop change (including the first render) rather than one
+  // render later.
+  if (url !== trackedUrl) {
+    setTrackedUrl(url);
     if (!url) {
       setBaseUrl('');
       setParams([]);
-      return;
+    } else {
+      const parts = parseRequestUrl(url);
+      const base = parts.isAbsolute ? `${parts.protocol}://${parts.baseUrl}${parts.path}` : parts.path;
+
+      setBaseUrl(base);
+
+      const parsedParams = parseRequestQueryParams(url).map(p => createQueryParam(p));
+      setParams(parsedParams.length > 0 ? parsedParams : [createQueryParam()]);
     }
-
-    const parts = parseRequestUrl(url);
-    const base = parts.isAbsolute ? `${parts.protocol}://${parts.baseUrl}${parts.path}` : parts.path;
-
-    setBaseUrl(base);
-
-    const parsedParams = parseRequestQueryParams(url);
-    setParams(parsedParams.length > 0 ? parsedParams : [{ key: '', value: '' }]);
-  }, [url]);
+  }
 
   const handleBaseUrlChange = (newBase: string) => {
     setBaseUrl(newBase);
@@ -92,12 +112,12 @@ export function QueryParamsEditor({ url, onUrlChange, className = '', showBaseUr
   };
 
   const handleAddParam = () => {
-    setParams([...params, { key: '', value: '' }]);
+    setParams([...params, createQueryParam()]);
   };
 
   const handleRemoveParam = (index: number) => {
     const newParams = params.filter((_, i) => i !== index);
-    setParams(newParams.length > 0 ? newParams : [{ key: '', value: '' }]);
+    setParams(newParams.length > 0 ? newParams : [createQueryParam()]);
     onUrlChange(buildRequestUrlWithQuery(baseUrl, newParams.length > 0 ? newParams : []));
   };
 
@@ -105,8 +125,9 @@ export function QueryParamsEditor({ url, onUrlChange, className = '', showBaseUr
     <div className={className}>
       {showBaseUrl && (
         <div className="mb-4">
-          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Base URL</label>
+          <label htmlFor="queryparams-base-url" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Base URL</label>
           <Input
+            id="queryparams-base-url"
             value={baseUrl}
             onChange={e => handleBaseUrlChange(e.target.value)}
             placeholder="https://api.example.com/endpoint"
@@ -143,8 +164,9 @@ export function QueryParamsEditor({ url, onUrlChange, className = '', showBaseUr
 
       <div>
         <div className="flex items-center justify-between mb-2">
-          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Query Parameters</label>
+          <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Query Parameters</span>
           <button
+            type="button"
             onClick={handleAddParam}
             className="flex items-center gap-1 px-2 py-1 text-xs text-amber-500 hover:text-amber-400 border border-yellow-400/20 bg-yellow-400/5 hover:bg-yellow-400/10 hover:border-yellow-400/35 rounded transition-colors"
           >
@@ -156,7 +178,7 @@ export function QueryParamsEditor({ url, onUrlChange, className = '', showBaseUr
         <div className="space-y-0 border-t border-white/5">
           {params.map((param, index) => (
             <div
-              key={index}
+              key={param.id}
               className="py-2 px-1 border-b border-white/5 flex items-center gap-3 w-full min-w-0 hover:bg-white/2 transition-colors group"
             >
               <div className="flex-1 flex items-center gap-3 min-w-0">
@@ -184,6 +206,7 @@ export function QueryParamsEditor({ url, onUrlChange, className = '', showBaseUr
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => handleRemoveParam(index)}
                 className="p-2 h-9 text-zinc-500 hover:text-red-400 bg-white/5 hover:bg-white/10 rounded shrink-0 transition-colors"
                 title="Remove parameter"

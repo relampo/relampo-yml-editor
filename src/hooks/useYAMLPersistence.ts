@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import yaml from 'js-yaml';
 import { clearActiveDraft, saveActiveDraft } from '../utils/yamlDraftStorage';
 
@@ -111,13 +111,22 @@ export function useYAMLPersistence({
   // out instead of resurrecting the discarded draft / stale "saved" status.
   const saveGenerationRef = useRef(0);
 
-  const showActionMessage = (message: string) => {
+  // Stabilized (empty deps: only touches the local, always-stable setActionMessage
+  // setter and actionMessageTimeoutRef) so handleSave/handleDownload below can
+  // depend on it without changing identity on every render.
+  const showActionMessage = useCallback((message: string) => {
     setActionMessage(message);
     if (actionMessageTimeoutRef.current) window.clearTimeout(actionMessageTimeoutRef.current);
     actionMessageTimeoutRef.current = window.setTimeout(() => setActionMessage(''), 1800);
-  };
+  }, []);
 
-  const handleSave = (): Promise<void> => {
+  // Stabilized via useCallback so effects that call handleSave (autosave,
+  // keyboard shortcuts) can list it as a dependency without it changing
+  // identity — and thus resetting/re-subscribing — on every render. The
+  // fresh save inputs (getPersistableYaml, currentFileName, language) are
+  // read through latestSaveInputsRef rather than closed over directly, so
+  // this stable identity never goes stale.
+  const handleSave = useCallback((): Promise<void> => {
     if (saveInFlightRef.current) return saveInFlightRef.current;
 
     const savePromise = (async () => {
@@ -179,7 +188,7 @@ export function useYAMLPersistence({
       if (saveInFlightRef.current === savePromise) saveInFlightRef.current = null;
     });
     return savePromise;
-  };
+  }, [editRevisionRef, serializeDebounceRef, setError, setHasDocumentActivity, setIsDirty, showActionMessage]);
 
   useEffect(() => {
     if (!restoredDraftUpdatedAt) return;
@@ -188,7 +197,12 @@ export function useYAMLPersistence({
     setLastSavedAt(restoredDate.toLocaleTimeString());
   }, [restoredDraftUpdatedAt]);
 
-  const handleDownload = (includeResponses: boolean) => {
+  // Stabilized via useCallback (see handleSave above) so the keyboard-shortcuts
+  // effect can list it as a dependency without re-subscribing its listener on
+  // every render. Its identity legitimately changes when currentFileName,
+  // getPersistableYaml, or language change, since (unlike handleSave) it reads
+  // these directly rather than through a ref.
+  const handleDownload = useCallback((includeResponses: boolean) => {
     if (serializeDebounceRef.current) {
       window.clearTimeout(serializeDebounceRef.current);
       serializeDebounceRef.current = null;
@@ -229,7 +243,7 @@ export function useYAMLPersistence({
           ? 'YAML descargado sin respuestas'
           : 'YAML downloaded without responses',
     );
-  };
+  }, [currentFileName, getPersistableYaml, language, serializeDebounceRef, setError, setHasDocumentActivity, setIsDirty, showActionMessage]);
 
   // Autosave
   useEffect(() => {
@@ -247,7 +261,7 @@ export function useYAMLPersistence({
     return () => {
       if (autosaveDebounceRef.current) window.clearTimeout(autosaveDebounceRef.current);
     };
-  }, [isDirty, yamlCode]);
+  }, [isDirty, yamlCode, isInitialized, handleSave]);
 
   // Before-unload warning
   useEffect(() => {
@@ -292,7 +306,7 @@ export function useYAMLPersistence({
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [yamlCode, currentFileName, language, isDirty]);
+  }, [yamlCode, currentFileName, language, isDirty, handleDownload, handleSave]);
 
   // Cleanup
   useEffect(() => {

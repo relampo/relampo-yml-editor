@@ -16,76 +16,78 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { createNodeDataUpdater } from './nodeDetailHelpers';
 import type { NodeDetailProps } from './types';
 
+const assertionTypes = [
+  { value: 'status', label: 'Status', icon: CheckCircle2 },
+  { value: 'status_in', label: 'Status in', icon: CheckCircle2 },
+  { value: 'contains', label: 'Contains', icon: Search },
+  { value: 'not_contains', label: 'Not contains', icon: SearchX },
+  { value: 'regex', label: 'Regex', icon: TextSearch },
+  { value: 'response_time', label: 'Response time', icon: Clock3 },
+  { value: 'response_size', label: 'Response size', icon: Binary },
+  { value: 'header', label: 'Header', icon: Tag },
+  { value: 'json', label: 'Jsonpath', icon: Braces },
+] as const;
+
+const assertionTypeButtonStyle: Record<string, React.CSSProperties> = {
+  status: {
+    backgroundColor: 'rgba(34, 197, 94, 0.20)',
+    color: '#86efac',
+    borderColor: 'rgba(134, 239, 172, 0.50)',
+    boxShadow: '0 10px 22px rgba(34, 197, 94, 0.20)',
+  },
+  status_in: {
+    backgroundColor: 'rgba(34, 197, 94, 0.20)',
+    color: '#86efac',
+    borderColor: 'rgba(134, 239, 172, 0.50)',
+    boxShadow: '0 10px 22px rgba(34, 197, 94, 0.20)',
+  },
+  contains: {
+    backgroundColor: 'rgba(56, 189, 248, 0.20)',
+    color: '#7dd3fc',
+    borderColor: 'rgba(125, 211, 252, 0.50)',
+    boxShadow: '0 10px 22px rgba(56, 189, 248, 0.20)',
+  },
+  not_contains: {
+    backgroundColor: 'rgba(245, 158, 11, 0.20)',
+    color: '#fcd34d',
+    borderColor: 'rgba(252, 211, 77, 0.50)',
+    boxShadow: '0 10px 22px rgba(245, 158, 11, 0.20)',
+  },
+  regex: {
+    backgroundColor: 'rgba(168, 85, 247, 0.20)',
+    color: '#d8b4fe',
+    borderColor: 'rgba(216, 180, 254, 0.50)',
+    boxShadow: '0 10px 22px rgba(168, 85, 247, 0.20)',
+  },
+  response_time: {
+    backgroundColor: 'rgba(249, 115, 22, 0.20)',
+    color: '#fdba74',
+    borderColor: 'rgba(253, 186, 116, 0.50)',
+    boxShadow: '0 10px 22px rgba(249, 115, 22, 0.20)',
+  },
+  response_size: {
+    backgroundColor: 'rgba(99, 102, 241, 0.20)',
+    color: '#a5b4fc',
+    borderColor: 'rgba(165, 180, 252, 0.50)',
+    boxShadow: '0 10px 22px rgba(99, 102, 241, 0.20)',
+  },
+  header: {
+    backgroundColor: 'rgba(236, 72, 153, 0.20)',
+    color: '#f9a8d4',
+    borderColor: 'rgba(249, 168, 212, 0.50)',
+    boxShadow: '0 10px 22px rgba(236, 72, 153, 0.20)',
+  },
+  json: {
+    backgroundColor: 'rgba(6, 182, 212, 0.20)',
+    color: '#67e8f9',
+    borderColor: 'rgba(103, 232, 249, 0.50)',
+    boxShadow: '0 10px 22px rgba(6, 182, 212, 0.20)',
+  },
+};
+
 export function AssertionDetails({ node, onNodeUpdate, searchQuery = '' }: NodeDetailProps) {
   const { data, updateData, updateField } = createNodeDataUpdater(node, onNodeUpdate);
   const assertionType = data.type || 'status';
-  const assertionTypes = [
-    { value: 'status', label: 'Status', icon: CheckCircle2 },
-    { value: 'status_in', label: 'Status in', icon: CheckCircle2 },
-    { value: 'contains', label: 'Contains', icon: Search },
-    { value: 'not_contains', label: 'Not contains', icon: SearchX },
-    { value: 'regex', label: 'Regex', icon: TextSearch },
-    { value: 'response_time', label: 'Response time', icon: Clock3 },
-    { value: 'response_size', label: 'Response size', icon: Binary },
-    { value: 'header', label: 'Header', icon: Tag },
-    { value: 'json', label: 'Jsonpath', icon: Braces },
-  ] as const;
-  const assertionTypeButtonStyle: Record<string, React.CSSProperties> = {
-    status: {
-      backgroundColor: 'rgba(34, 197, 94, 0.20)',
-      color: '#86efac',
-      borderColor: 'rgba(134, 239, 172, 0.50)',
-      boxShadow: '0 10px 22px rgba(34, 197, 94, 0.20)',
-    },
-    status_in: {
-      backgroundColor: 'rgba(34, 197, 94, 0.20)',
-      color: '#86efac',
-      borderColor: 'rgba(134, 239, 172, 0.50)',
-      boxShadow: '0 10px 22px rgba(34, 197, 94, 0.20)',
-    },
-    contains: {
-      backgroundColor: 'rgba(56, 189, 248, 0.20)',
-      color: '#7dd3fc',
-      borderColor: 'rgba(125, 211, 252, 0.50)',
-      boxShadow: '0 10px 22px rgba(56, 189, 248, 0.20)',
-    },
-    not_contains: {
-      backgroundColor: 'rgba(245, 158, 11, 0.20)',
-      color: '#fcd34d',
-      borderColor: 'rgba(252, 211, 77, 0.50)',
-      boxShadow: '0 10px 22px rgba(245, 158, 11, 0.20)',
-    },
-    regex: {
-      backgroundColor: 'rgba(168, 85, 247, 0.20)',
-      color: '#d8b4fe',
-      borderColor: 'rgba(216, 180, 254, 0.50)',
-      boxShadow: '0 10px 22px rgba(168, 85, 247, 0.20)',
-    },
-    response_time: {
-      backgroundColor: 'rgba(249, 115, 22, 0.20)',
-      color: '#fdba74',
-      borderColor: 'rgba(253, 186, 116, 0.50)',
-      boxShadow: '0 10px 22px rgba(249, 115, 22, 0.20)',
-    },
-    response_size: {
-      backgroundColor: 'rgba(99, 102, 241, 0.20)',
-      color: '#a5b4fc',
-      borderColor: 'rgba(165, 180, 252, 0.50)',
-      boxShadow: '0 10px 22px rgba(99, 102, 241, 0.20)',
-    },
-    header: {
-      backgroundColor: 'rgba(236, 72, 153, 0.20)',
-      color: '#f9a8d4',
-      borderColor: 'rgba(249, 168, 212, 0.50)',
-      boxShadow: '0 10px 22px rgba(236, 72, 153, 0.20)',
-    },
-    json: {
-      backgroundColor: 'rgba(6, 182, 212, 0.20)',
-      color: '#67e8f9',
-      borderColor: 'rgba(103, 232, 249, 0.50)',
-      boxShadow: '0 10px 22px rgba(6, 182, 212, 0.20)',
-    },
-  };
 
   const handleChange = (field: string, value: any) => {
     if (field === 'type') {
@@ -98,9 +100,9 @@ export function AssertionDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
   return (
     <>
       <div className="mb-4">
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
+        <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
           Assertion Type
-        </label>
+        </div>
         <div className="flex flex-wrap items-center gap-1">
           {assertionTypes.map(type => {
             const active = assertionType === type.value;
@@ -126,15 +128,16 @@ export function AssertionDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
 
       {(assertionType === 'status' || assertionType === 'status_in') && (
         <div className="mb-4 grid grid-cols-1 gap-3 items-end">
-          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+          <label htmlFor="validation-status-code" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
             {assertionType === 'status' ? 'Expected Status Code' : 'Expected Status Codes (comma separated)'}
           </label>
           <HighlightedInput
+            id="validation-status-code"
             value={data.value !== undefined ? String(data.value) : ''}
             onChange={event => handleChange('value', event.target.value)}
             placeholder={assertionType === 'status' ? '200' : '200, 201, 204'}
             searchText={searchQuery}
-            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono focus:border-white/30 transition-all"
+            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono focus:border-white/30 transition-colors"
           />
         </div>
       )}
@@ -142,15 +145,16 @@ export function AssertionDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
       {(assertionType === 'contains' || assertionType === 'not_contains') && (
         <div className="mb-4 grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_auto] gap-3 items-end">
           <div>
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+            <label htmlFor="validation-contains-text" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
               Text to {assertionType === 'contains' ? 'Find' : 'Not Find'}
             </label>
             <HighlightedInput
+              id="validation-contains-text"
               value={data.value !== undefined ? String(data.value) : ''}
               onChange={event => handleChange('value', event.target.value)}
               placeholder="Expected text in response..."
               searchText={searchQuery}
-              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono focus:border-white/30 transition-all"
+              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono focus:border-white/30 transition-colors"
             />
           </div>
           <div className="h-9.5 flex items-center">
@@ -170,10 +174,11 @@ export function AssertionDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
       {assertionType === 'regex' && (
         <div className="mb-4 flex items-end gap-3">
           <div className="flex-1 min-w-0">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+            <label htmlFor="validation-regex-pattern" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
               Regular Expression Pattern
             </label>
             <HighlightedInput
+              id="validation-regex-pattern"
               value={data.pattern || ''}
               onChange={event => handleChange('pattern', event.target.value)}
               placeholder="token=([a-f0-9]+)"
@@ -182,10 +187,11 @@ export function AssertionDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
             />
           </div>
           <div className="w-37.5 shrink-0">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+            <label htmlFor="validation-match-number" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
               Match Number
             </label>
             <Input
+              id="validation-match-number"
               type="number"
               value={data.match_no !== undefined && data.match_no !== null ? data.match_no : ''}
               onChange={event => {
@@ -206,6 +212,7 @@ export function AssertionDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
 
       {assertionType === 'response_time' && (
         <SimpleNumberField
+          id="validation-max-response-time"
           label="Max Response Time (ms)"
           value={data.max_ms !== undefined ? data.max_ms : ''}
           placeholder="2000"
@@ -215,6 +222,7 @@ export function AssertionDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
 
       {assertionType === 'response_size' && (
         <SimpleNumberField
+          id="validation-expected-size"
           label="Expected Size (bytes)"
           value={data.size !== undefined ? data.size : ''}
           placeholder="1024"
@@ -225,6 +233,7 @@ export function AssertionDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
       {assertionType === 'header' && (
         <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-3 items-end">
           <TextField
+            id="validation-header-name"
             label="Header Name"
             value={data.name || ''}
             placeholder="Content-Type, Authorization..."
@@ -232,6 +241,7 @@ export function AssertionDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
             searchQuery={searchQuery}
           />
           <TextField
+            id="validation-header-value"
             label="Expected Header Value"
             value={data.value !== undefined ? String(data.value) : ''}
             placeholder="application/json"
@@ -244,6 +254,7 @@ export function AssertionDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
       {assertionType === 'json' && (
         <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-3 items-end">
           <TextField
+            id="validation-jsonpath-expression"
             label="JSONPath Expression"
             value={data.path || ''}
             placeholder="$.data.id"
@@ -251,6 +262,7 @@ export function AssertionDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
             searchQuery={searchQuery}
           />
           <TextField
+            id="validation-json-expected-value"
             label="Expected Value"
             value={data.value !== undefined ? String(data.value) : ''}
             placeholder="123"
@@ -263,43 +275,45 @@ export function AssertionDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
   );
 }
 
+const extractorTypes = [
+  { value: 'regex', label: 'Regex', icon: TextSearch },
+  { value: 'jsonpath', label: 'Jsonpath', icon: Braces },
+  { value: 'xpath', label: 'Xpath', icon: Brackets },
+  { value: 'boundary', label: 'Boundary', icon: BetweenHorizontalStart },
+] as const;
+
+const extractorTypeButtonStyle: Record<string, React.CSSProperties> = {
+  regex: {
+    backgroundColor: 'rgba(168, 85, 247, 0.20)',
+    color: '#d8b4fe',
+    borderColor: 'rgba(216, 180, 254, 0.50)',
+    boxShadow: '0 10px 22px rgba(168, 85, 247, 0.20)',
+  },
+  jsonpath: {
+    backgroundColor: 'rgba(6, 182, 212, 0.20)',
+    color: '#67e8f9',
+    borderColor: 'rgba(103, 232, 249, 0.50)',
+    boxShadow: '0 10px 22px rgba(6, 182, 212, 0.20)',
+  },
+  xpath: {
+    backgroundColor: 'rgba(236, 72, 153, 0.20)',
+    color: '#f9a8d4',
+    borderColor: 'rgba(249, 168, 212, 0.50)',
+    boxShadow: '0 10px 22px rgba(236, 72, 153, 0.20)',
+  },
+  boundary: {
+    backgroundColor: 'rgba(249, 115, 22, 0.20)',
+    color: '#fdba74',
+    borderColor: 'rgba(253, 186, 116, 0.50)',
+    boxShadow: '0 10px 22px rgba(249, 115, 22, 0.20)',
+  },
+};
+
 export function ExtractorDetails({ node, onNodeUpdate, searchQuery = '' }: NodeDetailProps) {
   const { data, updateData, updateField } = createNodeDataUpdater(node, onNodeUpdate);
   const extractorType = data.type || 'regex';
   const extractorVariableName = data.var ?? data.variable ?? '';
   const extractorSource = data.from || 'body';
-  const extractorTypes = [
-    { value: 'regex', label: 'Regex', icon: TextSearch },
-    { value: 'jsonpath', label: 'Jsonpath', icon: Braces },
-    { value: 'xpath', label: 'Xpath', icon: Brackets },
-    { value: 'boundary', label: 'Boundary', icon: BetweenHorizontalStart },
-  ] as const;
-  const extractorTypeButtonStyle: Record<string, React.CSSProperties> = {
-    regex: {
-      backgroundColor: 'rgba(168, 85, 247, 0.20)',
-      color: '#d8b4fe',
-      borderColor: 'rgba(216, 180, 254, 0.50)',
-      boxShadow: '0 10px 22px rgba(168, 85, 247, 0.20)',
-    },
-    jsonpath: {
-      backgroundColor: 'rgba(6, 182, 212, 0.20)',
-      color: '#67e8f9',
-      borderColor: 'rgba(103, 232, 249, 0.50)',
-      boxShadow: '0 10px 22px rgba(6, 182, 212, 0.20)',
-    },
-    xpath: {
-      backgroundColor: 'rgba(236, 72, 153, 0.20)',
-      color: '#f9a8d4',
-      borderColor: 'rgba(249, 168, 212, 0.50)',
-      boxShadow: '0 10px 22px rgba(236, 72, 153, 0.20)',
-    },
-    boundary: {
-      backgroundColor: 'rgba(249, 115, 22, 0.20)',
-      color: '#fdba74',
-      borderColor: 'rgba(253, 186, 116, 0.50)',
-      boxShadow: '0 10px 22px rgba(249, 115, 22, 0.20)',
-    },
-  };
 
   const getExtractorDefaults = (type: string) => {
     if (type === 'regex') {
@@ -359,9 +373,9 @@ export function ExtractorDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
   return (
     <>
       <div className="mb-4">
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
+        <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
           Extractor Type
-        </label>
+        </div>
         <div className="flex flex-wrap items-center gap-1">
           {extractorTypes.map(type => {
             const active = extractorType === type.value;
@@ -386,10 +400,11 @@ export function ExtractorDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
       </div>
 
       <div className="mb-4">
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+        <label htmlFor="validation-variable-name" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
           Variable Name *
         </label>
         <Input
+          id="validation-variable-name"
           value={extractorVariableName}
           onChange={event => handleChange('var', event.target.value)}
           placeholder="extracted_value"
@@ -416,6 +431,7 @@ export function ExtractorDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
           </div>
           <div className="mb-4 grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
             <SimpleNumberField
+              id="validation-capture-group"
               label="Capture Group"
               value={data.group !== undefined ? data.group : 1}
               placeholder="1"
@@ -424,14 +440,14 @@ export function ExtractorDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
               noMargin
             />
             <div>
-              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+              <label htmlFor="validation-capture-mode" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
                 Capture Mode
               </label>
               <Select
                 value={data.capture_mode || 'first'}
                 onValueChange={value => handleChange('capture_mode', value)}
               >
-                <SelectTrigger className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono h-9">
+                <SelectTrigger id="validation-capture-mode" className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono h-9">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="border-white/10 bg-[#111111]">
@@ -443,6 +459,7 @@ export function ExtractorDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
               </Select>
             </div>
             <TextField
+              id="validation-regex-default-value"
               label="Default Value (if not found)"
               value={data.default || ''}
               placeholder="NOT_FOUND"
@@ -451,6 +468,7 @@ export function ExtractorDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
           </div>
           {String(data.capture_mode || 'first') === 'index' && (
             <SimpleNumberField
+              id="validation-match-index"
               label="Match Index"
               value={data.capture_index !== undefined ? data.capture_index : '2'}
               placeholder="2"
@@ -491,12 +509,14 @@ export function ExtractorDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
           <div className="mb-4 -mt-1 text-xs text-zinc-500">Extract data from XML/HTML using XPath</div>
           <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-3 items-end">
             <TextField
+              id="validation-xpath-namespace"
               label="Namespace (optional)"
               value={data.namespace || ''}
               placeholder="xmlns:ns=http://example.com"
               onChange={value => handleChange('namespace', value)}
             />
             <TextField
+              id="validation-xpath-default-value"
               label="Default Value (if not found)"
               value={data.default || ''}
               placeholder="NOT_FOUND"
@@ -513,10 +533,11 @@ export function ExtractorDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
             onChange={value => handleChange('from', value)}
           />
           <div className="min-w-0 flex-1">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+            <label htmlFor="validation-left-boundary" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
               Left Boundary *
             </label>
             <HighlightedInput
+              id="validation-left-boundary"
               value={data.left_boundary || ''}
               searchText={searchQuery}
               onChange={event => handleChange('left_boundary', event.target.value)}
@@ -526,10 +547,11 @@ export function ExtractorDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
             />
           </div>
           <div className="min-w-0 flex-1">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+            <label htmlFor="validation-right-boundary" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
               Right Boundary *
             </label>
             <HighlightedInput
+              id="validation-right-boundary"
               value={data.right_boundary || ''}
               searchText={searchQuery}
               onChange={event => handleChange('right_boundary', event.target.value)}
@@ -543,6 +565,7 @@ export function ExtractorDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
 
       {extractorType !== 'regex' && extractorType !== 'xpath' && (
         <TextField
+          id="validation-extractor-default-value"
           label="Default Value (if not found)"
           value={data.default || ''}
           placeholder="NOT_FOUND"
@@ -577,8 +600,9 @@ function ExtractorSourceAndPattern({
         onChange={onSourceChange}
       />
       <div className="min-w-0 flex-1">
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{label}</label>
+        <label htmlFor="validation-extractor-pattern" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{label}</label>
         <HighlightedInput
+          id="validation-extractor-pattern"
           value={value}
           searchText={searchQuery}
           onChange={event => onValueChange(event.target.value)}
@@ -594,9 +618,9 @@ function ExtractorSourceAndPattern({
 function ExtractorSourceSelect({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   return (
     <div className="w-55 shrink-0">
-      <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Extractor From</label>
+      <label htmlFor="validation-extractor-from" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Extractor From</label>
       <Select value={value} onValueChange={onChange}>
-        <SelectTrigger className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono h-9">
+        <SelectTrigger id="validation-extractor-from" className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono h-9">
           <SelectValue />
         </SelectTrigger>
         <SelectContent className="border-white/10 bg-[#111111]">
@@ -612,12 +636,14 @@ function ExtractorSourceSelect({ value, onChange }: { value: string; onChange: (
 }
 
 function TextField({
+  id,
   label,
   value,
   placeholder,
   onChange,
   searchQuery = '',
 }: {
+  id: string;
   label: string;
   value: string;
   placeholder: string;
@@ -626,8 +652,9 @@ function TextField({
 }) {
   return (
     <div>
-      <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{label}</label>
+      <label htmlFor={id} className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{label}</label>
       <HighlightedInput
+        id={id}
         value={value}
         onChange={event => onChange(event.target.value)}
         placeholder={placeholder}
@@ -639,6 +666,7 @@ function TextField({
 }
 
 function SimpleNumberField({
+  id,
   label,
   value,
   placeholder,
@@ -646,6 +674,7 @@ function SimpleNumberField({
   min,
   noMargin = false,
 }: {
+  id: string;
   label: string;
   value: string | number;
   placeholder: string;
@@ -655,8 +684,9 @@ function SimpleNumberField({
 }) {
   return (
     <div className={noMargin ? '' : 'mb-4'}>
-      <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{label}</label>
+      <label htmlFor={id} className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{label}</label>
       <Input
+        id={id}
         type="number"
         min={min}
         value={value}

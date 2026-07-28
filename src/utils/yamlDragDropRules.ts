@@ -314,11 +314,12 @@ export function validateTreeStructure(node: TreeNodeLike): {
     if (!n.children) return;
 
     const allowedChildren = containmentRules[n.type] || [];
+    const allowedChildrenSet = new Set(allowedChildren);
 
     for (const child of n.children) {
       const childPath = path ? `${path} > ${child.type}` : child.type;
 
-      if (!allowedChildren.includes(child.type)) {
+      if (!allowedChildrenSet.has(child.type)) {
         errors.push(`Invalid: "${child.type}" inside "${n.type}" at ${childPath}`);
       }
 

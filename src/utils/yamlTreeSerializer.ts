@@ -51,13 +51,19 @@ function stripControllerSerializationMetadata<T>(data: T, internalKeys: string[]
   return next as T;
 }
 
-function hasOnlyKeys(value: unknown, keys: string[]): value is Record<string, unknown> {
+// Callers pass one of these module-level sets rather than a literal array: this
+// runs per node during serialization, so building a Set on every call would cost
+// more than the lookup it saves.
+const LOOP_SHORTHAND_KEYS = new Set(['count']);
+const RETRY_SHORTHAND_KEYS = new Set(['attempts']);
+
+function hasOnlyKeys(value: unknown, keys: ReadonlySet<string>): value is Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return false;
   }
 
   const valueKeys = Object.keys(value);
-  return valueKeys.length > 0 && valueKeys.every(key => keys.includes(key));
+  return valueKeys.length > 0 && valueKeys.every(key => keys.has(key));
 }
 
 function hasRequestChildren(node: YAMLNode): boolean {
@@ -318,7 +324,7 @@ function stepNodeToObject(node: YAMLNode): any {
     const rawLoopData = stripControllerSerializationMetadata(sanitizeBalancedNodeData(node.data), ['__scalarLoop']);
     const shouldSerializeScalar =
       Boolean(node.data && typeof node.data === 'object' && !Array.isArray(node.data) && node.data.__scalarLoop) &&
-      hasOnlyKeys(rawLoopData, ['count']);
+      hasOnlyKeys(rawLoopData, LOOP_SHORTHAND_KEYS);
     const loopData = shouldSerializeScalar ? rawLoopData.count : rawLoopData;
     const res: any = {
       loop: loopData,
@@ -335,7 +341,7 @@ function stepNodeToObject(node: YAMLNode): any {
     const rawRetryData = stripControllerSerializationMetadata(sanitizeBalancedNodeData(node.data), ['__scalarRetry']);
     const shouldSerializeScalar =
       Boolean(node.data && typeof node.data === 'object' && !Array.isArray(node.data) && node.data.__scalarRetry) &&
-      hasOnlyKeys(rawRetryData, ['attempts']);
+      hasOnlyKeys(rawRetryData, RETRY_SHORTHAND_KEYS);
     const retryData = shouldSerializeScalar ? rawRetryData.attempts : rawRetryData;
     const res: any = {
       retry: retryData,

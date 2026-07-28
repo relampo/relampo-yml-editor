@@ -16,14 +16,18 @@ export function HttpDefaultsDetails({ node, onNodeUpdate, hosts = [] }: NodeDeta
   const { data, updateData } = createNodeDataUpdater(node, onNodeUpdate);
   const defaults = data as Partial<HttpDefaults>;
   const headers = (defaults.headers || {}) as StringMap;
-  const preservedDefaults = Object.fromEntries(
-    Object.entries(defaults).filter(([key, value]) => key !== 'headers' && key !== 'auth' && typeof value !== 'string'),
-  ) as Partial<HttpDefaults>;
-  const storedStringFields = Object.fromEntries(
-    Object.entries(defaults)
-      .filter(([key, value]) => key !== 'headers' && key !== 'auth' && typeof value === 'string')
-      .map(([key, value]) => [key, value]),
-  ) as StringMap;
+  const preservedDefaultsEntries: [string, unknown][] = [];
+  const storedStringFieldsEntries: [string, string][] = [];
+  for (const [key, value] of Object.entries(defaults)) {
+    if (key === 'headers' || key === 'auth') continue;
+    if (typeof value === 'string') {
+      storedStringFieldsEntries.push([key, value]);
+    } else {
+      preservedDefaultsEntries.push([key, value]);
+    }
+  }
+  const preservedDefaults = Object.fromEntries(preservedDefaultsEntries) as Partial<HttpDefaults>;
+  const storedStringFields = Object.fromEntries(storedStringFieldsEntries) as StringMap;
 
   // The primary base_url is the only host stored in http_defaults; show it
   // without its scheme so it matches the secondary hosts, but remember the

@@ -135,7 +135,7 @@ interface LoadDisplayFieldProps {
 export function LoadDisplayField({ label, value, helpText }: LoadDisplayFieldProps) {
   return (
     <div className="space-y-2">
-      <label className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">{label}</label>
+      <div className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">{label}</div>
       <div className="flex h-10 w-full items-center rounded-md border border-white/10 bg-[#151515] px-3 py-2 text-sm font-mono text-zinc-200">
         {value}
       </div>
@@ -153,14 +153,24 @@ interface LoadSelectFieldProps {
 }
 
 export function LoadSelectField({ label, value, onChange, options, helpText }: LoadSelectFieldProps) {
+  const selectId = useId();
+
   return (
     <div className="space-y-2">
-      <label className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">{label}</label>
+      <label
+        htmlFor={selectId}
+        className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500"
+      >
+        {label}
+      </label>
       <Select
         value={value}
         onValueChange={onChange}
       >
-        <SelectTrigger className="h-10 w-full rounded-md border border-white/10 bg-[#151515] px-3 py-2 text-sm font-mono text-zinc-200">
+        <SelectTrigger
+          id={selectId}
+          className="h-10 w-full rounded-md border border-white/10 bg-[#151515] px-3 py-2 text-sm font-mono text-zinc-200"
+        >
           <SelectValue />
         </SelectTrigger>
         <SelectContent className="border-white/10">

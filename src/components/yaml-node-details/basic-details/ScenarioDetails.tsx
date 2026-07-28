@@ -39,7 +39,7 @@ export function ScenariosContainerDetails({ node, onNodeUpdate }: NodeDetailProp
             {scenarios.map((scenario, index) => (
               <div
                 key={scenario.id}
-                className="p-3 bg-white/5 border-2 border-white/10 hover:border-purple-400/30 rounded-lg transition-all group"
+                className="p-3 bg-white/5 border-2 border-white/10 hover:border-purple-400/30 rounded-lg transition-colors group"
               >
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 bg-yellow-400/5 text-yellow-400 rounded-full flex items-center justify-center text-sm font-bold">

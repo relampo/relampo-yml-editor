@@ -1,0 +1,13 @@
+{
+  "$schema": "https://react.doctor/schema/config.json",
+  "surfaces": {
+    "score": {
+      "excludeRules": [
+        "react-doctor/prefer-dynamic-import",
+        "react-doctor/no-adjust-state-on-prop-change",
+        "react-doctor/no-pass-live-state-to-parent",
+        "react-doctor/no-pass-data-to-parent"
+      ]
+    }
+  }
+}

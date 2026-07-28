@@ -1,5 +1,5 @@
 import { Info, Upload } from 'lucide-react';
-import React, { useEffect, useId, useRef, useState } from 'react';
+import React, { useId, useRef, useState } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import type { AuthConfig } from '../../types/yaml';
 import { Input } from '../ui/input';
@@ -27,16 +27,26 @@ export function EditableField({
   commitMode = 'blur',
   noMargin = false,
 }: EditableFieldProps) {
+  // localValue is a buffered copy of `value` (committed on blur, or on every
+  // keystroke for commitMode 'change'). It must re-sync whenever `value`
+  // itself changes identity — e.g. this field instance gets reused for a
+  // different underlying node/field — even mid-edit, matching the previous
+  // effect-based behavior. Uses the store-previous-prop-and-compare-during
+  // -render pattern instead of an effect so the reset lands in the same
+  // render as the prop change instead of one render later.
   const [localValue, setLocalValue] = useState(String(value || ''));
-
-  useEffect(() => {
+  const [trackedValue, setTrackedValue] = useState(value);
+  if (value !== trackedValue) {
+    setTrackedValue(value);
     setLocalValue(String(value || ''));
-  }, [value]);
+  }
+  const inputId = useId();
 
   return (
     <div className={noMargin ? '' : 'mb-5'}>
-      <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{label}</label>
+      <label htmlFor={inputId} className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{label}</label>
       <Input
+        id={inputId}
         type={type}
         value={localValue}
         onChange={event => {
@@ -52,7 +62,7 @@ export function EditableField({
           }
         }}
         maxLength={maxLength}
-        className="w-full h-9.5 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono focus:border-white/30 transition-all"
+        className="w-full h-9.5 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono focus:border-white/30 transition-colors"
       />
     </div>
   );
@@ -77,15 +87,17 @@ export function SelectField({
   disabled = false,
   noMargin = false,
 }: SelectFieldProps) {
+  const selectId = useId();
   return (
     <div className={noMargin ? '' : 'mb-5'}>
-      <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{label}</label>
+      <label htmlFor={selectId} className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{label}</label>
       <Select
         value={value}
         onValueChange={value => onChange(field, value)}
         disabled={disabled}
       >
         <SelectTrigger
+          id={selectId}
           disabled={disabled}
           className="w-full h-9.5 border-white/10 bg-[#1a1a1a] text-zinc-300 font-mono data-[disabled]:opacity-60 data-[disabled]:cursor-not-allowed"
         >
@@ -167,7 +179,7 @@ export function FileField({
 
   return (
     <div className={noMargin ? '' : 'mb-5'}>
-      <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{label}</label>
+      <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{label}</div>
       <div className="flex gap-2">
         <Input
           value={String(value || '')}
@@ -299,6 +311,7 @@ interface AuthConfigEditorProps {
 
 export function AuthConfigEditor({ auth, onChange, scopeLabel }: AuthConfigEditorProps) {
   const value = normalizeAuthEditorValue(auth);
+  const authId = useId();
 
   const handleTypeChange = (type: string) => {
     const nextType = type as EditableAuthType;
@@ -329,14 +342,14 @@ export function AuthConfigEditor({ auth, onChange, scopeLabel }: AuthConfigEdito
   return (
     <div className="space-y-4">
       <div>
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+        <label htmlFor={`${authId}-type`} className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
           {scopeLabel} Authentication
         </label>
         <Select
           value={value.type}
           onValueChange={handleTypeChange}
         >
-          <SelectTrigger className="w-full h-9.5 border-white/10 bg-[#1a1a1a] text-zinc-300 font-mono">
+          <SelectTrigger id={`${authId}-type`} className="w-full h-9.5 border-white/10 bg-[#1a1a1a] text-zinc-300 font-mono">
             <SelectValue />
           </SelectTrigger>
           <SelectContent className="border-white/10">
@@ -350,8 +363,9 @@ export function AuthConfigEditor({ auth, onChange, scopeLabel }: AuthConfigEdito
 
       {value.type === 'bearer' && (
         <div>
-          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Token</label>
+          <label htmlFor={`${authId}-token`} className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Token</label>
           <Input
+            id={`${authId}-token`}
             type="password"
             value={value.token || ''}
             onChange={event => handleFieldChange('token', event.target.value)}
@@ -364,8 +378,9 @@ export function AuthConfigEditor({ auth, onChange, scopeLabel }: AuthConfigEdito
       {value.type === 'api_key' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Key Name</label>
+            <label htmlFor={`${authId}-key-name`} className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Key Name</label>
             <Input
+              id={`${authId}-key-name`}
               value={value.name || ''}
               onChange={event => handleFieldChange('name', event.target.value)}
               placeholder="X-API-Key"
@@ -373,12 +388,12 @@ export function AuthConfigEditor({ auth, onChange, scopeLabel }: AuthConfigEdito
             />
           </div>
           <div>
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Send In</label>
+            <label htmlFor={`${authId}-send-in`} className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Send In</label>
             <Select
               value={value.in || 'header'}
               onValueChange={value => handleFieldChange('in', value)}
             >
-              <SelectTrigger className="w-full h-9.5 border-white/10 bg-[#1a1a1a] text-zinc-300 font-mono">
+              <SelectTrigger id={`${authId}-send-in`} className="w-full h-9.5 border-white/10 bg-[#1a1a1a] text-zinc-300 font-mono">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="border-white/10">
@@ -388,8 +403,9 @@ export function AuthConfigEditor({ auth, onChange, scopeLabel }: AuthConfigEdito
             </Select>
           </div>
           <div className="md:col-span-2">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Key Value</label>
+            <label htmlFor={`${authId}-key-value`} className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Key Value</label>
             <Input
+              id={`${authId}-key-value`}
               type="password"
               value={value.value || ''}
               onChange={event => handleFieldChange('value', event.target.value)}
@@ -403,8 +419,9 @@ export function AuthConfigEditor({ auth, onChange, scopeLabel }: AuthConfigEdito
       {value.type === 'basic' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Username</label>
+            <label htmlFor={`${authId}-username`} className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Username</label>
             <Input
+              id={`${authId}-username`}
               value={value.username || ''}
               onChange={event => handleFieldChange('username', event.target.value)}
               placeholder="{{username}}"
@@ -412,8 +429,9 @@ export function AuthConfigEditor({ auth, onChange, scopeLabel }: AuthConfigEdito
             />
           </div>
           <div>
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Password</label>
+            <label htmlFor={`${authId}-password`} className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Password</label>
             <Input
+              id={`${authId}-password`}
               type="password"
               value={value.password || ''}
               onChange={event => handleFieldChange('password', event.target.value)}
@@ -454,10 +472,12 @@ export function DetailField({
   multiline,
   noMargin = false,
 }: DetailFieldProps) {
+  const fieldId = useId();
+
   if (!editable) {
     return (
       <div className={noMargin ? '' : 'mb-4'}>
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{label}</label>
+        <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{label}</div>
         <div
           className={`px-3 py-2 bg-white/5 border border-white/10 rounded ${small ? 'text-xs' : 'text-sm'} text-zinc-300 ${mono ? 'font-mono' : ''}`}
         >
@@ -470,8 +490,9 @@ export function DetailField({
   if (multiline) {
     return (
       <div className={noMargin ? '' : 'mb-4'}>
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{label}</label>
+        <label htmlFor={fieldId} className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{label}</label>
         <Textarea
+          id={fieldId}
           value={String(value)}
           onChange={event => onChange?.(event.target.value)}
           className={`bg-white/5 border-white/10 text-zinc-300 ${small ? 'text-xs' : 'text-sm'} ${mono ? 'font-mono' : ''} min-h-20`}
@@ -482,8 +503,9 @@ export function DetailField({
 
   return (
     <div className={noMargin ? '' : 'mb-4'}>
-      <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{label}</label>
+      <label htmlFor={fieldId} className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{label}</label>
       <Input
+        id={fieldId}
         value={String(value)}
         onChange={event => onChange?.(event.target.value)}
         className={`bg-white/5 border-white/10 text-zinc-300 ${small ? 'text-xs' : 'text-sm'} ${mono ? 'font-mono' : ''}`}

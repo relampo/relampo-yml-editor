@@ -122,7 +122,7 @@ export function YAMLEditorHeader({
             </Button>
 
             <DropdownMenu>
-              <DropdownMenuTrigger className="inline-flex h-8 items-center justify-center gap-2 rounded-md border border-yellow-400/20 bg-yellow-400/5 px-3 text-sm font-medium text-yellow-400 shadow-sm transition-all duration-200 hover:bg-yellow-400/10 hover:border-yellow-400/35 hover:shadow-yellow-400/10 focus:outline-none focus:ring-2 focus:ring-yellow-400/40">
+              <DropdownMenuTrigger className="inline-flex h-8 items-center justify-center gap-2 rounded-md border border-yellow-400/20 bg-yellow-400/5 px-3 text-sm font-medium text-yellow-400 shadow-sm transition-[background-color,border-color,box-shadow] duration-200 hover:bg-yellow-400/10 hover:border-yellow-400/35 hover:shadow-yellow-400/10 focus:outline-none focus:ring-2 focus:ring-yellow-400/40">
                 <Download className="w-4 h-4" />
                 {t('yamlEditor.downloadYaml')}
                 <ChevronDown className="w-4 h-4" />

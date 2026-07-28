@@ -138,7 +138,7 @@ export function DataSourceDetails({
           id="ds-basic-var-names"
           value={sourceData.variable_names || ''}
           onChange={event => updateField('variable_names', event.target.value)}
-          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono focus:border-white/30 transition-all h-9.5"
+          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono focus:border-white/30 transition-colors h-9.5"
           placeholder="var1, var2, var3"
           searchText={searchQuery}
         />

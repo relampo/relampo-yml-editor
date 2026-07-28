@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Monitor, Smartphone, Tablet } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -19,6 +19,7 @@ export function MobileBlockOverlay() {
   const { t } = useLanguage();
   const [tooSmall, setTooSmall] = useState(getInitialMatch);
   const [width, setWidth] = useState(getInitialWidth);
+  const dialogRef = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
     const mql = window.matchMedia(QUERY);
@@ -32,16 +33,32 @@ export function MobileBlockOverlay() {
     };
   }, []);
 
+  // Opens the native dialog modally whenever it (re)mounts, i.e. whenever
+  // tooSmall flips to true; unmounting (tooSmall -> false) removes the node,
+  // which implicitly closes it. Guarded/cleaned up defensively in case an
+  // effect re-run ever races the same dialog node.
+  useLayoutEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog || dialog.open) return;
+    dialog.showModal();
+    return () => {
+      if (dialog.open) dialog.close();
+    };
+  }, [tooSmall]);
+
   if (!tooSmall) return null;
 
   const currentWidth = t('mobileBlock.currentWidth').replace('{width}', String(width));
 
   return (
-    <div
+    <dialog
+      ref={dialogRef}
       role="alertdialog"
-      aria-modal="true"
       aria-labelledby="mobile-block-title"
-      className="fixed inset-0 z-2147483647 flex items-center justify-center overflow-hidden bg-[#0a0a0a] px-6 py-10"
+      // No dismiss action is offered on purpose: the block must stay up until
+      // the viewport is actually wide enough, so Escape-to-close is disabled.
+      onCancel={event => event.preventDefault()}
+      className="fixed inset-0 z-2147483647 m-0 flex max-w-none max-h-none items-center justify-center overflow-hidden border-0 bg-[#0a0a0a] px-6 py-10 text-inherit"
     >
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(250,204,21,0.18),transparent_55%),radial-gradient(circle_at_75%_80%,rgba(244,63,94,0.16),transparent_60%)]" />
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,transparent_0%,rgba(255,255,255,0.02)_50%,transparent_100%)]" />
@@ -93,7 +110,7 @@ export function MobileBlockOverlay() {
           to { opacity: 1; transform: translateY(0) scale(1); }
         }
       `}</style>
-    </div>
+    </dialog>
   );
 }
 

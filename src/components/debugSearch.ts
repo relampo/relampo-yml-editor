@@ -2,11 +2,21 @@ export type SearchMode = 'text' | 'regex';
 
 export type MatchRange = { start: number; end: number };
 
-export function buildSearchRegex(query: string): RegExp | null {
+// Compiling a user-supplied pattern is the point of regex search mode, so the
+// pattern is trusted input by design — but a pathological one (nested
+// quantifiers over a large response body) can pin the tab's main thread with no
+// way to cancel. A length cap is the cheap half of the mitigation: it doesn't
+// make catastrophic backtracking impossible, it just keeps the patterns that
+// produce it from being typed by accident. Anything longer is reported the same
+// way an invalid pattern is.
+const MAX_SEARCH_PATTERN_LENGTH = 200;
+
+export function buildSearchRegex(pattern: string): RegExp | null {
+  if (pattern.length > MAX_SEARCH_PATTERN_LENGTH) return null;
   try {
     // The `d` flag exposes per-group match indices so a pattern with capturing
     // groups can highlight only the captured value, not the whole match. RLP-582.
-    return new RegExp(query, 'gid');
+    return new RegExp(pattern, 'gid');
   } catch {
     return null;
   }
