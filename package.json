@@ -50,7 +50,8 @@
     "lint:fix": "eslint . --fix",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:ui": "vitest --ui"
+    "test:ui": "vitest --ui",
+    "doctor": "npx react-doctor@latest"
   },
   "overrides": {
     "dompurify": "3.3.2",
