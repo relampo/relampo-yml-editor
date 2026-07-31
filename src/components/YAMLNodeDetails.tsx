@@ -166,6 +166,7 @@ export function YAMLNodeDetails({
           hosts={hosts}
           redirectSourceInfo={redirectSourceInfo}
           onNodeUpdate={onNodeUpdate}
+          onRenameHost={onRenameHost}
           searchQuery={searchQuery}
           dataSourceFileBrowseEnabled={dataSourceFileBrowseEnabled}
         />
@@ -182,6 +183,7 @@ function NodeDetailsContent({
   hosts,
   redirectSourceInfo,
   onNodeUpdate,
+  onRenameHost,
   searchQuery = '',
   dataSourceFileBrowseEnabled = false,
 }: {
@@ -192,6 +194,7 @@ function NodeDetailsContent({
   hosts: string[];
   redirectSourceInfo: RedirectSourceInfo | null;
   onNodeUpdate?: (nodeId: string, updatedData: any) => void;
+  onRenameHost?: (oldHost: string, newHost: string) => void;
   searchQuery?: string;
   dataSourceFileBrowseEnabled?: boolean;
 }) {
@@ -229,6 +232,7 @@ function NodeDetailsContent({
           node={node}
           onNodeUpdate={onNodeUpdate}
           hosts={hosts}
+          onRenameHost={onRenameHost}
         />
       );
     case 'scenarios':

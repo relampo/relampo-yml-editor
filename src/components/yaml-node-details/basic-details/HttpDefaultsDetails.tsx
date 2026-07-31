@@ -1,7 +1,8 @@
-import { Lock } from 'lucide-react';
+import { useState } from 'react';
 import type { StringMap } from '../../../types/shared';
 import type { AuthConfig, HttpDefaults } from '../../../types/yaml';
 import { EditableList } from '../../EditableList';
+import { Input } from '../../ui/input';
 import { AuthConfigEditor } from '../SharedFields';
 import { createNodeDataUpdater } from '../nodeDetailHelpers';
 import type { NodeDetailProps } from '../types';
@@ -12,7 +13,10 @@ import type { NodeDetailProps } from '../types';
 const URL_SCHEME = /^https?:\/\//i;
 const stripScheme = (value: string) => value.replace(URL_SCHEME, '');
 
-export function HttpDefaultsDetails({ node, onNodeUpdate, hosts = [] }: NodeDetailProps & { hosts?: string[] }) {
+export function HttpDefaultsDetails({ node, onNodeUpdate, hosts = [], onRenameHost }: NodeDetailProps & {
+  hosts?: string[];
+  onRenameHost?: (oldHost: string, newHost: string) => void;
+}) {
   const { data, updateData } = createNodeDataUpdater(node, onNodeUpdate);
   const defaults = data as Partial<HttpDefaults>;
   const headers = (defaults.headers || {}) as StringMap;
@@ -39,7 +43,7 @@ export function HttpDefaultsDetails({ node, onNodeUpdate, hosts = [] }: NodeDeta
   // that target them, not in http_defaults. Keep them out of allFields so
   // handleMainFieldsUpdate never serializes base_urlN back into the YAML. They
   // sit in the same Configuration list as base_url, with the same scheme-less
-  // treatment, but stay read-only (each host is edited on its request, RLP-414).
+  // treatment. Renaming one rewrites every request that targets that authority.
   const secondaryHostEntries: [string, string][] = hosts
     .slice(1)
     .map((host, i) => [`base_url${i + 1}`, stripScheme(host)]);
@@ -109,12 +113,14 @@ export function HttpDefaultsDetails({ node, onNodeUpdate, hosts = [] }: NodeDeta
                   </div>
                   <span className="shrink-0 font-bold text-zinc-500">=</span>
                 </div>
-                <div className="w-0 flex-1 min-w-0 overflow-x-auto scrollbar-none">
-                  <div className="w-full rounded border border-white/10 bg-white/5 px-2 py-1 text-sm font-mono text-zinc-300">
-                    {value}
-                  </div>
-                </div>
-                <Lock className="w-4 h-4 shrink-0 text-zinc-600" aria-label="Edited on its request" />
+                <SecondaryHostField
+                  value={value}
+                  onCommit={nextValue => {
+                    const index = Number(key.replace('base_url', ''));
+                    const originalHost = Number.isInteger(index) ? hosts[index] : undefined;
+                    onRenameHost?.(originalHost ?? value, nextValue);
+                  }}
+                />
               </div>
             ))}
           </div>
@@ -142,6 +148,29 @@ export function HttpDefaultsDetails({ node, onNodeUpdate, hosts = [] }: NodeDeta
         auth={data.auth}
         onChange={handleAuthUpdate}
         scopeLabel="Global"
+      />
+    </div>
+  );
+}
+
+function SecondaryHostField({ value, onCommit }: { value: string; onCommit: (value: string) => void }) {
+  const [localValue, setLocalValue] = useState(value);
+  const [trackedValue, setTrackedValue] = useState(value);
+  if (value !== trackedValue) {
+    setTrackedValue(value);
+    setLocalValue(value);
+  }
+
+  return (
+    <div className="w-0 flex-1 min-w-0 overflow-x-auto scrollbar-none">
+      <Input
+        aria-label="Secondary host"
+        value={localValue}
+        onChange={event => setLocalValue(event.target.value)}
+        onBlur={() => {
+          if (localValue.trim() && localValue !== value) onCommit(localValue.trim());
+        }}
+        className="w-full rounded border border-white/10 bg-white/5 px-2 py-1 text-sm font-mono text-zinc-300"
       />
     </div>
   );
