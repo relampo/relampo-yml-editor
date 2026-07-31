@@ -837,7 +837,7 @@ function buildLiveRunSummary(
         ...request,
         name: target.name,
         method: String(target.data?.method ?? target.type ?? request.method).toUpperCase(),
-        path: String(target.data?.url ?? target.data?.path ?? request.path),
+        path: request.path || String(target.data?.path ?? target.data?.url ?? ''),
       });
       return;
     }
