@@ -67,6 +67,15 @@ const fileNode: YAMLNode = {
   },
 };
 
+const httpDefaultsNode: YAMLNode = {
+  id: 'http_defaults',
+  type: 'http_defaults',
+  name: 'HTTP Defaults',
+  data: {
+    base_url: 'https://primary.example.com',
+  },
+};
+
 describe('YAMLNodeDetails data source file browsing', () => {
   it('disables data source file browsing outside local Studio', () => {
     renderDetails(dataSourceNode);
@@ -148,6 +157,30 @@ describe('YAMLNodeDetails data source file browsing', () => {
 
     expect(await screen.findByDisplayValue('/tmp/uploaded-users.txt')).toBeInTheDocument();
     expect(screen.getByDisplayValue('userIdentifier, tenant')).toBeInTheDocument();
+  });
+});
+
+describe('YAMLNodeDetails HTTP Defaults hosts', () => {
+  it('renders and commits a secondary host edit', () => {
+    const onRenameHost = vi.fn();
+
+    render(
+      <LanguageProvider>
+        <YAMLNodeDetails
+          node={httpDefaultsNode}
+          hosts={['https://primary.example.com', 'https://secondary.example.com']}
+          onRenameHost={onRenameHost}
+        />
+      </LanguageProvider>,
+    );
+
+    const secondaryHost = screen.getByLabelText('Secondary host');
+    expect(secondaryHost).toHaveValue('secondary.example.com');
+
+    fireEvent.change(secondaryHost, { target: { value: 'replacement.example.com' } });
+    fireEvent.blur(secondaryHost);
+
+    expect(onRenameHost).toHaveBeenCalledWith('https://secondary.example.com', 'replacement.example.com');
   });
 });
 
