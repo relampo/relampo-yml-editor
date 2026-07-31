@@ -40,6 +40,12 @@ function normalizeRelativeRequestPath(path: string): string {
   return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
 }
 
+function decodeEncodedVariablePlaceholders(value: string): string {
+  return value
+    .replace(/%7B%7B/gi, '{{')
+    .replace(/%7D%7D/gi, '}}');
+}
+
 /**
  * Parse a request URL into normalized parts.
  *
@@ -67,11 +73,13 @@ export function parseRequestUrl(fullUrl: string): ParsedRequestUrl {
   try {
     if (ABSOLUTE_URL_PATTERN.test(trimmed)) {
       const parsed = new URL(trimmed);
+      const authority = withoutQuery.match(/^https?:\/\/[^/?#]*/i)?.[0] ?? '';
+      const rawPath = authority ? withoutQuery.slice(authority.length).split('#', 1)[0] : parsed.pathname;
       return {
         protocol: parsed.protocol.replace(':', '').toLowerCase() === 'http' ? 'http' : 'https',
         baseUrl: parsed.host || '',
-        path: parsed.pathname || '/',
-        query: parsed.search || '',
+        path: normalizeRelativeRequestPath(decodeEncodedVariablePlaceholders(rawPath || '/')),
+        query: decodeEncodedVariablePlaceholders(query),
         isAbsolute: true,
       };
     }

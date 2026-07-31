@@ -2,6 +2,34 @@ import { describe, expect, it } from 'vitest';
 import { buildRequestUrl, buildRequestUrlWithQuery, parseRequestQueryParams, parseRequestUrl } from './requestUrl';
 
 describe('requestUrl helpers', () => {
+  it('preserves template placeholders when parsing absolute request URLs', () => {
+    expect(parseRequestUrl('https://api.example.com/users/{{user_id}}?expand={{expand}}')).toEqual({
+      protocol: 'https',
+      baseUrl: 'api.example.com',
+      path: '/users/{{user_id}}',
+      query: '?expand={{expand}}',
+      isAbsolute: true,
+    });
+  });
+
+  it('normalizes already-encoded template delimiters from recorded URLs', () => {
+    expect(parseRequestUrl('https://api.example.com/users/%7B%7Buser_id%7D%7D')).toEqual({
+      protocol: 'https',
+      baseUrl: 'api.example.com',
+      path: '/users/{{user_id}}',
+      query: '',
+      isAbsolute: true,
+    });
+  });
+
+  it('preserves absolute path placeholders when rebuilding a URL', () => {
+    expect(
+      buildRequestUrl('https://api.example.com/users/{{user_id}}?expand={{expand}}', {
+        path: '/accounts/{{account_id}}',
+      }),
+    ).toBe('https://api.example.com/accounts/{{account_id}}?expand={{expand}}');
+  });
+
   it('preserves template placeholders when parsing relative request URLs', () => {
     expect(parseRequestUrl('/users/{{user_id}}?expand={{expand}}')).toEqual({
       protocol: 'https',
