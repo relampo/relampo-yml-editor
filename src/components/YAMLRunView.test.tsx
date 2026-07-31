@@ -457,6 +457,69 @@ describe('YAMLLoadRunSession', () => {
     expect(within(rows[2]).getByText('/user/auth')).toBeInTheDocument();
   });
 
+  it('orders balanced-controller branches by their structural step paths', async () => {
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'root',
+      name: 'root',
+      children: [
+        {
+          id: 'branch-a',
+          type: 'request',
+          name: 'Utilities',
+          path: ['scenarios', 0, 'steps', 1, 'balanced', 'steps', 0, 'request'],
+          data: { method: 'GET', url: '/user/utilities', request_id: 21 },
+        },
+        {
+          id: 'branch-b',
+          type: 'request',
+          name: 'Sign identities',
+          path: ['scenarios', 0, 'steps', 1, 'balanced', 'steps', 1, 'request'],
+          data: { method: 'GET', url: '/user/signIdentities', request_id: 22 },
+        },
+        {
+          id: 'logout',
+          type: 'request',
+          name: 'Logout',
+          path: ['scenarios', 0, 'steps', 2, 'request'],
+          data: { method: 'GET', url: '/user/auth', request_id: 23 },
+        },
+      ],
+    };
+    render(<YAMLLoadRunSession {...baseProps} tree={tree} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run load test' }));
+    await waitFor(() => expect(runApiMock.handlers).toHaveLength(1));
+    act(() => {
+      runApiMock.handlers[0].onMetrics(
+        metric({
+          total_requests: 3,
+          requests: [
+            {
+              name: 'Logout', method: 'GET', path: '/user/auth', request_id: 23,
+              step_path: 'scenarios[0].steps[2]', count: 1, failures: 0, avg_ms: 12, min_ms: 12, max_ms: 12, p90_ms: 12, p95_ms: 12, p99_ms: 12,
+            },
+            {
+              name: 'Sign identities', method: 'GET', path: '/user/signIdentities', request_id: 22,
+              step_path: 'scenarios[0].steps[1].balanced.steps[1]', count: 1, failures: 0, avg_ms: 10, min_ms: 10, max_ms: 10, p90_ms: 10, p95_ms: 10, p99_ms: 10,
+            },
+            {
+              name: 'Utilities', method: 'GET', path: '/user/utilities', request_id: 21,
+              step_path: 'scenarios[0].steps[1].balanced.steps[0]', count: 1, failures: 0, avg_ms: 11, min_ms: 11, max_ms: 11, p90_ms: 11, p95_ms: 11, p99_ms: 11,
+            },
+          ],
+        }),
+      );
+    });
+
+    const table = await screen.findByRole('table');
+    const rows = within(table).getAllByRole('row');
+    expect(rows).toHaveLength(4);
+    expect(within(rows[1]).getByText('/user/utilities')).toBeInTheDocument();
+    expect(within(rows[2]).getByText('/user/signIdentities')).toBeInTheDocument();
+    expect(within(rows[3]).getByText('/user/auth')).toBeInTheDocument();
+  });
+
   it('falls back to the final summary rows when snapshots carry no per-request aggregate', async () => {
     // A backend older than the RLP-629 contract streams metrics without the
     // `requests` field. buildLiveRunSummary then yields no rows, so once the run
