@@ -346,8 +346,10 @@ describe('YAMLLoadRunSession', () => {
     });
 
     const table = await screen.findByRole('table');
-    expect(within(table).getByText('/login?vu={{__vu_idx}}')).toBeInTheDocument();
-    expect(within(table).getByText('/callback?code={{code}}')).toBeInTheDocument();
+    expect(within(table).getByText('/login?vu=1')).toBeInTheDocument();
+    expect(within(table).getByText('/callback?code=runtime-value-3')).toBeInTheDocument();
+    expect(within(table).queryByText('/login?vu={{__vu_idx}}')).not.toBeInTheDocument();
+    expect(within(table).queryByText('/callback?code={{code}}')).not.toBeInTheDocument();
     expect(within(table).getByText('Redirect 1 from Unexpected redirect')).toBeInTheDocument();
     expect(within(table).getAllByText('3')).toHaveLength(3);
     expect(within(table).getAllByRole('row')).toHaveLength(4);
@@ -391,9 +393,10 @@ describe('YAMLLoadRunSession', () => {
     });
 
     const completedTable = await screen.findByRole('table');
-    expect(within(completedTable).getByText('/login?vu={{__vu_idx}}')).toBeInTheDocument();
-    expect(within(completedTable).getByText('/callback?code={{code}}')).toBeInTheDocument();
-    expect(within(completedTable).queryByText('/callback?code=runtime-value-3')).not.toBeInTheDocument();
+    expect(within(completedTable).getByText('/login?vu=1')).toBeInTheDocument();
+    expect(within(completedTable).getByText('/callback?code=runtime-value-3')).toBeInTheDocument();
+    expect(within(completedTable).queryByText('/login?vu={{__vu_idx}}')).not.toBeInTheDocument();
+    expect(within(completedTable).queryByText('/callback?code={{code}}')).not.toBeInTheDocument();
   });
 
   it('collapses rows that resolve to the same script request without moving them after logout', async () => {
@@ -447,7 +450,8 @@ describe('YAMLLoadRunSession', () => {
     const table = await screen.findByRole('table');
     const rows = within(table).getAllByRole('row');
     expect(rows).toHaveLength(3);
-    expect(within(rows[1]).getByText('/user/signIdentities/download?idGroup={{idGroup}}')).toBeInTheDocument();
+    expect(within(rows[1]).getByText('/user/signIdentities/download?idGroup=first')).toBeInTheDocument();
+    expect(within(rows[1]).queryByText('/user/signIdentities/download?idGroup={{idGroup}}')).not.toBeInTheDocument();
     expect(within(rows[1]).getByText('11')).toBeInTheDocument();
     expect(within(rows[1]).getByText('1')).toBeInTheDocument();
     expect(within(rows[2]).getByText('/user/auth')).toBeInTheDocument();
