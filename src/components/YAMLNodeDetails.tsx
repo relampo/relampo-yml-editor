@@ -59,6 +59,7 @@ export function YAMLNodeDetails({
   hosts = [],
   redirectSourceInfo = null,
   onNodeUpdate,
+  onRenameHost,
   onToggleEnabled,
   searchQuery = '',
   dataSourceFileBrowseEnabled = false,
