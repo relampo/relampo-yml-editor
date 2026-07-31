@@ -8,6 +8,7 @@ import { TreeSearchBar } from './yaml-tree-view/TreeSearchBar';
 import { useTreeContextMenu } from './yaml-tree-view/useTreeContextMenu';
 import { useTreeMutations } from './yaml-tree-view/useTreeMutations';
 import { useTreeViewSelection } from './yaml-tree-view/useTreeViewSelection';
+import { replaceTextInEnabledRequests } from './yaml-tree-view/treeOperations';
 import { canDuplicateNode, findNodeById, getTransactionValidationMessage } from './yaml-tree-view/treeViewHelpers';
 import { YAMLContextMenu } from './YAMLContextMenu';
 import { YAMLTreeNode } from './YAMLTreeNode';
@@ -58,6 +59,13 @@ export function YAMLTreeView({
     onSelectionChange,
     onContextMenuOpened,
   });
+
+  const handleReplace = (search: string, replacement: string) => {
+    if (!tree) return 0;
+    const result = replaceTextInEnabledRequests(tree, search, replacement);
+    if (result.replacements > 0) onTreeChange(result.tree);
+    return result.replacements;
+  };
 
   const {
     clipboardNodes,
@@ -195,7 +203,7 @@ export function YAMLTreeView({
 
   return (
     <div className="h-full w-full bg-[#0a0a0a] flex flex-col">
-      <TreeSearchBar value={searchQuery} onChange={handleSearchChange} onClear={handleClearSearch} />
+      <TreeSearchBar value={searchQuery} onChange={handleSearchChange} onClear={handleClearSearch} onReplace={handleReplace} />
 
       {activeSelectedIds.length > 1 && (
         <TreeBulkActionsBar
