@@ -193,6 +193,36 @@ describe('YAMLTreeView context menu', () => {
 });
 
 describe('YAMLTreeView selection scrolling', () => {
+  it('keeps expand and collapse out of the document change path', () => {
+    const onTreeChange = vi.fn();
+    const onTreeViewChange = vi.fn();
+
+    render(
+      <LanguageProvider>
+        <YAMLTreeView
+          tree={{
+            id: 'steps',
+            type: 'steps',
+            name: 'Steps',
+            expanded: true,
+            children: [{ id: 'group', type: 'group', name: 'Group', expanded: false, children: [] }],
+          }}
+          selectedNode={null}
+          selectedNodeIds={[]}
+          redirectedRequestMap={{}}
+          onSelectionChange={vi.fn()}
+          onTreeChange={onTreeChange}
+          onTreeViewChange={onTreeViewChange}
+        />
+      </LanguageProvider>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse' }));
+
+    expect(onTreeViewChange).toHaveBeenCalledTimes(1);
+    expect(onTreeChange).not.toHaveBeenCalled();
+  });
+
   it('does not scroll back to the selected request when expanding a different request', async () => {
     const scrollIntoView = vi.mocked(HTMLElement.prototype.scrollIntoView);
 

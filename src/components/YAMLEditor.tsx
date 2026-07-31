@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useYAML } from '../contexts/YAMLContext';
+import type { YAMLNode } from '../types/yaml';
 import { useResizePanel } from '../hooks/useResizePanel';
 import { useYAMLPersistence } from '../hooks/useYAMLPersistence';
 import { logStatsigEvent } from '../utils/analytics';
@@ -212,6 +213,10 @@ export function YAMLEditor() {
     });
   };
 
+  const handleTreeViewChange = (newTree: YAMLNode) => {
+    setYamlTree(newTree);
+  };
+
   const handleNewConfirm = () => {
     resetDocument();
     resetIdentityForNewDocument();
@@ -289,6 +294,7 @@ export function YAMLEditor() {
         largeFileMode={isLargeFileMode}
         onSelectionChange={handleTreeSelectionChange}
         onTreeChange={handleTreeChange}
+        onTreeViewChange={handleTreeViewChange}
         onContextMenuOpened={handleTreeContextMenuOpened}
         onSearchChange={setTreeSearchQuery}
         onCodeChange={handleCodeChange}
