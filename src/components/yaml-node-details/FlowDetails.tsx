@@ -383,6 +383,7 @@ export function ThinkTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
   const fixedDuration = String(data.duration || '');
   const variableMin = String(data.min || '');
   const variableMax = String(data.max || '');
+  const isUniformDistribution = String(data.distribution || 'normal').toLowerCase() === 'uniform';
   const thinkTimeActiveTabColor = 'text-yellow-400 bg-yellow-400/10 border-b-2 border-yellow-400';
 
   const handleModeChange = (newMode: 'fixed' | 'range' | 'distribution') => {
@@ -513,6 +514,7 @@ export function ThinkTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
                 id="flow-mean"
                 value={String(data.mean || '')}
                 onChange={event => updateField('mean', event.target.value)}
+                disabled={isUniformDistribution}
                 placeholder="2s"
                 className="w-full h-9.5 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
               />
@@ -523,6 +525,7 @@ export function ThinkTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
                 id="flow-std-dev"
                 value={String(data.std_dev || '')}
                 onChange={event => updateField('std_dev', event.target.value)}
+                disabled={isUniformDistribution}
                 placeholder="500ms"
                 className="w-full h-9.5 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
               />
