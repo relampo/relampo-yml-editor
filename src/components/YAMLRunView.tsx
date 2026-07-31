@@ -870,8 +870,22 @@ function buildLiveRunSummary(
     total_requests: latest.total_requests,
     total_failures: latest.total_failures,
     executed_vus: latest.executed_vus,
-    requests: [...requests.values()],
+    requests: sortRunSummaryRequests([...requests.values()]),
   };
+}
+
+function sortRunSummaryRequests(requests: RunRequestStat[]): RunRequestStat[] {
+  return requests
+    .map((request, index) => ({ request, index }))
+    .sort((left, right) => {
+      const leftPath = left.request.step_path;
+      const rightPath = right.request.step_path;
+      if (!leftPath && !rightPath) return left.index - right.index;
+      if (!leftPath) return 1;
+      if (!rightPath) return -1;
+      return leftPath.localeCompare(rightPath, undefined, { numeric: true });
+    })
+    .map(({ request }) => request);
 }
 
 function liveRunSummaryFallbackKey(request: RunRequestStat): string {
