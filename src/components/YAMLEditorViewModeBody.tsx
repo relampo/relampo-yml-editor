@@ -18,6 +18,7 @@ interface YAMLEditorViewModeBodyProps {
   baseHost: string;
   onSelectionChange: (primaryNode: YAMLNode | null, nodeIds: string[]) => void;
   onTreeChange: (newTree: YAMLNode, nextSelection?: TreeSelection) => void;
+  onTreeViewChange: (newTree: YAMLNode) => void;
   onContextMenuOpened: (metadata: { nodeType: string; selectionCount: number; hasMultiSelection: boolean }) => void;
   onSearchChange: (query: string) => void;
   yamlCode: string;
@@ -41,6 +42,7 @@ export function YAMLEditorViewModeBody({
   baseHost,
   onSelectionChange,
   onTreeChange,
+  onTreeViewChange,
   onContextMenuOpened,
   onSearchChange,
   yamlCode,
@@ -70,6 +72,7 @@ export function YAMLEditorViewModeBody({
             baseHost={baseHost}
             onSelectionChange={onSelectionChange}
             onTreeChange={onTreeChange}
+            onTreeViewChange={onTreeViewChange}
             onContextMenuOpened={onContextMenuOpened}
             onSearchChange={onSearchChange}
           />
@@ -89,6 +92,7 @@ export function YAMLEditorViewModeBody({
             redirectedRequestMap={redirectedRequestMap}
             onSelectionChange={onSelectionChange}
             onTreeChange={onTreeChange}
+            onTreeViewChange={onTreeViewChange}
             onContextMenuOpened={onContextMenuOpened}
           />
         )}

@@ -27,6 +27,7 @@ interface ContextMenuState {
 interface UseTreeMutationsParams {
   tree: YAMLNode | null;
   onTreeChange: (tree: YAMLNode, nextSelection?: { primaryId: string | null; nodeIds: string[] }) => void;
+  onTreeViewChange?: (tree: YAMLNode) => void;
   onSelectionChange: (primaryNode: YAMLNode | null, nodeIds: string[]) => void;
   redirectedRequestMap: Record<string, RedirectedRequestInfo>;
   effectiveSelectedIds: string[];
@@ -44,6 +45,7 @@ interface UseTreeMutationsParams {
 export function useTreeMutations({
   tree,
   onTreeChange,
+  onTreeViewChange,
   onSelectionChange,
   redirectedRequestMap,
   effectiveSelectedIds,
@@ -62,7 +64,11 @@ export function useTreeMutations({
     if (!tree) return;
 
     const updatedTree = toggleNodeInTree(tree, nodeId);
-    onTreeChange(updatedTree);
+    if (onTreeViewChange) {
+      onTreeViewChange(updatedTree);
+    } else {
+      onTreeChange(updatedTree);
+    }
   };
 
   const handleAddNode = (nodeType: YAMLAddableNodeType) => {

@@ -30,6 +30,7 @@ interface YAMLEditorMainLayoutProps {
   largeFileMode: boolean;
   onSelectionChange: (primaryNode: YAMLNode | null, nodeIds: string[]) => void;
   onTreeChange: (newTree: YAMLNode, nextSelection?: TreeSelection) => void;
+  onTreeViewChange: (newTree: YAMLNode) => void;
   onContextMenuOpened: (metadata: { nodeType: string; selectionCount: number; hasMultiSelection: boolean }) => void;
   onSearchChange: (query: string) => void;
   onCodeChange: (newCode: string) => void;
@@ -69,6 +70,7 @@ export function YAMLEditorMainLayout({
   largeFileMode,
   onSelectionChange,
   onTreeChange,
+  onTreeViewChange,
   onContextMenuOpened,
   onSearchChange,
   onCodeChange,
@@ -95,6 +97,7 @@ export function YAMLEditorMainLayout({
         baseHost={baseHost}
         onSelectionChange={onSelectionChange}
         onTreeChange={onTreeChange}
+        onTreeViewChange={onTreeViewChange}
         onContextMenuOpened={onContextMenuOpened}
         onSearchChange={onSearchChange}
         yamlCode={yamlCode}

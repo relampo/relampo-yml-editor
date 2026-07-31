@@ -20,6 +20,7 @@ interface YAMLTreeViewProps {
   baseHost?: string;
   onSelectionChange: (primaryNode: YAMLNode | null, nodeIds: string[]) => void;
   onTreeChange: (tree: YAMLNode, nextSelection?: { primaryId: string | null; nodeIds: string[] }) => void;
+  onTreeViewChange?: (tree: YAMLNode) => void;
   onContextMenuOpened?: (metadata: { nodeType: string; selectionCount: number; hasMultiSelection: boolean }) => void;
   onSearchChange?: (query: string) => void;
 }
@@ -32,6 +33,7 @@ export function YAMLTreeView({
   baseHost = '',
   onSelectionChange,
   onTreeChange,
+  onTreeViewChange,
   onContextMenuOpened,
   onSearchChange,
 }: YAMLTreeViewProps) {
@@ -74,6 +76,7 @@ export function YAMLTreeView({
   } = useTreeMutations({
     tree,
     onTreeChange,
+    onTreeViewChange,
     onSelectionChange,
     redirectedRequestMap,
     effectiveSelectedIds,
