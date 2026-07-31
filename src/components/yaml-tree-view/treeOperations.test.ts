@@ -5,10 +5,52 @@ import {
   addNodeToTree,
   getTransactionWrapValidation,
   refreshTreePaths,
+  replaceTextInEnabledRequests,
   syncRedirectSourceFollowRedirects,
   updateNodeEnabled,
   wrapNodesInTransaction,
 } from './treeOperations';
+
+describe('replaceTextInEnabledRequests', () => {
+  it('replaces request and header values but skips disabled requests', () => {
+    const tree: YAMLNode = {
+      id: 'steps',
+      type: 'steps',
+      name: 'Steps',
+      children: [
+        {
+          id: 'enabled-request',
+          type: 'request',
+          name: 'Enabled',
+          data: { url: '/users/xyz123', body: { id: 'xyz123' }, enabled: true },
+          children: [{ id: 'enabled-headers', type: 'headers', name: 'Headers', data: { Authorization: 'xyz123' } }],
+        },
+        {
+          id: 'disabled-request',
+          type: 'request',
+          name: 'Disabled',
+          data: { url: '/disabled/xyz123', enabled: false },
+          children: [{ id: 'disabled-headers', type: 'headers', name: 'Headers', data: { 'X-Test': 'xyz123' } }],
+        },
+      ],
+    };
+
+    const result = replaceTextInEnabledRequests(tree, 'xyz123', '{{rifa}}');
+
+    expect(result.replacements).toBe(3);
+    expect(result.tree.children?.[0].data.url).toBe('/users/{{rifa}}');
+    expect(result.tree.children?.[0].data.body.id).toBe('{{rifa}}');
+    expect(result.tree.children?.[0].children?.[0].data.Authorization).toBe('{{rifa}}');
+    expect(result.tree.children?.[1].data.url).toBe('/disabled/xyz123');
+    expect(result.tree.children?.[1].children?.[0].data['X-Test']).toBe('xyz123');
+  });
+
+  it('returns the original tree for an empty search or no match', () => {
+    const tree: YAMLNode = { id: 'steps', type: 'steps', name: 'Steps', children: [] };
+    expect(replaceTextInEnabledRequests(tree, '', 'replacement')).toEqual({ tree, replacements: 0 });
+    expect(replaceTextInEnabledRequests(tree, 'missing', 'replacement')).toEqual({ tree, replacements: 0 });
+  });
+});
 
 function createBaseTree(): YAMLNode {
   return {

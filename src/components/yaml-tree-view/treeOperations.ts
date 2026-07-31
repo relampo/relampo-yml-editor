@@ -139,6 +139,98 @@ export function toggleNodeInTree(tree: YAMLNode, nodeId: string): YAMLNode {
   return tree;
 }
 
+function replaceTextInValue(value: unknown, search: string, replacement: string): [unknown, number, boolean] {
+  if (typeof value === 'string') {
+    const matches = value.split(search).length - 1;
+    return matches > 0 ? [value.split(search).join(replacement), matches, true] : [value, 0, false];
+  }
+
+  if (Array.isArray(value)) {
+    let count = 0;
+    let changed = false;
+    const nextValue = value.map(item => {
+      const [nextItem, itemCount, itemChanged] = replaceTextInValue(item, search, replacement);
+      count += itemCount;
+      changed ||= itemChanged;
+      return nextItem;
+    });
+    return [changed ? nextValue : value, count, changed];
+  }
+
+  if (value && typeof value === 'object') {
+    let count = 0;
+    let changed = false;
+    const nextValue = Object.fromEntries(
+      Object.entries(value).map(([key, item]) => {
+        const [nextItem, itemCount, itemChanged] = replaceTextInValue(item, search, replacement);
+        count += itemCount;
+        changed ||= itemChanged;
+        return [key, nextItem];
+      }),
+    );
+    return [changed ? nextValue : value, count, changed];
+  }
+
+  return [value, 0, false];
+}
+
+function replaceRequestData(data: unknown, search: string, replacement: string): [unknown, number, boolean] {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return [data, 0, false];
+
+  let count = 0;
+  let changed = false;
+  const nextData = Object.fromEntries(
+    Object.entries(data).map(([key, value]) => {
+      if (key === 'enabled' || key === 'method') return [key, value];
+      const [nextValue, valueCount, valueChanged] = replaceTextInValue(value, search, replacement);
+      count += valueCount;
+      changed ||= valueChanged;
+      return [key, nextValue];
+    }),
+  );
+  return [changed ? nextData : data, count, changed];
+}
+
+/** Replace literal text in enabled requests and their headers. */
+export function replaceTextInEnabledRequests(
+  tree: YAMLNode,
+  search: string,
+  replacement: string,
+): { tree: YAMLNode; replacements: number } {
+  if (!search) return { tree, replacements: 0 };
+
+  const visit = (node: YAMLNode, inheritedEnabled: boolean): [YAMLNode, number, boolean] => {
+    const enabled = inheritedEnabled && node.data?.enabled !== false;
+    let nextData = node.data;
+    let replacements = 0;
+    let changed = false;
+
+    if (enabled && (REQUEST_TYPES.has(node.type) || node.type === 'headers')) {
+      const [replacedData, count, dataChanged] = replaceRequestData(node.data, search, replacement);
+      nextData = replacedData;
+      replacements += count;
+      changed ||= dataChanged;
+    }
+
+    let nextChildren = node.children;
+    if (node.children) {
+      let childrenChanged = false;
+      nextChildren = node.children.map(child => {
+        const [nextChild, count, childChanged] = visit(child, enabled);
+        replacements += count;
+        childrenChanged ||= childChanged;
+        return nextChild;
+      });
+      changed ||= childrenChanged;
+    }
+
+    return [changed ? { ...node, data: nextData, ...(nextChildren ? { children: nextChildren } : {}) } : node, replacements, changed];
+  };
+
+  const [updatedTree, replacements] = visit(tree, true);
+  return { tree: updatedTree, replacements };
+}
+
 export function addNodeToTree(tree: YAMLNode, parentId: string, newNode: YAMLNode): YAMLNode {
   if (tree.id === parentId) {
     const children = tree.children || [];
