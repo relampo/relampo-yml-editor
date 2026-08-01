@@ -1,9 +1,20 @@
+import { useState } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { YAMLNode } from '../types/yaml';
 import { YAMLRequestDetails } from './YAMLRequestDetails';
 
 describe('YAMLRequestDetails', () => {
+  function ControlledRequest({ node }: { node: YAMLNode }) {
+    const [currentNode, setCurrentNode] = useState(node);
+    return (
+      <YAMLRequestDetails
+        node={currentNode}
+        onNodeUpdate={(nodeId, data) => setCurrentNode(previous => ({ ...previous, id: nodeId, data }))}
+      />
+    );
+  }
+
   it('shows the HTTP method from short-form node type when method data is absent', () => {
     const node: YAMLNode = {
       id: 'post-1',
@@ -168,6 +179,65 @@ describe('YAMLRequestDetails', () => {
     expect(screen.getByDisplayValue('reservation_id')).toBeInTheDocument();
     expect(screen.getByDisplayValue('RES-d7ffa616f697')).toBeInTheDocument();
     expect(screen.getByDisplayValue('relampo_token')).toBeInTheDocument();
+  });
+
+  it('keeps focus while the parent syncs Form Data edits back into the node', async () => {
+    const node: YAMLNode = {
+      id: 'post-form-focus',
+      type: 'post',
+      name: '[13] POST /pay/start',
+      data: {
+        method: 'POST',
+        url: '/pay/start',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: { reservation_id: 'initial' },
+      },
+      children: [],
+    };
+
+    render(<ControlledRequest node={node} />);
+
+    let fieldInput = (await screen.findByDisplayValue('reservation_id')) as HTMLInputElement;
+    fieldInput.focus();
+    for (const value of ['reservation', 'reservation_id_updated']) {
+      fireEvent.change(fieldInput, { target: { value } });
+      fieldInput = screen.getByDisplayValue(value) as HTMLInputElement;
+      expect(document.activeElement).toBe(fieldInput);
+    }
+
+    let valueInput = (await screen.findByDisplayValue('initial')) as HTMLInputElement;
+    valueInput.focus();
+    for (const value of ['draft', 'draft-value']) {
+      fireEvent.change(valueInput, { target: { value } });
+      valueInput = screen.getByDisplayValue(value) as HTMLInputElement;
+      expect(document.activeElement).toBe(valueInput);
+    }
+  });
+
+  it('keeps a draft value and Form Data type when its field name is still blank', async () => {
+    const node: YAMLNode = {
+      id: 'post-form-draft',
+      type: 'post',
+      name: '[14] POST /pay/start',
+      data: {
+        method: 'POST',
+        url: '/pay/start',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: {},
+      },
+      children: [],
+    };
+
+    render(<ControlledRequest node={node} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Form Data' }));
+    const valueInput = screen.getAllByPlaceholderText('value').at(-1) as HTMLInputElement;
+    valueInput.focus();
+    fireEvent.change(valueInput, { target: { value: 'draft-value' } });
+
+    const updatedValueInput = screen.getByDisplayValue('draft-value');
+    expect(document.activeElement).toBe(updatedValueInput);
+    expect(screen.getByPlaceholderText('field_name')).toBeInTheDocument();
   });
 
   it('replaces stale body_raw when editing form data placeholders from Spark variables', async () => {
