@@ -4,7 +4,7 @@ import type { editor as MonacoEditorNS } from 'monaco-editor';
 import { JSX, RefObject, useEffect, useMemo, useRef, useState } from 'react';
 import type { YAMLValue } from '../types/yaml';
 import { binaryBodyDisplay, binaryBodyDownload, type BinaryBodyDownload } from '../utils/binaryBody';
-import type { SearchMode } from './debugSearch';
+import { buildRelampoRegex, type SearchMode } from './debugSearch';
 import { Input } from './ui/input';
 
 interface YAMLResponseDetailsProps {
@@ -45,17 +45,12 @@ function shouldUseMonaco(text: string) {
   return lines > MONACO_SWITCH_LINE_THRESHOLD || bytes > MONACO_SWITCH_SIZE_THRESHOLD;
 }
 
-// Regex-mode search intentionally hands the user's raw text to `new RegExp` —
-// the whole point of the Text/Regex toggle is that Regex mode matches real
-// regex syntax, so escaping metacharacters here would silently make it behave
-// like Text mode. `pattern` (rather than "search term") reflects that intent;
-// invalid syntax is caught and surfaced via the null return. RLP.
+// Regex-mode search intentionally hands the user's raw text to the shared
+// builder — the whole point of the Text/Regex toggle is that Regex mode matches
+// real regex syntax. The builder also translates Relampo's Go/RE2 inline flags;
+// invalid syntax is caught and surfaced via the null return.
 function buildDynamicRegex(pattern: string, flags: string): RegExp | null {
-  try {
-    return new RegExp(pattern, flags);
-  } catch {
-    return null;
-  }
+  return buildRelampoRegex(pattern, flags);
 }
 
 function findMatchRanges(text: string, pattern: string, mode: SearchMode): Array<{ start: number; end: number }> {

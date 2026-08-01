@@ -10,7 +10,7 @@ import { HighlightedInput } from './ui/HighlightedInput';
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { YAMLResponseDetails } from './YAMLResponseDetails';
-import type { SearchMode } from './debugSearch';
+import { buildRelampoRegex, type SearchMode } from './debugSearch';
 
 const FALLBACK_BASE_URL_PLACEHOLDER = 'api.example.com';
 type YAMLRecord = { [key: string]: YAMLValue | undefined };
@@ -38,17 +38,12 @@ function getNumberValue(value: YAMLValue): number | undefined {
   return typeof value === 'number' ? value : undefined;
 }
 
-// Regex-mode search intentionally hands the user's raw text to `new RegExp` —
-// the whole point of the Text/Regex toggle is that Regex mode matches real
-// regex syntax, so escaping metacharacters here would silently make it behave
-// like Text mode. `pattern` (rather than "search term") reflects that intent;
-// invalid syntax is caught and surfaced via the null return. RLP.
+// Regex-mode search intentionally hands the user's raw text to the shared
+// builder — the whole point of the Text/Regex toggle is that Regex mode matches
+// real regex syntax. The builder also translates Relampo's Go/RE2 inline flags;
+// invalid syntax is caught and surfaced via the null return.
 function buildDynamicRegex(pattern: string, flags: string): RegExp | null {
-  try {
-    return new RegExp(pattern, flags);
-  } catch {
-    return null;
-  }
+  return buildRelampoRegex(pattern, flags);
 }
 
 function getRecordValue(value: YAMLValue): YAMLRecord | undefined {

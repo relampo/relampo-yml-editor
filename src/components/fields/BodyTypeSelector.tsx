@@ -4,7 +4,7 @@ import type { editor as MonacoEditorNS } from 'monaco-editor';
 import { JSX, RefObject, useEffect, useMemo, useRef, useState } from 'react';
 import type { StringMap } from '../../types/shared';
 import type { YAMLValue } from '../../types/yaml';
-import type { SearchMode } from '../debugSearch';
+import { buildRelampoRegex, type SearchMode } from '../debugSearch';
 import { Input } from '../ui/input';
 
 export type BodyType = 'none' | 'json' | 'form' | 'raw';
@@ -871,9 +871,8 @@ function MonacoBodyEditor({
 
 // The regex `pattern` here is intentionally used unescaped: this branch only runs when
 // `mode === 'regex'`, i.e. the user explicitly opted into regex search and is authoring
-// the pattern themselves (mirrors the canonical implementation in debugSearch.ts).
-// Escaping it would defeat the regex-search feature; literal search is handled by the
-// `mode === 'text'` branch above. Invalid patterns are caught and yield no matches.
+// the pattern themselves. Relampo's Go/RE2 inline flags are normalized by the shared
+// builder; invalid patterns yield no matches.
 function findMatchRanges(text: string, pattern: string, mode: SearchMode): Array<{ start: number; end: number }> {
   if (!text || !pattern) return [];
   if (mode === 'text') {
@@ -889,12 +888,8 @@ function findMatchRanges(text: string, pattern: string, mode: SearchMode): Array
     }
     return ranges;
   }
-  let re: RegExp;
-  try {
-    re = new RegExp(pattern, 'gi');
-  } catch {
-    return [];
-  }
+  const re = buildRelampoRegex(pattern, 'gi');
+  if (!re) return [];
   const ranges: Array<{ start: number; end: number }> = [];
   for (const m of text.matchAll(re)) {
     const start = m.index ?? -1;
