@@ -23,6 +23,7 @@ type YAMLEditorDetailsPanelProps = {
   redirectSourceMap: Record<string, RedirectSourceInfo>;
   onNodeUpdate: (nodeId: string, updatedData: Record<string, unknown>) => void;
   onRenameHost: (oldHost: string, newHost: string) => void;
+  onRemoveHost: (host: string) => void;
   onToggleEnabled: (nodeId: string, enabled: boolean) => void;
   searchQuery: string;
   dataSourceFileBrowseEnabled: boolean;
@@ -48,6 +49,7 @@ export function YAMLEditorDetailsPanel({
   redirectSourceMap,
   onNodeUpdate,
   onRenameHost,
+  onRemoveHost,
   onToggleEnabled,
   searchQuery,
   dataSourceFileBrowseEnabled,
@@ -104,6 +106,7 @@ export function YAMLEditorDetailsPanel({
             redirectSourceInfo={selectedNode ? (redirectSourceMap[selectedNode.id] ?? null) : null}
             onNodeUpdate={onNodeUpdate}
             onRenameHost={onRenameHost}
+            onRemoveHost={onRemoveHost}
             onToggleEnabled={onToggleEnabled}
             searchQuery={searchQuery}
             dataSourceFileBrowseEnabled={dataSourceFileBrowseEnabled}

@@ -182,6 +182,33 @@ describe('YAMLNodeDetails HTTP Defaults hosts', () => {
 
     expect(onRenameHost).toHaveBeenCalledWith('https://secondary.example.com', 'replacement.example.com');
   });
+
+  it('renders an independent remove action for every secondary host', () => {
+    const onRemoveHost = vi.fn();
+
+    render(
+      <LanguageProvider>
+        <YAMLNodeDetails
+          node={httpDefaultsNode}
+          hosts={[
+            'https://primary.example.com',
+            'https://secondary.example.com',
+            'https://tertiary.example.com',
+          ]}
+          onRemoveHost={onRemoveHost}
+        />
+      </LanguageProvider>,
+    );
+
+    const removeButtons = screen.getAllByRole('button', { name: 'Remove host' });
+    expect(removeButtons).toHaveLength(2);
+
+    fireEvent.click(removeButtons[0]);
+    fireEvent.click(removeButtons[1]);
+
+    expect(onRemoveHost).toHaveBeenNthCalledWith(1, 'https://secondary.example.com');
+    expect(onRemoveHost).toHaveBeenNthCalledWith(2, 'https://tertiary.example.com');
+  });
 });
 
 describe('YAMLNodeDetails file upload browsing', () => {

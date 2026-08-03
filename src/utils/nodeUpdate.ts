@@ -93,12 +93,8 @@ export function renameRequestHost(tree: YAMLNode, oldHost: string, newHost: stri
   // Accept either a bare authority (`host[:port]`) or a full URL — users
   // naturally paste a scheme since the primary base_url has one. Reduce both to
   // the authority so we never feed `https://https://host` into buildRequestUrl.
-  const toAuthority = (value: string): string => {
-    const trimmed = value.trim();
-    return getRequestNodeHost(trimmed) || trimmed;
-  };
-  const from = toAuthority(oldHost);
-  const to = toAuthority(newHost);
+  const from = normalizeHost(oldHost);
+  const to = normalizeHost(newHost);
   if (!from || !to || from === to) {
     return tree;
   }
@@ -115,6 +111,53 @@ export function renameRequestHost(tree: YAMLNode, oldHost: string, newHost: stri
       const baseUrl = node.data?.base_url;
       if (typeof baseUrl === 'string' && getRequestNodeHost(baseUrl) === from) {
         nextNode = { ...node, data: { ...node.data, base_url: buildRequestUrl(baseUrl, { baseUrl: to }) } };
+      }
+    }
+
+    if (!nextNode.children?.length) {
+      return nextNode;
+    }
+
+    let childrenChanged = false;
+    const nextChildren = nextNode.children.map(child => {
+      const updatedChild = visit(child);
+      if (updatedChild !== child) {
+        childrenChanged = true;
+      }
+      return updatedChild;
+    });
+
+    if (!childrenChanged) {
+      return nextNode;
+    }
+
+    return { ...nextNode, children: nextChildren };
+  };
+
+  return visit(tree);
+}
+
+function normalizeHost(value: string): string {
+  const trimmed = value.trim();
+  return getRequestNodeHost(trimmed) || trimmed;
+}
+
+/**
+ * Removes a derived secondary host by moving its requests back to the
+ * recording's relative/base URL. Paths and queries stay intact, while the
+ * host disappears from the derived HTTP Defaults list on the next render.
+ */
+export function removeRequestHost(tree: YAMLNode, host: string): YAMLNode {
+  const from = normalizeHost(host);
+  if (!from) return tree;
+
+  const visit = (node: YAMLNode): YAMLNode => {
+    let nextNode = node;
+
+    if (isHttpRequestNodeType(node.type)) {
+      const url = node.data?.url;
+      if (typeof url === 'string' && getRequestNodeHost(url) === from) {
+        nextNode = { ...node, data: { ...node.data, url: buildRequestUrl(url, { baseUrl: '' }) } };
       }
     }
 

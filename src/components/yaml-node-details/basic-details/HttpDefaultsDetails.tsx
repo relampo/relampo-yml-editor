@@ -1,3 +1,4 @@
+import { Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import type { StringMap } from '../../../types/shared';
 import type { AuthConfig, HttpDefaults } from '../../../types/yaml';
@@ -13,9 +14,10 @@ import type { NodeDetailProps } from '../types';
 const URL_SCHEME = /^https?:\/\//i;
 const stripScheme = (value: string) => value.replace(URL_SCHEME, '');
 
-export function HttpDefaultsDetails({ node, onNodeUpdate, hosts = [], onRenameHost }: NodeDetailProps & {
+export function HttpDefaultsDetails({ node, onNodeUpdate, hosts = [], onRenameHost, onRemoveHost }: NodeDetailProps & {
   hosts?: string[];
   onRenameHost?: (oldHost: string, newHost: string) => void;
+  onRemoveHost?: (host: string) => void;
 }) {
   const { data, updateData } = createNodeDataUpdater(node, onNodeUpdate);
   const defaults = data as Partial<HttpDefaults>;
@@ -102,27 +104,39 @@ export function HttpDefaultsDetails({ node, onNodeUpdate, hosts = [], onRenameHo
         />
         {secondaryHostEntries.length > 0 && (
           <div className="divide-y divide-white/5 border-t border-white/5">
-            {secondaryHostEntries.map(([key, value]) => (
-              <div
-                key={key}
-                className="flex items-center gap-3 py-3 px-1"
-              >
-                <div className="flex items-center gap-2 shrink-0 w-[250px]">
-                  <div className="flex-1 rounded border border-yellow-400/20 bg-yellow-400/5 px-2 py-1 text-xs font-mono text-yellow-400">
-                    {key}
-                  </div>
-                  <span className="shrink-0 font-bold text-zinc-500">=</span>
+            {secondaryHostEntries.map(([key, value]) => {
+              const index = Number(key.replace('base_url', ''));
+              const originalHost = hosts[index] ?? value;
+
+              return (
+                <div
+                  key={key}
+                  className="flex items-center gap-3 py-3 px-1"
+                >
+                    <div className="flex items-center gap-2 shrink-0 w-[250px]">
+                      <div className="flex-1 rounded border border-yellow-400/20 bg-yellow-400/5 px-2 py-1 text-xs font-mono text-yellow-400">
+                        {key}
+                      </div>
+                      <span className="shrink-0 font-bold text-zinc-500">=</span>
+                    </div>
+                    <SecondaryHostField
+                      value={value}
+                      onCommit={nextValue => onRenameHost?.(originalHost, nextValue)}
+                    />
+                    {onRemoveHost && (
+                      <button
+                        type="button"
+                        onClick={() => onRemoveHost(originalHost)}
+                        aria-label="Remove host"
+                        title={`Remove ${key}`}
+                        className="p-2 h-9 text-zinc-500 hover:text-red-400 bg-white/5 hover:bg-white/10 rounded shrink-0 transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                 </div>
-                <SecondaryHostField
-                  value={value}
-                  onCommit={nextValue => {
-                    const index = Number(key.replace('base_url', ''));
-                    const originalHost = Number.isInteger(index) ? hosts[index] : undefined;
-                    onRenameHost?.(originalHost ?? value, nextValue);
-                  }}
-                />
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
