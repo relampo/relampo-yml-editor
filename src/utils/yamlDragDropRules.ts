@@ -135,8 +135,11 @@ const containmentRules: Partial<Record<YAMLNodeType, YAMLNodeType[]>> = {
 
   // The parsed editor root uses `test` as its node type. Keep it aligned with
   // the legacy `root` alias so root-level data sources can be moved through
-  // the same drag/drop and validation paths as every other scope.
-  test: ROOT_LEVEL_ELEMENTS,
+  // the same drag/drop and validation paths as every other scope — minus
+  // `test` itself: the root cannot be nested inside anything, least of all
+  // itself, and `canDrop` sees only node types so it cannot tell the document
+  // root apart from any other `test` node.
+  test: ROOT_LEVEL_ELEMENTS.filter(type => type !== 'test'),
   variables: [],
   data_source: [],
   http_defaults: [],
@@ -238,8 +241,9 @@ export function canDrop(
   position: 'before' | 'after' | 'inside',
   parentType?: YAMLNodeType,
 ): boolean {
-  // Cannot move root
-  if (draggedType === 'root') {
+  // Cannot move root — `root` is the legacy alias, `test` is what the parser
+  // actually produces for the document root.
+  if (draggedType === 'root' || draggedType === 'test') {
     return false;
   }
 

@@ -426,6 +426,24 @@ export function syncRedirectSourceFollowRedirects(
   return result;
 }
 
+/** Which node a drop lands under: the target itself for `inside`, else its parent. */
+function destinationParentId(
+  tree: YAMLNode,
+  targetId: string,
+  position: 'before' | 'after' | 'inside',
+): string | null {
+  if (position === 'inside') return targetId;
+  const findParent = (node: YAMLNode): string | null => {
+    if (node.children?.some(child => child.id === targetId)) return node.id;
+    for (const child of node.children || []) {
+      const found = findParent(child);
+      if (found) return found;
+    }
+    return null;
+  };
+  return findParent(tree);
+}
+
 export function moveNodeInTree(
   tree: YAMLNode,
   nodeId: string,
@@ -433,6 +451,12 @@ export function moveNodeInTree(
   position: 'before' | 'after' | 'inside',
 ): YAMLNode {
   if (nodeId === targetId) return tree;
+
+  // The document root has no parent, so `removeNodeFromTree` cannot take it
+  // out of the tree — moving it would leave the original in place *and* insert
+  // a whole second copy under it, duplicating every node id. The type-level
+  // `canDrop` cannot catch this because the root is just another `test` node.
+  if (nodeId === tree.id) return tree;
 
   let nodeToMove: YAMLNode | null = null;
 
@@ -446,6 +470,13 @@ export function moveNodeInTree(
 
   findNode(tree);
   if (!nodeToMove) return tree;
+
+  // `treeToObject` writes one `data_source:` key per scope, so a second
+  // root-level data source would silently drop the first one on save.
+  const movedType = (nodeToMove as YAMLNode).type;
+  if (movedType === 'data_source' && destinationParentId(tree, targetId, position) === tree.id) {
+    if (tree.children?.some(child => child.type === 'data_source' && child.id !== nodeId)) return tree;
+  }
 
   const treeWithoutNode = removeNodeFromTree(tree, nodeId);
   let inserted = false;

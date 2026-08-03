@@ -134,7 +134,10 @@ export function treeToObject(tree: YAMLNode): any {
       obj.variables = child.data;
     } else if (child.type === 'data_source') {
       obj.data_source = { ...child.data };
-      if (child.name && child.name !== child.data?.name) {
+      // The parser defaults an unnamed data source to 'Data Source', so writing
+      // the node name back unconditionally invents a `name:` key the spec does
+      // not define. The step and request branches already guard against this.
+      if (child.name && child.name !== 'Data Source' && child.name !== child.data?.name) {
         obj.data_source.name = child.name;
       }
     } else if (child.type === 'http_defaults') {

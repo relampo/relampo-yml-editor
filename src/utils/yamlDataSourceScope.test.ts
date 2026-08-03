@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { moveNodeInTree } from '../components/yaml-tree-view/treeOperations';
 import type { YAMLNode } from '../types/yaml';
-import { validateTreeStructure } from './yamlDragDropRules';
+import { canDrop, validateTreeStructure } from './yamlDragDropRules';
 import { parseYAMLToTree, treeToYAML } from './yamlParser';
 
 function findNode(node: YAMLNode, type: YAMLNode['type']): YAMLNode | undefined {
@@ -60,5 +60,55 @@ scenarios:
     expect(stepScopedDataSource).toBeDefined();
     expect(stepScopedYAML).toContain('steps:\n      - request:');
     expect(stepScopedYAML).toContain('      - data_source:');
+  });
+});
+
+describe('root scope guards', () => {
+  const SCRIPT = `
+test:
+  name: scope-test
+data_source:
+  type: csv
+  file: users.csv
+scenarios:
+  - name: scenario
+    steps:
+      - request:
+          method: GET
+          url: /a
+          data_source:
+            type: csv
+            file: products.csv
+`;
+
+  it('refuses to drop the document root into itself', () => {
+    // Allowing root-level containment must not make `test` a legal child of
+    // `test`: the root has no parent, so the move would keep the original and
+    // insert a second copy of the whole document under it, duplicating ids.
+    const tree = parseYAMLToTree(SCRIPT);
+    expect(canDrop('test', 'data_source', 'after', 'test')).toBe(false);
+    expect(canDrop('test', 'test', 'inside')).toBe(false);
+
+    const dataSource = findNode(tree, 'data_source')!;
+    const moved = moveNodeInTree(tree, tree.id, dataSource.id, 'after');
+    expect(moved).toBe(tree);
+    expect(moved.children?.some(child => child.type === 'test')).toBe(false);
+  });
+
+  it('refuses a second root-level data source instead of dropping one on save', () => {
+    // treeToObject writes a single `data_source:` key per scope, so the second
+    // node would silently overwrite the first the next time the YAML is saved.
+    const tree = parseYAMLToTree(SCRIPT);
+    const scoped = findNode(findNode(tree, 'request')!, 'data_source')!;
+    const moved = moveNodeInTree(tree, scoped.id, tree.id, 'inside');
+
+    expect(moved).toBe(tree);
+    expect(treeToYAML(tree)).toContain('users.csv');
+    expect(treeToYAML(tree)).toContain('products.csv');
+  });
+
+  it('does not invent a name key when a data source keeps the default label', () => {
+    const tree = parseYAMLToTree(SCRIPT);
+    expect(treeToYAML(tree)).not.toContain('name: Data Source');
   });
 });
