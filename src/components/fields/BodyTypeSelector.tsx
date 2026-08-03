@@ -489,7 +489,9 @@ export function BodyTypeSelector({
   const rawTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const jsonHighlightRef = useRef<HTMLPreElement | null>(null);
   const rawHighlightRef = useRef<HTMLPreElement | null>(null);
-  const pendingFormBodyRef = useRef<YAMLValue | typeof BODY_SYNC_UNSET>(BODY_SYNC_UNSET);
+  // Body we just pushed up from a Form Data edit. Kept as state (not a ref) so
+  // the one-shot clear below happens through setState and render stays pure.
+  const [pendingFormBody, setPendingFormBody] = useState<YAMLValue | typeof BODY_SYNC_UNSET>(BODY_SYNC_UNSET);
 
   // Body/bodyRaw/contentType are the source of truth (e.g. switching between
   // YAML nodes); the local editing buffers below mirror them. Re-derived here
@@ -509,10 +511,8 @@ export function BodyTypeSelector({
     setSyncedProps({ body, bodyRaw, contentType });
 
     const preserveLocalFormData =
-      bodyType === 'form' &&
-      pendingFormBodyRef.current !== BODY_SYNC_UNSET &&
-      areYAMLValuesEqual(body, pendingFormBodyRef.current);
-    pendingFormBodyRef.current = BODY_SYNC_UNSET;
+      bodyType === 'form' && pendingFormBody !== BODY_SYNC_UNSET && areYAMLValuesEqual(body, pendingFormBody);
+    if (pendingFormBody !== BODY_SYNC_UNSET) setPendingFormBody(BODY_SYNC_UNSET);
 
     if (!preserveLocalFormData) {
       const hasBodyRaw = typeof bodyRaw === 'string' && bodyRaw.trim().length > 0;
@@ -619,7 +619,7 @@ export function BodyTypeSelector({
     }
 
     const nextBody = buildFormBody(newFormData, Array.isArray(body));
-    pendingFormBodyRef.current = nextBody;
+    setPendingFormBody(nextBody);
     onBodyChange(nextBody, 'form');
   };
 
@@ -637,7 +637,7 @@ export function BodyTypeSelector({
     }
 
     const nextBody = buildFormBody(newFormData, Array.isArray(body));
-    pendingFormBodyRef.current = nextBody;
+    setPendingFormBody(nextBody);
     onBodyChange(nextBody, 'form');
   };
 
