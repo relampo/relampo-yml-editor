@@ -44,6 +44,7 @@ interface YAMLNodeDetailsProps {
   redirectSourceInfo?: RedirectSourceInfo | null;
   onNodeUpdate?: (nodeId: string, updatedData: any) => void;
   onRenameHost?: (oldHost: string, newHost: string) => void;
+  onRemoveHost?: (host: string) => void;
   onToggleEnabled?: (nodeId: string, enabled: boolean) => void;
   searchQuery?: string;
   dataSourceFileBrowseEnabled?: boolean;
@@ -60,6 +61,7 @@ export function YAMLNodeDetails({
   redirectSourceInfo = null,
   onNodeUpdate,
   onRenameHost,
+  onRemoveHost,
   onToggleEnabled,
   searchQuery = '',
   dataSourceFileBrowseEnabled = false,
@@ -168,6 +170,7 @@ export function YAMLNodeDetails({
           redirectSourceInfo={redirectSourceInfo}
           onNodeUpdate={onNodeUpdate}
           onRenameHost={onRenameHost}
+          onRemoveHost={onRemoveHost}
           searchQuery={searchQuery}
           dataSourceFileBrowseEnabled={dataSourceFileBrowseEnabled}
         />
@@ -185,6 +188,7 @@ function NodeDetailsContent({
   redirectSourceInfo,
   onNodeUpdate,
   onRenameHost,
+  onRemoveHost,
   searchQuery = '',
   dataSourceFileBrowseEnabled = false,
 }: {
@@ -196,6 +200,7 @@ function NodeDetailsContent({
   redirectSourceInfo: RedirectSourceInfo | null;
   onNodeUpdate?: (nodeId: string, updatedData: any) => void;
   onRenameHost?: (oldHost: string, newHost: string) => void;
+  onRemoveHost?: (host: string) => void;
   searchQuery?: string;
   dataSourceFileBrowseEnabled?: boolean;
 }) {
@@ -234,6 +239,7 @@ function NodeDetailsContent({
           onNodeUpdate={onNodeUpdate}
           hosts={hosts}
           onRenameHost={onRenameHost}
+          onRemoveHost={onRemoveHost}
         />
       );
     case 'scenarios':

@@ -39,6 +39,7 @@ interface YAMLEditorMainLayoutProps {
   onDebugEditNode: (node: YAMLNode) => void;
   onNodeUpdate: (nodeId: string, updatedData: Record<string, unknown>) => void;
   onRenameHost: (oldHost: string, newHost: string) => void;
+  onRemoveHost: (host: string) => void;
   onToggleEnabled: (nodeId: string, enabled: boolean) => void;
 }
 
@@ -79,6 +80,7 @@ export function YAMLEditorMainLayout({
   onDebugEditNode,
   onNodeUpdate,
   onRenameHost,
+  onRemoveHost,
   onToggleEnabled,
 }: YAMLEditorMainLayoutProps) {
   return (
@@ -142,6 +144,7 @@ export function YAMLEditorMainLayout({
         redirectSourceMap={redirectSourceMap}
         onNodeUpdate={onNodeUpdate}
         onRenameHost={onRenameHost}
+        onRemoveHost={onRemoveHost}
         onToggleEnabled={onToggleEnabled}
         searchQuery={activeViewMode === 'tree' ? treeSearchQuery : ''}
         dataSourceFileBrowseEnabled={dataSourceFileBrowseEnabled}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { YAMLNode } from '../types/yaml';
-import { applyNodeUpdateToTree, renameRequestHost } from './nodeUpdate';
+import { applyNodeUpdateToTree, removeRequestHost, renameRequestHost } from './nodeUpdate';
 
 describe('applyNodeUpdateToTree', () => {
   it('updates multiple balanced children in a single mutation', () => {
@@ -131,5 +131,28 @@ describe('renameRequestHost', () => {
     expect(renameRequestHost(tree, 'missing.example.com', 'new.example.com')).toBe(tree);
     expect(renameRequestHost(tree, 'cdn.example.com', 'cdn.example.com')).toBe(tree);
     expect(renameRequestHost(tree, '  ', 'new.example.com')).toBe(tree);
+  });
+
+  it('moves removed secondary-host requests back to relative URLs', () => {
+    const updated = removeRequestHost(buildTree(), 'cdn.example.com');
+
+    expect(updated.children?.[2].data.url).toBe('/upload?token=1');
+    expect(updated.children?.[1].data.url).toBe('/home');
+    expect(updated.children?.[3].data.url).toBe('https://other.example.com/ping');
+  });
+
+  it('returns the same tree when the removed host is not present', () => {
+    const tree = buildTree();
+
+    expect(removeRequestHost(tree, 'missing.example.com')).toBe(tree);
+  });
+
+  it('leaves http_defaults.base_url untouched', () => {
+    // Unlike renameRequestHost, removal has no http_defaults branch on purpose:
+    // the requests are retargeted at the *existing* primary, so rewriting it
+    // would repoint every base-URL request in the document as a side effect.
+    const updated = removeRequestHost(buildTree(), 'cdn.example.com');
+
+    expect(updated.children?.[0].data.base_url).toBe('https://primary.example.com');
   });
 });

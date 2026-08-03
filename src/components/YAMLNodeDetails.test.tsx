@@ -182,6 +182,51 @@ describe('YAMLNodeDetails HTTP Defaults hosts', () => {
 
     expect(onRenameHost).toHaveBeenCalledWith('https://secondary.example.com', 'replacement.example.com');
   });
+
+  it('renders an independent remove action for every secondary host', () => {
+    const onRemoveHost = vi.fn();
+
+    render(
+      <LanguageProvider>
+        <YAMLNodeDetails
+          node={httpDefaultsNode}
+          // collectScenarioHosts yields bare authorities, never scheme-prefixed
+          // values — this is the shape production actually passes down.
+          hosts={['primary.example.com', 'secondary.example.com', 'tertiary.example.com']}
+          onRemoveHost={onRemoveHost}
+        />
+      </LanguageProvider>,
+    );
+
+    // Each button names the row it deletes; a shared "Remove host" label left a
+    // screen-reader user unable to tell which host an irreversible bulk rewrite
+    // was about to hit.
+    const first = screen.getByRole('button', { name: 'Remove base_url1' });
+    const second = screen.getByRole('button', { name: 'Remove base_url2' });
+
+    fireEvent.click(first);
+    fireEvent.click(second);
+
+    expect(onRemoveHost).toHaveBeenNthCalledWith(1, 'secondary.example.com');
+    expect(onRemoveHost).toHaveBeenNthCalledWith(2, 'tertiary.example.com');
+  });
+
+  it('offers no host removal when http_defaults has no base_url to fall back on', () => {
+    // Removal makes the host's requests relative so they inherit the primary
+    // base_url. With no primary stored there is nothing to inherit, and the
+    // requests would be left with no host at all — nothing validates that.
+    render(
+      <LanguageProvider>
+        <YAMLNodeDetails
+          node={{ id: 'http_defaults', type: 'http_defaults', name: 'HTTP Defaults', data: { headers: {} } }}
+          hosts={['a.example.com', 'b.example.com']}
+          onRemoveHost={vi.fn()}
+        />
+      </LanguageProvider>,
+    );
+
+    expect(screen.queryByRole('button', { name: /^Remove base_url/ })).not.toBeInTheDocument();
+  });
 });
 
 describe('YAMLNodeDetails file upload browsing', () => {

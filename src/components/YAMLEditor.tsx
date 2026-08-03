@@ -5,7 +5,7 @@ import type { YAMLNode } from '../types/yaml';
 import { useResizePanel } from '../hooks/useResizePanel';
 import { useYAMLPersistence } from '../hooks/useYAMLPersistence';
 import { logStatsigEvent } from '../utils/analytics';
-import { applyNodeUpdateToTree, renameRequestHost } from '../utils/nodeUpdate';
+import { applyNodeUpdateToTree, removeRequestHost, renameRequestHost } from '../utils/nodeUpdate';
 import { getDocumentMetrics } from '../utils/yamlDocumentLimits';
 import { YAMLEditorHeader } from './YAMLEditorHeader';
 import { YAMLEditorNewDocumentDialog } from './YAMLEditorNewDocumentDialog';
@@ -188,6 +188,13 @@ export function YAMLEditor() {
     commitTreeChange(updatedTree, undefined, { serialization: 'debounced' });
   };
 
+  const handleRemoveHost = (host: string) => {
+    if (!yamlTree) return;
+    const updatedTree = removeRequestHost(yamlTree, host);
+    if (updatedTree === yamlTree) return;
+    commitTreeChange(updatedTree, undefined, { serialization: 'debounced' });
+  };
+
   const handleToggleNodeEnabled = (nodeId: string, enabled: boolean) => {
     if (!yamlTree) return;
     const toggledTree = updateNodeEnabled(yamlTree, nodeId, enabled);
@@ -308,6 +315,7 @@ export function YAMLEditor() {
         }}
         onNodeUpdate={handleNodeUpdate}
         onRenameHost={handleRenameHost}
+        onRemoveHost={handleRemoveHost}
         onToggleEnabled={handleToggleNodeEnabled}
       />
     </div>
