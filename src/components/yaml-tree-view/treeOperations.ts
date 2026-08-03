@@ -174,7 +174,19 @@ function replaceTextInValue(value: unknown, search: string, replacement: string)
   return [value, 0, false];
 }
 
-function replaceRequestData(data: unknown, search: string, replacement: string): [unknown, number, boolean] {
+function replaceRequestData(
+  data: unknown,
+  search: string,
+  replacement: string,
+  // True when this request also has a `headers` child node. The parser hands
+  // the very same headers object to both places (yamlParser: `data: {...req}`
+  // and the child's `data: req.headers`), so both get visited and every header
+  // match would otherwise be tallied twice in the count shown to the user.
+  // The copy still has to be replaced — YAMLRequestDetails reads
+  // `node.data.headers` to infer Content-Type — only the tally moves to the
+  // child node, which is also what the serializer writes back out.
+  headersCountedByChild = false,
+): [unknown, number, boolean] {
   if (!data || typeof data !== 'object' || Array.isArray(data)) return [data, 0, false];
 
   let count = 0;
@@ -185,7 +197,7 @@ function replaceRequestData(data: unknown, search: string, replacement: string):
         return [key, value];
       }
       const [nextValue, valueCount, valueChanged] = replaceTextInValue(value, search, replacement);
-      count += valueCount;
+      if (!(key === 'headers' && headersCountedByChild)) count += valueCount;
       changed ||= valueChanged;
       return [key, nextValue];
     }),
@@ -208,7 +220,16 @@ export function replaceTextInEnabledRequests(
     let changed = false;
 
     if (enabled && (REQUEST_TYPES.has(node.type) || node.type === 'headers')) {
-      const [replacedData, count, dataChanged] = replaceRequestData(node.data, search, replacement);
+      // Only a request node duplicates its headers into a child; a `headers`
+      // node has none, so it always owns its own tally.
+      const headersCountedByChild =
+        REQUEST_TYPES.has(node.type) && (node.children?.some(child => child.type === 'headers') ?? false);
+      const [replacedData, count, dataChanged] = replaceRequestData(
+        node.data,
+        search,
+        replacement,
+        headersCountedByChild,
+      );
       nextData = replacedData;
       replacements += count;
       changed ||= dataChanged;

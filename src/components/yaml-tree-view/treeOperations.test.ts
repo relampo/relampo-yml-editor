@@ -10,6 +10,16 @@ import {
   updateNodeEnabled,
   wrapNodesInTransaction,
 } from './treeOperations';
+import { parseYAMLToTree } from '../../utils/yamlParser';
+
+function findRequest(node: YAMLNode): YAMLNode | undefined {
+  if (node.type === 'request' || node.type === 'get' || node.type === 'post') return node;
+  for (const child of node.children || []) {
+    const found = findRequest(child);
+    if (found) return found;
+  }
+  return undefined;
+}
 
 describe('replaceTextInEnabledRequests', () => {
   it('replaces request and header values but skips disabled requests', () => {
@@ -52,6 +62,66 @@ describe('replaceTextInEnabledRequests', () => {
     });
     expect(result.tree.children?.[1].data.url).toBe('/disabled/xyz123');
     expect(result.tree.children?.[1].children?.[0].data['X-Test']).toBe('xyz123');
+  });
+
+  it('counts each header replacement once on a real parsed tree', () => {
+    // The hand-built fixture above omits `headers` from the request node's own
+    // data, which is not what the parser produces: it hands the very same
+    // headers object to both `node.data.headers` and the `headers` child, so
+    // both get visited. Building from parseYAMLToTree keeps this honest.
+    const tree = parseYAMLToTree(`
+test:
+  name: count
+scenarios:
+  - name: s
+    steps:
+      - request:
+          method: GET
+          url: /u/xyz123
+          headers:
+            Authorization: xyz123
+`) as YAMLNode;
+
+    const request = findRequest(tree)!;
+    expect(request.data.headers).toBe(request.children?.find(child => child.type === 'headers')?.data);
+
+    const result = replaceTextInEnabledRequests(tree, 'xyz123', '{{tok}}');
+
+    // Two user-visible values: the URL and the Authorization header.
+    expect(result.replacements).toBe(2);
+
+    const replaced = findRequest(result.tree)!;
+    expect(replaced.data.url).toBe('/u/{{tok}}');
+    // Both copies are still rewritten — YAMLRequestDetails reads
+    // node.data.headers for Content-Type, so leaving it stale would be wrong.
+    expect(replaced.data.headers).toEqual({ Authorization: '{{tok}}' });
+    expect(replaced.children?.find(child => child.type === 'headers')?.data).toEqual({
+      Authorization: '{{tok}}',
+    });
+  });
+
+  it('still counts request headers that have no headers child node', () => {
+    // The parser only emits the child for a non-empty object, so a request
+    // carrying headers without one must keep owning its own tally.
+    const tree: YAMLNode = {
+      id: 'steps',
+      type: 'steps',
+      name: 'Steps',
+      children: [
+        {
+          id: 'request',
+          type: 'request',
+          name: 'R',
+          data: { url: '/u/xyz123', headers: { Authorization: 'xyz123' } },
+          children: [],
+        },
+      ],
+    };
+
+    const result = replaceTextInEnabledRequests(tree, 'xyz123', '{{tok}}');
+
+    expect(result.replacements).toBe(2);
+    expect(result.tree.children?.[0].data.headers).toEqual({ Authorization: '{{tok}}' });
   });
 
   it('returns the original tree for an empty search or no match', () => {
