@@ -133,8 +133,10 @@ const containmentRules: Partial<Record<YAMLNodeType, YAMLNodeType[]>> = {
   // ROOT - Test Plan level
   root: ROOT_LEVEL_ELEMENTS,
 
-  // Config elements (leaf nodes - no children)
-  test: [],
+  // The parsed editor root uses `test` as its node type. Keep it aligned with
+  // the legacy `root` alias so root-level data sources can be moved through
+  // the same drag/drop and validation paths as every other scope.
+  test: ROOT_LEVEL_ELEMENTS,
   variables: [],
   data_source: [],
   http_defaults: [],
