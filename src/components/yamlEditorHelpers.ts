@@ -98,6 +98,26 @@ function normalizeRedirectLocationForCompare(location: string, sourceUrl: string
   return normalizeUrlForCompare(trimmedLocation);
 }
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// A correlated follow-up URL can carry `{{var}}` placeholders where the
+// recording held a literal value: Tree "Replace all" rewrites request URLs but
+// deliberately leaves the recorded response untouched (RLP-663), so the source
+// Location keeps the original literal and an exact match would drop the badge.
+// Treat each placeholder as standing in for one URL value — deliberately not
+// crossing `/ ? & #`, so a parametrized URL cannot match an unrelated path.
+// `normalizeUrlForCompare` percent-encodes braces when the URL parses, so both
+// spellings are recognized.
+const URL_PLACEHOLDER = /(?:\{\{|%7B%7B)[\s\S]*?(?:\}\}|%7D%7D)/i;
+
+function urlMatchesAllowingPlaceholders(normalizedTarget: string, normalizedLocation: string): boolean {
+  const literals = normalizedTarget.split(URL_PLACEHOLDER);
+  if (literals.length < 2) return false;
+  return new RegExp(`^${literals.map(escapeRegExp).join('[^/?&#]*')}$`).test(normalizedLocation);
+}
+
 // True when `source` still describes a redirect whose Location resolves to
 // `target`'s current URL. Used to decide whether a previously-detected
 // redirect should survive a tree restructure (e.g. the source dragged into a
@@ -110,7 +130,8 @@ export function nodesStillFormRedirect(source: YAMLNode, target: YAMLNode): bool
   if (!location) return false;
   const normalizedLocation = normalizeRedirectLocationForCompare(location, String(source.data?.url || ''));
   const normalizedTarget = normalizeUrlForCompare(String(target.data?.url || ''));
-  return Boolean(normalizedLocation && normalizedTarget && normalizedLocation === normalizedTarget);
+  if (!normalizedLocation || !normalizedTarget) return false;
+  return normalizedLocation === normalizedTarget || urlMatchesAllowingPlaceholders(normalizedTarget, normalizedLocation);
 }
 
 export function detectRedirectFollowUps(tree: YAMLNode): Record<string, RedirectedRequestInfo> {
