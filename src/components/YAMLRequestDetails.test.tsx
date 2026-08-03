@@ -214,6 +214,67 @@ describe('YAMLRequestDetails', () => {
     }
   });
 
+  it('re-derives the panel from a newly selected node instead of preserving stale Form Data', async () => {
+    // The preserve branch is one-shot: it must release as soon as the echo it
+    // was waiting for arrives. If the clear ever moves inside the branch, a
+    // stale pending body makes a genuinely external change look like our own
+    // echo — here node B has the same body but is JSON, so the panel would
+    // wrongly keep showing node A's Form Data rows.
+    const formNode: YAMLNode = {
+      id: 'post-form-a',
+      type: 'post',
+      name: '[15] POST /a',
+      data: {
+        method: 'POST',
+        url: '/a',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: { token: 'x' },
+      },
+      children: [],
+    };
+    const jsonNode: YAMLNode = {
+      id: 'post-json-b',
+      type: 'post',
+      name: '[16] POST /b',
+      data: {
+        method: 'POST',
+        url: '/b',
+        headers: { 'Content-Type': 'application/json' },
+        body: { token: '1' },
+      },
+      children: [],
+    };
+
+    function SwitchableRequest() {
+      const [current, setCurrent] = useState(formNode);
+      return (
+        <>
+          <button type="button" onClick={() => setCurrent(jsonNode)}>
+            select other node
+          </button>
+          <YAMLRequestDetails
+            node={current}
+            onNodeUpdate={(nodeId, data) => setCurrent(previous => ({ ...previous, id: nodeId, data }))}
+          />
+        </>
+      );
+    }
+
+    render(<SwitchableRequest />);
+
+    const valueInput = (await screen.findByDisplayValue('x')) as HTMLInputElement;
+    valueInput.focus();
+    fireEvent.change(valueInput, { target: { value: '1' } });
+    expect(screen.getByDisplayValue('1')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'select other node' }));
+
+    expect(await screen.findByText('JSON Body')).toBeInTheDocument();
+    // The Form Data *rows* are gone (the type toggle button keeps its label).
+    expect(screen.queryByPlaceholderText('field_name')).not.toBeInTheDocument();
+    expect(screen.queryByDisplayValue('token')).not.toBeInTheDocument();
+  });
+
   it('keeps a draft value and Form Data type when its field name is still blank', async () => {
     const node: YAMLNode = {
       id: 'post-form-draft',
