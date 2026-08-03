@@ -197,6 +197,10 @@ function buildFormBody(items: FormDataItem[], asArray: boolean): YAMLValue {
   return obj;
 }
 
+function areYAMLValuesEqual(left: YAMLValue, right: YAMLValue): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
 interface TextBodyEditorProps {
   value: string;
   onChange: (value: string) => void;
@@ -485,6 +489,9 @@ export function BodyTypeSelector({
   const rawTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const jsonHighlightRef = useRef<HTMLPreElement | null>(null);
   const rawHighlightRef = useRef<HTMLPreElement | null>(null);
+  // Body we just pushed up from a Form Data edit. Kept as state (not a ref) so
+  // the one-shot clear below happens through setState and render stays pure.
+  const [pendingFormBody, setPendingFormBody] = useState<YAMLValue | typeof BODY_SYNC_UNSET>(BODY_SYNC_UNSET);
 
   // Body/bodyRaw/contentType are the source of truth (e.g. switching between
   // YAML nodes); the local editing buffers below mirror them. Re-derived here
@@ -503,19 +510,25 @@ export function BodyTypeSelector({
   ) {
     setSyncedProps({ body, bodyRaw, contentType });
 
-    const hasBodyRaw = typeof bodyRaw === 'string' && bodyRaw.trim().length > 0;
-    if (!hasBodyRaw && !hasBodyContent(body)) {
-      setBodyType('none');
-    } else {
-      const nextBodyType = inferBodyType(body, bodyRaw, contentType);
-      setBodyType(nextBodyType);
+    const preserveLocalFormData =
+      bodyType === 'form' && pendingFormBody !== BODY_SYNC_UNSET && areYAMLValuesEqual(body, pendingFormBody);
+    if (pendingFormBody !== BODY_SYNC_UNSET) setPendingFormBody(BODY_SYNC_UNSET);
 
-      if (nextBodyType === 'json') {
-        setJsonValue(getJsonEditorText(body, bodyRaw));
-      } else if (nextBodyType === 'form') {
-        setFormData(getFormDataItems(body, bodyRaw));
+    if (!preserveLocalFormData) {
+      const hasBodyRaw = typeof bodyRaw === 'string' && bodyRaw.trim().length > 0;
+      if (!hasBodyRaw && !hasBodyContent(body)) {
+        setBodyType('none');
       } else {
-        setRawValue(!hasBodyContent(body) && typeof bodyRaw === 'string' ? bodyRaw : getBodyEditorText(body));
+        const nextBodyType = inferBodyType(body, bodyRaw, contentType);
+        setBodyType(nextBodyType);
+
+        if (nextBodyType === 'json') {
+          setJsonValue(getJsonEditorText(body, bodyRaw));
+        } else if (nextBodyType === 'form') {
+          setFormData(getFormDataItems(body, bodyRaw));
+        } else {
+          setRawValue(!hasBodyContent(body) && typeof bodyRaw === 'string' ? bodyRaw : getBodyEditorText(body));
+        }
       }
     }
   }
@@ -605,7 +618,9 @@ export function BodyTypeSelector({
       if (!hasAny) setTypeSwitchError('');
     }
 
-    onBodyChange(buildFormBody(newFormData, Array.isArray(body)), 'form');
+    const nextBody = buildFormBody(newFormData, Array.isArray(body));
+    setPendingFormBody(nextBody);
+    onBodyChange(nextBody, 'form');
   };
 
   const handleAddFormDataItem = () => {
@@ -621,7 +636,9 @@ export function BodyTypeSelector({
       if (!hasAny) setTypeSwitchError('');
     }
 
-    onBodyChange(buildFormBody(newFormData, Array.isArray(body)), 'form');
+    const nextBody = buildFormBody(newFormData, Array.isArray(body));
+    setPendingFormBody(nextBody);
+    onBodyChange(nextBody, 'form');
   };
 
   const useMonacoForJson = useMemo(() => shouldUseMonaco(jsonValue), [jsonValue]);
