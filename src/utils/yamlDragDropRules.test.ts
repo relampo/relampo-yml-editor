@@ -28,6 +28,41 @@ describe('yamlDragDropRules', () => {
     expect(result.errors).toEqual([]);
   });
 
+  it('allows data sources to move between the parsed root, steps, and requests', () => {
+    expect(canContain('test', 'data_source')).toBe(true);
+    expect(canContain('steps', 'data_source')).toBe(true);
+    expect(canContain('request', 'data_source')).toBe(true);
+    expect(canDrop('data_source', 'test', 'inside')).toBe(true);
+    expect(canDrop('data_source', 'steps', 'inside')).toBe(true);
+    expect(canDrop('data_source', 'request', 'inside')).toBe(true);
+  });
+
+  it('validates a parsed test tree with root and request data sources', () => {
+    const result = validateTreeStructure({
+      type: 'test',
+      children: [
+        { type: 'data_source' },
+        {
+          type: 'scenarios',
+          children: [
+            {
+              type: 'scenario',
+              children: [
+                {
+                  type: 'steps',
+                  children: [{ type: 'request', children: [{ type: 'data_source' }] }],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(result.valid).toBe(true);
+    expect(result.errors).toEqual([]);
+  });
+
   describe('balanced controller containment (RLP-475)', () => {
     it('rejects think_time as a direct balanced child', () => {
       expect(canContain('balanced', 'think_time')).toBe(false);
