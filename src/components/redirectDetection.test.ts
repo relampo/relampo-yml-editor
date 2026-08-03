@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { detectRedirectFollowUps, nodesStillFormRedirect } from './yamlEditorHelpers';
 import { isRedirectStepEvent } from './debugRequests';
+import { replaceTextInEnabledRequests } from './yaml-tree-view/treeOperations';
 import type { YAMLNode } from '../types/yaml';
 
 function req(
@@ -203,6 +204,62 @@ describe('nodesStillFormRedirect', () => {
   it('is false once the Location no longer matches the target URL', () => {
     const source = req('a', '/old', { status: 302, location: '/new' });
     const target = req('b', '/changed');
+    expect(nodesStillFormRedirect(source, target)).toBe(false);
+  });
+});
+
+describe('nodesStillFormRedirect — correlated placeholders (RLP-663)', () => {
+  // Tree "Replace all" rewrites request URLs but deliberately leaves the
+  // recorded response untouched, so after correlating a token the target URL
+  // holds `{{var}}` while the source Location keeps the recorded literal. An
+  // exact comparison would drop the redirect badge — and with it the
+  // follow_redirects sync — for every pre-chain_id recording.
+  it('still links a redirect whose target URL was correlated to a placeholder', () => {
+    const source = req('src', 'https://api.test/login', { status: 302, location: '/home/xyz123' });
+    const target = req('tgt', 'https://api.test/home/{{token}}');
+    expect(nodesStillFormRedirect(source, target)).toBe(true);
+  });
+
+  it('links a placeholder in the query string too', () => {
+    const source = req('src', 'https://api.test/login', { status: 302, location: '/next?sid=abc987' });
+    const target = req('tgt', 'https://api.test/next?sid={{sid}}');
+    expect(nodesStillFormRedirect(source, target)).toBe(true);
+  });
+
+  it('survives a Replace all over the whole tree', () => {
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'test',
+      name: 'root',
+      data: {},
+      children: [
+        req('src', 'https://api.test/login', { status: 302, location: '/home/xyz123' }),
+        req('tgt', 'https://api.test/home/xyz123'),
+      ],
+    };
+    const { tree: replaced } = replaceTextInEnabledRequests(tree, 'xyz123', '{{token}}');
+    expect(replaced.children?.[1].data.url).toBe('https://api.test/home/{{token}}');
+    // The recorded response is intact — that is the point of RLP-663.
+    expect(replaced.children?.[0].data.response.headers.Location).toBe('/home/xyz123');
+    expect(detectRedirectFollowUps(replaced).tgt?.sourceNodeId).toBe('src');
+  });
+
+  it('does not let a placeholder match an unrelated path', () => {
+    const source = req('src', 'https://api.test/login', { status: 302, location: '/somewhere/else' });
+    const target = req('tgt', 'https://api.test/home/{{token}}');
+    expect(nodesStillFormRedirect(source, target)).toBe(false);
+  });
+
+  it('does not let a placeholder swallow extra path segments', () => {
+    // `{{token}}` stands in for one value, not an arbitrary suffix.
+    const source = req('src', 'https://api.test/login', { status: 302, location: '/home/a/b' });
+    const target = req('tgt', 'https://api.test/home/{{token}}');
+    expect(nodesStillFormRedirect(source, target)).toBe(false);
+  });
+
+  it('still rejects a non-3xx source even when the URL has a placeholder', () => {
+    const source = req('src', 'https://api.test/login', { status: 200, location: '/home/xyz123' });
+    const target = req('tgt', 'https://api.test/home/{{token}}');
     expect(nodesStillFormRedirect(source, target)).toBe(false);
   });
 });
