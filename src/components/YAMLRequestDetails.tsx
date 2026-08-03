@@ -10,7 +10,7 @@ import { HighlightedInput } from './ui/HighlightedInput';
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { YAMLResponseDetails } from './YAMLResponseDetails';
-import type { SearchMode } from './debugSearch';
+import { buildSearchRegex, findMatchRanges, type SearchMode } from './debugSearch';
 
 const FALLBACK_BASE_URL_PLACEHOLDER = 'api.example.com';
 type YAMLRecord = { [key: string]: YAMLValue | undefined };
@@ -36,19 +36,6 @@ function getStringValue(value: YAMLValue, fallback = ''): string {
 
 function getNumberValue(value: YAMLValue): number | undefined {
   return typeof value === 'number' ? value : undefined;
-}
-
-// Regex-mode search intentionally hands the user's raw text to `new RegExp` —
-// the whole point of the Text/Regex toggle is that Regex mode matches real
-// regex syntax, so escaping metacharacters here would silently make it behave
-// like Text mode. `pattern` (rather than "search term") reflects that intent;
-// invalid syntax is caught and surfaced via the null return. RLP.
-function buildDynamicRegex(pattern: string, flags: string): RegExp | null {
-  try {
-    return new RegExp(pattern, flags);
-  } catch {
-    return null;
-  }
 }
 
 function getRecordValue(value: YAMLValue): YAMLRecord | undefined {
@@ -711,49 +698,10 @@ function RequestContent({
     onFieldChange('url', buildRequestUrl(requestUrl, { baseUrl: nextBaseUrl }));
   };
 
-  const buildSearchRegex = () => {
-    if (!searchText || searchMode !== 'regex') return null;
-    return buildDynamicRegex(searchText, 'gi');
-  };
-  const collectMatches = (text: string) => {
-    if (!text || !searchText) return [] as Array<{ start: number; end: number }>;
-    const out: Array<{ start: number; end: number }> = [];
-    if (searchMode === 'text') {
-      const hay = text.toLowerCase();
-      const needle = searchText.toLowerCase();
-      let pos = 0;
-      while (pos <= hay.length - needle.length) {
-        const idx = hay.indexOf(needle, pos);
-        if (idx === -1) break;
-        out.push({ start: idx, end: idx + needle.length });
-        pos = idx + Math.max(needle.length, 1);
-      }
-      return out;
-    }
-    const re = buildSearchRegex();
-    if (!re) return out;
-    for (const m of text.matchAll(re)) {
-      const start = m.index ?? -1;
-      if (start < 0) continue;
-      const full = m[0] ?? '';
-      const g1 = m.length > 1 ? (m[1] ?? '') : '';
-      let s = start;
-      let e = start + full.length;
-      if (g1) {
-        const rel = full.indexOf(g1);
-        if (rel >= 0) {
-          s = start + rel;
-          e = s + g1.length;
-        }
-      }
-      out.push({ start: s, end: e });
-      if (full.length === 0) break;
-    }
-    return out;
-  };
+  const collectMatches = (text: string) => findMatchRanges(text, searchText, searchMode);
   const matches = collectMatches(requestBodyText);
   const totalMatches = matches.length;
-  const regexInvalid = !!searchText && searchMode === 'regex' && !buildSearchRegex();
+  const regexInvalid = !!searchText && searchMode === 'regex' && !buildSearchRegex(searchText);
 
   const applyBodyText = (nextText: string) => {
     try {

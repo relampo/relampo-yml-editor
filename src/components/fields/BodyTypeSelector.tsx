@@ -4,7 +4,7 @@ import type { editor as MonacoEditorNS } from 'monaco-editor';
 import { JSX, RefObject, useEffect, useMemo, useRef, useState } from 'react';
 import type { StringMap } from '../../types/shared';
 import type { YAMLValue } from '../../types/yaml';
-import type { SearchMode } from '../debugSearch';
+import { findMatchRanges, type SearchMode } from '../debugSearch';
 import { Input } from '../ui/input';
 
 export type BodyType = 'none' | 'json' | 'form' | 'raw';
@@ -869,49 +869,3 @@ function MonacoBodyEditor({
   );
 }
 
-// The regex `pattern` here is intentionally used unescaped: this branch only runs when
-// `mode === 'regex'`, i.e. the user explicitly opted into regex search and is authoring
-// the pattern themselves (mirrors the canonical implementation in debugSearch.ts).
-// Escaping it would defeat the regex-search feature; literal search is handled by the
-// `mode === 'text'` branch above. Invalid patterns are caught and yield no matches.
-function findMatchRanges(text: string, pattern: string, mode: SearchMode): Array<{ start: number; end: number }> {
-  if (!text || !pattern) return [];
-  if (mode === 'text') {
-    const ranges: Array<{ start: number; end: number }> = [];
-    const hay = text.toLowerCase();
-    const needle = pattern.toLowerCase();
-    let pos = 0;
-    while (pos <= hay.length - needle.length) {
-      const idx = hay.indexOf(needle, pos);
-      if (idx === -1) break;
-      ranges.push({ start: idx, end: idx + needle.length });
-      pos = idx + Math.max(needle.length, 1);
-    }
-    return ranges;
-  }
-  let re: RegExp;
-  try {
-    re = new RegExp(pattern, 'gi');
-  } catch {
-    return [];
-  }
-  const ranges: Array<{ start: number; end: number }> = [];
-  for (const m of text.matchAll(re)) {
-    const start = m.index ?? -1;
-    if (start < 0) continue;
-    const full = m[0] ?? '';
-    const g1 = m.length > 1 ? (m[1] ?? '') : '';
-    let s = start;
-    let e = start + full.length;
-    if (g1) {
-      const rel = full.indexOf(g1);
-      if (rel >= 0) {
-        s = start + rel;
-        e = s + g1.length;
-      }
-    }
-    ranges.push({ start: s, end: e });
-    if (full.length === 0) break;
-  }
-  return ranges;
-}
