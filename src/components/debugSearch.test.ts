@@ -89,3 +89,26 @@ describe('findMatchRanges — regex mode', () => {
     expect(findMatchRanges('anything', '(', 'regex')).toEqual([]);
   });
 });
+
+describe('flags-only patterns', () => {
+  // Stripping the inline-flag group can leave an empty pattern, and
+  // `new RegExp('')` is valid — it matches the empty string everywhere. Every
+  // prefix typed on the way to `(?is)token` passes through this state, so
+  // without an explicit reject the search box reports "1 of 1" on an empty
+  // highlight instead of "invalid regex". RLP-670.
+  it.each(['(?i)', '(?s)', '(?m)', '(?is)'])('rejects the flags-only pattern %s', pattern => {
+    expect(buildRelampoRegex(pattern)).toBeNull();
+    expect(buildSearchRegex(pattern)).toBeNull();
+    expect(findMatchRanges('anything at all', pattern, 'regex')).toEqual([]);
+  });
+
+  it('still accepts an inline-flag pattern that has a body', () => {
+    expect(buildSearchRegex('(?i)token')).not.toBeNull();
+    expect(findMatchRanges('TOKEN=1', '(?i)token', 'regex')).toEqual([{ start: 0, end: 5 }]);
+  });
+
+  it('keeps an empty pattern falsy rather than treating it as invalid input', () => {
+    // '' is "no search", handled by the callers' `!query` guards — not a regex error.
+    expect(findMatchRanges('abc', '', 'regex')).toEqual([]);
+  });
+});

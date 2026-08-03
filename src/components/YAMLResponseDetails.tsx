@@ -4,7 +4,7 @@ import type { editor as MonacoEditorNS } from 'monaco-editor';
 import { JSX, RefObject, useEffect, useMemo, useRef, useState } from 'react';
 import type { YAMLValue } from '../types/yaml';
 import { binaryBodyDisplay, binaryBodyDownload, type BinaryBodyDownload } from '../utils/binaryBody';
-import { buildRelampoRegex, type SearchMode } from './debugSearch';
+import { buildSearchRegex, findMatchRanges, type SearchMode } from './debugSearch';
 import { Input } from './ui/input';
 
 interface YAMLResponseDetailsProps {
@@ -43,52 +43,6 @@ function shouldUseMonaco(text: string) {
   const lines = text.split('\n').length;
   const bytes = new Blob([text]).size;
   return lines > MONACO_SWITCH_LINE_THRESHOLD || bytes > MONACO_SWITCH_SIZE_THRESHOLD;
-}
-
-// Regex-mode search intentionally hands the user's raw text to the shared
-// builder — the whole point of the Text/Regex toggle is that Regex mode matches
-// real regex syntax. The builder also translates Relampo's Go/RE2 inline flags;
-// invalid syntax is caught and surfaced via the null return.
-function buildDynamicRegex(pattern: string, flags: string): RegExp | null {
-  return buildRelampoRegex(pattern, flags);
-}
-
-function findMatchRanges(text: string, pattern: string, mode: SearchMode): Array<{ start: number; end: number }> {
-  if (!text || !pattern) return [];
-  if (mode === 'text') {
-    const ranges: Array<{ start: number; end: number }> = [];
-    const hay = text.toLowerCase();
-    const needle = pattern.toLowerCase();
-    let pos = 0;
-    while (pos <= hay.length - needle.length) {
-      const idx = hay.indexOf(needle, pos);
-      if (idx === -1) break;
-      ranges.push({ start: idx, end: idx + needle.length });
-      pos = idx + Math.max(needle.length, 1);
-    }
-    return ranges;
-  }
-  const re = buildDynamicRegex(pattern, 'gi');
-  if (!re) return [];
-  const ranges: Array<{ start: number; end: number }> = [];
-  for (const m of text.matchAll(re)) {
-    const start = m.index ?? -1;
-    if (start < 0) continue;
-    const full = m[0] ?? '';
-    const g1 = m.length > 1 ? (m[1] ?? '') : '';
-    let s = start;
-    let e = start + full.length;
-    if (g1) {
-      const rel = full.indexOf(g1);
-      if (rel >= 0) {
-        s = start + rel;
-        e = s + g1.length;
-      }
-    }
-    ranges.push({ start: s, end: e });
-    if (full.length === 0) break;
-  }
-  return ranges;
 }
 
 // A binary body — a recorded byte-indexed object ({"0":48,...}) or a mojibake
@@ -396,7 +350,7 @@ function ResponseHeadersPanel({ headers, httpVersion, status, statusText, fallba
   const effectiveHeaderSearch = trimmedHeaderSearch || fallbackSearchText.trim();
   const effectiveHeaderSearchMode: SearchMode = trimmedHeaderSearch ? headerSearchMode : 'text';
   const headerRegexInvalid =
-    !!effectiveHeaderSearch && effectiveHeaderSearchMode === 'regex' && !buildDynamicRegex(effectiveHeaderSearch, 'gi');
+    !!effectiveHeaderSearch && effectiveHeaderSearchMode === 'regex' && !buildSearchRegex(effectiveHeaderSearch);
 
   const headerLineMatches = useMemo(
     () => headerLines.map(line => findMatchRanges(line, effectiveHeaderSearch, effectiveHeaderSearchMode)),
@@ -507,7 +461,7 @@ function ResponseBodyPanel({
   const useMonacoForResponse = shouldUseMonaco(bodyText);
   const matches = useMemo(() => findMatchRanges(bodyText, searchText, searchMode), [bodyText, searchText, searchMode]);
   const totalMatches = matches.length;
-  const regexInvalid = !!searchText && searchMode === 'regex' && !buildDynamicRegex(searchText, 'gi');
+  const regexInvalid = !!searchText && searchMode === 'regex' && !buildSearchRegex(searchText);
 
   useEffect(() => {
     if (!searchText || totalMatches === 0 || useMonacoForResponse || !responseBodyRef.current) return;

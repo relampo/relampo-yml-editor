@@ -19,6 +19,12 @@ export function normalizeRelampoRegexForJavaScript(pattern: string, baseFlags = 
 
 export function buildRelampoRegex(pattern: string, baseFlags = 'g'): RegExp | null {
   const normalized = normalizeRelampoRegexForJavaScript(pattern, baseFlags);
+  // A flags-only pattern (`(?i)`, and every prefix typed on the way to a real
+  // one) strips down to '', and `new RegExp('')` is *valid* — it matches the
+  // empty string at every position. Without this guard an incomplete pattern
+  // silently reports zero-length matches everywhere instead of being reported
+  // as invalid the way it was before inline flags were understood.
+  if (pattern && !normalized.pattern) return null;
   try {
     return new RegExp(normalized.pattern, normalized.flags);
   } catch {

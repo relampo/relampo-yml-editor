@@ -55,3 +55,44 @@ describe('YAMLResponseDetails', () => {
     expect(screen.queryByRole('button', { name: 'Download response body bytes' })).not.toBeInTheDocument();
   });
 });
+
+describe('YAMLResponseDetails — regex search highlighting', () => {
+  // RLP-670 made Relampo's inline-flag patterns compile in the details panels.
+  // Before this test the panels ran their own copy of findMatchRanges that
+  // located the capture with `full.indexOf(g1)` — the *first* textual
+  // occurrence, not the capture's position — so a body where the key repeats
+  // the captured value highlighted the key instead. The panels now share
+  // debugSearch's `d`-flag implementation; this pins that down.
+  it('highlights the captured value, not an earlier identical substring', () => {
+    render(
+      <YAMLResponseDetails
+        response={{ status: 200, headers: {}, body: '{"version":"version"}' }}
+        onResponseUpdate={vi.fn()}
+        searchText={'(?is)"version"\\s*:\\s*"(.+?)"'}
+        searchMode="regex"
+      />,
+    );
+
+    const marks = document.querySelectorAll('mark');
+    expect(marks).toHaveLength(1);
+    expect(marks[0].textContent).toBe('version');
+    // Both the key and the value read "version", so the mark's text alone proves
+    // nothing — the text preceding it is what pins which one got highlighted.
+    // The old `indexOf` matcher produced `{"` here (the key).
+    expect(marks[0].previousSibling?.textContent).toBe('{"version":"');
+  });
+
+  it('reports a flags-only pattern as an invalid regex instead of matching everything', () => {
+    render(
+      <YAMLResponseDetails
+        response={{ status: 200, headers: {}, body: 'some recorded body' }}
+        onResponseUpdate={vi.fn()}
+        searchText="(?i)"
+        searchMode="regex"
+      />,
+    );
+
+    expect(document.querySelectorAll('mark')).toHaveLength(0);
+    expect(screen.getByText(/invalid regex/i)).toBeInTheDocument();
+  });
+});
