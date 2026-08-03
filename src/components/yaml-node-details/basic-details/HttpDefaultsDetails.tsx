@@ -123,11 +123,15 @@ export function HttpDefaultsDetails({ node, onNodeUpdate, hosts = [], onRenameHo
                       value={value}
                       onCommit={nextValue => onRenameHost?.(originalHost, nextValue)}
                     />
-                    {onRemoveHost && (
+                    {/* Removing a host retargets its requests at the primary
+                        base_url by making their URLs relative, so it is only
+                        safe when there *is* a stored primary — otherwise the
+                        requests end up with no host anywhere in the document. */}
+                    {onRemoveHost && storedBaseUrl && (
                       <button
                         type="button"
                         onClick={() => onRemoveHost(originalHost)}
-                        aria-label="Remove host"
+                        aria-label={`Remove ${key}`}
                         title={`Remove ${key}`}
                         className="p-2 h-9 text-zinc-500 hover:text-red-400 bg-white/5 hover:bg-white/10 rounded shrink-0 transition-colors"
                       >

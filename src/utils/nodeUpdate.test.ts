@@ -146,4 +146,13 @@ describe('renameRequestHost', () => {
 
     expect(removeRequestHost(tree, 'missing.example.com')).toBe(tree);
   });
+
+  it('leaves http_defaults.base_url untouched', () => {
+    // Unlike renameRequestHost, removal has no http_defaults branch on purpose:
+    // the requests are retargeted at the *existing* primary, so rewriting it
+    // would repoint every base-URL request in the document as a side effect.
+    const updated = removeRequestHost(buildTree(), 'cdn.example.com');
+
+    expect(updated.children?.[0].data.base_url).toBe('https://primary.example.com');
+  });
 });
