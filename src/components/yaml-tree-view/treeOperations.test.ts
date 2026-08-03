@@ -22,7 +22,12 @@ describe('replaceTextInEnabledRequests', () => {
           id: 'enabled-request',
           type: 'request',
           name: 'Enabled',
-          data: { url: '/users/xyz123', body: { id: 'xyz123' }, enabled: true },
+          data: {
+            url: '/users/xyz123',
+            body: { id: 'xyz123' },
+            response: { body: 'xyz123', headers: { 'X-Recorded': 'xyz123' } },
+            enabled: true,
+          },
           children: [{ id: 'enabled-headers', type: 'headers', name: 'Headers', data: { Authorization: 'xyz123' } }],
         },
         {
@@ -41,6 +46,10 @@ describe('replaceTextInEnabledRequests', () => {
     expect(result.tree.children?.[0].data.url).toBe('/users/{{rifa}}');
     expect(result.tree.children?.[0].data.body.id).toBe('{{rifa}}');
     expect(result.tree.children?.[0].children?.[0].data.Authorization).toBe('{{rifa}}');
+    expect(result.tree.children?.[0].data.response).toEqual({
+      body: 'xyz123',
+      headers: { 'X-Recorded': 'xyz123' },
+    });
     expect(result.tree.children?.[1].data.url).toBe('/disabled/xyz123');
     expect(result.tree.children?.[1].children?.[0].data['X-Test']).toBe('xyz123');
   });

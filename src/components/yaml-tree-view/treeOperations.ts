@@ -181,7 +181,9 @@ function replaceRequestData(data: unknown, search: string, replacement: string):
   let changed = false;
   const nextData = Object.fromEntries(
     Object.entries(data).map(([key, value]) => {
-      if (key === 'enabled' || key === 'method') return [key, value];
+      if (key === 'enabled' || key === 'method' || key === 'response' || key === 'response_preview') {
+        return [key, value];
+      }
       const [nextValue, valueCount, valueChanged] = replaceTextInValue(value, search, replacement);
       count += valueCount;
       changed ||= valueChanged;
@@ -191,7 +193,7 @@ function replaceRequestData(data: unknown, search: string, replacement: string):
   return [changed ? nextData : data, count, changed];
 }
 
-/** Replace literal text in enabled requests and their headers. */
+/** Replace literal text in enabled requests and their headers, excluding recorded responses. */
 export function replaceTextInEnabledRequests(
   tree: YAMLNode,
   search: string,
