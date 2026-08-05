@@ -444,6 +444,11 @@ describe('YAMLDebugSession tree selection sync', () => {
 
     expect(await screen.findAllByText('think_time')).not.toHaveLength(0);
     expect(screen.getAllByText('THINK_TIME')).not.toHaveLength(0);
+    for (const tab of ['request', 'response', 'assertions', 'variables']) {
+      expect(screen.queryByRole('button', { name: tab, exact: true })).not.toBeInTheDocument();
+    }
+    expect(screen.getByRole('button', { name: 'overview', exact: true })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'logs', exact: true })).toBeInTheDocument();
   });
 
   it('maps repeated think time events by engine suffix', async () => {
