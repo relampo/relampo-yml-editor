@@ -841,15 +841,14 @@ function buildLiveRunSummary(
       });
       return;
     }
-    const redirectStep = request.step_path?.match(/^(.*)\.redirects\[(\d+)\]$/);
-    if (!redirectStep) {
-      addLiveRunSummaryRequest(requests, liveRunSummaryFallbackKey(request), request);
-      return;
-    }
     // An unexpected redirect has no recorded chain child to map onto. Keep the
     // executed method and URL in the summary instead of replacing them with a
     // synthetic "Redirect N from ..." label: the method badge already conveys
-    // the method, while the runtime path is the only reliable resolved URL.
+    // the method, while the runtime path is the only reliable resolved URL. Its
+    // `...redirects[N]` step_path still keys the row, so each hop stays a
+    // distinct row that sorts directly under the step that spawned it, and two
+    // iterations landing on different URLs still collapse into one row rather
+    // than splitting on the volatile resolved path.
     addLiveRunSummaryRequest(requests, liveRunSummaryFallbackKey(request), request);
   });
   return {
