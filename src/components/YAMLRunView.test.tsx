@@ -154,6 +154,80 @@ describe('YAMLLoadRunSession', () => {
     expect(summaryHeading.compareDocumentPosition(logsHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
+  it('deduplicates replayed log batches and labels the retained tail', async () => {
+    render(<YAMLLoadRunSession {...baseProps} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run load test' }));
+    await waitFor(() => expect(runApiMock.handlers).toHaveLength(1));
+
+    const lines: RunLogLine[] = Array.from({ length: 1002 }, (_, seq) => ({
+      seq,
+      ts: 1782249308000 + seq,
+      level: 'request',
+      method: 'GET',
+      path: `/request-${seq}`,
+      status: 200,
+      latency_ms: 1,
+    }));
+    act(() => {
+      runApiMock.handlers[0].onLog(lines);
+      // EventSource can replay the retained batch after a reconnect. The
+      // reducer must not append those sequence IDs a second time.
+      runApiMock.handlers[0].onLog(lines);
+    });
+
+    expect(screen.getByText('Showing log lines 3–1002; earlier lines are not displayed.')).toBeInTheDocument();
+    expect(screen.getAllByText(/GET \/request-1001/)).toHaveLength(1);
+    expect(screen.queryByText(/GET \/request-0/)).not.toBeInTheDocument();
+  });
+
+  it('keeps the omitted-prefix notice out of the auto-scrolled log body', async () => {
+    render(<YAMLLoadRunSession {...baseProps} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run load test' }));
+    await waitFor(() => expect(runApiMock.handlers).toHaveLength(1));
+
+    act(() => {
+      runApiMock.handlers[0].onLog(logLines(Array.from({ length: 1200 }, (_, seq) => seq)));
+    });
+
+    // The panel auto-scrolls to the newest line on every batch, so a notice
+    // placed inside the scrolling body would sit ~1000 rows above the viewport
+    // exactly when it has something to say.
+    const notice = screen.getByText(/Showing log lines/);
+    const logBody = document.querySelector('.max-h-64.overflow-y-auto');
+    expect(logBody).not.toBeNull();
+    expect(logBody?.contains(notice)).toBe(false);
+  });
+
+  it('drops duplicate sequence ids that arrive inside a single batch', async () => {
+    render(<YAMLLoadRunSession {...baseProps} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run load test' }));
+    await waitFor(() => expect(runApiMock.handlers).toHaveLength(1));
+
+    act(() => {
+      runApiMock.handlers[0].onLog([...logLines([0, 1]), ...logLines([1, 2])]);
+    });
+
+    // Duplicates within one batch must collapse too, otherwise the list renders
+    // the same line twice under a duplicated React key.
+    expect(screen.getAllByText(/GET \/line-1 /)).toHaveLength(1);
+    expect(screen.getAllByText(/GET \/line-/)).toHaveLength(3);
+  });
+
+  function logLines(seqs: number[]): RunLogLine[] {
+    return seqs.map(seq => ({
+      seq,
+      ts: 1782249308000 + seq,
+      level: 'request' as const,
+      method: 'GET',
+      path: `/line-${seq}`,
+      status: 200,
+      latency_ms: 1,
+    }));
+  }
+
   function balancedScenarioTree(mode: string): YAMLNode {
     return {
       id: 'root',

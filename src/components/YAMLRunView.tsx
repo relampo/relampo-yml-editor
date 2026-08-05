@@ -172,7 +172,13 @@ function loadRunReducer(state: LoadRunState, action: LoadRunAction): LoadRunStat
     }
     case 'log_received': {
       const knownSequences = new Set(state.logs.map(line => line.seq));
-      const newLines = action.lines.filter(line => !knownSequences.has(line.seq));
+      // Growing the set while filtering also collapses repeats *within* a
+      // batch, so `seq` stays unique — it is the list's React key.
+      const newLines = action.lines.filter(line => {
+        if (knownSequences.has(line.seq)) return false;
+        knownSequences.add(line.seq);
+        return true;
+      });
       if (newLines.length === 0) return state;
       const merged = [...state.logs, ...newLines].sort((left, right) => left.seq - right.seq);
       return { ...state, logs: merged.length > MAX_LIVE_LOGS ? merged.slice(merged.length - MAX_LIVE_LOGS) : merged };
@@ -697,6 +703,9 @@ function logLineText(line: RunLogLine): string {
 // server-side). Auto-scrolls to the newest line via the parent's scroll ref.
 function LiveLogPanel({ logs, scrollRef }: { logs: RunLogLine[]; scrollRef: RefObject<HTMLDivElement | null> }) {
   const [collapsed, setCollapsed] = useState(false);
+  const firstSequence = logs[0]?.seq;
+  const lastSequence = logs[logs.length - 1]?.seq;
+  const hasOmittedPrefix = firstSequence != null && firstSequence > 0;
   return (
     <div className="border border-white/10 bg-[#050505]">
       <button
@@ -714,8 +723,18 @@ function LiveLogPanel({ logs, scrollRef }: { logs: RunLogLine[]; scrollRef: RefO
         )}
         <Terminal className="h-4 w-4 text-emerald-300" />
         <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">Live logs</p>
-        <span className="ml-auto font-mono text-[10px] text-zinc-600">{logs.length} lines</span>
+        <span className="ml-auto font-mono text-[10px] text-zinc-600">
+          {logs.length.toLocaleString()} {hasOmittedPrefix ? 'latest ' : ''}{logs.length === 1 ? 'line' : 'lines'}
+        </span>
       </button>
+      {/* The notice sits outside the scrolling body: that body is auto-scrolled
+          to its newest line, so a notice inside it would be ~1000 rows out of
+          view exactly when there is something to say. */}
+      {!collapsed && hasOmittedPrefix && lastSequence != null && (
+        <p className="border-b border-amber-400/20 px-3 py-2 font-mono text-xs text-amber-200/80">
+          Showing log lines {firstSequence + 1}–{lastSequence + 1}; earlier lines are not displayed.
+        </p>
+      )}
       {!collapsed && (
         <div ref={scrollRef} className="max-h-64 overflow-y-auto p-3 font-mono text-xs leading-5">
           {logs.length === 0 ? (
