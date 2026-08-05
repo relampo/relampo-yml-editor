@@ -171,7 +171,10 @@ function loadRunReducer(state: LoadRunState, action: LoadRunAction): LoadRunStat
       return { ...state, snapshots: [...trimmed, action.snapshot] };
     }
     case 'log_received': {
-      const merged = [...state.logs, ...action.lines];
+      const knownSequences = new Set(state.logs.map(line => line.seq));
+      const newLines = action.lines.filter(line => !knownSequences.has(line.seq));
+      if (newLines.length === 0) return state;
+      const merged = [...state.logs, ...newLines].sort((left, right) => left.seq - right.seq);
       return { ...state, logs: merged.length > MAX_LIVE_LOGS ? merged.slice(merged.length - MAX_LIVE_LOGS) : merged };
     }
     case 'run_done':

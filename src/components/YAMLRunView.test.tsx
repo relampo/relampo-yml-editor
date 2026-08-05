@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { YAMLLoadRunSession } from './YAMLRunView';
-import type { RunMetricsSnapshot, RunStreamHandlers, RunSummary } from '../utils/runApi';
+import type { RunLogLine, RunMetricsSnapshot, RunStreamHandlers, RunSummary } from '../utils/runApi';
 import type { YAMLNode } from '../types/yaml';
 import { LanguageProvider } from '../contexts/LanguageContext';
 
