@@ -139,17 +139,93 @@ export function toggleNodeInTree(tree: YAMLNode, nodeId: string): YAMLNode {
   return tree;
 }
 
-function replaceTextInValue(value: unknown, search: string, replacement: string): [unknown, number, boolean] {
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function percentEncodedBytePattern(byte: number): string {
+  const hex = byte.toString(16).padStart(2, '0');
+  return `%[${hex[0].toLowerCase()}${hex[0].toUpperCase()}][${hex[1].toLowerCase()}${hex[1].toUpperCase()}]`;
+}
+
+function percentEncodedSearchPattern(value: string): string {
+  let pattern = '';
+
+  for (const character of value) {
+    const alternatives = new Set([escapeRegExp(character)]);
+    const encodedCharacter = encodeURIComponent(character);
+
+    // encodeURIComponent returns unreserved characters (`A-Za-z0-9-_.!~*'()`)
+    // as-is, so its output is only a usable pattern once it is a `%XX` run —
+    // splicing the raw character in would leak regex metacharacters (`.`
+    // matching anything, `*`/`(`/`)` throwing or regrouping). The literal form
+    // is already covered above, and the `< 0x80` branch below adds the encoded
+    // form for those characters.
+    if (encodedCharacter !== character) {
+      alternatives.add(
+        encodedCharacter.replace(/%([0-9a-f]{2})/gi, (_, byte: string) =>
+          percentEncodedBytePattern(Number.parseInt(byte, 16)),
+        ),
+      );
+    }
+
+    if (character === ' ') {
+      alternatives.add('\\+');
+    }
+
+    // encodeURIComponent leaves a few ASCII punctuation characters literal,
+    // but recorded URLs can still percent-encode them. Accept both forms.
+    if (character.length === 1 && character.charCodeAt(0) < 0x80) {
+      alternatives.add(percentEncodedBytePattern(character.charCodeAt(0)));
+    }
+
+    pattern += `(?:${[...alternatives].join('|')})`;
+  }
+
+  return pattern;
+}
+
+function replaceTextInString(
+  value: string,
+  search: string,
+  replacement: string,
+  urlEncoded: boolean,
+): [string, number, boolean] {
+  let matcher: RegExp;
+
+  try {
+    const pattern = urlEncoded
+      ? `${escapeRegExp(search)}|${percentEncodedSearchPattern(search)}`
+      : escapeRegExp(search);
+    matcher = new RegExp(pattern, 'g');
+  } catch {
+    return [value, 0, false];
+  }
+
+  let count = 0;
+  const nextValue = value.replace(matcher, () => {
+    count += 1;
+    return replacement;
+  });
+
+  return [nextValue, count, count > 0];
+}
+
+function replaceTextInValue(
+  value: unknown,
+  search: string,
+  replacement: string,
+  urlEncoded = false,
+): [unknown, number, boolean] {
   if (typeof value === 'string') {
-    const matches = value.split(search).length - 1;
-    return matches > 0 ? [value.split(search).join(replacement), matches, true] : [value, 0, false];
+    return replaceTextInString(value, search, replacement, urlEncoded);
   }
 
   if (Array.isArray(value)) {
     let count = 0;
     let changed = false;
     const nextValue = value.map(item => {
-      const [nextItem, itemCount, itemChanged] = replaceTextInValue(item, search, replacement);
+      const [nextItem, itemCount, itemChanged] = replaceTextInValue(item, search, replacement, urlEncoded);
       count += itemCount;
       changed ||= itemChanged;
       return nextItem;
@@ -162,7 +238,7 @@ function replaceTextInValue(value: unknown, search: string, replacement: string)
     let changed = false;
     const nextValue = Object.fromEntries(
       Object.entries(value).map(([key, item]) => {
-        const [nextItem, itemCount, itemChanged] = replaceTextInValue(item, search, replacement);
+        const [nextItem, itemCount, itemChanged] = replaceTextInValue(item, search, replacement, urlEncoded);
         count += itemCount;
         changed ||= itemChanged;
         return [key, nextItem];
@@ -196,7 +272,7 @@ function replaceRequestData(
       if (key === 'enabled' || key === 'method' || key === 'response' || key === 'response_preview') {
         return [key, value];
       }
-      const [nextValue, valueCount, valueChanged] = replaceTextInValue(value, search, replacement);
+      const [nextValue, valueCount, valueChanged] = replaceTextInValue(value, search, replacement, key === 'url');
       if (!(key === 'headers' && headersCountedByChild)) count += valueCount;
       changed ||= valueChanged;
       return [key, nextValue];

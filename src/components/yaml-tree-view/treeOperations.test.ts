@@ -129,6 +129,128 @@ scenarios:
     expect(replaceTextInEnabledRequests(tree, '', 'replacement')).toEqual({ tree, replacements: 0 });
     expect(replaceTextInEnabledRequests(tree, 'missing', 'replacement')).toEqual({ tree, replacements: 0 });
   });
+
+  it.each([
+    ['hello world', '{{space}}', '/search?q={{space}}&filter=a%3Db&tags%5B0%5D=active'],
+    ['a=b', '{{equals}}', '/search?q=hello%20world&filter={{equals}}&tags%5B0%5D=active'],
+    ['tags[0]', '{{key}}', '/search?q=hello%20world&filter=a%3Db&{{key}}=active'],
+  ])('replaces URL-encoded request text for %j', (search, replacement, expectedUrl) => {
+    const tree: YAMLNode = {
+      id: 'steps',
+      type: 'steps',
+      name: 'Steps',
+      children: [
+        {
+          id: 'request',
+          type: 'request',
+          name: 'Encoded request',
+          data: {
+            url: '/search?q=hello%20world&filter=a%3Db&tags%5B0%5D=active',
+            enabled: true,
+          },
+          children: [],
+        },
+      ],
+    };
+
+    const result = replaceTextInEnabledRequests(tree, search, replacement);
+
+    expect(result.replacements).toBe(1);
+    expect(result.tree.children?.[0].data.url).toBe(expectedUrl);
+  });
+
+  it('replaces a query value when its space is encoded but its inner equals is literal', () => {
+    const tree: YAMLNode = {
+      id: 'steps',
+      type: 'steps',
+      name: 'Steps',
+      children: [
+        {
+          id: 'request',
+          type: 'request',
+          name: 'DN request',
+          data: {
+            url: '/lists/API_Personalizacion?dataSource=organizacion&key=CN=Diana%20Monne',
+            enabled: true,
+          },
+          children: [],
+        },
+      ],
+    };
+
+    const result = replaceTextInEnabledRequests(tree, 'CN=Diana Monne', '{{name}}');
+
+    expect(result.replacements).toBe(1);
+    expect(result.tree.children?.[0].data.url).toBe(
+      '/lists/API_Personalizacion?dataSource=organizacion&key={{name}}',
+    );
+  });
+
+  it.each([
+    ['CN=Diana Monne', 'CN=Diana+Monne'],
+    ['a_b-c', 'a%5Fb%2Dc'],
+  ])('matches mixed URL encoding for %j', (search, encodedValue) => {
+    const tree: YAMLNode = {
+      id: 'steps',
+      type: 'steps',
+      name: 'Steps',
+      children: [
+        {
+          id: 'request',
+          type: 'request',
+          name: 'Encoded request',
+          data: { url: `/search?key=${encodedValue}`, enabled: true },
+          children: [],
+        },
+      ],
+    };
+
+    const result = replaceTextInEnabledRequests(tree, search, '{{value}}');
+
+    expect(result.replacements).toBe(1);
+    expect(result.tree.children?.[0].data.url).toBe('/search?key={{value}}');
+  });
+
+  describe('regex metacharacters left literal by encodeURIComponent', () => {
+    const urlTree = (url: string): YAMLNode => ({
+      id: 'steps',
+      type: 'steps',
+      name: 'Steps',
+      children: [
+        {
+          id: 'request',
+          type: 'request',
+          name: 'Encoded request',
+          data: { url, enabled: true },
+          children: [],
+        },
+      ],
+    });
+
+    it.each([
+      ['app.js', '/static/app.js', '/static/{{value}}'],
+      ['app.js', '/static/app%2Ejs', '/static/{{value}}'],
+      ['x*y', '/a/x*y/b', '/a/{{value}}/b'],
+      ['x*y', '/a/x%2Ay/b', '/a/{{value}}/b'],
+      ['w(1)', '/a/w(1)/b', '/a/{{value}}/b'],
+      ['w(1)', '/a/w%281%29/b', '/a/{{value}}/b'],
+      ["it's", "/a/it's/b", '/a/{{value}}/b'],
+    ])('replaces %j in %j', (search, url, expectedUrl) => {
+      const result = replaceTextInEnabledRequests(urlTree(url), search, '{{value}}');
+
+      expect(result.replacements).toBe(1);
+      expect(result.tree.children?.[0].data.url).toBe(expectedUrl);
+    });
+
+    it('treats a dot in the search text as a literal dot, not a wildcard', () => {
+      const tree = urlTree('/static/appZjs');
+
+      expect(replaceTextInEnabledRequests(tree, 'app.js', '{{value}}')).toEqual({
+        tree,
+        replacements: 0,
+      });
+    });
+  });
 });
 
 function createBaseTree(): YAMLNode {
