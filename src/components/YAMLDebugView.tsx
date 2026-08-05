@@ -811,7 +811,7 @@ function DebugDetailPanel({
                 type="button"
                 onClick={() => onTabChange(tab)}
                 className={`px-2.5 py-2.5 text-xs font-semibold capitalize transition-colors ${
-                  detailTab === tab
+                  visibleDetailTab === tab
                     ? 'border-b-2 border-yellow-400 text-yellow-300'
                     : 'border-b-2 border-transparent text-zinc-500 hover:text-zinc-300'
                 }`}
