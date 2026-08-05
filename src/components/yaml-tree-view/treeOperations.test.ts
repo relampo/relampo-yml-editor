@@ -158,6 +158,58 @@ scenarios:
     expect(result.replacements).toBe(1);
     expect(result.tree.children?.[0].data.url).toBe(expectedUrl);
   });
+
+  it('replaces a query value when its space is encoded but its inner equals is literal', () => {
+    const tree: YAMLNode = {
+      id: 'steps',
+      type: 'steps',
+      name: 'Steps',
+      children: [
+        {
+          id: 'request',
+          type: 'request',
+          name: 'DN request',
+          data: {
+            url: '/lists/API_Personalizacion?dataSource=organizacion&key=CN=Diana%20Monne',
+            enabled: true,
+          },
+          children: [],
+        },
+      ],
+    };
+
+    const result = replaceTextInEnabledRequests(tree, 'CN=Diana Monne', '{{name}}');
+
+    expect(result.replacements).toBe(1);
+    expect(result.tree.children?.[0].data.url).toBe(
+      '/lists/API_Personalizacion?dataSource=organizacion&key={{name}}',
+    );
+  });
+
+  it.each([
+    ['CN=Diana Monne', 'CN=Diana+Monne'],
+    ['a_b-c', 'a%5Fb%2Dc'],
+  ])('matches mixed URL encoding for %j', (search, encodedValue) => {
+    const tree: YAMLNode = {
+      id: 'steps',
+      type: 'steps',
+      name: 'Steps',
+      children: [
+        {
+          id: 'request',
+          type: 'request',
+          name: 'Encoded request',
+          data: { url: `/search?key=${encodedValue}`, enabled: true },
+          children: [],
+        },
+      ],
+    };
+
+    const result = replaceTextInEnabledRequests(tree, search, '{{value}}');
+
+    expect(result.replacements).toBe(1);
+    expect(result.tree.children?.[0].data.url).toBe('/search?key={{value}}');
+  });
 });
 
 function createBaseTree(): YAMLNode {

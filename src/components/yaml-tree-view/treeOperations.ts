@@ -143,19 +143,32 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+function percentEncodedBytePattern(byte: number): string {
+  const hex = byte.toString(16).padStart(2, '0');
+  return `%[${hex[0].toLowerCase()}${hex[0].toUpperCase()}][${hex[1].toLowerCase()}${hex[1].toUpperCase()}]`;
+}
+
 function percentEncodedSearchPattern(value: string): string {
   let pattern = '';
 
-  for (let index = 0; index < value.length; index += 1) {
-    const encodedByte = value.slice(index, index + 3);
-    if (/^%[0-9a-f]{2}$/i.test(encodedByte)) {
-      const first = encodedByte[1];
-      const second = encodedByte[2];
-      pattern += `%[${first.toLowerCase()}${first.toUpperCase()}][${second.toLowerCase()}${second.toUpperCase()}]`;
-      index += 2;
-    } else {
-      pattern += escapeRegExp(value[index]);
+  for (const character of value) {
+    const encodedCharacter = encodeURIComponent(character).replace(
+      /%([0-9a-f]{2})/gi,
+      (_, byte: string) => percentEncodedBytePattern(Number.parseInt(byte, 16)),
+    );
+    const alternatives = new Set([escapeRegExp(character), encodedCharacter]);
+
+    if (character === ' ') {
+      alternatives.add('\\+');
     }
+
+    // encodeURIComponent leaves a few ASCII punctuation characters literal,
+    // but recorded URLs can still percent-encode them. Accept both forms.
+    if (character.length === 1 && character.charCodeAt(0) < 0x80) {
+      alternatives.add(percentEncodedBytePattern(character.charCodeAt(0)));
+    }
+
+    pattern += `(?:${[...alternatives].join('|')})`;
   }
 
   return pattern;
@@ -167,34 +180,22 @@ function replaceTextInString(
   replacement: string,
   urlEncoded: boolean,
 ): [string, number, boolean] {
-  let nextValue = value;
+  let matcher: RegExp;
+
+  try {
+    const pattern = urlEncoded
+      ? `${escapeRegExp(search)}|${percentEncodedSearchPattern(search)}`
+      : escapeRegExp(search);
+    matcher = new RegExp(pattern, 'g');
+  } catch {
+    return [value, 0, false];
+  }
+
   let count = 0;
-
-  const literalMatches = nextValue.split(search).length - 1;
-  if (literalMatches > 0) {
-    nextValue = nextValue.split(search).join(replacement);
-    count += literalMatches;
-  }
-
-  if (urlEncoded) {
-    let encodedSearch: string;
-    try {
-      encodedSearch = encodeURIComponent(search);
-    } catch {
-      return [nextValue, count, count > 0];
-    }
-
-    const encodedVariants = new Set([encodedSearch, encodedSearch.replaceAll('%20', '+')]);
-    for (const encodedVariant of encodedVariants) {
-      if (encodedVariant === search) continue;
-
-      const encodedPattern = new RegExp(percentEncodedSearchPattern(encodedVariant), 'g');
-      nextValue = nextValue.replace(encodedPattern, () => {
-        count += 1;
-        return replacement;
-      });
-    }
-  }
+  const nextValue = value.replace(matcher, () => {
+    count += 1;
+    return replacement;
+  });
 
   return [nextValue, count, count > 0];
 }
