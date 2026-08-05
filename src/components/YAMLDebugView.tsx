@@ -766,6 +766,23 @@ function DebugDetailPanel({
   const detailTabs = activeEntry ? detailTabsForEntry(activeEntry) : REQUEST_DETAIL_TABS;
   const visibleDetailTab = detailTabs.includes(detailTab) ? detailTab : 'overview';
 
+  // Request-only tabs are unmounted for THINK_TIME entries, and the timeline
+  // auto-follows the newest event while activeId is null — so a tab button can
+  // disappear from under the keyboard. Browsers drop focus to <body> there,
+  // stranding the user at the top of the document. Hand focus to the tab that
+  // took over instead. RLP-666.
+  const tabStripRef = useRef<HTMLDivElement | null>(null);
+  const focusedTabRef = useRef<HTMLButtonElement | null>(null);
+  useEffect(() => {
+    const orphaned = focusedTabRef.current;
+    // Only act on the button we saw focused, and only once it is really gone.
+    if (!orphaned || orphaned.isConnected) return;
+    focusedTabRef.current = null;
+    // Never steal focus: bail unless removal actually orphaned it.
+    if (document.activeElement && document.activeElement !== document.body) return;
+    tabStripRef.current?.querySelector<HTMLButtonElement>('[data-tab-active="true"]')?.focus();
+  }, [detailTabs]);
+
   return (
     <div className="min-w-0 min-h-0 overflow-hidden">
       {activeEntry ? (
@@ -804,11 +821,18 @@ function DebugDetailPanel({
             </div>
           </div>
 
-          <div className="flex items-center border-b border-white/5 px-3">
+          <div
+            ref={tabStripRef}
+            className="flex items-center border-b border-white/5 px-3"
+          >
             {detailTabs.map(tab => (
               <button
                 key={tab}
                 type="button"
+                data-tab-active={visibleDetailTab === tab}
+                onFocus={tabFocusEvent => {
+                  focusedTabRef.current = tabFocusEvent.currentTarget;
+                }}
                 onClick={() => onTabChange(tab)}
                 className={`px-2.5 py-2.5 text-xs font-semibold capitalize transition-colors ${
                   visibleDetailTab === tab
