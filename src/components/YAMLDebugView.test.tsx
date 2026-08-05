@@ -451,6 +451,67 @@ describe('YAMLDebugSession tree selection sync', () => {
     expect(screen.getByRole('button', { name: 'logs', exact: true })).toBeInTheDocument();
   });
 
+  it('keeps overview selected when a request tab is stale before selecting think time', async () => {
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'root',
+      name: 'root',
+      children: [
+        req('Request A'),
+        {
+          id: 'think-1',
+          type: 'think_time',
+          name: 'Think Time',
+          data: { duration: '1s' },
+        },
+      ],
+    };
+
+    render(
+      <YAMLDebugSession
+        tree={tree}
+        yamlCode={'test:\n  name: think-time-stale-tab\n'}
+        documentReady
+        validationErrors={[]}
+        onSelectNode={vi.fn()}
+        onEditNode={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
+
+    act(() => {
+      debugApiMock.handlers[0].onEvent(event({ name: 'Request A', method: 'GET', path: '/a' }));
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'request', exact: true }));
+
+    act(() => {
+      debugApiMock.handlers[0].onEvent(
+        event({
+          name: 'Think Time',
+          method: 'THINK_TIME',
+          path: 'think_time',
+          status: 0,
+          latency_ms: 1000,
+        }),
+      );
+    });
+
+    const thinkTimeButton = screen
+      .getAllByRole('button')
+      .find(button => button.textContent?.includes('THINK_TIME'));
+    expect(thinkTimeButton).toBeDefined();
+    fireEvent.click(thinkTimeButton!);
+
+    for (const tab of ['request', 'response', 'assertions', 'variables']) {
+      expect(screen.queryByRole('button', { name: tab, exact: true })).not.toBeInTheDocument();
+    }
+    const overviewTab = screen.getByRole('button', { name: 'overview', exact: true });
+    expect(overviewTab).toHaveClass('border-yellow-400');
+    expect(screen.getByRole('button', { name: 'logs', exact: true })).toBeInTheDocument();
+  });
+
   it('maps repeated think time events by engine suffix', async () => {
     const firstThinkTime: YAMLNode = {
       id: 'think-1',
