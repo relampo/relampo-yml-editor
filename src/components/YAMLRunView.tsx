@@ -846,21 +846,11 @@ function buildLiveRunSummary(
       addLiveRunSummaryRequest(requests, liveRunSummaryFallbackKey(request), request);
       return;
     }
-    // An unexpected redirect has no recorded chain child to map onto, so it
-    // stays unmatched above. Re-run the matcher against the redirect's *parent*
-    // step (step_path takes priority inside matchDebugEventTarget) to recover
-    // the stable YAML request that spawned it, then label the row by its
-    // position rather than the volatile resolved landing URL.
-    const parent = matchDebugEventTarget(
-      { ...request, step_path: redirectStep[1], chain_role: 'parent', redirect_index: 0 },
-      requestTargets,
-    );
-    if (!parent) {
-      addLiveRunSummaryRequest(requests, liveRunSummaryFallbackKey(request), request);
-      return;
-    }
-    const label = `Redirect ${redirectStep[2]} from ${parent.name}`;
-    addLiveRunSummaryRequest(requests, `redirect:${request.step_path}`, { ...request, name: label, path: label });
+    // An unexpected redirect has no recorded chain child to map onto. Keep the
+    // executed method and URL in the summary instead of replacing them with a
+    // synthetic "Redirect N from ..." label: the method badge already conveys
+    // the method, while the runtime path is the only reliable resolved URL.
+    addLiveRunSummaryRequest(requests, liveRunSummaryFallbackKey(request), request);
   });
   return {
     test_name: 'Live run',

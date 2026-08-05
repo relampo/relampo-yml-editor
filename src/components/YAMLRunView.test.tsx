@@ -350,7 +350,8 @@ describe('YAMLLoadRunSession', () => {
     expect(within(table).getByText('/callback?code=runtime-value-3')).toBeInTheDocument();
     expect(within(table).queryByText('/login?vu={{__vu_idx}}')).not.toBeInTheDocument();
     expect(within(table).queryByText('/callback?code={{code}}')).not.toBeInTheDocument();
-    expect(within(table).getByText('Redirect 1 from Unexpected redirect')).toBeInTheDocument();
+    expect(within(table).getByText('/unknown?token=runtime-value-3')).toBeInTheDocument();
+    expect(within(table).queryByText('Redirect 1 from Unexpected redirect')).not.toBeInTheDocument();
     expect(within(table).getAllByText('3')).toHaveLength(3);
     expect(within(table).getAllByRole('row')).toHaveLength(4);
 
