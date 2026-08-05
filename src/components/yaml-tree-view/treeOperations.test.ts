@@ -210,6 +210,47 @@ scenarios:
     expect(result.replacements).toBe(1);
     expect(result.tree.children?.[0].data.url).toBe('/search?key={{value}}');
   });
+
+  describe('regex metacharacters left literal by encodeURIComponent', () => {
+    const urlTree = (url: string): YAMLNode => ({
+      id: 'steps',
+      type: 'steps',
+      name: 'Steps',
+      children: [
+        {
+          id: 'request',
+          type: 'request',
+          name: 'Encoded request',
+          data: { url, enabled: true },
+          children: [],
+        },
+      ],
+    });
+
+    it.each([
+      ['app.js', '/static/app.js', '/static/{{value}}'],
+      ['app.js', '/static/app%2Ejs', '/static/{{value}}'],
+      ['x*y', '/a/x*y/b', '/a/{{value}}/b'],
+      ['x*y', '/a/x%2Ay/b', '/a/{{value}}/b'],
+      ['w(1)', '/a/w(1)/b', '/a/{{value}}/b'],
+      ['w(1)', '/a/w%281%29/b', '/a/{{value}}/b'],
+      ["it's", "/a/it's/b", '/a/{{value}}/b'],
+    ])('replaces %j in %j', (search, url, expectedUrl) => {
+      const result = replaceTextInEnabledRequests(urlTree(url), search, '{{value}}');
+
+      expect(result.replacements).toBe(1);
+      expect(result.tree.children?.[0].data.url).toBe(expectedUrl);
+    });
+
+    it('treats a dot in the search text as a literal dot, not a wildcard', () => {
+      const tree = urlTree('/static/appZjs');
+
+      expect(replaceTextInEnabledRequests(tree, 'app.js', '{{value}}')).toEqual({
+        tree,
+        replacements: 0,
+      });
+    });
+  });
 });
 
 function createBaseTree(): YAMLNode {

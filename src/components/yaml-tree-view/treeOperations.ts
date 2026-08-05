@@ -152,11 +152,22 @@ function percentEncodedSearchPattern(value: string): string {
   let pattern = '';
 
   for (const character of value) {
-    const encodedCharacter = encodeURIComponent(character).replace(
-      /%([0-9a-f]{2})/gi,
-      (_, byte: string) => percentEncodedBytePattern(Number.parseInt(byte, 16)),
-    );
-    const alternatives = new Set([escapeRegExp(character), encodedCharacter]);
+    const alternatives = new Set([escapeRegExp(character)]);
+    const encodedCharacter = encodeURIComponent(character);
+
+    // encodeURIComponent returns unreserved characters (`A-Za-z0-9-_.!~*'()`)
+    // as-is, so its output is only a usable pattern once it is a `%XX` run —
+    // splicing the raw character in would leak regex metacharacters (`.`
+    // matching anything, `*`/`(`/`)` throwing or regrouping). The literal form
+    // is already covered above, and the `< 0x80` branch below adds the encoded
+    // form for those characters.
+    if (encodedCharacter !== character) {
+      alternatives.add(
+        encodedCharacter.replace(/%([0-9a-f]{2})/gi, (_, byte: string) =>
+          percentEncodedBytePattern(Number.parseInt(byte, 16)),
+        ),
+      );
+    }
 
     if (character === ' ') {
       alternatives.add('\\+');
