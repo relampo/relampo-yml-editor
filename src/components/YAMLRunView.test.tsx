@@ -424,7 +424,8 @@ describe('YAMLLoadRunSession', () => {
     expect(within(table).getByText('/callback?code=runtime-value-3')).toBeInTheDocument();
     expect(within(table).queryByText('/login?vu={{__vu_idx}}')).not.toBeInTheDocument();
     expect(within(table).queryByText('/callback?code={{code}}')).not.toBeInTheDocument();
-    expect(within(table).getByText('Redirect 1 from Unexpected redirect')).toBeInTheDocument();
+    expect(within(table).getByText('/unknown?token=runtime-value-3')).toBeInTheDocument();
+    expect(within(table).queryByText('Redirect 1 from Unexpected redirect')).not.toBeInTheDocument();
     expect(within(table).getAllByText('3')).toHaveLength(3);
     expect(within(table).getAllByRole('row')).toHaveLength(4);
 
@@ -471,6 +472,124 @@ describe('YAMLLoadRunSession', () => {
     expect(within(completedTable).getByText('/callback?code=runtime-value-3')).toBeInTheDocument();
     expect(within(completedTable).queryByText('/login?vu={{__vu_idx}}')).not.toBeInTheDocument();
     expect(within(completedTable).queryByText('/callback?code={{code}}')).not.toBeInTheDocument();
+  });
+
+  // RLP-655. An unexpected redirect chain — one the recording has no children
+  // for — must survive the summary as one resolved-URL row per hop, ordered
+  // under the step that spawned it. The rows are keyed by the runtime
+  // `...redirects[N]` step path, never by the resolved URL, so a chain that
+  // lands somewhere different on each iteration still collapses into a single
+  // row with the summed count instead of fanning out one row per landing.
+  it('keeps every unexpected redirect hop as its own resolved-URL row under its parent step', async () => {
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'root',
+      name: 'root',
+      children: [
+        {
+          id: 'request-1',
+          type: 'request',
+          name: 'Start login',
+          path: ['scenarios', 0, 'steps', 0, 'request'],
+          data: {
+            method: 'GET',
+            url: '/login?vu={{__vu_idx}}',
+            request_id: 41,
+            chain_id: 'login',
+            chain_role: 'parent',
+          },
+        },
+      ],
+    };
+    const latency = { avg_ms: 20, min_ms: 18, max_ms: 22, p90_ms: 22, p95_ms: 22, p99_ms: 22 };
+    render(<YAMLLoadRunSession {...baseProps} tree={tree} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run load test' }));
+    await waitFor(() => expect(runApiMock.handlers).toHaveLength(1));
+    act(() => {
+      runApiMock.handlers[0].onMetrics(
+        metric({
+          total_requests: 9,
+          executed_vus: 3,
+          requests: [
+            {
+              name: 'Start login',
+              method: 'GET',
+              path: '/login?vu=1',
+              request_id: 41,
+              step_path: 'scenarios[0].steps[0]',
+              chain_id: 'login',
+              chain_role: 'parent',
+              count: 3,
+              failures: 0,
+              ...latency,
+            },
+            // Hop 1 leaves the recorded origin entirely: the absolute URL is the
+            // only honest rendering of where the run actually went.
+            {
+              name: 'Authorize hop',
+              method: 'GET',
+              path: 'https://idp.example.com/authorize?client_id=abc',
+              request_id: 41,
+              step_path: 'scenarios[0].steps[0].redirects[1]',
+              chain_id: 'login',
+              chain_role: 'hop',
+              redirect_index: 1,
+              count: 3,
+              failures: 0,
+              ...latency,
+            },
+            // Two landings for the SAME hop: correlation gave each iteration a
+            // different code, so the engine reports them as separate resolved
+            // URLs under one step path.
+            {
+              name: 'Landing',
+              method: 'GET',
+              path: '/callback?code=runtime-value-1',
+              request_id: 41,
+              step_path: 'scenarios[0].steps[0].redirects[2]',
+              chain_id: 'login',
+              chain_role: 'final',
+              redirect_index: 2,
+              count: 2,
+              failures: 0,
+              ...latency,
+            },
+            {
+              name: 'Landing',
+              method: 'GET',
+              path: '/callback?code=runtime-value-2',
+              request_id: 41,
+              step_path: 'scenarios[0].steps[0].redirects[2]',
+              chain_id: 'login',
+              chain_role: 'final',
+              redirect_index: 2,
+              count: 1,
+              failures: 1,
+              ...latency,
+            },
+          ],
+        }),
+      );
+    });
+
+    const table = await screen.findByRole('table');
+    // One row per hop — never a synthetic "Redirect N from ..." label, and never
+    // an extra row for the second landing of the same hop.
+    const rows = within(table)
+      .getAllByRole('row')
+      .slice(1)
+      .map(row => row.textContent ?? '');
+    expect(rows).toHaveLength(3);
+    expect(rows[0]).toContain('/login?vu=1');
+    expect(rows[1]).toContain('https://idp.example.com/authorize?client_id=abc');
+    expect(rows[2]).toContain('/callback?code=runtime-value-1');
+    expect(within(table).queryByText('/callback?code=runtime-value-2')).not.toBeInTheDocument();
+    expect(within(table).queryByText(/Redirect \d+ from/)).not.toBeInTheDocument();
+    // The two landings merged: 2 + 1 executions and 0 + 1 failures.
+    const landingCells = within(table).getAllByRole('row')[3].querySelectorAll('td');
+    expect(landingCells[1].textContent).toBe('3');
+    expect(landingCells[2].textContent).toBe('1');
   });
 
   it('collapses rows that resolve to the same script request without moving them after logout', async () => {
