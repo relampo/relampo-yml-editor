@@ -444,6 +444,163 @@ describe('YAMLDebugSession tree selection sync', () => {
 
     expect(await screen.findAllByText('think_time')).not.toHaveLength(0);
     expect(screen.getAllByText('THINK_TIME')).not.toHaveLength(0);
+    for (const tab of ['request', 'response', 'assertions', 'variables']) {
+      expect(screen.queryByRole('button', { name: tab })).not.toBeInTheDocument();
+    }
+    expect(screen.getByRole('button', { name: 'overview' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'logs' })).toBeInTheDocument();
+  });
+
+  it('keeps overview selected when a request tab is stale before selecting think time', async () => {
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'root',
+      name: 'root',
+      children: [
+        req('Request A'),
+        {
+          id: 'think-1',
+          type: 'think_time',
+          name: 'Think Time',
+          data: { duration: '1s' },
+        },
+      ],
+    };
+
+    render(
+      <YAMLDebugSession
+        tree={tree}
+        yamlCode={'test:\n  name: think-time-stale-tab\n'}
+        documentReady
+        validationErrors={[]}
+        onSelectNode={vi.fn()}
+        onEditNode={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
+
+    act(() => {
+      debugApiMock.handlers[0].onEvent(event({ name: 'Request A', method: 'GET', path: '/a' }));
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'request' }));
+
+    act(() => {
+      debugApiMock.handlers[0].onEvent(
+        event({
+          name: 'Think Time',
+          method: 'THINK_TIME',
+          path: 'think_time',
+          status: 0,
+          latency_ms: 1000,
+        }),
+      );
+    });
+
+    const thinkTimeButton = screen
+      .getAllByRole('button')
+      .find(button => button.textContent?.includes('THINK_TIME'));
+    expect(thinkTimeButton).toBeDefined();
+    fireEvent.click(thinkTimeButton!);
+
+    for (const tab of ['request', 'response', 'assertions', 'variables']) {
+      expect(screen.queryByRole('button', { name: tab })).not.toBeInTheDocument();
+    }
+    const overviewTab = screen.getByRole('button', { name: 'overview' });
+    expect(overviewTab).toHaveClass('border-yellow-400');
+    expect(screen.getByRole('button', { name: 'logs' })).toBeInTheDocument();
+  });
+
+  // The timeline auto-follows the newest event while no entry is pinned, so a
+  // streamed THINK_TIME event unmounts the request-only tabs. If that happens
+  // while one of them holds focus, the browser drops focus to <body>.
+  it('moves focus to the surviving tab when a focused request tab is hidden', async () => {
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'root',
+      name: 'root',
+      children: [
+        req('Request A'),
+        { id: 'think-1', type: 'think_time', name: 'Think Time', data: { duration: '1s' } },
+      ],
+    };
+
+    render(
+      <YAMLDebugSession
+        tree={tree}
+        yamlCode={'test:\n  name: think-time-focus\n'}
+        documentReady
+        validationErrors={[]}
+        onSelectNode={vi.fn()}
+        onEditNode={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
+
+    act(() => {
+      debugApiMock.handlers[0].onEvent(event({ name: 'Request A', method: 'GET', path: '/a' }));
+    });
+
+    const requestTab = screen.getByRole('button', { name: 'request' });
+    fireEvent.click(requestTab);
+    requestTab.focus();
+    expect(document.activeElement).toBe(requestTab);
+
+    act(() => {
+      debugApiMock.handlers[0].onEvent(
+        event({ name: 'Think Time', method: 'THINK_TIME', path: 'think_time', status: 0, latency_ms: 1000 }),
+      );
+    });
+
+    expect(screen.queryByRole('button', { name: 'request' })).not.toBeInTheDocument();
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'overview' }));
+  });
+
+  it('leaves focus alone when it already moved outside the tab strip', async () => {
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'root',
+      name: 'root',
+      children: [
+        req('Request A'),
+        { id: 'think-1', type: 'think_time', name: 'Think Time', data: { duration: '1s' } },
+      ],
+    };
+
+    render(
+      <YAMLDebugSession
+        tree={tree}
+        yamlCode={'test:\n  name: think-time-focus-guard\n'}
+        documentReady
+        validationErrors={[]}
+        onSelectNode={vi.fn()}
+        onEditNode={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
+
+    act(() => {
+      debugApiMock.handlers[0].onEvent(event({ name: 'Request A', method: 'GET', path: '/a' }));
+    });
+
+    const requestTab = screen.getByRole('button', { name: 'request' });
+    fireEvent.click(requestTab);
+    requestTab.focus();
+    const elsewhere = screen.getByRole('button', { name: 'Stop' });
+    elsewhere.focus();
+
+    act(() => {
+      debugApiMock.handlers[0].onEvent(
+        event({ name: 'Think Time', method: 'THINK_TIME', path: 'think_time', status: 0, latency_ms: 1000 }),
+      );
+    });
+
+    expect(document.activeElement).toBe(elsewhere);
   });
 
   it('maps repeated think time events by engine suffix', async () => {
