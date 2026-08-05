@@ -139,17 +139,81 @@ export function toggleNodeInTree(tree: YAMLNode, nodeId: string): YAMLNode {
   return tree;
 }
 
-function replaceTextInValue(value: unknown, search: string, replacement: string): [unknown, number, boolean] {
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function percentEncodedSearchPattern(value: string): string {
+  let pattern = '';
+
+  for (let index = 0; index < value.length; index += 1) {
+    const encodedByte = value.slice(index, index + 3);
+    if (/^%[0-9a-f]{2}$/i.test(encodedByte)) {
+      const first = encodedByte[1];
+      const second = encodedByte[2];
+      pattern += `%[${first.toLowerCase()}${first.toUpperCase()}][${second.toLowerCase()}${second.toUpperCase()}]`;
+      index += 2;
+    } else {
+      pattern += escapeRegExp(value[index]);
+    }
+  }
+
+  return pattern;
+}
+
+function replaceTextInString(
+  value: string,
+  search: string,
+  replacement: string,
+  urlEncoded: boolean,
+): [string, number, boolean] {
+  let nextValue = value;
+  let count = 0;
+
+  const literalMatches = nextValue.split(search).length - 1;
+  if (literalMatches > 0) {
+    nextValue = nextValue.split(search).join(replacement);
+    count += literalMatches;
+  }
+
+  if (urlEncoded) {
+    let encodedSearch: string;
+    try {
+      encodedSearch = encodeURIComponent(search);
+    } catch {
+      return [nextValue, count, count > 0];
+    }
+
+    const encodedVariants = new Set([encodedSearch, encodedSearch.replaceAll('%20', '+')]);
+    for (const encodedVariant of encodedVariants) {
+      if (encodedVariant === search) continue;
+
+      const encodedPattern = new RegExp(percentEncodedSearchPattern(encodedVariant), 'g');
+      nextValue = nextValue.replace(encodedPattern, () => {
+        count += 1;
+        return replacement;
+      });
+    }
+  }
+
+  return [nextValue, count, count > 0];
+}
+
+function replaceTextInValue(
+  value: unknown,
+  search: string,
+  replacement: string,
+  urlEncoded = false,
+): [unknown, number, boolean] {
   if (typeof value === 'string') {
-    const matches = value.split(search).length - 1;
-    return matches > 0 ? [value.split(search).join(replacement), matches, true] : [value, 0, false];
+    return replaceTextInString(value, search, replacement, urlEncoded);
   }
 
   if (Array.isArray(value)) {
     let count = 0;
     let changed = false;
     const nextValue = value.map(item => {
-      const [nextItem, itemCount, itemChanged] = replaceTextInValue(item, search, replacement);
+      const [nextItem, itemCount, itemChanged] = replaceTextInValue(item, search, replacement, urlEncoded);
       count += itemCount;
       changed ||= itemChanged;
       return nextItem;
@@ -162,7 +226,7 @@ function replaceTextInValue(value: unknown, search: string, replacement: string)
     let changed = false;
     const nextValue = Object.fromEntries(
       Object.entries(value).map(([key, item]) => {
-        const [nextItem, itemCount, itemChanged] = replaceTextInValue(item, search, replacement);
+        const [nextItem, itemCount, itemChanged] = replaceTextInValue(item, search, replacement, urlEncoded);
         count += itemCount;
         changed ||= itemChanged;
         return [key, nextItem];
@@ -196,7 +260,7 @@ function replaceRequestData(
       if (key === 'enabled' || key === 'method' || key === 'response' || key === 'response_preview') {
         return [key, value];
       }
-      const [nextValue, valueCount, valueChanged] = replaceTextInValue(value, search, replacement);
+      const [nextValue, valueCount, valueChanged] = replaceTextInValue(value, search, replacement, key === 'url');
       if (!(key === 'headers' && headersCountedByChild)) count += valueCount;
       changed ||= valueChanged;
       return [key, nextValue];

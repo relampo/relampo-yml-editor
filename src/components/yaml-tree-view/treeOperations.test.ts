@@ -129,6 +129,35 @@ scenarios:
     expect(replaceTextInEnabledRequests(tree, '', 'replacement')).toEqual({ tree, replacements: 0 });
     expect(replaceTextInEnabledRequests(tree, 'missing', 'replacement')).toEqual({ tree, replacements: 0 });
   });
+
+  it.each([
+    ['hello world', '{{space}}', '/search?q={{space}}&filter=a%3Db&tags%5B0%5D=active'],
+    ['a=b', '{{equals}}', '/search?q=hello%20world&filter={{equals}}&tags%5B0%5D=active'],
+    ['tags[0]', '{{key}}', '/search?q=hello%20world&filter=a%3Db&{{key}}=active'],
+  ])('replaces URL-encoded request text for %j', (search, replacement, expectedUrl) => {
+    const tree: YAMLNode = {
+      id: 'steps',
+      type: 'steps',
+      name: 'Steps',
+      children: [
+        {
+          id: 'request',
+          type: 'request',
+          name: 'Encoded request',
+          data: {
+            url: '/search?q=hello%20world&filter=a%3Db&tags%5B0%5D=active',
+            enabled: true,
+          },
+          children: [],
+        },
+      ],
+    };
+
+    const result = replaceTextInEnabledRequests(tree, search, replacement);
+
+    expect(result.replacements).toBe(1);
+    expect(result.tree.children?.[0].data.url).toBe(expectedUrl);
+  });
 });
 
 function createBaseTree(): YAMLNode {
