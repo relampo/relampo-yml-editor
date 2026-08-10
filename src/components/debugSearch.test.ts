@@ -39,6 +39,16 @@ describe('Relampo regex normalization', () => {
     const ranges = findMatchRanges(text, pattern, 'regex');
     expect(ranges.map(range => text.slice(range.start, range.end))).toEqual(['abc123']);
   });
+
+  it('accepts a generated Relampo pattern longer than the legacy 200-character limit', () => {
+    const text = '<script src="/app?url=https://example.com/app.js"></script>';
+    const pattern = String.raw`(?is)(?:.*?\b(?:href|src|data-action|data-endpoint|data-href|data-src|data-url)\s*=\s*["']?[^"'>\s]*\?[^"'>\s]*["']?){0,1}.*?\bsrc\s*=\s*["']?[^"'>\s]*?(?:[?&]|&amp;)(?:u|%75)(?:r|%72)(?:l|%6C)=([^&"'>\s]+)`;
+
+    expect(pattern.length).toBeGreaterThan(200);
+    expect(buildSearchRegex(pattern)).not.toBeNull();
+    const ranges = findMatchRanges(text, pattern, 'regex');
+    expect(ranges.map(range => text.slice(range.start, range.end))).toEqual(['https://example.com/app.js']);
+  });
 });
 
 describe('findMatchRanges — text mode', () => {

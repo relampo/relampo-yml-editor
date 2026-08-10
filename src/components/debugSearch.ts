@@ -39,7 +39,10 @@ export function buildRelampoRegex(pattern: string, baseFlags = 'g'): RegExp | nu
 // make catastrophic backtracking impossible, it just keeps the patterns that
 // produce it from being typed by accident. Anything longer is reported the same
 // way an invalid pattern is.
-const MAX_SEARCH_PATTERN_LENGTH = 200;
+// Generated Relampo patterns can include several URL alternatives and exceed
+// the old 200-character limit. Keep a bounded limit while allowing generated
+// extractors from real recordings to be tested in Studio.
+const MAX_SEARCH_PATTERN_LENGTH = 1024;
 
 export function buildSearchRegex(pattern: string): RegExp | null {
   if (pattern.length > MAX_SEARCH_PATTERN_LENGTH) return null;
