@@ -212,6 +212,38 @@ describe('YAMLRequestDetails', () => {
       valueInput = screen.getByDisplayValue(value) as HTMLInputElement;
       expect(document.activeElement).toBe(valueInput);
     }
+
+  });
+
+  it('keeps focus while the parent syncs Query Parameters edits back into the node', () => {
+    const node: YAMLNode = {
+      id: 'get-query-focus',
+      type: 'get',
+      name: '[14] GET /search',
+      data: {
+        method: 'GET',
+        url: '/search?query=initial',
+      },
+      children: [],
+    };
+
+    render(<ControlledRequest node={node} />);
+
+    let valueInput = screen.getByDisplayValue('initial') as HTMLInputElement;
+    valueInput.focus();
+    for (const value of ['draft', 'draft-value']) {
+      fireEvent.change(valueInput, { target: { value } });
+      valueInput = screen.getByDisplayValue(value) as HTMLInputElement;
+      expect(document.activeElement).toBe(valueInput);
+    }
+
+    let keyInput = screen.getByDisplayValue('query') as HTMLInputElement;
+    keyInput.focus();
+    for (const value of ['q', 'query-updated']) {
+      fireEvent.change(keyInput, { target: { value } });
+      keyInput = screen.getByDisplayValue(value) as HTMLInputElement;
+      expect(document.activeElement).toBe(keyInput);
+    }
   });
 
   it('re-derives the panel from a newly selected node instead of preserving stale Form Data', async () => {

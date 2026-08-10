@@ -22,6 +22,27 @@ function createQueryParam(overrides: Partial<Omit<QueryParam, 'id'>> = {}): Quer
   return { id: `qp-${++queryParamIdCounter}`, key: '', value: '', ...overrides };
 }
 
+function reconcileQueryParams(
+  parsedParams: Array<Pick<QueryParam, 'key' | 'value'>>,
+  currentParams: QueryParam[],
+): QueryParam[] {
+  if (parsedParams.length === 0) {
+    // Keep a locally edited blank-key row. Its value is not represented in the
+    // URL until a key exists, so replacing it from the parsed URL would erase
+    // the draft and remount the active input.
+    if (currentParams.length === 1 && currentParams[0].key === '') return currentParams;
+    return [createQueryParam()];
+  }
+
+  // The URL is the serialized form of the same ordered rows. Reuse each row's
+  // local identity by index so the parent echo does not remount an input on
+  // every character.
+  return parsedParams.map((param, index) => ({
+    id: currentParams[index]?.id ?? createQueryParam().id,
+    ...param,
+  }));
+}
+
 interface QueryParamsEditorProps {
   url: string;
   onUrlChange: (url: string) => void;
@@ -56,8 +77,8 @@ export function QueryParamsEditor({ url, onUrlChange, className = '', showBaseUr
 
       setBaseUrl(base);
 
-      const parsedParams = parseRequestQueryParams(url).map(p => createQueryParam(p));
-      setParams(parsedParams.length > 0 ? parsedParams : [createQueryParam()]);
+      const parsedParams = parseRequestQueryParams(url);
+      setParams(reconcileQueryParams(parsedParams, params));
     }
   }
 
