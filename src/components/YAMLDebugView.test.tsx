@@ -918,3 +918,4 @@ describe('YAMLDebugSession tree selection sync', () => {
   });
 
 });
+
