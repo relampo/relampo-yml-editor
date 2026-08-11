@@ -49,17 +49,11 @@ vi.mock('../utils/yamlSemanticValidation', () => ({
 
 vi.mock('./YAMLEditorHeader', () => ({
   YAMLEditorHeader: (props: {
-    hasDocumentActivity: boolean;
-    isDirty: boolean;
-    lastSavedAt: string | null;
     isDocumentEmpty: boolean;
     onNew: () => void;
   }) => (
     <div
       data-testid="editor-header"
-      data-activity={String(props.hasDocumentActivity)}
-      data-dirty={String(props.isDirty)}
-      data-saved-at={props.lastSavedAt ?? ''}
     >
       {!props.isDocumentEmpty && (
         <button onClick={props.onNew}>New</button>
@@ -185,9 +179,6 @@ describe('YAMLEditor draft restoration', () => {
 
     expect(await screen.findByText('Restored plan')).toBeInTheDocument();
     expect(parseYAMLToTreeMock).toHaveBeenCalledWith('test:\n  name: restored\n', 'restored');
-    expect(screen.getByTestId('editor-header')).toHaveAttribute('data-activity', 'true');
-    expect(screen.getByTestId('editor-header')).toHaveAttribute('data-dirty', 'false');
-    await waitFor(() => expect(screen.getByTestId('editor-header').getAttribute('data-saved-at')).not.toBe(''));
   });
 
   it('starts empty when IndexedDB has no active draft', async () => {
@@ -197,7 +188,6 @@ describe('YAMLEditor draft restoration', () => {
 
     expect(screen.getByTestId('tree-view')).toHaveTextContent('empty tree');
     expect(parseYAMLToTreeMock).not.toHaveBeenCalled();
-    expect(screen.getByTestId('editor-header')).toHaveAttribute('data-activity', 'false');
   });
 
   it('serializes and marks dirty when the tree view changes the tree', async () => {
@@ -217,7 +207,6 @@ describe('YAMLEditor draft restoration', () => {
         name: 'Tree changed plan',
       }),
     );
-    expect(screen.getByTestId('editor-header')).toHaveAttribute('data-dirty', 'true');
   });
 
   it('refreshes details immediately and debounces serialization when the details panel updates a node', async () => {
@@ -248,7 +237,6 @@ describe('YAMLEditor draft restoration', () => {
         name: 'Details changed plan',
       }),
     );
-    expect(screen.getByTestId('editor-header')).toHaveAttribute('data-dirty', 'true');
   });
 
   it('switches to Tree details when selecting a node from the tree shown in Debug', async () => {
@@ -305,8 +293,6 @@ describe('YAMLEditor draft restoration', () => {
 
       expect(screen.getByTestId('tree-view')).toHaveTextContent('empty tree');
       expect(clearActiveDraftMock).toHaveBeenCalled();
-      expect(screen.getByTestId('editor-header')).toHaveAttribute('data-saved-at', '');
-      expect(screen.getByTestId('editor-header')).toHaveAttribute('data-activity', 'false');
     });
 
     it('hides the New button when the document is empty', async () => {

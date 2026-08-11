@@ -390,6 +390,7 @@ export const esTranslations = {
     title: 'Editor YAML',
     newDocument: 'Nuevo',
     uploadYaml: 'Subir YAML',
+    saveYaml: 'Guardar',
     validate: 'Validar',
     downloadYaml: 'Descargar YAML',
     downloadProject: 'Descargar ZIP',

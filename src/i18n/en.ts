@@ -389,6 +389,7 @@ export const enTranslations = {
     title: 'YAML Editor',
     newDocument: 'New',
     uploadYaml: 'Upload YAML',
+    saveYaml: 'Save',
     validate: 'Validate',
     downloadYaml: 'Download YAML',
     downloadProject: 'Download ZIP',

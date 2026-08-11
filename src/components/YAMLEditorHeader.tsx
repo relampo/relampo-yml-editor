@@ -1,26 +1,14 @@
-import { ChevronDown, Download, FilePlus, Upload } from 'lucide-react';
+import { FilePlus, Save, Upload } from 'lucide-react';
 import { Button } from './ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from './ui/dropdown-menu';
 
 interface YAMLEditorHeaderProps {
   language: string;
   setLanguage: (lang: 'en' | 'es') => void;
   t: (key: string) => string;
-  hasDocumentActivity: boolean;
-  isDirty: boolean;
-  lastSavedAt: string | null;
-  actionMessage: string;
   isDocumentEmpty: boolean;
   onNew: () => void;
   onUpload: () => void;
-  onDownload: (includeResponses: boolean) => void;
+  onSave: () => void | Promise<void>;
   fileInputRef: React.RefObject<HTMLInputElement | null>;
   onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
@@ -29,14 +17,10 @@ export function YAMLEditorHeader({
   language,
   setLanguage,
   t,
-  hasDocumentActivity,
-  isDirty,
-  lastSavedAt,
-  actionMessage,
   isDocumentEmpty,
   onNew,
   onUpload,
-  onDownload,
+  onSave,
   fileInputRef,
   onFileChange,
 }: YAMLEditorHeaderProps) {
@@ -72,32 +56,6 @@ export function YAMLEditorHeader({
 
         {/* Right: Buttons + Language Toggle */}
         <div className="flex items-center gap-4">
-          <div className="hidden md:flex items-center gap-2">
-            {hasDocumentActivity && (
-              <span
-                className={`text-[11px] px-2 py-1 rounded border ${
-                  isDirty
-                    ? 'text-amber-300 border-amber-400/30 bg-amber-400/10'
-                    : 'text-emerald-300 border-emerald-400/30 bg-emerald-400/10'
-                }`}
-              >
-                {isDirty
-                  ? language === 'es'
-                    ? 'Guardando...'
-                    : 'Saving...'
-                  : language === 'es'
-                    ? 'Guardado'
-                    : 'Saved'}
-              </span>
-            )}
-            {hasDocumentActivity && lastSavedAt && !isDirty && (
-              <span className="text-[11px] text-zinc-500">
-                {language === 'es' ? 'Último guardado:' : 'Last save:'} {lastSavedAt}
-              </span>
-            )}
-            {actionMessage && <span className="text-[11px] text-zinc-300">{actionMessage}</span>}
-          </div>
-
           {/* Action Buttons */}
           <div className="flex items-center gap-2">
             {!isDocumentEmpty && (
@@ -121,48 +79,14 @@ export function YAMLEditorHeader({
               {t('yamlEditor.uploadYaml')}
             </Button>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger className="inline-flex h-8 items-center justify-center gap-2 rounded-md border border-yellow-400/20 bg-yellow-400/5 px-3 text-sm font-medium text-yellow-400 shadow-sm transition-[background-color,border-color,box-shadow] duration-200 hover:bg-yellow-400/10 hover:border-yellow-400/35 hover:shadow-yellow-400/10 focus:outline-none focus:ring-2 focus:ring-yellow-400/40">
-                <Download className="w-4 h-4" />
-                {t('yamlEditor.downloadYaml')}
-                <ChevronDown className="w-4 h-4" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="end"
-                className="bg-[#111111] border border-white/10 text-zinc-200 min-w-65 p-1.5"
-              >
-                <DropdownMenuLabel className="text-zinc-400 text-xs uppercase tracking-wide">
-                  {language === 'es' ? 'Opciones de descarga' : 'Download options'}
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator className="bg-white/10" />
-                <DropdownMenuItem
-                  onClick={() => onDownload(true)}
-                  className="rounded-md px-3 py-2 focus:bg-yellow-400/10 focus:text-white cursor-pointer data-highlighted:bg-yellow-400/10 data-highlighted:text-white"
-                >
-                  <div className="flex flex-col">
-                    <span>{language === 'es' ? 'Descargar con respuestas' : 'Download with responses'}</span>
-                    <span className="text-xs text-zinc-500">
-                      {language === 'es'
-                        ? 'Útil para editar y correlacionar el script'
-                        : 'Best for editing and correlating the script'}
-                    </span>
-                  </div>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => onDownload(false)}
-                  className="rounded-md px-3 py-2 focus:bg-yellow-400/10 focus:text-white cursor-pointer data-highlighted:bg-yellow-400/10 data-highlighted:text-white"
-                >
-                  <div className="flex flex-col">
-                    <span>{language === 'es' ? 'Descargar sin respuestas' : 'Download without responses'}</span>
-                    <span className="text-xs text-zinc-500">
-                      {language === 'es'
-                        ? 'Ideal para lanzar pruebas con el script'
-                        : 'Best for running tests with the script'}
-                    </span>
-                  </div>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <Button
+              onClick={() => void onSave()}
+              size="sm"
+              className="bg-yellow-400 hover:bg-yellow-300 text-black font-bold gap-2"
+            >
+              <Save className="w-4 h-4" />
+              {t('yamlEditor.saveYaml')}
+            </Button>
           </div>
 
           {/* Language Toggle */}

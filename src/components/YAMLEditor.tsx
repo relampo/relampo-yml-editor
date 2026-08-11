@@ -49,7 +49,6 @@ export function YAMLEditor() {
     setYamlTree,
     isDirty,
     setIsDirty,
-    hasDocumentActivity,
     setHasDocumentActivity,
     isParsing,
     isFileLoading,
@@ -154,7 +153,7 @@ export function YAMLEditor() {
   const isLargeFileMode = documentMetrics.large;
   const isEditorBusy = isFileLoading || isParsing;
 
-  const { lastSavedAt, actionMessage, handleDownload, resetForNewDocument } = useYAMLPersistence({
+  const { handleSave, resetForNewDocument } = useYAMLPersistence({
     isDirty,
     setIsDirty,
     isInitialized,
@@ -247,14 +246,10 @@ export function YAMLEditor() {
         language={language}
         setLanguage={setLanguage}
         t={t}
-        hasDocumentActivity={hasDocumentActivity}
-        isDirty={isDirty}
-        lastSavedAt={lastSavedAt}
-        actionMessage={actionMessage}
         isDocumentEmpty={!yamlTree && !yamlCode.trim()}
         onNew={handleNewOpen}
         onUpload={handleUpload}
-        onDownload={handleDownload}
+        onSave={handleSave}
         fileInputRef={fileInputRef}
         onFileChange={handleFileChange}
       />
