@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { collectDebugEventTargets, collectRequests, matchDebugEventTarget } from './debugRequests';
 import { DebugSection } from './debugSection';
 import { YAMLDebugSession } from './YAMLDebugView';
@@ -431,6 +431,44 @@ describe('YAMLDebugSession tree selection sync', () => {
     expect(screen.queryAllByText('THINK_TIME')).toHaveLength(0);
     expect(screen.queryAllByText('think_time')).toHaveLength(0);
     expect(screen.getByText('Running... waiting for the first engine event.')).toBeInTheDocument();
+  });
+
+  // Think time used to inflate the Requests/Passed totals, which is the
+  // regression this filter exists to prevent. RLP-666.
+  it('keeps think time out of the timeline rows and the request totals', async () => {
+    render(
+      <YAMLDebugSession
+        tree={null}
+        yamlCode={'test:\n  name: think-time-mixed\n'}
+        documentReady
+        validationErrors={[]}
+        onSelectNode={vi.fn()}
+        onEditNode={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
+
+    act(() => {
+      debugApiMock.handlers[0].onEvent(event({ name: 'Request A', method: 'GET', path: '/a' }));
+      debugApiMock.handlers[0].onEvent(
+        event({ name: 'Think Time', method: 'THINK_TIME', path: 'think_time', status: 0, latency_ms: 1000 }),
+      );
+      debugApiMock.handlers[0].onEvent(event({ name: 'Request B', method: 'GET', path: '/b' }));
+    });
+
+    expect(await screen.findAllByText('/a')).not.toHaveLength(0);
+    expect(screen.getAllByText('/b')).not.toHaveLength(0);
+    expect(screen.queryAllByText('THINK_TIME')).toHaveLength(0);
+
+    // Two requests streamed alongside one think time event: the totals count
+    // only the requests.
+    const statsBar = screen.getByText('Requests').parentElement!.parentElement!;
+    const statFor = (label: string) =>
+      within(statsBar).getByText(label).previousElementSibling;
+    expect(statFor('Requests')).toHaveTextContent('2');
+    expect(statFor('Passed')).toHaveTextContent('2');
   });
 
   it('limits the variables tab to extractors declared by the mapped request node', async () => {

@@ -74,7 +74,7 @@ function entryStatus(event: EngineEvent): DebugStatus {
 // are verbose-run messages, SYSTEM events are lifecycle markers (e.g.
 // VUS_DRAINED) and embedded events are sub-resources of a page load.
 function isTimelineEvent(event: EngineEvent): boolean {
-  const method = event.method.trim().toUpperCase();
+  const method = String(event.method ?? '').trim().toUpperCase();
   // Think Time affects pacing, not request execution. Keep it out of Debug so
   // the timeline and request details only describe observable work.
   return Boolean(method) && method !== 'INFO' && method !== 'SYSTEM' && method !== 'THINK_TIME' && !event.embedded;
@@ -761,8 +761,6 @@ function DebugDetailPanel({
   debugEventTargets: YAMLNode[];
   timelineEntries: DebugEntry[];
 }) {
-  const visibleDetailTab = REQUEST_DETAIL_TABS.includes(detailTab) ? detailTab : 'overview';
-
   return (
     <div className="min-w-0 min-h-0 overflow-hidden">
       {activeEntry ? (
@@ -806,10 +804,9 @@ function DebugDetailPanel({
               <button
                 key={tab}
                 type="button"
-                data-tab-active={visibleDetailTab === tab}
                 onClick={() => onTabChange(tab)}
                 className={`px-2.5 py-2.5 text-xs font-semibold capitalize transition-colors ${
-                  visibleDetailTab === tab
+                  detailTab === tab
                     ? 'border-b-2 border-yellow-400 text-yellow-300'
                     : 'border-b-2 border-transparent text-zinc-500 hover:text-zinc-300'
                 }`}
@@ -833,7 +830,7 @@ function DebugDetailPanel({
             <DebugInspectorContent
               key={activeEntry.id}
               entry={activeEntry}
-              tab={visibleDetailTab}
+              tab={detailTab}
               redirectedInfo={activeEntry.node ? (redirectedRequestMap[activeEntry.node.id] ?? null) : null}
               requestTargets={debugEventTargets}
               variableSnapshot={debugVariableSnapshot(activeEntry, timelineEntries)}
