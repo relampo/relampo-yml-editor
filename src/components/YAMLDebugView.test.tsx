@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { collectDebugEventTargets, collectRequests, matchDebugEventTarget } from './debugRequests';
 import { DebugSection } from './debugSection';
 import { YAMLDebugSession } from './YAMLDebugView';
@@ -401,30 +401,16 @@ describe('DebugSection highlighting', () => {
 });
 
 describe('YAMLDebugSession tree selection sync', () => {
-  it('maps a focused think time node to its debug timeline event', async () => {
-    const thinkTime: YAMLNode = {
-      id: 'think-1',
-      type: 'think_time',
-      name: 'Think Time',
-      data: { duration: '1s' },
-    };
-    const tree: YAMLNode = {
-      id: 'root',
-      type: 'root',
-      name: 'root',
-      children: [thinkTime],
-    };
-    const commonProps = {
-      tree,
-      yamlCode: 'test:\n  name: think-time\n',
-      documentReady: true,
-      validationErrors: [],
-      onSelectNode: vi.fn(),
-      onEditNode: vi.fn(),
-    };
-
+  it('does not add think time events to the debug timeline', async () => {
     render(
-      <YAMLDebugSession {...commonProps} />,
+      <YAMLDebugSession
+        tree={null}
+        yamlCode={'test:\n  name: think-time-hidden\n'}
+        documentReady
+        validationErrors={[]}
+        onSelectNode={vi.fn()}
+        onEditNode={vi.fn()}
+      />,
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
@@ -442,35 +428,18 @@ describe('YAMLDebugSession tree selection sync', () => {
       );
     });
 
-    expect(await screen.findAllByText('think_time')).not.toHaveLength(0);
-    expect(screen.getAllByText('THINK_TIME')).not.toHaveLength(0);
-    for (const tab of ['request', 'response', 'assertions', 'variables']) {
-      expect(screen.queryByRole('button', { name: tab })).not.toBeInTheDocument();
-    }
-    expect(screen.getByRole('button', { name: 'overview' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'logs' })).toBeInTheDocument();
+    expect(screen.queryAllByText('THINK_TIME')).toHaveLength(0);
+    expect(screen.queryAllByText('think_time')).toHaveLength(0);
+    expect(screen.getByText('Running... waiting for the first engine event.')).toBeInTheDocument();
   });
 
-  it('keeps overview selected when a request tab is stale before selecting think time', async () => {
-    const tree: YAMLNode = {
-      id: 'root',
-      type: 'root',
-      name: 'root',
-      children: [
-        req('Request A'),
-        {
-          id: 'think-1',
-          type: 'think_time',
-          name: 'Think Time',
-          data: { duration: '1s' },
-        },
-      ],
-    };
-
+  // Think time used to inflate the Requests/Passed totals, which is the
+  // regression this filter exists to prevent. RLP-666.
+  it('keeps think time out of the timeline rows and the request totals', async () => {
     render(
       <YAMLDebugSession
-        tree={tree}
-        yamlCode={'test:\n  name: think-time-stale-tab\n'}
+        tree={null}
+        yamlCode={'test:\n  name: think-time-mixed\n'}
         documentReady
         validationErrors={[]}
         onSelectNode={vi.fn()}
@@ -483,250 +452,23 @@ describe('YAMLDebugSession tree selection sync', () => {
 
     act(() => {
       debugApiMock.handlers[0].onEvent(event({ name: 'Request A', method: 'GET', path: '/a' }));
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'request' }));
-
-    act(() => {
-      debugApiMock.handlers[0].onEvent(
-        event({
-          name: 'Think Time',
-          method: 'THINK_TIME',
-          path: 'think_time',
-          status: 0,
-          latency_ms: 1000,
-        }),
-      );
-    });
-
-    const thinkTimeButton = screen
-      .getAllByRole('button')
-      .find(button => button.textContent?.includes('THINK_TIME'));
-    expect(thinkTimeButton).toBeDefined();
-    fireEvent.click(thinkTimeButton!);
-
-    for (const tab of ['request', 'response', 'assertions', 'variables']) {
-      expect(screen.queryByRole('button', { name: tab })).not.toBeInTheDocument();
-    }
-    const overviewTab = screen.getByRole('button', { name: 'overview' });
-    expect(overviewTab).toHaveClass('border-yellow-400');
-    expect(screen.getByRole('button', { name: 'logs' })).toBeInTheDocument();
-  });
-
-  // The timeline auto-follows the newest event while no entry is pinned, so a
-  // streamed THINK_TIME event unmounts the request-only tabs. If that happens
-  // while one of them holds focus, the browser drops focus to <body>.
-  it('moves focus to the surviving tab when a focused request tab is hidden', async () => {
-    const tree: YAMLNode = {
-      id: 'root',
-      type: 'root',
-      name: 'root',
-      children: [
-        req('Request A'),
-        { id: 'think-1', type: 'think_time', name: 'Think Time', data: { duration: '1s' } },
-      ],
-    };
-
-    render(
-      <YAMLDebugSession
-        tree={tree}
-        yamlCode={'test:\n  name: think-time-focus\n'}
-        documentReady
-        validationErrors={[]}
-        onSelectNode={vi.fn()}
-        onEditNode={vi.fn()}
-      />,
-    );
-
-    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
-    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
-
-    act(() => {
-      debugApiMock.handlers[0].onEvent(event({ name: 'Request A', method: 'GET', path: '/a' }));
-    });
-
-    const requestTab = screen.getByRole('button', { name: 'request' });
-    fireEvent.click(requestTab);
-    requestTab.focus();
-    expect(document.activeElement).toBe(requestTab);
-
-    act(() => {
       debugApiMock.handlers[0].onEvent(
         event({ name: 'Think Time', method: 'THINK_TIME', path: 'think_time', status: 0, latency_ms: 1000 }),
       );
+      debugApiMock.handlers[0].onEvent(event({ name: 'Request B', method: 'GET', path: '/b' }));
     });
 
-    expect(screen.queryByRole('button', { name: 'request' })).not.toBeInTheDocument();
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'overview' }));
-  });
+    expect(await screen.findAllByText('/a')).not.toHaveLength(0);
+    expect(screen.getAllByText('/b')).not.toHaveLength(0);
+    expect(screen.queryAllByText('THINK_TIME')).toHaveLength(0);
 
-  it('leaves focus alone when it already moved outside the tab strip', async () => {
-    const tree: YAMLNode = {
-      id: 'root',
-      type: 'root',
-      name: 'root',
-      children: [
-        req('Request A'),
-        { id: 'think-1', type: 'think_time', name: 'Think Time', data: { duration: '1s' } },
-      ],
-    };
-
-    render(
-      <YAMLDebugSession
-        tree={tree}
-        yamlCode={'test:\n  name: think-time-focus-guard\n'}
-        documentReady
-        validationErrors={[]}
-        onSelectNode={vi.fn()}
-        onEditNode={vi.fn()}
-      />,
-    );
-
-    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
-    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
-
-    act(() => {
-      debugApiMock.handlers[0].onEvent(event({ name: 'Request A', method: 'GET', path: '/a' }));
-    });
-
-    const requestTab = screen.getByRole('button', { name: 'request' });
-    fireEvent.click(requestTab);
-    requestTab.focus();
-    const elsewhere = screen.getByRole('button', { name: 'Stop' });
-    elsewhere.focus();
-
-    act(() => {
-      debugApiMock.handlers[0].onEvent(
-        event({ name: 'Think Time', method: 'THINK_TIME', path: 'think_time', status: 0, latency_ms: 1000 }),
-      );
-    });
-
-    expect(document.activeElement).toBe(elsewhere);
-  });
-
-  it('maps repeated think time events by engine suffix', async () => {
-    const firstThinkTime: YAMLNode = {
-      id: 'think-1',
-      type: 'think_time',
-      name: 'Think Time',
-      data: { duration: '1s' },
-      path: ['scenarios', 0, 'steps', 0],
-    };
-    const secondThinkTime: YAMLNode = {
-      id: 'think-2',
-      type: 'think_time',
-      name: 'Think Time',
-      data: { duration: '2s' },
-      path: ['scenarios', 0, 'steps', 1],
-    };
-    const tree: YAMLNode = {
-      id: 'root',
-      type: 'root',
-      name: 'root',
-      children: [firstThinkTime, secondThinkTime],
-    };
-    const commonProps = {
-      tree,
-      yamlCode: 'test:\n  name: repeated-think-time\n',
-      documentReady: true,
-      validationErrors: [],
-      onSelectNode: vi.fn(),
-      onEditNode: vi.fn(),
-    };
-
-    render(
-      <YAMLDebugSession {...commonProps} />,
-    );
-
-    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
-    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
-
-    act(() => {
-      debugApiMock.handlers[0].onEvent(
-        event({
-          name: 'Think Time',
-          method: 'THINK_TIME',
-          path: 'think_time',
-          step_path: 'scenarios[0].steps[0]',
-          status: 0,
-          latency_ms: 1000,
-        }),
-      );
-      debugApiMock.handlers[0].onEvent(
-        event({
-          name: 'Think Time #2',
-          method: 'THINK_TIME',
-          path: 'think_time',
-          step_path: 'scenarios[0].steps[1]',
-          status: 0,
-          latency_ms: 2000,
-        }),
-      );
-    });
-
-    expect(screen.getAllByText('2000ms')).not.toHaveLength(0);
-  });
-
-  it('maps unsuffixed grouped think time events by step path', async () => {
-    const firstThinkTime: YAMLNode = {
-      id: 'group-a-think',
-      type: 'think_time',
-      name: 'Think Time',
-      data: { duration: '1s' },
-      path: ['scenarios', 0, 'steps', 0, 'group', 'steps', 0],
-    };
-    const secondThinkTime: YAMLNode = {
-      id: 'group-b-think',
-      type: 'think_time',
-      name: 'Think Time',
-      data: { duration: '2s' },
-      path: ['scenarios', 0, 'steps', 1, 'group', 'steps', 0],
-    };
-    const tree: YAMLNode = {
-      id: 'root',
-      type: 'root',
-      name: 'root',
-      children: [firstThinkTime, secondThinkTime],
-    };
-    const commonProps = {
-      tree,
-      yamlCode: 'test:\n  name: grouped-think-time\n',
-      documentReady: true,
-      validationErrors: [],
-      onSelectNode: vi.fn(),
-      onEditNode: vi.fn(),
-    };
-
-    render(
-      <YAMLDebugSession {...commonProps} />,
-    );
-
-    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
-    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
-
-    act(() => {
-      debugApiMock.handlers[0].onEvent(
-        event({
-          name: 'Group A:Think Time',
-          method: 'THINK_TIME',
-          path: 'think_time',
-          step_path: 'scenarios[0].steps[0].group.steps[0]',
-          status: 0,
-          latency_ms: 1000,
-        }),
-      );
-      debugApiMock.handlers[0].onEvent(
-        event({
-          name: 'Group B:Think Time',
-          method: 'THINK_TIME',
-          path: 'think_time',
-          step_path: 'scenarios[0].steps[1].group.steps[0]',
-          status: 0,
-          latency_ms: 2000,
-        }),
-      );
-    });
-
-    expect(screen.getAllByText('2000ms')).not.toHaveLength(0);
+    // Two requests streamed alongside one think time event: the totals count
+    // only the requests.
+    const statsBar = screen.getByText('Requests').parentElement!.parentElement!;
+    const statFor = (label: string) =>
+      within(statsBar).getByText(label).previousElementSibling;
+    expect(statFor('Requests')).toHaveTextContent('2');
+    expect(statFor('Passed')).toHaveTextContent('2');
   });
 
   it('limits the variables tab to extractors declared by the mapped request node', async () => {
