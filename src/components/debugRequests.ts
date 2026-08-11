@@ -1,4 +1,5 @@
 import type { RedirectedRequestInfo, YAMLNode } from '../types/yaml';
+import { buildRelampoRegex } from './debugSearch';
 
 export type DebugStatus = 'passed' | 'failed' | 'warning' | 'pending' | 'running' | 'skipped';
 
@@ -627,21 +628,11 @@ function headersToText(headers: Record<string, string> | undefined): string {
     .join('\n');
 }
 
+// Shares the search box's Relampo-to-JavaScript translation so a generated
+// extractor previews here exactly as it highlights there. `s` stays forced:
+// extractor patterns are written against whole response bodies. RLP-670.
 function compileExtractorRegex(pattern: string): RegExp | null {
-  let source = pattern;
-  let flags = 's';
-  const inlineFlags = source.match(/^\(\?([ims]+)\)/);
-  if (inlineFlags) {
-    for (const flag of inlineFlags[1]) {
-      if (!flags.includes(flag)) flags += flag;
-    }
-    source = source.slice(inlineFlags[0].length);
-  }
-  try {
-    return new RegExp(source, flags);
-  } catch {
-    return null;
-  }
+  return buildRelampoRegex(pattern, 'gs');
 }
 
 function captureGroupIndex(data: Record<string, unknown>): number {
@@ -663,9 +654,7 @@ function regexExtractorValue(data: Record<string, unknown>, context: VariableVal
   if (!source) return null;
   const regex = compileExtractorRegex(pattern);
   if (!regex) return null;
-  const matches = [
-    ...source.matchAll(new RegExp(regex.source, regex.flags.includes('g') ? regex.flags : `${regex.flags}g`)),
-  ];
+  const matches = [...source.matchAll(regex)];
   const match = matches[captureMatchIndex(data)];
   if (!match) return null;
   const group = captureGroupIndex(data);
