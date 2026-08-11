@@ -49,6 +49,33 @@ describe('Relampo regex normalization', () => {
     const ranges = findMatchRanges(text, pattern, 'regex');
     expect(ranges.map(range => text.slice(range.start, range.end))).toEqual(['https://example.com/app.js']);
   });
+
+  it('accepts the generated jsessionid extractor that uses a POSIX class', () => {
+    const text = `<a href="/app;jsessionid=ABC123?x=1">go</a>`;
+    const pattern = String.raw`(?is)\bhref\s*=\s*["']?[^"'>\s]*?;jsessionid=([^;/?#"'<>[:space:]]+)`;
+
+    expect(buildSearchRegex(pattern)).not.toBeNull();
+    const ranges = findMatchRanges(text, pattern, 'regex');
+    expect(ranges.map(range => text.slice(range.start, range.end))).toEqual(['ABC123']);
+  });
+
+  it.each([
+    ['[[:digit:]]+', '42', '42'],
+    ['[[:alpha:]]+', 'ab1', 'ab'],
+    ['[^[:space:]]+', ' xy ', 'xy'],
+  ])('expands the POSIX class in %s', (pattern, text, expected) => {
+    const ranges = findMatchRanges(text, pattern, 'regex');
+    expect(ranges.map(range => text.slice(range.start, range.end))).toEqual([expected]);
+  });
+
+  it('leaves an unknown POSIX-looking class untouched', () => {
+    expect(normalizeRelampoRegexForJavaScript('[[:nope:]]').pattern).toBe('[[:nope:]]');
+  });
+
+  it('rejects a pattern past the length cap', () => {
+    expect(buildSearchRegex('a'.repeat(1024))).not.toBeNull();
+    expect(buildSearchRegex('a'.repeat(1025))).toBeNull();
+  });
 });
 
 describe('findMatchRanges — text mode', () => {

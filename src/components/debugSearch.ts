@@ -6,13 +6,42 @@ export type NormalizedRelampoRegex = { pattern: string; flags: string };
 
 const RELAMPO_INLINE_FLAGS = /^(\(\?([ims]+)\))/;
 
+// RE2 understands POSIX bracket expressions; JavaScript does not. Left alone,
+// `[^"'<>[:space:]]` still *compiles* in JS — as the class `[^"'<>[:space:`
+// plus a literal `]` — so a generated extractor silently matches nothing
+// instead of being reported as invalid. Expanding each class keeps those
+// patterns working in Studio. RLP-670.
+const POSIX_CLASS_RANGES: Record<string, string> = {
+  alnum: 'A-Za-z0-9',
+  alpha: 'A-Za-z',
+  ascii: '\\x00-\\x7F',
+  blank: ' \\t',
+  cntrl: '\\x00-\\x1F\\x7F',
+  digit: '0-9',
+  graph: '\\x21-\\x7E',
+  lower: 'a-z',
+  print: '\\x20-\\x7E',
+  punct: '!-\\/:-@\\[-`{-~',
+  space: '\\t\\n\\v\\f\\r ',
+  upper: 'A-Z',
+  word: 'A-Za-z0-9_',
+  xdigit: '0-9A-Fa-f',
+};
+
+const POSIX_CLASS = /\[:([a-z]+):\]/g;
+
+function expandPosixClasses(pattern: string): string {
+  return pattern.replace(POSIX_CLASS, (whole, name: string) => POSIX_CLASS_RANGES[name] ?? whole);
+}
+
 /**
- * Translate the leading inline flags emitted by Relampo's Go/RE2 regexes into
- * JavaScript flags while keeping the rest of the pattern unchanged.
+ * Translate the leading inline flags and POSIX bracket expressions emitted by
+ * Relampo's Go/RE2 regexes into their JavaScript equivalents, keeping the rest
+ * of the pattern unchanged.
  */
 export function normalizeRelampoRegexForJavaScript(pattern: string, baseFlags = 'g'): NormalizedRelampoRegex {
   const inlineFlags = pattern.match(RELAMPO_INLINE_FLAGS);
-  const normalizedPattern = inlineFlags ? pattern.slice(inlineFlags[1].length) : pattern;
+  const normalizedPattern = expandPosixClasses(inlineFlags ? pattern.slice(inlineFlags[1].length) : pattern);
   const flags = Array.from(new Set(`g${baseFlags}${inlineFlags?.[2] ?? ''}`)).join('');
   return { pattern: normalizedPattern, flags };
 }
@@ -32,16 +61,14 @@ export function buildRelampoRegex(pattern: string, baseFlags = 'g'): RegExp | nu
   }
 }
 
-// Compiling a user-supplied pattern is the point of regex search mode, so the
-// pattern is trusted input by design — but a pathological one (nested
-// quantifiers over a large response body) can pin the tab's main thread with no
-// way to cancel. A length cap is the cheap half of the mitigation: it doesn't
-// make catastrophic backtracking impossible, it just keeps the patterns that
-// produce it from being typed by accident. Anything longer is reported the same
-// way an invalid pattern is.
-// Generated Relampo patterns can include several URL alternatives and exceed
-// the old 200-character limit. Keep a bounded limit while allowing generated
-// extractors from real recordings to be tested in Studio.
+// A bound on pattern size, not a backtracking mitigation: a pathological
+// pattern can be very short (`(a+)+$`), so no length cap prevents a slow match
+// over a large body. It only stops absurd input from reaching the compiler, and
+// anything longer is reported the same way an invalid pattern is.
+// The previous 200 was below the patterns Relampo actually generates —
+// correlation extractors with several URL alternatives run 200-400 characters —
+// so generated regexes were rejected before they could be tested in Studio.
+// 1024 clears the observed range with headroom. RLP-670.
 const MAX_SEARCH_PATTERN_LENGTH = 1024;
 
 export function buildSearchRegex(pattern: string): RegExp | null {
