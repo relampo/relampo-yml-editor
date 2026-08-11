@@ -212,7 +212,6 @@ describe('YAMLRequestDetails', () => {
       valueInput = screen.getByDisplayValue(value) as HTMLInputElement;
       expect(document.activeElement).toBe(valueInput);
     }
-
   });
 
   it('keeps focus while the parent syncs Query Parameters edits back into the node', () => {
@@ -244,6 +243,74 @@ describe('YAMLRequestDetails', () => {
       keyInput = screen.getByDisplayValue(value) as HTMLInputElement;
       expect(document.activeElement).toBe(keyInput);
     }
+  });
+
+  // A row whose key is blank is not serialized into the URL, so re-parsing the
+  // echoed URL used to delete it and shuffle the remaining rows up into the
+  // focused input. RLP-671.
+  it('keeps sibling Query Parameter rows when a key is cleared', () => {
+    const node: YAMLNode = {
+      id: 'get-query-clear-key',
+      type: 'get',
+      name: '[15] GET /search',
+      data: { method: 'GET', url: '/search?a=1&b=2' },
+      children: [],
+    };
+
+    render(<ControlledRequest node={node} />);
+
+    const keyInput = screen.getAllByPlaceholderText('name')[0] as HTMLInputElement;
+    keyInput.focus();
+    fireEvent.change(keyInput, { target: { value: '' } });
+
+    const keyInputs = screen.getAllByPlaceholderText('name') as HTMLInputElement[];
+    const valueInputs = screen.getAllByPlaceholderText('value') as HTMLInputElement[];
+    expect(keyInputs.map(input => input.value)).toEqual(['', 'b']);
+    expect(valueInputs.map(input => input.value)).toEqual(['1', '2']);
+    expect(document.activeElement).toBe(keyInputs[0]);
+  });
+
+  // buildRequestUrlWithQuery drops a key that trims to empty, so a lone space
+  // takes the same unserializable path as a blank key.
+  it('keeps a whitespace-only Query Parameter key while it is being typed', () => {
+    const node: YAMLNode = {
+      id: 'get-query-space-key',
+      type: 'get',
+      name: '[16] GET /search',
+      data: { method: 'GET', url: '/search?query=initial' },
+      children: [],
+    };
+
+    render(<ControlledRequest node={node} />);
+
+    const keyInput = screen.getAllByPlaceholderText('name')[0] as HTMLInputElement;
+    keyInput.focus();
+    fireEvent.change(keyInput, { target: { value: ' ' } });
+
+    expect((screen.getAllByPlaceholderText('name')[0] as HTMLInputElement).value).toBe(' ');
+    expect((screen.getAllByPlaceholderText('value')[0] as HTMLInputElement).value).toBe('initial');
+    expect(document.activeElement).toBe(screen.getAllByPlaceholderText('name')[0]);
+  });
+
+  it('keeps a newly added blank Query Parameter row while another row is edited', () => {
+    const node: YAMLNode = {
+      id: 'get-query-draft-row',
+      type: 'get',
+      name: '[17] GET /search',
+      data: { method: 'GET', url: '/search?a=1' },
+      children: [],
+    };
+
+    render(<ControlledRequest node={node} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+    const draftValue = screen.getAllByPlaceholderText('value')[1] as HTMLInputElement;
+    fireEvent.change(draftValue, { target: { value: 'draft' } });
+
+    fireEvent.change(screen.getAllByPlaceholderText('name')[0], { target: { value: 'z' } });
+
+    expect((screen.getAllByPlaceholderText('name') as HTMLInputElement[]).map(input => input.value)).toEqual(['z', '']);
+    expect((screen.getAllByPlaceholderText('value') as HTMLInputElement[]).map(input => input.value)).toEqual(['1', 'draft']);
   });
 
   it('re-derives the panel from a newly selected node instead of preserving stale Form Data', async () => {
