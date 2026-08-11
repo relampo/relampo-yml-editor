@@ -1,5 +1,5 @@
 import { AlertCircle, Info, Plus, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { HighlightedInput } from '../ui/HighlightedInput';
 import { Input } from '../ui/input';
 import { buildRequestUrlWithQuery, parseRequestQueryParams, parseRequestUrl } from './requestUrl';
@@ -39,31 +39,46 @@ export function QueryParamsEditor({ url, onUrlChange, className = '', showBaseUr
   }>({ type: null, message: '' });
   const [trackedUrl, setTrackedUrl] = useState<string | undefined>(undefined);
 
+  // The last URL this editor sent upward. The parent stores it verbatim and
+  // hands it straight back, so an incoming `url` equal to this one is our own
+  // echo — `params` already holds the newer state and must not be rebuilt from
+  // the string. Re-parsing an echo mints new row ids, which remounts the input
+  // the user is typing in, and drops rows the URL cannot represent (a row whose
+  // key is still blank is never serialized). RLP-671.
+  const emittedUrlRef = useRef<string | null>(null);
+
+  const emitUrl = (nextUrl: string) => {
+    emittedUrlRef.current = nextUrl;
+    onUrlChange(nextUrl);
+  };
+
   // Re-derives baseUrl/params whenever `url` changes identity: switching to
-  // a different request, or `url` round-tripping back through onUrlChange
-  // after an edit below. Uses the store-previous-prop-and-compare-during
-  // -render pattern instead of an effect so the parse lands in the same
-  // render as the prop change (including the first render) rather than one
-  // render later.
+  // a different request, or an edit arriving from outside this editor (the
+  // YAML pane). Uses the store-previous-prop-and-compare-during-render pattern
+  // instead of an effect so the parse lands in the same render as the prop
+  // change (including the first render) rather than one render later.
   if (url !== trackedUrl) {
     setTrackedUrl(url);
+    const isEcho = url === emittedUrlRef.current;
     if (!url) {
       setBaseUrl('');
-      setParams([]);
+      if (!isEcho) setParams([]);
     } else {
       const parts = parseRequestUrl(url);
       const base = parts.isAbsolute ? `${parts.protocol}://${parts.baseUrl}${parts.path}` : parts.path;
 
       setBaseUrl(base);
 
-      const parsedParams = parseRequestQueryParams(url).map(p => createQueryParam(p));
-      setParams(parsedParams.length > 0 ? parsedParams : [createQueryParam()]);
+      if (!isEcho) {
+        const parsedParams = parseRequestQueryParams(url).map(p => createQueryParam(p));
+        setParams(parsedParams.length > 0 ? parsedParams : [createQueryParam()]);
+      }
     }
   }
 
   const handleBaseUrlChange = (newBase: string) => {
     setBaseUrl(newBase);
-    onUrlChange(buildRequestUrlWithQuery(newBase, params));
+    emitUrl(buildRequestUrlWithQuery(newBase, params));
     validateUrl(newBase);
   };
 
@@ -108,7 +123,7 @@ export function QueryParamsEditor({ url, onUrlChange, className = '', showBaseUr
     const newParams = [...params];
     newParams[index] = { ...newParams[index], [field]: value };
     setParams(newParams);
-    onUrlChange(buildRequestUrlWithQuery(baseUrl, newParams));
+    emitUrl(buildRequestUrlWithQuery(baseUrl, newParams));
   };
 
   const handleAddParam = () => {
@@ -118,7 +133,7 @@ export function QueryParamsEditor({ url, onUrlChange, className = '', showBaseUr
   const handleRemoveParam = (index: number) => {
     const newParams = params.filter((_, i) => i !== index);
     setParams(newParams.length > 0 ? newParams : [createQueryParam()]);
-    onUrlChange(buildRequestUrlWithQuery(baseUrl, newParams.length > 0 ? newParams : []));
+    emitUrl(buildRequestUrlWithQuery(baseUrl, newParams.length > 0 ? newParams : []));
   };
 
   return (
