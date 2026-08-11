@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { DebugSection } from './debugSection';
 import { YAMLDebugSession } from './YAMLDebugView';
 import type { YAMLNode } from '../types/yaml';
@@ -254,6 +254,74 @@ describe('YAMLDebugSession RLP debug fixes', () => {
 
     const redirectsValue = await screen.findByText('Redirects');
     expect(redirectsValue.previousElementSibling).toHaveTextContent('1');
+  });
+
+  it('filters the execution timeline from the Debug summary cards', async () => {
+    render(
+      <YAMLDebugSession
+        tree={null}
+        yamlCode={'test:\n  name: timeline-filters\n'}
+        documentReady
+        validationErrors={[]}
+        onSelectNode={vi.fn()}
+        onEditNode={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
+
+    act(() => {
+      debugApiMock.handlers[0].onEvent(event({ name: 'Passed request', path: '/passed' }));
+      debugApiMock.handlers[0].onEvent(event({ name: 'Failed request', path: '/failed', status: 500 }));
+      debugApiMock.handlers[0].onEvent(
+        event({
+          name: 'Redirect parent',
+          path: '/redirect-start',
+          status: 302,
+          chain_id: 'filter-redirect',
+          chain_role: 'parent',
+          redirect_index: 0,
+        }),
+      );
+      debugApiMock.handlers[0].onEvent(
+        event({
+          name: 'Redirect landing',
+          path: '/redirect-final',
+          chain_id: 'filter-redirect',
+          chain_role: 'final',
+          redirect_index: 1,
+        }),
+      );
+    });
+
+    const timeline = screen.getByRole('region', { name: 'Execution timeline' });
+    const requestsFilter = screen.getByRole('button', { name: /^Requests:/ });
+    const passedFilter = screen.getByRole('button', { name: /^Passed:/ });
+    const failedFilter = screen.getByRole('button', { name: /^Failed:/ });
+    const redirectsFilter = screen.getByRole('button', { name: /^Redirects:/ });
+
+    expect(requestsFilter).toHaveAttribute('aria-pressed', 'true');
+    expect(within(timeline).getByRole('button', { name: /GET.*\/passed/ })).toBeInTheDocument();
+    expect(within(timeline).getByRole('button', { name: /GET.*\/failed/ })).toBeInTheDocument();
+    expect(within(timeline).getByRole('button', { name: /GET.*\/redirect-final/ })).toBeInTheDocument();
+
+    fireEvent.click(failedFilter);
+    expect(failedFilter).toHaveAttribute('aria-pressed', 'true');
+    expect(within(timeline).getByRole('button', { name: /GET.*\/failed/ })).toBeInTheDocument();
+    expect(within(timeline).queryByRole('button', { name: /GET.*\/passed/ })).not.toBeInTheDocument();
+    expect(within(timeline).queryByRole('button', { name: /GET.*\/redirect-final/ })).not.toBeInTheDocument();
+
+    fireEvent.click(redirectsFilter);
+    expect(redirectsFilter).toHaveAttribute('aria-pressed', 'true');
+    expect(within(timeline).getByRole('button', { name: /GET.*\/redirect-final/ })).toBeInTheDocument();
+    expect(within(timeline).queryByRole('button', { name: /GET.*\/failed/ })).not.toBeInTheDocument();
+    expect(within(timeline).queryByRole('button', { name: /GET.*\/redirect-start/ })).not.toBeInTheDocument();
+
+    fireEvent.click(passedFilter);
+    expect(passedFilter).toHaveAttribute('aria-pressed', 'true');
+    expect(within(timeline).getByRole('button', { name: /GET.*\/passed/ })).toBeInTheDocument();
+    expect(within(timeline).queryByRole('button', { name: /GET.*\/failed/ })).not.toBeInTheDocument();
   });
 
   it('shows redirected follow-up context in logs with the execution timeline number', async () => {

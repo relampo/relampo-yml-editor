@@ -61,6 +61,8 @@ export type DebugEntry = {
   status: DebugStatus;
 };
 
+type DebugTimelineFilter = 'requests' | 'passed' | 'failed' | 'redirects';
+
 type StoredDebugEntry = Omit<DebugEntry, 'node'>;
 
 function entryStatus(event: EngineEvent): DebugStatus {
@@ -68,6 +70,16 @@ function entryStatus(event: EngineEvent): DebugStatus {
   if (event.status >= 400) return 'failed';
   if ((event.assertions ?? []).some(assertion => !assertion.Passed)) return 'failed';
   return 'passed';
+}
+
+function filterTimelineEntries(entries: DebugEntry[], filter: DebugTimelineFilter): DebugEntry[] {
+  if (filter === 'requests') return entries;
+  if (filter === 'redirects') {
+    // The Redirects summary counts live redirect follow-ups. Skipped placeholders
+    // stay visible in the unfiltered timeline, but have no live request to filter.
+    return entries.filter(entry => entry.status !== 'skipped' && isRedirectStepEvent(entry.event));
+  }
+  return entries.filter(entry => entry.status === filter);
 }
 
 // The engine only emits request-level events for actual steps; INFO events
@@ -207,6 +219,7 @@ export function YAMLDebugSession({
   const [activeId, setActiveId] = useState<string | null>(null);
   const [detailTab, setDetailTab] = useState<DetailTab>('overview');
   const [debugVUs, setDebugVUs] = useState<DebugVUs>(1);
+  const [timelineFilter, setTimelineFilter] = useState<DebugTimelineFilter>('requests');
   const timelineButtonRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
 
   const currentDebugEventTargets = useMemo(() => collectDebugEventTargets(tree), [tree]);
@@ -276,6 +289,10 @@ export function YAMLDebugSession({
     });
     return woven;
   }, [debugEventTargets, entries, runCompleted]);
+  const filteredTimelineEntries = useMemo(
+    () => filterTimelineEntries(timelineEntries, timelineFilter),
+    [timelineFilter, timelineEntries],
+  );
   const stopStreamRef = useRef<(() => void) | null>(null);
   // Bumped on every start and on Stop; a slow startDebugRun continuation checks
   // it and bails if it was superseded or stopped while the POST was in flight.
@@ -333,7 +350,8 @@ export function YAMLDebugSession({
   );
 
   const activeEntry =
-    timelineEntries.find(entry => entry.id === activeId) || timelineEntries[timelineEntries.length - 1];
+    filteredTimelineEntries.find(entry => entry.id === activeId) ||
+    filteredTimelineEntries[filteredTimelineEntries.length - 1];
   const passed = entries.filter(entry => entry.status === 'passed').length;
   const failed = entries.filter(entry => entry.status === 'failed').length;
   // Count the same redirect follow-up steps the tree labels REDIRECTED, so the
@@ -360,6 +378,7 @@ export function YAMLDebugSession({
     const token = (startTokenRef.current += 1);
     stopStreamRef.current?.();
     setActiveId(null);
+    setTimelineFilter('requests');
     setDetailTab('overview');
     dispatchRunState({ type: 'run_started' });
     try {
@@ -390,13 +409,13 @@ export function YAMLDebugSession({
   };
 
   const moveTimelineSelection = (entry: DebugEntry, direction: -1 | 1) => {
-    const currentIndex = timelineEntries.findIndex(candidate => candidate.id === entry.id);
+    const currentIndex = filteredTimelineEntries.findIndex(candidate => candidate.id === entry.id);
     if (currentIndex < 0) return;
 
-    const nextIndex = Math.min(Math.max(currentIndex + direction, 0), timelineEntries.length - 1);
+    const nextIndex = Math.min(Math.max(currentIndex + direction, 0), filteredTimelineEntries.length - 1);
     if (nextIndex === currentIndex) return;
 
-    const nextEntry = timelineEntries[nextIndex];
+    const nextEntry = filteredTimelineEntries[nextIndex];
     selectEntry(nextEntry);
 
     window.requestAnimationFrame(() => {
@@ -440,13 +459,16 @@ export function YAMLDebugSession({
         passed={passed}
         failed={failed}
         redirects={redirects}
+        activeFilter={timelineFilter}
+        onFilterChange={setTimelineFilter}
       />
 
       <div className="grid min-h-0 flex-1 grid-cols-[minmax(280px,32%)_1fr]">
         <DebugTimelinePanel
-          timelineEntries={timelineEntries}
+          timelineEntries={filteredTimelineEntries}
           activeEntry={activeEntry}
           isRunning={isRunning}
+          isFiltered={timelineFilter !== 'requests'}
           debugEventTargets={debugEventTargets}
           onSelect={selectEntry}
           onEntryKeyDown={handleTimelineEntryKeyDown}
@@ -612,28 +634,54 @@ function DebugStatsBar({
   passed,
   failed,
   redirects,
+  activeFilter,
+  onFilterChange,
 }: {
   total: number;
   passed: number;
   failed: number;
   redirects: number;
+  activeFilter: DebugTimelineFilter;
+  onFilterChange: (filter: DebugTimelineFilter) => void;
 }) {
+  const stats: Array<{
+    filter: DebugTimelineFilter;
+    label: string;
+    value: number;
+    tone: string;
+  }> = [
+    { filter: 'requests', label: 'Requests', value: total, tone: 'text-zinc-100' },
+    { filter: 'passed', label: 'Passed', value: passed, tone: 'text-emerald-300' },
+    { filter: 'failed', label: 'Failed', value: failed, tone: 'text-red-300' },
+    { filter: 'redirects', label: 'Redirects', value: redirects, tone: 'text-blue-300' },
+  ];
+
   return (
     <div className="grid grid-cols-4 border-b border-white/5 bg-[#0a0a0a]">
-      {[
-        ['Requests', total, 'text-zinc-100'],
-        ['Passed', passed, 'text-emerald-300'],
-        ['Failed', failed, 'text-red-300'],
-        ['Redirects', redirects, 'text-blue-300'],
-      ].map(([label, value, tone]) => (
-        <div
-          key={label}
-          className="border-r border-white/5 px-5 py-3 last:border-r-0"
-        >
-          <p className={`text-lg font-semibold ${tone}`}>{value}</p>
-          <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-500">{label}</p>
-        </div>
-      ))}
+      {stats.map(({ filter, label, value, tone }) => {
+        const active = activeFilter === filter;
+        return (
+          <button
+            key={filter}
+            type="button"
+            onClick={() => onFilterChange(filter)}
+            aria-pressed={active}
+            aria-label={`${label}: ${value}. Filter execution timeline.`}
+            className={`relative border-r border-white/5 px-5 py-3 text-left transition-colors last:border-r-0 hover:bg-white/[0.03] focus:z-10 focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/60 ${
+              active ? 'bg-yellow-400/[0.04]' : ''
+            }`}
+          >
+            <p className={`text-lg font-semibold ${tone}`}>{value}</p>
+            <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-500">{label}</p>
+            <span
+              aria-hidden="true"
+              className={`absolute inset-x-0 bottom-0 h-0.5 transition-colors ${
+                active ? 'bg-yellow-400' : 'bg-transparent'
+              }`}
+            />
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -642,6 +690,7 @@ function DebugTimelinePanel({
   timelineEntries,
   activeEntry,
   isRunning,
+  isFiltered,
   debugEventTargets,
   onSelect,
   onEntryKeyDown,
@@ -650,13 +699,18 @@ function DebugTimelinePanel({
   timelineEntries: DebugEntry[];
   activeEntry: DebugEntry | undefined;
   isRunning: boolean;
+  isFiltered: boolean;
   debugEventTargets: YAMLNode[];
   onSelect: (entry: DebugEntry) => void;
   onEntryKeyDown: (event: KeyboardEvent<HTMLButtonElement>, entry: DebugEntry) => void;
   timelineButtonRefs: MutableRefObject<Map<string, HTMLButtonElement>>;
 }) {
   return (
-    <div className="min-h-0 border-r border-white/5">
+    <div
+      className="min-h-0 border-r border-white/5"
+      role="region"
+      aria-label="Execution timeline"
+    >
       <div className="flex h-full min-h-0 flex-col">
         <div className="border-b border-white/5 px-4 py-2.5">
           <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">Execution timeline</p>
@@ -666,7 +720,9 @@ function DebugTimelinePanel({
             <div className="flex h-full items-center justify-center px-8 text-center text-sm text-zinc-500">
               {isRunning
                 ? 'Running... waiting for the first engine event.'
-                : 'Press Run Debug to execute this YAML against the engine.'}
+                : isFiltered
+                  ? 'No requests match this filter.'
+                  : 'Press Run Debug to execute this YAML against the engine.'}
             </div>
           ) : (
             <div className="space-y-2">
