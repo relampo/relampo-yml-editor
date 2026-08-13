@@ -153,7 +153,7 @@ export function YAMLEditor() {
   const isLargeFileMode = documentMetrics.large;
   const isEditorBusy = isFileLoading || isParsing;
 
-  const { handleSave, resetForNewDocument } = useYAMLPersistence({
+  const { handleDownload, resetForNewDocument } = useYAMLPersistence({
     isDirty,
     setIsDirty,
     isInitialized,
@@ -249,7 +249,7 @@ export function YAMLEditor() {
         isDocumentEmpty={!yamlTree && !yamlCode.trim()}
         onNew={handleNewOpen}
         onUpload={handleUpload}
-        onSave={handleSave}
+        onDownload={handleDownload}
         fileInputRef={fileInputRef}
         onFileChange={handleFileChange}
       />

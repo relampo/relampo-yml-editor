@@ -1,5 +1,13 @@
-import { FilePlus, Save, Upload } from 'lucide-react';
+import { ChevronDown, FilePlus, Save, Upload } from 'lucide-react';
 import { Button } from './ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from './ui/dropdown-menu';
 
 interface YAMLEditorHeaderProps {
   language: string;
@@ -8,7 +16,7 @@ interface YAMLEditorHeaderProps {
   isDocumentEmpty: boolean;
   onNew: () => void;
   onUpload: () => void;
-  onSave: () => void | Promise<void>;
+  onDownload: (includeResponses: boolean) => void;
   fileInputRef: React.RefObject<HTMLInputElement | null>;
   onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
@@ -20,7 +28,7 @@ export function YAMLEditorHeader({
   isDocumentEmpty,
   onNew,
   onUpload,
-  onSave,
+  onDownload,
   fileInputRef,
   onFileChange,
 }: YAMLEditorHeaderProps) {
@@ -79,14 +87,48 @@ export function YAMLEditorHeader({
               {t('yamlEditor.uploadYaml')}
             </Button>
 
-            <Button
-              onClick={() => void onSave()}
-              size="sm"
-              className="bg-yellow-400 hover:bg-yellow-300 text-black font-bold gap-2"
-            >
-              <Save className="w-4 h-4" />
-              {t('yamlEditor.saveYaml')}
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger className="inline-flex h-8 items-center justify-center gap-2 rounded-md border border-yellow-400/20 bg-yellow-400/5 px-3 text-sm font-bold text-yellow-400 shadow-sm transition-[background-color,border-color,box-shadow] duration-200 hover:bg-yellow-400/10 hover:border-yellow-400/35 hover:shadow-yellow-400/10 focus:outline-none focus:ring-2 focus:ring-yellow-400/40">
+                <Save className="w-4 h-4" />
+                {t('yamlEditor.saveYaml')}
+                <ChevronDown className="w-4 h-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                className="bg-[#111111] border border-white/10 text-zinc-200 min-w-65 p-1.5"
+              >
+                <DropdownMenuLabel className="text-zinc-400 text-xs uppercase tracking-wide">
+                  {language === 'es' ? 'Opciones de guardado' : 'Save options'}
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator className="bg-white/10" />
+                <DropdownMenuItem
+                  onClick={() => onDownload(true)}
+                  className="rounded-md px-3 py-2 focus:bg-yellow-400/10 focus:text-white cursor-pointer data-highlighted:bg-yellow-400/10 data-highlighted:text-white"
+                >
+                  <div className="flex flex-col">
+                    <span>{language === 'es' ? 'Guardar con respuestas' : 'Save with responses'}</span>
+                    <span className="text-xs text-zinc-500">
+                      {language === 'es'
+                        ? 'Útil para editar y correlacionar el script'
+                        : 'Best for editing and correlating the script'}
+                    </span>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => onDownload(false)}
+                  className="rounded-md px-3 py-2 focus:bg-yellow-400/10 focus:text-white cursor-pointer data-highlighted:bg-yellow-400/10 data-highlighted:text-white"
+                >
+                  <div className="flex flex-col">
+                    <span>{language === 'es' ? 'Guardar sin respuestas' : 'Save without responses'}</span>
+                    <span className="text-xs text-zinc-500">
+                      {language === 'es'
+                        ? 'Ideal para lanzar pruebas con el script'
+                        : 'Best for running tests with the script'}
+                    </span>
+                  </div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           {/* Language Toggle */}
