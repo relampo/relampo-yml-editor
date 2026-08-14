@@ -262,6 +262,19 @@ describe('YAMLEditor draft restoration', () => {
     expect(screen.queryByText('Debug Session')).not.toBeInTheDocument();
   });
 
+  it('opens the default Studio view advertised by the CLI', async () => {
+    getActiveDraftMock.mockResolvedValueOnce({
+      yaml: 'test:\n  name: restored\n',
+      fileName: 'restored.yaml',
+      updatedAt: '2026-04-23T10:00:00.000Z',
+    });
+    probeStudioMock.mockResolvedValueOnce({ studio: true, defaultView: 'debug' });
+
+    renderEditor();
+
+    expect(await screen.findByText('Debug Session')).toBeInTheDocument();
+  });
+
   it('keeps data source file browsing disabled when the editor is not served by Studio', async () => {
     getActiveDraftMock.mockResolvedValueOnce({
       yaml: 'test:\n  name: restored\n',

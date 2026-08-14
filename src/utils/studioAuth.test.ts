@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { studioAuthHeaders, studioToken, withStudioToken } from './studioAuth';
+import {
+  initializeStudioSession,
+  resetStudioSessionForTests,
+  studioAuthHeaders,
+  studioToken,
+  withStudioToken,
+} from './studioAuth';
 
 // jsdom lets us vary the page URL (and thus ?token=) via history.replaceState.
 function setUrl(url: string) {
@@ -7,7 +13,30 @@ function setUrl(url: string) {
 }
 
 afterEach(() => {
+  resetStudioSessionForTests();
   setUrl('/');
+});
+
+describe('initializeStudioSession', () => {
+  it('captures the token and removes it from the visible URL', () => {
+    setUrl('/editor?token=abc123&source=cli#run');
+
+    initializeStudioSession();
+
+    expect(window.location.pathname).toBe('/editor');
+    expect(window.location.search).toBe('?source=cli');
+    expect(window.location.hash).toBe('#run');
+    expect(studioToken()).toBe('abc123');
+  });
+
+  it('keeps the captured token available to headers and stream URLs', () => {
+    setUrl('/?token=secret');
+
+    initializeStudioSession();
+
+    expect(studioAuthHeaders().get('X-Relampo-Studio-Token')).toBe('secret');
+    expect(withStudioToken('/api/events')).toBe('/api/events?token=secret');
+  });
 });
 
 describe('studioToken', () => {
