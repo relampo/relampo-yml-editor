@@ -3,6 +3,7 @@
 // origin; during `vite dev` point VITE_DEBUG_API_URL at a running studio.
 
 import { studioAuthHeaders, withStudioToken } from './studioAuth';
+import { getRuntimeConfig } from './runtimeConfig';
 
 interface EngineAssertionResult {
   Name: string;
@@ -68,7 +69,9 @@ export interface StartDebugRunOptions {
   vus?: DebugVUs;
 }
 
-const apiBase: string = import.meta.env.VITE_DEBUG_API_URL ?? '';
+function apiBase(): string {
+  return getRuntimeConfig().apiBaseUrl;
+}
 
 // When the local agent is not running, fetch rejects with a TypeError (Chrome:
 // "Failed to fetch", Firefox: "NetworkError when attempting to fetch resource")
@@ -106,12 +109,17 @@ interface StudioInitialScript {
 interface StudioCapabilities {
   // loadRun unlocks the Run (load test) view backed by POST /api/run.
   loadRun?: boolean;
+  dataSourceFiles?: boolean;
 }
 
 export interface StudioInfo {
   studio: boolean;
   initialScript?: StudioInitialScript;
   capabilities?: StudioCapabilities;
+  studioApiVersion?: number;
+  cliVersion?: string;
+  editorVersion?: string;
+  defaultView?: 'tree' | 'code' | 'debug' | 'run';
 }
 
 export interface StudioDataSourceUpload {
@@ -131,7 +139,7 @@ export interface StudioDataSourcePreview {
 // a script (`relampo studio file.yaml`) it is returned so the editor mounts it.
 export async function probeStudio(): Promise<StudioInfo | null> {
   try {
-    const response = await fetch(`${apiBase}/api/studio/info`, {
+    const response = await fetch(`${apiBase()}/api/studio/info`, {
       signal: AbortSignal.timeout(2000),
       headers: studioAuthHeaders(),
     });
@@ -145,9 +153,21 @@ export async function probeStudio(): Promise<StudioInfo | null> {
         : undefined;
     const capabilities =
       body.capabilities && typeof body.capabilities === 'object'
-        ? { loadRun: body.capabilities.loadRun === true }
+        ? {
+            loadRun: body.capabilities.loadRun === true,
+            dataSourceFiles: body.capabilities.dataSourceFiles === true,
+          }
         : undefined;
-    return { studio: true, initialScript, capabilities };
+    const defaultView = ['tree', 'code', 'debug', 'run'].includes(body.defaultView) ? body.defaultView : undefined;
+    return {
+      studio: true,
+      initialScript,
+      capabilities,
+      ...(Number.isInteger(body.studioApiVersion) ? { studioApiVersion: body.studioApiVersion } : {}),
+      ...(typeof body.cliVersion === 'string' ? { cliVersion: body.cliVersion } : {}),
+      ...(typeof body.editorVersion === 'string' ? { editorVersion: body.editorVersion } : {}),
+      ...(defaultView ? { defaultView } : {}),
+    };
   } catch {
     return null;
   }
@@ -158,7 +178,7 @@ export async function probeStudio(): Promise<StudioInfo | null> {
 // this payload.
 export async function startDebugRun(yaml: string, options: StartDebugRunOptions = {}): Promise<string> {
   const vus = options.vus ?? 1;
-  const response = await fetchAgent(`${apiBase}/api/debug/runs`, {
+  const response = await fetchAgent(`${apiBase()}/api/debug/runs`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ yaml, vus }),
@@ -180,7 +200,7 @@ export async function startDebugRun(yaml: string, options: StartDebugRunOptions 
 export async function uploadStudioDataSourceFile(file: File): Promise<StudioDataSourceUpload> {
   const form = new FormData();
   form.append('file', file);
-  const response = await fetchAgent(`${apiBase}/api/studio/data-source-files`, {
+  const response = await fetchAgent(`${apiBase()}/api/studio/data-source-files`, {
     method: 'POST',
     body: form,
   });
@@ -203,7 +223,7 @@ export async function uploadStudioDataSourceFile(file: File): Promise<StudioData
 
 export async function previewStudioDataSourceFile(path: string, signal?: AbortSignal): Promise<StudioDataSourcePreview> {
   const params = new URLSearchParams({ path });
-  const response = await fetchAgent(`${apiBase}/api/studio/data-source-preview?${params.toString()}`, { signal });
+  const response = await fetchAgent(`${apiBase()}/api/studio/data-source-preview?${params.toString()}`, { signal });
   if (!response.ok) {
     let message = `data source preview failed (HTTP ${response.status})`;
     try {
@@ -224,7 +244,7 @@ export async function previewStudioDataSourceFile(path: string, signal?: AbortSi
 
 // Streams a run's events over SSE. Returns a function that closes the stream.
 export function streamDebugRun(runId: string, handlers: DebugStreamHandlers): () => void {
-  const source = new EventSource(withStudioToken(`${apiBase}/api/debug/runs/${runId}/events`));
+  const source = new EventSource(withStudioToken(`${apiBase()}/api/debug/runs/${runId}/events`));
   let finished = false;
 
   source.addEventListener('engine', message => {

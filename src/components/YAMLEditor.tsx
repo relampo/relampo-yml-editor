@@ -89,6 +89,7 @@ export function YAMLEditor() {
     debugViewEnabled,
     runViewEnabled,
     dataSourceFileBrowseEnabled,
+    defaultViewMode,
   } = useYamlDocumentLifecycle({
     language,
     initialYamlContent: yamlContent,
@@ -116,6 +117,7 @@ export function YAMLEditor() {
   } = useYamlViewMode({
     debugViewEnabled,
     runViewEnabled,
+    defaultViewMode,
     setSelectedNode,
     setSelectedNodeIds,
     selectedNodeRef,

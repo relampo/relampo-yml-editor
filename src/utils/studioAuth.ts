@@ -14,13 +14,30 @@
 // every helper here is a no-op in that case and leaves requests unchanged.
 
 const STUDIO_TOKEN_HEADER = 'X-Relampo-Studio-Token';
+let sessionToken: string | null = null;
+
+export function initializeStudioSession(): void {
+  if (typeof window === 'undefined' || !window.location || sessionToken !== null) return;
+
+  const url = new URL(window.location.href);
+  sessionToken = url.searchParams.get('token') ?? '';
+  if (!url.searchParams.has('token')) return;
+
+  url.searchParams.delete('token');
+  window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+}
 
 // Read fresh on each call rather than memoizing: the token lives in the page URL
 // for the whole session and parsing it is cheap, so there is no cache to
 // invalidate (and tests can vary the URL without module-load ordering games).
 export function studioToken(): string {
+  if (sessionToken !== null) return sessionToken;
   if (typeof window === 'undefined' || !window.location) return '';
   return new URLSearchParams(window.location.search).get('token') ?? '';
+}
+
+export function resetStudioSessionForTests(): void {
+  sessionToken = null;
 }
 
 // Merges the studio token header into any existing fetch headers. Returns a

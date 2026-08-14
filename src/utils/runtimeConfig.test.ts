@@ -14,7 +14,7 @@ describe('loadRuntimeConfig', () => {
         ok: true,
         json: async () => ({
           mode: 'studio',
-          apiBaseUrl: 'http://127.0.0.1:4400',
+          apiBaseUrl: window.location.origin,
           statsigClientKey: 'client-public-key',
           statsigEnvironment: 'production',
         }),
@@ -29,7 +29,7 @@ describe('loadRuntimeConfig', () => {
     );
     expect(getRuntimeConfig()).toEqual({
       mode: 'studio',
-      apiBaseUrl: 'http://127.0.0.1:4400',
+      apiBaseUrl: window.location.origin,
       statsigClientKey: 'client-public-key',
       statsigEnvironment: 'production',
     });

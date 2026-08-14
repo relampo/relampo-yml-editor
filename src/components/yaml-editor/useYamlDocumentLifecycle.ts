@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { probeStudio } from '../../utils/debugApi';
 import { getActiveDraft } from '../../utils/yamlDraftStorage';
 import { getDraftRestoreError, normalizeYamlFileName } from '../yamlEditorHelpers';
+import type { EditorViewMode } from '../EditorViewModeTabs';
 
 // Dev-time override; in production the Debug view unlocks itself at runtime
 // when the app detects it is being served by `relampo studio`.
@@ -54,6 +55,7 @@ export function useYamlDocumentLifecycle({
   const [debugViewEnabled, setDebugViewEnabled] = useState(DEBUG_VIEW_FORCED);
   const [runViewEnabled, setRunViewEnabled] = useState(RUN_VIEW_FORCED);
   const [dataSourceFileBrowseEnabled, setDataSourceFileBrowseEnabled] = useState(false);
+  const [defaultViewMode, setDefaultViewMode] = useState<EditorViewMode | undefined>();
 
   // Snapshot of the props/state this effect should only ever read at mount
   // time. `useRef(initialValue)` keeps whatever was passed on the very first
@@ -102,9 +104,10 @@ export function useYamlDocumentLifecycle({
       if (isCancelled) return;
 
       if (studioInfo?.studio) {
-        setDataSourceFileBrowseEnabled(true);
+        setDataSourceFileBrowseEnabled(studioInfo.capabilities?.dataSourceFiles !== false);
         if (!DEBUG_VIEW_FORCED) setDebugViewEnabled(true);
         if (!RUN_VIEW_FORCED && studioInfo.capabilities?.loadRun) setRunViewEnabled(true);
+        setDefaultViewMode(studioInfo.defaultView);
       }
       if (studioInfo?.initialScript) {
         initialYaml = studioInfo.initialScript.yaml;
@@ -179,5 +182,6 @@ export function useYamlDocumentLifecycle({
     debugViewEnabled,
     runViewEnabled,
     dataSourceFileBrowseEnabled,
+    defaultViewMode,
   };
 }

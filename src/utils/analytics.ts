@@ -1,5 +1,6 @@
 import { StatsigClient, type StatsigUser } from '@statsig/js-client';
 import { StatsigAutoCapturePlugin } from '@statsig/web-analytics';
+import { getRuntimeConfig } from './runtimeConfig';
 
 const VISITOR_ID_STORAGE_KEY = 'relampo_yml_editor_visitor_id';
 const APP_NAME = 'relampo-yml-editor';
@@ -11,11 +12,11 @@ let isInitializing = false;
 let hasLifecycleFlushHandlers = false;
 
 function getClientKey(): string {
-  return import.meta.env.VITE_STATSIG_CLIENT_KEY?.trim() ?? '';
+  return getRuntimeConfig().statsigClientKey;
 }
 
 function getEnvironmentTier(): string {
-  return import.meta.env.VITE_STATSIG_ENVIRONMENT?.trim() || (import.meta.env.DEV ? 'development' : 'production');
+  return getRuntimeConfig().statsigEnvironment;
 }
 
 function getOrCreateVisitorId(): string {
