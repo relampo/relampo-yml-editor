@@ -12,7 +12,10 @@ name: publish-dist
 #
 # Required repo configuration:
 #   - vars.AWS_RELEASE_ROLE_ARN: an IAM role whose trust policy allows this repo
-#     to assume it via GitHub OIDC, with s3:PutObject on editor/* of the bucket.
+#     to assume it via GitHub OIDC, with s3:GetObject/s3:PutObject on editor/*.
+#   - vars.STUDIO_CATALOG_KMS_KEY_ARN: an existing ECC_NIST_EDWARDS25519 KMS key
+#     with SIGN_VERIFY usage. The release role needs kms:Sign and kms:Verify.
+# The workflow does not create or manage the signing key.
 
 on:
   push:
@@ -33,6 +36,10 @@ on:
 permissions:
   contents: read
   id-token: write
+
+concurrency:
+  group: publish-editor-catalog
+  cancel-in-progress: false
 
 env:
   RELAMPO_DOWNLOADS_BUCKET: relampo-downloads-616250100969-20260201142308
@@ -93,3 +100,88 @@ jobs:
             --region "$AWS_REGION" --sse AES256 \
             --content-type "text/plain"
           echo "Published editor dist to s3://$RELAMPO_DOWNLOADS_BUCKET/$PREFIX/"
+      - name: Update signed editor catalog
+        env:
+          RELEASE_VERSION: ${{ steps.pkg.outputs.version }}
+          KMS_KEY_ARN: ${{ vars.STUDIO_CATALOG_KMS_KEY_ARN }}
+        run: |
+          set -Eeuo pipefail
+          : "${KMS_KEY_ARN:?vars.STUDIO_CATALOG_KMS_KEY_ARN is required}"
+          if [[ ! "$RELEASE_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            printf 'Invalid editor version: %s\n' "$RELEASE_VERSION" >&2
+            exit 1
+          fi
+
+          catalog_key="editor/catalog.signed.json"
+          head_error=""
+          if head_error="$(aws s3api head-object --bucket "$RELAMPO_DOWNLOADS_BUCKET" --key "$catalog_key" --region "$AWS_REGION" 2>&1)"; then
+            aws s3 cp "s3://$RELAMPO_DOWNLOADS_BUCKET/$catalog_key" catalog.previous.json --region "$AWS_REGION"
+            jq -r '.payload' catalog.previous.json | base64 --decode > catalog.payload.json
+            jq -r '.signature' catalog.previous.json | base64 --decode > catalog.signature.bin
+            previous_key_id="$(jq -r '.keyId' catalog.previous.json)"
+            previous_algorithm="$(jq -r '.algorithm' catalog.previous.json)"
+            if [[ "$previous_key_id" != "$KMS_KEY_ARN" || "$previous_algorithm" != "ED25519_SHA_512" ]]; then
+              printf 'Existing catalog uses an unexpected key or algorithm.\n' >&2
+              exit 1
+            fi
+            aws kms verify \
+              --key-id "$KMS_KEY_ARN" \
+              --message-type RAW \
+              --signing-algorithm ED25519_SHA_512 \
+              --message fileb://catalog.payload.json \
+              --signature fileb://catalog.signature.bin \
+              --region "$AWS_REGION" >/dev/null
+          else
+            case "$head_error" in
+              *404*|*NotFound*|*NoSuchKey*) printf '{"schemaVersion":1,"releases":[]}' > catalog.payload.json ;;
+              *) printf '%s\n' "$head_error" >&2; exit 1 ;;
+            esac
+          fi
+
+          archive_sha="$(tr -d '[:space:]' < dist.tar.gz.sha256)"
+          archive_size="$(stat -c '%s' dist.tar.gz)"
+          archive_url="https://dl.relampo.com/editor/$RELEASE_VERSION/dist.tar.gz"
+          jq -cS \
+            --arg version "$RELEASE_VERSION" \
+            --arg url "$archive_url" \
+            --arg sha256 "$archive_sha" \
+            --argjson size "$archive_size" \
+            '.schemaVersion = 1
+             | .releases = (([.releases[] | select(.version != $version)] + [{
+                 version: $version,
+                 studioApiMin: 1,
+                 studioApiMax: 1,
+                 url: $url,
+                 sha256: $sha256,
+                 size: $size,
+                 revoked: false
+               }]) | if length > 12 then .[-12:] else . end)' \
+            catalog.payload.json > catalog.next.json
+          mv catalog.next.json catalog.payload.json
+
+          payload_size="$(stat -c '%s' catalog.payload.json)"
+          if (( payload_size > 4096 )); then
+            printf 'Catalog payload is %s bytes; AWS KMS RAW signing permits at most 4096.\n' "$payload_size" >&2
+            exit 1
+          fi
+          signature="$(aws kms sign \
+            --key-id "$KMS_KEY_ARN" \
+            --message-type RAW \
+            --signing-algorithm ED25519_SHA_512 \
+            --message fileb://catalog.payload.json \
+            --region "$AWS_REGION" \
+            --query Signature --output text)"
+          payload="$(base64 --wrap=0 < catalog.payload.json)"
+          jq -n -cS \
+            --arg algorithm "ED25519_SHA_512" \
+            --arg keyId "$KMS_KEY_ARN" \
+            --arg payload "$payload" \
+            --arg signature "$signature" \
+            '{algorithm: $algorithm, keyId: $keyId, payload: $payload, signature: $signature}' \
+            > catalog.signed.json
+
+          aws s3 cp catalog.signed.json \
+            "s3://$RELAMPO_DOWNLOADS_BUCKET/$catalog_key" \
+            --region "$AWS_REGION" --sse AES256 \
+            --content-type application/json \
+            --cache-control "no-store"
