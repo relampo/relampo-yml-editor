@@ -47,3 +47,17 @@
 - When the user asks you to tidy the history, use GitButler to squash commits, reword commits, and move changes between commits where appropriate.
 - Only tidy unpublished local history unless the user explicitly authorizes changing pushed or shared history.
 <!-- gitbutler-agent-setup:end -->
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in Jira project RLP. Branches use `{JIRA-KEY}-short-desc`. Commits and PRs include the key. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default labels: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
