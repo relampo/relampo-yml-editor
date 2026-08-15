@@ -275,6 +275,27 @@ describe('YAMLEditor draft restoration', () => {
     expect(await screen.findByText('Debug Session')).toBeInTheDocument();
   });
 
+  it('keeps a user-selected view when the Studio default arrives later', async () => {
+    let resolveStudioProbe: ((value: { studio: true; defaultView: 'debug' }) => void) | undefined;
+    const studioProbe = new Promise<{ studio: true; defaultView: 'debug' }>(resolve => {
+      resolveStudioProbe = resolve;
+    });
+    probeStudioMock.mockReturnValueOnce(studioProbe);
+
+    renderEditor();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Code' }));
+    expect(screen.getByTestId('code-editor')).toBeInTheDocument();
+
+    await act(async () => {
+      resolveStudioProbe?.({ studio: true, defaultView: 'debug' });
+      await studioProbe;
+    });
+
+    expect(screen.getByTestId('code-editor')).toBeInTheDocument();
+    expect(screen.queryByText('Debug Session')).not.toBeInTheDocument();
+  });
+
   it('keeps data source file browsing disabled when the editor is not served by Studio', async () => {
     getActiveDraftMock.mockResolvedValueOnce({
       yaml: 'test:\n  name: restored\n',
