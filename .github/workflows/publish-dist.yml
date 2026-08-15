@@ -104,10 +104,6 @@ jobs:
         run: |
           set -Eeuo pipefail
           : "${KMS_KEY_ARN:?vars.STUDIO_CATALOG_KMS_KEY_ARN is required}"
-          if [[ ! "$RELEASE_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
-            printf 'Invalid editor version: %s\n' "$RELEASE_VERSION" >&2
-            exit 1
-          fi
 
           catalog_key="editor/catalog.signed.json"
           head_error=""

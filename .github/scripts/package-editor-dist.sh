@@ -21,12 +21,17 @@ cp -R "$build_dir/." "$staged_build/"
 
 # A fixed timestamp plus a sorted file list makes the gzip bytes reproducible
 # across reruns of the same build. gzip -n removes its own timestamp and name.
-find "$staged_build" -type f -exec touch -t 200001010000 {} +
+find "$staged_build" -type f -exec chmod 0644 {} +
+find "$staged_build" -type f -exec env TZ=UTC touch -t 200001010000 {} +
 uncompressed_archive="$package_tmp_dir/dist.tar"
+tar_owner_args=(--owner=0 --group=0 --numeric-owner)
+if tar --version 2>/dev/null | grep -q '^bsdtar'; then
+  tar_owner_args=(--uid 0 --gid 0 --uname root --gname root)
+fi
 (
   cd "$staged_build"
   find . -type f -print0 \
     | LC_ALL=C sort -z \
-    | tar --format=ustar --null -T - -cf "$uncompressed_archive"
+    | tar --format=ustar "${tar_owner_args[@]}" --null -T - -cf "$uncompressed_archive"
 )
 gzip -n -c "$uncompressed_archive" > "$output_archive"
