@@ -59,13 +59,32 @@ describe('probeStudio', () => {
   });
 
   it('reports the loadRun capability when the studio advertises it', async () => {
-    mockFetch({ studio: true, capabilities: { loadRun: true } });
-    expect((await probeStudio())?.capabilities).toEqual({ loadRun: true });
+    mockFetch({ studio: true, capabilities: { loadRun: true, dataSourceFiles: true } });
+    expect((await probeStudio())?.capabilities).toEqual({ loadRun: true, dataSourceFiles: true });
   });
 
   it('defaults loadRun to false when capabilities are present without it', async () => {
     mockFetch({ studio: true, capabilities: {} });
-    expect((await probeStudio())?.capabilities).toEqual({ loadRun: false });
+    expect((await probeStudio())?.capabilities).toEqual({ loadRun: false, dataSourceFiles: false });
+  });
+
+  it('returns version and default-view information from the CLI', async () => {
+    mockFetch({
+      studio: true,
+      studioApiVersion: 1,
+      cliVersion: 'v0.8.0',
+      editorVersion: 'v0.3.57',
+      defaultView: 'debug',
+    });
+
+    expect(await probeStudio()).toEqual({
+      studio: true,
+      initialScript: undefined,
+      studioApiVersion: 1,
+      cliVersion: 'v0.8.0',
+      editorVersion: 'v0.3.57',
+      defaultView: 'debug',
+    });
   });
 
   it('omits capabilities for older studio builds that do not send them', async () => {

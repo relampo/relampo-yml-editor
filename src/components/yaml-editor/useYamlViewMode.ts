@@ -5,6 +5,7 @@ import type { EditorViewMode } from '../EditorViewModeTabs';
 interface UseYamlViewModeParams {
   debugViewEnabled: boolean;
   runViewEnabled: boolean;
+  defaultViewMode?: EditorViewMode;
   setSelectedNode: (node: YAMLNode | null) => void;
   setSelectedNodeIds: (ids: string[]) => void;
   selectedNodeRef: React.RefObject<YAMLNode | null>;
@@ -20,13 +21,21 @@ interface UseYamlViewModeParams {
 export function useYamlViewMode({
   debugViewEnabled,
   runViewEnabled,
+  defaultViewMode,
   setSelectedNode,
   setSelectedNodeIds,
   selectedNodeRef,
   selectedNodeIdsRef,
 }: UseYamlViewModeParams) {
-  const [viewMode, setViewMode] = useState<EditorViewMode>('tree');
+  const [selectedViewMode, setViewMode] = useState<EditorViewMode>();
   const [treeSearchQuery, setTreeSearchQuery] = useState('');
+  const availableDefaultViewMode =
+    defaultViewMode &&
+    (defaultViewMode !== 'debug' || debugViewEnabled) &&
+    (defaultViewMode !== 'run' || runViewEnabled)
+      ? defaultViewMode
+      : undefined;
+  const viewMode = selectedViewMode ?? availableDefaultViewMode ?? 'tree';
 
   const activeViewMode: EditorViewMode =
     (!debugViewEnabled && viewMode === 'debug') || (!runViewEnabled && viewMode === 'run') ? 'tree' : viewMode;

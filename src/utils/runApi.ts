@@ -6,8 +6,11 @@
 // VITE_DEBUG_API_URL at a running studio.
 
 import { studioAuthHeaders, withStudioToken } from './studioAuth';
+import { getRuntimeConfig } from './runtimeConfig';
 
-const apiBase: string = import.meta.env.VITE_DEBUG_API_URL ?? '';
+function apiBase(): string {
+  return getRuntimeConfig().apiBaseUrl;
+}
 
 // EventSource auto-reconnects on transient drops; a multi-minute load run will
 // hit some. Only surface a connection error if the stream stays down this long.
@@ -117,7 +120,7 @@ export interface RunStreamHandlers {
 // Starts a load run. The backend executes the scenario's real load config from
 // the YAML (no VU/duration override), so the payload is just the script.
 export async function startLoadRun(yaml: string): Promise<string> {
-  const response = await fetch(`${apiBase}/api/run`, {
+  const response = await fetch(`${apiBase()}/api/run`, {
     method: 'POST',
     headers: studioAuthHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ yaml }),
@@ -141,20 +144,20 @@ export async function startLoadRun(yaml: string): Promise<string> {
 export function loadRunReportUrl(runId: string): string {
   // Opened in a new tab, so it cannot send the token header — carry it in the
   // query string, which the studio server also accepts.
-  return withStudioToken(`${apiBase}/api/run/${runId}/report`);
+  return withStudioToken(`${apiBase()}/api/run/${runId}/report`);
 }
 
 // Asks the studio to cancel a running load run. The engine drains its VUs and
 // the run finishes with status "stopped" carrying partial metrics. Best-effort:
 // stopping an unknown/finished run is a no-op on the server.
 export async function stopLoadRun(runId: string): Promise<void> {
-  await fetch(`${apiBase}/api/run/${runId}/stop`, { method: 'POST', headers: studioAuthHeaders() });
+  await fetch(`${apiBase()}/api/run/${runId}/stop`, { method: 'POST', headers: studioAuthHeaders() });
 }
 
 // Streams a run's state, metric snapshots, and terminal summary over SSE.
 // Returns a function that closes the stream.
 export function streamLoadRun(runId: string, handlers: RunStreamHandlers): () => void {
-  const source = new EventSource(withStudioToken(`${apiBase}/api/run/${runId}/events`));
+  const source = new EventSource(withStudioToken(`${apiBase()}/api/run/${runId}/events`));
   let finished = false;
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 

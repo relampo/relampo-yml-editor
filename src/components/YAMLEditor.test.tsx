@@ -262,6 +262,40 @@ describe('YAMLEditor draft restoration', () => {
     expect(screen.queryByText('Debug Session')).not.toBeInTheDocument();
   });
 
+  it('opens the default Studio view advertised by the CLI', async () => {
+    getActiveDraftMock.mockResolvedValueOnce({
+      yaml: 'test:\n  name: restored\n',
+      fileName: 'restored.yaml',
+      updatedAt: '2026-04-23T10:00:00.000Z',
+    });
+    probeStudioMock.mockResolvedValueOnce({ studio: true, defaultView: 'debug' });
+
+    renderEditor();
+
+    expect(await screen.findByText('Debug Session')).toBeInTheDocument();
+  });
+
+  it('keeps a user-selected view when the Studio default arrives later', async () => {
+    let resolveStudioProbe: ((value: { studio: true; defaultView: 'debug' }) => void) | undefined;
+    const studioProbe = new Promise<{ studio: true; defaultView: 'debug' }>(resolve => {
+      resolveStudioProbe = resolve;
+    });
+    probeStudioMock.mockReturnValueOnce(studioProbe);
+
+    renderEditor();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Code' }));
+    expect(screen.getByTestId('code-editor')).toBeInTheDocument();
+
+    await act(async () => {
+      resolveStudioProbe?.({ studio: true, defaultView: 'debug' });
+      await studioProbe;
+    });
+
+    expect(screen.getByTestId('code-editor')).toBeInTheDocument();
+    expect(screen.queryByText('Debug Session')).not.toBeInTheDocument();
+  });
+
   it('keeps data source file browsing disabled when the editor is not served by Studio', async () => {
     getActiveDraftMock.mockResolvedValueOnce({
       yaml: 'test:\n  name: restored\n',
