@@ -40,8 +40,8 @@ describe('isBalancedLoadBearingChild', () => {
     expect(isBalancedLoadBearingChild(req('r'))).toBe(true);
   });
 
-  it('treats sql as non-load-bearing', () => {
-    expect(isBalancedLoadBearingChild({ id: 's', type: 'sql', name: 's', data: {} } as YAMLNode)).toBe(false);
+  it('treats sql as load-bearing', () => {
+    expect(isBalancedLoadBearingChild({ id: 's', type: 'sql', name: 's', data: {} } as YAMLNode)).toBe(true);
   });
 
   it('treats think_time as non-load-bearing', () => {
@@ -91,14 +91,14 @@ describe('isBalancedLoadBearingChild', () => {
     expect(isBalancedLoadBearingChild(tx)).toBe(true);
   });
 
-  it('treats leaf nodes without HTTP requests as non-load-bearing', () => {
-    for (const type of ['data_source', 'think_time', 'sql']) {
+  it('treats non-executable leaf nodes as non-load-bearing', () => {
+    for (const type of ['data_source', 'think_time', 'assertion', 'extractor', 'script']) {
       const node = { id: `n-${type}`, type, name: type, data: {} } as YAMLNode;
       expect(isBalancedLoadBearingChild(node)).toBe(false);
     }
   });
 
-  it('treats a container with only sql descendants as non-load-bearing', () => {
+  it('treats a container with only sql descendants as load-bearing', () => {
     const tx: YAMLNode = {
       id: 'tx',
       type: 'transaction',
@@ -112,7 +112,7 @@ describe('isBalancedLoadBearingChild', () => {
         },
       ],
     };
-    expect(isBalancedLoadBearingChild(tx)).toBe(false);
+    expect(isBalancedLoadBearingChild(tx)).toBe(true);
   });
 
   it('treats a disabled request as non-load-bearing', () => {

@@ -56,7 +56,7 @@ export function readBalancedPercentage(value: unknown): number | null {
   return null;
 }
 
-const BALANCED_REQUEST_NODE_TYPES = new Set<string>([
+const BALANCED_LOAD_NODE_TYPES = new Set<string>([
   'request',
   'get',
   'post',
@@ -65,41 +65,40 @@ const BALANCED_REQUEST_NODE_TYPES = new Set<string>([
   'patch',
   'head',
   'options',
+  'sql',
 ]);
 
 /**
- * Whether an enabled subtree contains at least one enabled HTTP request.
+ * Whether an enabled subtree contains at least one enabled executable step.
  *
- * Balanced children can be either direct HTTP request steps or controller
- * wrappers such as group/transaction/if/loop/retry that eventually lead to
- * enabled HTTP requests. SQL, think_time, and request-less subtrees never
- * qualify. See RLP-475.
+ * Balanced children can be direct HTTP or SQL steps, or controller wrappers
+ * that eventually lead to an enabled executable step. Timers, assertions,
+ * extractors, scripts, and request-less subtrees never qualify.
  */
-function hasEnabledBalancedHttpRequest(node: YAMLNode): boolean {
+function hasEnabledBalancedExecutableStep(node: YAMLNode): boolean {
   if (node.data?.enabled === false) {
     return false;
   }
-  if (BALANCED_REQUEST_NODE_TYPES.has(node.type)) {
+  if (BALANCED_LOAD_NODE_TYPES.has(node.type)) {
     return true;
   }
-  return (node.children ?? []).some(hasEnabledBalancedHttpRequest);
+  return (node.children ?? []).some(hasEnabledBalancedExecutableStep);
 }
 
 /**
  * Whether a balanced child actually contributes load.
  *
- * A child is load-bearing when it is an enabled HTTP request itself, or when
- * its enabled subtree contains at least one enabled HTTP request. SQL,
- * think_time, empty containers, and request-less subtrees are excluded from
- * the controller's included elements, its distribution, and the percentage
- * total. See RLP-475.
+ * A child is load-bearing when it is an enabled HTTP or SQL step itself, or
+ * when its enabled subtree contains at least one enabled executable step.
+ * Timers, assertions, extractors, scripts, empty containers, and request-less
+ * subtrees are excluded from the distribution and percentage total.
  */
 export function isBalancedLoadBearingChild(node: YAMLNode): boolean {
   // A disabled node produces no load: the serializer emits `enabled: false` and
   // the runtime skips the whole subtree. This applies to samplers and
   // containers, so disabled wrappers with enabled descendants still count as
   // non-load-bearing.
-  return hasEnabledBalancedHttpRequest(node);
+  return hasEnabledBalancedExecutableStep(node);
 }
 
 /**
@@ -195,8 +194,8 @@ export function sanitizeBalancedNodeData<T>(data: T): T {
 }
 
 function validateBalancedChildren(children: YAMLNode[] = []) {
-  // Only load-bearing children participate in the balance: think_time and
-  // request-less subtrees never consume a percentage. See RLP-475.
+  // Only load-bearing children participate in the balance: non-executable
+  // nodes and request-less subtrees never consume a percentage.
   const loadBearing = children.filter(isBalancedLoadBearingChild);
   const items = loadBearing.map(child => {
     const percentage = readBalancedPercentage(child.data?.__balancedPercentage);
