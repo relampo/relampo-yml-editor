@@ -190,6 +190,21 @@ describe('YAMLEditor draft restoration', () => {
     expect(parseYAMLToTreeMock).toHaveBeenCalledWith('test:\n  name: restored\n', 'restored');
   });
 
+  it('keeps large restored documents in large-file Code view mode', async () => {
+    getActiveDraftMock.mockResolvedValueOnce({
+      yaml: 'LARGE_DRAFT\ntest:\n  name: restored\n',
+      fileName: 'large.yaml',
+      updatedAt: '2026-04-23T10:00:00.000Z',
+    });
+
+    renderEditor();
+
+    await screen.findByText('Large restored plan');
+    fireEvent.click(screen.getByRole('button', { name: 'Code' }));
+
+    expect(screen.getByTestId('code-editor')).toHaveAttribute('data-large-file-mode', 'true');
+  });
+
   it('starts empty when IndexedDB has no active draft', async () => {
     renderEditor();
 
