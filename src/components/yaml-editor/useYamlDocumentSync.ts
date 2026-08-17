@@ -206,9 +206,10 @@ export function useYamlDocumentSync({
     if (parseDebounceRef.current) window.clearTimeout(parseDebounceRef.current);
 
     const isLarge = getDocumentMetrics(newCode).large;
-    if (isLarge) {
-      setIsTreeOutdated(Boolean(newCode.trim()));
-    }
+    // Until the debounced parse completes, the tree still represents the
+    // previous code. Mark every edit as outdated so Debug, Run, and save
+    // cannot use a stale tree during that window.
+    setIsTreeOutdated(true);
 
     parseDebounceRef.current = window.setTimeout(() => {
       const opts = {

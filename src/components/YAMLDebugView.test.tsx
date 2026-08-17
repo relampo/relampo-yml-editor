@@ -831,6 +831,25 @@ describe('YAMLDebugSession tree selection sync', () => {
     expect(screen.getAllByText('/b')).not.toHaveLength(0);
   });
 
+  it('blocks Debug when the document is not ready', () => {
+    render(
+      <YAMLDebugSession
+        tree={null}
+        yamlCode={'test:\n  name: pending\n'}
+        documentReady={false}
+        validationErrors={[]}
+        onSelectNode={vi.fn()}
+        onEditNode={vi.fn()}
+      />,
+    );
+
+    const runButton = screen.getByRole('button', { name: 'Run Debug' });
+    expect(runButton).toBeDisabled();
+
+    fireEvent.click(runButton);
+    expect(debugApiMock.startDebugRun).not.toHaveBeenCalled();
+  });
+
   it('clears the tree selection when a selected debug event has no matching tree request', async () => {
     const requestA: YAMLNode = {
       id: 'a',

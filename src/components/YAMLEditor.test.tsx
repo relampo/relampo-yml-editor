@@ -4,8 +4,8 @@ import { LanguageProvider } from '../contexts/LanguageContext';
 import { YAMLProvider } from '../contexts/YAMLContext';
 import type { YAMLNode } from '../types/yaml';
 import { logStatsigEvent } from '../utils/analytics';
-import { probeStudio } from '../utils/debugApi';
-import { clearActiveDraft, getActiveDraft } from '../utils/yamlDraftStorage';
+import { probeStudio, startDebugRun } from '../utils/debugApi';
+import { clearActiveDraft, getActiveDraft, saveActiveDraft } from '../utils/yamlDraftStorage';
 import { parseYAMLToTree, treeToYAML } from '../utils/yamlParser';
 import { YAMLEditor } from './YAMLEditor';
 
@@ -22,6 +22,7 @@ vi.mock('../utils/debugApi', () => ({
 vi.mock('../utils/yamlDraftStorage', () => ({
   getActiveDraft: vi.fn(),
   clearActiveDraft: vi.fn(),
+  saveActiveDraft: vi.fn(() => Promise.resolve()),
 }));
 
 vi.mock('../utils/yamlDocumentLimits', () => ({
@@ -63,13 +64,17 @@ vi.mock('./YAMLEditorHeader', () => ({
 }));
 
 vi.mock('./YAMLCodeEditor', () => ({
-  YAMLCodeEditor: (props: { value: string; largeFileMode: boolean }) => (
-    <textarea
-      data-testid="code-editor"
-      data-large-file-mode={String(props.largeFileMode)}
-      readOnly
-      value={props.value}
-    />
+  YAMLCodeEditor: (props: { value: string; largeFileMode: boolean; onChange?: (value: string) => void }) => (
+    <>
+      <textarea
+        data-testid="code-editor"
+        data-large-file-mode={String(props.largeFileMode)}
+        readOnly
+        value={props.value}
+      />
+      <button onClick={() => props.onChange?.('test: [')}>make invalid YAML</button>
+      <button onClick={() => props.onChange?.('')}>clear YAML</button>
+    </>
   ),
 }));
 
@@ -141,6 +146,8 @@ const logStatsigEventMock = vi.mocked(logStatsigEvent);
 const probeStudioMock = vi.mocked(probeStudio);
 const parseYAMLToTreeMock = vi.mocked(parseYAMLToTree);
 const treeToYAMLMock = vi.mocked(treeToYAML);
+const startDebugRunMock = vi.mocked(startDebugRun);
+const saveActiveDraftMock = vi.mocked(saveActiveDraft);
 
 function renderEditor() {
   return render(
@@ -160,6 +167,8 @@ describe('YAMLEditor draft restoration', () => {
     probeStudioMock.mockClear();
     parseYAMLToTreeMock.mockClear();
     treeToYAMLMock.mockClear();
+    startDebugRunMock.mockClear();
+    saveActiveDraftMock.mockClear();
   });
 
   afterEach(() => {
@@ -294,6 +303,47 @@ describe('YAMLEditor draft restoration', () => {
 
     expect(screen.getByTestId('code-editor')).toBeInTheDocument();
     expect(screen.queryByText('Debug Session')).not.toBeInTheDocument();
+  });
+
+  it('blocks Debug while a code edit is waiting for the document parse', async () => {
+    getActiveDraftMock.mockResolvedValueOnce({
+      yaml: 'test:\n  name: restored\n',
+      fileName: 'restored.yaml',
+      updatedAt: '2026-04-23T10:00:00.000Z',
+    });
+    probeStudioMock.mockResolvedValueOnce({ studio: true });
+
+    renderEditor();
+
+    await screen.findByText('Restored plan');
+    fireEvent.click(screen.getByRole('button', { name: 'Code' }));
+    fireEvent.click(screen.getByRole('button', { name: 'make invalid YAML' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Debug' }));
+
+    expect(screen.getByRole('button', { name: 'Run Debug' })).toBeDisabled();
+    expect(startDebugRunMock).not.toHaveBeenCalled();
+  });
+
+  it('does not serialize the previous tree when a code edit clears the document', async () => {
+    getActiveDraftMock.mockResolvedValueOnce({
+      yaml: 'test:\n  name: restored\n',
+      fileName: 'restored.yaml',
+      updatedAt: '2026-04-23T10:00:00.000Z',
+    });
+
+    renderEditor();
+
+    await screen.findByText('Restored plan');
+    fireEvent.click(screen.getByRole('button', { name: 'Code' }));
+    treeToYAMLMock.mockClear();
+    fireEvent.click(screen.getByRole('button', { name: 'clear YAML' }));
+    fireEvent.keyDown(window, { key: 's', ctrlKey: true });
+
+    await waitFor(() => expect(saveActiveDraftMock).toHaveBeenCalled());
+    expect(saveActiveDraftMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ yaml: '' }),
+    );
+    expect(treeToYAMLMock).not.toHaveBeenCalled();
   });
 
   it('keeps data source file browsing disabled when the editor is not served by Studio', async () => {

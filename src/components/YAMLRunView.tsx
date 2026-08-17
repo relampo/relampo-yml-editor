@@ -319,7 +319,7 @@ export function YAMLLoadRunSession({
   );
 
   const startRun = async () => {
-    if (hasValidationErrors || isRunning) return;
+    if (!documentReady || hasValidationErrors || isRunning) return;
     let scriptAtStart: string;
     try {
       scriptAtStart = flushPendingEdits ? flushPendingEdits() : yamlCode;
@@ -378,6 +378,7 @@ export function YAMLLoadRunSession({
         runStatus={runStatus}
         isStopping={isStopping}
         isRunning={isRunning}
+        documentReady={documentReady}
         hasValidationErrors={hasValidationErrors}
         yamlCode={yamlCode}
         onStartRun={startRun}
@@ -432,6 +433,7 @@ function RunToolbar({
   runStatus,
   isStopping,
   isRunning,
+  documentReady,
   hasValidationErrors,
   yamlCode,
   onStartRun,
@@ -440,6 +442,7 @@ function RunToolbar({
   runStatus: RunStatus | null;
   isStopping: boolean;
   isRunning: boolean;
+  documentReady: boolean;
   hasValidationErrors: boolean;
   yamlCode: string;
   onStartRun: () => void;
@@ -461,7 +464,7 @@ function RunToolbar({
           <button
             type="button"
             onClick={onStartRun}
-            disabled={isRunning || hasValidationErrors || !yamlCode.trim()}
+            disabled={!documentReady || isRunning || hasValidationErrors || !yamlCode.trim()}
             className="inline-flex h-9 items-center gap-2 rounded border border-yellow-400/40 bg-yellow-400 px-3 text-sm font-semibold text-black transition-colors hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Play className="h-4 w-4" />
