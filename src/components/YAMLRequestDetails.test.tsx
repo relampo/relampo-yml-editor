@@ -99,6 +99,30 @@ describe('YAMLRequestDetails', () => {
     );
   });
 
+  it('edits request-level bearer authentication', () => {
+    const onNodeUpdate = vi.fn();
+    const node: YAMLNode = {
+      id: 'get-auth',
+      type: 'get',
+      name: 'GET: /private',
+      data: {
+        url: '/private',
+        auth: { type: 'bearer', token: 'old-token' },
+      },
+      children: [],
+    };
+
+    render(<YAMLRequestDetails node={node} onNodeUpdate={onNodeUpdate} />);
+
+    expect(screen.getByLabelText('Request Authentication')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Token'), { target: { value: 'new-token' } });
+
+    expect(onNodeUpdate).toHaveBeenLastCalledWith(
+      'get-auth',
+      expect.objectContaining({ auth: { type: 'bearer', token: 'new-token' } }),
+    );
+  });
+
   it('falls back to the generic Base URL placeholder when no base_url is configured', () => {
     const node: YAMLNode = {
       id: 'get-nobase',

@@ -63,6 +63,7 @@ type RequestThroughputLike = PlainRecord & {
 
 type RequestLike = PlainRecord & {
   name?: string;
+  auth?: AuthConfig;
   timeout?: string;
   cookie_override?: OverrideState;
   cache_override?: OverrideState;
@@ -429,8 +430,11 @@ export function normalizeRequestForEditor(
     normalized.url = mergedUrl;
   }
 
+  const normalizedAuth = normalizeAuthForEditor(request?.auth);
+
   return {
     ...normalized,
+    ...(normalizedAuth ? { auth: normalizedAuth } : {}),
     timeout: typeof request?.timeout === 'string' && request.timeout.trim() !== '30s' ? request.timeout : '',
     cookie_override: normalizeOverride(request?.cookie_override),
     cache_override: normalizeOverride(request?.cache_override),

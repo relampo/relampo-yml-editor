@@ -11,6 +11,7 @@ import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { YAMLResponseDetails } from './YAMLResponseDetails';
 import { buildSearchRegex, findMatchRanges, type SearchMode } from './debugSearch';
+import { AuthConfigEditor } from './yaml-node-details/SharedFields';
 
 const FALLBACK_BASE_URL_PLACEHOLDER = 'api.example.com';
 type YAMLRecord = { [key: string]: YAMLValue | undefined };
@@ -769,6 +770,12 @@ function RequestContent({
         onPathChange={handlePathChange}
         searchText={searchText}
         compactInputClass={compactInputClass}
+      />
+
+      <AuthConfigEditor
+        auth={formData.auth}
+        onChange={auth => onFieldChange('auth', auth)}
+        scopeLabel="Request"
       />
 
       <div>

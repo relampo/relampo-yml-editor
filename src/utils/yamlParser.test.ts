@@ -1071,6 +1071,39 @@ scenarios:
     expect(balanced.children?.[0].data.__balancedPercentage).toBe(40);
   });
 
+  it('normalizes request authentication during a canonical round trip', () => {
+    const input = `
+test:
+  name: t
+scenarios:
+  - name: s
+    steps:
+      - request:
+          method: GET
+          url: /private
+          auth:
+            type: API_KEY
+            name: X-API-Key
+            value: "{{api_key}}"
+            in: QUERY
+`;
+    const tree = parseYAMLToTree(input)!;
+    const output = treeToYAML(tree);
+    const reparsed = parseYAMLToTree(output)!;
+    const request = reparsed
+      .children!.find(c => c.type === 'scenarios')!
+      .children![0].children!.find(c => c.type === 'steps')!.children![0];
+
+    expect(output).toContain('type: api_key');
+    expect(output).toContain('in: query');
+    expect(request.data.auth).toEqual({
+      type: 'api_key',
+      name: 'X-API-Key',
+      value: '{{api_key}}',
+      in: 'query',
+    });
+  });
+
   it('serializes draft total balanced controllers without throwing while percentages are incomplete', () => {
     const input = `
 test:
