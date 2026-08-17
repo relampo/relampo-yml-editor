@@ -65,6 +65,13 @@ export function validateYAMLSemantics(tree: YAMLNode | null): YAMLSemanticIssue[
     // Manual-stop is a non-intent contract; intent loads have no such control,
     // so keep this validation off them to avoid a message they can't act on.
     if (node.type === 'load' && normalizeLoadType(node.data?.type) !== 'intent') {
+      if (Object.hasOwn(node.data ?? {}, 'stages')) {
+        issues.push({
+          nodeId: node.id,
+          message: 'Load stages are documented but unsupported by the editor and Pulse runtime. Remove stages before running.',
+        });
+      }
+
       const duration = String(node.data?.duration ?? '').trim();
       const rawIterations = String(node.data?.iterations ?? '').trim();
       const iterations = Number(rawIterations || 0);

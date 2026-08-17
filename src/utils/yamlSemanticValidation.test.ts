@@ -187,6 +187,34 @@ describe('validateYAMLSemantics', () => {
     ]);
   });
 
+  it('blocks unsupported load stages before execution', () => {
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'test',
+      name: 'Test',
+      children: [
+        {
+          id: 'load-1',
+          type: 'load',
+          name: 'Load Config',
+          data: {
+            type: 'constant',
+            users: 3,
+            duration: '1m',
+            stages: [{ duration: '30s', target: 10 }],
+          },
+        },
+      ],
+    };
+
+    expect(validateYAMLSemantics(tree)).toEqual([
+      {
+        nodeId: 'load-1',
+        message: 'Load stages are documented but unsupported by the editor and Pulse runtime. Remove stages before running.',
+      },
+    ]);
+  });
+
   it.each([0, '0', '0s'])('blocks zero duration %p with zero iterations', duration => {
     const tree: YAMLNode = {
       id: 'root',
