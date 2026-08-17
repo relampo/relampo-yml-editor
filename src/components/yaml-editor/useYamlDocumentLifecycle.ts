@@ -104,7 +104,7 @@ export function useYamlDocumentLifecycle({
       if (isCancelled) return;
 
       if (studioInfo?.studio) {
-        setDataSourceFileBrowseEnabled(studioInfo.capabilities?.dataSourceFiles !== false);
+        setDataSourceFileBrowseEnabled(studioInfo.capabilities?.dataSourceFiles === true);
         if (!DEBUG_VIEW_FORCED) setDebugViewEnabled(true);
         if (!RUN_VIEW_FORCED && studioInfo.capabilities?.loadRun) setRunViewEnabled(true);
         setDefaultViewMode(studioInfo.defaultView);

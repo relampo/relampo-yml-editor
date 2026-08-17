@@ -254,7 +254,7 @@ describe('YAMLEditor draft restoration', () => {
       fileName: 'restored.yaml',
       updatedAt: '2026-04-23T10:00:00.000Z',
     });
-    probeStudioMock.mockResolvedValueOnce({ studio: true });
+    probeStudioMock.mockResolvedValueOnce({ studio: true, capabilities: { dataSourceFiles: true } });
 
     renderEditor();
 
@@ -282,6 +282,22 @@ describe('YAMLEditor draft restoration', () => {
     renderEditor();
 
     expect(await screen.findByText('Debug Session')).toBeInTheDocument();
+  });
+
+  it('keeps capability-gated data source browsing disabled when Studio omits the capability', async () => {
+    getActiveDraftMock.mockResolvedValueOnce({
+      yaml: 'test:\n  name: restored\n',
+      fileName: 'restored.yaml',
+      updatedAt: '2026-04-23T10:00:00.000Z',
+    });
+    probeStudioMock.mockResolvedValueOnce({ studio: true });
+
+    renderEditor();
+
+    await screen.findByText('Restored plan');
+    fireEvent.click(screen.getByRole('button', { name: 'select tree root' }));
+
+    expect(screen.getByTestId('node-details')).toHaveAttribute('data-source-file-browse-enabled', 'false');
   });
 
   it('keeps a user-selected view when the Studio default arrives later', async () => {
