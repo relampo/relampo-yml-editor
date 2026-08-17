@@ -247,20 +247,35 @@ export function streamDebugRun(runId: string, handlers: DebugStreamHandlers): ()
   const source = new EventSource(withStudioToken(`${apiBase()}/api/debug/runs/${runId}/events`));
   let finished = false;
 
-  source.addEventListener('engine', message => {
-    handlers.onEvent(JSON.parse((message as MessageEvent).data) as EngineEvent);
-  });
-  source.addEventListener('done', message => {
-    finished = true;
-    source.close();
-    const payload = JSON.parse((message as MessageEvent).data) as { error?: string };
-    handlers.onDone(payload.error ?? null);
-  });
-  source.onerror = () => {
+  const failStream = () => {
     if (finished) return;
     finished = true;
     source.close();
     handlers.onConnectionError();
+  };
+
+  const parseMessage = <T>(message: Event): T | null => {
+    try {
+      return JSON.parse((message as MessageEvent).data) as T;
+    } catch {
+      failStream();
+      return null;
+    }
+  };
+
+  source.addEventListener('engine', message => {
+    const event = parseMessage<EngineEvent>(message);
+    if (event) handlers.onEvent(event);
+  });
+  source.addEventListener('done', message => {
+    const payload = parseMessage<{ error?: string }>(message);
+    if (!payload || finished) return;
+    finished = true;
+    source.close();
+    handlers.onDone(payload.error ?? null);
+  });
+  source.onerror = () => {
+    failStream();
   };
 
   return () => {
