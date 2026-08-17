@@ -362,7 +362,7 @@ export function YAMLDebugSession({
   const hasValidationErrors = validationErrors.length > 0;
 
   const startRun = async () => {
-    if (hasValidationErrors || isRunning) return;
+    if (!documentReady || hasValidationErrors || isRunning) return;
     let scriptAtStart: string;
     try {
       scriptAtStart = flushPendingEdits ? flushPendingEdits() : yamlCode;
@@ -440,6 +440,7 @@ export function YAMLDebugSession({
       )}
       <DebugToolbar
         isRunning={isRunning}
+        documentReady={documentReady}
         hasValidationErrors={hasValidationErrors}
         yamlCode={yamlCode}
         onRun={startRun}
@@ -491,6 +492,7 @@ export function YAMLDebugSession({
 
 function DebugToolbar({
   isRunning,
+  documentReady,
   hasValidationErrors,
   yamlCode,
   onRun,
@@ -499,6 +501,7 @@ function DebugToolbar({
   onDebugVUsChange,
 }: {
   isRunning: boolean;
+  documentReady: boolean;
   hasValidationErrors: boolean;
   yamlCode: string;
   onRun: () => void;
@@ -517,7 +520,7 @@ function DebugToolbar({
           <button
             type="button"
             onClick={onRun}
-            disabled={isRunning || hasValidationErrors || !yamlCode.trim()}
+            disabled={!documentReady || isRunning || hasValidationErrors || !yamlCode.trim()}
             className="inline-flex h-9 items-center gap-2 rounded border border-yellow-400/40 bg-yellow-400 px-3 text-sm font-semibold text-black transition-colors hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Play className="h-4 w-4" />
@@ -535,7 +538,7 @@ function DebugToolbar({
           <button
             type="button"
             onClick={onRun}
-            disabled={isRunning || hasValidationErrors || !yamlCode.trim()}
+            disabled={!documentReady || isRunning || hasValidationErrors || !yamlCode.trim()}
             className="inline-flex h-9 w-9 items-center justify-center rounded border border-white/10 bg-white/3 text-zinc-300 transition-colors hover:bg-white/6 disabled:opacity-40"
             aria-label="Re-run debug"
             title="Re-run debug"

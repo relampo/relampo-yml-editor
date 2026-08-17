@@ -52,6 +52,7 @@ export function YAMLEditor() {
     setHasDocumentActivity,
     isParsing,
     isFileLoading,
+    isTreeOutdated,
     setIsFileLoading,
     parseDebounceRef,
     serializeDebounceRef,
@@ -154,6 +155,7 @@ export function YAMLEditor() {
   const documentMetrics = useMemo(() => getDocumentMetrics(yamlCode), [yamlCode]);
   const isLargeFileMode = documentMetrics.large;
   const isEditorBusy = isFileLoading || isParsing;
+  const documentReady = isInitialized && !isEditorBusy && !error && !isTreeOutdated;
 
   const { handleDownload, resetForNewDocument } = useYAMLPersistence({
     isDirty,
@@ -293,7 +295,7 @@ export function YAMLEditor() {
         hosts={scenarioHosts}
         validationErrors={validationErrors}
         treeSearchQuery={treeSearchQuery}
-        documentReady={isInitialized}
+        documentReady={documentReady}
         dataSourceFileBrowseEnabled={dataSourceFileBrowseEnabled}
         largeFileMode={isLargeFileMode}
         onSelectionChange={handleTreeSelectionChange}

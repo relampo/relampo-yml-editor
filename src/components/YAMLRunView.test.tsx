@@ -770,6 +770,16 @@ describe('YAMLLoadRunSession', () => {
     expect(screen.getByText(/validation failed before the load run/i)).toBeInTheDocument();
   });
 
+  it('blocks the run when the document is not ready', () => {
+    render(<YAMLLoadRunSession {...baseProps} documentReady={false} />);
+
+    const runButton = screen.getByRole('button', { name: 'Run load test' });
+    expect(runButton).toBeDisabled();
+
+    fireEvent.click(runButton);
+    expect(runApiMock.startLoadRun).not.toHaveBeenCalled();
+  });
+
   it('does not start a load run with stale YAML when pending serialization fails', async () => {
     render(
       <YAMLLoadRunSession
