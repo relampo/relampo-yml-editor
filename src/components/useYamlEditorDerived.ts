@@ -185,10 +185,16 @@ export function useParseWorker({
       current.setIsTreeOutdated(false);
     };
 
-    worker.onerror = () => {
-      latestRef.current.setIsParsing(false);
-      latestRef.current.setIsFileLoading(false);
-    };
+  worker.onerror = () => {
+      const current = latestRef.current;
+      current.setIsParsing(false);
+      current.setIsFileLoading(false);
+      current.setError(language === 'es' ? 'Error al parsear YAML' : 'Error parsing YAML');
+      current.setYamlTree(null);
+      current.syncSelectionWithTree(null);
+      current.setValidationErrors([]);
+      current.setIsTreeOutdated(true);
+  };
 
     return () => {
       worker.terminate();
