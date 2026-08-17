@@ -4,6 +4,7 @@ import type { RedirectedRequestInfo } from '../../types/yaml';
 import {
   addNodeToTree,
   getTransactionWrapValidation,
+  moveNodeInTree,
   refreshTreePaths,
   replaceTextInEnabledRequests,
   syncRedirectSourceFollowRedirects,
@@ -298,6 +299,14 @@ function findNodeById(node: YAMLNode, nodeId: string): YAMLNode | null {
 }
 
 describe('transaction grouping operations', () => {
+  it('leaves the tree unchanged when a move violates hierarchy rules', () => {
+    const tree = createBaseTree();
+
+    const result = moveNodeInTree(tree, 'step-a', 'scenario-1', 'inside');
+
+    expect(result).toBe(tree);
+  });
+
   it('does not add a second scenario under scenarios', () => {
     const tree = createBaseTree();
 

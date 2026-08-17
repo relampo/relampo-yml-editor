@@ -1,5 +1,6 @@
-import { canContain } from '../../utils/yamlDragDropRules';
+import { canContain, canDrop } from '../../utils/yamlDragDropRules';
 import type { RedirectedRequestInfo, YAMLNode } from '../../types/yaml';
+import { findNodeById } from '../yamlEditorHelpers';
 
 type TransactionWrapValidationReason =
   | 'minimum_selection'
@@ -569,6 +570,13 @@ export function moveNodeInTree(
 
   findNode(tree);
   if (!nodeToMove) return tree;
+
+  const targetNode = findNodeById(tree, targetId);
+  if (!targetNode) return tree;
+
+  const destinationId = destinationParentId(tree, targetId, position);
+  const destinationParent = destinationId ? findNodeById(tree, destinationId) : null;
+  if (!canDrop(nodeToMove.type, targetNode.type, position, destinationParent?.type)) return tree;
 
   // `treeToObject` writes one `data_source:` key per scope, so a second
   // root-level data source would silently drop the first one on save.
