@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { startLoadRun, stopLoadRun } from './runApi';
+import { startLoadRun, stopLoadRun, streamLoadRun } from './runApi';
 
 function mockFetch(body: unknown, ok = true) {
   vi.stubGlobal(
@@ -60,5 +60,44 @@ describe('stopLoadRun', () => {
       '/api/run/lrun-7/stop',
       expect.objectContaining({ method: 'POST' }),
     );
+  });
+});
+
+describe('streamLoadRun', () => {
+  it('closes and reports a connection error for malformed SSE data', () => {
+    class FakeEventSource {
+      static instances: FakeEventSource[] = [];
+      close = vi.fn();
+      readyState = 1;
+      onerror: (() => void) | null = null;
+      private listeners = new Map<string, (event: Event) => void>();
+
+      constructor() {
+        FakeEventSource.instances.push(this);
+      }
+
+      addEventListener(type: string, listener: (event: Event) => void) {
+        this.listeners.set(type, listener);
+      }
+
+      emit(type: string, data: string) {
+        this.listeners.get(type)?.({ data } as unknown as MessageEvent);
+      }
+    }
+
+    vi.stubGlobal('EventSource', FakeEventSource);
+    const onConnectionError = vi.fn();
+    const onState = vi.fn();
+    const onMetrics = vi.fn();
+    const onLog = vi.fn();
+    const onDone = vi.fn();
+    streamLoadRun('run-1', { onState, onMetrics, onLog, onDone, onConnectionError });
+
+    FakeEventSource.instances[0].emit('metrics', '{bad json');
+
+    expect(onMetrics).not.toHaveBeenCalled();
+    expect(onDone).not.toHaveBeenCalled();
+    expect(onConnectionError).toHaveBeenCalledTimes(1);
+    expect(FakeEventSource.instances[0].close).toHaveBeenCalledTimes(1);
   });
 });
