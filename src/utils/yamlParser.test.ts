@@ -1038,6 +1038,39 @@ scenarios:
     expect(balanced.children?.[1].data.__balancedPercentage).toBe(45);
   });
 
+  it('round-trips SQL as a load-bearing balanced child', () => {
+    const input = `
+test:
+  name: t
+scenarios:
+  - name: s
+    steps:
+      - balanced:
+          name: Mixed Work
+          type: total
+          mode: iterations
+        steps:
+          - sql:
+              dialect: postgres
+              kind: query
+              query: SELECT 1
+            percentage: 40
+          - get: https://example.com/a
+            percentage: 60
+`;
+    const tree = parseYAMLToTree(input)!;
+    const output = treeToYAML(tree);
+    const reparsed = parseYAMLToTree(output)!;
+    const balanced = reparsed
+      .children!.find(c => c.type === 'scenarios')!
+      .children![0].children!.find(c => c.type === 'steps')!.children![0];
+
+    expect(output).toContain('sql:');
+    expect(output).toContain('percentage: 40');
+    expect(balanced.children?.[0].type).toBe('sql');
+    expect(balanced.children?.[0].data.__balancedPercentage).toBe(40);
+  });
+
   it('serializes draft total balanced controllers without throwing while percentages are incomplete', () => {
     const input = `
 test:
