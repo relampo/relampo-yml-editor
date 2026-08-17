@@ -249,6 +249,8 @@ export function YAMLTreeNode({
       <div
         role="treeitem"
         aria-selected={isSelected}
+        aria-expanded={hasChildren ? isExpanded : undefined}
+        aria-level={depth + 1}
         tabIndex={0}
         draggable
         data-node-id={node.id}
@@ -260,6 +262,14 @@ export function YAMLTreeNode({
         onClick={e => onNodeSelect(node, e)}
         onKeyDown={e => {
           if (e.key === 'Enter' || e.key === ' ') onNodeSelect(node, e as any);
+          if (e.key === 'ArrowRight' && hasChildren && !isExpanded) {
+            e.preventDefault();
+            onNodeToggle(node.id);
+          }
+          if (e.key === 'ArrowLeft' && hasChildren && isExpanded) {
+            e.preventDefault();
+            onNodeToggle(node.id);
+          }
         }}
         onContextMenu={e => onContextMenu(e, node)}
         className={
