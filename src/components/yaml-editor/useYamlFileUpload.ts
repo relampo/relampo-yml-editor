@@ -21,6 +21,7 @@ interface UseYamlFileUploadParams {
   setIsFileLoading: (value: boolean) => void;
   parseDebounceRef: React.RefObject<number | null>;
   serializeDebounceRef: React.RefObject<number | null>;
+  invalidatePendingDraft?: () => Promise<void> | void;
 }
 
 /** File upload (browse + drag-and-drop) state and handlers for loading a .yaml/.yml file into the document. */
@@ -41,6 +42,7 @@ export function useYamlFileUpload({
   setIsFileLoading,
   parseDebounceRef,
   serializeDebounceRef,
+  invalidatePendingDraft,
 }: UseYamlFileUploadParams) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -50,6 +52,7 @@ export function useYamlFileUpload({
   };
 
   const loadYamlFile = (file: File, clearInput?: () => void) => {
+    void invalidatePendingDraft?.();
     if (parseDebounceRef.current) window.clearTimeout(parseDebounceRef.current);
     if (serializeDebounceRef.current) window.clearTimeout(serializeDebounceRef.current);
     setIsFileLoading(true);
