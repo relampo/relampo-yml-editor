@@ -125,6 +125,21 @@ export function YAMLEditor() {
     selectedNodeIdsRef,
   });
 
+  const { handleDownload, resetForNewDocument } = useYAMLPersistence({
+    isDirty,
+    setIsDirty,
+    isInitialized,
+    yamlCode,
+    currentFileName,
+    language,
+    restoredDraftUpdatedAt,
+    getPersistableYaml: retrieveYamlForSaving,
+    setHasDocumentActivity,
+    setError,
+    serializeDebounceRef,
+    editRevisionRef,
+  });
+
   const {
     fileInputRef,
     isDragOver,
@@ -150,27 +165,13 @@ export function YAMLEditor() {
     setIsFileLoading,
     parseDebounceRef,
     serializeDebounceRef,
+    invalidatePendingDraft: resetForNewDocument,
   });
 
   const documentMetrics = useMemo(() => getDocumentMetrics(yamlCode), [yamlCode]);
   const isLargeFileMode = documentMetrics.large;
   const isEditorBusy = isFileLoading || isParsing;
   const documentReady = isInitialized && !isEditorBusy && !error && !isTreeOutdated;
-
-  const { handleDownload, resetForNewDocument } = useYAMLPersistence({
-    isDirty,
-    setIsDirty,
-    isInitialized,
-    yamlCode,
-    currentFileName,
-    language,
-    restoredDraftUpdatedAt,
-    getPersistableYaml: retrieveYamlForSaving,
-    setHasDocumentActivity,
-    setError,
-    serializeDebounceRef,
-    editRevisionRef,
-  });
 
   const { redirectedRequestMap, redirectSourceMap } = useRedirectMaps(yamlTree);
   const { httpDefaultsBaseUrl, scenarioHosts, httpDefaultsBaseHost } = useHttpDefaultsInfo(yamlTree);
