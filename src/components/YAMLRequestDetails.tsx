@@ -1,6 +1,6 @@
 import { ChevronDown, ChevronUp, Search } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import type { RedirectSourceInfo, YAMLNode, YAMLNodeData, YAMLValue } from '../types/yaml';
+import type { AuthConfig, RedirectSourceInfo, YAMLNode, YAMLNodeData, YAMLValue } from '../types/yaml';
 import { BodyTypeSelector, type BodyType } from './fields/BodyTypeSelector';
 import { MethodDropdown } from './fields/MethodDropdown';
 import { QueryParamsEditor } from './fields/QueryParamsEditor';
@@ -105,6 +105,16 @@ export function YAMLRequestDetails({
       delete newData.follow_redirects;
     } else if (field === 'follow_redirects') {
       delete newData.redirect_automatically;
+    }
+    commitFormData(newData);
+  };
+
+  const handleAuthChange = (auth?: AuthConfig) => {
+    const newData = { ...formData };
+    if (auth) {
+      newData.auth = auth as unknown as YAMLValue;
+    } else {
+      delete newData.auth;
     }
     commitFormData(newData);
   };
@@ -219,6 +229,7 @@ export function YAMLRequestDetails({
             effectiveFollowRedirects={effectiveFollowRedirects}
             requestMethod={requestMethod}
             onFieldChange={handleFieldChange}
+            onAuthChange={handleAuthChange}
             onBodyChange={handleBodyChange}
             searchText={searchText}
             searchInputValue={requestSearch}
@@ -259,6 +270,7 @@ interface RequestContentProps {
   effectiveFollowRedirects: boolean;
   requestMethod: string;
   onFieldChange: (field: string, value: YAMLValue) => void;
+  onAuthChange: (auth?: AuthConfig) => void;
   onBodyChange: (body: YAMLValue, type: BodyType) => void;
   searchText: string;
   searchInputValue: string;
@@ -642,6 +654,7 @@ function RequestContent({
   effectiveFollowRedirects,
   requestMethod,
   onFieldChange,
+  onAuthChange,
   onBodyChange,
   searchText,
   searchInputValue,
@@ -773,8 +786,8 @@ function RequestContent({
       />
 
       <AuthConfigEditor
-        auth={formData.auth}
-        onChange={auth => onFieldChange('auth', auth)}
+        auth={formData.auth as unknown as AuthConfig | undefined}
+        onChange={onAuthChange}
         scopeLabel="Request"
       />
 
