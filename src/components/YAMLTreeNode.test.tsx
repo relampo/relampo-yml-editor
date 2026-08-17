@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { YAMLNode } from '../types/yaml';
 import { YAMLTreeNode } from './YAMLTreeNode';
@@ -36,5 +36,39 @@ describe('YAMLTreeNode redirected request presentation', () => {
     expect(treeItem.querySelector('svg')?.parentElement).toHaveClass('text-emerald-400');
     expect(screen.getByText('GET')).toHaveClass('text-blue-400');
     expect(screen.getByText('Redirected')).toBeInTheDocument();
+  });
+
+  it('supports tree keyboard expansion semantics', () => {
+    const onNodeToggle = vi.fn();
+    const node: YAMLNode = {
+      id: 'steps',
+      type: 'steps',
+      name: 'Steps',
+      expanded: false,
+      children: [{ id: 'request', type: 'get', name: 'GET /', data: { url: '/' } }],
+    };
+
+    render(
+      <YAMLTreeNode
+        node={node}
+        depth={1}
+        isSelected={false}
+        selectedNodeIds={[]}
+        redirectedRequestMap={{}}
+        onNodeSelect={vi.fn()}
+        onNodeToggle={onNodeToggle}
+        onContextMenu={vi.fn()}
+        onNodeMove={vi.fn()}
+      />,
+    );
+
+    const treeItem = screen.getByRole('treeitem', { name: 'Steps' });
+    expect(treeItem).toHaveAttribute('aria-expanded', 'false');
+    expect(treeItem).toHaveAttribute('aria-level', '2');
+
+    treeItem.focus();
+    fireEvent.keyDown(treeItem, { key: 'ArrowRight' });
+
+    expect(onNodeToggle).toHaveBeenCalledWith('steps');
   });
 });
