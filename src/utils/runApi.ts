@@ -172,20 +172,37 @@ export function streamLoadRun(runId: string, handlers: RunStreamHandlers): () =>
     clearReconnectTimer();
     source.close();
   };
+  const failStream = () => {
+    if (finished) return;
+    close();
+    handlers.onConnectionError();
+  };
+  const parseMessage = <T>(message: Event): T | null => {
+    try {
+      return JSON.parse((message as MessageEvent).data) as T;
+    } catch {
+      failStream();
+      return null;
+    }
+  };
 
   // A successful (re)connection clears any pending grace timer.
   source.addEventListener('open', () => clearReconnectTimer());
   source.addEventListener('state', message => {
-    handlers.onState(JSON.parse((message as MessageEvent).data) as RunState);
+    const state = parseMessage<RunState>(message);
+    if (state) handlers.onState(state);
   });
   source.addEventListener('metrics', message => {
-    handlers.onMetrics(JSON.parse((message as MessageEvent).data) as RunMetricsSnapshot);
+    const metrics = parseMessage<RunMetricsSnapshot>(message);
+    if (metrics) handlers.onMetrics(metrics);
   });
   source.addEventListener('log', message => {
-    handlers.onLog(JSON.parse((message as MessageEvent).data) as RunLogLine[]);
+    const log = parseMessage<RunLogLine[]>(message);
+    if (log) handlers.onLog(log);
   });
   source.addEventListener('done', message => {
-    const payload = JSON.parse((message as MessageEvent).data) as Partial<RunDone>;
+    const payload = parseMessage<Partial<RunDone>>(message);
+    if (!payload || finished) return;
     close();
     handlers.onDone({
       status: (payload.status as RunStatus) ?? 'completed',
