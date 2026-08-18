@@ -250,16 +250,15 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
     if (step[method] !== undefined) {
       const methodValue = step[method];
       const requestData = isPlainRecord(methodValue) ? methodValue : { url: methodValue };
-      const extraFields = { ...step };
-      delete extraFields[method];
-      delete extraFields.enabled;
-      return createRequestNode(
+      const node = createRequestNode(
         stepId,
         method as any,
-        { ...requestData, ...extraFields, method: method.toUpperCase() },
+        { ...requestData, method: method.toUpperCase() },
         path,
         isEnabled,
       );
+      node.unknownData = unknownFields(step, new Set([method, 'enabled']));
+      return node;
     }
   }
 
