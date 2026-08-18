@@ -1,5 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { replaceEmbeddedEditorBuild as replaceBuild } from './replaceEmbeddedEditorBuild';
 
 type EvidenceStep = {
   command: string;
@@ -41,13 +42,28 @@ async function persistEvidence() {
   );
 }
 
+async function replaceEmbeddedEditorBuild() {
+  const command = `replace ${embeddedEditorDir} with ${path.join(editorDir, 'build')}`;
+  console.log(`\n[local-release] ${command}`);
+
+  try {
+    await replaceBuild(path.join(editorDir, 'build'), embeddedEditorDir);
+  } catch (error) {
+    evidence.push({ command, cwd: editorDir, status: 'failed', exitCode: 1 });
+    await persistEvidence();
+    throw error;
+  }
+
+  evidence.push({ command, cwd: editorDir, status: 'passed', exitCode: 0 });
+  await persistEvidence();
+}
+
 await run(['bun', 'run', 'typecheck'], editorDir);
 await run(['bun', 'run', 'lint'], editorDir);
 await run(['bun', 'run', 'test'], editorDir);
 await run(['bun', 'run', 'build'], editorDir);
 await run(['bun', 'run', 'test:browser'], editorDir);
-await run(['mkdir', '-p', embeddedEditorDir], editorDir);
-await run(['cp', '-R', `${path.join(editorDir, 'build')}/.`, `${embeddedEditorDir}/`], editorDir);
+await replaceEmbeddedEditorBuild();
 await run(['bun', 'run', 'test'], backendE2EDir);
 
 console.log(`\n[local-release] All gates passed. Evidence: ${evidencePath}`);
