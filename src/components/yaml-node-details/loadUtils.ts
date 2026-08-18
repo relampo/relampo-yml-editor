@@ -4,6 +4,16 @@ export type LoadType = (typeof loadTypes)[number];
 export type LoadDataValue = string | number | boolean | undefined;
 export type LoadData = Record<string, LoadDataValue>;
 
+export function toLoadData(value: Record<string, unknown> | undefined): LoadData {
+  if (!value) return {};
+  return Object.fromEntries(
+    Object.entries(value).filter((entry): entry is [string, Exclude<LoadDataValue, undefined>] => {
+      const fieldValue = entry[1];
+      return typeof fieldValue === 'string' || typeof fieldValue === 'number' || typeof fieldValue === 'boolean';
+    }),
+  );
+}
+
 const intentTargetUnits = new Set(['rps', 'vus']);
 const intentAggressivenessLevels = new Set(['low', 'medium', 'high']);
 

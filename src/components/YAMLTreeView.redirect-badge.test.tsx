@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { LanguageProvider } from '../contexts/LanguageContext';
-import type { YAMLNode } from '../types/yaml';
+import type { YAMLNode, YAMLResponseData } from '../types/yaml';
 import { YAMLTreeView } from './YAMLTreeView';
 import { detectRedirectFollowUps } from './yamlEditorHelpers';
 
@@ -20,7 +20,7 @@ function reqNode(
   chainId: string,
   opts: { status?: number; location?: string; enabled?: boolean } = {},
 ): YAMLNode {
-  const response: Record<string, unknown> = {};
+  const response: YAMLResponseData = {};
   if (opts.status !== undefined) response.status = opts.status;
   if (opts.location !== undefined) response.headers = { Location: opts.location };
   return {

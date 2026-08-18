@@ -32,7 +32,7 @@ scenarios:
     expect(output).toContain('percentage: 55');
     expect(output).toContain('percentage: 45');
     expect(balanced.children?.[1].type).toBe('group');
-    expect(balanced.children?.[1].data.__balancedPercentage).toBe(45);
+    expect(balanced.children?.[1].data!.__balancedPercentage).toBe(45);
   });
 
   it('preserves percentages through nested controllers inside a transaction', () => {
@@ -68,6 +68,6 @@ scenarios:
     expect(output).toContain('percentage: 60');
     expect(output).toContain('percentage: 40');
     expect(balanced.children?.[1].type).toBe('transaction');
-    expect(balanced.children?.[1].data.__balancedPercentage).toBe(40);
+    expect(balanced.children?.[1].data!.__balancedPercentage).toBe(40);
   });
 });

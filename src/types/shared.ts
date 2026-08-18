@@ -1,11 +1,5 @@
 export type StringMap = Record<string, string>;
-type StructuredScalar = string | number | boolean | null;
-type StructuredValue =
-  | StructuredScalar
-  | StructuredValue[]
-  | { [key: string]: StructuredValue | undefined }
-  | undefined;
-type StructuredData = Record<string, StructuredValue>;
+type StructuredData = Record<string, unknown>;
 
 export type NodeUpdateHandler = (nodeId: string, updatedData: StructuredData) => void;
 

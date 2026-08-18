@@ -84,7 +84,7 @@ describe('YAMLNodeDetails data source file browsing', () => {
     expect(screen.getByText(/Data source file browsing is only available when running Relampo Studio locally/)).toBeInTheDocument();
   });
 
-  it('enables data source file browsing in local Studio', () => {
+  it('enables data source file browsing in local Studio', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({ ok: true, json: async () => ({ path: 'users.csv', lines: [], truncated: false }) }),
@@ -97,9 +97,10 @@ describe('YAMLNodeDetails data source file browsing', () => {
       screen.queryByText(/Data source file browsing is only available when running Relampo Studio locally/),
     ).not.toBeInTheDocument();
     expect(screen.queryByText(/Local: in browser mode/)).not.toBeInTheDocument();
+    expect(await screen.findByText('No rows found.')).toBeInTheDocument();
   });
 
-  it('shows the data source mode helper in English by default', () => {
+  it('shows the data source mode helper in English by default', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({ ok: true, json: async () => ({ path: 'users.csv', lines: [], truncated: false }) }),
@@ -109,6 +110,7 @@ describe('YAMLNodeDetails data source file browsing', () => {
 
     expect(screen.getByText('Each VU cycles through the list from the beginning.')).toBeInTheDocument();
     expect(screen.queryByText('Cada VU cicla sobre la lista desde el inicio.')).not.toBeInTheDocument();
+    expect(await screen.findByText('No rows found.')).toBeInTheDocument();
   });
 
   it('shows a local Studio data preview', async () => {

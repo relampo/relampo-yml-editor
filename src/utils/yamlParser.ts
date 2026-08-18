@@ -1,4 +1,4 @@
-import type { YAMLNode } from '../types/yaml';
+import type { YAMLNode, YAMLNodeData } from '../types/yaml';
 import { getLoadTypeLabel, normalizeLoadDataForYaml } from '../components/yaml-node-details/loadUtils';
 import * as jsyaml from 'js-yaml';
 import { normalizeBalancedDistributionType, normalizeBalancedExecutionMode } from './balancedController';
@@ -12,6 +12,10 @@ import {
 } from './yamlParserHelpers';
 import { treeToObject } from './yamlTreeSerializer';
 import { buildRequestNodeLabel } from './requestNodeDisplay';
+
+function asYAMLNodeData(value: unknown): YAMLNodeData {
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as YAMLNodeData) : {};
+}
 
 function isPlainRecord(value: unknown): value is Record<string, any> {
   return !!value && typeof value === 'object' && !Array.isArray(value);
@@ -343,7 +347,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       id: stepId,
       type: 'extractor',
       name: `Extract: ${varName}`,
-      data: extractData,
+      data: asYAMLNodeData(extractData),
       path,
     };
   }
@@ -636,12 +640,13 @@ function createRequestNode(
 ): YAMLNode {
   const req = normalizeRequestForEditor(requestData, followRedirectsDefault);
   const method = req.method || (type === 'request' ? 'GET' : type.toUpperCase());
-  const enabled = req.enabled !== undefined ? req.enabled : isEnabled;
+  const enabled = typeof req.enabled === 'boolean' ? req.enabled : isEnabled;
+  const requestName = typeof req.name === 'string' ? req.name : '';
   const requestNode: YAMLNode = {
     id: stepId,
     type,
-    name: req.name || buildRequestNodeLabel(type, { ...req, method }),
-    data: { ...req, method, enabled },
+    name: requestName || buildRequestNodeLabel(type, { ...req, method }),
+    data: asYAMLNodeData({ ...req, method, enabled }),
     path,
     children: [],
     expanded: false,
@@ -655,7 +660,7 @@ function createRequestNode(
         id: `${stepId}_headers`,
         type: 'headers',
         name: 'Headers',
-        data: req.headers,
+        data: asYAMLNodeData(req.headers),
         path: [...path, 'request', 'headers'],
       });
     }
@@ -683,7 +688,7 @@ function createRequestNode(
         id: `${stepId}_extractor_${idx}`,
         type: 'extractor',
         name: `Extract: ${normalizedExtractor.var || normalizedExtractor.variable || 'unknown'}`,
-        data: normalizedExtractor,
+        data: asYAMLNodeData(normalizedExtractor),
         path: [...path, 'extractors', idx],
       });
     });
@@ -764,7 +769,7 @@ function createRequestNode(
       id: `${stepId}_think_time`,
       type: 'think_time',
       name: 'Think Time', // SOLO el nombre, duración va en el badge
-      data: typeof req.think_time === 'string' ? { duration: req.think_time } : req.think_time,
+      data: asYAMLNodeData(typeof req.think_time === 'string' ? { duration: req.think_time } : req.think_time),
       path: [...path, 'think_time'],
     });
   }
@@ -776,7 +781,7 @@ function createRequestNode(
       id: `${stepId}_error_policy`,
       type: 'error_policy',
       name: 'Error Policy',
-      data: policy,
+      data: asYAMLNodeData(policy),
       path: [...path, 'error_policy'],
     });
   }
@@ -802,7 +807,7 @@ function createRequestNode(
       id: `${stepId}_data_source`,
       type: 'data_source',
       name: (req.data_source as { name?: string }).name || 'Data Source',
-      data: req.data_source,
+      data: asYAMLNodeData(req.data_source),
       path: [...path, 'data_source'],
     });
   }

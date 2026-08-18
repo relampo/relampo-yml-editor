@@ -34,7 +34,7 @@ export function LoadGrid({ children }: { children: ReactNode }) {
 
 interface LoadFieldProps {
   label: string;
-  value: string | number;
+  value: LoadDataValue;
   placeholder?: string;
   onChange: (value: string) => void;
   helpText?: string;
@@ -69,7 +69,7 @@ export function LoadField({
         type={type}
         maxLength={maxLength}
         disabled={disabled}
-        value={value}
+        value={typeof value === 'boolean' ? String(value) : (value ?? '')}
         onChange={event => onChange(event.target.value)}
         placeholder={placeholder}
         aria-describedby={helpText ? helpId : undefined}

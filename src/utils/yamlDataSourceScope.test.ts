@@ -86,6 +86,7 @@ scenarios:
     // `test`: the root has no parent, so the move would keep the original and
     // insert a second copy of the whole document under it, duplicating ids.
     const tree = parseYAMLToTree(SCRIPT);
+    if (!tree) throw new Error('Expected the fixture to parse');
     expect(canDrop('test', 'data_source', 'after', 'test')).toBe(false);
     expect(canDrop('test', 'test', 'inside')).toBe(false);
 
@@ -99,6 +100,7 @@ scenarios:
     // treeToObject writes a single `data_source:` key per scope, so the second
     // node would silently overwrite the first the next time the YAML is saved.
     const tree = parseYAMLToTree(SCRIPT);
+    if (!tree) throw new Error('Expected the fixture to parse');
     const scoped = findNode(findNode(tree, 'request')!, 'data_source')!;
     const moved = moveNodeInTree(tree, scoped.id, tree.id, 'inside');
 
@@ -109,6 +111,7 @@ scenarios:
 
   it('does not invent a name key when a data source keeps the default label', () => {
     const tree = parseYAMLToTree(SCRIPT);
+    if (!tree) throw new Error('Expected the fixture to parse');
     expect(treeToYAML(tree)).not.toContain('name: Data Source');
   });
 });

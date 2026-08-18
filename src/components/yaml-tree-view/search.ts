@@ -1,4 +1,4 @@
-import type { YAMLNode, YAMLNodeType, YAMLValue } from '../../types/yaml';
+import type { YAMLNode, YAMLNodeType } from '../../types/yaml';
 
 const REQUEST_LIKE_NODE_TYPES: readonly YAMLNodeType[] = [
   'request',
@@ -68,9 +68,9 @@ const SHARED_REQUEST_TAG_STRIP_KEYS = new Set([
 
 const REQUEST_ONLY_TAG_STRIP_KEYS = new Set(['extract', 'extractors', 'assert', 'assertions']);
 
-function stripRequestTagMetadata(value: YAMLValue, nodeType: YAMLNodeType): YAMLValue {
+function stripRequestTagMetadata(value: unknown, nodeType: YAMLNodeType): unknown {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
-  const next = { ...value };
+  const next: Record<string, unknown> = { ...(value as Record<string, unknown>) };
   SHARED_REQUEST_TAG_STRIP_KEYS.forEach(k => delete next[k]);
   if (nodeType !== 'sql') {
     REQUEST_ONLY_TAG_STRIP_KEYS.forEach(k => delete next[k]);
@@ -78,7 +78,7 @@ function stripRequestTagMetadata(value: YAMLValue, nodeType: YAMLNodeType): YAML
   return next;
 }
 
-function getNodeRequestSearchPayload(node: YAMLNode): YAMLValue {
+function getNodeRequestSearchPayload(node: YAMLNode): unknown {
   return REQUEST_LIKE_NODE_TYPES.includes(node.type)
     ? stripRequestTagMetadata(node.data, node.type)
     : stripResponseField(node.data);
@@ -99,16 +99,16 @@ export function getNodeSearchHitFlags(node: YAMLNode, searchQuery: string): { re
   };
 }
 
-function stripResponseField(value: YAMLValue): YAMLValue {
+function stripResponseField(value: unknown): unknown {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return value;
   }
-  const next = { ...value };
+  const next: Record<string, unknown> = { ...(value as Record<string, unknown>) };
   delete next.response;
   return next;
 }
 
-function serializeSearchValue(value: YAMLValue): string {
+function serializeSearchValue(value: unknown): string {
   if (value == null) return '';
   if (typeof value === 'string') return value.toLowerCase();
   if (typeof value === 'number' || typeof value === 'boolean') return String(value).toLowerCase();

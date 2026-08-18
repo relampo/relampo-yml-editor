@@ -394,7 +394,7 @@ describe('DebugSection highlighting', () => {
           value: originalScrollIntoView,
         });
       } else {
-        delete HTMLElement.prototype.scrollIntoView;
+        Reflect.deleteProperty(HTMLElement.prototype, 'scrollIntoView');
       }
     }
   });

@@ -46,9 +46,11 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "test": "vitest run",
+    "validate": "bun run typecheck && bun run lint && bun run test && bun run build",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "doctor": "npx react-doctor@latest"

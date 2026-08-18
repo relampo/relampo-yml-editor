@@ -7,6 +7,7 @@ import {
   getLoadTypeLabel,
   normalizeLoadType,
   selectedLoadButtonStyle,
+  toLoadData,
   type LoadData,
   type LoadDataValue,
   type LoadType,
@@ -32,13 +33,15 @@ const LOAD_MODE_OPTIONS: Array<{
 
 export function LoadDetails({ node, onNodeUpdate }: NodeDetailProps) {
   const { data, updateData, updateField } = createNodeDataUpdater(node, onNodeUpdate);
-  const loadType = normalizeLoadType(data.type);
+  const loadData = toLoadData(data);
+  const loadType = normalizeLoadType(loadData.type);
 
   const handleChange = (field: string, value: LoadDataValue) => {
     if (field === 'type') {
       const selectedType = normalizeLoadType(value);
       updateData({
-        ...buildLoadDataForType(selectedType, data),
+        ...data,
+        ...buildLoadDataForType(selectedType, loadData),
         __name: `Load: ${getLoadTypeLabel(selectedType)}`,
       });
       return;
@@ -59,7 +62,7 @@ export function LoadDetails({ node, onNodeUpdate }: NodeDetailProps) {
 
     if (loadType === 'intent' && ['target_unit', 'target_value', 'aggressiveness'].includes(field)) {
       const nextData = { ...data, [field]: value };
-      const { average_ms: _averageMs, ...autoConfig } = getIntentAutoConfig(nextData);
+      const { average_ms: _averageMs, ...autoConfig } = getIntentAutoConfig(toLoadData(nextData));
       updateData({ ...nextData, ...autoConfig });
       return;
     }
@@ -93,7 +96,7 @@ export function LoadDetails({ node, onNodeUpdate }: NodeDetailProps) {
       </div>
 
       <LoadModePanel
-        data={data}
+        data={loadData}
         loadType={loadType}
         onChange={handleChange}
       />
@@ -108,7 +111,7 @@ export function LoadDetails({ node, onNodeUpdate }: NodeDetailProps) {
       <div className="h-px bg-white/10" />
 
       <LoadVisualization
-        data={data}
+        data={loadData}
         loadType={loadType}
       />
     </div>

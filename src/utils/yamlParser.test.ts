@@ -150,7 +150,7 @@ test:
     const tree = parseYAMLToTree(yaml)!;
     expect(tree.type).toBe('test');
     expect(tree.name).toBe('My Test');
-    expect(tree.data.description).toBe('Hello');
+    expect(tree.data!.description).toBe('Hello');
   });
 
   it('uses default name when test.name is absent', () => {
@@ -169,7 +169,7 @@ variables:
     const tree = parseYAMLToTree(yaml)!;
     const vars = tree.children!.find(c => c.type === 'variables');
     expect(vars).toBeDefined();
-    expect(vars!.data.BASE_URL).toBe('https://example.com');
+    expect(vars!.data!.BASE_URL).toBe('https://example.com');
   });
 
   it('parses http_defaults with bearer auth', () => {
@@ -185,9 +185,9 @@ http_defaults:
     const tree = parseYAMLToTree(yaml)!;
     const defaults = tree.children!.find(c => c.type === 'http_defaults');
     expect(defaults).toBeDefined();
-    expect(defaults!.data.base_url).toBe('https://api.example.com');
-    expect(defaults!.data.auth?.type).toBe('bearer');
-    expect(defaults!.data.auth?.token).toBe('my-token');
+    expect(defaults!.data!.base_url).toBe('https://api.example.com');
+    expect(defaults!.data!.auth?.type).toBe('bearer');
+    expect(defaults!.data!.auth?.token).toBe('my-token');
   });
 
   it('ignores unknown auth type in http_defaults', () => {
@@ -201,7 +201,7 @@ http_defaults:
 `;
     const tree = parseYAMLToTree(yaml)!;
     const defaults = tree.children!.find(c => c.type === 'http_defaults');
-    expect(defaults!.data.auth).toBeUndefined();
+    expect(defaults!.data!.auth).toBeUndefined();
   });
 
   it('parses scenarios and steps', () => {
@@ -224,7 +224,7 @@ scenarios:
     expect(stepsNode).toBeDefined();
     const step = stepsNode!.children![0];
     expect(step.type).toBe('get');
-    expect(step.data.url).toBe('https://example.com/api');
+    expect(step.data!.url).toBe('https://example.com/api');
   });
 
   it('keeps secondary-host requests visible with a host-stripped name (RLP-365)', () => {
@@ -251,9 +251,9 @@ scenarios:
     // Auto-generated names are host-stripped paths; the absolute URL stays in data.url
     // so the tree can surface the host separately as a badge.
     expect(steps.map(s => s.name)).toEqual(['GET: /home', 'GET: /v1/profile', 'GET: /assets/player/intro.mp4']);
-    expect(steps[0].data.url).toBe('https://host1.example.com/home');
-    expect(steps[1].data.url).toBe('https://api-business.example.org/v1/profile');
-    expect(steps[2].data.url).toBe('/assets/player/intro.mp4');
+    expect(steps[0].data!.url).toBe('https://host1.example.com/home');
+    expect(steps[1].data!.url).toBe('https://api-business.example.org/v1/profile');
+    expect(steps[2].data!.url).toBe('/assets/player/intro.mp4');
   });
 
   it('parses request (long form)', () => {
@@ -273,8 +273,8 @@ scenarios:
     const step = tree.children!.find(c => c.type === 'scenarios')!.children![0].children!.find(c => c.type === 'steps')!
       .children![0];
     expect(step.type).toBe('request');
-    expect(step.data.url).toBe('https://example.com/login');
-    expect(step.data.method).toBe('POST');
+    expect(step.data!.url).toBe('https://example.com/login');
+    expect(step.data!.method).toBe('POST');
   });
 
   it('parses one_time controllers with nested steps', () => {
@@ -296,7 +296,7 @@ scenarios:
 
     expect(step.type).toBe('one_time');
     expect(step.name).toBe('Shared bootstrap');
-    expect(step.data.description).toBe('Prepare shared runtime state');
+    expect(step.data!.description).toBe('Prepare shared runtime state');
     expect(step.children?.[0].type).toBe('post');
   });
 
@@ -323,8 +323,8 @@ scenarios:
 
     expect(step.type).toBe('transaction');
     expect(step.name).toBe('Checkout');
-    expect(step.data.auth?.type).toBe('bearer');
-    expect(step.data.enabled).toBe(false);
+    expect(step.data!.auth?.type).toBe('bearer');
+    expect(step.data!.enabled).toBe(false);
     expect(step.children?.map(child => child.name)).toEqual(['POST: /cart', 'POST: /address']);
   });
 
@@ -351,8 +351,8 @@ scenarios:
       .children![0].children!.find(c => c.type === 'steps')!.children![0];
 
     expect(group.type).toBe('group');
-    expect(group.data.enabled).toBe(false);
-    expect(group.children?.[0].data.enabled).toBe(true);
+    expect(group.data!.enabled).toBe(false);
+    expect(group.children?.[0].data!.enabled).toBe(true);
   });
 
   it('preserves enabled state for disabled one_time controllers', () => {
@@ -373,7 +373,7 @@ scenarios:
       .children![0];
 
     expect(step.type).toBe('one_time');
-    expect(step.data.enabled).toBe(false);
+    expect(step.data!.enabled).toBe(false);
   });
 
   it('preserves enabled state for disabled parallel controllers', () => {
@@ -394,7 +394,7 @@ scenarios:
       .children![0];
 
     expect(step.type).toBe('parallel');
-    expect(step.data.enabled).toBe(false);
+    expect(step.data!.enabled).toBe(false);
   });
 
   it('parses sql steps', () => {
@@ -428,13 +428,13 @@ scenarios:
     const step = tree.children!.find(c => c.type === 'scenarios')!.children![0].children!.find(c => c.type === 'steps')!
       .children![0];
     expect(step.type).toBe('sql');
-    expect(step.data.dialect).toBe('postgres');
-    expect(step.data.kind).toBe('query');
-    expect(step.data.connection.database).toBe('app');
-    expect(step.data.connection.ssl_mode).toBe('disable');
-    expect(step.data.connection.validate_connectivity).toBe(true);
-    expect(step.data.connection.max_open_conns).toBe(6);
-    expect(step.data.params).toEqual(['active']);
+    expect(step.data!.dialect).toBe('postgres');
+    expect(step.data!.kind).toBe('query');
+    expect(step.data!.connection!.database).toBe('app');
+    expect(step.data!.connection!.ssl_mode).toBe('disable');
+    expect(step.data!.connection!.validate_connectivity).toBe(true);
+    expect(step.data!.connection!.max_open_conns).toBe(6);
+    expect(step.data!.params).toEqual(['active']);
   });
 
   it('parses balanced controllers with per-child percentages', () => {
@@ -463,11 +463,11 @@ scenarios:
       .children![0].children!.find(c => c.type === 'steps')!.children![0];
 
     expect(balanced.type).toBe('balanced');
-    expect(balanced.data.mode).toBe('iteraciones');
+    expect(balanced.data!.mode).toBe('iteraciones');
     expect(balanced.children).toHaveLength(2);
-    expect(balanced.children?.[0].data.__balancedPercentage).toBe(60);
+    expect(balanced.children?.[0].data!.__balancedPercentage).toBe(60);
     expect(balanced.children?.[1].type).toBe('transaction');
-    expect(balanced.children?.[1].data.__balancedPercentage).toBe(40);
+    expect(balanced.children?.[1].data!.__balancedPercentage).toBe(40);
   });
 
   it('parses partial balanced controllers without forcing total 100', () => {
@@ -493,10 +493,10 @@ scenarios:
       .children![0].children!.find(c => c.type === 'steps')!.children![0];
 
     expect(balanced.type).toBe('balanced');
-    expect(balanced.data.type).toBe('parcial');
-    expect(balanced.data.mode).toBe('usuarios_virtuales');
-    expect(balanced.children?.[0].data.__balancedPercentage).toBe(20);
-    expect(balanced.children?.[1].data.__balancedPercentage).toBe(10);
+    expect(balanced.data!.type).toBe('parcial');
+    expect(balanced.data!.mode).toBe('usuarios_virtuales');
+    expect(balanced.children?.[0].data!.__balancedPercentage).toBe(20);
+    expect(balanced.children?.[1].data!.__balancedPercentage).toBe(10);
   });
 
   it('preserves disabled balanced controllers during parsing', () => {
@@ -520,7 +520,7 @@ scenarios:
       .children![0].children!.find(c => c.type === 'steps')!.children![0];
 
     expect(balanced.type).toBe('balanced');
-    expect(balanced.data.enabled).toBe(false);
+    expect(balanced.data!.enabled).toBe(false);
   });
 
   it('parses the backend sql e2e example with both dialects and extractor-rich query steps', () => {
@@ -528,7 +528,7 @@ scenarios:
     const scenariosNode = tree.children!.find(c => c.type === 'scenarios');
 
     expect(tree.name).toBe('SQL Database Operations E2E Test');
-    expect(tree.children!.find(c => c.type === 'variables')?.data.db_host).toBe('localhost');
+    expect(tree.children!.find(c => c.type === 'variables')?.data!.db_host).toBe('localhost');
     expect(scenariosNode?.children).toHaveLength(2);
 
     const scenarios = scenariosNode!.children!;
@@ -543,23 +543,23 @@ scenarios:
     const mysqlCreate = allSqlSteps[3];
     const mysqlCount = allSqlSteps[6];
 
-    expect(postgresCreate.data.kind).toBe('exec');
-    expect(postgresCreate.data.allow_writes).toBe(true);
-    expect(postgresCreate.data.connection.validate_connectivity).toBe(true);
-    expect(postgresCreate.data.connection.max_open_conns).toBe(5);
-    expect(postgresCreate.data.on_error).toBe('continue');
+    expect(postgresCreate.data!.kind).toBe('exec');
+    expect(postgresCreate.data!.allow_writes).toBe(true);
+    expect(postgresCreate.data!.connection!.validate_connectivity).toBe(true);
+    expect(postgresCreate.data!.connection!.max_open_conns).toBe(5);
+    expect(postgresCreate.data!.on_error).toBe('continue');
 
-    expect(postgresLookup.data.kind).toBe('query');
-    expect(postgresLookup.data.params).toEqual(['{{test_email}}']);
-    expect(postgresLookup.data.extract).toEqual({
+    expect(postgresLookup.data!.kind).toBe('query');
+    expect(postgresLookup.data!.params).toEqual(['{{test_email}}']);
+    expect(postgresLookup.data!.extract).toEqual({
       user_id: "jsonpath('$[0].id')",
       found_email: "jsonpath('$[0].email')",
     });
 
-    expect(mysqlCreate.data.dialect).toBe('mysql');
-    expect(mysqlCreate.data.connection.port).toBe('{{mysql_port}}');
-    expect(mysqlCreate.data.connection.validate_connectivity).toBe(true);
-    expect(mysqlCount.data.extract).toEqual({
+    expect(mysqlCreate.data!.dialect).toBe('mysql');
+    expect(mysqlCreate.data!.connection!.port).toBe('{{mysql_port}}');
+    expect(mysqlCreate.data!.connection!.validate_connectivity).toBe(true);
+    expect(mysqlCount.data!.extract).toEqual({
       user_count: "jsonpath('$[0].count')",
     });
   });
@@ -580,7 +580,7 @@ scenarios:
     const scenario = tree.children!.find(c => c.type === 'scenarios')!.children![0];
     const load = scenario.children!.find(c => c.type === 'load');
     expect(load).toBeDefined();
-    expect(load!.data.users).toBe(10);
+    expect(load!.data!.users).toBe(10);
   });
 
   it('round-trips the explicit manual-stop contract', () => {
@@ -600,9 +600,9 @@ scenarios:
     const output = treeToYAML(tree);
     const load = tree.children!.find(c => c.type === 'scenarios')!.children![0].children!.find(c => c.type === 'load');
 
-    expect(load!.data.run_until_stopped).toBe(true);
-    expect(load!.data.duration).toBeUndefined();
-    expect(load!.data.iterations).toBeUndefined();
+    expect(load!.data!.run_until_stopped).toBe(true);
+    expect(load!.data!.duration).toBeUndefined();
+    expect(load!.data!.iterations).toBeUndefined();
     expect(output).toContain('run_until_stopped: true');
     expect(output).not.toContain('duration:');
     expect(output).not.toContain('iterations:');
@@ -626,12 +626,12 @@ scenarios:
     const scenario = tree.children!.find(c => c.type === 'scenarios')!.children![0];
     const load = scenario.children!.find(c => c.type === 'load');
     expect(load).toBeDefined();
-    expect(load!.data.target_value).toBe(25);
-    expect(load!.data.window).toBe('2s');
-    expect(load!.data.p95_max_ms).toBe('800');
-    expect(load!.data.error_rate_max_pct).toBe('1');
-    expect(load!.data.target_rps).toBeUndefined();
-    expect(load!.data.iterations).toBeUndefined();
+    expect(load!.data!.target_value).toBe(25);
+    expect(load!.data!.window).toBe('2s');
+    expect(load!.data!.p95_max_ms).toBe('800');
+    expect(load!.data!.error_rate_max_pct).toBe('1');
+    expect(load!.data!.target_rps).toBeUndefined();
+    expect(load!.data!.iterations).toBeUndefined();
   });
 
   it('parses data_source node', () => {
@@ -645,7 +645,7 @@ data_source:
     const tree = parseYAMLToTree(yaml)!;
     const ds = tree.children!.find(c => c.type === 'data_source');
     expect(ds).toBeDefined();
-    expect(ds!.data.file).toBe('users.csv');
+    expect(ds!.data!.file).toBe('users.csv');
   });
 
   it('parses request-local data_source names', () => {
@@ -670,7 +670,7 @@ scenarios:
 
     expect(dataSource).toBeDefined();
     expect(dataSource!.name).toBe('Inline Users');
-    expect(dataSource!.data.file).toBe('users.csv');
+    expect(dataSource!.data!.file).toBe('users.csv');
   });
 
   it('parses metrics node', () => {
@@ -684,8 +684,8 @@ metrics:
     const tree = parseYAMLToTree(yaml)!;
     const metrics = tree.children!.find(c => c.type === 'metrics');
     expect(metrics).toBeDefined();
-    expect(metrics!.data.enabled).toBe(true);
-    expect(metrics!.data.percentiles).toEqual([50, 95, 99]);
+    expect(metrics!.data!.enabled).toBe(true);
+    expect(metrics!.data!.percentiles).toEqual([50, 95, 99]);
   });
 });
 
@@ -719,7 +719,7 @@ scenarios:
       min: '5s',
       max: '10s',
     });
-    expect(thinkTime.data.duration).toBeUndefined();
+    expect(thinkTime.data!.duration).toBeUndefined();
     expect(output).not.toContain('think_time: 5s-10s');
   });
 
@@ -827,7 +827,7 @@ scenarios:
     const reparsedDataSource = reparsedRequest.children!.find(child => child.type === 'data_source');
 
     expect(reparsedDataSource!.name).toBe('Renamed Source');
-    expect(reparsedDataSource!.data.name).toBe('Renamed Source');
+    expect(reparsedDataSource!.data!.name).toBe('Renamed Source');
   });
 
   it('round-trips http_defaults with api_key auth', () => {
@@ -846,8 +846,8 @@ http_defaults:
     const output = treeToYAML(tree);
     const reparsed = parseYAMLToTree(output)!;
     const defaults = reparsed.children!.find(c => c.type === 'http_defaults');
-    expect(defaults!.data.auth?.type).toBe('api_key');
-    expect(defaults!.data.auth?.name).toBe('X-API-Key');
+    expect(defaults!.data!.auth?.type).toBe('api_key');
+    expect(defaults!.data!.auth?.name).toBe('X-API-Key');
   });
 
   it('round-trips basic auth', () => {
@@ -863,8 +863,8 @@ http_defaults:
     const tree = parseYAMLToTree(input)!;
     const reparsed = parseYAMLToTree(treeToYAML(tree))!;
     const defaults = reparsed.children!.find(c => c.type === 'http_defaults');
-    expect(defaults!.data.auth?.type).toBe('basic');
-    expect(defaults!.data.auth?.username).toBe('admin');
+    expect(defaults!.data!.auth?.type).toBe('basic');
+    expect(defaults!.data!.auth?.username).toBe('admin');
   });
 
   it('preserves scenario name through round-trip', () => {
@@ -907,9 +907,9 @@ scenarios:
     expect(output).toContain('window: 2s');
     expect(output).not.toContain('target_rps:');
     expect(output).not.toContain('iterations:');
-    expect(load!.data.target_value).toBe(25);
-    expect(load!.data.window).toBe('2s');
-    expect(load!.data.p95_max_ms).toBe('800');
+    expect(load!.data!.target_value).toBe(25);
+    expect(load!.data!.window).toBe('2s');
+    expect(load!.data!.p95_max_ms).toBe('800');
   });
 
   it('preserves invalid intent target_unit values for validation on round-trip', () => {
@@ -930,7 +930,7 @@ scenarios:
 `;
     const tree = parseYAMLToTree(input)!;
     const load = tree.children!.find(c => c.type === 'scenarios')!.children![0].children!.find(c => c.type === 'load');
-    expect(load!.data.target_unit).toBe('rpm');
+    expect(load!.data!.target_unit).toBe('rpm');
 
     const output = treeToYAML(tree);
     expect(output).toContain('target_unit: rpm');
@@ -954,7 +954,7 @@ scenarios:
 `;
     const tree = parseYAMLToTree(input)!;
     const load = tree.children!.find(c => c.type === 'scenarios')!.children![0].children!.find(c => c.type === 'load')!;
-    load.data.p95_max_ms = '';
+    load.data!.p95_max_ms = '';
 
     const output = treeToYAML(tree);
     expect(output).toContain('error_rate_max_pct: 2');
@@ -996,10 +996,10 @@ scenarios:
     expect(output).toContain('allow_writes: false');
     expect(output).toContain('ssl_mode: require');
     expect(step.type).toBe('sql');
-    expect(step.data.dialect).toBe('mysql');
-    expect(step.data.kind).toBe('query');
-    expect(step.data.connection.max_open_conns).toBe(4);
-    expect(step.data.params).toEqual(['success']);
+    expect(step.data!.dialect).toBe('mysql');
+    expect(step.data!.kind).toBe('query');
+    expect(step.data!.connection!.max_open_conns).toBe(4);
+    expect(step.data!.params).toEqual(['success']);
   });
 
   it('round-trips balanced controllers', () => {
@@ -1034,8 +1034,8 @@ scenarios:
     expect(output).toContain('percentage: 55');
     expect(output).toContain('percentage: 45');
     expect(balanced.type).toBe('balanced');
-    expect(balanced.children?.[0].data.__balancedPercentage).toBe(55);
-    expect(balanced.children?.[1].data.__balancedPercentage).toBe(45);
+    expect(balanced.children?.[0].data!.__balancedPercentage).toBe(55);
+    expect(balanced.children?.[1].data!.__balancedPercentage).toBe(45);
   });
 
   it('round-trips SQL as a load-bearing balanced child', () => {
@@ -1068,7 +1068,7 @@ scenarios:
     expect(output).toContain('sql:');
     expect(output).toContain('percentage: 40');
     expect(balanced.children?.[0].type).toBe('sql');
-    expect(balanced.children?.[0].data.__balancedPercentage).toBe(40);
+    expect(balanced.children?.[0].data!.__balancedPercentage).toBe(40);
   });
 
   it('normalizes request authentication during a canonical round trip', () => {
@@ -1096,7 +1096,7 @@ scenarios:
 
     expect(output).toContain('type: api_key');
     expect(output).toContain('in: query');
-    expect(request.data.auth).toEqual({
+    expect(request.data!.auth).toEqual({
       type: 'api_key',
       name: 'X-API-Key',
       value: '{{api_key}}',
@@ -1180,9 +1180,9 @@ scenarios:
     expect(output).not.toContain('mode: iteraciones');
     expect(output).toContain('percentage: 20');
     expect(output).toContain('percentage: 35');
-    expect(balanced.data.type).toBe('parcial');
-    expect(balanced.children?.[0].data.__balancedPercentage).toBe(20);
-    expect(balanced.children?.[1].data.__balancedPercentage).toBe(35);
+    expect(balanced.data!.type).toBe('parcial');
+    expect(balanced.children?.[0].data!.__balancedPercentage).toBe(20);
+    expect(balanced.children?.[1].data!.__balancedPercentage).toBe(35);
   });
 
   it('round-trips one_time controllers', () => {
@@ -1211,7 +1211,7 @@ scenarios:
     expect(output).toContain('Shared bootstrap');
     expect(step.type).toBe('one_time');
     expect(step.children?.[0].type).toBe('request');
-    expect(step.data.description).toBe('Prepare common identifiers');
+    expect(step.data!.description).toBe('Prepare common identifiers');
   });
 
   it('round-trips transaction controllers preserving auth, enabled state, and step order', () => {
@@ -1240,8 +1240,8 @@ scenarios:
       .children![0].children!.find(c => c.type === 'steps')!.children![0];
 
     expect(step.type).toBe('transaction');
-    expect(step.data.enabled).toBe(false);
-    expect(step.data.auth).toEqual({
+    expect(step.data!.enabled).toBe(false);
+    expect(step.data!.auth).toEqual({
       type: 'api_key',
       name: 'X-Flow-Key',
       value: '{{checkout_key}}',
@@ -1272,7 +1272,7 @@ scenarios:
     expect(output).toContain('parallel:');
     expect(output).toContain('enabled: false');
     expect(step.type).toBe('parallel');
-    expect(step.data.enabled).toBe(false);
+    expect(step.data!.enabled).toBe(false);
   });
 
   it('round-trips disabled one_time controllers', () => {
@@ -1296,7 +1296,7 @@ scenarios:
       .children![0].children!.find(c => c.type === 'steps')!.children![0];
 
     expect(step.type).toBe('one_time');
-    expect(step.data.enabled).toBe(false);
+    expect(step.data!.enabled).toBe(false);
   });
 
   it('round-trips disabled scalar loop controllers without rewriting shorthand values', () => {
@@ -1321,8 +1321,8 @@ scenarios:
     expect(output).toContain('enabled: false');
     expect(output).not.toContain('loop:\n          enabled: false');
     expect(step.type).toBe('loop');
-    expect(step.data.count).toBe('{{iterations}}');
-    expect(step.data.enabled).toBe(false);
+    expect(step.data!.count).toBe('{{iterations}}');
+    expect(step.data!.enabled).toBe(false);
   });
 
   it('round-trips disabled scalar retry controllers without rewriting shorthand values', () => {
@@ -1347,8 +1347,8 @@ scenarios:
     expect(output).toContain('enabled: false');
     expect(output).not.toContain('retry:\n          enabled: false');
     expect(step.type).toBe('retry');
-    expect(step.data.attempts).toBe(3);
-    expect(step.data.enabled).toBe(false);
+    expect(step.data!.attempts).toBe(3);
+    expect(step.data!.enabled).toBe(false);
   });
 
   it('serializes one_time with current node name even when renamed back to default label', () => {
@@ -1446,9 +1446,9 @@ scenarios:
     );
 
     expect(sqlSteps).toHaveLength(7);
-    expect(sqlSteps.filter(step => step.data.kind === 'exec')).toHaveLength(4);
-    expect(sqlSteps.filter(step => step.data.kind === 'query')).toHaveLength(3);
-    expect(sqlSteps.filter(step => step.data.allow_writes === true)).toHaveLength(4);
+    expect(sqlSteps.filter(step => step.data!.kind === 'exec')).toHaveLength(4);
+    expect(sqlSteps.filter(step => step.data!.kind === 'query')).toHaveLength(3);
+    expect(sqlSteps.filter(step => step.data!.allow_writes === true)).toHaveLength(4);
   });
 
   // RLP-522: the backend recorder materializes redirect chains with flat
@@ -1485,11 +1485,11 @@ scenarios:
     expect(output).toContain('chain_role: parent');
     expect(output).toContain('chain_role: final');
 
-    expect(steps[0].data.chain_id).toBe('rc-1');
-    expect(steps[0].data.chain_role).toBe('parent');
-    expect(steps[1].data.chain_id).toBe('rc-1');
-    expect(steps[1].data.chain_role).toBe('final');
-    expect(steps[1].data.enabled).toBe(false);
+    expect(steps[0].data!.chain_id).toBe('rc-1');
+    expect(steps[0].data!.chain_role).toBe('parent');
+    expect(steps[1].data!.chain_id).toBe('rc-1');
+    expect(steps[1].data!.chain_role).toBe('final');
+    expect(steps[1].data!.enabled).toBe(false);
   });
 
   // RLP-522 / JMeter parity: the redirect modes are mutually exclusive. An
@@ -1631,7 +1631,7 @@ metrics:
 
     // Variables survive the round-trip
     const vars = tree2.children!.find(c => c.type === 'variables');
-    expect(vars!.data.HOST).toBe('https://api.example.com');
+    expect(vars!.data!.HOST).toBe('https://api.example.com');
 
     // Scenarios survive the round-trip
     const scenarios = tree2.children!.find(c => c.type === 'scenarios');

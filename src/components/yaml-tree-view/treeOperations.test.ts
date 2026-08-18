@@ -54,21 +54,21 @@ describe('replaceTextInEnabledRequests', () => {
     const result = replaceTextInEnabledRequests(tree, 'xyz123', '{{rifa}}');
 
     expect(result.replacements).toBe(3);
-    expect(result.tree.children?.[0].data.url).toBe('/users/{{rifa}}');
-    expect(result.tree.children?.[0].data.body.id).toBe('{{rifa}}');
-    expect(result.tree.children?.[0].children?.[0].data.Authorization).toBe('{{rifa}}');
-    expect(result.tree.children?.[0].data.response).toEqual({
+    expect(result.tree.children?.[0].data!.url).toBe('/users/{{rifa}}');
+    expect(result.tree.children?.[0].data!.body).toMatchObject({ id: '{{rifa}}' });
+    expect(result.tree.children?.[0].children?.[0].data!.Authorization).toBe('{{rifa}}');
+    expect(result.tree.children?.[0].data!.response).toEqual({
       body: 'xyz123',
       headers: { 'X-Recorded': 'xyz123' },
     });
-    expect(result.tree.children?.[1].data.url).toBe('/disabled/xyz123');
-    expect(result.tree.children?.[1].children?.[0].data['X-Test']).toBe('xyz123');
+    expect(result.tree.children?.[1].data!.url).toBe('/disabled/xyz123');
+    expect(result.tree.children?.[1].children?.[0].data!['X-Test']).toBe('xyz123');
   });
 
   it('counts each header replacement once on a real parsed tree', () => {
     // The hand-built fixture above omits `headers` from the request node's own
     // data, which is not what the parser produces: it hands the very same
-    // headers object to both `node.data.headers` and the `headers` child, so
+    // headers object to both `node.data!.headers` and the `headers` child, so
     // both get visited. Building from parseYAMLToTree keeps this honest.
     const tree = parseYAMLToTree(`
 test:
@@ -84,7 +84,7 @@ scenarios:
 `) as YAMLNode;
 
     const request = findRequest(tree)!;
-    expect(request.data.headers).toBe(request.children?.find(child => child.type === 'headers')?.data);
+    expect(request.data!.headers).toBe(request.children?.find(child => child.type === 'headers')?.data);
 
     const result = replaceTextInEnabledRequests(tree, 'xyz123', '{{tok}}');
 
@@ -92,10 +92,10 @@ scenarios:
     expect(result.replacements).toBe(2);
 
     const replaced = findRequest(result.tree)!;
-    expect(replaced.data.url).toBe('/u/{{tok}}');
+    expect(replaced.data!.url).toBe('/u/{{tok}}');
     // Both copies are still rewritten — YAMLRequestDetails reads
-    // node.data.headers for Content-Type, so leaving it stale would be wrong.
-    expect(replaced.data.headers).toEqual({ Authorization: '{{tok}}' });
+    // node.data!.headers for Content-Type, so leaving it stale would be wrong.
+    expect(replaced.data!.headers).toEqual({ Authorization: '{{tok}}' });
     expect(replaced.children?.find(child => child.type === 'headers')?.data).toEqual({
       Authorization: '{{tok}}',
     });
@@ -122,7 +122,7 @@ scenarios:
     const result = replaceTextInEnabledRequests(tree, 'xyz123', '{{tok}}');
 
     expect(result.replacements).toBe(2);
-    expect(result.tree.children?.[0].data.headers).toEqual({ Authorization: '{{tok}}' });
+    expect(result.tree.children?.[0].data!.headers).toEqual({ Authorization: '{{tok}}' });
   });
 
   it('returns the original tree for an empty search or no match', () => {
@@ -157,7 +157,7 @@ scenarios:
     const result = replaceTextInEnabledRequests(tree, search, replacement);
 
     expect(result.replacements).toBe(1);
-    expect(result.tree.children?.[0].data.url).toBe(expectedUrl);
+    expect(result.tree.children?.[0].data!.url).toBe(expectedUrl);
   });
 
   it('replaces a query value when its space is encoded but its inner equals is literal', () => {
@@ -182,7 +182,7 @@ scenarios:
     const result = replaceTextInEnabledRequests(tree, 'CN=Diana Monne', '{{name}}');
 
     expect(result.replacements).toBe(1);
-    expect(result.tree.children?.[0].data.url).toBe(
+    expect(result.tree.children?.[0].data!.url).toBe(
       '/lists/API_Personalizacion?dataSource=organizacion&key={{name}}',
     );
   });
@@ -209,7 +209,7 @@ scenarios:
     const result = replaceTextInEnabledRequests(tree, search, '{{value}}');
 
     expect(result.replacements).toBe(1);
-    expect(result.tree.children?.[0].data.url).toBe('/search?key={{value}}');
+    expect(result.tree.children?.[0].data!.url).toBe('/search?key={{value}}');
   });
 
   describe('regex metacharacters left literal by encodeURIComponent', () => {
@@ -240,7 +240,7 @@ scenarios:
       const result = replaceTextInEnabledRequests(urlTree(url), search, '{{value}}');
 
       expect(result.replacements).toBe(1);
-      expect(result.tree.children?.[0].data.url).toBe(expectedUrl);
+      expect(result.tree.children?.[0].data!.url).toBe(expectedUrl);
     });
 
     it('treats a dot in the search text as a literal dot, not a wildcard', () => {
@@ -447,26 +447,26 @@ describe('syncRedirectSourceFollowRedirects', () => {
   it('sets the source to follow redirects when the follow-up is disabled directly', () => {
     const tree = updateNodeEnabled(createRedirectTree(), 'target', false);
     const result = syncRedirectSourceFollowRedirects(tree, 'target', false, redirectedRequestMap);
-    expect(findNodeById(result, 'source')?.data.follow_redirects).toBe(true);
+    expect(findNodeById(result, 'source')?.data!.follow_redirects).toBe(true);
   });
 
   it('restores the recorded behavior when the follow-up is re-enabled', () => {
     const tree = updateNodeEnabled(createRedirectTree(), 'target', true);
     const result = syncRedirectSourceFollowRedirects(tree, 'target', true, redirectedRequestMap);
-    expect(findNodeById(result, 'source')?.data.follow_redirects).toBe(false);
+    expect(findNodeById(result, 'source')?.data!.follow_redirects).toBe(false);
   });
 
   it('syncs the source when a container holding the follow-up is toggled', () => {
     // Toggling the group cascades enabled:false onto its descendant target.
     const tree = updateNodeEnabled(createRedirectTree(), 'group-1', false);
     const result = syncRedirectSourceFollowRedirects(tree, 'group-1', false, redirectedRequestMap);
-    expect(findNodeById(result, 'target')?.data.enabled).toBe(false);
-    expect(findNodeById(result, 'source')?.data.follow_redirects).toBe(true);
+    expect(findNodeById(result, 'target')?.data!.enabled).toBe(false);
+    expect(findNodeById(result, 'source')?.data!.follow_redirects).toBe(true);
   });
 
   it('is a no-op when the toggled subtree contains no recorded follow-up', () => {
     const tree = createRedirectTree();
     const result = syncRedirectSourceFollowRedirects(tree, 'source', false, redirectedRequestMap);
-    expect(findNodeById(result, 'source')?.data.follow_redirects).toBe(false);
+    expect(findNodeById(result, 'source')?.data!.follow_redirects).toBe(false);
   });
 });

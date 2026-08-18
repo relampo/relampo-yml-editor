@@ -351,7 +351,10 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
   const data = useMemo(() => node.data || {}, [node.data]);
   const connection = data.connection || {};
   const options = connection.options || {};
-  const extract = data.extract || {};
+  const extract =
+    data.extract && !Array.isArray(data.extract) && Object.values(data.extract).every(value => typeof value === 'string')
+      ? (data.extract as StringMap)
+      : {};
   const kind = data.kind || 'query';
   const allowWrites = data.allow_writes === true || data.allow_write === true;
   const validateConnectivity = connection.validate_connectivity === true;

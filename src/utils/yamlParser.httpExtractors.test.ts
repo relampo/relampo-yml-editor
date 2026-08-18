@@ -73,7 +73,7 @@ describe('HTTP request extractor round-trip', () => {
     const extractor = step.children?.find(c => c.type === 'extractor');
 
     expect(step.type).toBe('request');
-    expect(step.data.method).toBe('POST');
+    expect(step.data!.method).toBe('POST');
     expect(extractor?.data?.var).toBe('ViewState_1');
     expect(extractor?.data?.pattern).toBe('ViewState-0" value="(.*):(::*)"');
   });
@@ -101,9 +101,9 @@ scenarios:
     const extractor = step.children?.find(c => c.type === 'extractor');
 
     expect(step.type).toBe('post');
-    expect(step.data.method).toBe('POST');
-    expect(step.data.url).toBe('https://example.com/login');
-    expect(step.data.body).toBe('{}');
+    expect(step.data!.method).toBe('POST');
+    expect(step.data!.url).toBe('https://example.com/login');
+    expect(step.data!.body).toBe('{}');
     expect(extractor?.data?.capture_mode).toBe('index');
     expect(extractor?.data?.capture_index).toBe(2);
   });
@@ -151,7 +151,7 @@ scenarios:
       .children!.find(c => c.type === 'scenarios')!
       .children![0].children!.find(c => c.type === 'steps')!.children![0];
 
-    expect(step.data.enabled).toBe(false);
+    expect(step.data!.enabled).toBe(false);
   });
 
   it('emits exported YAML in the canonical Pulse shape consumed by the CLI', () => {

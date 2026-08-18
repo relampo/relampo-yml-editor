@@ -1,5 +1,5 @@
 import type { YAMLNode } from '../types/yaml';
-import { normalizeLoadDataForYaml } from '../components/yaml-node-details/loadUtils';
+import { normalizeLoadDataForYaml, toLoadData } from '../components/yaml-node-details/loadUtils';
 import {
   isBalancedLoadBearingChild,
   normalizeBalancedDistributionType,
@@ -170,7 +170,7 @@ function scenarioNodeToObject(node: YAMLNode): any {
 
   for (const child of node.children) {
     if (child.type === 'load') {
-      scenario.load = normalizeLoadDataForYaml(child.data);
+      scenario.load = normalizeLoadDataForYaml(toLoadData(child.data));
     } else if (child.type === 'cookies') {
       scenario.cookies = child.data;
     } else if (child.type === 'cache_manager') {
@@ -493,7 +493,8 @@ function requestNodeToObject(node: YAMLNode, methodFallback?: string): any {
       } else {
         request.request.extract = {};
         extractNodes.forEach(extractor => {
-          request.request.extract[extractor.data.variable] = extractor.data.expression;
+          const variable = extractor.data?.variable;
+          if (variable) request.request.extract[variable] = extractor.data?.expression;
         });
       }
     }
@@ -510,7 +511,8 @@ function requestNodeToObject(node: YAMLNode, methodFallback?: string): any {
       } else {
         request.request.assert = {};
         assertNodes.forEach(assertion => {
-          request.request.assert[assertion.data.assertion] = assertion.data.value;
+          const assertionKey = assertion.data?.assertion;
+          if (assertionKey) request.request.assert[assertionKey] = assertion.data?.value;
         });
       }
     }

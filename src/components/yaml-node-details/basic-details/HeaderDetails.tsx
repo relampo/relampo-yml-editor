@@ -34,7 +34,7 @@ export function HeaderDetails({ node, onNodeUpdate }: NodeDetailProps) {
           </div>
           <div className="w-0 flex-1 min-w-0 overflow-x-auto scrollbar-none">
             <Input
-              value={data.value || ''}
+              value={typeof data.value === 'string' || typeof data.value === 'number' ? data.value : ''}
               onChange={event => updateField('value', event.target.value)}
               placeholder="application/json"
               className="w-full px-2 py-1 text-sm font-mono text-zinc-300 bg-white/5 border-white/10 focus:border-white/30"
@@ -60,12 +60,15 @@ export function HeaderDetails({ node, onNodeUpdate }: NodeDetailProps) {
 
 export function HeadersDetails({ node, onNodeUpdate, searchQuery = '' }: NodeDetailProps & { searchQuery?: string }) {
   const data = node.data || {};
+  const headers = Object.fromEntries(
+    Object.entries(data).filter((entry): entry is [string, string] => typeof entry[1] === 'string'),
+  );
 
   return (
     <>
       <EditableList
         title="HTTP Headers"
-        items={data}
+        items={headers}
         onUpdate={items => onNodeUpdate?.(node.id, items)}
         keyPlaceholder="Header-Name"
         valuePlaceholder="Header value"

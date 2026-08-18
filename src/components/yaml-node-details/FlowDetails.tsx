@@ -45,7 +45,7 @@ export function IfDetails({ node, onNodeUpdate }: NodeDetailProps) {
 
 export function LoopDetails({ node, onNodeUpdate }: NodeDetailProps) {
   const { data, updateField } = createNodeDataUpdater(node, onNodeUpdate);
-  const loopCount = data.count || 1;
+  const loopCount = Number(data.count) || 1;
   const stepsCount = node.children?.length || 0;
 
   return (
