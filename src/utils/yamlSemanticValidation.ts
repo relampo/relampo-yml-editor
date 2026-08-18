@@ -7,6 +7,17 @@ interface YAMLSemanticIssue {
   message: string;
 }
 
+const UNSUPPORTED_STAGES_MESSAGE =
+  'Load stages are documented but unsupported by the editor and Pulse runtime. Remove stages before running.';
+const UNSUPPORTED_STAGES_MESSAGE_ES =
+  'Las etapas de carga están documentadas, pero el editor y el runtime de Pulse no las admiten. Elimina stages antes de ejecutar.';
+
+export function localizeYAMLSemanticError(message: string, language: string): string {
+  if (language === 'es' && message === UNSUPPORTED_STAGES_MESSAGE) return UNSUPPORTED_STAGES_MESSAGE_ES;
+  if (language !== 'es' && message === UNSUPPORTED_STAGES_MESSAGE_ES) return UNSUPPORTED_STAGES_MESSAGE;
+  return message;
+}
+
 export function validateYAMLSemantics(tree: YAMLNode | null): YAMLSemanticIssue[] {
   if (!tree) {
     return [];
@@ -68,7 +79,7 @@ export function validateYAMLSemantics(tree: YAMLNode | null): YAMLSemanticIssue[
       if (Object.hasOwn(node.data ?? {}, 'stages')) {
         issues.push({
           nodeId: node.id,
-          message: 'Load stages are documented but unsupported by the editor and Pulse runtime. Remove stages before running.',
+          message: UNSUPPORTED_STAGES_MESSAGE,
         });
       }
 

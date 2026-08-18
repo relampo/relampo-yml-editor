@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import type { YAMLNode } from '../../types/yaml';
 import { normalizeYamlFileName } from '../yamlEditorHelpers';
+import { parseYAMLToTree } from '../../utils/yamlParser';
 
 const isYamlFile = (file: File) => /\.(ya?ml)$/i.test(file.name);
 
@@ -52,22 +53,43 @@ export function useYamlFileUpload({
   };
 
   const loadYamlFile = (file: File, clearInput?: () => void) => {
-    void invalidatePendingDraft?.();
-    if (parseDebounceRef.current) window.clearTimeout(parseDebounceRef.current);
-    if (serializeDebounceRef.current) window.clearTimeout(serializeDebounceRef.current);
     setIsFileLoading(true);
-    setError(null);
-    setSelectedNode(null);
-    setSelectedNodeIds([]);
-    setYamlTree(null);
 
     const reader = new FileReader();
     reader.onload = event => {
-      const content = event.target?.result as string;
+      const content = event.target?.result;
+      if (typeof content !== 'string') {
+        setIsFileLoading(false);
+        setError(language === 'es' ? 'El archivo cargado no contiene texto YAML válido.' : 'The uploaded file does not contain valid YAML text.');
+        clearInput?.();
+        return;
+      }
+
+      const displayName = file.name.replace(/\.(ya?ml)$/i, '');
+
+      // Validate before replacing the current document. Import must be
+      // transactional: an unreadable or syntactically invalid file cannot
+      // discard the current tree or its recoverable draft.
+      try {
+        parseYAMLToTree(content, displayName);
+      } catch (error) {
+        const detail = error instanceof Error ? error.message.replace(/^Error parsing YAML:\s*/i, '') : 'Unknown YAML error';
+        setIsFileLoading(false);
+        setError(language === 'es' ? `Error al parsear YAML: ${detail}` : `Error parsing YAML: ${detail}`);
+        clearInput?.();
+        return;
+      }
+
+      void invalidatePendingDraft?.();
+      if (parseDebounceRef.current) window.clearTimeout(parseDebounceRef.current);
+      if (serializeDebounceRef.current) window.clearTimeout(serializeDebounceRef.current);
+      setError(null);
+      setSelectedNode(null);
+      setSelectedNodeIds([]);
+      setYamlTree(null);
       setYamlCode(content);
       setYamlContent(content);
       setViewMode('tree');
-      const displayName = file.name.replace(/\.(ya?ml)$/i, '');
       fallbackRootNameRef.current = displayName;
       syncCodeToTree(content, { force: true, defaultRootName: displayName });
       setCurrentFileName(normalizeYamlFileName(file.name));

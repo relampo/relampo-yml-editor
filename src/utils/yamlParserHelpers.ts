@@ -73,6 +73,8 @@ type RequestLike = PlainRecord & {
   follow_redirects?: boolean;
 };
 
+const AUTH_FIELDS = new Set(['type', 'token', 'name', 'value', 'username', 'password', 'in']);
+
 type NormalizedRequestLike = RequestLike & {
   timeout: string;
   cookie_override: OverrideState;
@@ -456,7 +458,11 @@ export function normalizeAuthForEditor(auth: unknown): AuthConfig | undefined {
   const type = typeof auth.type === 'string' ? auth.type.trim().toLowerCase() : '';
   if (type !== 'bearer' && type !== 'api_key' && type !== 'basic') return undefined;
 
-  const normalized: AuthConfig = { type };
+  // Keep fields owned by newer backend contracts. Supported fields are
+  // rewritten below, while unknown fields remain attached to this auth block.
+  const normalized: AuthConfig = { ...(auth as AuthConfig) };
+  AUTH_FIELDS.forEach(field => delete normalized[field]);
+  normalized.type = type;
 
   if (typeof auth.token === 'string') normalized.token = auth.token;
   if (typeof auth.name === 'string') normalized.name = auth.name;
@@ -476,14 +482,21 @@ export function normalizeAuthForEditor(auth: unknown): AuthConfig | undefined {
 export function normalizeAuthForYaml(auth: unknown): AuthConfig | undefined {
   const normalized = normalizeAuthForEditor(auth);
   if (!normalized?.type) return undefined;
+  const preserved = Object.fromEntries(
+    Object.entries(normalized).filter(([key]) => !AUTH_FIELDS.has(key)),
+  ) as AuthConfig;
 
   if (normalized.type === 'bearer') {
-    if (!normalized.token) return { type: 'bearer' };
-    return { type: 'bearer', token: normalized.token };
+    return {
+      ...preserved,
+      type: 'bearer',
+      ...(normalized.token ? { token: normalized.token } : {}),
+    };
   }
 
   if (normalized.type === 'api_key') {
     return {
+      ...preserved,
       type: 'api_key',
       name: normalized.name || '',
       value: normalized.value || '',
@@ -492,6 +505,7 @@ export function normalizeAuthForYaml(auth: unknown): AuthConfig | undefined {
   }
 
   return {
+    ...preserved,
     type: 'basic',
     username: normalized.username || '',
     password: normalized.password || '',

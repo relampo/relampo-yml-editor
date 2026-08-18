@@ -73,6 +73,8 @@ function apiBase(): string {
   return getRuntimeConfig().apiBaseUrl;
 }
 
+const RECONNECT_GRACE_MS = 10_000;
+
 // When the local agent is not running, fetch rejects with a TypeError (Chrome:
 // "Failed to fetch", Firefox: "NetworkError when attempting to fetch resource")
 // before any HTTP status exists. That browser-internal string tells the user
@@ -246,12 +248,23 @@ export async function previewStudioDataSourceFile(path: string, signal?: AbortSi
 export function streamDebugRun(runId: string, handlers: DebugStreamHandlers): () => void {
   const source = new EventSource(withStudioToken(`${apiBase()}/api/debug/runs/${runId}/events`));
   let finished = false;
+  let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   const seenEvents = new Set<string>();
 
+  const clearReconnectTimer = () => {
+    if (reconnectTimer !== null) {
+      clearTimeout(reconnectTimer);
+      reconnectTimer = null;
+    }
+  };
+  const close = () => {
+    finished = true;
+    clearReconnectTimer();
+    source.close();
+  };
   const failStream = () => {
     if (finished) return;
-    finished = true;
-    source.close();
+    close();
     handlers.onConnectionError();
   };
 
@@ -265,6 +278,7 @@ export function streamDebugRun(runId: string, handlers: DebugStreamHandlers): ()
     }
   };
 
+  source.addEventListener('open', clearReconnectTimer);
   source.addEventListener('engine', message => {
     const raw = (message as MessageEvent).data;
     if (finished || seenEvents.has(raw)) return;
@@ -277,16 +291,21 @@ export function streamDebugRun(runId: string, handlers: DebugStreamHandlers): ()
   source.addEventListener('done', message => {
     const payload = parseMessage<{ error?: string }>(message);
     if (!payload || finished) return;
-    finished = true;
-    source.close();
+    close();
     handlers.onDone(payload.error ?? null);
   });
   source.onerror = () => {
-    failStream();
+    if (finished) return;
+    if (source.readyState === EventSource.CLOSED) {
+      failStream();
+      return;
+    }
+    if (reconnectTimer === null) {
+      reconnectTimer = setTimeout(() => {
+        if (!finished) failStream();
+      }, RECONNECT_GRACE_MS);
+    }
   };
 
-  return () => {
-    finished = true;
-    source.close();
-  };
+  return close;
 }

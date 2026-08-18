@@ -3,7 +3,7 @@ import type { YAMLNode } from '../../types/yaml';
 import { autoRebalanceBalancedControllers } from '../../utils/balancedController';
 import { getDocumentMetrics } from '../../utils/yamlDocumentLimits';
 import { parseYAMLToTree, treeToYAML } from '../../utils/yamlParser';
-import { validateYAMLSemantics } from '../../utils/yamlSemanticValidation';
+import { localizeYAMLSemanticError, validateYAMLSemantics } from '../../utils/yamlSemanticValidation';
 import { useParseWorker } from '../useYamlEditorDerived';
 import {
   findNodeById,
@@ -70,9 +70,18 @@ export function useYamlDocumentSync({
   const parseRequestIdRef = useRef(0);
   const activeParseRequestIdRef = useRef(0);
 
-  const applySemanticValidation = (tree: YAMLNode | null) => {
-    setValidationErrors(validateYAMLSemantics(tree).map(issue => issue.message));
-  };
+  const applySemanticValidation = useCallback(
+    (tree: YAMLNode | null) => {
+      setValidationErrors(
+        validateYAMLSemantics(tree).map(issue => localizeYAMLSemanticError(issue.message, language)),
+      );
+    },
+    [language, setValidationErrors],
+  );
+
+  useEffect(() => {
+    if (yamlTree) applySemanticValidation(yamlTree);
+  }, [applySemanticValidation, yamlTree]);
 
   const lockTypedNodeSelectionForCurrentTree = useCallback((): YAMLNode | null => {
     if (!yamlTree) return null;

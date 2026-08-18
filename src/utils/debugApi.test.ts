@@ -183,6 +183,47 @@ describe('streamDebugRun', () => {
     expect(onConnectionError).toHaveBeenCalledTimes(1);
     expect(FakeEventSource.instances[0].close).toHaveBeenCalledTimes(1);
   });
+
+  it('keeps a transient SSE loss within the reconnect grace period', () => {
+    vi.useFakeTimers();
+
+    class FakeEventSource {
+      static instances: FakeEventSource[] = [];
+      static CLOSED = 2;
+      close = vi.fn();
+      readyState = 1;
+      onerror: (() => void) | null = null;
+      private listeners = new Map<string, (event: Event) => void>();
+
+      constructor() {
+        FakeEventSource.instances.push(this);
+      }
+
+      addEventListener(type: string, listener: (event: Event) => void) {
+        this.listeners.set(type, listener);
+      }
+
+      emitOpen() {
+        this.listeners.get('open')?.({} as Event);
+      }
+    }
+
+    vi.stubGlobal('EventSource', FakeEventSource);
+    const handlers = { onEvent: vi.fn(), onDone: vi.fn(), onConnectionError: vi.fn() };
+    const stop = streamDebugRun('debug-1', handlers);
+    const source = FakeEventSource.instances[0];
+
+    source.onerror?.();
+    vi.advanceTimersByTime(9_999);
+    expect(handlers.onConnectionError).not.toHaveBeenCalled();
+
+    source.emitOpen();
+    vi.advanceTimersByTime(1);
+    expect(handlers.onConnectionError).not.toHaveBeenCalled();
+
+    stop();
+    vi.useRealTimers();
+  });
 });
 
 describe('uploadStudioDataSourceFile', () => {
