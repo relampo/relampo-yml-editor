@@ -197,10 +197,11 @@ function stepNodeToObject(node: YAMLNode): any {
   if (HTTP_METHODS.includes(node.type)) {
     const isEnabled = node.data?.enabled !== false;
     if (!hasRequestChildren(node) && hasOnlyShortHttpData(node) && isEnabled) {
-      return { [node.type]: node.data?.url || '/' };
+      return { ...(node.unknownData || {}), [node.type]: node.data?.url || '/' };
     }
     if (!hasRequestChildren(node) && hasOnlyShortHttpData(node)) {
       return {
+        ...(node.unknownData || {}),
         [node.type]: {
           url: node.data?.url || '/',
           enabled: false,

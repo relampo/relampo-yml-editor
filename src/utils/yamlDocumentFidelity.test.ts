@@ -65,6 +65,28 @@ scenarios:
     expect(outputGroup.steps[0].future_step).toBe('step-value');
   });
 
+  it('preserves unknown sibling fields beside short HTTP steps', () => {
+    const tree = parseYAMLToTree(`
+scenarios:
+  - name: Short requests
+    steps:
+      - get: /scalar
+        future_step: keep-scalar
+      - post:
+          url: /mapped
+          body: '{}'
+        future_step: keep-mapped
+`)!;
+
+    const output = jsyaml.load(treeToYAML(tree)) as Record<string, any>;
+    const [scalar, mapped] = output.scenarios[0].steps;
+
+    expect(scalar).toEqual({ get: '/scalar', future_step: 'keep-scalar' });
+    expect(mapped.future_step).toBe('keep-mapped');
+    expect(mapped.request.future_step).toBeUndefined();
+    expect(mapped.request).toMatchObject({ method: 'POST', url: '/mapped', body: '{}' });
+  });
+
   it('does not restore removed structural children from preserved controller data', () => {
     const tree = parseYAMLToTree(`
 test:
