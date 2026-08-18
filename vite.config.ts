@@ -8,6 +8,8 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
+    retry: 0,
+    dangerouslyIgnoreUnhandledErrors: false,
     coverage: {
       provider: 'v8',
       include: ['src/utils/**', 'src/hooks/**'],

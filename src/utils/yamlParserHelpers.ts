@@ -182,7 +182,7 @@ function normalizeSQLConnection(
   return Object.keys(connection).length > 0 ? connection : undefined;
 }
 
-export function normalizeAssertionForEditor(assertion: Partial<AssertionLike> | undefined): AssertionLike {
+export function normalizeAssertionForEditor(assertion: PlainRecord | undefined): AssertionLike {
   const next: AssertionLike = { ...(assertion || {}) };
   if (next.type === 'jsonpath') next.type = 'json';
   if (!next.type && typeof next.name === 'string' && next.name.trim() !== '') next.type = next.name.trim();
@@ -190,7 +190,7 @@ export function normalizeAssertionForEditor(assertion: Partial<AssertionLike> | 
   return next;
 }
 
-export function normalizeAssertionForEngine(assertion: Partial<AssertionLike> | undefined): AssertionLike {
+export function normalizeAssertionForEngine(assertion: PlainRecord | undefined): AssertionLike {
   const next: AssertionLike = { ...(assertion || {}) };
   if (next.type === 'jsonpath') next.type = 'json';
   if (!next.type && typeof next.name === 'string' && next.name.trim() !== '') next.type = next.name.trim();
@@ -200,7 +200,7 @@ export function normalizeAssertionForEngine(assertion: Partial<AssertionLike> | 
   return next;
 }
 
-export function normalizeExtractorForEditor(extractor: Partial<ExtractorLike> | undefined): ExtractorLike {
+export function normalizeExtractorForEditor(extractor: PlainRecord | undefined): ExtractorLike {
   const next: ExtractorLike = { ...(extractor || {}) };
   if (next.type === 'json') next.type = 'jsonpath';
   if (!next.type) next.type = 'regex';
@@ -242,7 +242,7 @@ export function normalizeExtractorForEditor(extractor: Partial<ExtractorLike> | 
   return next;
 }
 
-export function normalizeExtractorForEngine(extractor: Partial<ExtractorLike> | undefined): ExtractorLike {
+export function normalizeExtractorForEngine(extractor: PlainRecord | undefined): ExtractorLike {
   const next: ExtractorLike = { ...(extractor || {}) };
   if (!next.type) next.type = 'regex';
   if (next.var === undefined && next.variable !== undefined) next.var = next.variable;
@@ -312,7 +312,7 @@ function inferSQLKind(sql: SQLLike): 'query' | 'exec' {
   return 'query';
 }
 
-export function normalizeSQLForEditor(step: Partial<SQLLike> | undefined): SQLLike {
+export function normalizeSQLForEditor(step: PlainRecord | undefined): SQLLike {
   const sql: SQLLike = { ...(step || {}) };
   const connection = normalizeSQLConnection(sql.connection, sql, { preserveEmpty: true }) || {};
 
@@ -335,7 +335,7 @@ export function normalizeSQLForEditor(step: Partial<SQLLike> | undefined): SQLLi
   };
 }
 
-export function normalizeSQLForYaml(step: Partial<SQLLike> | undefined): SQLLike {
+export function normalizeSQLForYaml(step: PlainRecord | undefined): SQLLike {
   const sql: SQLLike = { ...(step || {}) };
   const connection = normalizeSQLConnection(sql.connection, sql, { preserveEmpty: false });
 
@@ -393,7 +393,7 @@ function mergeQueryParamsIntoUrl(url: string, queryParams: PlainRecord): string 
 }
 
 export function normalizeRequestForEditor(
-  request: Partial<RequestLike> | undefined,
+  request: PlainRecord | undefined,
   // Effective global default from http_defaults.follow_redirects. A request
   // that omits the flag inherits this value, so normalization must not
   // fabricate an explicit false (or true) that the file never stated.

@@ -138,7 +138,7 @@ export function YAMLContextMenu({
             type="button"
             onClick={() => {
               const isCurrentlyEnabled = node.data?.enabled !== false;
-              onToggleEnabled(node.id, !isCurrentlyEnabled);
+              onToggleEnabled?.(node.id, !isCurrentlyEnabled);
               onClose();
             }}
             className="w-full px-3 py-2 flex items-center gap-3 hover:bg-white/5 text-left transition-colors text-zinc-300"

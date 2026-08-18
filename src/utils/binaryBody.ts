@@ -20,13 +20,13 @@ export function headerValue(headers: unknown, name: string): string {
 }
 
 export interface BinaryBodyDownload {
-  bytes: Uint8Array;
+  bytes: Uint8Array<ArrayBuffer>;
   contentType: string;
   extension: string;
   filename: string;
 }
 
-export function byteIndexedBytes(value: unknown): Uint8Array | null {
+export function byteIndexedBytes(value: unknown): Uint8Array<ArrayBuffer> | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const record = value as Record<string, unknown>;
   const keys = Object.keys(record);
@@ -105,7 +105,7 @@ export function binaryBodyDownloadFromBase64(bodyBase64: unknown, headers?: unkn
   }
 }
 
-function binaryBodyDownloadFromBytes(bytes: Uint8Array, headers?: unknown): BinaryBodyDownload {
+function binaryBodyDownloadFromBytes(bytes: Uint8Array<ArrayBuffer>, headers?: unknown): BinaryBodyDownload {
   const contentType = headerValue(headers, 'Content-Type').trim() || 'application/octet-stream';
   const extension = binaryBodyExtension(contentType);
   return {

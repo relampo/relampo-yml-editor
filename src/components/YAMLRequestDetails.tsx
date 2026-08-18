@@ -14,7 +14,7 @@ import { buildSearchRegex, findMatchRanges, type SearchMode } from './debugSearc
 import { AuthConfigEditor } from './yaml-node-details/SharedFields';
 
 const FALLBACK_BASE_URL_PLACEHOLDER = 'api.example.com';
-type YAMLRecord = { [key: string]: YAMLValue | undefined };
+type YAMLRecord = Record<string, unknown>;
 
 interface YAMLRequestDetailsProps {
   node: YAMLNode;
@@ -31,16 +31,16 @@ function getNodeMethodFallback(node: YAMLNode): string {
   return HTTP_METHOD_NODE_TYPES.includes(node.type) ? node.type.toUpperCase() : 'GET';
 }
 
-function getStringValue(value: YAMLValue, fallback = ''): string {
+function getStringValue(value: unknown, fallback = ''): string {
   return typeof value === 'string' ? value : fallback;
 }
 
-function getNumberValue(value: YAMLValue): number | undefined {
+function getNumberValue(value: unknown): number | undefined {
   return typeof value === 'number' ? value : undefined;
 }
 
-function getRecordValue(value: YAMLValue): YAMLRecord | undefined {
-  return value && typeof value === 'object' && !Array.isArray(value) ? value : undefined;
+function getRecordValue(value: unknown): YAMLRecord | undefined {
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as YAMLRecord) : undefined;
 }
 
 function getHeaderValue(headers: YAMLRecord | undefined, name: string): string {
@@ -52,7 +52,7 @@ function getHeaderValue(headers: YAMLRecord | undefined, name: string): string {
   return value == null || typeof value === 'object' ? '' : String(value);
 }
 
-function getBodyText(value: YAMLValue): string {
+function getBodyText(value: unknown): string {
   if (!value) return '';
   return typeof value === 'string' ? value : JSON.stringify(value, null, 2);
 }
@@ -97,7 +97,7 @@ export function YAMLRequestDetails({
     }
   };
 
-  const handleFieldChange = (field: string, value: YAMLValue) => {
+  const handleFieldChange = (field: string, value: unknown) => {
     const newData = { ...formData, [field]: value };
     // The two redirect modes are mutually exclusive.
     // Toggling one always clears the other so the YAML never carries both flags.
@@ -112,7 +112,7 @@ export function YAMLRequestDetails({
   const handleAuthChange = (auth?: AuthConfig) => {
     const newData = { ...formData };
     if (auth) {
-      newData.auth = auth as unknown as YAMLValue;
+      newData.auth = auth;
     } else {
       delete newData.auth;
     }
@@ -269,7 +269,7 @@ interface RequestContentProps {
   effectiveRedirectAutomatically: boolean;
   effectiveFollowRedirects: boolean;
   requestMethod: string;
-  onFieldChange: (field: string, value: YAMLValue) => void;
+  onFieldChange: (field: string, value: unknown) => void;
   onAuthChange: (auth?: AuthConfig) => void;
   onBodyChange: (body: YAMLValue, type: BodyType) => void;
   searchText: string;

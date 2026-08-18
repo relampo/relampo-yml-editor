@@ -8,7 +8,7 @@ afterEach(() => {
 
 describe('YAMLResponseDetails', () => {
   it('downloads the exact recorded response bytes for byte-indexed binary bodies (RLP-555)', async () => {
-    const createObjectURL = vi.fn(() => 'blob:response-body');
+    const createObjectURL = vi.fn<(blob: Blob) => string>(() => 'blob:response-body');
     const revokeObjectURL = vi.fn();
     Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: createObjectURL });
     Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: revokeObjectURL });

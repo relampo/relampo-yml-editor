@@ -13,7 +13,7 @@ import {
   type RunSummary,
 } from '../utils/runApi';
 import { LoadVisualization } from './yaml-node-details/LoadVisualization';
-import { normalizeLoadType, parseTimeToSeconds } from './yaml-node-details/loadUtils';
+import { normalizeLoadType, parseTimeToSeconds, toLoadData } from './yaml-node-details/loadUtils';
 import { normalizeBalancedExecutionMode } from '../utils/balancedController';
 import { createStoredRunStore, fingerprint, type StoredRun } from '../utils/studioRunStore';
 import { collectDebugEventTargets, matchDebugEventTarget } from './debugRequests';
@@ -601,7 +601,7 @@ function PlannedLoadProfilePanel({
         </div>
       )}
       <LoadVisualization
-        data={plannedLoadNode.data ?? {}}
+        data={toLoadData(plannedLoadNode.data)}
         loadType={normalizeLoadType(plannedLoadNode.data?.type)}
         progressSeconds={isRunning ? elapsedMs / 1000 : undefined}
       />

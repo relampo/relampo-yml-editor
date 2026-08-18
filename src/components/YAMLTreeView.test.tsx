@@ -705,8 +705,9 @@ describe('YAMLTreeView search filtering', () => {
 
     fireEvent.keyDown(screen.getByRole('tree'), { key: 'd', ctrlKey: true });
 
-    expect(latestTree?.children?.map(node => node.id)).toEqual(['scenarios', 'http-defaults']);
-    expect(latestTree?.children?.filter(node => node.type === 'scenarios')).toHaveLength(1);
+    const duplicatedTree = latestTree as YAMLNode | null;
+    expect(duplicatedTree?.children?.map(node => node.id)).toEqual(['scenarios', 'http-defaults']);
+    expect(duplicatedTree?.children?.filter(node => node.type === 'scenarios')).toHaveLength(1);
   });
 
   it('does not paste the scenarios container from the clipboard', async () => {
@@ -745,8 +746,9 @@ describe('YAMLTreeView search filtering', () => {
     fireEvent.keyDown(treeElement, { key: 'c', ctrlKey: true });
     fireEvent.keyDown(treeElement, { key: 'v', ctrlKey: true });
 
-    expect(latestTree?.children?.map(node => node.id)).toEqual(['scenarios', 'http-defaults']);
-    expect(latestTree?.children?.filter(node => node.type === 'scenarios')).toHaveLength(1);
+    const pastedTree = latestTree as YAMLNode | null;
+    expect(pastedTree?.children?.map(node => node.id)).toEqual(['scenarios', 'http-defaults']);
+    expect(pastedTree?.children?.filter(node => node.type === 'scenarios')).toHaveLength(1);
   });
 
   it('keeps request descendants hidden when a scenario only matches through duplicated request data', () => {

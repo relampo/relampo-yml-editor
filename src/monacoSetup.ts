@@ -4,12 +4,12 @@
 // monarch highlighting, JSON gets the full language service (worker-backed),
 // and JavaScript gets highlighting only (no TypeScript language service, so
 // no JS intellisense/markers; including it would roughly double the bundle).
-import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
-import 'monaco-editor/esm/vs/editor/editor.all';
-import 'monaco-editor/esm/vs/basic-languages/yaml/yaml.contribution';
-import 'monaco-editor/esm/vs/basic-languages/sql/sql.contribution';
-import 'monaco-editor/esm/vs/basic-languages/javascript/javascript.contribution';
-import 'monaco-editor/esm/vs/language/json/monaco.contribution';
+import * as monaco from 'monaco-editor/esm/vs/editor/editor.api.js';
+import 'monaco-editor/esm/vs/editor/editor.all.js';
+import 'monaco-editor/esm/vs/basic-languages/yaml/yaml.contribution.js';
+import 'monaco-editor/esm/vs/basic-languages/sql/sql.contribution.js';
+import 'monaco-editor/esm/vs/basic-languages/javascript/javascript.contribution.js';
+import 'monaco-editor/esm/vs/language/json/monaco.contribution.js';
 import { loader } from '@monaco-editor/react';
 
 import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';

@@ -1,4 +1,4 @@
-import type { YAMLNode, YAMLNodeData, YAMLValue } from '../../types/yaml';
+import type { YAMLNode, YAMLNodeData } from '../../types/yaml';
 import type { NodeUpdateHandler } from '../../types/shared';
 
 /**
@@ -19,7 +19,7 @@ export function createNodeDataUpdater(node: YAMLNode, onNodeUpdate?: NodeUpdateH
     onNodeUpdate?.(node.id, nextData);
   };
 
-  const updateField = (field: string, value: YAMLValue) => {
+  const updateField = (field: string, value: unknown) => {
     updateData({ ...data, [field]: value });
   };
 

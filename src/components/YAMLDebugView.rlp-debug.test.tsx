@@ -1312,7 +1312,7 @@ describe('YAMLDebugSession RLP debug fixes', () => {
   it('downloads exact response bytes when the debug event includes base64 bytes', async () => {
     const originalCreateObjectURL = URL.createObjectURL;
     const originalRevokeObjectURL = URL.revokeObjectURL;
-    const createObjectURL = vi.fn(() => 'blob:debug-response-body');
+    const createObjectURL = vi.fn<(blob: Blob) => string>(() => 'blob:debug-response-body');
     const revokeObjectURL = vi.fn();
     Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: createObjectURL });
     Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: revokeObjectURL });

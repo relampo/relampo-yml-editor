@@ -116,7 +116,7 @@ describe('matchDebugEventTarget — redirect chain follow-ups', () => {
         redirect_index: 1,
       }),
       [parent, child],
-      { child: { sourceNodeId: 'parent', sourceRequestLabel: parent.name, matchedLocation: child.data.url } },
+      { child: { sourceNodeId: 'parent', sourceRequestLabel: parent.name, matchedLocation: child.data!.url! } },
     );
 
     expect(match?.id).toBe('child');

@@ -2,14 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { detectRedirectFollowUps, nodesStillFormRedirect } from './yamlEditorHelpers';
 import { isRedirectStepEvent } from './debugRequests';
 import { replaceTextInEnabledRequests } from './yaml-tree-view/treeOperations';
-import type { YAMLNode } from '../types/yaml';
+import type { YAMLNode, YAMLResponseData } from '../types/yaml';
 
 function req(
   id: string,
   url: string,
   opts: { status?: number; location?: string } = {},
 ): YAMLNode {
-  const response: Record<string, unknown> = {};
+  const response: YAMLResponseData = {};
   if (opts.status !== undefined) response.status = opts.status;
   if (opts.location !== undefined) response.headers = { Location: opts.location };
   return {
@@ -96,7 +96,7 @@ describe('detectRedirectFollowUps — chain metadata (RLP-604)', () => {
     chainId: string,
     opts: { status?: number; location?: string } = {},
   ): YAMLNode {
-    const response: Record<string, unknown> = {};
+    const response: YAMLResponseData = {};
     if (opts.status !== undefined) response.status = opts.status;
     if (opts.location !== undefined) response.headers = { Location: opts.location };
     return {
@@ -238,9 +238,9 @@ describe('nodesStillFormRedirect — correlated placeholders (RLP-663)', () => {
       ],
     };
     const { tree: replaced } = replaceTextInEnabledRequests(tree, 'xyz123', '{{token}}');
-    expect(replaced.children?.[1].data.url).toBe('https://api.test/home/{{token}}');
+    expect(replaced.children?.[1].data!.url).toBe('https://api.test/home/{{token}}');
     // The recorded response is intact — that is the point of RLP-663.
-    expect(replaced.children?.[0].data.response.headers.Location).toBe('/home/xyz123');
+    expect(replaced.children?.[0].data!.response?.headers?.Location).toBe('/home/xyz123');
     expect(detectRedirectFollowUps(replaced).tgt?.sourceNodeId).toBe('src');
   });
 

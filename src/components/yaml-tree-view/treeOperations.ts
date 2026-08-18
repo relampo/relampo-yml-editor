@@ -1,5 +1,5 @@
 import { canContain, canDrop } from '../../utils/yamlDragDropRules';
-import type { RedirectedRequestInfo, YAMLNode } from '../../types/yaml';
+import type { RedirectedRequestInfo, YAMLNode, YAMLNodeData } from '../../types/yaml';
 import { findNodeById } from '../yamlEditorHelpers';
 
 type TransactionWrapValidationReason =
@@ -252,7 +252,7 @@ function replaceTextInValue(
 }
 
 function replaceRequestData(
-  data: unknown,
+  data: YAMLNodeData | undefined,
   search: string,
   replacement: string,
   // True when this request also has a `headers` child node. The parser hands
@@ -263,7 +263,7 @@ function replaceRequestData(
   // `node.data.headers` to infer Content-Type — only the tally moves to the
   // child node, which is also what the serializer writes back out.
   headersCountedByChild = false,
-): [unknown, number, boolean] {
+): [YAMLNodeData | undefined, number, boolean] {
   if (!data || typeof data !== 'object' || Array.isArray(data)) return [data, 0, false];
 
   let count = 0;
@@ -558,17 +558,7 @@ export function moveNodeInTree(
   // `canDrop` cannot catch this because the root is just another `test` node.
   if (nodeId === tree.id) return tree;
 
-  let nodeToMove: YAMLNode | null = null;
-
-  const findNode = (node: YAMLNode): void => {
-    if (node.id === nodeId) {
-      nodeToMove = { ...node };
-      return;
-    }
-    node.children?.forEach(findNode);
-  };
-
-  findNode(tree);
+  const nodeToMove = findNodeById(tree, nodeId);
   if (!nodeToMove) return tree;
 
   const targetNode = findNodeById(tree, targetId);
@@ -580,8 +570,7 @@ export function moveNodeInTree(
 
   // `treeToObject` writes one `data_source:` key per scope, so a second
   // root-level data source would silently drop the first one on save.
-  const movedType = (nodeToMove as YAMLNode).type;
-  if (movedType === 'data_source' && destinationParentId(tree, targetId, position) === tree.id) {
+  if (nodeToMove.type === 'data_source' && destinationParentId(tree, targetId, position) === tree.id) {
     if (tree.children?.some(child => child.type === 'data_source' && child.id !== nodeId)) return tree;
   }
 
