@@ -7,6 +7,7 @@
 
 import { studioAuthHeaders, withStudioToken } from './studioAuth';
 import { getRuntimeConfig } from './runtimeConfig';
+import { isRecord, parseSSEMessage } from './sseMessage';
 
 function apiBase(): string {
   return getRuntimeConfig().apiBaseUrl;
@@ -136,7 +137,10 @@ export async function startLoadRun(yaml: string): Promise<string> {
     throw new Error(message);
   }
   const body = await response.json();
-  return body.id as string;
+  if (!isRecord(body) || typeof body.id !== 'string' || body.id.length === 0) {
+    throw new Error('load run did not return a run id');
+  }
+  return body.id;
 }
 
 // URL of the standalone HTML report the studio generates when a run finishes
@@ -179,31 +183,31 @@ export function streamLoadRun(runId: string, handlers: RunStreamHandlers): () =>
     close();
     handlers.onConnectionError();
   };
-  const parseMessage = <T>(message: Event): T | null => {
+  const parseMessage = <T>(message: Event, isValid: (value: unknown) => value is T): T | null => {
     if (finished) return null;
-    try {
-      return JSON.parse((message as MessageEvent).data) as T;
-    } catch {
+    const parsed = parseSSEMessage(message, isValid);
+    if (!parsed) {
       failStream();
       return null;
     }
+    return parsed;
   };
 
   // A successful (re)connection clears any pending grace timer.
   source.addEventListener('open', () => clearReconnectTimer());
   source.addEventListener('state', message => {
-    const state = parseMessage<RunState>(message);
+    const state = parseMessage<RunState>(message, isRunState);
     if (state) handlers.onState(state);
   });
   source.addEventListener('metrics', message => {
-    const metrics = parseMessage<RunMetricsSnapshot>(message);
+    const metrics = parseMessage<RunMetricsSnapshot>(message, isRunMetricsSnapshot);
     if (metrics && !seenMetricTimestamps.has(metrics.ts)) {
       seenMetricTimestamps.add(metrics.ts);
       handlers.onMetrics(metrics);
     }
   });
   source.addEventListener('log', message => {
-    const log = parseMessage<RunLogLine[]>(message);
+    const log = parseMessage<RunLogLine[]>(message, isRunLog);
     if (!log) return;
     const unseen = log.filter(line => {
       if (seenLogSequences.has(line.seq)) return false;
@@ -213,7 +217,7 @@ export function streamLoadRun(runId: string, handlers: RunStreamHandlers): () =>
     if (unseen.length > 0) handlers.onLog(unseen);
   });
   source.addEventListener('done', message => {
-    const payload = parseMessage<Partial<RunDone>>(message);
+    const payload = parseMessage<RunDonePayload>(message, isRunDonePayload);
     if (!payload || finished) return;
     close();
     handlers.onDone({
@@ -243,4 +247,115 @@ export function streamLoadRun(runId: string, handlers: RunStreamHandlers): () =>
   return () => {
     close();
   };
+}
+
+interface RunDonePayload {
+  status: RunStatus;
+  error?: string | null;
+  summary?: RunSummary | null;
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+function isRunStatus(value: unknown): value is RunStatus {
+  return value === 'running' || value === 'completed' || value === 'stopped' || value === 'errored';
+}
+
+function isRunState(value: unknown): value is RunState {
+  return (
+    isRecord(value) &&
+    isRunStatus(value.status) &&
+    typeof value.started_at === 'string' &&
+    isFiniteNumber(value.elapsed_ms)
+  );
+}
+
+function isRunRequestStat(value: unknown): value is RunRequestStat {
+  return (
+    isRecord(value) &&
+    typeof value.name === 'string' &&
+    typeof value.method === 'string' &&
+    typeof value.path === 'string' &&
+    isFiniteNumber(value.count) &&
+    isFiniteNumber(value.failures) &&
+    isFiniteNumber(value.avg_ms) &&
+    isFiniteNumber(value.min_ms) &&
+    isFiniteNumber(value.max_ms) &&
+    isFiniteNumber(value.p90_ms) &&
+    isFiniteNumber(value.p95_ms) &&
+    isFiniteNumber(value.p99_ms)
+  );
+}
+
+function isRunMetricsSnapshot(value: unknown): value is RunMetricsSnapshot {
+  return (
+    isRecord(value) &&
+    isFiniteNumber(value.ts) &&
+    isFiniteNumber(value.elapsed_ms) &&
+    isFiniteNumber(value.rps) &&
+    isFiniteNumber(value.active_users) &&
+    (value.executed_vus === undefined || isFiniteNumber(value.executed_vus)) &&
+    isFiniteNumber(value.avg_latency) &&
+    isFiniteNumber(value.p95_latency) &&
+    isFiniteNumber(value.total_requests) &&
+    isFiniteNumber(value.total_failures) &&
+    isFiniteNumber(value.errors) &&
+    (value.requests === undefined || (Array.isArray(value.requests) && value.requests.every(isRunRequestStat)))
+  );
+}
+
+function isRunLogLine(value: unknown): value is RunLogLine {
+  if (!isRecord(value)) return false;
+  return (
+    isFiniteNumber(value.seq) &&
+    isFiniteNumber(value.ts) &&
+    (value.level === 'request' || value.level === 'info' || value.level === 'error' || value.level === 'system') &&
+    (value.vu === undefined || isFiniteNumber(value.vu)) &&
+    (value.status === undefined || isFiniteNumber(value.status)) &&
+    (value.latency_ms === undefined || isFiniteNumber(value.latency_ms)) &&
+    (value.message === undefined || typeof value.message === 'string')
+  );
+}
+
+function isRunLog(value: unknown): value is RunLogLine[] {
+  return Array.isArray(value) && value.every(isRunLogLine);
+}
+
+function isRunHistoryPoint(value: unknown): value is RunHistoryPoint {
+  return (
+    isRecord(value) &&
+    isFiniteNumber(value.ts) &&
+    isFiniteNumber(value.rps) &&
+    isFiniteNumber(value.active_users) &&
+    isFiniteNumber(value.avg_latency) &&
+    isFiniteNumber(value.p95_latency) &&
+    isFiniteNumber(value.errors)
+  );
+}
+
+function isRunSummary(value: unknown): value is RunSummary {
+  return (
+    isRecord(value) &&
+    typeof value.test_name === 'string' &&
+    typeof value.start_time === 'string' &&
+    typeof value.end_time === 'string' &&
+    isFiniteNumber(value.duration) &&
+    isFiniteNumber(value.total_requests) &&
+    isFiniteNumber(value.total_failures) &&
+    (value.executed_vus === undefined || isFiniteNumber(value.executed_vus)) &&
+    Array.isArray(value.requests) &&
+    value.requests.every(isRunRequestStat) &&
+    (value.history === undefined || (Array.isArray(value.history) && value.history.every(isRunHistoryPoint)))
+  );
+}
+
+function isRunDonePayload(value: unknown): value is RunDonePayload {
+  return (
+    isRecord(value) &&
+    isRunStatus(value.status) &&
+    (value.error === undefined || value.error === null || typeof value.error === 'string') &&
+    (value.summary === undefined || value.summary === null || isRunSummary(value.summary))
+  );
 }

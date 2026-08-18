@@ -232,6 +232,29 @@ describe('validateYAMLSemantics', () => {
     ]);
   });
 
+  it('blocks unsupported stages on intent loads before execution', () => {
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'test',
+      name: 'Test',
+      children: [
+        {
+          id: 'load-intent',
+          type: 'load',
+          name: 'Intent Load',
+          data: { type: 'intent', target_value: 10, stages: [{ duration: '30s', target: 10 }] },
+        },
+      ],
+    };
+
+    expect(validateYAMLSemantics(tree)).toEqual([
+      {
+        nodeId: 'load-intent',
+        message: 'Load stages are documented but unsupported by the editor and Pulse runtime. Remove stages before running.',
+      },
+    ]);
+  });
+
   it.each([0, '0', '0s'])('blocks zero duration %p with zero iterations', duration => {
     const tree: YAMLNode = {
       id: 'root',

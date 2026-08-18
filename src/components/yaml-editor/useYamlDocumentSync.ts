@@ -15,6 +15,18 @@ import { refreshTreePaths } from '../yaml-tree-view/treeOperations';
 
 const EMPTY_PARALLEL_ERROR = 'Parallel controller must contain at least one child step';
 const TREE_SERIALIZE_DEBOUNCE_MS = 220;
+const NEW_DOCUMENT_YAML = `test:
+  name: New Test
+  version: '1.0'
+scenarios:
+  - name: New Scenario
+    load:
+      type: constant
+      users: 1
+      duration: 1m
+      iterations: 0
+    steps: []
+`;
 
 export type CommitTreeChangeOptions = {
   serialization?: 'immediate' | 'debounced';
@@ -27,6 +39,7 @@ interface UseYamlDocumentSyncParams {
   setYamlContent: (content: string) => void;
   setError: (value: string | null) => void;
   setValidationErrors: (errors: string[]) => void;
+  setValidationNodeIds?: (nodeIds: string[]) => void;
   selectedNode: YAMLNode | null;
   setSelectedNode: (node: YAMLNode | null) => void;
   setSelectedNodeIds: (ids: string[]) => void;
@@ -48,6 +61,7 @@ export function useYamlDocumentSync({
   setYamlContent,
   setError,
   setValidationErrors,
+  setValidationNodeIds,
   selectedNode,
   setSelectedNode,
   setSelectedNodeIds,
@@ -72,11 +86,11 @@ export function useYamlDocumentSync({
 
   const applySemanticValidation = useCallback(
     (tree: YAMLNode | null) => {
-      setValidationErrors(
-        validateYAMLSemantics(tree).map(issue => localizeYAMLSemanticError(issue.message, language)),
-      );
+      const issues = validateYAMLSemantics(tree);
+      setValidationErrors(issues.map(issue => localizeYAMLSemanticError(issue.message, language)));
+      setValidationNodeIds?.(issues.map(issue => issue.nodeId));
     },
-    [language, setValidationErrors],
+    [language, setValidationErrors, setValidationNodeIds],
   );
 
   useEffect(() => {
@@ -116,6 +130,7 @@ export function useYamlDocumentSync({
     setYamlTree,
     syncSelectionWithTree,
     setValidationErrors,
+    setValidationNodeIds,
     setIsTreeOutdated,
     applySemanticValidation,
     normalizeParsedTree: tree => (tree ? lockTypedNodeSelectionInNode(tree)[0] : tree),
@@ -128,6 +143,7 @@ export function useYamlDocumentSync({
       syncSelectionWithTree(null);
       setError(null);
       setValidationErrors([]);
+      setValidationNodeIds?.([]);
       setIsParsing(false);
       setIsFileLoading(false);
       setIsTreeOutdated(false);
@@ -139,6 +155,7 @@ export function useYamlDocumentSync({
       activeParseRequestIdRef.current = ++parseRequestIdRef.current;
       setError(null);
       setValidationErrors([]);
+      setValidationNodeIds?.([]);
       setIsParsing(false);
       setIsFileLoading(false);
       setIsTreeOutdated(Boolean(code.trim()));
@@ -169,6 +186,7 @@ export function useYamlDocumentSync({
       if (activeParseRequestIdRef.current !== requestId) return;
       setError(err instanceof Error ? err.message : 'Error parsing YAML');
       setValidationErrors([]);
+      setValidationNodeIds?.([]);
       setIsTreeOutdated(true);
     } finally {
       if (activeParseRequestIdRef.current === requestId) setIsParsing(false);
@@ -298,7 +316,7 @@ export function useYamlDocumentSync({
     commitTreeChange(rebalanced, nextSelection);
   };
 
-  // Resets all document-editing state for a brand-new (blank) document. Does
+  // Resets all document-editing state for a brand-new document. Does
   // not touch identity fields (filename, draft metadata) or view state —
   // callers compose those resets alongside this one (see handleNewConfirm).
   const resetDocument = () => {
@@ -311,12 +329,20 @@ export function useYamlDocumentSync({
       serializeDebounceRef.current = null;
     }
 
-    setYamlCode('');
-    setYamlContent('');
-    setYamlTree(null);
-    syncSelectionWithTree(null);
+    const newTree = parseYAMLToTree(NEW_DOCUMENT_YAML, 'relampo-script');
+    if (!newTree) {
+      setError('Could not create the new document baseline');
+      return;
+    }
+    const newYaml = treeToYAML(newTree);
+
+    fallbackRootNameRef.current = 'relampo-script';
+    setYamlCode(newYaml);
+    setYamlContent(newYaml);
+    setYamlTree(newTree);
+    syncSelectionWithTree(newTree);
     setError(null);
-    setValidationErrors([]);
+    applySemanticValidation(newTree);
     setIsDirty(false);
     setHasDocumentActivity(false);
     setIsTreeOutdated(false);

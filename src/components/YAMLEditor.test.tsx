@@ -36,7 +36,7 @@ vi.mock('../utils/yamlDocumentLimits', () => ({
 vi.mock('../utils/yamlParser', () => ({
   parseYAMLToTree: vi.fn((yaml: string) => ({
     id: 'root',
-    name: yaml.includes('LARGE_DRAFT') ? 'Large restored plan' : 'Restored plan',
+    name: yaml.includes('LARGE_DRAFT') ? 'Large restored plan' : yaml.includes('New Test') ? 'New Test' : 'Restored plan',
     type: 'root',
     data: {},
     children: [],
@@ -269,7 +269,7 @@ describe('YAMLEditor draft restoration', () => {
       fileName: 'restored.yaml',
       updatedAt: '2026-04-23T10:00:00.000Z',
     });
-    probeStudioMock.mockResolvedValueOnce({ studio: true, capabilities: { dataSourceFiles: true } });
+    probeStudioMock.mockResolvedValueOnce({ studio: true, capabilities: { dataSourceFiles: true, debug: true } });
 
     renderEditor();
 
@@ -292,7 +292,7 @@ describe('YAMLEditor draft restoration', () => {
       fileName: 'restored.yaml',
       updatedAt: '2026-04-23T10:00:00.000Z',
     });
-    probeStudioMock.mockResolvedValueOnce({ studio: true, defaultView: 'debug' });
+    probeStudioMock.mockResolvedValueOnce({ studio: true, capabilities: { debug: true }, defaultView: 'debug' });
 
     renderEditor();
 
@@ -342,7 +342,7 @@ describe('YAMLEditor draft restoration', () => {
       fileName: 'restored.yaml',
       updatedAt: '2026-04-23T10:00:00.000Z',
     });
-    probeStudioMock.mockResolvedValueOnce({ studio: true });
+    probeStudioMock.mockResolvedValueOnce({ studio: true, capabilities: { debug: true } });
 
     renderEditor();
 
@@ -392,7 +392,7 @@ describe('YAMLEditor draft restoration', () => {
   });
 
   describe('new document dialog', () => {
-    it('clears the document and calls clearActiveDraft when New is confirmed', async () => {
+    it('creates the default baseline and calls clearActiveDraft when New is confirmed', async () => {
       getActiveDraftMock.mockResolvedValueOnce({
         yaml: 'test:\n  name: restored\n',
         fileName: 'restored.yaml',
@@ -406,7 +406,8 @@ describe('YAMLEditor draft restoration', () => {
       fireEvent.click(screen.getByRole('button', { name: 'New' }));
       fireEvent.click(await screen.findByRole('button', { name: 'Confirm' }));
 
-      expect(screen.getByTestId('tree-view')).toHaveTextContent('empty tree');
+      expect(screen.getByTestId('tree-view')).toHaveTextContent('New Test');
+      expect(parseYAMLToTreeMock).toHaveBeenCalledWith(expect.stringContaining('name: New Test'), 'relampo-script');
       expect(clearActiveDraftMock).toHaveBeenCalled();
     });
 

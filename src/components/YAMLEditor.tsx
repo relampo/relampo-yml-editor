@@ -39,6 +39,7 @@ export function YAMLEditor() {
 
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [validationNodeIds, setValidationNodeIds] = useState<string[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
   const fallbackRootNameRef = useRef<string | null>(null);
   const hasDiscoveredTreeContextMenuRef = useRef(false);
@@ -72,6 +73,7 @@ export function YAMLEditor() {
     setYamlContent,
     setError,
     setValidationErrors,
+    setValidationNodeIds,
     selectedNode,
     setSelectedNode,
     setSelectedNodeIds,
@@ -298,6 +300,7 @@ export function YAMLEditor() {
         baseUrl={httpDefaultsBaseUrl}
         hosts={scenarioHosts}
         validationErrors={validationErrors}
+        validationNodeIds={validationNodeIds}
         treeSearchQuery={treeSearchQuery}
         documentReady={documentReady}
         dataSourceFileBrowseEnabled={dataSourceFileBrowseEnabled}
