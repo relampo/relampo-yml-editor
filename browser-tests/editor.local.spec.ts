@@ -119,6 +119,11 @@ test('standalone draft save restores content and identity from IndexedDB', async
   await page.reload();
 
   await expect(page.getByText('Restored browser draft', { exact: true }).first()).toBeVisible();
+  const restoredDownloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await page.getByRole('menuitem', { name: /Save with responses/ }).click();
+  const restoredDownload = await restoredDownloadPromise;
+  expect(restoredDownload.suggestedFilename()).toBe('restored-browser.yaml');
 });
 
 test('standalone downloads include or remove recorded responses from the newest revision', async ({ page }) => {
