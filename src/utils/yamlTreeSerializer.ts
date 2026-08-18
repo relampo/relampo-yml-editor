@@ -76,6 +76,9 @@ function hasOnlyShortHttpData(node: YAMLNode): boolean {
   }
 
   const data = { ...(node.data as Record<string, any>) };
+  for (const key of Object.keys(data)) {
+    if (key.startsWith('__')) delete data[key];
+  }
   pruneDefaultRequestFields(data);
 
   if (typeof data.name === 'string') {
@@ -299,6 +302,7 @@ function stepNodeToObject(node: YAMLNode): any {
 
   if (node.type === 'balanced') {
     const balancedData = sanitizeBalancedNodeData(node.data);
+    const stepsInController = balancedData?.__stepsInController === true;
     const balancedType = normalizeBalancedDistributionType(balancedData?.type);
     validateBalancedController(balancedType, node.children || []);
     const {
@@ -306,8 +310,18 @@ function stepNodeToObject(node: YAMLNode): any {
       type: _type,
       mode: _mode,
       enabled: _enabled,
+      steps: _steps,
+      __stepsInController: _stepsInController,
       ...preservedBalancedData
     } = balancedData || {};
+    const childSteps =
+      node.children?.map(child => {
+        const step = stepNodeToObject(child);
+        const percentage = isBalancedLoadBearingChild(child)
+          ? readBalancedPercentage(child.data?.__balancedPercentage)
+          : null;
+        return percentage === null ? step : { ...step, percentage };
+      }) || [];
 
     const res: any = {
       ...(node.unknownData || {}),
@@ -317,17 +331,9 @@ function stepNodeToObject(node: YAMLNode): any {
         type: serializeBalancedDistributionType(balancedType),
         mode: serializeBalancedExecutionMode(balancedData?.mode),
       },
-      steps:
-        node.children?.map(child => {
-          const step = stepNodeToObject(child);
-          // Non-load-bearing children (think_time, request-less subtrees) never
-          // carry a balance percentage, even if one lingers in state. See RLP-475.
-          const percentage = isBalancedLoadBearingChild(child)
-            ? readBalancedPercentage(child.data?.__balancedPercentage)
-            : null;
-          return percentage === null ? step : { ...step, percentage };
-        }) || [],
     };
+    if (stepsInController) res.balanced.steps = childSteps;
+    else res.steps = childSteps;
 
     if (balancedData?.enabled === false) {
       res.enabled = false;
@@ -368,16 +374,22 @@ function stepNodeToObject(node: YAMLNode): any {
   }
 
   if (node.type === 'retry') {
-    const rawRetryData = stripControllerSerializationMetadata(sanitizeBalancedNodeData(node.data), ['__scalarRetry']);
+    const stepsInController = node.data?.__stepsInController === true;
+    const rawRetryData = stripControllerSerializationMetadata(sanitizeBalancedNodeData(node.data), [
+      '__scalarRetry',
+      '__stepsInController',
+      'steps',
+    ]);
     const shouldSerializeScalar =
       Boolean(node.data && typeof node.data === 'object' && !Array.isArray(node.data) && node.data.__scalarRetry) &&
       hasOnlyKeys(rawRetryData, RETRY_SHORTHAND_KEYS);
     const retryData = shouldSerializeScalar ? rawRetryData.attempts : rawRetryData;
-    const res: any = {
-      ...(node.unknownData || {}),
-      retry: retryData,
-      steps: node.children?.map(stepNodeToObject) || [],
-    };
+    const childSteps = node.children?.map(stepNodeToObject) || [];
+    const res: any = { ...(node.unknownData || {}), retry: retryData };
+    if (stepsInController && retryData && typeof retryData === 'object') {
+      res.retry = { ...retryData, steps: childSteps };
+    }
+    else res.steps = childSteps;
 
     if (node.data?.enabled === false) {
       res.enabled = false;
@@ -388,6 +400,9 @@ function stepNodeToObject(node: YAMLNode): any {
   if (node.type === 'one_time') {
     const oneTimeData = { ...(node.data || {}) };
     delete oneTimeData.enabled;
+    delete oneTimeData.__stepsInController;
+    delete oneTimeData.steps;
+    const stepsInController = node.data?.__stepsInController === true;
 
     if (node.name) {
       oneTimeData.name = node.name;
@@ -395,11 +410,10 @@ function stepNodeToObject(node: YAMLNode): any {
       delete oneTimeData.name;
     }
 
-    const res: any = {
-      ...(node.unknownData || {}),
-      one_time: oneTimeData,
-      steps: node.children?.map(stepNodeToObject) || [],
-    };
+    const childSteps = node.children?.map(stepNodeToObject) || [];
+    const res: any = { ...(node.unknownData || {}), one_time: oneTimeData };
+    if (stepsInController) oneTimeData.steps = childSteps;
+    else res.steps = childSteps;
 
     if (node.data?.enabled === false) {
       res.enabled = false;

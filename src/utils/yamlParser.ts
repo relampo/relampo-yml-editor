@@ -17,8 +17,21 @@ function asYAMLNodeData(value: unknown): YAMLNodeData {
   return value && typeof value === 'object' && !Array.isArray(value) ? (value as YAMLNodeData) : {};
 }
 
-function isPlainRecord(value: unknown): value is Record<string, any> {
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isYAMLValue(value: unknown, ancestors = new WeakSet<object>()): value is YAMLValue {
+  if (value === null || value === undefined || ['string', 'number', 'boolean'].includes(typeof value)) return true;
+  if (typeof value !== 'object' || ancestors.has(value)) return false;
+
+  ancestors.add(value);
+  const valid = Array.isArray(value)
+    ? value.every(item => isYAMLValue(item, ancestors))
+    : (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null) &&
+      Object.values(value).every(item => isYAMLValue(item, ancestors));
+  ancestors.delete(value);
+  return valid;
 }
 
 const ROOT_FIELDS = new Set([
@@ -31,9 +44,14 @@ const ROOT_FIELDS = new Set([
   'metrics',
 ]);
 
-function unknownFields(value: Record<string, any>, knownFields: ReadonlySet<string>): Record<string, YAMLValue> | undefined {
-  const unknown = Object.fromEntries(Object.entries(value).filter(([key]) => !knownFields.has(key)));
-  return Object.keys(unknown).length > 0 ? (unknown as Record<string, YAMLValue>) : undefined;
+function unknownFields(value: Record<string, unknown>, knownFields: ReadonlySet<string>): Record<string, YAMLValue> | undefined {
+  const unknown: Record<string, YAMLValue> = {};
+  for (const [key, fieldValue] of Object.entries(value)) {
+    if (knownFields.has(key)) continue;
+    if (!isYAMLValue(fieldValue)) throw new Error(`Unsupported YAML value at ${key}`);
+    unknown[key] = fieldValue;
+  }
+  return Object.keys(unknown).length > 0 ? unknown : undefined;
 }
 
 // Parser: YAML string → Tree
@@ -42,8 +60,9 @@ export function parseYAMLToTree(yamlString: string, defaultRootName?: string): Y
     return null;
   }
   try {
-    const parsed = jsyaml.load(yamlString);
+    const parsed = jsyaml.load(yamlString, { schema: jsyaml.JSON_SCHEMA });
     if (!parsed) return null;
+    if (!isPlainRecord(parsed) || !isYAMLValue(parsed)) throw new Error('YAML document root must be a safe mapping');
     return convertToTree(parsed, undefined, defaultRootName);
   } catch (error) {
     throw new Error(`Error parsing YAML: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -469,6 +488,9 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
 
   if (step.balanced) {
     const balancedData = typeof step.balanced === 'object' && step.balanced !== null ? step.balanced : {};
+    const stepsInController = Array.isArray(balancedData.steps);
+    const balancedSteps = stepsInController ? balancedData.steps : Array.isArray(step.steps) ? step.steps : [];
+    const { steps: _steps, ...balancedFields } = balancedData;
     const enabled = resolveEnabled(balancedData);
     const balancedNode: YAMLNode = {
       id: stepId,
@@ -477,7 +499,8 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       children: [],
       expanded: true,
       data: {
-        ...balancedData,
+        ...balancedFields,
+        __stepsInController: stepsInController,
         enabled,
         type: normalizeBalancedDistributionType(balancedData.type),
         mode: normalizeBalancedExecutionMode(balancedData.mode),
@@ -486,20 +509,21 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       unknownData: unknownFields(step, new Set(['balanced', 'steps', 'enabled'])),
     };
 
-    if (step.steps && Array.isArray(step.steps)) {
-      step.steps.forEach((childStep: any, childIndex: number) => {
+    balancedSteps.forEach((childStep: any, childIndex: number) => {
         const balancedPercentage = childStep?.percentage;
         const normalizedChildStep = { ...childStep };
         delete normalizedChildStep.percentage;
 
-        const childNode = convertStepToNode(normalizedChildStep, stepId, childIndex, [...path, 'steps', childIndex]);
+        const childPath = stepsInController
+          ? [...path, 'balanced', 'steps', childIndex]
+          : [...path, 'steps', childIndex];
+        const childNode = convertStepToNode(normalizedChildStep, stepId, childIndex, childPath);
         childNode.data = {
           ...(childNode.data || {}),
           __balancedPercentage: balancedPercentage ?? '',
         };
         balancedNode.children!.push(childNode);
       });
-    }
 
     return balancedNode;
   }
@@ -562,10 +586,13 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
   // Retry
   if (step.retry !== undefined) {
     const rawRetry = step.retry;
-    const retryData =
+    const rawRetryData =
       rawRetry && typeof rawRetry === 'object' && !Array.isArray(rawRetry)
         ? rawRetry
         : { attempts: rawRetry, __scalarRetry: true };
+    const stepsInController = Array.isArray(rawRetryData.steps);
+    const retrySteps = stepsInController ? rawRetryData.steps : Array.isArray(step.steps) ? step.steps : [];
+    const { steps: _steps, ...retryData } = rawRetryData;
 
     const retryNode: YAMLNode = {
       id: stepId,
@@ -573,17 +600,16 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       name: 'Retry',
       children: [],
       expanded: true,
-      data: { ...retryData, enabled: resolveEnabled(retryData) },
+      data: { ...retryData, __stepsInController: stepsInController, enabled: resolveEnabled(retryData) },
       path,
       unknownData: unknownFields(step, new Set(['retry', 'steps', 'enabled'])),
     };
 
-    if (step.steps && Array.isArray(step.steps)) {
-      step.steps.forEach((childStep: any, childIndex: number) => {
-        const childNode = convertStepToNode(childStep, stepId, childIndex, [...path, 'steps', childIndex]);
+    retrySteps.forEach((childStep: any, childIndex: number) => {
+        const childPath = stepsInController ? [...path, 'retry', 'steps', childIndex] : [...path, 'steps', childIndex];
+        const childNode = convertStepToNode(childStep, stepId, childIndex, childPath);
         retryNode.children!.push(childNode);
       });
-    }
 
     return retryNode;
   }
@@ -591,25 +617,29 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
   // One Time
   if (step.one_time !== undefined) {
     const rawOneTime = step.one_time;
-    const oneTimeData =
+    const rawOneTimeData =
       rawOneTime && typeof rawOneTime === 'object' && !Array.isArray(rawOneTime) ? rawOneTime : {};
+    const stepsInController = Array.isArray(rawOneTimeData.steps);
+    const oneTimeSteps = stepsInController ? rawOneTimeData.steps : Array.isArray(step.steps) ? step.steps : [];
+    const { steps: _steps, ...oneTimeData } = rawOneTimeData;
     const oneTimeNode: YAMLNode = {
       id: stepId,
       type: 'one_time',
       name: oneTimeData.name || 'One Time Controller',
       children: [],
       expanded: true,
-      data: { ...oneTimeData, enabled: resolveEnabled(oneTimeData) },
+      data: { ...oneTimeData, __stepsInController: stepsInController, enabled: resolveEnabled(oneTimeData) },
       path,
       unknownData: unknownFields(step, new Set(['one_time', 'steps', 'enabled'])),
     };
 
-    if (step.steps && Array.isArray(step.steps)) {
-      step.steps.forEach((childStep: any, childIndex: number) => {
-        const childNode = convertStepToNode(childStep, stepId, childIndex, [...path, 'steps', childIndex]);
+    oneTimeSteps.forEach((childStep: any, childIndex: number) => {
+        const childPath = stepsInController
+          ? [...path, 'one_time', 'steps', childIndex]
+          : [...path, 'steps', childIndex];
+        const childNode = convertStepToNode(childStep, stepId, childIndex, childPath);
         oneTimeNode.children!.push(childNode);
       });
-    }
 
     return oneTimeNode;
   }

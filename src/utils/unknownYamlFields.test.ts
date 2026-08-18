@@ -62,4 +62,34 @@ scenarios:
       'test.future_test',
     ]);
   });
+
+  it('reports unknown fields inside every supported controller payload', () => {
+    const tree = parseYAMLToTree(`
+test:
+  name: controller warnings
+scenarios:
+  - name: smoke
+    steps:
+      - parallel:
+          name: parallel
+          future_parallel: true
+          steps: []
+      - balanced:
+          name: balanced
+          type: total
+          mode: virtual_users
+          future_balanced: true
+          steps: []
+      - retry:
+          attempts: 2
+          future_retry: true
+          steps: []
+`)!;
+
+    expect(collectUnknownFieldPaths(tree)).toEqual([
+      'scenarios[0].steps[0].parallel.future_parallel',
+      'scenarios[0].steps[1].balanced.future_balanced',
+      'scenarios[0].steps[2].retry.future_retry',
+    ]);
+  });
 });

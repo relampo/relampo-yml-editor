@@ -72,7 +72,8 @@ describe('YAMLTreeNode redirected request presentation', () => {
     expect(onNodeToggle).toHaveBeenCalledWith('steps');
   });
 
-  it('exposes disabled and semantic-error state to assistive technology', () => {
+  it('keeps a disabled YAML node selectable while exposing semantic errors', () => {
+    const onNodeSelect = vi.fn();
     const node: YAMLNode = {
       id: 'disabled-load',
       type: 'load',
@@ -88,7 +89,7 @@ describe('YAMLTreeNode redirected request presentation', () => {
         selectedNodeIds={[]}
         validationNodeIds={['disabled-load']}
         redirectedRequestMap={{}}
-        onNodeSelect={vi.fn()}
+        onNodeSelect={onNodeSelect}
         onNodeToggle={vi.fn()}
         onContextMenu={vi.fn()}
         onNodeMove={vi.fn()}
@@ -96,8 +97,11 @@ describe('YAMLTreeNode redirected request presentation', () => {
     );
 
     const treeItem = screen.getByRole('treeitem', { name: /Load Config/ });
-    expect(treeItem).toHaveAttribute('aria-disabled', 'true');
+    expect(treeItem).not.toHaveAttribute('aria-disabled');
     expect(treeItem).toHaveAttribute('aria-invalid', 'true');
     expect(treeItem).toHaveClass('focus-visible:ring-2');
+
+    fireEvent.click(treeItem);
+    expect(onNodeSelect).toHaveBeenCalledWith(node, expect.anything());
   });
 });

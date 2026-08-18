@@ -961,6 +961,17 @@ scenarios:
     expect(load?.data?.stages).toEqual([{ duration: '30s', target: 10 }]);
   });
 
+  it('keeps timestamp-like unknown fields inside the YAMLValue boundary', () => {
+    const tree = parseYAMLToTree(`
+test:
+  name: Future scalar
+future_timestamp: 2026-08-18T00:00:00Z
+scenarios: []
+`)!;
+
+    expect(tree.unknownData?.future_timestamp).toBe('2026-08-18T00:00:00Z');
+  });
+
   it('does not restore cleared optional intent bounds on save', () => {
     const input = `
 test:
