@@ -58,6 +58,26 @@ function expectPassedStatusPill() {
 }
 
 describe('YAMLDebugSession RLP debug fixes', () => {
+  it('starts with the newest flushed tree revision instead of stale code', async () => {
+    const flushPendingEdits = vi.fn(() => 'test:\n  name: newest-debug\n');
+    render(
+      <YAMLDebugSession
+        tree={null}
+        yamlCode={'test:\n  name: stale-debug\n'}
+        documentReady
+        validationErrors={[]}
+        flushPendingEdits={flushPendingEdits}
+        onSelectNode={vi.fn()}
+        onEditNode={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+
+    await waitFor(() => expect(debugApiMock.startDebugRun).toHaveBeenCalledWith('test:\n  name: newest-debug\n', { vus: 1 }));
+    expect(flushPendingEdits).toHaveBeenCalledTimes(1);
+  });
+
   it('does not render explanatory text under the selected debug request title', async () => {
     const { container } = render(
       <YAMLDebugSession

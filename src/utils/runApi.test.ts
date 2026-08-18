@@ -64,6 +64,40 @@ describe('stopLoadRun', () => {
 });
 
 describe('streamLoadRun', () => {
+  it('delivers reconnect duplicates once and ignores events after terminal completion', () => {
+    class FakeEventSource {
+      static instances: FakeEventSource[] = [];
+      static CLOSED = 2;
+      close = vi.fn();
+      readyState = 1;
+      onerror: (() => void) | null = null;
+      private listeners = new Map<string, (event: Event) => void>();
+      constructor() { FakeEventSource.instances.push(this); }
+      addEventListener(type: string, listener: (event: Event) => void) { this.listeners.set(type, listener); }
+      emit(type: string, data: string) { this.listeners.get(type)?.({ data } as unknown as MessageEvent); }
+    }
+    vi.stubGlobal('EventSource', FakeEventSource);
+    const handlers = {
+      onState: vi.fn(),
+      onMetrics: vi.fn(),
+      onLog: vi.fn(),
+      onDone: vi.fn(),
+      onConnectionError: vi.fn(),
+    };
+    streamLoadRun('run-1', handlers);
+    const source = FakeEventSource.instances[0];
+    const log = JSON.stringify([{ seq: 7, ts: 1, level: 'info', message: 'once' }]);
+    source.emit('log', log);
+    source.emit('log', log);
+    source.emit('done', JSON.stringify({ status: 'completed', summary: null }));
+    source.emit('metrics', JSON.stringify({ ts: 2, total_requests: 99 }));
+    source.emit('log', JSON.stringify([{ seq: 8, ts: 2, level: 'info', message: 'late' }]));
+
+    expect(handlers.onLog).toHaveBeenCalledTimes(1);
+    expect(handlers.onDone).toHaveBeenCalledTimes(1);
+    expect(handlers.onMetrics).not.toHaveBeenCalled();
+  });
+
   it('closes and reports a connection error for malformed SSE data', () => {
     class FakeEventSource {
       static instances: FakeEventSource[] = [];

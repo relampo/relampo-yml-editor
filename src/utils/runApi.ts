@@ -160,6 +160,8 @@ export function streamLoadRun(runId: string, handlers: RunStreamHandlers): () =>
   const source = new EventSource(withStudioToken(`${apiBase()}/api/run/${runId}/events`));
   let finished = false;
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  const seenLogSequences = new Set<number>();
+  const seenMetricTimestamps = new Set<number>();
 
   const clearReconnectTimer = () => {
     if (reconnectTimer !== null) {
@@ -178,6 +180,7 @@ export function streamLoadRun(runId: string, handlers: RunStreamHandlers): () =>
     handlers.onConnectionError();
   };
   const parseMessage = <T>(message: Event): T | null => {
+    if (finished) return null;
     try {
       return JSON.parse((message as MessageEvent).data) as T;
     } catch {
@@ -194,11 +197,20 @@ export function streamLoadRun(runId: string, handlers: RunStreamHandlers): () =>
   });
   source.addEventListener('metrics', message => {
     const metrics = parseMessage<RunMetricsSnapshot>(message);
-    if (metrics) handlers.onMetrics(metrics);
+    if (metrics && !seenMetricTimestamps.has(metrics.ts)) {
+      seenMetricTimestamps.add(metrics.ts);
+      handlers.onMetrics(metrics);
+    }
   });
   source.addEventListener('log', message => {
     const log = parseMessage<RunLogLine[]>(message);
-    if (log) handlers.onLog(log);
+    if (!log) return;
+    const unseen = log.filter(line => {
+      if (seenLogSequences.has(line.seq)) return false;
+      seenLogSequences.add(line.seq);
+      return true;
+    });
+    if (unseen.length > 0) handlers.onLog(unseen);
   });
   source.addEventListener('done', message => {
     const payload = parseMessage<Partial<RunDone>>(message);

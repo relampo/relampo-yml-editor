@@ -159,8 +159,6 @@ export function useYamlDocumentSync({
     } catch (err) {
       if (activeParseRequestIdRef.current !== requestId) return;
       setError(err instanceof Error ? err.message : 'Error parsing YAML');
-      setYamlTree(null);
-      syncSelectionWithTree(null);
       setValidationErrors([]);
       setIsTreeOutdated(true);
     } finally {

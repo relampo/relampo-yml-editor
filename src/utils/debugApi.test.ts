@@ -124,6 +124,32 @@ describe('startDebugRun', () => {
 });
 
 describe('streamDebugRun', () => {
+  it('delivers reconnect duplicates once and ignores events after manual stop', () => {
+    class FakeEventSource {
+      static instances: FakeEventSource[] = [];
+      close = vi.fn();
+      onerror: (() => void) | null = null;
+      private listeners = new Map<string, (event: Event) => void>();
+      constructor() { FakeEventSource.instances.push(this); }
+      addEventListener(type: string, listener: (event: Event) => void) { this.listeners.set(type, listener); }
+      emit(type: string, data: string) { this.listeners.get(type)?.({ data } as unknown as MessageEvent); }
+    }
+    vi.stubGlobal('EventSource', FakeEventSource);
+    const handlers = { onEvent: vi.fn(), onDone: vi.fn(), onConnectionError: vi.fn() };
+    const stop = streamDebugRun('debug-1', handlers);
+    const source = FakeEventSource.instances[0];
+    const event = JSON.stringify({ ts: 'now', name: 'request', method: 'GET', path: '/', status: 200, latency_ms: 1, concurrency: 1 });
+    source.emit('engine', event);
+    source.emit('engine', event);
+    stop();
+    source.emit('engine', JSON.stringify({ ...JSON.parse(event), request_id: 2 }));
+    source.emit('done', '{}');
+
+    expect(handlers.onEvent).toHaveBeenCalledTimes(1);
+    expect(handlers.onDone).not.toHaveBeenCalled();
+    expect(handlers.onConnectionError).not.toHaveBeenCalled();
+  });
+
   it('closes and reports a connection error for malformed SSE data', () => {
     class FakeEventSource {
       static instances: FakeEventSource[] = [];
