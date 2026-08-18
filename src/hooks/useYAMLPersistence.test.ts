@@ -153,6 +153,28 @@ describe('handleSave', () => {
     expect(setIsDirty).toHaveBeenCalledWith(false);
   });
 
+  it('coalesces concurrent save requests into one in-flight write', async () => {
+    let resolveSave: (() => void) | undefined;
+    saveActiveDraftMock.mockImplementationOnce(
+      () => new Promise(resolve => { resolveSave = () => resolve(undefined as never); }),
+    );
+    const { result } = renderHook(() => useYAMLPersistence(makeParams()));
+
+    let first!: Promise<void>;
+    let second!: Promise<void>;
+    act(() => {
+      first = result.current.handleSave();
+      second = result.current.handleSave();
+    });
+    expect(second).toBe(first);
+    expect(saveActiveDraftMock).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveSave?.();
+      await first;
+    });
+  });
+
   it('calls setIsDirty(false) after save', async () => {
     const setIsDirty = vi.fn();
     const params = makeParams({ setIsDirty });

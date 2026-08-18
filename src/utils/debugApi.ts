@@ -246,6 +246,7 @@ export async function previewStudioDataSourceFile(path: string, signal?: AbortSi
 export function streamDebugRun(runId: string, handlers: DebugStreamHandlers): () => void {
   const source = new EventSource(withStudioToken(`${apiBase()}/api/debug/runs/${runId}/events`));
   let finished = false;
+  const seenEvents = new Set<string>();
 
   const failStream = () => {
     if (finished) return;
@@ -255,6 +256,7 @@ export function streamDebugRun(runId: string, handlers: DebugStreamHandlers): ()
   };
 
   const parseMessage = <T>(message: Event): T | null => {
+    if (finished) return null;
     try {
       return JSON.parse((message as MessageEvent).data) as T;
     } catch {
@@ -264,8 +266,13 @@ export function streamDebugRun(runId: string, handlers: DebugStreamHandlers): ()
   };
 
   source.addEventListener('engine', message => {
+    const raw = (message as MessageEvent).data;
+    if (finished || seenEvents.has(raw)) return;
     const event = parseMessage<EngineEvent>(message);
-    if (event) handlers.onEvent(event);
+    if (event) {
+      seenEvents.add(raw);
+      handlers.onEvent(event);
+    }
   });
   source.addEventListener('done', message => {
     const payload = parseMessage<{ error?: string }>(message);

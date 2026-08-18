@@ -89,6 +89,16 @@ const baseProps = {
 };
 
 describe('YAMLLoadRunSession', () => {
+  it('starts with the newest flushed tree revision instead of stale code', async () => {
+    const flushPendingEdits = vi.fn(() => 'test:\n  name: newest-run\n');
+    render(<YAMLLoadRunSession {...baseProps} yamlCode={'test:\n  name: stale-run\n'} flushPendingEdits={flushPendingEdits} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run load test' }));
+
+    await waitFor(() => expect(runApiMock.startLoadRun).toHaveBeenCalledWith('test:\n  name: newest-run\n'));
+    expect(flushPendingEdits).toHaveBeenCalledTimes(1);
+  });
+
   it('starts a load run with the current YAML and renders streamed metrics then the summary', async () => {
     render(<YAMLLoadRunSession {...baseProps} />);
 
