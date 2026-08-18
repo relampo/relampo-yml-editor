@@ -310,6 +310,7 @@ describe('YAMLEditor draft restoration', () => {
     renderEditor();
 
     await screen.findByText('Restored plan');
+    expect(screen.queryByRole('button', { name: 'Debug' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'select tree root' }));
 
     expect(screen.getByTestId('node-details')).toHaveAttribute('data-source-file-browse-enabled', 'false');
