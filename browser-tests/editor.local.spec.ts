@@ -47,7 +47,7 @@ async function mockStudioInfo(page: Page, yaml = baseYaml, studio = true) {
       body: JSON.stringify({
         studio,
         initialScript: studio ? { name: 'browser-smoke.yaml', yaml } : null,
-        capabilities: { loadRun: studio, dataSourceFiles: studio },
+        capabilities: { loadRun: studio, dataSourceFiles: studio, debug: studio },
       }),
     }),
   );
