@@ -23,6 +23,7 @@
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
+    "@playwright/test": "1.55.0",
     "@tailwindcss/vite": "4.2.2",
     "@testing-library/jest-dom": "6.9.1",
     "@testing-library/react": "16.3.2",
@@ -54,6 +55,9 @@
     "validate": "bun run typecheck && bun run lint && bun run test && bun run build",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
+    "test:browser": "playwright test",
+    "test:browser:headed": "playwright test --headed",
+    "release:verify:local": "bun scripts/verify-local-release.ts",
     "doctor": "npx react-doctor@latest"
   },
   "overrides": {
