@@ -1,7 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useYAML } from '../contexts/YAMLContext';
-import type { YAMLNode } from '../types/yaml';
 import { useResizePanel } from '../hooks/useResizePanel';
 import { useYAMLPersistence } from '../hooks/useYAMLPersistence';
 import { logStatsigEvent } from '../utils/analytics';
@@ -63,6 +62,7 @@ export function YAMLEditor() {
     handleCodeChange,
     commitTreeChange,
     handleTreeChange,
+    handleTreeViewChange,
     flushPendingTreeSerialization,
     retrieveYamlForSaving,
     resetDocument,
@@ -226,10 +226,6 @@ export function YAMLEditor() {
       selection_count: selectionCount,
       has_multi_selection: hasMultiSelection,
     });
-  };
-
-  const handleTreeViewChange = (newTree: YAMLNode) => {
-    setYamlTree(newTree);
   };
 
   const handleNewConfirm = () => {
