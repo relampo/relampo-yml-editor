@@ -1,6 +1,23 @@
 import { describe, expect, it } from 'vitest';
 import type { YAMLNode } from '../types/yaml';
-import { validateYAMLSemantics } from './yamlSemanticValidation';
+import { localizeYAMLSemanticError, validateYAMLSemantics } from './yamlSemanticValidation';
+
+describe('localizeYAMLSemanticError', () => {
+  it('translates unsupported load stages for Spanish users', () => {
+    const message = 'Load stages are documented but unsupported by the editor and Pulse runtime. Remove stages before running.';
+
+    expect(localizeYAMLSemanticError(message, 'es')).toBe(
+      'Las etapas de carga están documentadas, pero el editor y el runtime de Pulse no las admiten. Elimina stages antes de ejecutar.',
+    );
+    expect(localizeYAMLSemanticError(message, 'en')).toBe(message);
+    expect(
+      localizeYAMLSemanticError(
+        'Las etapas de carga están documentadas, pero el editor y el runtime de Pulse no las admiten. Elimina stages antes de ejecutar.',
+        'en',
+      ),
+    ).toBe(message);
+  });
+});
 
 describe('validateYAMLSemantics', () => {
   it('flags transactions with no steps', () => {

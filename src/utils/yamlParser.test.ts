@@ -1105,6 +1105,38 @@ scenarios:
     });
   });
 
+  it('preserves unknown request authentication fields during a canonical round trip', () => {
+    const input = `
+test:
+  name: t
+scenarios:
+  - name: s
+    steps:
+      - request:
+          method: GET
+          url: /private
+          auth:
+            type: bearer
+            token: "{{token}}"
+            audience: service-a
+            provider_options:
+              scope: read
+`;
+    const tree = parseYAMLToTree(input)!;
+    const output = treeToYAML(tree);
+    const reparsed = parseYAMLToTree(output)!;
+    const request = reparsed
+      .children!.find(c => c.type === 'scenarios')!
+      .children![0].children!.find(c => c.type === 'steps')!.children![0];
+
+    expect(request.data!.auth).toMatchObject({
+      type: 'bearer',
+      token: '{{token}}',
+      audience: 'service-a',
+      provider_options: { scope: 'read' },
+    });
+  });
+
   it('serializes draft total balanced controllers without throwing while percentages are incomplete', () => {
     const input = `
 test:
