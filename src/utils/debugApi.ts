@@ -4,7 +4,7 @@
 
 import { studioAuthHeaders, withStudioToken } from './studioAuth';
 import { getRuntimeConfig } from './runtimeConfig';
-import { isRecord, parseSSEMessage } from './sseMessage';
+import { createValidatedEventStream, isRecord } from './sseMessage';
 
 interface EngineAssertionResult {
   Name: string;
@@ -253,68 +253,31 @@ export async function previewStudioDataSourceFile(path: string, signal?: AbortSi
 
 // Streams a run's events over SSE. Returns a function that closes the stream.
 export function streamDebugRun(runId: string, handlers: DebugStreamHandlers): () => void {
-  const source = new EventSource(withStudioToken(`${apiBase()}/api/debug/runs/${runId}/events`));
-  let finished = false;
-  let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  const stream = createValidatedEventStream(
+    withStudioToken(`${apiBase()}/api/debug/runs/${runId}/events`),
+    RECONNECT_GRACE_MS,
+    handlers.onConnectionError,
+  );
+  const { source } = stream;
   const seenEvents = new Set<string>();
 
-  const clearReconnectTimer = () => {
-    if (reconnectTimer !== null) {
-      clearTimeout(reconnectTimer);
-      reconnectTimer = null;
-    }
-  };
-  const close = () => {
-    finished = true;
-    clearReconnectTimer();
-    source.close();
-  };
-  const failStream = () => {
-    if (finished) return;
-    close();
-    handlers.onConnectionError();
-  };
-
-  const parseMessage = <T>(message: Event, isValid: (value: unknown) => value is T): T | null => {
-    if (finished) return null;
-    const parsed = parseSSEMessage(message, isValid);
-    if (!parsed) {
-      failStream();
-      return null;
-    }
-    return parsed;
-  };
-
-  source.addEventListener('open', clearReconnectTimer);
   source.addEventListener('engine', message => {
-    const raw = (message as MessageEvent).data;
-    if (finished || seenEvents.has(raw)) return;
-    const event = parseMessage<EngineEvent>(message, isEngineEvent);
+    const raw: unknown = (message as MessageEvent).data;
+    if (stream.isFinished() || (typeof raw === 'string' && seenEvents.has(raw))) return;
+    const event = stream.parse<EngineEvent>(message, isEngineEvent);
     if (event) {
-      seenEvents.add(raw);
+      if (typeof raw === 'string') seenEvents.add(raw);
       handlers.onEvent(event);
     }
   });
   source.addEventListener('done', message => {
-    const payload = parseMessage<DebugDonePayload>(message, isDebugDonePayload);
-    if (!payload || finished) return;
-    close();
+    const payload = stream.parse<DebugDonePayload>(message, isDebugDonePayload);
+    if (!payload || stream.isFinished()) return;
+    stream.close();
     handlers.onDone(payload.error ?? null);
   });
-  source.onerror = () => {
-    if (finished) return;
-    if (source.readyState === EventSource.CLOSED) {
-      failStream();
-      return;
-    }
-    if (reconnectTimer === null) {
-      reconnectTimer = setTimeout(() => {
-        if (!finished) failStream();
-      }, RECONNECT_GRACE_MS);
-    }
-  };
 
-  return close;
+  return stream.close;
 }
 
 interface DebugDonePayload {

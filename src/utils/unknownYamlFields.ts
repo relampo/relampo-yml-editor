@@ -33,8 +33,20 @@ function childIndex(parent: YAMLNode, node: YAMLNode, types: ReadonlySet<string>
 const ASSERTION_TYPES = new Set(['assertion', 'assert']);
 const EXTRACTOR_TYPES = new Set(['extractor', 'extract']);
 const REQUEST_TYPES = new Set(['request', 'get', 'post', 'put', 'delete', 'patch', 'head', 'options']);
+const CONTROLLER_KNOWN_FIELDS: Record<string, ReadonlySet<string>> = {
+  parallel: new Set(['name', 'enabled', 'steps']),
+  balanced: new Set(['name', 'type', 'mode', 'enabled', 'steps']),
+  if: new Set(['condition', 'enabled', 'steps']),
+  loop: new Set(['count', 'enabled', 'steps']),
+  retry: new Set(['attempts', 'backoff', 'enabled', 'steps']),
+  one_time: new Set(['name', 'enabled', 'steps']),
+  on_error: new Set(['action', 'enabled', 'steps']),
+};
 
-function dataScope(node: YAMLNode, parent?: YAMLNode): { scope: string; prefix: Array<string | number> } | null {
+function dataScope(
+  node: YAMLNode,
+  parent?: YAMLNode,
+): { scope?: string; supported?: ReadonlySet<string>; prefix: Array<string | number> } | null {
   const path = node.path || [];
   switch (node.type) {
     case 'test':
@@ -42,8 +54,17 @@ function dataScope(node: YAMLNode, parent?: YAMLNode): { scope: string; prefix: 
     case 'scenario':
       return { scope: 'scenario', prefix: path };
     case 'group':
+    case 'simple':
     case 'transaction':
-      return { scope: 'group', prefix: [...path, node.type] };
+      return { scope: 'group', prefix: [...path, node.type === 'simple' ? 'group' : node.type] };
+    case 'parallel':
+    case 'balanced':
+    case 'if':
+    case 'loop':
+    case 'retry':
+    case 'one_time':
+    case 'on_error':
+      return { supported: knownFields[node.type] || CONTROLLER_KNOWN_FIELDS[node.type], prefix: [...path, node.type] };
     case 'request':
     case 'get':
     case 'post':
@@ -82,7 +103,7 @@ export function collectUnknownFieldPaths(tree: YAMLNode | null): string[] {
     for (const key of Object.keys(node.unknownData || {})) paths.add(formatPath([...(node.path || []), key]));
 
     const scope = dataScope(node, parent);
-    const supported = scope ? knownFields[scope.scope] : undefined;
+    const supported = scope ? scope.supported || (scope.scope ? knownFields[scope.scope] : undefined) : undefined;
     if (scope && supported) {
       for (const key of Object.keys(node.data || {})) {
         if (!key.startsWith('__') && !supported.has(key)) paths.add(formatPath([...scope.prefix, key]));

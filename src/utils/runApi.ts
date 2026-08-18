@@ -7,7 +7,7 @@
 
 import { studioAuthHeaders, withStudioToken } from './studioAuth';
 import { getRuntimeConfig } from './runtimeConfig';
-import { isRecord, parseSSEMessage } from './sseMessage';
+import { createValidatedEventStream, isRecord } from './sseMessage';
 
 function apiBase(): string {
   return getRuntimeConfig().apiBaseUrl;
@@ -161,53 +161,28 @@ export async function stopLoadRun(runId: string): Promise<void> {
 // Streams a run's state, metric snapshots, and terminal summary over SSE.
 // Returns a function that closes the stream.
 export function streamLoadRun(runId: string, handlers: RunStreamHandlers): () => void {
-  const source = new EventSource(withStudioToken(`${apiBase()}/api/run/${runId}/events`));
-  let finished = false;
-  let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  const stream = createValidatedEventStream(
+    withStudioToken(`${apiBase()}/api/run/${runId}/events`),
+    RECONNECT_GRACE_MS,
+    handlers.onConnectionError,
+  );
+  const { source } = stream;
   const seenLogSequences = new Set<number>();
   const seenMetricTimestamps = new Set<number>();
 
-  const clearReconnectTimer = () => {
-    if (reconnectTimer !== null) {
-      clearTimeout(reconnectTimer);
-      reconnectTimer = null;
-    }
-  };
-  const close = () => {
-    finished = true;
-    clearReconnectTimer();
-    source.close();
-  };
-  const failStream = () => {
-    if (finished) return;
-    close();
-    handlers.onConnectionError();
-  };
-  const parseMessage = <T>(message: Event, isValid: (value: unknown) => value is T): T | null => {
-    if (finished) return null;
-    const parsed = parseSSEMessage(message, isValid);
-    if (!parsed) {
-      failStream();
-      return null;
-    }
-    return parsed;
-  };
-
-  // A successful (re)connection clears any pending grace timer.
-  source.addEventListener('open', () => clearReconnectTimer());
   source.addEventListener('state', message => {
-    const state = parseMessage<RunState>(message, isRunState);
+    const state = stream.parse<RunState>(message, isRunState);
     if (state) handlers.onState(state);
   });
   source.addEventListener('metrics', message => {
-    const metrics = parseMessage<RunMetricsSnapshot>(message, isRunMetricsSnapshot);
+    const metrics = stream.parse<RunMetricsSnapshot>(message, isRunMetricsSnapshot);
     if (metrics && !seenMetricTimestamps.has(metrics.ts)) {
       seenMetricTimestamps.add(metrics.ts);
       handlers.onMetrics(metrics);
     }
   });
   source.addEventListener('log', message => {
-    const log = parseMessage<RunLogLine[]>(message, isRunLog);
+    const log = stream.parse<RunLogLine[]>(message, isRunLog);
     if (!log) return;
     const unseen = log.filter(line => {
       if (seenLogSequences.has(line.seq)) return false;
@@ -217,36 +192,17 @@ export function streamLoadRun(runId: string, handlers: RunStreamHandlers): () =>
     if (unseen.length > 0) handlers.onLog(unseen);
   });
   source.addEventListener('done', message => {
-    const payload = parseMessage<RunDonePayload>(message, isRunDonePayload);
-    if (!payload || finished) return;
-    close();
+    const payload = stream.parse<RunDonePayload>(message, isRunDonePayload);
+    if (!payload || stream.isFinished()) return;
+    stream.close();
     handlers.onDone({
-      status: (payload.status as RunStatus) ?? 'completed',
+      status: payload.status,
       error: payload.error ?? null,
       summary: payload.summary ?? null,
     });
   });
-  source.onerror = () => {
-    if (finished) return;
-    // Permanently closed: report immediately. Otherwise the browser is
-    // reconnecting — only report if it fails to recover within the grace window.
-    if (source.readyState === EventSource.CLOSED) {
-      close();
-      handlers.onConnectionError();
-      return;
-    }
-    if (reconnectTimer === null) {
-      reconnectTimer = setTimeout(() => {
-        if (finished) return;
-        close();
-        handlers.onConnectionError();
-      }, RECONNECT_GRACE_MS);
-    }
-  };
 
-  return () => {
-    close();
-  };
+  return stream.close;
 }
 
 interface RunDonePayload {
@@ -285,7 +241,7 @@ function isRunRequestStat(value: unknown): value is RunRequestStat {
     isFiniteNumber(value.max_ms) &&
     isFiniteNumber(value.p90_ms) &&
     isFiniteNumber(value.p95_ms) &&
-    isFiniteNumber(value.p99_ms)
+    (value.p99_ms === undefined || isFiniteNumber(value.p99_ms))
   );
 }
 

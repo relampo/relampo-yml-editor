@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { access, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { syncCompatibilityContract } from './sync-compatibility-contract';
 
@@ -11,13 +11,29 @@ async function createBundle(version = '1.0.0') {
   const root = await mkdtemp(join(tmpdir(), 'relampo-contract-source-'));
   temporaryRoots.push(root);
   const fixture = 'test:\n  name: valid\nscenarios:\n  - name: smoke\n    steps:\n      - get: /\n';
-  await writeFile(join(root, 'valid.yaml'), fixture);
   const fixtureChecksum = createHash('sha256').update(fixture).digest('hex');
+  const fixtures = [
+    { kind: 'valid', path: 'fixtures/valid/basic.yaml', sha256: fixtureChecksum },
+    {
+      kind: 'invalid',
+      path: 'fixtures/invalid/missing-scenarios.yaml',
+      sha256: fixtureChecksum,
+      expected_errors: [{ code: 'required_field', field: 'scenarios' }],
+    },
+    { kind: 'forward', path: 'fixtures/forward/unknown-fields.yaml', sha256: fixtureChecksum },
+    { kind: 'roundtrip', path: 'fixtures/roundtrip/semantic-fields.yaml', sha256: fixtureChecksum },
+  ];
+  await Promise.all(
+    fixtures.map(async ({ path }) => {
+      await mkdir(dirname(join(root, path)), { recursive: true });
+      await writeFile(join(root, path), fixture);
+    }),
+  );
   const manifest = JSON.stringify({
     schema_version: 1,
     contract_version: version,
     backend_sha: 'a'.repeat(40),
-    fixtures: [{ path: 'valid.yaml', sha256: fixtureChecksum }],
+    fixtures,
   });
   await writeFile(join(root, 'contract.json'), manifest);
   return {
@@ -45,7 +61,47 @@ describe('compatibility contract sync', () => {
     });
 
     expect(JSON.parse(await readFile(join(snapshotsRoot, 'slots.json'), 'utf8'))).toEqual({ current: '1.0.0' });
-    expect(await readFile(join(snapshotsRoot, 'bundles', '1.0.0', 'valid.yaml'), 'utf8')).toContain('name: valid');
+    expect(await readFile(join(snapshotsRoot, 'bundles', '1.0.0', 'fixtures', 'valid', 'basic.yaml'), 'utf8')).toContain(
+      'name: valid',
+    );
+  });
+
+  it('rejects a manifest that omits a required fixture kind', async () => {
+    const source = await createBundle();
+    const snapshotsRoot = await mkdtemp(join(tmpdir(), 'relampo-contract-target-'));
+    temporaryRoots.push(snapshotsRoot);
+    const manifestPath = join(source.root, 'contract.json');
+    const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
+    manifest.fixtures = manifest.fixtures.filter((fixture: { kind: string }) => fixture.kind !== 'forward');
+    const contents = JSON.stringify(manifest);
+    await writeFile(manifestPath, contents);
+
+    await expect(
+      syncCompatibilityContract({
+        source: source.root,
+        snapshotsRoot,
+        slot: 'current',
+        version: '1.0.0',
+        checksum: createHash('sha256').update(contents).digest('hex'),
+      }),
+    ).rejects.toThrow('fixture kinds');
+  });
+
+  it('does not copy files that are outside the verified manifest', async () => {
+    const source = await createBundle();
+    const snapshotsRoot = await mkdtemp(join(tmpdir(), 'relampo-contract-target-'));
+    temporaryRoots.push(snapshotsRoot);
+    await writeFile(join(source.root, 'unverified.txt'), 'not checksummed');
+
+    await syncCompatibilityContract({
+      ...source,
+      source: source.root,
+      snapshotsRoot,
+      slot: 'current',
+      version: '1.0.0',
+    });
+
+    await expect(access(join(snapshotsRoot, 'bundles', '1.0.0', 'unverified.txt'))).rejects.toThrow();
   });
 
   it('leaves the active slot unchanged after checksum, malformed, or interrupted updates', async () => {
@@ -101,5 +157,6 @@ describe('compatibility contract sync', () => {
       }),
     ).rejects.toThrow('interrupted');
     expect(JSON.parse(await readFile(join(snapshotsRoot, 'slots.json'), 'utf8'))).toEqual({ current: '0.9.0' });
+    await expect(access(join(snapshotsRoot, 'bundles', '1.0.0'))).rejects.toThrow();
   });
 });

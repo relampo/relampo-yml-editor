@@ -19,6 +19,7 @@ export interface YAMLNodeData {
   __name?: string;
   __scalarLoop?: boolean;
   __scalarRetry?: boolean;
+  __stepsInController?: boolean;
   action?: string;
   active_rules?: string[];
   aggressiveness?: string;

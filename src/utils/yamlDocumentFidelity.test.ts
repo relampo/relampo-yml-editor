@@ -184,4 +184,38 @@ scenarios:
       ['future_on_error', 'keep-on-error'],
     ]);
   });
+
+  it('keeps backend-owned nested controller steps editable and semantically unchanged', () => {
+    const input = `
+test:
+  name: Nested controllers
+scenarios:
+  - name: Scenario
+    steps:
+      - balanced:
+          name: Weighted
+          type: total
+          mode: virtual_users
+          steps:
+            - percentage: 100
+              get: /balanced
+      - retry:
+          attempts: 2
+          backoff: 1ms
+          steps:
+            - get: /retry
+      - one_time:
+          name: Setup
+          steps:
+            - get: /setup
+`;
+
+    const tree = parseYAMLToTree(input)!;
+    const steps = tree.children!.find(node => node.type === 'scenarios')!.children![0].children!.find(
+      node => node.type === 'steps',
+    )!.children!;
+
+    expect(steps.map(step => step.children?.length)).toEqual([1, 1, 1]);
+    expect(jsyaml.load(treeToYAML(tree))).toEqual(jsyaml.load(input));
+  });
 });

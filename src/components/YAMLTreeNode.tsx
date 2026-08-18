@@ -99,7 +99,6 @@ export function YAMLTreeNode({
   const hoverTimerRef = useRef<number | null>(null);
   const redirectedInfo = redirectedRequestMap[node.id];
   const isRedirectedFollowUp = Boolean(redirectedInfo);
-  const isDisabled = node.data?.enabled === false;
   const hasValidationError = validationNodeIds.includes(node.id);
   const redirectedLabel = 'Redirected';
   const passAncestor = ancestorMatchesSearch || nodeMatchExpandsDescendants(node, searchQuery);
@@ -253,7 +252,6 @@ export function YAMLTreeNode({
       <div
         role="treeitem"
         aria-selected={isSelected}
-        aria-disabled={isDisabled}
         aria-invalid={hasValidationError}
         aria-expanded={hasChildren ? isExpanded : undefined}
         aria-level={depth + 1}
