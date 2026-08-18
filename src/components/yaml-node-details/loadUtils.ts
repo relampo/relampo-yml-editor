@@ -7,11 +7,15 @@ export type LoadData = Record<string, LoadDataValue>;
 export function toLoadData(value: Record<string, unknown> | undefined): LoadData {
   if (!value) return {};
   return Object.fromEntries(
-    Object.entries(value).filter((entry): entry is [string, Exclude<LoadDataValue, undefined>] => {
-      const fieldValue = entry[1];
-      return typeof fieldValue === 'string' || typeof fieldValue === 'number' || typeof fieldValue === 'boolean';
+    Object.entries(value).filter(([key, fieldValue]) => {
+      if (typeof fieldValue === 'string' || typeof fieldValue === 'number' || typeof fieldValue === 'boolean') {
+        return true;
+      }
+      // Keep the documented but unsupported load stages visible so semantic
+      // validation can block execution instead of silently dropping them.
+      return key === 'stages' && Array.isArray(fieldValue);
     }),
-  );
+  ) as LoadData;
 }
 
 const intentTargetUnits = new Set(['rps', 'vus']);
@@ -376,23 +380,31 @@ export function buildLoadDataForType(
   return normalized;
 }
 
-export function normalizeLoadDataForYaml(data: LoadData = {}): LoadData {
-  const loadType = normalizeLoadType(data.type);
+export function normalizeLoadDataForYaml(data: LoadData | Record<string, unknown> = {}): LoadData {
+  const rawData = data as Record<string, unknown>;
+  const scalarData = toLoadData(rawData);
+  const loadType = normalizeLoadType(rawData.type);
 
   if (loadType === 'intent') {
-    const normalizedIntent = buildLoadDataForType(loadType, data, {
+    const normalizedIntent = buildLoadDataForType(loadType, scalarData, {
       coerceIntentEnums: false,
       preserveExplicitEmpty: true,
     });
+    if (Array.isArray(rawData.stages)) {
+      (normalizedIntent as Record<string, unknown>).stages = rawData.stages;
+    }
     delete normalizedIntent.target_rps;
     delete normalizedIntent.iterations;
     return normalizedIntent;
   }
 
-  const normalized: LoadData = {
-    ...data,
+  const normalized = {
+    ...rawData,
     type: getYamlLoadType(loadType),
-  };
+  } as LoadData;
+  if (Array.isArray(rawData.stages)) {
+    (normalized as Record<string, unknown>).stages = rawData.stages;
+  }
 
   if (normalized.users === undefined && normalized.vusers !== undefined) {
     normalized.users = normalized.vusers;

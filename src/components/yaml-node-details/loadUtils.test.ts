@@ -32,3 +32,12 @@ describe('normalizeLoadDataForYaml manual-stop contract', () => {
     expect('run_until_stopped' in normalized).toBe(false);
   });
 });
+
+describe('normalizeLoadDataForYaml unsupported structures', () => {
+  it('preserves intent stages so semantic validation can block execution', () => {
+    const stages = [{ duration: '30s', target: 10 }];
+    const normalized = normalizeLoadDataForYaml({ type: 'intent', stages }) as Record<string, unknown>;
+
+    expect(normalized.stages).toEqual(stages);
+  });
+});

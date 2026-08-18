@@ -60,13 +60,13 @@ describe('probeStudio', () => {
   });
 
   it('reports the loadRun capability when the studio advertises it', async () => {
-    mockFetch({ studio: true, capabilities: { loadRun: true, dataSourceFiles: true } });
-    expect((await probeStudio())?.capabilities).toEqual({ loadRun: true, dataSourceFiles: true });
+    mockFetch({ studio: true, capabilities: { loadRun: true, dataSourceFiles: true, debug: true } });
+    expect((await probeStudio())?.capabilities).toEqual({ loadRun: true, dataSourceFiles: true, debug: true });
   });
 
   it('defaults loadRun to false when capabilities are present without it', async () => {
     mockFetch({ studio: true, capabilities: {} });
-    expect((await probeStudio())?.capabilities).toEqual({ loadRun: false, dataSourceFiles: false });
+    expect((await probeStudio())?.capabilities).toEqual({ loadRun: false, dataSourceFiles: false, debug: false });
   });
 
   it('returns version and default-view information from the CLI', async () => {
@@ -182,6 +182,26 @@ describe('streamDebugRun', () => {
     expect(onDone).not.toHaveBeenCalled();
     expect(onConnectionError).toHaveBeenCalledTimes(1);
     expect(FakeEventSource.instances[0].close).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects JSON that does not match the engine event contract', () => {
+    class FakeEventSource {
+      static instances: FakeEventSource[] = [];
+      close = vi.fn();
+      private listeners = new Map<string, (event: Event) => void>();
+      constructor() { FakeEventSource.instances.push(this); }
+      addEventListener(type: string, listener: (event: Event) => void) { this.listeners.set(type, listener); }
+      emit(type: string, data: string) { this.listeners.get(type)?.({ data } as unknown as MessageEvent); }
+    }
+
+    vi.stubGlobal('EventSource', FakeEventSource);
+    const handlers = { onEvent: vi.fn(), onDone: vi.fn(), onConnectionError: vi.fn() };
+    streamDebugRun('debug-1', handlers);
+
+    FakeEventSource.instances[0].emit('engine', JSON.stringify({ status: 'ok' }));
+
+    expect(handlers.onEvent).not.toHaveBeenCalled();
+    expect(handlers.onConnectionError).toHaveBeenCalledTimes(1);
   });
 
   it('keeps a transient SSE loss within the reconnect grace period', () => {

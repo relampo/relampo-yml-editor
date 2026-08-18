@@ -4,6 +4,7 @@
 
 import { studioAuthHeaders, withStudioToken } from './studioAuth';
 import { getRuntimeConfig } from './runtimeConfig';
+import { isRecord, parseSSEMessage } from './sseMessage';
 
 interface EngineAssertionResult {
   Name: string;
@@ -112,6 +113,8 @@ interface StudioCapabilities {
   // loadRun unlocks the Run (load test) view backed by POST /api/run.
   loadRun?: boolean;
   dataSourceFiles?: boolean;
+  // debug unlocks the Debug view backed by POST /api/debug/runs.
+  debug?: boolean;
 }
 
 export interface StudioInfo {
@@ -158,6 +161,7 @@ export async function probeStudio(): Promise<StudioInfo | null> {
         ? {
             loadRun: body.capabilities.loadRun === true,
             dataSourceFiles: body.capabilities.dataSourceFiles === true,
+            debug: body.capabilities.debug === true,
           }
         : undefined;
     const defaultView = ['tree', 'code', 'debug', 'run'].includes(body.defaultView) ? body.defaultView : undefined;
@@ -196,7 +200,10 @@ export async function startDebugRun(yaml: string, options: StartDebugRunOptions 
     throw new Error(message);
   }
   const body = await response.json();
-  return body.id as string;
+  if (!isRecord(body) || typeof body.id !== 'string' || body.id.length === 0) {
+    throw new Error('debug run did not return a run id');
+  }
+  return body.id;
 }
 
 export async function uploadStudioDataSourceFile(file: File): Promise<StudioDataSourceUpload> {
@@ -268,28 +275,28 @@ export function streamDebugRun(runId: string, handlers: DebugStreamHandlers): ()
     handlers.onConnectionError();
   };
 
-  const parseMessage = <T>(message: Event): T | null => {
+  const parseMessage = <T>(message: Event, isValid: (value: unknown) => value is T): T | null => {
     if (finished) return null;
-    try {
-      return JSON.parse((message as MessageEvent).data) as T;
-    } catch {
+    const parsed = parseSSEMessage(message, isValid);
+    if (!parsed) {
       failStream();
       return null;
     }
+    return parsed;
   };
 
   source.addEventListener('open', clearReconnectTimer);
   source.addEventListener('engine', message => {
     const raw = (message as MessageEvent).data;
     if (finished || seenEvents.has(raw)) return;
-    const event = parseMessage<EngineEvent>(message);
+    const event = parseMessage<EngineEvent>(message, isEngineEvent);
     if (event) {
       seenEvents.add(raw);
       handlers.onEvent(event);
     }
   });
   source.addEventListener('done', message => {
-    const payload = parseMessage<{ error?: string }>(message);
+    const payload = parseMessage<DebugDonePayload>(message, isDebugDonePayload);
     if (!payload || finished) return;
     close();
     handlers.onDone(payload.error ?? null);
@@ -308,4 +315,28 @@ export function streamDebugRun(runId: string, handlers: DebugStreamHandlers): ()
   };
 
   return close;
+}
+
+interface DebugDonePayload {
+  error?: string | null;
+}
+
+function isEngineEvent(value: unknown): value is EngineEvent {
+  if (!isRecord(value)) return false;
+  return (
+    typeof value.ts === 'string' &&
+    typeof value.name === 'string' &&
+    typeof value.method === 'string' &&
+    typeof value.path === 'string' &&
+    typeof value.status === 'number' &&
+    Number.isFinite(value.status) &&
+    typeof value.latency_ms === 'number' &&
+    Number.isFinite(value.latency_ms) &&
+    typeof value.concurrency === 'number' &&
+    Number.isFinite(value.concurrency)
+  );
+}
+
+function isDebugDonePayload(value: unknown): value is DebugDonePayload {
+  return isRecord(value) && (value.error === undefined || value.error === null || typeof value.error === 'string');
 }

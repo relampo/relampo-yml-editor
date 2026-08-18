@@ -23,6 +23,7 @@ function renderDocumentSync() {
   const setYamlContent = vi.fn();
   const setError = vi.fn();
   const setValidationErrors = vi.fn();
+  const setValidationNodeIds = vi.fn();
   const setSelectedNode = vi.fn();
   const setSelectedNodeIds = vi.fn();
   const syncSelectionWithTree = vi.fn();
@@ -37,6 +38,7 @@ function renderDocumentSync() {
       setYamlContent,
       setError,
       setValidationErrors,
+      setValidationNodeIds,
       selectedNode: null,
       setSelectedNode,
       setSelectedNodeIds,
@@ -45,7 +47,7 @@ function renderDocumentSync() {
       syncSelectionWithTree,
     });
   });
-  return { ...hook, setYamlContent, setError, setValidationErrors, syncSelectionWithTree };
+  return { ...hook, setYamlContent, setError, setValidationErrors, setValidationNodeIds, syncSelectionWithTree };
 }
 
 afterEach(() => {
@@ -124,6 +126,28 @@ describe('useYamlDocumentSync', () => {
     expect(setError).toHaveBeenLastCalledWith(expect.stringContaining('Error parsing YAML'));
   });
 
+  it('publishes semantic issue node ids for tree highlighting', () => {
+    const { result, setValidationNodeIds } = renderDocumentSync();
+    const invalidYaml = `
+test:
+  name: Invalid
+scenarios:
+  - name: Scenario
+    load:
+      type: constant
+      users: 1
+      duration: 1m
+      stages:
+        - duration: 10s
+          target: 2
+    steps: []
+`;
+
+    act(() => result.current.syncCodeToTree(invalidYaml, { force: true }));
+
+    expect(setValidationNodeIds).toHaveBeenLastCalledWith(['scenario_0_load']);
+  });
+
   it('flushes a pending tree edit as the newest immutable execution and download snapshot', () => {
     vi.useFakeTimers();
     const { result, setYamlContent } = renderDocumentSync();
@@ -148,8 +172,8 @@ describe('useYamlDocumentSync', () => {
     act(() => result.current.resetDocument());
     act(() => vi.runAllTimers());
 
-    expect(result.current.yamlCode).toBe('');
-    expect(result.current.yamlTree).toBeNull();
+    expect(result.current.yamlCode).toContain('name: New Test');
+    expect(result.current.yamlTree?.name).toBe('New Test');
     expect(result.current.isDirty).toBe(false);
     expect(result.current.isTreeOutdated).toBe(false);
   });

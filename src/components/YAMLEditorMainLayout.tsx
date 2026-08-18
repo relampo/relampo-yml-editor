@@ -24,6 +24,7 @@ interface YAMLEditorMainLayoutProps {
   baseUrl: string;
   hosts: string[];
   validationErrors: string[];
+  validationNodeIds: string[];
   treeSearchQuery: string;
   documentReady: boolean;
   dataSourceFileBrowseEnabled: boolean;
@@ -65,6 +66,7 @@ export function YAMLEditorMainLayout({
   baseUrl,
   hosts,
   validationErrors,
+  validationNodeIds,
   treeSearchQuery,
   documentReady,
   dataSourceFileBrowseEnabled,
@@ -102,6 +104,7 @@ export function YAMLEditorMainLayout({
         onTreeViewChange={onTreeViewChange}
         onContextMenuOpened={onContextMenuOpened}
         onSearchChange={onSearchChange}
+        validationNodeIds={validationNodeIds}
         yamlCode={yamlCode}
         onCodeChange={onCodeChange}
         largeFileMode={largeFileMode}

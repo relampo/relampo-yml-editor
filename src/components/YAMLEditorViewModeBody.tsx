@@ -15,6 +15,7 @@ interface YAMLEditorViewModeBodyProps {
   selectedNode: YAMLNode | null;
   selectedNodeIds: string[];
   redirectedRequestMap: Record<string, RedirectedRequestInfo>;
+  validationNodeIds: string[];
   baseHost: string;
   onSelectionChange: (primaryNode: YAMLNode | null, nodeIds: string[]) => void;
   onTreeChange: (newTree: YAMLNode, nextSelection?: TreeSelection) => void;
@@ -39,6 +40,7 @@ export function YAMLEditorViewModeBody({
   selectedNode,
   selectedNodeIds,
   redirectedRequestMap,
+  validationNodeIds,
   baseHost,
   onSelectionChange,
   onTreeChange,
@@ -69,6 +71,7 @@ export function YAMLEditorViewModeBody({
             selectedNode={selectedNode}
             selectedNodeIds={selectedNodeIds}
             redirectedRequestMap={redirectedRequestMap}
+            validationNodeIds={validationNodeIds}
             baseHost={baseHost}
             onSelectionChange={onSelectionChange}
             onTreeChange={onTreeChange}
@@ -90,6 +93,7 @@ export function YAMLEditorViewModeBody({
             selectedNode={selectedNode}
             selectedNodeIds={selectedNodeIds}
             redirectedRequestMap={redirectedRequestMap}
+            validationNodeIds={validationNodeIds}
             onSelectionChange={onSelectionChange}
             onTreeChange={onTreeChange}
             onTreeViewChange={onTreeViewChange}

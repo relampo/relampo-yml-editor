@@ -71,4 +71,33 @@ describe('YAMLTreeNode redirected request presentation', () => {
 
     expect(onNodeToggle).toHaveBeenCalledWith('steps');
   });
+
+  it('exposes disabled and semantic-error state to assistive technology', () => {
+    const node: YAMLNode = {
+      id: 'disabled-load',
+      type: 'load',
+      name: 'Load Config',
+      data: { enabled: false },
+    };
+
+    render(
+      <YAMLTreeNode
+        node={node}
+        depth={0}
+        isSelected={false}
+        selectedNodeIds={[]}
+        validationNodeIds={['disabled-load']}
+        redirectedRequestMap={{}}
+        onNodeSelect={vi.fn()}
+        onNodeToggle={vi.fn()}
+        onContextMenu={vi.fn()}
+        onNodeMove={vi.fn()}
+      />,
+    );
+
+    const treeItem = screen.getByRole('treeitem', { name: /Load Config/ });
+    expect(treeItem).toHaveAttribute('aria-disabled', 'true');
+    expect(treeItem).toHaveAttribute('aria-invalid', 'true');
+    expect(treeItem).toHaveClass('focus-visible:ring-2');
+  });
 });

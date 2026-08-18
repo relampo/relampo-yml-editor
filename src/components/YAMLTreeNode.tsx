@@ -66,6 +66,7 @@ interface YAMLTreeNodeProps {
   parentType?: YAMLNodeType;
   isSelected: boolean;
   selectedNodeIds: string[];
+  validationNodeIds?: string[];
   redirectedRequestMap: Record<string, RedirectedRequestInfo>;
   baseHost?: string;
   onNodeSelect: (node: YAMLNode, event: React.MouseEvent) => void;
@@ -82,6 +83,7 @@ export function YAMLTreeNode({
   parentType,
   isSelected,
   selectedNodeIds,
+  validationNodeIds = [],
   redirectedRequestMap,
   baseHost = '',
   onNodeSelect,
@@ -97,6 +99,8 @@ export function YAMLTreeNode({
   const hoverTimerRef = useRef<number | null>(null);
   const redirectedInfo = redirectedRequestMap[node.id];
   const isRedirectedFollowUp = Boolean(redirectedInfo);
+  const isDisabled = node.data?.enabled === false;
+  const hasValidationError = validationNodeIds.includes(node.id);
   const redirectedLabel = 'Redirected';
   const passAncestor = ancestorMatchesSearch || nodeMatchExpandsDescendants(node, searchQuery);
   const showChildrenWhileSearching = Boolean(searchQuery.trim()) &&
@@ -249,6 +253,8 @@ export function YAMLTreeNode({
       <div
         role="treeitem"
         aria-selected={isSelected}
+        aria-disabled={isDisabled}
+        aria-invalid={hasValidationError}
         aria-expanded={hasChildren ? isExpanded : undefined}
         aria-level={depth + 1}
         tabIndex={0}
@@ -277,7 +283,9 @@ export function YAMLTreeNode({
           `${node.type === 'request' ? requestVisual : defaultVisual} ` +
           `${dragOver === 'before' ? 'border-t-2 border-t-yellow-400' : ''} ` +
           `${dragOver === 'after' ? 'border-b-2 border-b-yellow-400' : ''} ` +
-          `${dragOver === 'inside' ? 'bg-yellow-400/5 border-yellow-400/30' : ''}`
+          `${dragOver === 'inside' ? 'bg-yellow-400/5 border-yellow-400/30' : ''} ` +
+          `${hasValidationError ? 'border-red-400/60 bg-red-400/5' : ''} ` +
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/70'
         }
         style={{ paddingLeft: `${depth * 16 + 8}px` }}
       >
@@ -343,6 +351,7 @@ export function YAMLTreeNode({
               parentType={node.type}
               isSelected={selectedIdSet.has(child.id)}
               selectedNodeIds={selectedNodeIds}
+              validationNodeIds={validationNodeIds}
               redirectedRequestMap={redirectedRequestMap}
               baseHost={baseHost}
               onNodeSelect={onNodeSelect}

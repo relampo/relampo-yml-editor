@@ -937,6 +937,30 @@ scenarios:
     expect(output).toContain('target_unit: rpm');
   });
 
+  it('preserves unsupported intent stages through a parse and serialize cycle', () => {
+    const input = `
+test:
+  name: t
+scenarios:
+  - name: staged-intent
+    load:
+      type: intent
+      target_unit: rps
+      target_value: 10
+      stages:
+        - duration: 30s
+          target: 10
+    steps: []
+`;
+
+    const output = treeToYAML(parseYAMLToTree(input)!);
+    const reparsed = parseYAMLToTree(output)!;
+    const load = reparsed.children!.find(c => c.type === 'scenarios')!.children![0].children!.find(c => c.type === 'load');
+
+    expect(output).toContain('stages:');
+    expect(load?.data?.stages).toEqual([{ duration: '30s', target: 10 }]);
+  });
+
   it('does not restore cleared optional intent bounds on save', () => {
     const input = `
 test:

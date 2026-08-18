@@ -73,15 +73,16 @@ export function validateYAMLSemantics(tree: YAMLNode | null): YAMLSemanticIssue[
       });
     }
 
+    if (node.type === 'load' && Object.hasOwn(node.data ?? {}, 'stages')) {
+      issues.push({
+        nodeId: node.id,
+        message: UNSUPPORTED_STAGES_MESSAGE,
+      });
+    }
+
     // Manual-stop is a non-intent contract; intent loads have no such control,
     // so keep this validation off them to avoid a message they can't act on.
     if (node.type === 'load' && normalizeLoadType(node.data?.type) !== 'intent') {
-      if (Object.hasOwn(node.data ?? {}, 'stages')) {
-        issues.push({
-          nodeId: node.id,
-          message: UNSUPPORTED_STAGES_MESSAGE,
-        });
-      }
 
       const duration = String(node.data?.duration ?? '').trim();
       const rawIterations = String(node.data?.iterations ?? '').trim();

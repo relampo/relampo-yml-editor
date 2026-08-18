@@ -104,6 +104,7 @@ type ParseWorkerDeps = {
   setYamlTree: (tree: YAMLNode | null) => void;
   syncSelectionWithTree: (tree: YAMLNode | null) => void;
   setValidationErrors: (errors: string[]) => void;
+  setValidationNodeIds?: (nodeIds: string[]) => void;
   setIsTreeOutdated: (value: boolean) => void;
   applySemanticValidation: (tree: YAMLNode | null) => void;
   normalizeParsedTree: (tree: YAMLNode | null) => YAMLNode | null;
@@ -121,6 +122,7 @@ export function useParseWorker({
   setYamlTree,
   syncSelectionWithTree,
   setValidationErrors,
+  setValidationNodeIds,
   setIsTreeOutdated,
   applySemanticValidation,
   normalizeParsedTree,
@@ -138,6 +140,7 @@ export function useParseWorker({
     setYamlTree,
     syncSelectionWithTree,
     setValidationErrors,
+    setValidationNodeIds,
     setIsTreeOutdated,
     applySemanticValidation,
     normalizeParsedTree,
@@ -150,6 +153,7 @@ export function useParseWorker({
       setYamlTree,
       syncSelectionWithTree,
       setValidationErrors,
+      setValidationNodeIds,
       setIsTreeOutdated,
       applySemanticValidation,
       normalizeParsedTree,
@@ -172,6 +176,7 @@ export function useParseWorker({
       if (!message.ok) {
         current.setError(message.error || (language === 'es' ? 'Error al parsear YAML' : 'Error parsing YAML'));
         current.setValidationErrors([]);
+        current.setValidationNodeIds?.([]);
         current.setIsTreeOutdated(true);
         return;
       }
@@ -189,6 +194,7 @@ export function useParseWorker({
       current.setIsFileLoading(false);
       current.setError(language === 'es' ? 'Error al parsear YAML' : 'Error parsing YAML');
       current.setValidationErrors([]);
+      current.setValidationNodeIds?.([]);
       current.setIsTreeOutdated(true);
     };
 

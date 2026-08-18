@@ -134,4 +134,33 @@ describe('streamLoadRun', () => {
     expect(onConnectionError).toHaveBeenCalledTimes(1);
     expect(FakeEventSource.instances[0].close).toHaveBeenCalledTimes(1);
   });
+
+  it('rejects JSON that does not match the metrics contract', () => {
+    class FakeEventSource {
+      static instances: FakeEventSource[] = [];
+      close = vi.fn();
+      readyState = 1;
+      onerror: (() => void) | null = null;
+      private listeners = new Map<string, (event: Event) => void>();
+
+      constructor() { FakeEventSource.instances.push(this); }
+      addEventListener(type: string, listener: (event: Event) => void) { this.listeners.set(type, listener); }
+      emit(type: string, data: string) { this.listeners.get(type)?.({ data } as unknown as MessageEvent); }
+    }
+
+    vi.stubGlobal('EventSource', FakeEventSource);
+    const handlers = {
+      onState: vi.fn(),
+      onMetrics: vi.fn(),
+      onLog: vi.fn(),
+      onDone: vi.fn(),
+      onConnectionError: vi.fn(),
+    };
+    streamLoadRun('run-1', handlers);
+
+    FakeEventSource.instances[0].emit('metrics', JSON.stringify({ ts: 1, total_requests: 1 }));
+
+    expect(handlers.onMetrics).not.toHaveBeenCalled();
+    expect(handlers.onConnectionError).toHaveBeenCalledTimes(1);
+  });
 });
