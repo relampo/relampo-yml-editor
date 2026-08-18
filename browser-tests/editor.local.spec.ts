@@ -66,14 +66,17 @@ test('standalone open and upload preserves unknown fields and shows their paths'
 
   await expect(page.getByText('This document contains unknown fields that will be preserved.')).toBeVisible();
   await expect(page.getByText(/future_root/)).toBeVisible();
+  await expect(page.getByText(/test\.future_test/)).toBeVisible();
   const downloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Save' }).click();
   await page.getByRole('menuitem', { name: /Save with responses/ }).click();
   const download = await downloadPromise;
-  expect(await readFile(await download.path(), 'utf8')).toContain('future_root:');
+  const downloadedYaml = await readFile(await download.path(), 'utf8');
+  expect(downloadedYaml).toContain('future_root:');
+  expect(downloadedYaml).toContain('future_test: keep');
 });
 
-test('standalone code and tree document updates stay synchronized', async ({ page }) => {
+test('standalone upload input reaches the tree and tree edits reach read-only code', async ({ page }) => {
   await mockStudioInfo(page);
   await page.goto('/');
   await uploadYaml(page, baseYaml.replace('Browser smoke', 'Uploaded code edit'));
@@ -121,18 +124,24 @@ test('standalone draft save restores content and identity from IndexedDB', async
 test('standalone downloads include or remove recorded responses from the newest revision', async ({ page }) => {
   await mockStudioInfo(page);
   await page.goto('/');
+  await page.getByText('Browser smoke', { exact: true }).first().click();
+  await page.getByLabel('Name').fill('Newest browser revision');
 
   const withResponsesPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Save' }).click();
   await page.getByRole('menuitem', { name: /Save with responses/ }).click();
   const withResponses = await withResponsesPromise;
-  expect(await readFile(await withResponses.path(), 'utf8')).toContain('response:');
+  const yamlWithResponses = await readFile(await withResponses.path(), 'utf8');
+  expect(yamlWithResponses).toContain('name: Newest browser revision');
+  expect(yamlWithResponses).toContain('response:');
 
   const withoutResponsesPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Save' }).click();
   await page.getByRole('menuitem', { name: /Save without responses/ }).click();
   const withoutResponses = await withoutResponsesPromise;
-  expect(await readFile(await withoutResponses.path(), 'utf8')).not.toContain('response:');
+  const yamlWithoutResponses = await readFile(await withoutResponses.path(), 'utf8');
+  expect(yamlWithoutResponses).toContain('name: Newest browser revision');
+  expect(yamlWithoutResponses).not.toContain('response:');
 });
 
 test('standalone mocked Run and Debug streams render terminal states', async ({ page }) => {
@@ -166,8 +175,13 @@ test('standalone mocked Run and Debug streams render terminal states', async ({ 
   await page.getByRole('button', { name: 'Run' }).click();
   await page.getByRole('button', { name: 'Run load test' }).click();
   await expect(page.getByText('Completed', { exact: true })).toBeVisible();
+  await expect(page.getByText('Run summary', { exact: true })).toBeVisible();
+  await expect(page.getByText('Total requests', { exact: true }).locator('..').getByText('1', { exact: true })).toBeVisible();
 
   await page.getByRole('button', { name: 'Debug' }).click();
   await page.getByRole('button', { name: 'Run Debug', exact: true }).click();
   await expect(page.getByText('/health', { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Requests: 1. Filter execution timeline.' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Run Debug', exact: true })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Stop', exact: true })).toBeDisabled();
 });
