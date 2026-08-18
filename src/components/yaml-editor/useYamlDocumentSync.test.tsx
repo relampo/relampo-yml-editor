@@ -148,6 +148,29 @@ scenarios:
     expect(setValidationNodeIds).toHaveBeenLastCalledWith(['scenario_0_load']);
   });
 
+  it('validates tree-view-only changes without relying on a state effect', () => {
+    const { result, setValidationNodeIds } = renderDocumentSync();
+    const invalidTree = parseYAMLToTree(`
+test:
+  name: Invalid
+scenarios:
+  - name: Scenario
+    load:
+      type: constant
+      users: 1
+      duration: 1m
+      stages:
+        - duration: 10s
+          target: 2
+    steps: []
+`);
+
+    expect(invalidTree).not.toBeNull();
+    act(() => result.current.handleTreeViewChange(invalidTree!));
+
+    expect(setValidationNodeIds).toHaveBeenLastCalledWith(['scenario_0_load']);
+  });
+
   it('flushes a pending tree edit as the newest immutable execution and download snapshot', () => {
     vi.useFakeTimers();
     const { result, setYamlContent } = renderDocumentSync();

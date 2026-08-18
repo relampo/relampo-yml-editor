@@ -93,10 +93,6 @@ export function useYamlDocumentSync({
     [language, setValidationErrors, setValidationNodeIds],
   );
 
-  useEffect(() => {
-    if (yamlTree) applySemanticValidation(yamlTree);
-  }, [applySemanticValidation, yamlTree]);
-
   const lockTypedNodeSelectionForCurrentTree = useCallback((): YAMLNode | null => {
     if (!yamlTree) return null;
     const [lockedTree, changed] = lockTypedNodeSelectionInNode(yamlTree);
@@ -316,6 +312,14 @@ export function useYamlDocumentSync({
     commitTreeChange(rebalanced, nextSelection);
   };
 
+  const handleTreeViewChange = useCallback(
+    (newTree: YAMLNode) => {
+      setYamlTree(newTree);
+      applySemanticValidation(newTree);
+    },
+    [applySemanticValidation],
+  );
+
   // Resets all document-editing state for a brand-new document. Does
   // not touch identity fields (filename, draft metadata) or view state —
   // callers compose those resets alongside this one (see handleNewConfirm).
@@ -374,6 +378,7 @@ export function useYamlDocumentSync({
     handleCodeChange,
     commitTreeChange,
     handleTreeChange,
+    handleTreeViewChange,
     flushPendingTreeSerialization,
     retrieveYamlForSaving,
     resetDocument,

@@ -27,11 +27,13 @@ interface YAMLTreeViewProps {
   onSearchChange?: (query: string) => void;
 }
 
+const EMPTY_VALIDATION_NODE_IDS: string[] = [];
+
 export function YAMLTreeView({
   tree,
   selectedNode,
   selectedNodeIds,
-  validationNodeIds = [],
+  validationNodeIds = EMPTY_VALIDATION_NODE_IDS,
   redirectedRequestMap,
   baseHost = '',
   onSelectionChange,
