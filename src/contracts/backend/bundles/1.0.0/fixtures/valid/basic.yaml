@@ -1,0 +1,6 @@
+test:
+  name: contract-basic
+scenarios:
+  - name: smoke
+    steps:
+      - get: /health

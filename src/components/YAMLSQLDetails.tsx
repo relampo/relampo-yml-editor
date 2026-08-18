@@ -414,7 +414,7 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
 
   const handleConnectionNumberChange = (field: string, value: string) => {
     if (value.trim() === '') {
-      const nextConnection = { ...connection };
+      const nextConnection = { ...connection } as Record<string, unknown>;
       delete nextConnection[field];
       onNodeUpdate?.(node.id, { ...data, connection: nextConnection });
       return;

@@ -1,0 +1,205 @@
+test:
+  name: full-contract
+  description: Supported editor structures
+  version: '1.0'
+variables:
+  BASE_URL: http://127.0.0.1
+data_source:
+  type: txt
+  path: users.txt
+  mode: per_vu
+  variable_names: user
+http_defaults:
+  base_url: http://127.0.0.1
+  follow_redirects: true
+grpc_defaults:
+  target: runtime.test:443
+  connection_scope: per_vu
+  timeout: 1s
+webrtc_defaults:
+  timeout: 5s
+  ice_gathering_timeout: 1s
+  max_message_size: 1024
+error_policy:
+  on_error: continue
+metrics:
+  percentiles: [50, 95, 99]
+scenarios:
+  - name: supported
+    description: Covers every declared scenario field
+    profile:
+      label: contract
+    load:
+      type: constant
+      users: 1
+      iterations: 1
+    cookies:
+      clear_each_iteration: true
+    cache_manager:
+      clear_each_iteration: true
+      max_elements: 100
+    error_policy:
+      on_4xx: continue
+      on_5xx: stop
+      on_timeout: continue
+    steps:
+      - get: /short
+      - post:
+          url: /short-post
+          enabled: false
+          body_raw: payload
+      - put: /short-put
+      - delete: /short-delete
+      - patch: /short-patch
+      - head: /short-head
+      - options: /short-options
+      - request:
+          request_id: 7
+          name: Full request
+          method: POST
+          url: /full
+          enabled: true
+          headers:
+            Content-Type: application/json
+          query_params:
+            page: '1'
+          body:
+            user: '{{user}}'
+          files:
+            - field: upload
+              path: fixture.txt
+              mime: text/plain
+          timeout: 1s
+          retry:
+            attempts: 2
+            backoff: 1ms
+          follow_redirects: true
+          redirect_automatically: false
+          retrieve_embedded_resources: false
+          cookie_override: inherit
+          cache_override: inherit
+          throughput:
+            enabled: true
+            target_rps: 1
+          spark:
+            - name: capture
+              when: after
+              script: return true
+          error_policy:
+            on_error: continue
+          on_error: continue
+          data_source:
+            type: txt
+            path: request-users.txt
+            mode: shared
+            variable_names: request_user
+          chain_id: contract-chain
+          chain_role: parent
+          recorded_at: 2026-08-18T00:00:00Z
+          response:
+            status: 200
+            size_bytes: 2
+            time_ms: 1
+          response_preview:
+            status: 200
+          extractors:
+            - name: id
+              type: jsonpath
+              var: id
+              path: $.id
+              default: none
+            - type: regex
+              var: regex_value
+              pattern: 'id=(.*)'
+            - type: header
+              var: header_value
+              header: X-Request-ID
+            - type: body
+              var: response_body
+            - type: xpath
+              var: xpath_value
+              path: //id/text()
+            - type: boundary
+              var: boundary_value
+              left_boundary: '<id>'
+              right_boundary: '</id>'
+          assertions:
+            - name: response status
+              type: status
+              value: 200
+            - type: contains
+              value: ok
+            - type: not_contains
+              value: error
+            - type: regex
+              value: 'ok|success'
+            - type: jsonpath
+              path: $.id
+              value: true
+            - type: response_time_max
+              max_ms: 1000
+            - type: response_size
+              size: 2
+            - type: header
+              name: Content-Type
+              value: application/json
+          think_time: 1ms
+      - group:
+          name: Group
+          enabled: true
+          steps:
+            - get: /group
+      - transaction:
+          name: Transaction
+          enabled: true
+          steps:
+            - get: /transaction
+      - parallel:
+          name: Parallel
+          enabled: true
+          steps:
+            - get: /parallel
+      - balanced:
+          name: Balanced
+          type: total
+          mode: virtual_users
+          enabled: true
+          steps:
+            - percentage: 100
+              get: /balanced
+      - if: '{{run_branch}}'
+        steps:
+          - get: /if
+      - loop: 1
+        steps:
+          - get: /loop
+      - retry:
+          attempts: 2
+          backoff: 1ms
+          steps:
+            - get: /retry
+      - one_time:
+          name: Setup
+          enabled: true
+          steps:
+            - get: /setup
+      - think_time:
+          duration: 1ms
+          enabled: true
+      - data_source:
+          type: txt
+          path: users.txt
+          mode: per_vu
+          variable_names: user
+      - sql:
+          name: Query
+          dialect: postgres
+          kind: query
+          query: SELECT 1
+          connection:
+            host: 127.0.0.1
+            port: 5432
+            database: app
+            user: app
+            password: secret
+          allow_writes: false

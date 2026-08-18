@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { yamlMapValue } from '../types/yaml';
 import { parseYAMLToTree, treeToYAML } from './yamlParser';
 
 const sqlE2EScenarioYAML = `
@@ -169,7 +170,7 @@ variables:
     const tree = parseYAMLToTree(yaml)!;
     const vars = tree.children!.find(c => c.type === 'variables');
     expect(vars).toBeDefined();
-    expect(vars!.data!.BASE_URL).toBe('https://example.com');
+    expect(yamlMapValue(vars!.data, 'BASE_URL')).toBe('https://example.com');
   });
 
   it('parses http_defaults with bearer auth', () => {
@@ -1631,7 +1632,7 @@ metrics:
 
     // Variables survive the round-trip
     const vars = tree2.children!.find(c => c.type === 'variables');
-    expect(vars!.data!.HOST).toBe('https://api.example.com');
+    expect(yamlMapValue(vars!.data, 'HOST')).toBe('https://api.example.com');
 
     // Scenarios survive the round-trip
     const scenarios = tree2.children!.find(c => c.type === 'scenarios');

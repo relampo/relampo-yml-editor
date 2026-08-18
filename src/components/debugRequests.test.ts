@@ -5,7 +5,7 @@ import {
   skippedRedirectHops,
   variableRowsForRequestNode,
 } from './debugRequests';
-import type { YAMLNode } from '../types/yaml';
+import { yamlMapData, type YAMLNode } from '../types/yaml';
 
 type EventInput = Parameters<typeof matchDebugEventTarget>[0] & { request_id?: number };
 const event = (overrides: Partial<EventInput>): EventInput => ({ method: 'GET', name: 'evt', path: '/', ...overrides });
@@ -582,7 +582,9 @@ describe('variableRowsForRequestNode', () => {
       type: 'request',
       name: 'r',
       data: { method: 'GET', url: '/me' },
-      children: [{ id: 'h', type: 'headers', name: 'Headers', data: { Authorization: 'Bearer {{token}}' } }],
+      children: [
+        { id: 'h', type: 'headers', name: 'Headers', data: yamlMapData({ Authorization: 'Bearer {{token}}' }) },
+      ],
     };
     expect(variableRowsForRequestNode(node, { token: 'abc', unrelated: 'x' })).toEqual([['token (REQ)', 'abc']]);
   });

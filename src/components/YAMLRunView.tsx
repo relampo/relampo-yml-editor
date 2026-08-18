@@ -601,7 +601,7 @@ function PlannedLoadProfilePanel({
         </div>
       )}
       <LoadVisualization
-        data={toLoadData(plannedLoadNode.data)}
+        data={toLoadData(plannedLoadNode.data as Record<string, unknown> | undefined)}
         loadType={normalizeLoadType(plannedLoadNode.data?.type)}
         progressSeconds={isRunning ? elapsedMs / 1000 : undefined}
       />

@@ -33,7 +33,7 @@ const LOAD_MODE_OPTIONS: Array<{
 
 export function LoadDetails({ node, onNodeUpdate }: NodeDetailProps) {
   const { data, updateData, updateField } = createNodeDataUpdater(node, onNodeUpdate);
-  const loadData = toLoadData(data);
+  const loadData = toLoadData(data as Record<string, unknown>);
   const loadType = normalizeLoadType(loadData.type);
 
   const handleChange = (field: string, value: LoadDataValue) => {

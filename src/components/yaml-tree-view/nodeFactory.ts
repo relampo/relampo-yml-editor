@@ -1,5 +1,5 @@
 import { buildLoadDataForType } from '../yaml-node-details/loadUtils';
-import type { YAMLNode } from '../../types/yaml';
+import { yamlMapData, type YAMLNode } from '../../types/yaml';
 
 export function createNodeByType(
   type: string | 'root_plan',
@@ -278,9 +278,9 @@ export function createNodeByType(
         id,
         type: 'headers',
         name: 'Headers',
-        data: {
+        data: yamlMapData({
           'Content-Type': 'application/json',
-        },
+        }),
       };
     case 'scenarios':
       return {
@@ -309,7 +309,7 @@ export function createNodeByType(
         id,
         type: 'variables',
         name: 'Variables',
-        data: { newVariable: 'value' },
+        data: yamlMapData({ newVariable: 'value' }),
       };
     case 'data_source':
       return {
