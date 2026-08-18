@@ -16,17 +16,17 @@ export function createNodeDataUpdater(node: YAMLNode, onNodeUpdate?: NodeUpdateH
   const data = node.data || {};
 
   const updateData = (nextData: YAMLNodeData) => {
-    onNodeUpdate?.(node.id, nextData);
+    onNodeUpdate?.(node.id, nextData as Record<string, unknown>);
   };
 
   const updateField = (field: string, value: unknown) => {
-    updateData({ ...data, [field]: value });
+    updateData({ ...data, [field]: value } as YAMLNodeData);
   };
 
   const removeField = (field: string) => {
-    const nextData = { ...data };
+    const nextData = { ...data } as Record<string, unknown>;
     delete nextData[field];
-    updateData(nextData);
+    updateData(nextData as YAMLNodeData);
   };
 
   return {

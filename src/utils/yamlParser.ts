@@ -1,4 +1,4 @@
-import type { YAMLNode, YAMLNodeData } from '../types/yaml';
+import type { YAMLNode, YAMLNodeData, YAMLValue } from '../types/yaml';
 import { getLoadTypeLabel, normalizeLoadDataForYaml } from '../components/yaml-node-details/loadUtils';
 import * as jsyaml from 'js-yaml';
 import { normalizeBalancedDistributionType, normalizeBalancedExecutionMode } from './balancedController';
@@ -19,6 +19,21 @@ function asYAMLNodeData(value: unknown): YAMLNodeData {
 
 function isPlainRecord(value: unknown): value is Record<string, any> {
   return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+const ROOT_FIELDS = new Set([
+  'test',
+  'variables',
+  'data_source',
+  'error_policy',
+  'http_defaults',
+  'scenarios',
+  'metrics',
+]);
+
+function unknownFields(value: Record<string, any>, knownFields: ReadonlySet<string>): Record<string, YAMLValue> | undefined {
+  const unknown = Object.fromEntries(Object.entries(value).filter(([key]) => !knownFields.has(key)));
+  return Object.keys(unknown).length > 0 ? (unknown as Record<string, YAMLValue>) : undefined;
 }
 
 // Parser: YAML string → Tree
@@ -59,6 +74,7 @@ function convertToTree(obj: any, _: string[] = [], defaultRootName?: string): YA
     expanded: true,
     path: [],
     data: obj.test || { name: defaultRootName || 'Relampo Test', description: '', version: '1.0' },
+    unknownData: isPlainRecord(obj) ? unknownFields(obj, ROOT_FIELDS) : undefined,
   };
 
   // Variables
@@ -249,7 +265,9 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
 
   // Request (long form)
   if (step.request) {
-    return createRequestNode(stepId, 'request', step.request, path, isEnabled);
+    const node = createRequestNode(stepId, 'request', step.request, path, isEnabled);
+    node.unknownData = unknownFields(step, new Set(['request', 'enabled']));
+    return node;
   }
 
   if (step.sql) {
@@ -262,6 +280,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       path: [...path, 'sql'],
       children: [],
       expanded: false,
+      unknownData: unknownFields(step, new Set(['sql', 'enabled'])),
     };
   }
 
@@ -275,6 +294,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       name: 'Think Time', // SOLO el nombre, duración va en el badge
       data,
       path,
+      unknownData: unknownFields(step, new Set(['think_time', 'enabled'])),
     };
   }
 
@@ -290,6 +310,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
         expanded: true,
         data: { assertions: step.assertions },
         path,
+        unknownData: unknownFields(step, new Set(['assertions', 'enabled'])),
       };
 
       step.assertions.forEach((assertion: any, idx: number) => {
@@ -319,6 +340,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
         name: `Assert: ${label}${detail ? ' = ' + String(detail).substring(0, 20) : ''}`,
         data: assertion,
         path: [...path, 'assertions', 0],
+        unknownData: unknownFields(step, new Set(['assertions', 'enabled'])),
       };
     }
   }
@@ -335,6 +357,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       name: `Assert: ${label}${detail ? ' = ' + String(detail).substring(0, 20) : ''}`,
       data: assertData,
       path,
+      unknownData: unknownFields(step, new Set(['assertion', 'assert', 'enabled'])),
     };
   }
 
@@ -349,6 +372,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       name: `Extract: ${varName}`,
       data: asYAMLNodeData(extractData),
       path,
+      unknownData: unknownFields(step, new Set(['extractor', 'extract', 'enabled'])),
     };
   }
 
@@ -362,6 +386,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       name: `Spark (${when})`,
       data: step.spark,
       path,
+      unknownData: unknownFields(step, new Set(['spark', 'enabled'])),
     };
   }
 
@@ -380,6 +405,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
         enabled,
       },
       path,
+      unknownData: unknownFields(step, new Set(['group', 'enabled'])),
     };
 
     if (step.group.steps && Array.isArray(step.group.steps)) {
@@ -406,6 +432,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
         enabled,
       },
       path,
+      unknownData: unknownFields(step, new Set(['transaction', 'enabled'])),
     };
 
     if (step.transaction.steps && Array.isArray(step.transaction.steps)) {
@@ -428,6 +455,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       expanded: true,
       data: { ...step.parallel, enabled },
       path,
+      unknownData: unknownFields(step, new Set(['parallel', 'steps', 'enabled'])),
     };
 
     if (step.parallel.steps && Array.isArray(step.parallel.steps)) {
@@ -456,6 +484,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
         mode: normalizeBalancedExecutionMode(balancedData.mode),
       },
       path,
+      unknownData: unknownFields(step, new Set(['balanced', 'steps', 'enabled'])),
     };
 
     if (step.steps && Array.isArray(step.steps)) {
@@ -486,6 +515,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       expanded: true,
       data: { condition: step.if, enabled: isEnabled },
       path,
+      unknownData: unknownFields(step, new Set(['if', 'steps', 'enabled'])),
     };
 
     if (step.steps && Array.isArray(step.steps)) {
@@ -517,6 +547,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
         enabled: resolveEnabled(loopData),
       },
       path,
+      unknownData: unknownFields(step, new Set(['loop', 'steps', 'enabled'])),
     };
 
     if (step.steps && Array.isArray(step.steps)) {
@@ -545,6 +576,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       expanded: true,
       data: { ...retryData, enabled: resolveEnabled(retryData) },
       path,
+      unknownData: unknownFields(step, new Set(['retry', 'steps', 'enabled'])),
     };
 
     if (step.steps && Array.isArray(step.steps)) {
@@ -570,6 +602,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       expanded: true,
       data: { ...oneTimeData, enabled: resolveEnabled(oneTimeData) },
       path,
+      unknownData: unknownFields(step, new Set(['one_time', 'steps', 'enabled'])),
     };
 
     if (step.steps && Array.isArray(step.steps)) {
@@ -592,6 +625,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       expanded: true,
       data: typeof step.on_error === 'string' ? { action: step.on_error } : step.on_error,
       path,
+      unknownData: unknownFields(step, new Set(['on_error', 'steps', 'enabled'])),
     };
 
     if (step.steps && Array.isArray(step.steps)) {
@@ -614,6 +648,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       path: [...path, 'data_source'],
       children: [],
       expanded: false,
+      unknownData: unknownFields(step, new Set(['data_source', 'enabled'])),
     };
   }
 

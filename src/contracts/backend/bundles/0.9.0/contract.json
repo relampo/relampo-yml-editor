@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "contract_version": "0.9.0",
+  "backend_sha": "3fdf87f5e4ab774822114a2f99f14666a6757c56",
+  "validation_error_codes": [
+    "duplicate_value",
+    "invalid_value",
+    "required_field",
+    "schema_mismatch",
+    "unsupported_value",
+    "yaml_syntax"
+  ],
+  "known_fields": {
+    "root": ["test", "variables", "data_source", "error_policy", "http_defaults", "scenarios", "metrics"],
+    "test": ["name", "description", "version"],
+    "scenario": ["name", "description", "load", "cookies", "cache_manager", "error_policy", "steps"],
+    "group": ["name", "simple", "auth", "enabled", "steps"],
+    "request": ["name", "method", "url", "enabled", "headers", "body", "body_raw", "params", "files", "auth", "timeout", "follow_redirects", "redirect_automatically", "retrieve_embedded_resources", "cookie_override", "cache_override", "throughput", "spark", "extract", "extractors", "assert", "assertions", "think_time", "error_policy", "on_error", "data_source", "chain_id", "chain_role"],
+    "assertion": ["name", "type", "value", "pattern", "expression", "from", "ignore_case", "enabled"],
+    "extractor": ["name", "type", "var", "variable", "pattern", "expression", "from", "default", "match_no", "group", "template", "capture_mode", "capture_index", "enabled"]
+  },
+  "fixtures": [
+    {"kind": "valid", "path": "fixtures/valid/basic.yaml", "sha256": "3fa4d04d834ca38cbc7c9415c9e78d255fd0f105b5b1253ec795cbd802b2d815"},
+    {"kind": "invalid", "path": "fixtures/invalid/missing-scenarios.yaml", "sha256": "da1feb633219f8ca2f69805532754a10fef7e899b5ee9ca34b64e80d27bdab5c", "expected_errors": [{"code": "required_field", "field": "scenarios"}]},
+    {"kind": "forward", "path": "fixtures/forward/unknown-fields.yaml", "sha256": "d601760f7c7df287a2097f4677c87afa48c4456873ad881da097bd7f31892460"},
+    {"kind": "roundtrip", "path": "fixtures/roundtrip/semantic-fields.yaml", "sha256": "8ac8fdf6e5d658d2668430a8ae03686f12a5fa847f441b6e4734b07d24cd1ffd"}
+  ]
+}

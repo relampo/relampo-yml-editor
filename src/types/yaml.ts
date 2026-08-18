@@ -13,8 +13,10 @@ export interface YAMLResponseData {
 }
 
 export interface YAMLNodeData {
-  [key: string]: unknown;
+  __allowTypeSelection?: boolean;
   __balancedPercentage?: YAMLInputValue;
+  __lockedType?: string;
+  __name?: string;
   __scalarLoop?: boolean;
   __scalarRetry?: boolean;
   action?: string;
@@ -26,7 +28,9 @@ export interface YAMLNodeData {
   assertion?: string;
   assertions?: YAMLNodeData[];
   attempts?: YAMLInputValue;
+  backoff?: string;
   auth?: AuthConfig;
+  authorization?: string;
   base_url?: string;
   bind?: StringMap;
   body?: YAMLValue;
@@ -47,6 +51,7 @@ export interface YAMLNodeData {
   count?: YAMLInputValue;
   csv?: unknown;
   db_host?: string;
+  database?: string;
   default?: string;
   description?: string;
   dialect?: string;
@@ -64,11 +69,13 @@ export interface YAMLNodeData {
   extract?: YAMLNodeData[] | YAMLNodeData | StringMap;
   extractors?: YAMLNodeData[];
   file?: string;
+  field?: string;
   files?: YAMLNodeData[];
   follow_redirects?: boolean;
   from?: string;
   group?: YAMLInputValue;
   headers?: StringMap;
+  host?: string;
   id?: string;
   ignore_case?: boolean;
   iterations?: YAMLInputValue;
@@ -79,6 +86,7 @@ export interface YAMLNodeData {
   match_no?: YAMLInputValue;
   max?: YAMLInputValue;
   max_elements?: YAMLInputValue;
+  max_idle_conns?: YAMLInputValue;
   max_ms?: YAMLInputValue;
   max_size_mb?: YAMLInputValue;
   max_vus?: YAMLInputValue;
@@ -91,15 +99,20 @@ export interface YAMLNodeData {
   mode?: string;
   name?: string;
   namespace?: string;
+  on_4xx?: string;
+  on_5xx?: string;
+  on_timeout?: string;
   on_error?: string;
   options?: StringMap;
   p95_max_ms?: YAMLInputValue;
   params?: unknown;
+  password?: string;
   path?: string;
   pattern?: string;
   percentiles?: YAMLInputValue[];
   persist_across_iterations?: boolean;
   policy?: string;
+  port?: YAMLInputValue;
   query?: string;
   ramp_down?: YAMLInputValue;
   ramp_up?: YAMLInputValue;
@@ -110,11 +123,15 @@ export interface YAMLNodeData {
   right_boundary?: string;
   run_until_stopped?: boolean;
   script?: string;
+  ssl_mode?: string;
   spark?: YAMLNodeData[];
+  stages?: YAMLNodeData[];
+  steps?: YAMLNodeData[];
   size?: YAMLInputValue;
   start_users?: YAMLInputValue;
   std_dev?: YAMLInputValue;
   target_rps?: YAMLInputValue;
+  target?: YAMLInputValue;
   target_unit?: string;
   target_value?: YAMLInputValue;
   think_time?: YAMLInputValue | YAMLNodeData;
@@ -123,14 +140,28 @@ export interface YAMLNodeData {
   type?: string;
   url?: string;
   users?: YAMLInputValue;
+  user?: string;
   value?: YAMLValue;
+  validate_connectivity?: boolean;
   var?: string;
   variable?: string;
+  variable_names?: string;
   variables?: StringMap | Array<{ name: string; value: string }>;
   version?: string;
   warmup?: YAMLInputValue;
   when?: string;
   window?: YAMLInputValue;
+  max_open_conns?: YAMLInputValue;
+  request?: YAMLNodeData;
+}
+
+/** Wrap a trusted header or variable map at the generic tree-node boundary. */
+export function yamlMapData(values: StringMap): YAMLNodeData {
+  return values as unknown as YAMLNodeData;
+}
+
+export function yamlMapValue(data: YAMLNodeData | undefined, key: string): YAMLValue {
+  return (data as unknown as Record<string, YAMLValue> | undefined)?.[key];
 }
 
 export type YAMLNodeType =
@@ -185,6 +216,8 @@ export interface YAMLNode {
   name: string;
   children?: YAMLNode[];
   data?: YAMLNodeData;
+  /** Semantic fields that the editor does not model, kept for lossless saves. */
+  unknownData?: Record<string, YAMLValue>;
   expanded?: boolean;
   path?: Array<string | number>; // Path in the YAML tree for synchronization
 }

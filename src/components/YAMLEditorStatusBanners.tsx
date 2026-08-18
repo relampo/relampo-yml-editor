@@ -3,12 +3,18 @@ import { AlertTriangle } from 'lucide-react';
 interface YAMLEditorStatusBannersProps {
   error: string | null;
   validationErrors: string[];
+  unknownFieldPaths: string[];
   language: string;
 }
 
 // Parse-error banner and semantic-validation warning banner shown below the
 // header. Validation is only shown when there is no hard parse error.
-export function YAMLEditorStatusBanners({ error, validationErrors, language }: YAMLEditorStatusBannersProps) {
+export function YAMLEditorStatusBanners({
+  error,
+  validationErrors,
+  unknownFieldPaths,
+  language,
+}: YAMLEditorStatusBannersProps) {
   return (
     <>
       {error && (
@@ -30,6 +36,24 @@ export function YAMLEditorStatusBanners({ error, validationErrors, language }: Y
               {validationErrors[0]}
               {validationErrors.length > 1 ? ` (+${validationErrors.length - 1})` : ''}
             </p>
+          </div>
+        </div>
+      )}
+
+      {!error && unknownFieldPaths.length > 0 && (
+        <div className="alert-warning px-6 py-3 border-b-0 shrink-0 flex items-start gap-2.5">
+          <AlertTriangle className="alert-warning-icon w-4 h-4 mt-0.5 shrink-0" />
+          <div className="min-w-0">
+            <p className="text-sm font-medium">
+              {language === 'es'
+                ? 'Este documento contiene campos desconocidos que se conservarán.'
+                : 'This document contains unknown fields that will be preserved.'}
+            </p>
+            <ul className="mt-0.5 text-xs opacity-80 list-disc list-inside">
+              {unknownFieldPaths.map(path => (
+                <li key={path}>{path}</li>
+              ))}
+            </ul>
           </div>
         </div>
       )}

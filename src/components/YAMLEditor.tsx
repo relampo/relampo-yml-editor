@@ -7,6 +7,7 @@ import { useYAMLPersistence } from '../hooks/useYAMLPersistence';
 import { logStatsigEvent } from '../utils/analytics';
 import { applyNodeUpdateToTree, removeRequestHost, renameRequestHost } from '../utils/nodeUpdate';
 import { getDocumentMetrics } from '../utils/yamlDocumentLimits';
+import { collectUnknownFieldPaths } from '../utils/unknownYamlFields';
 import { YAMLEditorHeader } from './YAMLEditorHeader';
 import { YAMLEditorNewDocumentDialog } from './YAMLEditorNewDocumentDialog';
 import { YAMLEditorBusyOverlay } from './YAMLEditorBusyOverlay';
@@ -169,6 +170,7 @@ export function YAMLEditor() {
   });
 
   const documentMetrics = useMemo(() => getDocumentMetrics(yamlCode), [yamlCode]);
+  const unknownFieldPaths = useMemo(() => collectUnknownFieldPaths(yamlTree), [yamlTree]);
   const isLargeFileMode = documentMetrics.large;
   const isEditorBusy = isFileLoading || isParsing;
   const documentReady = isInitialized && !isEditorBusy && !error && !isTreeOutdated;
@@ -272,6 +274,7 @@ export function YAMLEditor() {
       <YAMLEditorStatusBanners
         error={error}
         validationErrors={validationErrors}
+        unknownFieldPaths={unknownFieldPaths}
         language={language}
       />
 

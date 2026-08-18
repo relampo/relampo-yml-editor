@@ -18,7 +18,7 @@ function buildUpdatedNode(node: YAMLNode, updatedData: NodeUpdateData): YAMLNode
     ? getUpdatedRequestNodePresentation({
         nodeType: node.type,
         currentName: node.name,
-        currentData: node.data,
+        currentData: node.data as Record<string, unknown> | undefined,
         updatedData: cleanData,
         explicitName: __name,
       })
@@ -28,7 +28,7 @@ function buildUpdatedNode(node: YAMLNode, updatedData: NodeUpdateData): YAMLNode
     ...node,
     type: requestPresentation?.type ?? node.type,
     name: requestPresentation?.name ?? __name ?? node.name,
-    data: cleanData,
+    data: cleanData as YAMLNode['data'],
   };
 }
 

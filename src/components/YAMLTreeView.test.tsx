@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useEffect, useState } from 'react';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { LanguageProvider } from '../contexts/LanguageContext';
-import type { YAMLNode } from '../types/yaml';
+import { yamlMapData, type YAMLNode } from '../types/yaml';
 import { YAMLTreeView } from './YAMLTreeView';
 
 const originalInnerHeight = window.innerHeight;
@@ -244,7 +244,7 @@ describe('YAMLTreeView selection scrolling', () => {
                 id: 'request-to-inspect-headers',
                 type: 'headers',
                 name: 'Headers',
-                data: { Accept: 'application/json' },
+                data: yamlMapData({ Accept: 'application/json' }),
                 children: [],
               },
             ],
@@ -630,7 +630,7 @@ describe('YAMLTreeView search filtering', () => {
       id: 'headers',
       type: 'headers' as const,
       name: 'Headers',
-      data: { Accept: 'application/json', 'Accept-Language': 'en-US' },
+      data: yamlMapData({ Accept: 'application/json', 'Accept-Language': 'en-US' }),
     };
 
     renderInteractiveTreeView({

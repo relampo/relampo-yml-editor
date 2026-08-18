@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { YAMLNode } from '../../types/yaml';
+import { yamlMapData, yamlMapValue, type YAMLNode } from '../../types/yaml';
 import type { RedirectedRequestInfo } from '../../types/yaml';
 import {
   addNodeToTree,
@@ -39,14 +39,18 @@ describe('replaceTextInEnabledRequests', () => {
             response: { body: 'xyz123', headers: { 'X-Recorded': 'xyz123' } },
             enabled: true,
           },
-          children: [{ id: 'enabled-headers', type: 'headers', name: 'Headers', data: { Authorization: 'xyz123' } }],
+          children: [
+            { id: 'enabled-headers', type: 'headers', name: 'Headers', data: yamlMapData({ Authorization: 'xyz123' }) },
+          ],
         },
         {
           id: 'disabled-request',
           type: 'request',
           name: 'Disabled',
           data: { url: '/disabled/xyz123', enabled: false },
-          children: [{ id: 'disabled-headers', type: 'headers', name: 'Headers', data: { 'X-Test': 'xyz123' } }],
+          children: [
+            { id: 'disabled-headers', type: 'headers', name: 'Headers', data: yamlMapData({ 'X-Test': 'xyz123' }) },
+          ],
         },
       ],
     };
@@ -56,13 +60,13 @@ describe('replaceTextInEnabledRequests', () => {
     expect(result.replacements).toBe(3);
     expect(result.tree.children?.[0].data!.url).toBe('/users/{{rifa}}');
     expect(result.tree.children?.[0].data!.body).toMatchObject({ id: '{{rifa}}' });
-    expect(result.tree.children?.[0].children?.[0].data!.Authorization).toBe('{{rifa}}');
+    expect(yamlMapValue(result.tree.children?.[0].children?.[0].data, 'Authorization')).toBe('{{rifa}}');
     expect(result.tree.children?.[0].data!.response).toEqual({
       body: 'xyz123',
       headers: { 'X-Recorded': 'xyz123' },
     });
     expect(result.tree.children?.[1].data!.url).toBe('/disabled/xyz123');
-    expect(result.tree.children?.[1].children?.[0].data!['X-Test']).toBe('xyz123');
+    expect(yamlMapValue(result.tree.children?.[1].children?.[0].data, 'X-Test')).toBe('xyz123');
   });
 
   it('counts each header replacement once on a real parsed tree', () => {

@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "contract_version": "1.0.3",
+  "backend_sha": "98fbc37321d0786649af5d643a00418da2c19d07",
+  "source_files": {
+    "pkg/runtime/model.go": "03771a6992c6c8154d981d990d7f6efd5a6e5f13a13b4728006b6b8e8feb0b45",
+    "pkg/validator/load_config.go": "f75843ddd1d585a4700b79b58ed0571fd3ea75b469dabe6aec15ca07a0acfc3c",
+    "pkg/validator/validator.go": "f5cd313861916a6d653c3aef7a1ed0bffdb7303451dd7e1ad562c75763472a00",
+    "pkg/validator/validator_stages.go": "f2becc311dd010014da311ad871a0c4cbb7e8b5897fb68f460a78e0eac4c9b8b"
+  },
+  "validation_error_codes": ["duplicate_value", "invalid_value", "required_field", "schema_mismatch", "unsupported_value", "yaml_syntax"],
+  "known_fields": {
+    "root": ["test", "variables", "data_source", "error_policy", "http_defaults", "grpc_defaults", "webrtc_defaults", "scenarios", "metrics"],
+    "test": ["name", "description", "version"],
+    "scenario": ["name", "description", "profile", "load", "cookies", "cache_manager", "error_policy", "steps"],
+    "group": ["name", "simple", "auth", "enabled", "steps"],
+    "request": ["name", "request_id", "method", "url", "enabled", "headers", "body", "body_raw", "params", "query_params", "files", "auth", "timeout", "retry", "follow_redirects", "redirect_automatically", "retrieve_embedded_resources", "cookie_override", "cache_override", "throughput", "spark", "extract", "extractors", "assert", "assertions", "think_time", "error_policy", "on_error", "data_source", "chain_id", "chain_role", "recorded_at", "response", "response_preview"],
+    "assertion": ["name", "type", "value", "pattern", "expression", "path", "from", "ignore_case", "enabled", "max_ms", "size"],
+    "extractor": ["name", "type", "var", "variable", "pattern", "expression", "path", "header", "transform", "left_boundary", "right_boundary", "from", "default", "match_no", "group", "template", "capture_mode", "capture_index", "enabled"]
+  },
+  "fixtures": [
+    {"kind": "valid", "path": "fixtures/valid/full.yaml", "sha256": "306437353f8d4b8e0511cc2b71df8f5f2f42e0b6152da13a29a781088bac6d2e"},
+    {"kind": "invalid", "path": "fixtures/invalid/missing-scenarios.yaml", "sha256": "da1feb633219f8ca2f69805532754a10fef7e899b5ee9ca34b64e80d27bdab5c", "expected_errors": [{"code": "required_field", "field": "scenarios"}]},
+    {"kind": "forward", "path": "fixtures/forward/unknown-fields.yaml", "sha256": "d601760f7c7df287a2097f4677c87afa48c4456873ad881da097bd7f31892460"},
+    {"kind": "roundtrip", "path": "fixtures/roundtrip/semantic-fields.yaml", "sha256": "8ac8fdf6e5d658d2668430a8ae03686f12a5fa847f441b6e4734b07d24cd1ffd"}
+  ]
+}

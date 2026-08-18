@@ -115,7 +115,7 @@ function pruneDefaultRequestFields(request: Record<string, any>) {
 }
 
 export function treeToObject(tree: YAMLNode): any {
-  const obj: any = {};
+  const obj: any = { ...(tree.unknownData || {}) };
 
   followRedirectsEnabledByDefault =
     tree.children?.find(child => child.type === 'http_defaults')?.data?.follow_redirects === true;
@@ -162,15 +162,20 @@ export function treeToObject(tree: YAMLNode): any {
 }
 
 function scenarioNodeToObject(node: YAMLNode): any {
-  const scenario: any = {
-    name: node.name || node.data?.name || 'Scenario',
-  };
+  const scenario: any = { ...(node.data || {}) };
+  delete scenario.load;
+  delete scenario.cookies;
+  delete scenario.cache_manager;
+  delete scenario.error_policy;
+  delete scenario.steps;
+  delete scenario.description;
+  scenario.name = node.name || node.data?.name || 'Scenario';
 
   if (!node.children) return scenario;
 
   for (const child of node.children) {
     if (child.type === 'load') {
-      scenario.load = normalizeLoadDataForYaml(toLoadData(child.data));
+      scenario.load = normalizeLoadDataForYaml(toLoadData(child.data as Record<string, unknown> | undefined));
     } else if (child.type === 'cookies') {
       scenario.cookies = child.data;
     } else if (child.type === 'cache_manager') {
@@ -210,23 +215,29 @@ function stepNodeToObject(node: YAMLNode): any {
   }
 
   if (node.type === 'sql') {
-    const sqlStep = normalizeSQLForYaml(sanitizeBalancedNodeData(node.data));
+    const sqlStep = normalizeSQLForYaml(
+      sanitizeBalancedNodeData(node.data as Record<string, unknown> | undefined),
+    );
     if (node.name && node.name !== node.data?.name) {
       sqlStep.name = node.name;
     }
-    return { sql: sqlStep };
+    return { ...(node.unknownData || {}), sql: sqlStep };
   }
 
   if (node.type === 'group') {
     const groupData = sanitizeBalancedNodeData(node.data);
     if (node.data?.assertions && Array.isArray(node.data.assertions)) {
       return {
+        ...(node.unknownData || {}),
         assertions: node.data.assertions,
       };
     }
 
+    const { steps: _steps, auth: _auth, enabled: _enabled, ...preservedGroupData } = groupData || {};
     const res: any = {
+      ...(node.unknownData || {}),
       group: {
+        ...preservedGroupData,
         name: node.name || groupData?.name || 'Group',
         steps: node.children?.map(stepNodeToObject) || [],
       },
@@ -245,8 +256,11 @@ function stepNodeToObject(node: YAMLNode): any {
 
   if (node.type === 'transaction') {
     const transactionData = sanitizeBalancedNodeData(node.data);
+    const { steps: _steps, auth: _auth, enabled: _enabled, ...preservedTransactionData } = transactionData || {};
     const res: any = {
+      ...(node.unknownData || {}),
       transaction: {
+        ...preservedTransactionData,
         name: node.name || transactionData?.name || 'Transaction',
         steps: node.children?.map(stepNodeToObject) || [],
       },
@@ -268,6 +282,7 @@ function stepNodeToObject(node: YAMLNode): any {
 
     const { steps: _steps, enabled: _enabled, ...parallelData } = node.data || {};
     const res: any = {
+      ...(node.unknownData || {}),
       parallel: {
         ...parallelData,
         name: node.name || node.data?.name || 'Parallel Controller',
@@ -285,9 +300,18 @@ function stepNodeToObject(node: YAMLNode): any {
     const balancedData = sanitizeBalancedNodeData(node.data);
     const balancedType = normalizeBalancedDistributionType(balancedData?.type);
     validateBalancedController(balancedType, node.children || []);
+    const {
+      name: _name,
+      type: _type,
+      mode: _mode,
+      enabled: _enabled,
+      ...preservedBalancedData
+    } = balancedData || {};
 
     const res: any = {
+      ...(node.unknownData || {}),
       balanced: {
+        ...preservedBalancedData,
         name: node.name || balancedData?.name || 'Balanced Controller',
         type: serializeBalancedDistributionType(balancedType),
         mode: serializeBalancedExecutionMode(balancedData?.mode),
@@ -313,6 +337,7 @@ function stepNodeToObject(node: YAMLNode): any {
   if (node.type === 'if') {
     const ifData = sanitizeBalancedNodeData(node.data);
     const res: any = {
+      ...(node.unknownData || {}),
       if: ifData?.condition || 'true',
       steps: node.children?.map(stepNodeToObject) || [],
     };
@@ -330,6 +355,7 @@ function stepNodeToObject(node: YAMLNode): any {
       hasOnlyKeys(rawLoopData, LOOP_SHORTHAND_KEYS);
     const loopData = shouldSerializeScalar ? rawLoopData.count : rawLoopData;
     const res: any = {
+      ...(node.unknownData || {}),
       loop: loopData,
       steps: node.children?.map(stepNodeToObject) || [],
     };
@@ -347,6 +373,7 @@ function stepNodeToObject(node: YAMLNode): any {
       hasOnlyKeys(rawRetryData, RETRY_SHORTHAND_KEYS);
     const retryData = shouldSerializeScalar ? rawRetryData.attempts : rawRetryData;
     const res: any = {
+      ...(node.unknownData || {}),
       retry: retryData,
       steps: node.children?.map(stepNodeToObject) || [],
     };
@@ -368,6 +395,7 @@ function stepNodeToObject(node: YAMLNode): any {
     }
 
     const res: any = {
+      ...(node.unknownData || {}),
       one_time: oneTimeData,
       steps: node.children?.map(stepNodeToObject) || [],
     };
@@ -381,6 +409,7 @@ function stepNodeToObject(node: YAMLNode): any {
   if (node.type === 'on_error') {
     const onErrorData = sanitizeBalancedNodeData(node.data);
     const res: any = {
+      ...(node.unknownData || {}),
       on_error: onErrorData?.action || onErrorData || 'continue',
       steps: node.children?.map(stepNodeToObject) || [],
     };
@@ -393,7 +422,7 @@ function stepNodeToObject(node: YAMLNode): any {
 
   if (node.type === 'think_time') {
     const thinkTimeData = sanitizeBalancedNodeData(node.data);
-    const res: any = { think_time: thinkTimeData?.duration || thinkTimeData };
+    const res: any = { ...(node.unknownData || {}), think_time: thinkTimeData?.duration || thinkTimeData };
     if (node.data?.enabled === false) {
       res.enabled = false;
     }
@@ -401,7 +430,7 @@ function stepNodeToObject(node: YAMLNode): any {
   }
 
   if (node.type === 'spark_before' || node.type === 'spark_after' || node.type === 'spark') {
-    const res: any = { spark: sparkDataWithWhen(node) };
+    const res: any = { ...(node.unknownData || {}), spark: sparkDataWithWhen(node) };
     if (node.data?.enabled === false) {
       res.enabled = false;
     }
@@ -409,7 +438,12 @@ function stepNodeToObject(node: YAMLNode): any {
   }
 
   if (node.type === 'assertion') {
-    const res: any = { assertion: normalizeAssertionForEngine(sanitizeBalancedNodeData(node.data)) };
+    const res: any = {
+      ...(node.unknownData || {}),
+      assertion: normalizeAssertionForEngine(
+        sanitizeBalancedNodeData(node.data as Record<string, unknown> | undefined),
+      ),
+    };
     if (node.data?.enabled === false) {
       res.enabled = false;
     }
@@ -420,7 +454,7 @@ function stepNodeToObject(node: YAMLNode): any {
     const nextData = { ...(node.data || {}) };
     delete nextData.__lockedType;
     delete nextData.__allowTypeSelection;
-    const res: any = { assertion: nextData };
+    const res: any = { ...(node.unknownData || {}), assertion: nextData };
     if (node.data?.enabled === false) {
       res.enabled = false;
     }
@@ -428,7 +462,12 @@ function stepNodeToObject(node: YAMLNode): any {
   }
 
   if (node.type === 'extractor' || node.type === 'extract') {
-    const res: any = { extractor: normalizeExtractorForEngine(sanitizeBalancedNodeData(node.data)) };
+    const res: any = {
+      ...(node.unknownData || {}),
+      extractor: normalizeExtractorForEngine(
+        sanitizeBalancedNodeData(node.data as Record<string, unknown> | undefined),
+      ),
+    };
     if (node.data?.enabled === false) {
       res.enabled = false;
     }
@@ -436,7 +475,10 @@ function stepNodeToObject(node: YAMLNode): any {
   }
 
   if (node.type === 'data_source') {
-    const res: any = { data_source: sanitizeBalancedNodeData(node.data) };
+    const res: any = {
+      ...(node.unknownData || {}),
+      data_source: sanitizeBalancedNodeData(node.data as Record<string, unknown> | undefined),
+    };
     if (node.name && node.name !== 'Data Source' && node.name !== node.data?.name) {
       res.data_source.name = node.name;
     }
@@ -455,7 +497,7 @@ function requestNodeToObject(node: YAMLNode, methodFallback?: string): any {
     method: node.data?.method || methodFallback,
   });
   const normalizedRequest = normalizeRequestForEditor(requestData, followRedirectsEnabledByDefault);
-  const request: any = { request: { ...normalizedRequest } };
+  const request: any = { ...(node.unknownData || {}), request: { ...normalizedRequest } };
   pruneDefaultRequestFields(request.request);
 
   if (node.name && node.name !== node.data?.name) {
@@ -483,7 +525,9 @@ function requestNodeToObject(node: YAMLNode, methodFallback?: string): any {
 
     const extractorNodes = node.children.filter(child => child.type === 'extractor');
     if (extractorNodes.length > 0) {
-      request.request.extractors = extractorNodes.map(ext => normalizeExtractorForEngine(ext.data));
+      request.request.extractors = extractorNodes.map(ext =>
+        normalizeExtractorForEngine(ext.data as Record<string, unknown> | undefined),
+      );
     }
 
     const extractNodes = node.children.filter(child => child.type === 'extract');
@@ -501,7 +545,9 @@ function requestNodeToObject(node: YAMLNode, methodFallback?: string): any {
 
     const assertionNodes = node.children.filter(child => child.type === 'assertion');
     if (assertionNodes.length > 0) {
-      request.request.assertions = assertionNodes.map(assertion => normalizeAssertionForEngine(assertion.data));
+      request.request.assertions = assertionNodes.map(assertion =>
+        normalizeAssertionForEngine(assertion.data as Record<string, unknown> | undefined),
+      );
     }
 
     const assertNodes = node.children.filter(child => child.type === 'assert');
