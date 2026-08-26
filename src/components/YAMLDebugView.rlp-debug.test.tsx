@@ -344,6 +344,75 @@ describe('YAMLDebugSession RLP debug fixes', () => {
     expect(within(timeline).queryByRole('button', { name: /GET.*\/failed/ })).not.toBeInTheDocument();
   });
 
+  it('keeps original counts and shows an empty timeline when a filter has no matches', async () => {
+    render(
+      <YAMLDebugSession
+        tree={null}
+        yamlCode={'test:\n  name: empty-filter\n'}
+        documentReady
+        validationErrors={[]}
+        onSelectNode={vi.fn()}
+        onEditNode={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
+    act(() => {
+      debugApiMock.handlers[0].onEvent(event({ name: 'Passed request', path: '/passed' }));
+      debugApiMock.handlers[0].onEvent(
+        event({
+          name: 'Redirect landing',
+          path: '/redirect-final',
+          chain_id: 'empty-filter-redirect',
+          chain_role: 'final',
+          redirect_index: 1,
+        }),
+      );
+      debugApiMock.handlers[0].onDone(null);
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Failed: 0. Filter execution timeline.' }));
+
+    expect(screen.getByRole('button', { name: 'Requests: 2. Filter execution timeline.' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Passed: 2. Filter execution timeline.' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Redirects: 1. Filter execution timeline.' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Failed: 0. Filter execution timeline.' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(screen.getByRole('button', { name: 'Requests: 2. Filter execution timeline.' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+    expect(screen.getByRole('button', { name: 'Passed: 2. Filter execution timeline.' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+    expect(screen.getByRole('button', { name: 'Redirects: 1. Filter execution timeline.' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+    expect(screen.getByText('No requests match this filter.')).toBeInTheDocument();
+    expect(debugApiMock.startDebugRun).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(2));
+    act(() => {
+      debugApiMock.handlers[1].onEvent(event({ name: 'Second run failure', path: '/second-run', status: 500 }));
+      debugApiMock.handlers[1].onDone(null);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Requests: 1. Filter execution timeline.' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Passed: 0. Filter execution timeline.' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Failed: 1. Filter execution timeline.' })).toBeInTheDocument();
+    });
+    expect(screen.queryByRole('button', { name: /GET.*\/passed/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /GET.*\/second-run/ })).toBeInTheDocument();
+    expect(debugApiMock.startDebugRun).toHaveBeenCalledTimes(2);
+  });
+
   it('shows redirected follow-up context in logs with the execution timeline number', async () => {
     const parentRequest: YAMLNode = {
       id: 'parent',
