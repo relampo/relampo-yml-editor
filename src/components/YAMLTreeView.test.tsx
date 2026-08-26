@@ -319,10 +319,12 @@ describe('YAMLTreeView search filtering', () => {
     fireEvent.change(screen.getByPlaceholderText('Search nodes...'), {
       target: { value: 'needle-token' },
     });
+    fireEvent.click(screen.getByRole('button', { name: 'Search tree' }));
 
     expect(screen.getByText('Matching request')).toBeInTheDocument();
     expect(screen.getByText('req')).toBeInTheDocument();
     expect(screen.queryByText('Other request')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Search result count')).toHaveTextContent('1 result');
   });
 
   it('keeps request descendants hidden when the search only matches the request name', () => {
@@ -361,6 +363,7 @@ describe('YAMLTreeView search filtering', () => {
     fireEvent.change(screen.getByPlaceholderText('Search nodes...'), {
       target: { value: 'Login' },
     });
+    fireEvent.click(screen.getByRole('button', { name: 'Search tree' }));
 
     expect(screen.getByRole('treeitem', { name: /Login request/i })).toBeInTheDocument();
     expect(screen.queryByRole('treeitem', { name: /Headers/i })).not.toBeInTheDocument();
@@ -405,6 +408,7 @@ describe('YAMLTreeView search filtering', () => {
     fireEvent.change(screen.getByPlaceholderText('Search nodes...'), {
       target: { value: 'Authorization' },
     });
+    fireEvent.click(screen.getByRole('button', { name: 'Search tree' }));
 
     expect(screen.getByRole('treeitem', { name: /HTTP Defaults/i })).toBeInTheDocument();
     expect(screen.queryByRole('treeitem', { name: /Other request/i })).not.toBeInTheDocument();
@@ -461,6 +465,7 @@ describe('YAMLTreeView search filtering', () => {
     fireEvent.change(screen.getByPlaceholderText('Search nodes...'), {
       target: { value: 'user_id' },
     });
+    fireEvent.click(screen.getByRole('button', { name: 'Search tree' }));
 
     expect(screen.getByRole('treeitem', { name: /Request with extract/i })).toBeInTheDocument();
     expect(screen.getByRole('treeitem', { name: /Extract: user_id/i })).toBeInTheDocument();
@@ -508,6 +513,7 @@ describe('YAMLTreeView search filtering', () => {
     fireEvent.change(screen.getByPlaceholderText('Search nodes...'), {
       target: { value: 'user_id' },
     });
+    fireEvent.click(screen.getByRole('button', { name: 'Search tree' }));
 
     expect(screen.getByRole('treeitem', { name: /Fetch users/i })).toBeInTheDocument();
     expect(screen.getByText('req')).toBeInTheDocument();
@@ -554,15 +560,14 @@ describe('YAMLTreeView search filtering', () => {
     fireEvent.change(searchInput, {
       target: { value: 'Alpha request' },
     });
+    fireEvent.click(screen.getByRole('button', { name: 'Search tree' }));
 
     await waitFor(() => {
       expect(screen.queryByText('2 selected')).not.toBeInTheDocument();
     });
 
     fireEvent.keyDown(screen.getByRole('tree'), { key: 'Delete' });
-    fireEvent.change(searchInput, {
-      target: { value: '' },
-    });
+    fireEvent.click(screen.getByTitle('Close search'));
 
     expect(screen.queryByText('Alpha request')).not.toBeInTheDocument();
     expect(screen.getByText('Beta request')).toBeInTheDocument();
@@ -828,6 +833,7 @@ describe('YAMLTreeView search filtering', () => {
     fireEvent.change(screen.getByPlaceholderText('Search nodes...'), {
       target: { value: 'needle-token' },
     });
+    fireEvent.click(screen.getByRole('button', { name: 'Search tree' }));
 
     expect(screen.getByText('Checkout flow')).toBeInTheDocument();
     expect(screen.queryByText('Matching request')).not.toBeInTheDocument();

@@ -1,5 +1,6 @@
 import { canContain, canDrop } from '../../utils/yamlDragDropRules';
 import type { RedirectedRequestInfo, YAMLNode, YAMLNodeData } from '../../types/yaml';
+import type { StringMap } from '../../types/shared';
 import { findNodeById } from '../yamlEditorHelpers';
 
 type TransactionWrapValidationReason =
@@ -191,25 +192,59 @@ function replaceTextInString(
   search: string,
   replacement: string,
   urlEncoded: boolean,
-): [string, number, boolean] {
-  let matcher: RegExp;
+  targetMatchIndex: number | undefined,
+  matchOffset: { value: number },
+): [string, number, number, boolean] {
+  const matcher = textMatcher(search, urlEncoded);
+  if (!matcher) {
+    return [value, 0, 0, false];
+  }
 
+  let matches = 0;
+  let replacements = 0;
+  const nextValue = value.replace(matcher, match => {
+    const currentMatchIndex = matchOffset.value;
+    matchOffset.value += 1;
+    matches += 1;
+    if (targetMatchIndex === undefined || currentMatchIndex === targetMatchIndex) {
+      replacements += 1;
+      return replacement;
+    }
+    return match;
+  });
+
+  return [nextValue, matches, replacements, replacements > 0];
+}
+
+function textMatcher(search: string, urlEncoded: boolean): RegExp | null {
   try {
     const pattern = urlEncoded
       ? `${escapeRegExp(search)}|${percentEncodedSearchPattern(search)}`
       : escapeRegExp(search);
-    matcher = new RegExp(pattern, 'g');
+    return new RegExp(pattern, 'g');
   } catch {
-    return [value, 0, false];
+    return null;
+  }
+}
+
+function countTextInValue(value: unknown, search: string, urlEncoded = false): number {
+  if (typeof value === 'string') {
+    const matcher = textMatcher(search, urlEncoded);
+    return matcher ? (value.match(matcher)?.length ?? 0) : 0;
   }
 
-  let count = 0;
-  const nextValue = value.replace(matcher, () => {
-    count += 1;
-    return replacement;
-  });
+  if (Array.isArray(value)) {
+    return value.reduce((count, item) => count + countTextInValue(item, search, urlEncoded), 0);
+  }
 
-  return [nextValue, count, count > 0];
+  if (value && typeof value === 'object') {
+    return Object.values(value).reduce(
+      (count, item) => count + countTextInValue(item, search, urlEncoded),
+      0,
+    );
+  }
+
+  return 0;
 }
 
 function replaceTextInValue(
@@ -217,38 +252,58 @@ function replaceTextInValue(
   search: string,
   replacement: string,
   urlEncoded = false,
-): [unknown, number, boolean] {
+  targetMatchIndex?: number,
+  matchOffset: { value: number } = { value: 0 },
+): [unknown, number, number, boolean] {
   if (typeof value === 'string') {
-    return replaceTextInString(value, search, replacement, urlEncoded);
+    return replaceTextInString(value, search, replacement, urlEncoded, targetMatchIndex, matchOffset);
   }
 
   if (Array.isArray(value)) {
-    let count = 0;
+    let matches = 0;
+    let replacements = 0;
     let changed = false;
     const nextValue = value.map(item => {
-      const [nextItem, itemCount, itemChanged] = replaceTextInValue(item, search, replacement, urlEncoded);
-      count += itemCount;
+      const [nextItem, itemMatches, itemReplacements, itemChanged] = replaceTextInValue(
+        item,
+        search,
+        replacement,
+        urlEncoded,
+        targetMatchIndex,
+        matchOffset,
+      );
+      matches += itemMatches;
+      replacements += itemReplacements;
       changed ||= itemChanged;
       return nextItem;
     });
-    return [changed ? nextValue : value, count, changed];
+    return [changed ? nextValue : value, matches, replacements, changed];
   }
 
   if (value && typeof value === 'object') {
-    let count = 0;
+    let matches = 0;
+    let replacements = 0;
     let changed = false;
     const nextValue = Object.fromEntries(
       Object.entries(value).map(([key, item]) => {
-        const [nextItem, itemCount, itemChanged] = replaceTextInValue(item, search, replacement, urlEncoded);
-        count += itemCount;
+        const [nextItem, itemMatches, itemReplacements, itemChanged] = replaceTextInValue(
+          item,
+          search,
+          replacement,
+          urlEncoded,
+          targetMatchIndex,
+          matchOffset,
+        );
+        matches += itemMatches;
+        replacements += itemReplacements;
         changed ||= itemChanged;
         return [key, nextItem];
       }),
     );
-    return [changed ? nextValue : value, count, changed];
+    return [changed ? nextValue : value, matches, replacements, changed];
   }
 
-  return [value, 0, false];
+  return [value, 0, 0, false];
 }
 
 function replaceRequestData(
@@ -263,23 +318,36 @@ function replaceRequestData(
   // `node.data.headers` to infer Content-Type — only the tally moves to the
   // child node, which is also what the serializer writes back out.
   headersCountedByChild = false,
-): [YAMLNodeData | undefined, number, boolean] {
-  if (!data || typeof data !== 'object' || Array.isArray(data)) return [data, 0, false];
+  targetMatchIndex?: number,
+  matchOffset: { value: number } = { value: 0 },
+): [YAMLNodeData | undefined, number, number, boolean] {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return [data, 0, 0, false];
 
-  let count = 0;
+  let matches = 0;
+  let replacements = 0;
   let changed = false;
   const nextData = Object.fromEntries(
     Object.entries(data).map(([key, value]) => {
       if (key === 'enabled' || key === 'method' || key === 'response' || key === 'response_preview') {
         return [key, value];
       }
-      const [nextValue, valueCount, valueChanged] = replaceTextInValue(value, search, replacement, key === 'url');
-      if (!(key === 'headers' && headersCountedByChild)) count += valueCount;
+      const ignoreMatches = key === 'headers' && headersCountedByChild;
+      if (ignoreMatches) return [key, value];
+      const [nextValue, valueMatches, valueReplacements, valueChanged] = replaceTextInValue(
+        value,
+        search,
+        replacement,
+        key === 'url',
+        targetMatchIndex,
+        matchOffset,
+      );
+      matches += valueMatches;
+      replacements += valueReplacements;
       changed ||= valueChanged;
       return [key, nextValue];
     }),
   );
-  return [changed ? nextData : data, count, changed];
+  return [changed ? nextData : data, matches, replacements, changed];
 }
 
 /** Replace literal text in enabled requests and their headers, excluding recorded responses. */
@@ -288,27 +356,75 @@ export function replaceTextInEnabledRequests(
   search: string,
   replacement: string,
 ): { tree: YAMLNode; replacements: number } {
-  if (!search) return { tree, replacements: 0 };
+  return replaceTextInEnabledRequestsAtMatch(tree, search, replacement).result;
+}
 
-  const visit = (node: YAMLNode, inheritedEnabled: boolean): [YAMLNode, number, boolean] => {
+/** Return the number of replaceable matches in enabled requests and headers. */
+export function countTextInEnabledRequests(tree: YAMLNode, search: string): number {
+  if (!search) return 0;
+
+  const count = (node: YAMLNode, inheritedEnabled: boolean): number => {
     const enabled = inheritedEnabled && node.data?.enabled !== false;
+    let matches = 0;
+
+    if (enabled && (REQUEST_TYPES.has(node.type) || node.type === 'headers')) {
+      const headersCountedByChild =
+        REQUEST_TYPES.has(node.type) && (node.children?.some(child => child.type === 'headers') ?? false);
+      matches += countRequestData(node.data, search, headersCountedByChild);
+    }
+
+    return matches + (node.children?.reduce((total, child) => total + count(child, enabled), 0) ?? 0);
+  };
+
+  return count(tree, true);
+}
+
+function countRequestData(data: YAMLNodeData | undefined, search: string, headersCountedByChild: boolean): number {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return 0;
+
+  return Object.entries(data).reduce((matches, [key, value]) => {
+    if (key === 'enabled' || key === 'method' || key === 'response' || key === 'response_preview') return matches;
+    if (key === 'headers' && headersCountedByChild) return matches;
+    return matches + countTextInValue(value, search, key === 'url');
+  }, 0);
+}
+
+/** Replace one zero-based match, or every match when no index is provided. */
+export function replaceTextInEnabledRequestsAtMatch(
+  tree: YAMLNode,
+  search: string,
+  replacement: string,
+  targetMatchIndex?: number,
+): { result: { tree: YAMLNode; replacements: number }; matches: number } {
+  if (!search) return { result: { tree, replacements: 0 }, matches: 0 };
+  if (!replacement) {
+    return { result: { tree, replacements: 0 }, matches: countTextInEnabledRequests(tree, search) };
+  }
+
+  const matchOffset = { value: 0 };
+  const visit = (node: YAMLNode, inheritedEnabled: boolean): [YAMLNode, number, number, boolean] => {
+    const enabled = inheritedEnabled && node.data?.enabled !== false;
+    const hasHeadersChild =
+      REQUEST_TYPES.has(node.type) && (node.children?.some(child => child.type === 'headers') ?? false);
     let nextData = node.data;
+    let matches = 0;
     let replacements = 0;
     let changed = false;
 
     if (enabled && (REQUEST_TYPES.has(node.type) || node.type === 'headers')) {
       // Only a request node duplicates its headers into a child; a `headers`
       // node has none, so it always owns its own tally.
-      const headersCountedByChild =
-        REQUEST_TYPES.has(node.type) && (node.children?.some(child => child.type === 'headers') ?? false);
-      const [replacedData, count, dataChanged] = replaceRequestData(
+      const [replacedData, dataMatches, dataReplacements, dataChanged] = replaceRequestData(
         node.data,
         search,
         replacement,
-        headersCountedByChild,
+        hasHeadersChild,
+        targetMatchIndex,
+        matchOffset,
       );
       nextData = replacedData;
-      replacements += count;
+      matches += dataMatches;
+      replacements += dataReplacements;
       changed ||= dataChanged;
     }
 
@@ -316,19 +432,30 @@ export function replaceTextInEnabledRequests(
     if (node.children) {
       let childrenChanged = false;
       nextChildren = node.children.map(child => {
-        const [nextChild, count, childChanged] = visit(child, enabled);
-        replacements += count;
+        const [nextChild, childMatches, childReplacements, childChanged] = visit(child, enabled);
+        matches += childMatches;
+        replacements += childReplacements;
         childrenChanged ||= childChanged;
         return nextChild;
       });
       changed ||= childrenChanged;
     }
 
-    return [changed ? { ...node, data: nextData, ...(nextChildren ? { children: nextChildren } : {}) } : node, replacements, changed];
+    if (changed && hasHeadersChild) {
+      const headersChild = nextChildren?.find(child => child.type === 'headers');
+      if (headersChild) nextData = { ...nextData, headers: headersChild.data as StringMap };
+    }
+
+    return [
+      changed ? { ...node, data: nextData, ...(nextChildren ? { children: nextChildren } : {}) } : node,
+      matches,
+      replacements,
+      changed,
+    ];
   };
 
-  const [updatedTree, replacements] = visit(tree, true);
-  return { tree: updatedTree, replacements };
+  const [updatedTree, matches, replacements] = visit(tree, true);
+  return { result: { tree: updatedTree, replacements }, matches };
 }
 
 export function addNodeToTree(tree: YAMLNode, parentId: string, newNode: YAMLNode): YAMLNode {

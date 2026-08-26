@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import type { RedirectedRequestInfo, YAMLNode } from '../types/yaml';
 import { canContain } from '../utils/yamlDragDropRules';
@@ -8,8 +9,9 @@ import { TreeSearchBar } from './yaml-tree-view/TreeSearchBar';
 import { useTreeContextMenu } from './yaml-tree-view/useTreeContextMenu';
 import { useTreeMutations } from './yaml-tree-view/useTreeMutations';
 import { useTreeViewSelection } from './yaml-tree-view/useTreeViewSelection';
-import { replaceTextInEnabledRequests } from './yaml-tree-view/treeOperations';
+import { countTextInEnabledRequests, replaceTextInEnabledRequestsAtMatch } from './yaml-tree-view/treeOperations';
 import { canDuplicateNode, findNodeById, getTransactionValidationMessage } from './yaml-tree-view/treeViewHelpers';
+import { countMatchingNodes } from './yaml-tree-view/search';
 import { YAMLContextMenu } from './YAMLContextMenu';
 import { YAMLTreeNode } from './YAMLTreeNode';
 
@@ -56,6 +58,7 @@ export function YAMLTreeView({
     transactionWrapValidation,
     treeContainerRef,
   } = useTreeViewSelection({ tree, selectedNode, selectedNodeIds, onSelectionChange, onSearchChange });
+  const searchMatchCount = useMemo(() => countMatchingNodes(tree, searchQuery), [searchQuery, tree]);
 
   const { contextMenu, handleContextMenu, handleCloseContextMenu, getContextActionTargetIds } = useTreeContextMenu({
     activeSelectedIds,
@@ -64,9 +67,9 @@ export function YAMLTreeView({
     onContextMenuOpened,
   });
 
-  const handleReplace = (search: string, replacement: string) => {
+  const handleReplace = (search: string, replacement: string, matchIndex?: number) => {
     if (!tree) return 0;
-    const result = replaceTextInEnabledRequests(tree, search, replacement);
+    const result = replaceTextInEnabledRequestsAtMatch(tree, search, replacement, matchIndex).result;
     if (result.replacements > 0) onTreeChange(result.tree);
     return result.replacements;
   };
@@ -207,7 +210,14 @@ export function YAMLTreeView({
 
   return (
     <div className="h-full w-full bg-[#0a0a0a] flex flex-col">
-      <TreeSearchBar value={searchQuery} onChange={handleSearchChange} onClear={handleClearSearch} onReplace={handleReplace} />
+      <TreeSearchBar
+        value={searchQuery}
+        onChange={handleSearchChange}
+        onClear={handleClearSearch}
+        onReplace={handleReplace}
+        countMatches={search => (tree ? countTextInEnabledRequests(tree, search) : 0)}
+        searchMatchCount={searchMatchCount}
+      />
 
       {activeSelectedIds.length > 1 && (
         <TreeBulkActionsBar
