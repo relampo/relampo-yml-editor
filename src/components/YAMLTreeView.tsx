@@ -46,6 +46,7 @@ export function YAMLTreeView({
 
   const {
     searchQuery,
+    searchIndex,
     handleSearchChange,
     handleClearSearch,
     visibleNodes,
@@ -248,6 +249,7 @@ export function YAMLTreeView({
             onContextMenu={handleContextMenu}
             onNodeMove={handleNodeMove}
             searchQuery={searchQuery}
+            searchIndex={searchIndex ?? undefined}
           />
         ) : (
           <div className="flex items-center justify-center h-32">

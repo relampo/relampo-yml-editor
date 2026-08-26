@@ -14,6 +14,10 @@ const REQUEST_LIKE_NODE_TYPES: readonly YAMLNodeType[] = [
 
 function nodeDirectlyMatches(node: YAMLNode, searchQuery: string): boolean {
   const query = searchQuery.trim().toLowerCase();
+  return nodeDirectlyMatchesQuery(node, query);
+}
+
+function nodeDirectlyMatchesQuery(node: YAMLNode, query: string): boolean {
   if (!query) return true;
 
   if (nodeNameOrPathMatches(node, query)) return true;
@@ -25,6 +29,36 @@ function nodeDirectlyMatches(node: YAMLNode, searchQuery: string): boolean {
   if (responsePayload.includes(query)) return true;
 
   return false;
+}
+
+export type SearchNodeState = {
+  directMatch: boolean;
+  subtreeMatch: boolean;
+  expandsDescendants: boolean;
+};
+
+/**
+ * Builds the search state for every node in one post-order traversal.
+ * Reusing this index avoids rescanning the same subtrees for every sibling.
+ */
+export function buildSearchIndex(tree: YAMLNode, searchQuery: string): Map<string, SearchNodeState> {
+  const query = searchQuery.trim().toLowerCase();
+  const index = new Map<string, SearchNodeState>();
+
+  const visit = (node: YAMLNode): boolean => {
+    const directMatch = nodeDirectlyMatchesQuery(node, query);
+    const nameOrPathMatch = nodeNameOrPathMatches(node, query);
+    const childMatches = node.children?.map(visit) ?? [];
+    const subtreeMatch = directMatch || childMatches.some(Boolean);
+    const expandsDescendants =
+      !REQUEST_LIKE_NODE_TYPES.includes(node.type) && (nameOrPathMatch || (!node.children?.length && directMatch));
+
+    index.set(node.id, { directMatch, subtreeMatch, expandsDescendants });
+    return subtreeMatch;
+  };
+
+  visit(tree);
+  return index;
 }
 
 export function nodeMatchExpandsDescendants(node: YAMLNode, searchQuery: string): boolean {
