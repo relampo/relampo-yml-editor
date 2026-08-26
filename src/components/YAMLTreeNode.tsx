@@ -36,7 +36,12 @@ import { useEffect, useRef, useState } from 'react';
 import type { RedirectedRequestInfo, YAMLNode, YAMLNodeType } from '../types/yaml';
 import { canContain, canDrop } from '../utils/yamlDragDropRules';
 import { HighlightText } from './ui/HighlightedInput';
-import { getNodeSearchHitFlags, nodeMatchExpandsDescendants, subtreeHasMatch } from './yaml-tree-view/search';
+import {
+  getNodeSearchHitFlags,
+  nodeMatchExpandsDescendants,
+  subtreeHasMatch,
+  type SearchNodeState,
+} from './yaml-tree-view/search';
 
 // Track the dragged node outside React so dragOver can resolve it.
 let currentDraggedNode: { id: string; type: YAMLNodeType } | null = null;
@@ -74,6 +79,7 @@ interface YAMLTreeNodeProps {
   onContextMenu: (event: React.MouseEvent, node: YAMLNode) => void;
   onNodeMove: (draggedId: string, targetId: string, position: 'before' | 'after' | 'inside') => void;
   searchQuery?: string;
+  searchIndex?: Map<string, SearchNodeState>;
   ancestorMatchesSearch?: boolean;
 }
 
@@ -91,6 +97,7 @@ export function YAMLTreeNode({
   onContextMenu,
   onNodeMove,
   searchQuery = '',
+  searchIndex,
   ancestorMatchesSearch = false,
 }: YAMLTreeNodeProps) {
   const [dragOver, setDragOver] = useState<'before' | 'after' | 'inside' | null>(null);
@@ -101,14 +108,24 @@ export function YAMLTreeNode({
   const isRedirectedFollowUp = Boolean(redirectedInfo);
   const hasValidationError = validationNodeIds.includes(node.id);
   const redirectedLabel = 'Redirected';
-  const passAncestor = ancestorMatchesSearch || nodeMatchExpandsDescendants(node, searchQuery);
+  const indexedState = searchIndex?.get(node.id);
+  const passAncestor = searchIndex
+    ? ancestorMatchesSearch || Boolean(indexedState?.expandsDescendants)
+    : ancestorMatchesSearch || nodeMatchExpandsDescendants(node, searchQuery);
   const showChildrenWhileSearching = Boolean(searchQuery.trim()) &&
-    (passAncestor || node.children?.some(child => subtreeHasMatch(child, searchQuery)));
+    (passAncestor ||
+      node.children?.some(child =>
+        searchIndex ? Boolean(searchIndex.get(child.id)?.subtreeMatch) : subtreeHasMatch(child, searchQuery),
+      ));
   const showChildren = hasChildren && (isExpanded || showChildrenWhileSearching);
   const selectedIdSet = new Set(selectedNodeIds);
   const visibleChildren = node.children
     ? node.children.reduce<YAMLNode[]>((acc, child) => {
-        if (!searchQuery.trim() || passAncestor || subtreeHasMatch(child, searchQuery)) {
+        if (
+          !searchQuery.trim() ||
+          passAncestor ||
+          (searchIndex ? Boolean(searchIndex.get(child.id)?.subtreeMatch) : subtreeHasMatch(child, searchQuery))
+        ) {
           acc.push(child);
         }
         return acc;
@@ -357,6 +374,7 @@ export function YAMLTreeNode({
               onContextMenu={onContextMenu}
               onNodeMove={onNodeMove}
               searchQuery={searchQuery}
+              searchIndex={searchIndex}
               ancestorMatchesSearch={passAncestor}
             />
           ))}

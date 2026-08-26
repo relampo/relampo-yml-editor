@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { YAMLNode } from '../../types/yaml';
+import { buildSearchIndex } from './search';
 import { getTransactionWrapValidation } from './treeOperations';
 import { buildParentMap, computeVisibleNodes } from './treeViewHelpers';
 
@@ -26,6 +27,10 @@ export function useTreeViewSelection({
   const [searchQuery, setSearchQuery] = useState('');
   const treeContainerRef = useRef<HTMLDivElement | null>(null);
   const isFiltering = searchQuery.trim().length > 0;
+  const searchIndex = useMemo(
+    () => (tree && isFiltering ? buildSearchIndex(tree, searchQuery) : null),
+    [isFiltering, searchQuery, tree],
+  );
 
   // The parent owns a mirror of this query (it feeds the details panel's
   // highlighting), but the query itself is local state that dies with this
@@ -52,7 +57,10 @@ export function useTreeViewSelection({
     onSearchChange?.('');
   };
 
-  const visibleNodes = useMemo(() => computeVisibleNodes(tree, searchQuery), [tree, searchQuery]);
+  const visibleNodes = useMemo(
+    () => computeVisibleNodes(tree, searchQuery, searchIndex ?? undefined),
+    [searchIndex, searchQuery, tree],
+  );
 
   const parentMap = useMemo(() => buildParentMap(tree), [tree]);
 
@@ -138,6 +146,7 @@ export function useTreeViewSelection({
 
   return {
     searchQuery,
+    searchIndex,
     handleSearchChange,
     handleClearSearch,
     isFiltering,

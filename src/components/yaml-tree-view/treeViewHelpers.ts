@@ -1,27 +1,40 @@
 import type { YAMLNode } from '../../types/yaml';
 import type { YAMLAddableNodeType } from './addableItems';
-import { nodeMatchExpandsDescendants, subtreeHasMatch } from './search';
+import { buildSearchIndex, nodeMatchExpandsDescendants, type SearchNodeState } from './search';
 
 export function canAddNodeToTarget(target: YAMLNode, nodeType: YAMLAddableNodeType) {
-  return !(nodeType === 'scenario' && target.type === 'scenarios' && target.children?.some(child => child.type === 'scenario'));
+  return !(
+    nodeType === 'scenario' &&
+    target.type === 'scenarios' &&
+    target.children?.some(child => child.type === 'scenario')
+  );
 }
 
 export function canDuplicateNode(node: YAMLNode | null | undefined) {
   return node?.type !== 'scenario' && node?.type !== 'scenarios';
 }
 
-export function computeVisibleNodes(tree: YAMLNode | null, searchQuery: string): YAMLNode[] {
+export function computeVisibleNodes(
+  tree: YAMLNode | null,
+  searchQuery: string,
+  providedSearchIndex?: Map<string, SearchNodeState>,
+): YAMLNode[] {
   if (!tree) return [];
   const out: YAMLNode[] = [];
+  const searchIndex = searchQuery.trim() ? providedSearchIndex ?? buildSearchIndex(tree, searchQuery) : null;
   const walk = (node: YAMLNode, ancestorMatches: boolean) => {
     out.push(node);
     const expanded = node.expanded ?? true;
-    const passAncestor = ancestorMatches || nodeMatchExpandsDescendants(node, searchQuery);
+    const indexedState = searchIndex?.get(node.id);
+    const passAncestor = searchIndex
+      ? ancestorMatches || Boolean(indexedState?.expandsDescendants)
+      : ancestorMatches || nodeMatchExpandsDescendants(node, searchQuery);
     const showChildrenWhileSearching =
-      Boolean(searchQuery.trim()) && (passAncestor || node.children?.some(child => subtreeHasMatch(child, searchQuery)));
+      Boolean(searchQuery.trim()) &&
+      (passAncestor || node.children?.some(child => searchIndex?.get(child.id)?.subtreeMatch));
     if (node.children && node.children.length > 0 && (expanded || showChildrenWhileSearching)) {
       const children = searchQuery.trim()
-        ? node.children.filter(child => passAncestor || subtreeHasMatch(child, searchQuery))
+        ? node.children.filter(child => passAncestor || searchIndex?.get(child.id)?.subtreeMatch)
         : node.children;
       children.forEach(child => walk(child, passAncestor));
     }
