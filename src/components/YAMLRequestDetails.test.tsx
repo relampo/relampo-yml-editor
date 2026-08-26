@@ -269,6 +269,25 @@ describe('YAMLRequestDetails', () => {
     }
   });
 
+  it("keeps '?' in the Path field while Query Parameters syncs", () => {
+    const node: YAMLNode = {
+      id: 'get-path-question',
+      type: 'get',
+      name: '[16] GET /search',
+      data: { method: 'GET', url: '/search' },
+      children: [],
+    };
+
+    render(<ControlledRequest node={node} />);
+
+    const pathInput = screen.getByLabelText('Path') as HTMLInputElement;
+    pathInput.focus();
+    fireEvent.change(pathInput, { target: { value: '/search?' } });
+
+    expect(screen.getByLabelText('Path')).toHaveValue('/search?');
+    expect(document.activeElement).toBe(screen.getByLabelText('Path'));
+  });
+
   // A row whose key is blank is not serialized into the URL, so re-parsing the
   // echoed URL used to delete it and shuffle the remaining rows up into the
   // focused input. RLP-671.

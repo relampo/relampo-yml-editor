@@ -222,6 +222,7 @@ export function YAMLRequestDetails({
         >
         {activeTab === 'request' ? (
           <RequestContent
+            nodeId={node.id}
             formData={formData}
             baseUrl={baseUrl}
             hasRecordedRedirectFollowUp={hasRecordedRedirectFollowUp}
@@ -263,6 +264,7 @@ export function YAMLRequestDetails({
 }
 
 interface RequestContentProps {
+  nodeId: string;
   formData: YAMLNodeData;
   baseUrl: string;
   hasRecordedRedirectFollowUp: boolean;
@@ -647,6 +649,7 @@ function RequestAdvancedOptionsRow({
 }
 
 function RequestContent({
+  nodeId,
   formData,
   baseUrl,
   hasRecordedRedirectFollowUp,
@@ -670,6 +673,8 @@ function RequestContent({
     'w-[14ch] max-w-full h-9.5 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono';
 
   const requestUrl = getStringValue(formData.url);
+  const [pathDraft, setPathDraft] = useState<{ nodeId: string; url: string; value: string } | null>(null);
+
   const timeoutValue = getStringValue(formData.timeout);
   const cookieOverride = getStringValue(formData.cookie_override, 'inherit');
   const cacheOverride = getStringValue(formData.cache_override, 'inherit');
@@ -686,21 +691,31 @@ function RequestContent({
   const baseUrlPlaceholder = inheritedHost || FALLBACK_BASE_URL_PLACEHOLDER;
   const displayBaseUrl = urlParts.baseUrl || inheritedHost;
   const rawUrl = requestUrl.trim();
-  const pathInputValue = rawUrl === '' ? '' : urlParts.path;
+  const currentPathDraft = pathDraft?.nodeId === nodeId && pathDraft.url === requestUrl ? pathDraft : null;
+  const pathInputValue = currentPathDraft ? currentPathDraft.value : rawUrl === '' ? '' : urlParts.path;
   const requestBodyText = getBodyText(formData.body);
 
   const handlePathChange = (value: string) => {
+    const trimmedValue = value.trim();
+    const hasPathDraft = currentPathDraft !== null;
     if (value.trim() === '') {
       if (!urlParts.isAbsolute && !urlParts.baseUrl && !urlParts.query) {
+        setPathDraft({ nodeId, url: '', value: '' });
         onFieldChange('url', '');
         return;
       }
 
-      onFieldChange('url', buildRequestUrl(requestUrl, { path: '' }));
+      const nextUrl = hasPathDraft ? `${urlParts.isAbsolute ? `${urlParts.protocol}://${urlParts.baseUrl}` : ''}/` : buildRequestUrl(requestUrl, { path: '' });
+      setPathDraft({ nodeId, url: nextUrl, value: '' });
+      onFieldChange('url', nextUrl);
       return;
     }
 
-    onFieldChange('url', buildRequestUrl(requestUrl, { path: value }));
+    const nextUrl = hasPathDraft || trimmedValue.includes('?')
+      ? `${urlParts.isAbsolute ? `${urlParts.protocol}://${urlParts.baseUrl}` : ''}${trimmedValue.startsWith('/') ? trimmedValue : `/${trimmedValue}`}`
+      : buildRequestUrl(requestUrl, { path: value });
+    setPathDraft({ nodeId, url: nextUrl, value });
+    onFieldChange('url', nextUrl);
   };
 
   const handleBaseUrlChange = (value: string) => {
@@ -709,6 +724,7 @@ function RequestContent({
     // request inherits from http_defaults instead of being pinned to an absolute
     // URL. A different (or empty) host writes it explicitly.
     const nextBaseUrl = trimmed === inheritedHost ? '' : trimmed;
+    setPathDraft(null);
     onFieldChange('url', buildRequestUrl(requestUrl, { baseUrl: nextBaseUrl }));
   };
 
