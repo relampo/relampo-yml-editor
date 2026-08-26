@@ -3,10 +3,12 @@ import { yamlMapData, yamlMapValue, type YAMLNode } from '../../types/yaml';
 import type { RedirectedRequestInfo } from '../../types/yaml';
 import {
   addNodeToTree,
+  countTextInEnabledRequests,
   getTransactionWrapValidation,
   moveNodeInTree,
   refreshTreePaths,
   replaceTextInEnabledRequests,
+  replaceTextInEnabledRequestsAtMatch,
   syncRedirectSourceFollowRedirects,
   updateNodeEnabled,
   wrapNodesInTransaction,
@@ -133,6 +135,53 @@ scenarios:
     const tree: YAMLNode = { id: 'steps', type: 'steps', name: 'Steps', children: [] };
     expect(replaceTextInEnabledRequests(tree, '', 'replacement')).toEqual({ tree, replacements: 0 });
     expect(replaceTextInEnabledRequests(tree, 'missing', 'replacement')).toEqual({ tree, replacements: 0 });
+  });
+
+  it('does not delete matches when the replacement is empty', () => {
+    const tree: YAMLNode = {
+      id: 'steps',
+      type: 'steps',
+      name: 'Steps',
+      children: [{ id: 'request', type: 'request', name: 'Request', data: { url: '/needle' }, children: [] }],
+    };
+
+    const result = replaceTextInEnabledRequests(tree, 'needle', '');
+
+    expect(result).toEqual({ tree, replacements: 0 });
+    expect(countTextInEnabledRequests(tree, 'needle')).toBe(1);
+  });
+
+  it('counts matches once and replaces only the selected match', () => {
+    const tree: YAMLNode = {
+      id: 'steps',
+      type: 'steps',
+      name: 'Steps',
+      children: [
+        {
+          id: 'request',
+          type: 'request',
+          name: 'Request',
+          data: {
+            url: '/users/xyz123',
+            body: { id: 'xyz123' },
+            response: { body: 'xyz123' },
+            enabled: true,
+          },
+          children: [],
+        },
+      ],
+    };
+
+    expect(countTextInEnabledRequests(tree, 'xyz123')).toBe(2);
+
+    const result = replaceTextInEnabledRequestsAtMatch(tree, 'xyz123', '{{token}}', 1).result;
+
+    expect(result.replacements).toBe(1);
+    expect(result.tree.children?.[0].data).toMatchObject({
+      url: '/users/xyz123',
+      body: { id: '{{token}}' },
+      response: { body: 'xyz123' },
+    });
   });
 
   it.each([

@@ -51,6 +51,19 @@ export function subtreeHasMatch(node: YAMLNode, searchQuery: string): boolean {
   return false;
 }
 
+export function countMatchingNodes(tree: YAMLNode | null, searchQuery: string): number {
+  const query = searchQuery.trim();
+  if (!tree || !query) return 0;
+
+  let count = 0;
+  const visit = (node: YAMLNode) => {
+    if (nodeDirectlyMatches(node, query)) count += 1;
+    node.children?.forEach(visit);
+  };
+  visit(tree);
+  return count;
+}
+
 function nodeNameOrPathMatches(node: YAMLNode, query: string): boolean {
   if (node.name.toLowerCase().includes(query)) return true;
 
