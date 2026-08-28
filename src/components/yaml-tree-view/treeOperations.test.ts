@@ -4,6 +4,7 @@ import type { RedirectedRequestInfo } from '../../types/yaml';
 import {
   addNodeToTree,
   countTextInEnabledRequests,
+  duplicateNodeInTree,
   getTransactionWrapValidation,
   moveNodeInTree,
   refreshTreePaths,
@@ -496,8 +497,7 @@ describe('transaction grouping operations', () => {
 });
 
 describe('duplicateNodeInTree redirect metadata', () => {
-  it('does not reuse chain IDs when copying a redirect chain', async () => {
-    const { duplicateNodeInTree } = await import('./treeOperations');
+  it('does not reuse chain IDs when copying a redirect chain', () => {
     const tree: YAMLNode = {
       id: 'root',
       type: 'test',

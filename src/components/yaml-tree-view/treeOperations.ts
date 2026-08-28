@@ -555,13 +555,32 @@ export function cloneNodeSnapshot(node: YAMLNode): YAMLNode {
 }
 
 export function cloneNodeWithNewIds(node: YAMLNode, copySuffix?: string): YAMLNode {
-  const newId = createNodeId();
-  return {
-    ...node,
-    id: newId,
-    name: copySuffix ? `${node.name} (${copySuffix})` : node.name,
-    children: node.children?.map(child => cloneNodeWithNewIds(child, copySuffix)),
+  const chainIdMap = new Map<string, string>();
+
+  const clone = (source: YAMLNode): YAMLNode => {
+    const newId = createNodeId();
+    const sourceChainId = source.data?.chain_id;
+    let data = source.data;
+
+    if (sourceChainId) {
+      let clonedChainId = chainIdMap.get(sourceChainId);
+      if (!clonedChainId) {
+        clonedChainId = `rc-${newId}`;
+        chainIdMap.set(sourceChainId, clonedChainId);
+      }
+      data = { ...source.data, chain_id: clonedChainId };
+    }
+
+    return {
+      ...source,
+      id: newId,
+      name: copySuffix ? `${source.name} (${copySuffix})` : source.name,
+      ...(data ? { data } : {}),
+      children: source.children?.map(clone),
+    };
   };
+
+  return clone(node);
 }
 
 export function updateNodeEnabled(tree: YAMLNode, nodeId: string, enabled: boolean): YAMLNode {
