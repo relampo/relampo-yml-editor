@@ -221,7 +221,7 @@ function textMatcher(search: string, urlEncoded: boolean): RegExp | null {
     const pattern = urlEncoded
       ? `${escapeRegExp(search)}|${percentEncodedSearchPattern(search)}`
       : escapeRegExp(search);
-    return new RegExp(pattern, 'g');
+    return new RegExp(pattern, 'gi');
   } catch {
     return null;
   }

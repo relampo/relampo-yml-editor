@@ -137,6 +137,29 @@ scenarios:
     expect(replaceTextInEnabledRequests(tree, 'missing', 'replacement')).toEqual({ tree, replacements: 0 });
   });
 
+  it('matches replacement text case-insensitively like tree search', () => {
+    const tree: YAMLNode = {
+      id: 'steps',
+      type: 'steps',
+      name: 'Steps',
+      children: [
+        {
+          id: 'request',
+          type: 'request',
+          name: 'Request',
+          data: { body: { credential: 'securityToken' }, enabled: true },
+          children: [],
+        },
+      ],
+    };
+
+    expect(countTextInEnabledRequests(tree, 'token')).toBe(1);
+    const result = replaceTextInEnabledRequests(tree, 'token', 'token1');
+
+    expect(result.replacements).toBe(1);
+    expect(result.tree.children?.[0].data?.body).toEqual({ credential: 'securitytoken1' });
+  });
+
   it('does not delete matches when the replacement is empty', () => {
     const tree: YAMLNode = {
       id: 'steps',
