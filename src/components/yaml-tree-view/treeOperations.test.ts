@@ -495,6 +495,59 @@ describe('transaction grouping operations', () => {
   });
 });
 
+describe('duplicateNodeInTree redirect metadata', () => {
+  it('does not reuse chain IDs when copying a redirect chain', async () => {
+    const { duplicateNodeInTree } = await import('./treeOperations');
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'test',
+      name: 'Test',
+      children: [
+        {
+          id: 'steps',
+          type: 'steps',
+          name: 'Steps',
+          children: [
+            {
+              id: 'redirect-chain',
+              type: 'transaction',
+              name: 'Login',
+              data: { name: 'Login' },
+              children: [
+                {
+                  id: 'parent',
+                  type: 'request',
+                  name: 'POST /login',
+                  data: { request_id: 6, chain_id: 'rc-6', chain_role: 'parent', url: '/login' },
+                  children: [],
+                },
+                {
+                  id: 'final',
+                  type: 'request',
+                  name: 'GET /home',
+                  data: { request_id: 7, chain_id: 'rc-6', chain_role: 'final', url: '/home' },
+                  children: [],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    const duplicated = duplicateNodeInTree(tree, 'redirect-chain', 'Copy');
+    const copiedChain = duplicated.children?.[0].children?.[1];
+    const copiedParent = copiedChain?.children?.[0];
+    const copiedFinal = copiedChain?.children?.[1];
+
+    expect(copiedParent?.data?.chain_id).toBeDefined();
+    expect(copiedParent?.data?.chain_id).not.toBe('rc-6');
+    expect(copiedFinal?.data?.chain_id).toBe(copiedParent?.data?.chain_id);
+    expect(copiedParent?.data?.request_id).toBe(6);
+    expect(copiedFinal?.data?.request_id).toBe(7);
+  });
+});
+
 describe('syncRedirectSourceFollowRedirects', () => {
   // source (302) -> target follow-up, with the target nested in a group.
   function createRedirectTree(): YAMLNode {
