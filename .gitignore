@@ -29,3 +29,6 @@ examples/atenea.correlated.yaml
 
 #AI Agents
 .codex/config.toml
+
+#Playwright artifacts
+.playwright-mcp/*
