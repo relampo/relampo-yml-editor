@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { YAMLEditorStatusBanners } from './YAMLEditorStatusBanners';
 
@@ -15,5 +15,20 @@ describe('YAMLEditorStatusBanners', () => {
 
     expect(screen.getByText('future_root')).toBeInTheDocument();
     expect(screen.getByText('scenarios[0].future_scenario')).toBeInTheDocument();
+  });
+
+  it('dismisses the unknown-field warning with an accessible close button', () => {
+    render(
+      <YAMLEditorStatusBanners
+        error={null}
+        validationErrors={[]}
+        unknownFieldPaths={['future_root']}
+        language="en"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close warning' }));
+
+    expect(screen.queryByText('future_root')).not.toBeInTheDocument();
   });
 });

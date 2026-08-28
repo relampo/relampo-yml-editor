@@ -3,6 +3,17 @@ import { parseYAMLToTree } from './yamlParser';
 import { collectUnknownFieldPaths } from './unknownYamlFields';
 
 describe('unknown YAML field warnings', () => {
+  it('does not report recorder metadata at test scope', () => {
+    const tree = parseYAMLToTree(`
+test:
+  name: recorded document
+  recorded_at: 2026-08-27T21:34:06Z
+  recorded_from: https://www.testingyes.com
+`)!;
+
+    expect(collectUnknownFieldPaths(tree)).toEqual([]);
+  });
+
   it('does not report fields supported by the backend contract', () => {
     const tree = parseYAMLToTree(`
 test:

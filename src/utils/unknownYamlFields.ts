@@ -19,6 +19,16 @@ function currentKnownFields(): Record<string, ReadonlySet<string>> {
 
 const knownFields = currentKnownFields();
 
+// Recorder output includes provenance metadata at test scope. The runtime
+// contract omits these fields because execution ignores them, but the editor
+// supports them as preserved document data rather than forward-compatibility
+// fields that need a warning.
+const TEST_KNOWN_FIELDS = new Set([
+  ...(knownFields.test || []),
+  'recorded_at',
+  'recorded_from',
+]);
+
 function formatPath(parts: Array<string | number>): string {
   return parts.reduce<string>((path, part) => {
     if (typeof part === 'number') return `${path}[${part}]`;
@@ -50,7 +60,7 @@ function dataScope(
   const path = node.path || [];
   switch (node.type) {
     case 'test':
-      return { scope: 'test', prefix: ['test'] };
+      return { supported: TEST_KNOWN_FIELDS, prefix: ['test'] };
     case 'scenario':
       return { scope: 'scenario', prefix: path };
     case 'group':
