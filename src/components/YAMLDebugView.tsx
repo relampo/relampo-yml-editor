@@ -224,9 +224,8 @@ export function YAMLDebugSession({
 
   const currentDebugEventTargets = useMemo(() => collectDebugEventTargets(tree), [tree]);
   // A completed run belongs to the script snapshot that started it. Keep its
-  // request targets stable so later Tree edits cannot renumber or remap old
-  // timeline rows (for example #2.1..#2.3 collapsing to repeated #2 rows when
-  // Follow Redirects is disabled after the run). RLP-442.
+  // request targets stable so later Tree edits cannot remap old timeline rows
+  // to different recorded request numbers after the run. RLP-442.
   const [runDebugEventTargets, setRunDebugEventTargets] = useState<YAMLNode[] | null>(null);
   const debugEventTargets = runDebugEventTargets ?? currentDebugEventTargets;
   const entries = useMemo<DebugEntry[]>(
@@ -241,7 +240,7 @@ export function YAMLDebugSession({
   // can be longer than the live run walks: the engine stops following at a hop
   // it won't cross (e.g. a cross-site OAuth callback blocked by the redirect
   // trust boundary, backend RLP-492), so recorded-but-unfollowed children emit
-  // no event and would silently vanish (#123.1 shows, #123.2 disappears). Weave
+  // no event and would silently vanish (for example, #124 without #125). Weave
   // them back as read-only "skipped" placeholders right after their chain's last
   // real row, so the timeline stays faithful to the recorded chain. RLP-607.
   const timelineEntries = useMemo<DebugEntry[]>(() => {

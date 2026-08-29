@@ -674,7 +674,7 @@ describe('YAMLDebugSession tree selection sync', () => {
     );
   });
 
-  it('shows the parent request number for redirected debug events', async () => {
+  it('shows the recorded Tree request number for redirected debug events', async () => {
     const parentRequest: YAMLNode = {
       id: 'parent',
       type: 'request',
@@ -738,11 +738,10 @@ describe('YAMLDebugSession tree selection sync', () => {
       );
     });
 
-    // The final landing is a redirect follow-up, so it shows the parent's
-    // number with its chain position (#10.1) — grouped under the parent yet
-    // distinct — never the recorded final child's own id (#11). RLP-586.
-    expect(await screen.findByText('#10.1')).toBeInTheDocument();
-    expect(screen.queryByText('#11')).not.toBeInTheDocument();
+    // The runtime event carries the parent request_id, but the Tree identifies
+    // this recorded final child as request 11. RLP-674.
+    expect(await screen.findByText('#11')).toBeInTheDocument();
+    expect(screen.queryByText('#10.1')).not.toBeInTheDocument();
     expect(screen.getAllByText('http://www.testingyes.com/demo/index.php?main_page=checkout_payment')).not.toHaveLength(0);
   });
 

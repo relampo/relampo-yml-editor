@@ -155,30 +155,68 @@ describe('matchDebugEventTarget — redirect chain follow-ups', () => {
     expect(match).toBeNull();
   });
 
-  it('numbers each follow-up with the parent id plus its position in the chain', () => {
-    // RLP-586: hops and the final landing keep the parent's number (#17) so the
-    // chain stays grouped, but each gets a sub-index (#17.1, #17.2, ...) so the
-    // parent and its children are individually identifiable even when several
-    // VUs interleave their chains on the timeline.
+  it('uses the matched Tree number for each redirect follow-up', () => {
+    // RLP-674: the runtime stamps the parent's request_id on every chain event,
+    // but Debug must display the recorded child number shown by the Tree.
     const nodes = chainNodes();
     const hopEvent = event({ chain_id: 'rc-17', chain_role: 'hop', redirect_index: 3, request_id: 17 });
     const hopNode = matchDebugEventTarget(hopEvent, nodes);
     expect(hopNode?.id).toBe('h20');
-    expect(debugEventRequestNumber(hopEvent, hopNode, nodes)).toBe('17.3');
+    expect(debugEventRequestNumber(hopEvent, hopNode, nodes)).toBe('20');
 
     const finalEvent = event({ chain_id: 'rc-17', chain_role: 'final', redirect_index: 4, request_id: 17 });
-    expect(debugEventRequestNumber(finalEvent, matchDebugEventTarget(finalEvent, nodes), nodes)).toBe('17.4');
+    expect(debugEventRequestNumber(finalEvent, matchDebugEventTarget(finalEvent, nodes), nodes)).toBe('21');
   });
 
-  it('sub-indexes a final follow-up that arrives without a redirect_index', () => {
+  it('uses the Tree number for a final follow-up without a redirect_index', () => {
     // chain_role 'final' with redirect_index omitted (omitempty drops a 0): the
-    // position must still be derived from the matched child's order in the
-    // chain, so the final landing reads #17.4 rather than collapsing to #17.
+    // matched child still supplies the Tree number for the final landing.
     const nodes = chainNodes();
     const finalEvent = event({ chain_id: 'rc-17', chain_role: 'final', request_id: 17 });
     const finalNode = matchDebugEventTarget(finalEvent, nodes);
     expect(finalNode?.id).toBe('f21');
-    expect(debugEventRequestNumber(finalEvent, finalNode, nodes)).toBe('17.4');
+    expect(debugEventRequestNumber(finalEvent, finalNode, nodes)).toBe('21');
+  });
+
+  it('keeps the attached RLP-674 request 16 number when the runtime event uses request 15', () => {
+    const parent: YAMLNode = {
+      id: 'request-15',
+      type: 'request',
+      name: '[15] LogOut - GET /demo/index.php?main_page=logoff',
+      data: {
+        request_id: 15,
+        method: 'GET',
+        url: '/demo/index.php?main_page=logoff',
+        chain_id: 'rc-15',
+        chain_role: 'parent',
+      },
+    };
+    const final: YAMLNode = {
+      id: 'request-16',
+      type: 'request',
+      name: '[16] LogOut - GET /demo/index.php?main_page=logoff',
+      data: {
+        request_id: 16,
+        enabled: false,
+        method: 'GET',
+        url: '/demo/index.php?main_page=logoff',
+        chain_id: 'rc-15',
+        chain_role: 'final',
+      },
+    };
+    const nodes = [parent, final];
+    const finalEvent = event({
+      name: '[15] -> redirect',
+      path: '/demo/index.php?main_page=logoff',
+      chain_id: 'rc-15',
+      chain_role: 'final',
+      redirect_index: 1,
+      request_id: 15,
+    });
+    const matched = matchDebugEventTarget(finalEvent, nodes);
+
+    expect(matched?.id).toBe('request-16');
+    expect(debugEventRequestNumber(finalEvent, matched, nodes)).toBe('16');
   });
 
   it('uses the runtime number for non-redirect rows', () => {

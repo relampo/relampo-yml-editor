@@ -478,7 +478,7 @@ describe('YAMLDebugSession RLP debug fixes', () => {
     ).toBeInTheDocument();
   });
 
-  it('uses the source hop execution number for redirected follow-up logs (RLP-598)', async () => {
+  it('uses the recorded source hop number for redirected follow-up logs (RLP-674)', async () => {
     const parentRequest: YAMLNode = {
       id: 'parent',
       type: 'request',
@@ -546,7 +546,7 @@ describe('YAMLDebugSession RLP debug fixes', () => {
 
     expect(
       await screen.findByText(
-        /redirected request: \[10\.1\] GET http:\/\/example\.test\/oauth\/as-gestion → 200 GET http:\/\/example\.test\/flowSelector\.xhtml/,
+        /redirected request: \[11\] GET http:\/\/example\.test\/oauth\/as-gestion → 200 GET http:\/\/example\.test\/flowSelector\.xhtml/,
       ),
     ).toBeInTheDocument();
   });
@@ -775,7 +775,7 @@ describe('YAMLDebugSession RLP debug fixes', () => {
         method: 'GET',
         // Recorded redirect children contain the capture-time values, not the
         // original placeholders. The Variables tab must correlate those literal
-        // values with the runtime snapshot, as in request #2.1 from the report.
+        // values with the runtime snapshot, as in the recorded request #3.
         url: '/oauth?state=captured-state&code=captured-code',
         enabled: false,
         chain_id: 'rc-2',
@@ -821,7 +821,7 @@ describe('YAMLDebugSession RLP debug fixes', () => {
       );
     });
 
-    fireEvent.click((await screen.findByText('#2.1')).closest('button')!);
+    fireEvent.click((await screen.findByText('#3')).closest('button')!);
     fireEvent.click(screen.getByRole('button', { name: 'variables' }));
 
     expect(await screen.findByText('state1 (REQ)')).toBeInTheDocument();
@@ -1034,8 +1034,8 @@ describe('YAMLDebugSession RLP debug fixes', () => {
     // The RLP-607 OAuth flow: [123] redirects to [124], which redirects to the
     // cross-site callback [125]. The engine follows [124] but stops at the
     // cross-site callback (redirect trust boundary, backend RLP-492), so [125]
-    // emits no event and used to vanish from the timeline (#123.1 then a jump to
-    // the next request). The recorded final must now show as a skipped #123.2.
+    // emits no event and used to vanish from the timeline (#124 then a jump to
+    // the next request). The recorded final must now show as a skipped #125.
     const parent: YAMLNode = {
       id: 'p123',
       type: 'request',
@@ -1088,7 +1088,7 @@ describe('YAMLDebugSession RLP debug fixes', () => {
     await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
 
     act(() => {
-      // Parent (#123) and one hop (#123.1) fire; the callback [125] never does —
+      // Parent (#123) and one hop (#124) fire; the callback [125] never does —
       // the backend stamps the parent's request_id on every chain event.
       debugApiMock.handlers[0].onEvent(
         event({
@@ -1114,18 +1114,18 @@ describe('YAMLDebugSession RLP debug fixes', () => {
       );
     });
 
-    expect(screen.queryByText('#123.2')).not.toBeInTheDocument();
+    expect(screen.queryByText('#125')).not.toBeInTheDocument();
 
     act(() => {
       debugApiMock.handlers[0].onDone(null);
     });
 
-    // The recorded-but-unfollowed final is woven back in as a skipped #123.2 row.
-    expect(await screen.findByText('#123.2')).toBeInTheDocument();
+    // The recorded-but-unfollowed final is woven back in as a skipped #125 row.
+    expect(await screen.findByText('#125')).toBeInTheDocument();
     expect(screen.getByText('Skipped · redirect not followed')).toBeInTheDocument();
     // The two real rows are still there.
     expect(screen.getByText('#123')).toBeInTheDocument();
-    expect(screen.getByText('#123.1')).toBeInTheDocument();
+    expect(screen.getByText('#124')).toBeInTheDocument();
   });
 
   it('keeps no-follow redirect children standalone in rows and variable snapshots (RLP-597)', async () => {
@@ -1338,9 +1338,9 @@ describe('YAMLDebugSession RLP debug fixes', () => {
       debugApiMock.handlers[0].onDone(null);
     });
 
-    expect(await screen.findByText('#2.1')).toBeInTheDocument();
-    expect(screen.getByText('#2.2')).toBeInTheDocument();
-    expect(screen.getByText('#2.3')).toBeInTheDocument();
+    expect(await screen.findByText('#3')).toBeInTheDocument();
+    expect(screen.getByText('#4')).toBeInTheDocument();
+    expect(screen.getByText('#5')).toBeInTheDocument();
 
     const standaloneTree: YAMLNode = {
       ...followedTree,
@@ -1351,12 +1351,9 @@ describe('YAMLDebugSession RLP debug fixes', () => {
     };
     rerender(<YAMLDebugSession tree={standaloneTree} yamlCode={'test:\n  name: edited-after-run\n'} {...props} />);
 
-    expect(screen.getByText('#2.1')).toBeInTheDocument();
-    expect(screen.getByText('#2.2')).toBeInTheDocument();
-    expect(screen.getByText('#2.3')).toBeInTheDocument();
-    expect(screen.queryByText('#3')).not.toBeInTheDocument();
-    expect(screen.queryByText('#4')).not.toBeInTheDocument();
-    expect(screen.queryByText('#5')).not.toBeInTheDocument();
+    expect(screen.getByText('#3')).toBeInTheDocument();
+    expect(screen.getByText('#4')).toBeInTheDocument();
+    expect(screen.getByText('#5')).toBeInTheDocument();
   });
 
   it('shows a binary response body as a compact notice, not mojibake (RLP-555)', async () => {
