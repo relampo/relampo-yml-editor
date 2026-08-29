@@ -5,6 +5,7 @@ import {
   addNodeToTree,
   countTextInEnabledRequests,
   duplicateNodeInTree,
+  getReplaceableMatchNodeIds,
   getTransactionWrapValidation,
   moveNodeInTree,
   refreshTreePaths,
@@ -14,7 +15,7 @@ import {
   updateNodeEnabled,
   wrapNodesInTransaction,
 } from './treeOperations';
-import { parseYAMLToTree } from '../../utils/yamlParser';
+import { parseYAMLToTree, treeToYAML } from '../../utils/yamlParser';
 
 function findRequest(node: YAMLNode): YAMLNode | undefined {
   if (node.type === 'request' || node.type === 'get' || node.type === 'post') return node;
@@ -26,6 +27,44 @@ function findRequest(node: YAMLNode): YAMLNode | undefined {
 }
 
 describe('replaceTextInEnabledRequests', () => {
+  it('returns replaceable match node ids in replacement order', () => {
+    const tree: YAMLNode = {
+      id: 'steps',
+      type: 'steps',
+      name: 'Steps',
+      children: [
+        {
+          id: 'enabled-request',
+          type: 'request',
+          name: 'Enabled',
+          data: {
+            url: '/users/token/token',
+            body: { id: 'token' },
+            response: { body: 'token' },
+            enabled: true,
+          },
+          children: [
+            { id: 'enabled-headers', type: 'headers', name: 'Headers', data: yamlMapData({ Authorization: 'token' }) },
+          ],
+        },
+        {
+          id: 'disabled-request',
+          type: 'request',
+          name: 'Disabled',
+          data: { url: '/disabled/token', enabled: false },
+          children: [],
+        },
+      ],
+    };
+
+    expect(getReplaceableMatchNodeIds(tree, 'token')).toEqual([
+      'enabled-request',
+      'enabled-request',
+      'enabled-request',
+      'enabled-headers',
+    ]);
+  });
+
   it('replaces request and header values but skips disabled requests', () => {
     const tree: YAMLNode = {
       id: 'steps',
@@ -99,6 +138,7 @@ scenarios:
     expect(result.replacements).toBe(2);
 
     const replaced = findRequest(result.tree)!;
+    expect(replaced.name).toBe('GET: /u/%7B%7Btok%7D%7D');
     expect(replaced.data!.url).toBe('/u/{{tok}}');
     // Both copies are still rewritten — YAMLRequestDetails reads
     // node.data!.headers for Content-Type, so leaving it stale would be wrong.
@@ -106,6 +146,11 @@ scenarios:
     expect(replaced.children?.find(child => child.type === 'headers')?.data).toEqual({
       Authorization: '{{tok}}',
     });
+
+    const roundTripped = parseYAMLToTree(treeToYAML(result.tree));
+    expect(roundTripped).not.toBeNull();
+    expect(findRequest(roundTripped!)?.data?.url).toBe('/u/{{tok}}');
+    expect(findRequest(roundTripped!)?.data?.headers).toEqual({ Authorization: '{{tok}}' });
   });
 
   it('still counts request headers that have no headers child node', () => {
@@ -159,6 +204,28 @@ scenarios:
 
     expect(result.replacements).toBe(1);
     expect(result.tree.children?.[0].data?.body).toEqual({ credential: 'securitytoken1' });
+  });
+
+  it('keeps an explicit request name synchronized when its data is replaced', () => {
+    const tree: YAMLNode = {
+      id: 'steps',
+      type: 'steps',
+      name: 'Steps',
+      children: [
+        {
+          id: 'request',
+          type: 'request',
+          name: 'Token request',
+          data: { name: 'Token request', url: '/users' },
+          children: [],
+        },
+      ],
+    };
+
+    const result = replaceTextInEnabledRequests(tree, 'token', 'Updated');
+
+    expect(result.tree.children?.[0].name).toBe('Updated request');
+    expect(result.tree.children?.[0].data?.name).toBe('Updated request');
   });
 
   it('does not delete matches when the replacement is empty', () => {

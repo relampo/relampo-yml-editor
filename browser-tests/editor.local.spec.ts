@@ -33,6 +33,16 @@ scenarios:
       - request:
           method: GET
           url: /health?token=first&next=token
+          response:
+            status: 200
+            body: response-token
+      - request:
+          method: GET
+          url: /disabled?token=disabled
+          enabled: false
+      - request:
+          method: GET
+          url: /allowed?token=third
 `;
 
 const test = base.extend<{ browserErrors: string[] }>({
@@ -97,17 +107,61 @@ test('shows the full loaded YAML file name in the Recording form details', async
   await expect(fileName).toHaveAttribute('readonly', '');
 });
 
-test('Replace opens with the active tree search criterion and match count', async ({ page }) => {
+test('Tree search and replace updates allowed matches and preserves responses', async ({ page }) => {
   await mockStudioInfo(page, replaceYaml);
   await page.goto('/');
 
   await page.getByText('Replace smoke', { exact: true }).first().click();
+  const firstRequest = page.locator('[data-node-id]').filter({ hasText: '/health?token=first' }).first();
+  await firstRequest.click();
+  await expect(page.getByText('Element details', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('Name', { exact: true })).toBeVisible();
+
   await page.getByRole('textbox', { name: 'Search nodes' }).fill('token');
   await page.getByRole('button', { name: 'Search tree' }).click();
-  await page.getByRole('button', { name: 'Replace' }).click();
+  await page.getByRole('button', { name: 'Replace', exact: true }).first().click();
 
   await expect(page.getByLabel('Find text to replace')).toHaveValue('token');
-  await expect(page.getByLabel('Replace match position')).toHaveText('1/2');
+  await expect(page.getByLabel('Find text to replace')).toHaveAttribute('readonly', '');
+  await expect(page.getByLabel('Replace match position')).toHaveText('1 / 3');
+  await expect(page.getByText('res', { exact: true }).first()).toBeVisible();
+
+  await page.getByRole('button', { name: 'Next replace match' }).click();
+  await expect(page.getByLabel('Replace match position')).toHaveText('2 / 3');
+
+  await page.getByRole('textbox', { name: 'Replacement text' }).fill('updated');
+  await page.getByRole('button', { name: 'Replace selected' }).click();
+  await expect(page.getByLabel('Replace match position')).toHaveText('2 / 2');
+  await expect(page.getByText('Element details', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('Name', { exact: true })).toBeVisible();
+
+  const selectedDownloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await page.getByRole('menuitem', { name: /Save with responses/ }).click();
+  const selectedDownload = await selectedDownloadPromise;
+  const selectedYaml = await readFile(await selectedDownload.path(), 'utf8');
+  expect(selectedYaml).toContain('url: /health?token=first&next=updated');
+  expect(selectedYaml).toContain('url: /allowed?token=third');
+
+  await page.getByRole('button', { name: 'Replace all', exact: true }).click();
+  await expect(page.getByLabel('Replace match position')).toHaveText('0 / 0');
+  await expect(page.getByText('2 replacements', { exact: true })).toBeVisible();
+  await expect(page.getByText('Element details', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('Name', { exact: true })).toBeVisible();
+
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await page.getByRole('menuitem', { name: /Save with responses/ }).click();
+  const download = await downloadPromise;
+  const downloadedYaml = await readFile(await download.path(), 'utf8');
+  expect(downloadedYaml).toContain('body: response-token');
+  expect(downloadedYaml).toContain('/disabled?token=disabled');
+  expect(downloadedYaml).not.toContain('/health?token=first');
+  expect(downloadedYaml).not.toContain('/allowed?token=third');
+
+  await page.getByTitle('Close search').click();
+  await expect(page.getByRole('textbox', { name: 'Search nodes' })).toHaveValue('');
+  await expect(page.getByLabel('Find text to replace')).toHaveCount(0);
 });
 
 test('standalone upload input reaches the tree and tree edits reach read-only code', async ({ page }) => {
@@ -117,7 +171,7 @@ test('standalone upload input reaches the tree and tree edits reach read-only co
   await expect(page.getByText('Uploaded code edit', { exact: true }).first()).toBeVisible();
 
   await page.getByText('Uploaded code edit', { exact: true }).first().click();
-  await page.getByLabel('Name').fill('Tree browser edit');
+  await page.getByLabel('Name', { exact: true }).fill('Tree browser edit');
   await page.getByRole('button', { name: 'Code' }).click();
   await page.getByLabel('Search in YAML').fill('Tree browser edit');
   await expect(page.getByText('1/1', { exact: true })).toBeVisible();
@@ -164,7 +218,7 @@ test('standalone downloads include or remove recorded responses from the newest 
   await mockStudioInfo(page);
   await page.goto('/');
   await page.getByText('Browser smoke', { exact: true }).first().click();
-  await page.getByLabel('Name').fill('Newest browser revision');
+  await page.getByLabel('Name', { exact: true }).fill('Newest browser revision');
 
   const withResponsesPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Save' }).click();

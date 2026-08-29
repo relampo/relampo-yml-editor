@@ -2,6 +2,7 @@ import { canContain, canDrop } from '../../utils/yamlDragDropRules';
 import type { RedirectedRequestInfo, YAMLNode, YAMLNodeData } from '../../types/yaml';
 import type { StringMap } from '../../types/shared';
 import { findNodeById } from '../yamlEditorHelpers';
+import { getUpdatedRequestNodePresentation } from '../../utils/requestNodeDisplay';
 
 type TransactionWrapValidationReason =
   | 'minimum_selection'
@@ -361,22 +362,32 @@ export function replaceTextInEnabledRequests(
 
 /** Return the number of replaceable matches in enabled requests and headers. */
 export function countTextInEnabledRequests(tree: YAMLNode, search: string): number {
-  if (!search) return 0;
+  return getReplaceableMatchNodeIds(tree, search).length;
+}
 
-  const count = (node: YAMLNode, inheritedEnabled: boolean): number => {
+/**
+ * Return one node ID for each replaceable occurrence, in replacement order.
+ * Responses and disabled subtrees are intentionally outside this traversal.
+ */
+export function getReplaceableMatchNodeIds(tree: YAMLNode, search: string): string[] {
+  if (!search) return [];
+
+  const matchNodeIds: string[] = [];
+  const visit = (node: YAMLNode, inheritedEnabled: boolean) => {
     const enabled = inheritedEnabled && node.data?.enabled !== false;
-    let matches = 0;
 
     if (enabled && (REQUEST_TYPES.has(node.type) || node.type === 'headers')) {
       const headersCountedByChild =
         REQUEST_TYPES.has(node.type) && (node.children?.some(child => child.type === 'headers') ?? false);
-      matches += countRequestData(node.data, search, headersCountedByChild);
+      const nodeMatches = countRequestData(node.data, search, headersCountedByChild);
+      matchNodeIds.push(...Array.from({ length: nodeMatches }, () => node.id));
     }
 
-    return matches + (node.children?.reduce((total, child) => total + count(child, enabled), 0) ?? 0);
+    node.children?.forEach(child => visit(child, enabled));
   };
 
-  return count(tree, true);
+  visit(tree, true);
+  return matchNodeIds;
 }
 
 function countRequestData(data: YAMLNodeData | undefined, search: string, headersCountedByChild: boolean): number {
@@ -446,11 +457,33 @@ export function replaceTextInEnabledRequestsAtMatch(
       if (headersChild) nextData = { ...nextData, headers: headersChild.data as StringMap };
     }
 
+    if (!changed) return [node, matches, replacements, false];
+
+    const currentDataName = node.data?.name;
+    const projectedRequestName =
+      typeof currentDataName === 'string' && node.name === currentDataName && typeof nextData?.name === 'string'
+        ? nextData.name
+        : undefined;
+    const nextName = REQUEST_TYPES.has(node.type)
+      ? getUpdatedRequestNodePresentation({
+          nodeType: node.type,
+          currentName: node.name,
+          currentData: node.data as Record<string, unknown> | undefined,
+          updatedData: nextData as Record<string, unknown> | undefined,
+          explicitName: projectedRequestName,
+        }).name
+      : node.name;
+
     return [
-      changed ? { ...node, data: nextData, ...(nextChildren ? { children: nextChildren } : {}) } : node,
+      {
+        ...node,
+        name: nextName,
+        data: nextData,
+        ...(nextChildren ? { children: nextChildren } : {}),
+      },
       matches,
       replacements,
-      changed,
+      true,
     ];
   };
 
