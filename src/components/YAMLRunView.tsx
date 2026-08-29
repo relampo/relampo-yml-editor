@@ -82,6 +82,22 @@ function formatDurationNs(nanoseconds: number): string {
   return `${minutes}m ${seconds.toString().padStart(2, '0')}s`;
 }
 
+function formatSummaryRate(value: number): string {
+  return formatRps(Number.isFinite(value) && value > 0 ? value : 0);
+}
+
+function summaryConfiguredVUs(summary: RunSummary): number {
+  const configured = Number(summary.metadata?.configured_vus ?? summary.metadata?.requested_vus);
+  if (Number.isFinite(configured) && configured > 0) return configured;
+  return summary.executed_vus ?? 0;
+}
+
+function maxNodeResource(summary: RunSummary, field: 'mem_peak_mb' | 'cpu_peak' | 'go_peak'): number | null {
+  const resources = summary.node_resources ?? [];
+  if (resources.length === 0) return null;
+  return Math.max(...resources.map(resource => resource[field]));
+}
+
 const STATUS_LABELS: Record<RunStatus, string> = {
   running: 'Running',
   completed: 'Completed',
@@ -766,6 +782,24 @@ function RunSummaryPanel({
   reportUrl?: string;
 }) {
   const requests = summary.requests ?? [];
+  const durationSeconds = summary.duration / 1e9;
+  const transactionCount = summary.transactions?.reduce((total, transaction) => total + transaction.count, 0);
+  const executedVUs = summary.executed_vus ?? 0;
+  const configuredVUs = Math.max(summaryConfiguredVUs(summary), executedVUs);
+  const memPeakMB = maxNodeResource(summary, 'mem_peak_mb');
+  const cpuPeak = maxNodeResource(summary, 'cpu_peak');
+  const goPeak = maxNodeResource(summary, 'go_peak');
+  const metrics = [
+    { label: 'Duration', value: formatDurationNs(summary.duration) },
+    { label: 'VUs (exec/conf)', value: `${executedVUs}/${configuredVUs}` },
+    { label: 'Total Requests', value: summary.total_requests.toLocaleString() },
+    { label: 'ERRs', value: summary.total_failures.toLocaleString(), tone: summary.total_failures > 0 ? 'text-red-300' : undefined },
+    { label: 'RPS', value: formatSummaryRate(durationSeconds > 0 ? summary.total_requests / durationSeconds : 0) },
+    { label: 'TPS', value: transactionCount == null ? '—' : formatSummaryRate(durationSeconds > 0 ? transactionCount / durationSeconds : 0) },
+    { label: 'MEM Peak', value: memPeakMB == null ? '—' : `${memPeakMB.toLocaleString()} MB` },
+    { label: 'CPU Peak', value: cpuPeak == null ? '—' : `${cpuPeak.toFixed(1)}%` },
+    { label: 'Go', value: goPeak == null ? '—' : goPeak.toLocaleString() },
+  ];
   return (
     <div className="border border-white/10 bg-[#111111]">
       <div className="flex items-center gap-2 border-b border-white/5 px-4 py-3">
@@ -794,11 +828,10 @@ function RunSummaryPanel({
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-px bg-white/5 sm:grid-cols-4">
-        <SummaryStat label="Duration" value={formatDurationNs(summary.duration)} />
-        <SummaryStat label="Total requests" value={summary.total_requests.toLocaleString()} />
-        <SummaryStat label="Failures" value={summary.total_failures.toLocaleString()} tone={summary.total_failures > 0 ? 'text-red-300' : undefined} />
-        <SummaryStat label="Executed VUs" value={summary.executed_vus != null ? String(summary.executed_vus) : '—'} />
+      <div className="grid grid-cols-2 gap-px bg-white/5 sm:grid-cols-3 xl:grid-cols-5">
+        {metrics.map(metric => (
+          <SummaryStat key={metric.label} label={metric.label} value={metric.value} tone={metric.tone} />
+        ))}
       </div>
 
       {requests.length > 0 && (

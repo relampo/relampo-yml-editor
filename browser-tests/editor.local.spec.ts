@@ -274,7 +274,7 @@ test('standalone mocked Run and Debug streams render terminal states', async ({ 
       body: [
         'event: state\ndata: {"status":"running","started_at":"2026-08-18T00:00:00Z","elapsed_ms":0}\n\n',
         'event: metrics\ndata: {"ts":1,"elapsed_ms":1000,"rps":1,"active_users":1,"avg_latency":2,"p95_latency":2,"total_requests":1,"total_failures":0,"errors":0}\n\n',
-        'event: done\ndata: {"status":"completed","error":null,"summary":{"test_name":"browser","start_time":"2026-08-18T00:00:00Z","end_time":"2026-08-18T00:00:01Z","duration":1000000000,"total_requests":1,"total_failures":0,"requests":[]}}\n\n',
+        'event: done\ndata: {"status":"completed","error":null,"summary":{"test_name":"browser","start_time":"2026-08-18T00:00:00Z","end_time":"2026-08-18T00:00:01Z","duration":1000000000,"total_requests":1,"total_failures":0,"executed_vus":1,"metadata":{"configured_vus":"2"},"transactions":[{"name":"Smoke","count":2,"failures":0}],"node_resources":[{"node":"local","mem_peak_mb":64,"cpu_peak":12.5,"go_peak":7}],"requests":[]}}\n\n',
       ].join(''),
     }),
   );
@@ -293,7 +293,11 @@ test('standalone mocked Run and Debug streams render terminal states', async ({ 
   await page.getByRole('button', { name: 'Run load test' }).click();
   await expect(page.getByText('Completed', { exact: true })).toBeVisible();
   await expect(page.getByText('Run summary', { exact: true })).toBeVisible();
-  await expect(page.getByText('Total requests', { exact: true }).locator('..').getByText('1', { exact: true })).toBeVisible();
+  await expect(page.getByText('Total Requests', { exact: true }).locator('..').getByText('1', { exact: true })).toBeVisible();
+  await expect(page.getByText('TPS', { exact: true }).locator('..').getByText('2.0', { exact: true })).toBeVisible();
+  await expect(page.getByText('MEM Peak', { exact: true }).locator('..').getByText('64 MB', { exact: true })).toBeVisible();
+  await expect(page.getByText('CPU Peak', { exact: true }).locator('..').getByText('12.5%', { exact: true })).toBeVisible();
+  await expect(page.getByText('Go', { exact: true }).locator('..').getByText('7', { exact: true })).toBeVisible();
 
   await page.getByRole('button', { name: 'Debug' }).click();
   await page.getByRole('button', { name: 'Run Debug', exact: true }).click();

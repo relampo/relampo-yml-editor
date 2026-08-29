@@ -61,6 +61,9 @@ function summary(overrides: Partial<RunSummary> = {}): RunSummary {
     total_requests: 200,
     total_failures: 2,
     executed_vus: 8,
+    metadata: { configured_vus: '10' },
+    transactions: [{ name: 'Checkout', count: 100, failures: 2 }],
+    node_resources: [{ node: 'local', mem_peak_mb: 64, cpu_peak: 42.5, go_peak: 12 }],
     requests: [
       {
         name: 'GET /x',
@@ -158,6 +161,17 @@ describe('YAMLLoadRunSession', () => {
 
     expect(await screen.findByText('Run summary')).toBeInTheDocument();
     expect(screen.getByText('3.0s')).toBeInTheDocument();
+    expect(screen.getByText('VUs (exec/conf)')).toBeInTheDocument();
+    expect(screen.getByText('8/10')).toBeInTheDocument();
+    expect(screen.getByText('TPS')).toBeInTheDocument();
+    expect(screen.getByText('33.3')).toBeInTheDocument();
+    expect(screen.getByText('MEM Peak')).toBeInTheDocument();
+    expect(screen.getByText('64 MB')).toBeInTheDocument();
+    expect(screen.getByText('CPU Peak')).toBeInTheDocument();
+    expect(screen.getByText('42.5%')).toBeInTheDocument();
+    expect(screen.getByText('Go')).toBeInTheDocument();
+    expect(screen.getByText('12')).toBeInTheDocument();
+    expect(screen.getByText('ERRs')).toBeInTheDocument();
 
     const summaryHeading = screen.getByText('Run summary');
     const logsHeading = screen.getByText('Live logs');
