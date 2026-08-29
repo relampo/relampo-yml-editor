@@ -86,7 +86,14 @@ export function TreeSearchBar({
         <button
           type="button"
           onClick={() => {
-            setReplaceOpen(open => !open);
+            setReplaceOpen(open => {
+              if (!open) {
+                setSearchText(value);
+                setCurrentMatchIndex(0);
+                setReplaceMessage('');
+              }
+              return !open;
+            });
             setReplaceMessage('');
           }}
           className="shrink-0 px-2.5 py-1.5 bg-[#0a0a0a] border border-white/10 rounded text-xs text-zinc-400 hover:border-yellow-400 hover:text-yellow-400 transition-colors"

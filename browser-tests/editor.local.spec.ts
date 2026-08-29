@@ -25,6 +25,16 @@ scenarios:
       - get: /health
 `;
 
+const replaceYaml = `test:
+  name: Replace smoke
+scenarios:
+  - name: smoke
+    steps:
+      - request:
+          method: GET
+          url: /health?token=first&next=token
+`;
+
 const test = base.extend<{ browserErrors: string[] }>({
   browserErrors: [
     async ({ page }, use) => {
@@ -85,6 +95,19 @@ test('shows the full loaded YAML file name in the Recording form details', async
   const fileName = page.getByLabel('File name');
   await expect(fileName).toHaveValue('browser-smoke.yaml');
   await expect(fileName).toHaveAttribute('readonly', '');
+});
+
+test('Replace opens with the active tree search criterion and match count', async ({ page }) => {
+  await mockStudioInfo(page, replaceYaml);
+  await page.goto('/');
+
+  await page.getByText('Replace smoke', { exact: true }).first().click();
+  await page.getByRole('textbox', { name: 'Search nodes' }).fill('token');
+  await page.getByRole('button', { name: 'Search tree' }).click();
+  await page.getByRole('button', { name: 'Replace' }).click();
+
+  await expect(page.getByLabel('Find text to replace')).toHaveValue('token');
+  await expect(page.getByLabel('Replace match position')).toHaveText('1/2');
 });
 
 test('standalone upload input reaches the tree and tree edits reach read-only code', async ({ page }) => {
