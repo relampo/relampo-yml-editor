@@ -213,6 +213,7 @@ function validateBalancedChildren(children: YAMLNode[] = []) {
   const invalidItems = items.filter(item => !item.valid);
   const hasChildren = items.length > 0;
   const validTotal = Math.abs(roundedTotal - 100) < 0.0001;
+  const validPartialTotal = roundedTotal <= 100;
 
   return {
     items,
@@ -220,6 +221,7 @@ function validateBalancedChildren(children: YAMLNode[] = []) {
     hasChildren,
     invalidItems,
     validTotal,
+    validPartialTotal,
     isValid: hasChildren && invalidItems.length === 0 && validTotal,
   };
 }
@@ -231,6 +233,9 @@ export function validateBalancedController(type: BalancedDistributionType, child
   return {
     ...base,
     requiresExactTotal,
-    validForType: base.hasChildren && base.invalidItems.length === 0 && (!requiresExactTotal || base.validTotal),
+    validForType:
+      base.hasChildren &&
+      base.invalidItems.length === 0 &&
+      (requiresExactTotal ? base.validTotal : base.validPartialTotal),
   };
 }

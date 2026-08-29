@@ -104,6 +104,9 @@ function computeBalancedStatus(
   if (balancedType === 'total' && validation.hasChildren && !validation.validTotal) {
     issues.push(format('yamlEditor.balanced.alerts.issueInvalidTotal', { total: validation.total }));
   }
+  if (balancedType === 'parcial' && validation.hasChildren && !validation.validPartialTotal) {
+    issues.push(format('yamlEditor.balanced.alerts.issueInvalidPartialTotal', { total: validation.total }));
+  }
 
   const statusTone =
     issues.length === 0 ? 'emerald' : !validation.hasChildren ? 'amber' : balancedType === 'total' ? 'amber' : 'sky';
