@@ -90,6 +90,19 @@ interface RunHistoryPoint {
   errors: number;
 }
 
+export interface RunTransactionStat {
+  name: string;
+  count: number;
+  failures: number;
+}
+
+export interface RunNodeResource {
+  node: string;
+  mem_peak_mb: number;
+  cpu_peak: number;
+  go_peak: number;
+}
+
 // Final report (mirrors the subset of reporter.Summary the dashboard renders).
 // `duration` is a Go time.Duration serialized as integer nanoseconds.
 export interface RunSummary {
@@ -101,7 +114,10 @@ export interface RunSummary {
   total_failures: number;
   executed_vus?: number;
   requests: RunRequestStat[];
+  transactions?: RunTransactionStat[];
   history?: RunHistoryPoint[];
+  node_resources?: RunNodeResource[];
+  metadata?: Record<string, string>;
 }
 
 interface RunDone {
@@ -291,6 +307,29 @@ function isRunHistoryPoint(value: unknown): value is RunHistoryPoint {
   );
 }
 
+function isRunTransactionStat(value: unknown): value is RunTransactionStat {
+  return (
+    isRecord(value) &&
+    typeof value.name === 'string' &&
+    isFiniteNumber(value.count) &&
+    isFiniteNumber(value.failures)
+  );
+}
+
+function isRunNodeResource(value: unknown): value is RunNodeResource {
+  return (
+    isRecord(value) &&
+    typeof value.node === 'string' &&
+    isFiniteNumber(value.mem_peak_mb) &&
+    isFiniteNumber(value.cpu_peak) &&
+    isFiniteNumber(value.go_peak)
+  );
+}
+
+function isRunMetadata(value: unknown): value is Record<string, string> {
+  return isRecord(value) && Object.values(value).every(item => typeof item === 'string');
+}
+
 function isRunSummary(value: unknown): value is RunSummary {
   return (
     isRecord(value) &&
@@ -303,7 +342,10 @@ function isRunSummary(value: unknown): value is RunSummary {
     (value.executed_vus === undefined || isFiniteNumber(value.executed_vus)) &&
     Array.isArray(value.requests) &&
     value.requests.every(isRunRequestStat) &&
-    (value.history === undefined || (Array.isArray(value.history) && value.history.every(isRunHistoryPoint)))
+    (value.transactions === undefined || (Array.isArray(value.transactions) && value.transactions.every(isRunTransactionStat))) &&
+    (value.history === undefined || (Array.isArray(value.history) && value.history.every(isRunHistoryPoint))) &&
+    (value.node_resources === undefined || (Array.isArray(value.node_resources) && value.node_resources.every(isRunNodeResource))) &&
+    (value.metadata === undefined || isRunMetadata(value.metadata))
   );
 }
 
