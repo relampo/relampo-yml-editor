@@ -300,6 +300,7 @@ export function YAMLEditor() {
         treeSearchQuery={treeSearchQuery}
         documentReady={documentReady}
         dataSourceFileBrowseEnabled={dataSourceFileBrowseEnabled}
+        fileName={currentFileName}
         largeFileMode={isLargeFileMode}
         onSelectionChange={handleTreeSelectionChange}
         onTreeChange={handleTreeChange}

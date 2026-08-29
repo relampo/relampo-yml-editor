@@ -28,6 +28,7 @@ interface YAMLEditorMainLayoutProps {
   treeSearchQuery: string;
   documentReady: boolean;
   dataSourceFileBrowseEnabled: boolean;
+  fileName: string;
   largeFileMode: boolean;
   onSelectionChange: (primaryNode: YAMLNode | null, nodeIds: string[]) => void;
   onTreeChange: (newTree: YAMLNode, nextSelection?: TreeSelection) => void;
@@ -70,6 +71,7 @@ export function YAMLEditorMainLayout({
   treeSearchQuery,
   documentReady,
   dataSourceFileBrowseEnabled,
+  fileName,
   largeFileMode,
   onSelectionChange,
   onTreeChange,
@@ -151,6 +153,7 @@ export function YAMLEditorMainLayout({
         onToggleEnabled={onToggleEnabled}
         searchQuery={activeViewMode === 'tree' ? treeSearchQuery : ''}
         dataSourceFileBrowseEnabled={dataSourceFileBrowseEnabled}
+        fileName={fileName}
       />
     </div>
   );

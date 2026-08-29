@@ -11,13 +11,14 @@ afterEach(() => {
 
 function renderDetails(
   node: YAMLNode,
-  options: { dataSourceFileBrowseEnabled?: boolean } = {},
+  options: { dataSourceFileBrowseEnabled?: boolean; fileName?: string } = {},
 ) {
   render(
     <LanguageProvider>
       <YAMLNodeDetails
         node={node}
         dataSourceFileBrowseEnabled={options.dataSourceFileBrowseEnabled}
+        fileName={options.fileName}
       />
     </LanguageProvider>,
   );
@@ -28,7 +29,7 @@ function StatefulDetails({
   options = {},
 }: {
   initialNode: YAMLNode;
-  options?: { dataSourceFileBrowseEnabled?: boolean };
+    options?: { dataSourceFileBrowseEnabled?: boolean; fileName?: string };
 }) {
   const [node, setNode] = useState(initialNode);
 
@@ -40,6 +41,7 @@ function StatefulDetails({
           setNode(currentNode => (currentNode.id === nodeId ? { ...currentNode, data: updatedData } : currentNode));
         }}
         dataSourceFileBrowseEnabled={options.dataSourceFileBrowseEnabled}
+        fileName={options.fileName}
       />
     </LanguageProvider>
   );
@@ -75,6 +77,23 @@ const httpDefaultsNode: YAMLNode = {
     base_url: 'https://primary.example.com',
   },
 };
+
+const testNode: YAMLNode = {
+  id: 'test-root',
+  type: 'test',
+  name: 'Recording',
+  data: { name: 'Recording', version: '1.0' },
+  children: [],
+};
+
+describe('YAMLNodeDetails recording file identity', () => {
+  it('shows the full loaded file name in the test details', () => {
+    renderDetails(testNode, { fileName: 'testingYes2608.correlated.yaml' });
+
+    expect(screen.getByLabelText('File name')).toHaveValue('testingYes2608.correlated.yaml');
+    expect(screen.getByLabelText('File name')).toHaveAttribute('readonly');
+  });
+});
 
 describe('YAMLNodeDetails data source file browsing', () => {
   it('disables data source file browsing outside local Studio', () => {

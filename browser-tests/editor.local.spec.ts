@@ -76,6 +76,17 @@ test('standalone open and upload preserves unknown fields and shows their paths'
   expect(downloadedYaml).toContain('future_test: keep');
 });
 
+test('shows the full loaded YAML file name in the Recording form details', async ({ page }) => {
+  await mockStudioInfo(page);
+  await page.goto('/');
+
+  await page.getByText('Browser smoke', { exact: true }).first().click();
+
+  const fileName = page.getByLabel('File name');
+  await expect(fileName).toHaveValue('browser-smoke.yaml');
+  await expect(fileName).toHaveAttribute('readonly', '');
+});
+
 test('standalone upload input reaches the tree and tree edits reach read-only code', async ({ page }) => {
   await mockStudioInfo(page);
   await page.goto('/');
