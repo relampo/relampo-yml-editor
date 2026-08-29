@@ -523,6 +523,7 @@ export const enTranslations = {
         issueInvalidPercentage:
           'Each child element must define a percentage greater than 0 and less than or equal to 100.',
         issueInvalidTotal: 'The total assigned percentage must be exactly 100. Current total: {total}%.',
+        issueInvalidPartialTotal: 'The total assigned percentage must not exceed 100. Current total: {total}%.',
         issueThinkTimeChild: 'think_time cannot be a balanced child — it consumes a load percentage without issuing requests.',
         issueNoRequestsChild: '"{name}" contains no requests: all VUs assigned to it will execute no load.',
       },

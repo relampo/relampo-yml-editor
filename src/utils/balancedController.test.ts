@@ -154,6 +154,24 @@ describe('validateBalancedController with non-load-bearing children', () => {
   });
 });
 
+describe('partial balanced controller totals', () => {
+  it('accepts partial coverage up to 100%', () => {
+    const result = validateBalancedController('parcial', [req('a', 40), req('b', 60)]);
+
+    expect(result.total).toBe(100);
+    expect(result.validPartialTotal).toBe(true);
+    expect(result.validForType).toBe(true);
+  });
+
+  it('rejects partial coverage above 100%', () => {
+    const result = validateBalancedController('parcial', [req('a', 60), req('b', 50)]);
+
+    expect(result.total).toBe(110);
+    expect(result.validPartialTotal).toBe(false);
+    expect(result.validForType).toBe(false);
+  });
+});
+
 describe('distributeEvenPercentages', () => {
   it('splits evenly when 100 divides the count', () => {
     expect(distributeEvenPercentages(4)).toEqual([25, 25, 25, 25]);

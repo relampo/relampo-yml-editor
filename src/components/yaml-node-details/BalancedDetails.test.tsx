@@ -63,3 +63,20 @@ describe('BalancedDetails excluded children', () => {
     expect(longLabel).toHaveClass('break-all');
   });
 });
+
+describe('BalancedDetails partial validation', () => {
+  it('shows a validation error when partial percentages exceed 100%', () => {
+    renderWithLanguage({
+      id: 'balanced-partial',
+      type: 'balanced',
+      name: 'Partial Controller',
+      data: { type: 'parcial', mode: 'iteraciones' },
+      children: [
+        { id: 'req-1', type: 'get', name: 'First Request', data: { __balancedPercentage: 60 } },
+        { id: 'req-2', type: 'get', name: 'Second Request', data: { __balancedPercentage: 50 } },
+      ],
+    });
+
+    expect(screen.getByText('The total assigned percentage must not exceed 100. Current total: 110%.')).toBeInTheDocument();
+  });
+});

@@ -45,6 +45,22 @@ scenarios:
           url: /allowed?token=third
 `;
 
+const partialBalanceYaml = `test:
+  name: Partial balance smoke
+scenarios:
+  - name: smoke
+    steps:
+      - balanced:
+          name: Partial Controller
+          type: partial
+          mode: iterations
+        steps:
+          - get: /first
+            percentage: 60
+          - get: /second
+            percentage: 50
+`;
+
 const test = base.extend<{ browserErrors: string[] }>({
   browserErrors: [
     async ({ page }, use) => {
@@ -162,6 +178,14 @@ test('Tree search and replace updates allowed matches and preserves responses', 
   await page.getByTitle('Close search').click();
   await expect(page.getByRole('textbox', { name: 'Search nodes' })).toHaveValue('');
   await expect(page.getByLabel('Find text to replace')).toHaveCount(0);
+});
+
+test('partial Balanced Controller rejects percentages above 100%', async ({ page }) => {
+  await mockStudioInfo(page, partialBalanceYaml);
+  await page.goto('/');
+
+  await page.getByText('Partial Controller', { exact: true }).click();
+  await expect(page.getByText('The total assigned percentage must not exceed 100. Current total: 110%.')).toBeVisible();
 });
 
 test('standalone upload input reaches the tree and tree edits reach read-only code', async ({ page }) => {
