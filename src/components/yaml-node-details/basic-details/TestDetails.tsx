@@ -3,7 +3,7 @@ import { Textarea } from '../../ui/textarea';
 import { createNodeDataUpdater } from '../nodeDetailHelpers';
 import type { NamedNodeDetailProps } from '../types';
 
-export function TestDetails({ node, onNodeUpdate }: NamedNodeDetailProps) {
+export function TestDetails({ node, onNodeUpdate, fileName }: NamedNodeDetailProps) {
   const { data, updateField } = createNodeDataUpdater(node, onNodeUpdate);
 
   return (
@@ -44,6 +44,22 @@ export function TestDetails({ node, onNodeUpdate }: NamedNodeDetailProps) {
             className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono text-center"
           />
         </div>
+      </div>
+
+      <div>
+        <label
+          htmlFor="test-detail-file-name"
+          className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
+        >
+          File name
+        </label>
+        <Input
+          id="test-detail-file-name"
+          value={fileName || ''}
+          readOnly
+          aria-readonly="true"
+          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
+        />
       </div>
 
       <div>

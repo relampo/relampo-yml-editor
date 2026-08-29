@@ -11,4 +11,5 @@ export interface NamedNodeDetailProps extends NodeDetailProps {
   nodeName?: string;
   setNodeName?: (name: string) => void;
   fileBrowseEnabled?: boolean;
+  fileName?: string;
 }

@@ -27,6 +27,7 @@ type YAMLEditorDetailsPanelProps = {
   onToggleEnabled: (nodeId: string, enabled: boolean) => void;
   searchQuery: string;
   dataSourceFileBrowseEnabled: boolean;
+  fileName: string;
 };
 
 export function YAMLEditorDetailsPanel({
@@ -53,6 +54,7 @@ export function YAMLEditorDetailsPanel({
   onToggleEnabled,
   searchQuery,
   dataSourceFileBrowseEnabled,
+  fileName,
 }: YAMLEditorDetailsPanelProps) {
   return (
     <div className="flex-1 min-w-0 flex flex-col bg-[#0d0d0d]">
@@ -110,6 +112,7 @@ export function YAMLEditorDetailsPanel({
             onToggleEnabled={onToggleEnabled}
             searchQuery={searchQuery}
             dataSourceFileBrowseEnabled={dataSourceFileBrowseEnabled}
+            fileName={fileName}
           />
         </div>
       </div>

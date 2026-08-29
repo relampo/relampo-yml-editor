@@ -48,6 +48,7 @@ interface YAMLNodeDetailsProps {
   onToggleEnabled?: (nodeId: string, enabled: boolean) => void;
   searchQuery?: string;
   dataSourceFileBrowseEnabled?: boolean;
+  fileName?: string;
 }
 
 const REQUEST_NODE_TYPES = ['request', 'sql', 'get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
@@ -65,6 +66,7 @@ export function YAMLNodeDetails({
   onToggleEnabled,
   searchQuery = '',
   dataSourceFileBrowseEnabled = false,
+  fileName = '',
 }: YAMLNodeDetailsProps) {
   const { t } = useLanguage();
   // nodeName is a local edit buffer (not purely derived from node.name)
@@ -173,6 +175,7 @@ export function YAMLNodeDetails({
           onRemoveHost={onRemoveHost}
           searchQuery={searchQuery}
           dataSourceFileBrowseEnabled={dataSourceFileBrowseEnabled}
+          fileName={fileName}
         />
       </div>
     </div>
@@ -191,6 +194,7 @@ function NodeDetailsContent({
   onRemoveHost,
   searchQuery = '',
   dataSourceFileBrowseEnabled = false,
+  fileName = '',
 }: {
   node: YAMLNode;
   nodeName: string;
@@ -203,6 +207,7 @@ function NodeDetailsContent({
   onRemoveHost?: (host: string) => void;
   searchQuery?: string;
   dataSourceFileBrowseEnabled?: boolean;
+  fileName?: string;
 }) {
   switch (node.type) {
     case 'test':
@@ -212,6 +217,7 @@ function NodeDetailsContent({
           onNodeUpdate={onNodeUpdate}
           nodeName={nodeName}
           setNodeName={setNodeName}
+          fileName={fileName}
         />
       );
     case 'variables':
