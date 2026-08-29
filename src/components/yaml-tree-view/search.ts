@@ -126,9 +126,26 @@ function stripRequestTagMetadata(value: unknown, nodeType: YAMLNodeType): unknow
 }
 
 function getNodeRequestSearchPayload(node: YAMLNode): unknown {
-  return REQUEST_LIKE_NODE_TYPES.includes(node.type)
-    ? stripRequestTagMetadata(node.data, node.type)
-    : stripResponseField(node.data);
+  if (!REQUEST_LIKE_NODE_TYPES.includes(node.type)) return stripResponseField(node.data);
+
+  const payload = stripRequestTagMetadata(node.data, node.type);
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return payload;
+
+  const url = (payload as Record<string, unknown>).url;
+  if (typeof url !== 'string') return payload;
+
+  return {
+    ...(payload as Record<string, unknown>),
+    url: `${url} ${decodeUrlForSearch(url)}`,
+  };
+}
+
+function decodeUrlForSearch(url: string): string {
+  try {
+    return decodeURIComponent(url.replace(/\+/g, ' '));
+  } catch {
+    return url;
+  }
 }
 
 export function getNodeSearchHitFlags(node: YAMLNode, searchQuery: string): { request: boolean; response: boolean } {

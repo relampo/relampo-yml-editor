@@ -81,6 +81,7 @@ interface YAMLTreeNodeProps {
   searchQuery?: string;
   searchIndex?: Map<string, SearchNodeState>;
   ancestorMatchesSearch?: boolean;
+  activeReplaceMatchNodeId?: string | null;
 }
 
 export function YAMLTreeNode({
@@ -99,6 +100,7 @@ export function YAMLTreeNode({
   searchQuery = '',
   searchIndex,
   ancestorMatchesSearch = false,
+  activeReplaceMatchNodeId = null,
 }: YAMLTreeNodeProps) {
   const [dragOver, setDragOver] = useState<'before' | 'after' | 'inside' | null>(null);
   const hasChildren = node.children && node.children.length > 0;
@@ -258,17 +260,30 @@ export function YAMLTreeNode({
   const searchHitFlags = getNodeSearchHitFlags(node, searchQuery);
   const hasRequestHit = searchHitFlags.request;
   const hasResponseHit = searchHitFlags.response;
+  const isActiveReplaceMatch = activeReplaceMatchNodeId === node.id;
 
   const selectionClass = 'bg-yellow-300/12 border border-yellow-300/35 ring-1 ring-yellow-300/25 shadow-[0_0_0_1px_rgba(250,204,21,0.14)]';
+  const activeReplaceClass = 'bg-amber-300/20 border-2 border-amber-300/80 ring-2 ring-amber-300/60 shadow-[0_0_0_2px_rgba(252,211,77,0.3)]';
   const redirectedClass = 'bg-zinc-400/12 border border-zinc-300/30 hover:bg-zinc-400/16 ring-1 ring-zinc-300/15';
-  const defaultVisual = isSelected ? selectionClass : isRedirectedFollowUp ? redirectedClass : 'hover:bg-white/5 border border-transparent';
-  const requestVisual = isSelected ? selectionClass : 'hover:bg-transparent border border-transparent';
+  const defaultVisual = isActiveReplaceMatch
+    ? activeReplaceClass
+    : isSelected
+      ? selectionClass
+      : isRedirectedFollowUp
+        ? redirectedClass
+        : 'hover:bg-white/5 border border-transparent';
+  const requestVisual = isActiveReplaceMatch
+    ? activeReplaceClass
+    : isSelected
+      ? selectionClass
+      : 'hover:bg-transparent border border-transparent';
 
   return (
     <div className="select-none">
       <div
         role="treeitem"
         aria-selected={isSelected}
+        aria-current={isActiveReplaceMatch ? 'true' : undefined}
         aria-invalid={hasValidationError}
         aria-expanded={hasChildren ? isExpanded : undefined}
         aria-level={depth + 1}
@@ -376,6 +391,7 @@ export function YAMLTreeNode({
               searchQuery={searchQuery}
               searchIndex={searchIndex}
               ancestorMatchesSearch={passAncestor}
+              activeReplaceMatchNodeId={activeReplaceMatchNodeId}
             />
           ))}
         </div>

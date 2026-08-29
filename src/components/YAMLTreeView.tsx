@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import type { RedirectedRequestInfo, YAMLNode } from '../types/yaml';
 import { canContain } from '../utils/yamlDragDropRules';
@@ -9,7 +9,10 @@ import { TreeSearchBar } from './yaml-tree-view/TreeSearchBar';
 import { useTreeContextMenu } from './yaml-tree-view/useTreeContextMenu';
 import { useTreeMutations } from './yaml-tree-view/useTreeMutations';
 import { useTreeViewSelection } from './yaml-tree-view/useTreeViewSelection';
-import { countTextInEnabledRequests, replaceTextInEnabledRequestsAtMatch } from './yaml-tree-view/treeOperations';
+import {
+  getReplaceableMatchNodeIds,
+  replaceTextInEnabledRequestsAtMatch,
+} from './yaml-tree-view/treeOperations';
 import { canDuplicateNode, findNodeById, getTransactionValidationMessage } from './yaml-tree-view/treeViewHelpers';
 import { countMatchingNodes } from './yaml-tree-view/search';
 import { YAMLContextMenu } from './YAMLContextMenu';
@@ -45,6 +48,7 @@ export function YAMLTreeView({
   onSearchChange,
 }: YAMLTreeViewProps) {
   const { t } = useLanguage();
+  const [currentReplaceMatchIndex, setCurrentReplaceMatchIndex] = useState(0);
 
   const {
     searchQuery,
@@ -60,6 +64,28 @@ export function YAMLTreeView({
     treeContainerRef,
   } = useTreeViewSelection({ tree, selectedNode, selectedNodeIds, onSelectionChange, onSearchChange });
   const searchMatchCount = useMemo(() => countMatchingNodes(tree, searchQuery), [searchQuery, tree]);
+  const replaceableMatchNodeIds = useMemo(
+    () => (tree ? getReplaceableMatchNodeIds(tree, searchQuery) : []),
+    [searchQuery, tree],
+  );
+  const activeReplaceMatchNodeId =
+    replaceableMatchNodeIds[Math.min(currentReplaceMatchIndex, Math.max(replaceableMatchNodeIds.length - 1, 0))] ?? null;
+
+  const handleTreeSearchChange = (query: string) => {
+    setCurrentReplaceMatchIndex(0);
+    handleSearchChange(query);
+  };
+
+  const handleTreeClearSearch = () => {
+    setCurrentReplaceMatchIndex(0);
+    handleClearSearch();
+  };
+
+  const handleCurrentReplaceMatchIndexChange = (index: number) => {
+    setCurrentReplaceMatchIndex(
+      Math.max(0, Math.min(index, Math.max(replaceableMatchNodeIds.length - 1, 0))),
+    );
+  };
 
   const { contextMenu, handleContextMenu, handleCloseContextMenu, getContextActionTargetIds } = useTreeContextMenu({
     activeSelectedIds,
@@ -68,9 +94,9 @@ export function YAMLTreeView({
     onContextMenuOpened,
   });
 
-  const handleReplace = (search: string, replacement: string, matchIndex?: number) => {
+  const handleReplace = (replacement: string, matchIndex?: number) => {
     if (!tree) return 0;
-    const result = replaceTextInEnabledRequestsAtMatch(tree, search, replacement, matchIndex).result;
+    const result = replaceTextInEnabledRequestsAtMatch(tree, searchQuery, replacement, matchIndex).result;
     if (result.replacements > 0) onTreeChange(result.tree);
     return result.replacements;
   };
@@ -213,10 +239,12 @@ export function YAMLTreeView({
     <div className="h-full w-full bg-[#0a0a0a] flex flex-col">
       <TreeSearchBar
         value={searchQuery}
-        onChange={handleSearchChange}
-        onClear={handleClearSearch}
+        onChange={handleTreeSearchChange}
+        onClear={handleTreeClearSearch}
         onReplace={handleReplace}
-        countMatches={search => (tree ? countTextInEnabledRequests(tree, search) : 0)}
+        replaceMatchCount={replaceableMatchNodeIds.length}
+        currentMatchIndex={currentReplaceMatchIndex}
+        onCurrentMatchIndexChange={handleCurrentReplaceMatchIndexChange}
         searchMatchCount={searchMatchCount}
       />
 
@@ -260,6 +288,7 @@ export function YAMLTreeView({
             onNodeMove={handleNodeMove}
             searchQuery={searchQuery}
             searchIndex={searchIndex ?? undefined}
+            activeReplaceMatchNodeId={activeReplaceMatchNodeId}
           />
         ) : (
           <div className="flex items-center justify-center h-32">
