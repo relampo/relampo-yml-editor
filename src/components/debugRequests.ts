@@ -128,12 +128,16 @@ function redirectChainPosition(
   return event.redirect_index ?? 0;
 }
 
-// The number shown on a Debug timeline row. A redirect follow-up row shows the
-// enabled parent's number with a sub-index for its position in the chain
-// (#32.1, #32.2, ... the final landing last) so the parent and each of its
-// children stay grouped under one number yet remain individually identifiable —
-// critical when multiple VUs interleave their chains. The parent's own row
-// keeps the bare number (#32). RLP-586 (was: every follow-up shared #32, RLP-570).
+function requestNumberFromNode(node: YAMLNode | null): string {
+  const treeLabel = node?.name.match(/^\[(\d+(?:\.\d+)*)\]/)?.[1]?.trim();
+  if (treeLabel) return treeLabel;
+  return String(node?.data?.request_id ?? '').trim();
+}
+
+// The number shown on a Debug timeline row must match the number shown by the
+// Tree. Redirect follow-up events carry the enabled parent's request_id, so use
+// the matched recorded child label first. This keeps a recorded [16] visible as
+// #16 instead of incorrectly rendering it as the parent's #15.1 (RLP-674).
 export function debugEventRequestNumber(
   event: DebugEventLike,
   matchedNode: YAMLNode | null,
@@ -141,10 +145,13 @@ export function debugEventRequestNumber(
 ): string {
   const chainId = String(event.chain_id ?? '').trim();
   if (chainId && isRedirectFollowUpEvent(event) && !redirectChainParentDisablesFollow(chainId, requestNodes)) {
+    const treeNumber = requestNumberFromNode(matchedNode);
+    if (treeNumber) return treeNumber;
+
     const parent = redirectChainParent(chainId, requestNodes);
     const parentId = parent?.data?.request_id;
-    // The backend stamps the parent's request_id on every chain event, so fall
-    // back to it when the parent node can't be found in the tree.
+    // The backend stamps the parent's request_id on every chain event. Keep a
+    // positional fallback only when the recorded child has no usable label.
     const base =
       parentId !== undefined && parentId !== null && String(parentId).trim() !== ''
         ? String(parentId).trim()
@@ -153,7 +160,7 @@ export function debugEventRequestNumber(
     return position > 0 ? `${base}.${position}` : base;
   }
   if (chainId && redirectChainParentDisablesFollow(chainId, requestNodes)) {
-    return String(matchedNode?.data?.request_id ?? event.request_id ?? '').trim();
+    return requestNumberFromNode(matchedNode) || String(event.request_id ?? '').trim();
   }
   return String(event.request_id ?? matchedNode?.data?.request_id ?? '').trim();
 }
@@ -162,15 +169,14 @@ export function debugEventRequestNumber(
 // NOT execute even though its chain ran. The runtime emits one event per hop it
 // actually follows; when the live chain is shorter than the recording, the
 // unfollowed children produce no event and silently vanish from the timeline
-// (#123.1 shows, #123.2 disappears). This happens when the engine stops
+// (for example, #123 followed by #124). This happens when the engine stops
 // following at a hop it won't cross — e.g. an OAuth callback recorded on a
 // different site than the IdP, which the redirect trust boundary blocks
 // (backend RLP-492). Surfacing them as skipped placeholders keeps the recorded
 // chain visible and honest about what ran vs. what was recorded. RLP-607.
 export type SkippedRedirectHop = {
   node: YAMLNode;
-  // 1-based position within the chain, so the placeholder can carry the same
-  // `#parent.position` sub-index the executed hops use.
+  // 1-based position within the chain, used to identify the recorded child.
   position: number;
   // Index, into the same event list passed in, of the chain's last real event —
   // the row the placeholder slots in after.
@@ -224,7 +230,7 @@ export function skippedRedirectHops(events: DebugEventLike[], requestNodes: YAML
   });
 
   // Stable order: group each chain's skipped children after its last real row,
-  // ascending by sub-index (#N.2 before #N.3).
+  // ascending by recorded child position.
   return skipped.sort((a, b) => a.afterEventIndex - b.afterEventIndex || a.position - b.position);
 }
 
