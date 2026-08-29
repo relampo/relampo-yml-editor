@@ -106,10 +106,6 @@ export function YAMLTreeNode({
   const hasChildren = node.children && node.children.length > 0;
   const isExpanded = node.expanded ?? true;
   const hoverTimerRef = useRef<number | null>(null);
-  const redirectedInfo = redirectedRequestMap[node.id];
-  const isRedirectedFollowUp = Boolean(redirectedInfo);
-  const hasValidationError = validationNodeIds.includes(node.id);
-  const redirectedLabel = 'Redirected';
   const indexedState = searchIndex?.get(node.id);
   const passAncestor = searchIndex
     ? ancestorMatchesSearch || Boolean(indexedState?.expandsDescendants)
@@ -254,121 +250,26 @@ export function YAMLTreeNode({
     clearDragIndicatorsGlobally();
   };
 
-  const icon = getNodeIcon(node.type);
-  const color = getNodeColor(node.type, node);
-  const IconComponent = icon;
-  const searchHitFlags = getNodeSearchHitFlags(node, searchQuery);
-  const hasRequestHit = searchHitFlags.request;
-  const hasResponseHit = searchHitFlags.response;
-  const isActiveReplaceMatch = activeReplaceMatchNodeId === node.id;
-
-  const selectionClass = 'bg-yellow-300/12 border border-yellow-300/35 ring-1 ring-yellow-300/25 shadow-[0_0_0_1px_rgba(250,204,21,0.14)]';
-  const activeReplaceClass = 'bg-amber-300/20 border-2 border-amber-300/80 ring-2 ring-amber-300/60 shadow-[0_0_0_2px_rgba(252,211,77,0.3)]';
-  const redirectedClass = 'bg-zinc-400/12 border border-zinc-300/30 hover:bg-zinc-400/16 ring-1 ring-zinc-300/15';
-  const defaultVisual = isActiveReplaceMatch
-    ? activeReplaceClass
-    : isSelected
-      ? selectionClass
-      : isRedirectedFollowUp
-        ? redirectedClass
-        : 'hover:bg-white/5 border border-transparent';
-  const requestVisual = isActiveReplaceMatch
-    ? activeReplaceClass
-    : isSelected
-      ? selectionClass
-      : 'hover:bg-transparent border border-transparent';
-
   return (
     <div className="select-none">
-      <div
-        role="treeitem"
-        aria-selected={isSelected}
-        aria-current={isActiveReplaceMatch ? 'true' : undefined}
-        aria-invalid={hasValidationError}
-        aria-expanded={hasChildren ? isExpanded : undefined}
-        aria-level={depth + 1}
-        tabIndex={0}
-        draggable
-        data-node-id={node.id}
+      <YAMLTreeNodeRow
+        node={node}
+        depth={depth}
+        isSelected={isSelected}
+        dragOver={dragOver}
+        validationNodeIds={validationNodeIds}
+        redirectedRequestMap={redirectedRequestMap}
+        activeReplaceMatchNodeId={activeReplaceMatchNodeId}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        onClick={e => onNodeSelect(node, e)}
-        onKeyDown={e => {
-          if (e.key === 'Enter' || e.key === ' ') onNodeSelect(node, e as any);
-          if (e.key === 'ArrowRight' && hasChildren && !isExpanded) {
-            e.preventDefault();
-            onNodeToggle(node.id);
-          }
-          if (e.key === 'ArrowLeft' && hasChildren && isExpanded) {
-            e.preventDefault();
-            onNodeToggle(node.id);
-          }
-        }}
-        onContextMenu={e => onContextMenu(e, node)}
-        className={
-          `relative group flex items-center gap-2 px-2 py-1.5 pr-3 rounded cursor-pointer transition-colors overflow-visible ` +
-          `${node.type === 'request' ? requestVisual : defaultVisual} ` +
-          `${dragOver === 'before' ? 'border-t-2 border-t-yellow-400' : ''} ` +
-          `${dragOver === 'after' ? 'border-b-2 border-b-yellow-400' : ''} ` +
-          `${dragOver === 'inside' ? 'bg-yellow-400/5 border-yellow-400/30' : ''} ` +
-          `${hasValidationError ? 'border-red-400/60 bg-red-400/5' : ''} ` +
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/70'
-        }
-        style={{ paddingLeft: `${depth * 16 + 8}px` }}
-      >
-        {/* Left indicator removed to avoid visible corner artifact */}
-        {/* Expand/Collapse */}
-        {hasChildren && (
-          <button
-            type="button"
-            onClick={e => {
-              e.stopPropagation();
-              onNodeToggle(node.id);
-            }}
-            aria-label={isExpanded ? 'Collapse' : 'Expand'}
-            className="shrink-0 w-4 h-4 flex items-center justify-center text-zinc-500 hover:text-zinc-300"
-          >
-            {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-          </button>
-        )}
-
-        {!hasChildren && <div className="w-4" />}
-
-        {/* Icon */}
-        <div className={`shrink-0 ${color}`}>
-          <IconComponent className="w-4 h-4" />
-        </div>
-
-        {/* Name */}
-        <span
-          className={`text-sm truncate flex-1 ${
-            node.data?.enabled === false ? 'text-zinc-400' : isRedirectedFollowUp ? 'text-zinc-100' : 'text-zinc-300'
-          }`}
-        >
-          <HighlightText text={node.name} query={searchQuery} />
-        </span>
-
-        {/* Badge with extra info */}
-        {isRedirectedFollowUp && (
-          <span className="inline-flex h-5 items-center shrink-0 text-xs leading-none px-1.5 py-0.5 rounded bg-zinc-400/15 text-zinc-300 font-mono font-medium border border-zinc-400/30 uppercase">
-            {redirectedLabel}
-          </span>
-        )}
-        {getNodeBadge(node, { mutedMethod: isRedirectedFollowUp && node.data?.enabled === false })}
-        {hasRequestHit && (
-          <span className="inline-flex h-5 items-center shrink-0 text-xs leading-none px-1.5 py-0.5 rounded bg-yellow-400/15 text-yellow-400 font-mono font-medium border border-yellow-400/30 uppercase">
-            req
-          </span>
-        )}
-        {hasResponseHit && (
-          <span className="inline-flex h-5 items-center shrink-0 text-xs leading-none px-1.5 py-0.5 rounded bg-yellow-400/15 text-yellow-400 font-mono font-medium border border-yellow-400/30 uppercase">
-            res
-          </span>
-        )}
-      </div>
+        onNodeSelect={onNodeSelect}
+        onNodeToggle={onNodeToggle}
+        onContextMenu={onContextMenu}
+        searchQuery={searchQuery}
+      />
 
       {/* Children */}
       {showChildren && (
@@ -395,6 +296,164 @@ export function YAMLTreeNode({
             />
           ))}
         </div>
+      )}
+    </div>
+  );
+}
+
+interface YAMLTreeNodeRowProps {
+  node: YAMLNode;
+  depth: number;
+  isSelected: boolean;
+  dragOver: 'before' | 'after' | 'inside' | null;
+  validationNodeIds: string[];
+  redirectedRequestMap: Record<string, RedirectedRequestInfo>;
+  activeReplaceMatchNodeId?: string | null;
+  onDragStart: (event: React.DragEvent) => void;
+  onDragEnd: () => void;
+  onDragOver: (event: React.DragEvent) => void;
+  onDragLeave: (event: React.DragEvent) => void;
+  onDrop: (event: React.DragEvent) => void;
+  onNodeSelect: (node: YAMLNode, event: React.MouseEvent) => void;
+  onNodeToggle: (nodeId: string) => void;
+  onContextMenu: (event: React.MouseEvent, node: YAMLNode) => void;
+  searchQuery: string;
+}
+
+function YAMLTreeNodeRow({
+  node,
+  depth,
+  isSelected,
+  dragOver,
+  validationNodeIds,
+  redirectedRequestMap,
+  activeReplaceMatchNodeId = null,
+  onDragStart,
+  onDragEnd,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+  onNodeSelect,
+  onNodeToggle,
+  onContextMenu,
+  searchQuery,
+}: YAMLTreeNodeRowProps) {
+  const hasChildren = Boolean(node.children?.length);
+  const isExpanded = node.expanded ?? true;
+  const isRedirectedFollowUp = Boolean(redirectedRequestMap[node.id]);
+  const hasValidationError = validationNodeIds.includes(node.id);
+  const redirectedLabel = 'Redirected';
+  const IconComponent = getNodeIcon(node.type);
+  const color = getNodeColor(node.type, node);
+  const searchHitFlags = getNodeSearchHitFlags(node, searchQuery);
+  const hasRequestHit = searchHitFlags.request;
+  const hasResponseHit = searchHitFlags.response;
+  const isActiveReplaceMatch = activeReplaceMatchNodeId === node.id;
+
+  const selectionClass = 'bg-yellow-300/12 border border-yellow-300/35 ring-1 ring-yellow-300/25 shadow-[0_0_0_1px_rgba(250,204,21,0.14)]';
+  const activeReplaceClass = 'bg-amber-300/20 border-2 border-amber-300/80 ring-2 ring-amber-300/60 shadow-[0_0_0_2px_rgba(252,211,77,0.3)]';
+  const redirectedClass = 'bg-zinc-400/12 border border-zinc-300/30 hover:bg-zinc-400/16 ring-1 ring-zinc-300/15';
+  const defaultVisual = isActiveReplaceMatch
+    ? activeReplaceClass
+    : isSelected
+      ? selectionClass
+      : isRedirectedFollowUp
+        ? redirectedClass
+        : 'hover:bg-white/5 border border-transparent';
+  const requestVisual = isActiveReplaceMatch
+    ? activeReplaceClass
+    : isSelected
+      ? selectionClass
+      : 'hover:bg-transparent border border-transparent';
+
+  return (
+    <div
+      role="treeitem"
+      aria-selected={isSelected}
+      aria-current={isActiveReplaceMatch ? 'true' : undefined}
+      aria-invalid={hasValidationError}
+      aria-expanded={hasChildren ? isExpanded : undefined}
+      aria-level={depth + 1}
+      tabIndex={0}
+      draggable
+      data-node-id={node.id}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+      onClick={event => onNodeSelect(node, event)}
+      onKeyDown={event => {
+        if (event.key === 'Enter' || event.key === ' ') onNodeSelect(node, event as any);
+        if (event.key === 'ArrowRight' && hasChildren && !isExpanded) {
+          event.preventDefault();
+          onNodeToggle(node.id);
+        }
+        if (event.key === 'ArrowLeft' && hasChildren && isExpanded) {
+          event.preventDefault();
+          onNodeToggle(node.id);
+        }
+      }}
+      onContextMenu={event => onContextMenu(event, node)}
+      className={
+        `relative group flex items-center gap-2 px-2 py-1.5 pr-3 rounded cursor-pointer transition-colors overflow-visible ` +
+        `${node.type === 'request' ? requestVisual : defaultVisual} ` +
+        `${dragOver === 'before' ? 'border-t-2 border-t-yellow-400' : ''} ` +
+        `${dragOver === 'after' ? 'border-b-2 border-b-yellow-400' : ''} ` +
+        `${dragOver === 'inside' ? 'bg-yellow-400/5 border-yellow-400/30' : ''} ` +
+        `${hasValidationError ? 'border-red-400/60 bg-red-400/5' : ''} ` +
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/70'
+      }
+      style={{ paddingLeft: `${depth * 16 + 8}px` }}
+    >
+      {/* Left indicator removed to avoid visible corner artifact */}
+      {/* Expand/Collapse */}
+      {hasChildren && (
+        <button
+          type="button"
+          onClick={event => {
+            event.stopPropagation();
+            onNodeToggle(node.id);
+          }}
+          aria-label={isExpanded ? 'Collapse' : 'Expand'}
+          className="shrink-0 w-4 h-4 flex items-center justify-center text-zinc-500 hover:text-zinc-300"
+        >
+          {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+        </button>
+      )}
+
+      {!hasChildren && <div className="w-4" />}
+
+      {/* Icon */}
+      <div className={`shrink-0 ${color}`}>
+        <IconComponent className="w-4 h-4" />
+      </div>
+
+      {/* Name */}
+      <span
+        className={`text-sm truncate flex-1 ${
+          node.data?.enabled === false ? 'text-zinc-400' : isRedirectedFollowUp ? 'text-zinc-100' : 'text-zinc-300'
+        }`}
+      >
+        <HighlightText text={node.name} query={searchQuery} />
+      </span>
+
+      {/* Badge with extra info */}
+      {isRedirectedFollowUp && (
+        <span className="inline-flex h-5 items-center shrink-0 text-xs leading-none px-1.5 py-0.5 rounded bg-zinc-400/15 text-zinc-300 font-mono font-medium border border-zinc-400/30 uppercase">
+          {redirectedLabel}
+        </span>
+      )}
+      {getNodeBadge(node, { mutedMethod: isRedirectedFollowUp && node.data?.enabled === false })}
+      {hasRequestHit && (
+        <span className="inline-flex h-5 items-center shrink-0 text-xs leading-none px-1.5 py-0.5 rounded bg-yellow-400/15 text-yellow-400 font-mono font-medium border border-yellow-400/30 uppercase">
+          req
+        </span>
+      )}
+      {hasResponseHit && (
+        <span className="inline-flex h-5 items-center shrink-0 text-xs leading-none px-1.5 py-0.5 rounded bg-yellow-400/15 text-yellow-400 font-mono font-medium border border-yellow-400/30 uppercase">
+          res
+        </span>
       )}
     </div>
   );
