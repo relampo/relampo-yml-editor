@@ -3,6 +3,24 @@ import { describe, expect, it, vi } from 'vitest';
 import { TreeSearchBar } from './TreeSearchBar';
 
 describe('TreeSearchBar replace controls', () => {
+  it('copies the active tree search into Replace and shows its match count', () => {
+    render(
+      <TreeSearchBar
+        value="token"
+        onChange={vi.fn()}
+        onClear={vi.fn()}
+        onReplace={vi.fn()}
+        countMatches={search => (search === 'token' ? 17 : 0)}
+        searchMatchCount={1}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Replace' }));
+
+    expect(screen.getByLabelText('Find text to replace')).toHaveValue('token');
+    expect(screen.getByLabelText('Replace match position')).toHaveTextContent('1/17');
+  });
+
   it('navigates matches and supports selected or all replacement', () => {
     const onReplace = vi.fn(() => 1);
 
