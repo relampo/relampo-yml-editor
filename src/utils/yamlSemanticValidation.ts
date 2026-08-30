@@ -84,6 +84,10 @@ export function validateYAMLSemantics(tree: YAMLNode | null): YAMLSemanticIssue[
       validateSegmentsLoadNode(node, issues);
     }
 
+    if (node.type === 'load' && normalizeLoadType(node.data?.type) === 'throughput') {
+      validateThroughputLoadNode(node, issues);
+    }
+
     // Manual-stop is a non-intent contract; intent loads have no such control,
     // so keep this validation off them to avoid a message they can't act on.
     if (node.type === 'load' && !['intent', 'segments'].includes(normalizeLoadType(node.data?.type))) {
@@ -119,6 +123,40 @@ export function validateYAMLSemantics(tree: YAMLNode | null): YAMLSemanticIssue[
 
   walk(tree);
   return issues;
+}
+
+function validateThroughputLoadNode(node: YAMLNode, issues: YAMLSemanticIssue[]) {
+  const targetRps = Number(String(node.data?.target_rps ?? '').trim() || 0);
+  if (!Number.isFinite(targetRps) || targetRps <= 0) {
+    issues.push({
+      nodeId: node.id,
+      message: 'Throughput load requires Target RPS greater than 0.',
+    });
+  }
+
+  const maxVusValue = String(node.data?.max_vus ?? '').trim();
+  if (maxVusValue === '') {
+    issues.push({
+      nodeId: node.id,
+      message: 'Throughput load requires Max VUs.',
+    });
+    return;
+  }
+
+  const minVus = Number(String(node.data?.min_vus ?? '').trim() || 0);
+  const maxVus = Number(maxVusValue);
+  if (!Number.isFinite(maxVus) || maxVus <= 0) {
+    issues.push({
+      nodeId: node.id,
+      message: 'Throughput Max VUs must be greater than 0.',
+    });
+  }
+  if (Number.isFinite(minVus) && minVus > 0 && Number.isFinite(maxVus) && maxVus > 0 && minVus > maxVus) {
+    issues.push({
+      nodeId: node.id,
+      message: 'Throughput Min VUs cannot be greater than Max VUs.',
+    });
+  }
 }
 
 function validateSegmentsLoadNode(node: YAMLNode, issues: YAMLSemanticIssue[]) {

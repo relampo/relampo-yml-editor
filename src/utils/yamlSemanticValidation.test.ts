@@ -20,6 +20,86 @@ describe('localizeYAMLSemanticError', () => {
 });
 
 describe('validateYAMLSemantics', () => {
+  it('accepts valid throughput load nodes with VU capacity', () => {
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'test',
+      name: 'Test',
+      children: [
+        {
+          id: 'load',
+          type: 'load',
+          name: 'Load',
+          data: {
+            type: 'throughput',
+            duration: '1m',
+            target_rps: '25',
+            min_vus: '1',
+            max_vus: '50',
+          },
+        },
+      ],
+    };
+
+    expect(validateYAMLSemantics(tree)).toEqual([]);
+  });
+
+  it('rejects throughput without Max VUs', () => {
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'test',
+      name: 'Test',
+      children: [
+        {
+          id: 'load',
+          type: 'load',
+          name: 'Load',
+          data: {
+            type: 'throughput',
+            duration: '1m',
+            target_rps: '25',
+          },
+        },
+      ],
+    };
+
+    expect(validateYAMLSemantics(tree)).toEqual([
+      {
+        nodeId: 'load',
+        message: 'Throughput load requires Max VUs.',
+      },
+    ]);
+  });
+
+  it('rejects throughput when Min VUs is greater than Max VUs', () => {
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'test',
+      name: 'Test',
+      children: [
+        {
+          id: 'load',
+          type: 'load',
+          name: 'Load',
+          data: {
+            type: 'throughput',
+            duration: '1m',
+            target_rps: '25',
+            min_vus: '60',
+            max_vus: '50',
+          },
+        },
+      ],
+    };
+
+    expect(validateYAMLSemantics(tree)).toEqual([
+      {
+        nodeId: 'load',
+        message: 'Throughput Min VUs cannot be greater than Max VUs.',
+      },
+    ]);
+  });
+
   it('accepts valid segments load nodes', () => {
     const tree: YAMLNode = {
       id: 'root',

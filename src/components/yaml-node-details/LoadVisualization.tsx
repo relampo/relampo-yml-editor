@@ -745,15 +745,9 @@ function getVisualizationPoints(data: LoadData, loadType: LoadType) {
   } else if (loadType === 'throughput') {
     const targetRps = parseFloat(String(data.target_rps || '0')) || 10;
     const duration = parseTimeToSeconds(String(data.duration || '60s'));
-    const rampUp = parseTimeToSeconds(String(data.ramp_up || '0s'));
-    const rampDown = parseTimeToSeconds(String(data.ramp_down || '0s'));
-    const holdStart = Math.min(rampUp, duration);
-    const holdEnd = Math.max(holdStart, duration - rampDown);
     points.push(
-      { time: 0, users: 0 },
-      { time: holdStart, users: targetRps },
-      { time: holdEnd, users: targetRps },
-      { time: duration, users: 0 },
+      { time: 0, users: targetRps },
+      { time: duration, users: targetRps },
     );
   } else if (loadType === 'intent') {
     const duration = Math.max(1, parseTimeToSeconds(String(data.duration || '60s')));
