@@ -91,6 +91,7 @@ export function validateYAMLSemantics(tree: YAMLNode | null): YAMLSemanticIssue[
     if (node.type === 'load' && normalizeLoadType(node.data?.type) === 'segments') {
       validateSegmentsLoadNode(node, issues);
     }
+
     // Manual-stop is a non-intent contract; intent loads have no such control,
     // so keep this validation off them to avoid a message they can't act on.
     if (node.type === 'load' && !['intent', 'segments'].includes(normalizeLoadType(node.data?.type))) {

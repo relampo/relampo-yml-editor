@@ -147,8 +147,6 @@ const loadTypeDefaults: Record<LoadType, LoadData> = {
     iterations: '0',
     min_vus: '1',
     max_vus: '80',
-    ramp_up: '1m',
-    ramp_down: '1m',
   },
   intent: {
     target_unit: 'rps',
@@ -180,17 +178,7 @@ const loadTypeAllowedKeys: Record<LoadType, string[]> = {
   constant: ['type', 'users', 'duration', 'iterations', 'ramp_up', 'run_until_stopped'],
   linear: ['type', 'start_users', 'end_users', 'duration', 'iterations', 'run_until_stopped'],
   ramp_up_down: ['type', 'users', 'duration', 'iterations', 'ramp_up', 'ramp_down', 'run_until_stopped'],
-  throughput: [
-    'type',
-    'target_rps',
-    'duration',
-    'iterations',
-    'ramp_up',
-    'ramp_down',
-    'min_vus',
-    'max_vus',
-    'run_until_stopped',
-  ],
+  throughput: ['type', 'target_rps', 'duration', 'iterations', 'min_vus', 'max_vus', 'run_until_stopped'],
   intent: [
     'type',
     'target_unit',
