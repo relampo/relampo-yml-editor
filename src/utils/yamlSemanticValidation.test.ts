@@ -174,7 +174,37 @@ describe('validateYAMLSemantics', () => {
     ]);
   });
 
-  it('blocks the unsupported segments load type', () => {
+  it('accepts valid segments load nodes', () => {
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'test',
+      name: 'Test',
+      children: [
+        {
+          id: 'scenario',
+          type: 'scenario',
+          name: 'Scenario',
+          children: [
+            {
+              id: 'load',
+              type: 'load',
+              name: 'Load',
+              data: {
+                type: 'segments',
+                duration: '1h',
+                iterations: '10',
+                segments: [{ target_rps: '5' }, { target_vus: '50' }],
+              },
+            },
+          ],
+        },
+      ],
+    };
+
+    expect(validateYAMLSemantics(tree)).toEqual([]);
+  });
+
+  it('rejects segments with both RPS and VU targets', () => {
     const tree: YAMLNode = {
       id: 'root',
       type: 'test',
@@ -187,7 +217,7 @@ describe('validateYAMLSemantics', () => {
           data: {
             type: 'segments',
             duration: '1m',
-            segments: [{ target_rps: '5', max_vus: '10' }],
+            segments: [{ target_rps: '5', target_vus: '10' }],
           },
         },
       ],
@@ -196,12 +226,12 @@ describe('validateYAMLSemantics', () => {
     expect(validateYAMLSemantics(tree)).toEqual([
       {
         nodeId: 'load',
-        message: 'Load segments are not supported by the editor and Pulse runtime. Remove segments before running.',
+        message: 'Segment 1 must define exactly one target: Target RPS or Target VUs.',
       },
     ]);
   });
 
-  it('blocks segments embedded in another load type', () => {
+  it('rejects segments whose durations do not equal the root duration', () => {
     const tree: YAMLNode = {
       id: 'root',
       type: 'test',
@@ -212,11 +242,15 @@ describe('validateYAMLSemantics', () => {
           type: 'load',
           name: 'Load',
           data: {
-            type: 'throughput',
-            duration: '1m',
-            target_rps: '5',
-            max_vus: '10',
-            segments: [{ target_rps: '5' }],
+            type: 'segments',
+            duration: '10m',
+            segments: [
+              { duration: '1m', target_vus: '10' },
+              { duration: '2m', target_rps: '25' },
+              { duration: '4m', target_vus: '5' },
+              { duration: '1m', target_rps: '5' },
+              { duration: '3m', target_rps: '2' },
+            ],
           },
         },
       ],
@@ -225,7 +259,8 @@ describe('validateYAMLSemantics', () => {
     expect(validateYAMLSemantics(tree)).toEqual([
       {
         nodeId: 'load',
-        message: 'Load segments are not supported by the editor and Pulse runtime. Remove segments before running.',
+        message: 'Segments Duration total must equal load Duration (10m). Current segments total is 11m.',
+      },
       },
     ]);
   });

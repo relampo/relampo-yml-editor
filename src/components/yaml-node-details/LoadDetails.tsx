@@ -1,4 +1,4 @@
-import { Crosshair, Gauge, Mountain, TrendingUp, Users } from 'lucide-react';
+import { Crosshair, Gauge, ListTree, Mountain, TrendingUp, Users } from 'lucide-react';
 import { useId } from 'react';
 import { LoadVisualization } from './LoadVisualization';
 import {
@@ -16,6 +16,7 @@ import { ConstantLoadMode } from './load-modes/ConstantLoadMode';
 import { IntentLoadMode } from './load-modes/IntentLoadMode';
 import { RampLoadMode } from './load-modes/RampLoadMode';
 import { RampUpDownLoadMode } from './load-modes/RampUpDownLoadMode';
+import { SegmentsLoadMode } from './load-modes/SegmentsLoadMode';
 import { ThroughputLoadMode } from './load-modes/ThroughputLoadMode';
 import { createNodeDataUpdater } from './nodeDetailHelpers';
 import type { NodeDetailProps } from './types';
@@ -30,6 +31,7 @@ const LOAD_MODE_OPTIONS: Array<{
   { type: 'ramp_up_down', label: 'Ramp Up/Down', icon: Mountain },
   { type: 'throughput', label: 'Throughput', icon: Gauge },
   { type: 'intent', label: 'Intent', icon: Crosshair },
+  { type: 'segments', label: 'Segments', icon: ListTree },
 ];
 
 export function LoadDetails({ node, onNodeUpdate }: NodeDetailProps) {
@@ -196,12 +198,12 @@ function LoadModePanel({
 
   if (loadType === 'segments') {
     return (
-      <div className="rounded-xl border border-rose-400/20 bg-rose-400/[0.04] p-4 text-sm text-rose-200">
-        This load type is not supported by the editor or Pulse runtime. Remove <code>segments</code> before running.
-      </div>
+      <SegmentsLoadMode
+        data={data}
+        onChange={onChange}
+      />
     );
   }
-
   return (
     <ThroughputLoadMode
       data={data}

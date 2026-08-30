@@ -164,7 +164,16 @@ const loadTypeDefaults: Record<LoadType, LoadData> = {
     min_vus: '1',
     max_vus: '80',
   },
-  segments: {},
+  segments: {
+    duration: '1h',
+    iterations: '0',
+    segments: [
+      { name: 'baseline', target_rps: '5' },
+      { name: 'checkout_pressure', target_rps: '25', min_vus: '5', max_vus: '100' },
+      { name: 'fixed_users', target_vus: '50' },
+      { name: 'recovery', target_rps: '5' },
+    ],
+  },
 };
 
 const loadTypeAllowedKeys: Record<LoadType, string[]> = {
@@ -517,9 +526,14 @@ export function normalizeLoadDataForYaml(data: LoadData | Record<string, unknown
   }
 
   if (loadType === 'segments') {
-    return { ...rawData, type: rawData.type || 'segments' } as LoadData;
+    const normalizedSegments = buildLoadDataForType(loadType, scalarData, {
+      preserveExplicitEmpty: true,
+    });
+    if (Array.isArray(rawData.segments)) {
+      normalizedSegments.segments = rawData.segments as LoadSegmentData[];
+    }
+    return normalizedSegments;
   }
-
   const normalized = {
     ...rawData,
     type: getYamlLoadType(loadType),

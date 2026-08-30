@@ -5,6 +5,7 @@ import {
   loadColors,
   parseTimeToSeconds,
   type LoadData,
+  type LoadSegmentData,
   type LoadType,
 } from './loadUtils';
 
@@ -268,7 +269,10 @@ function computeLoadVisualizationModel(
   );
   const maxUsers = Math.max(peakUsers, 10);
   const totalTime = Math.max(...visualizationPoints.map(point => point.time), 0);
-  const hasFiniteDuration = parseTimeToSeconds(String(effectiveData.duration ?? '')) > 0;
+  const hasFiniteDuration =
+    loadType === 'segments'
+      ? totalTime > 0
+      : parseTimeToSeconds(String(effectiveData.duration ?? '')) > 0;
   const maxTime = hasFiniteDuration ? totalTime || 1 : Math.max(totalTime, 60);
   const chartHeightPx = 184;
   const yAxisLabel = getYAxisLabel(effectiveData, loadType, intentTargetUnit, t);
@@ -952,12 +956,28 @@ function getVisualizationPoints(data: LoadData, loadType: LoadType) {
     }
 
     points.push({ time: duration, users: steadyValue });
+  } else if (loadType === 'segments') {
+    const segments = getSegmentVisualizationEntries(data);
+    for (const segment of segments) {
+      points.push(
+        { time: segment.start, users: segment.value },
+        { time: segment.end, users: segment.value },
+      );
+    }
   }
 
   return points;
 }
 
 function getTimeRanges(data: LoadData, loadType: LoadType, maxTime: number) {
+  if (loadType === 'segments') {
+    return getSegmentVisualizationEntries(data).map((segment, index) => ({
+      key: `segment-${index}`,
+      label: segment.name || `S${index + 1}`,
+      start: segment.start,
+      end: segment.end,
+    }));
+  }
   if (loadType === 'constant') {
     const rampUp = Math.max(0, parseTimeToSeconds(String(data.ramp_up || '0s')));
     return rampUp > 0
@@ -987,6 +1007,16 @@ function getTimeRanges(data: LoadData, loadType: LoadType, maxTime: number) {
 }
 
 function getTransitionMarkers(data: LoadData, loadType: LoadType, maxTime: number) {
+  if (loadType === 'segments') {
+    return getSegmentVisualizationEntries(data)
+      .slice(1)
+      .map((segment, index) => ({
+        key: `segment-${index + 1}`,
+        time: segment.start,
+        label: formatTimeLabel(segment.start),
+      }))
+      .filter(marker => marker.time > 0 && marker.time < maxTime);
+  }
   if (loadType === 'constant') {
     const rampUp = Math.max(0, parseTimeToSeconds(String(data.ramp_up || '0s')));
     return rampUp > 0 && rampUp < maxTime ? [{ key: 'ramp-up', time: rampUp, label: formatTimeLabel(rampUp) }] : [];
@@ -1013,9 +1043,66 @@ function getTransitionMarkers(data: LoadData, loadType: LoadType, maxTime: numbe
 }
 
 function getYAxisLabel(data: LoadData, loadType: LoadType, intentTargetUnit: string, t: (key: string) => string) {
+  if (loadType === 'segments') {
+    const segments = normalizeVisualizationSegments(data.segments);
+    const hasRps = segments.some(segment => positiveNumber(segment.target_rps) > 0);
+    const hasVus = segments.some(segment => positiveNumber(segment.target_vus) > 0);
+    if (hasRps && !hasVus) return t('yamlEditor.loadVisualization.labels.rps');
+    if (hasVus && !hasRps) return t('yamlEditor.loadVisualization.labels.users');
+    return 'Target';
+  }
   return loadType === 'throughput' || (loadType === 'intent' && intentTargetUnit === 'rps')
     ? t('yamlEditor.loadVisualization.labels.rps')
     : t('yamlEditor.loadVisualization.labels.users');
+}
+
+function getSegmentVisualizationEntries(data: LoadData) {
+  const segments = normalizeVisualizationSegments(data.segments);
+  if (segments.length === 0) {
+    return [];
+  }
+
+  const explicitDurations = segments.map(segment => parseTimeToSeconds(String(segment.duration ?? '').trim()));
+  const hasAnyDuration = explicitDurations.some(duration => duration > 0);
+  const hasAllDurations = explicitDurations.every(duration => duration > 0);
+  const totalDuration = parseTimeToSeconds(String(data.duration ?? '').trim());
+  const fallbackDuration = !hasAnyDuration && totalDuration > 0 ? totalDuration / segments.length : 0;
+
+  let elapsed = 0;
+  return segments
+    .map((segment, index) => {
+      const duration = hasAllDurations ? explicitDurations[index] : fallbackDuration;
+      const value = segmentDisplayValue(segment);
+      const entry = {
+        name: String(segment.name ?? '').trim(),
+        start: elapsed,
+        end: elapsed + duration,
+        value,
+      };
+      elapsed = entry.end;
+      return entry;
+    })
+    .filter(entry => entry.end > entry.start && entry.value > 0);
+}
+
+function normalizeVisualizationSegments(value: LoadData['segments']): LoadSegmentData[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.filter(segment => segment && typeof segment === 'object') as LoadSegmentData[];
+}
+
+function segmentDisplayValue(segment: LoadSegmentData): number {
+  const targetVus = positiveNumber(segment.target_vus);
+  if (targetVus > 0) {
+    return targetVus;
+  }
+  return positiveNumber(segment.target_rps);
+}
+
+function positiveNumber(value: unknown): number {
+  const parsed = Number(String(value ?? '').trim());
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
 }
 
 function formatTimeLabel(seconds: number): string {

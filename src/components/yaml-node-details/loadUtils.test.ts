@@ -42,12 +42,27 @@ describe('normalizeLoadDataForYaml unsupported structures', () => {
   });
 });
 
-describe('normalizeLoadDataForYaml unsupported load types', () => {
-  it('preserves unsupported segments without injecting editor defaults', () => {
-    const normalized = normalizeLoadDataForYaml({ type: 'segments', segments: [] }) as Record<string, unknown>;
+describe('normalizeLoadDataForYaml segments contract', () => {
+  it('preserves segments load definitions when saving YAML', () => {
+    const segments = [
+      { name: 'baseline', target_rps: '5' },
+      { name: 'fixed_users', target_vus: '50' },
+    ];
 
-    expect(normalized).toEqual({ type: 'segments', segments: [] });
-    expect(normalized.duration).toBeUndefined();
+    const normalized = normalizeLoadDataForYaml({
+      type: 'segments',
+      duration: '1h',
+      iterations: '10',
+      segments,
+      users: '20',
+    }) as Record<string, unknown>;
+
+    expect(normalized).toEqual({
+      type: 'segments',
+      duration: '1h',
+      iterations: '10',
+      segments,
+    });
   });
 });
 
