@@ -917,6 +917,7 @@ function buildLiveRunSummary(
     total_requests: latest.total_requests,
     total_failures: latest.total_failures,
     executed_vus: latest.executed_vus,
+    metadata: latest.configured_vus ? { configured_vus: String(latest.configured_vus) } : undefined,
     requests: sortRunSummaryRequests([...requests.values()]),
   };
 }
