@@ -39,7 +39,7 @@ describe('validateYAMLSemantics', () => {
                 type: 'segments',
                 duration: '1h',
                 iterations: '10',
-                segments: [{ target_rps: '5' }, { target_vus: '50' }],
+                segments: [{ target_rps: '5', max_vus: '20' }, { target_vus: '50' }],
               },
             },
           ],
@@ -77,6 +77,33 @@ describe('validateYAMLSemantics', () => {
     ]);
   });
 
+  it('rejects RPS segments without Max VUs', () => {
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'test',
+      name: 'Test',
+      children: [
+        {
+          id: 'load',
+          type: 'load',
+          name: 'Load',
+          data: {
+            type: 'segments',
+            duration: '1m',
+            segments: [{ target_rps: '5' }],
+          },
+        },
+      ],
+    };
+
+    expect(validateYAMLSemantics(tree)).toEqual([
+      {
+        nodeId: 'load',
+        message: 'Segment 1 with Target RPS requires Max VUs.',
+      },
+    ]);
+  });
+
   it('rejects segments whose durations do not equal the root duration', () => {
     const tree: YAMLNode = {
       id: 'root',
@@ -92,10 +119,10 @@ describe('validateYAMLSemantics', () => {
             duration: '10m',
             segments: [
               { duration: '1m', target_vus: '10' },
-              { duration: '2m', target_rps: '25' },
+              { duration: '2m', target_rps: '25', max_vus: '100' },
               { duration: '4m', target_vus: '5' },
-              { duration: '1m', target_rps: '5' },
-              { duration: '3m', target_rps: '2' },
+              { duration: '1m', target_rps: '5', max_vus: '20' },
+              { duration: '3m', target_rps: '2', max_vus: '10' },
             ],
           },
         },
