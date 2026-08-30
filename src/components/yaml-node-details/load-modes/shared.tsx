@@ -69,7 +69,7 @@ export function LoadField({
         type={type}
         maxLength={maxLength}
         disabled={disabled}
-        value={typeof value === 'boolean' ? String(value) : (value ?? '')}
+        value={typeof value === 'boolean' ? String(value) : Array.isArray(value) ? '' : (value ?? '')}
         onChange={event => onChange(event.target.value)}
         placeholder={placeholder}
         aria-describedby={helpText ? helpId : undefined}

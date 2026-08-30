@@ -20,6 +20,96 @@ describe('localizeYAMLSemanticError', () => {
 });
 
 describe('validateYAMLSemantics', () => {
+  it('accepts valid segments load nodes', () => {
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'test',
+      name: 'Test',
+      children: [
+        {
+          id: 'scenario',
+          type: 'scenario',
+          name: 'Scenario',
+          children: [
+            {
+              id: 'load',
+              type: 'load',
+              name: 'Load',
+              data: {
+                type: 'segments',
+                duration: '1h',
+                iterations: '10',
+                segments: [{ target_rps: '5' }, { target_vus: '50' }],
+              },
+            },
+          ],
+        },
+      ],
+    };
+
+    expect(validateYAMLSemantics(tree)).toEqual([]);
+  });
+
+  it('rejects segments with both RPS and VU targets', () => {
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'test',
+      name: 'Test',
+      children: [
+        {
+          id: 'load',
+          type: 'load',
+          name: 'Load',
+          data: {
+            type: 'segments',
+            duration: '1m',
+            segments: [{ target_rps: '5', target_vus: '10' }],
+          },
+        },
+      ],
+    };
+
+    expect(validateYAMLSemantics(tree)).toEqual([
+      {
+        nodeId: 'load',
+        message: 'Segment 1 must define exactly one target: Target RPS or Target VUs.',
+      },
+    ]);
+  });
+
+  it('rejects segments whose durations do not equal the root duration', () => {
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'test',
+      name: 'Test',
+      children: [
+        {
+          id: 'load',
+          type: 'load',
+          name: 'Load',
+          data: {
+            type: 'segments',
+            duration: '10m',
+            segments: [
+              { duration: '1m', target_vus: '10' },
+              { duration: '2m', target_rps: '25' },
+              { duration: '4m', target_vus: '5' },
+              { duration: '1m', target_rps: '5' },
+              { duration: '3m', target_rps: '2' },
+            ],
+          },
+        },
+      ],
+    };
+
+    expect(validateYAMLSemantics(tree)).toEqual([
+      {
+        nodeId: 'load',
+        message: 'Segments Duration total must equal load Duration (10m). Current segments total is 11m.',
+      },
+    ]);
+  });
+
   it('flags transactions with no steps', () => {
     const tree: YAMLNode = {
       id: 'root',

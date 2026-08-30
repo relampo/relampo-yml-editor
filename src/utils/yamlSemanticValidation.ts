@@ -80,9 +80,13 @@ export function validateYAMLSemantics(tree: YAMLNode | null): YAMLSemanticIssue[
       });
     }
 
+    if (node.type === 'load' && normalizeLoadType(node.data?.type) === 'segments') {
+      validateSegmentsLoadNode(node, issues);
+    }
+
     // Manual-stop is a non-intent contract; intent loads have no such control,
     // so keep this validation off them to avoid a message they can't act on.
-    if (node.type === 'load' && normalizeLoadType(node.data?.type) !== 'intent') {
+    if (node.type === 'load' && !['intent', 'segments'].includes(normalizeLoadType(node.data?.type))) {
 
       const duration = String(node.data?.duration ?? '').trim();
       const rawIterations = String(node.data?.iterations ?? '').trim();
@@ -115,4 +119,69 @@ export function validateYAMLSemantics(tree: YAMLNode | null): YAMLSemanticIssue[
 
   walk(tree);
   return issues;
+}
+
+function validateSegmentsLoadNode(node: YAMLNode, issues: YAMLSemanticIssue[]) {
+  const segments = Array.isArray(node.data?.segments) ? node.data.segments : [];
+  if (segments.length === 0) {
+    issues.push({
+      nodeId: node.id,
+      message: 'Segments load requires at least one segment.',
+    });
+    return;
+  }
+
+  const rootDuration = parseTimeToSeconds(String(node.data?.duration ?? '').trim());
+  const explicitDurations = segments.filter(segment => parseTimeToSeconds(String(segment?.duration ?? '').trim()) > 0).length;
+  if (explicitDurations > 0 && explicitDurations !== segments.length) {
+    issues.push({
+      nodeId: node.id,
+      message: 'Segments must either all define Duration or all use the total Duration.',
+    });
+  }
+  if (explicitDurations === 0 && rootDuration <= 0) {
+    issues.push({
+      nodeId: node.id,
+      message: 'Segments load requires a total Duration when segment durations are omitted.',
+    });
+  }
+  if (explicitDurations === segments.length && rootDuration > 0) {
+    const segmentDurationTotal = segments.reduce(
+      (total, segment) => total + parseTimeToSeconds(String(segment?.duration ?? '').trim()),
+      0,
+    );
+    if (Math.abs(segmentDurationTotal - rootDuration) > 0.001) {
+      issues.push({
+        nodeId: node.id,
+        message: `Segments Duration total must equal load Duration (${formatDuration(rootDuration)}). Current segments total is ${formatDuration(segmentDurationTotal)}.`,
+      });
+    }
+  }
+
+  segments.forEach((segment, index) => {
+    const targetRps = Number(String(segment?.target_rps ?? '').trim() || 0);
+    const targetVus = Number(String(segment?.target_vus ?? '').trim() || 0);
+    const hasTargetRps = Number.isFinite(targetRps) && targetRps > 0;
+    const hasTargetVus = Number.isFinite(targetVus) && targetVus > 0;
+    if (hasTargetRps === hasTargetVus) {
+      issues.push({
+        nodeId: node.id,
+        message: `Segment ${index + 1} must define exactly one target: Target RPS or Target VUs.`,
+      });
+    }
+    if (hasTargetVus && (String(segment?.min_vus ?? '').trim() !== '' || String(segment?.max_vus ?? '').trim() !== '')) {
+      issues.push({
+        nodeId: node.id,
+        message: `Segment ${index + 1} can use Min VUs / Max VUs only with Target RPS.`,
+      });
+    }
+  });
+}
+
+function formatDuration(seconds: number): string {
+  if (seconds > 0 && seconds < 1) return `${Math.round(seconds * 1000)}ms`;
+  const rounded = Math.max(0, Math.round(seconds));
+  if (rounded % 3600 === 0 && rounded > 0) return `${rounded / 3600}h`;
+  if (rounded % 60 === 0 && rounded > 0) return `${rounded / 60}m`;
+  return `${rounded}s`;
 }

@@ -41,3 +41,27 @@ describe('normalizeLoadDataForYaml unsupported structures', () => {
     expect(normalized.stages).toEqual(stages);
   });
 });
+
+describe('normalizeLoadDataForYaml segments contract', () => {
+  it('preserves segments load definitions when saving YAML', () => {
+    const segments = [
+      { name: 'baseline', target_rps: '5' },
+      { name: 'fixed_users', target_vus: '50' },
+    ];
+
+    const normalized = normalizeLoadDataForYaml({
+      type: 'segments',
+      duration: '1h',
+      iterations: '10',
+      segments,
+      users: '20',
+    }) as Record<string, unknown>;
+
+    expect(normalized).toEqual({
+      type: 'segments',
+      duration: '1h',
+      iterations: '10',
+      segments,
+    });
+  });
+});

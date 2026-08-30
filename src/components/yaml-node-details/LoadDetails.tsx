@@ -1,4 +1,4 @@
-import { Gauge, Mountain, TrendingUp, Users } from 'lucide-react';
+import { Gauge, ListTree, Mountain, TrendingUp, Users } from 'lucide-react';
 import { useId } from 'react';
 import { LoadVisualization } from './LoadVisualization';
 import {
@@ -16,6 +16,7 @@ import { ConstantLoadMode } from './load-modes/ConstantLoadMode';
 import { IntentLoadMode } from './load-modes/IntentLoadMode';
 import { RampLoadMode } from './load-modes/RampLoadMode';
 import { RampUpDownLoadMode } from './load-modes/RampUpDownLoadMode';
+import { SegmentsLoadMode } from './load-modes/SegmentsLoadMode';
 import { ThroughputLoadMode } from './load-modes/ThroughputLoadMode';
 import { createNodeDataUpdater } from './nodeDetailHelpers';
 import type { NodeDetailProps } from './types';
@@ -29,6 +30,7 @@ const LOAD_MODE_OPTIONS: Array<{
   { type: 'linear', label: 'Linear', icon: TrendingUp },
   { type: 'ramp_up_down', label: 'Ramp Up/Down', icon: Mountain },
   { type: 'throughput', label: 'Throughput', icon: Gauge },
+  { type: 'segments', label: 'Segments', icon: ListTree },
 ];
 
 export function LoadDetails({ node, onNodeUpdate }: NodeDetailProps) {
@@ -101,7 +103,7 @@ export function LoadDetails({ node, onNodeUpdate }: NodeDetailProps) {
         onChange={handleChange}
       />
 
-      {loadType !== 'intent' && (
+      {loadType !== 'intent' && loadType !== 'segments' && (
         <ManualStopControl
           checked={data.run_until_stopped === true}
           onChange={checked => handleChange('run_until_stopped', checked)}
@@ -185,6 +187,15 @@ function LoadModePanel({
   if (loadType === 'intent') {
     return (
       <IntentLoadMode
+        data={data}
+        onChange={onChange}
+      />
+    );
+  }
+
+  if (loadType === 'segments') {
+    return (
+      <SegmentsLoadMode
         data={data}
         onChange={onChange}
       />

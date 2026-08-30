@@ -1,7 +1,15 @@
-const loadTypes = ['constant', 'linear', 'ramp_up_down', 'throughput', 'intent'] as const;
+const loadTypes = ['constant', 'linear', 'ramp_up_down', 'throughput', 'intent', 'segments'] as const;
 
 export type LoadType = (typeof loadTypes)[number];
-export type LoadDataValue = string | number | boolean | undefined;
+export type LoadSegmentData = {
+  name?: string;
+  duration?: string | number;
+  target_rps?: string | number;
+  target_vus?: string | number;
+  min_vus?: string | number;
+  max_vus?: string | number;
+};
+export type LoadDataValue = string | number | boolean | LoadSegmentData[] | undefined;
 export type LoadData = Record<string, LoadDataValue>;
 
 export function toLoadData(value: Record<string, unknown> | undefined): LoadData {
@@ -13,7 +21,7 @@ export function toLoadData(value: Record<string, unknown> | undefined): LoadData
       }
       // Keep the documented but unsupported load stages visible so semantic
       // validation can block execution instead of silently dropping them.
-      return key === 'stages' && Array.isArray(fieldValue);
+      return (key === 'stages' || key === 'segments') && Array.isArray(fieldValue);
     }),
   ) as LoadData;
 }
@@ -42,6 +50,7 @@ const loadTypeLabels: Record<LoadType, string> = {
   ramp_up_down: 'Ramp',
   throughput: 'Throughput',
   intent: 'Intent',
+  segments: 'Segments',
 };
 
 export function getLoadTypeLabel(loadType: LoadType | string): string {
@@ -82,6 +91,9 @@ export function normalizeLoadType(rawType: unknown): LoadType {
   }
   if (rawLoadType === 'intent') {
     return 'intent';
+  }
+  if (rawLoadType === 'segments' || rawLoadType === 'segment') {
+    return 'segments';
   }
   return 'constant';
 }
@@ -127,6 +139,16 @@ const loadTypeDefaults: Record<LoadType, LoadData> = {
     min_vus: '1',
     max_vus: '80',
   },
+  segments: {
+    duration: '1h',
+    iterations: '0',
+    segments: [
+      { name: 'baseline', target_rps: '5' },
+      { name: 'checkout_pressure', target_rps: '25', min_vus: '5', max_vus: '100' },
+      { name: 'fixed_users', target_vus: '50' },
+      { name: 'recovery', target_rps: '5' },
+    ],
+  },
 };
 
 const loadTypeAllowedKeys: Record<LoadType, string[]> = {
@@ -155,6 +177,7 @@ const loadTypeAllowedKeys: Record<LoadType, string[]> = {
     'min_vus',
     'max_vus',
   ],
+  segments: ['type', 'duration', 'iterations', 'segments'],
 };
 
 function mapLoadTypes<T>(value: T): Record<LoadType, T> {
@@ -398,12 +421,25 @@ export function normalizeLoadDataForYaml(data: LoadData | Record<string, unknown
     return normalizedIntent;
   }
 
+  if (loadType === 'segments') {
+    const normalizedSegments = buildLoadDataForType(loadType, scalarData, {
+      preserveExplicitEmpty: true,
+    });
+    if (Array.isArray(rawData.segments)) {
+      normalizedSegments.segments = rawData.segments as LoadSegmentData[];
+    }
+    return normalizedSegments;
+  }
+
   const normalized = {
     ...rawData,
     type: getYamlLoadType(loadType),
   } as LoadData;
   if (Array.isArray(rawData.stages)) {
     (normalized as Record<string, unknown>).stages = rawData.stages;
+  }
+  if (Array.isArray(rawData.segments)) {
+    (normalized as Record<string, unknown>).segments = rawData.segments;
   }
 
   if (normalized.users === undefined && normalized.vusers !== undefined) {

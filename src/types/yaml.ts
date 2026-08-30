@@ -127,11 +127,13 @@ export interface YAMLNodeData {
   ssl_mode?: string;
   spark?: YAMLNodeData[];
   stages?: YAMLNodeData[];
+  segments?: YAMLNodeData[];
   steps?: YAMLNodeData[];
   size?: YAMLInputValue;
   start_users?: YAMLInputValue;
   std_dev?: YAMLInputValue;
   target_rps?: YAMLInputValue;
+  target_vus?: YAMLInputValue;
   target?: YAMLInputValue;
   target_unit?: string;
   target_value?: YAMLInputValue;
