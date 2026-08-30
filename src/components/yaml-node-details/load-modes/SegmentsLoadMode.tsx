@@ -17,6 +17,7 @@ const GLOBAL_SEGMENT_FIELDS = [
 const DEFAULT_SEGMENT: LoadSegmentData = {
   name: 'new_segment',
   target_rps: '5',
+  max_vus: '100',
 };
 
 export function SegmentsLoadMode({ data, onChange }: LoadModeProps) {
@@ -53,6 +54,9 @@ export function SegmentsLoadMode({ data, onChange }: LoadModeProps) {
       } else {
         delete updated.target_vus;
         updated.target_rps = currentTarget;
+        if (String(updated.max_vus ?? '').trim() === '') {
+          updated.max_vus = '100';
+        }
       }
       return removeEmptySegmentFields(updated);
     });

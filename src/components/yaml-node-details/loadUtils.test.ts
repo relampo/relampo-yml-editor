@@ -45,7 +45,7 @@ describe('normalizeLoadDataForYaml unsupported structures', () => {
 describe('normalizeLoadDataForYaml segments contract', () => {
   it('preserves segments load definitions when saving YAML', () => {
     const segments = [
-      { name: 'baseline', target_rps: '5' },
+      { name: 'baseline', target_rps: '5', max_vus: '20' },
       { name: 'fixed_users', target_vus: '50' },
     ];
 

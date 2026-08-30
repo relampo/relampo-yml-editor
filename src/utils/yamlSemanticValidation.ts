@@ -324,6 +324,12 @@ function validateSegmentsLoadNode(node: YAMLNode, issues: YAMLSemanticIssue[]) {
         message: `Segment ${index + 1} must define exactly one target: Target RPS or Target VUs.`,
       });
     }
+    if (hasTargetRps && !hasTargetVus && String(segment?.max_vus ?? '').trim() === '') {
+      issues.push({
+        nodeId: node.id,
+        message: `Segment ${index + 1} with Target RPS requires Max VUs.`,
+      });
+    }
     if (hasTargetVus && (String(segment?.min_vus ?? '').trim() !== '' || String(segment?.max_vus ?? '').trim() !== '')) {
       issues.push({
         nodeId: node.id,

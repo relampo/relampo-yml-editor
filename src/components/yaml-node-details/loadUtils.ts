@@ -168,10 +168,10 @@ const loadTypeDefaults: Record<LoadType, LoadData> = {
     duration: '1h',
     iterations: '0',
     segments: [
-      { name: 'baseline', target_rps: '5' },
+      { name: 'baseline', target_rps: '5', max_vus: '20' },
       { name: 'checkout_pressure', target_rps: '25', min_vus: '5', max_vus: '100' },
       { name: 'fixed_users', target_vus: '50' },
-      { name: 'recovery', target_rps: '5' },
+      { name: 'recovery', target_rps: '5', max_vus: '20' },
     ],
   },
 };
