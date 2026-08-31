@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeLoadDataForYaml } from './loadUtils';
+import { getIntentAutoConfig, normalizeLoadDataForYaml } from './loadUtils';
 
 describe('normalizeLoadDataForYaml manual-stop contract', () => {
   it('drops the cleared duration/iterations the manual-stop checkbox produces', () => {
@@ -63,5 +63,17 @@ describe('normalizeLoadDataForYaml segments contract', () => {
       iterations: '10',
       segments,
     });
+  });
+});
+
+describe('getIntentAutoConfig', () => {
+  it('locks intent max VUs to the target when the target unit is VUs', () => {
+    const autoConfig = getIntentAutoConfig({
+      type: 'intent',
+      target: { type: 'vus', value: '10' },
+      aggressiveness: 'medium',
+    });
+
+    expect(autoConfig.max_vus).toBe('10');
   });
 });

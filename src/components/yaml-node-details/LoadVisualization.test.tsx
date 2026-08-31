@@ -15,33 +15,33 @@ describe('LoadVisualization', () => {
         loadType="intent"
         data={{
           type: 'intent',
-          target_unit: 'rps',
-          target_value: '25',
+          target: { type: 'rps', value: '25' },
           duration: '3s',
           warmup: '400ms',
-          window: '200ms',
+          control_window: '200ms',
           min_vus: '1',
           max_vus: '6',
-          p95_max_ms: '180',
-          error_rate_max_pct: '2',
+          latency: { metric: 'p95', max_ms: '180' },
+          error_rate: { max_pct: '2' },
           aggressiveness: 'medium',
         }}
       />,
     );
 
-    expect(screen.getByText('Load Pattern Visualization')).toBeInTheDocument();
-    expect(screen.getByText('Execution Phases')).toBeInTheDocument();
-    expect(screen.getByText(/1500 req\/min target/i)).toBeInTheDocument();
+    expect(screen.getByText('Intent Control Preview')).toBeInTheDocument();
+    expect(screen.getByText('Target: 25 RPS')).toBeInTheDocument();
+    expect(screen.getByText(/Controller capacity:\s*1\.\.6 VUs/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Warmup 400ms/i)).not.toHaveLength(0);
+    expect(screen.queryByText('Execution Phases')).not.toBeInTheDocument();
   });
 
-  it('uses effective intent suggestions in the chart when editable fields are blank', () => {
+  it('uses effective intent suggestions in the preview when editable fields are blank', () => {
     renderWithLanguage(
       <LoadVisualization
         loadType="intent"
         data={{
           type: 'intent',
-          target_unit: 'rps',
-          target_value: '25',
+          target: { type: 'rps', value: '25' },
           aggressiveness: 'medium',
           duration: '',
           warmup: '',
@@ -51,9 +51,10 @@ describe('LoadVisualization', () => {
       />,
     );
 
-    expect(screen.getByText(/VU guardrails:\s*2\.\.7\./i)).toBeInTheDocument();
-    expect(screen.getByText(/warmup 30s/i)).toBeInTheDocument();
-    expect(screen.getByText(/Total:\s*10m/i)).toBeInTheDocument();
+    expect(screen.getByText('Intent Control Preview')).toBeInTheDocument();
+    expect(screen.getByText(/Controller capacity:\s*2\.\.7 VUs/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Warmup 30s/i)).not.toHaveLength(0);
+    expect(screen.getByText(/Duration 10m/i)).toBeInTheDocument();
   });
 
   it('shows an infinite total when no duration is configured', () => {

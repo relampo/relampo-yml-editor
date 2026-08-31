@@ -185,9 +185,12 @@ function SegmentInput({
   onChange: (value: string) => void;
   disabled?: boolean;
 }) {
+  const inputValue =
+    typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' ? String(value) : '';
+
   return (
     <input
-      value={typeof value === 'boolean' || Array.isArray(value) ? '' : (value ?? '')}
+      value={inputValue}
       placeholder={placeholder}
       disabled={disabled}
       onChange={event => onChange(event.target.value.slice(0, 32))}

@@ -88,6 +88,10 @@ export function validateYAMLSemantics(tree: YAMLNode | null): YAMLSemanticIssue[
       validateThroughputLoadNode(node, issues);
     }
 
+    if (node.type === 'load' && normalizeLoadType(node.data?.type) === 'intent') {
+      validateIntentLoadNode(node, issues);
+    }
+
     // Manual-stop is a non-intent contract; intent loads have no such control,
     // so keep this validation off them to avoid a message they can't act on.
     if (node.type === 'load' && !['intent', 'segments'].includes(normalizeLoadType(node.data?.type))) {
@@ -155,6 +159,26 @@ function validateThroughputLoadNode(node: YAMLNode, issues: YAMLSemanticIssue[])
     issues.push({
       nodeId: node.id,
       message: 'Throughput Min VUs cannot be greater than Max VUs.',
+    });
+  }
+}
+
+function validateIntentLoadNode(node: YAMLNode, issues: YAMLSemanticIssue[]) {
+  const target = node.data?.target;
+  const targetRecord =
+    target && typeof target === 'object' && !Array.isArray(target)
+      ? (target as Record<string, unknown>)
+      : undefined;
+  const targetUnit = String(targetRecord?.type ?? node.data?.target_unit ?? '').trim().toLowerCase();
+  if (targetUnit !== 'vus') {
+    return;
+  }
+  const targetValue = Number(String(targetRecord?.value ?? node.data?.target_value ?? '').trim() || 0);
+  const maxVus = Number(String(node.data?.max_vus ?? '').trim() || 0);
+  if (Number.isFinite(targetValue) && targetValue > 0 && Number.isFinite(maxVus) && maxVus > 0 && maxVus < Math.ceil(targetValue)) {
+    issues.push({
+      nodeId: node.id,
+      message: 'Intent Max VUs must be greater than or equal to the target VUs.',
     });
   }
 }

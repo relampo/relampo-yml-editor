@@ -6,6 +6,8 @@ import {
   startLoadRun,
   stopLoadRun,
   streamLoadRun,
+  type RunIntentResult,
+  type RunIntentTick,
   type RunLogLine,
   type RunMetricsSnapshot,
   type RunRequestStat,
@@ -13,7 +15,7 @@ import {
   type RunSummary,
 } from '../utils/runApi';
 import { LoadVisualization } from './yaml-node-details/LoadVisualization';
-import { normalizeLoadType, parseTimeToSeconds, toLoadData } from './yaml-node-details/loadUtils';
+import { normalizeLoadType, parseTimeToSeconds, toLoadData, type LoadType } from './yaml-node-details/loadUtils';
 import { normalizeBalancedExecutionMode } from '../utils/balancedController';
 import { createStoredRunStore, fingerprint, type StoredRun } from '../utils/studioRunStore';
 import { collectDebugEventTargets, matchDebugEventTarget } from './debugRequests';
@@ -252,6 +254,7 @@ export function YAMLLoadRunSession({
   const loadNodes = useMemo(() => collectLoadNodes(tree), [tree]);
   const runRequestTargets = useMemo(() => collectDebugEventTargets(tree), [tree]);
   const plannedLoadNode = loadNodes[0] ?? null;
+  const plannedLoadType = plannedLoadNode ? normalizeLoadType(plannedLoadNode.data?.type) : null;
   const iterationBudgetCapsDuration = useMemo(() => {
     if (!plannedLoadNode) return false;
     const duration = parseTimeToSeconds(String(plannedLoadNode.data?.duration ?? '').trim());
@@ -272,6 +275,7 @@ export function YAMLLoadRunSession({
     if (!liveSummary?.requests.length) return summary;
     return { ...summary, requests: liveSummary.requests };
   }, [liveSummary, summary]);
+  const intentTicks = useMemo(() => collectIntentTicks(snapshots, summary), [snapshots, summary]);
   const hasRunActivity = snapshots.length > 0 || logs.length > 0 || summary != null;
 
   // Wires a run's SSE stream into the dashboard. Shared by a fresh Run and by
@@ -418,15 +422,20 @@ export function YAMLLoadRunSession({
           <div className="space-y-4">
             <MetricsCharts snapshots={snapshots} />
 
-            {plannedLoadNode && (
+            {plannedLoadNode && plannedLoadType !== 'intent' && (
               <PlannedLoadProfilePanel
                 plannedLoadNode={plannedLoadNode}
+                plannedLoadType={plannedLoadType}
                 scenarioCount={loadNodes.length}
                 iterationBudgetCapsDuration={iterationBudgetCapsDuration}
                 isRunning={isRunning}
                 elapsedMs={latest?.elapsed_ms ?? 0}
               />
             )}
+
+            {intentTicks.length > 0 && <IntentRuntimeTimeline ticks={intentTicks} summary={visibleSummary} />}
+
+            {visibleSummary?.intent_result && <IntentResultPanel result={visibleSummary.intent_result} />}
 
             {visibleSummary && (
               <RunSummaryPanel
@@ -585,12 +594,14 @@ function MetricsCharts({ snapshots }: { snapshots: RunMetricsSnapshot[] }) {
 
 function PlannedLoadProfilePanel({
   plannedLoadNode,
+  plannedLoadType,
   scenarioCount,
   iterationBudgetCapsDuration,
   isRunning,
   elapsedMs,
 }: {
   plannedLoadNode: YAMLNode;
+  plannedLoadType: LoadType | null;
   scenarioCount: number;
   iterationBudgetCapsDuration: boolean;
   isRunning: boolean;
@@ -618,11 +629,356 @@ function PlannedLoadProfilePanel({
       )}
       <LoadVisualization
         data={toLoadData(plannedLoadNode.data as Record<string, unknown> | undefined)}
-        loadType={normalizeLoadType(plannedLoadNode.data?.type)}
+        loadType={plannedLoadType ?? normalizeLoadType(plannedLoadNode.data?.type)}
         progressSeconds={isRunning ? elapsedMs / 1000 : undefined}
       />
     </div>
   );
+}
+
+function collectIntentTicks(snapshots: RunMetricsSnapshot[], summary: RunSummary | null): RunIntentTick[] {
+  const seen = new Set<string>();
+  const merged: RunIntentTick[] = [];
+  const add = (tick: RunIntentTick) => {
+    const key = `${tick.tick}:${tick.elapsed_ms ?? ''}:${tick.state}:${tick.next_vus}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    merged.push(tick);
+  };
+  snapshots.forEach(snapshot => snapshot.intent_ticks?.forEach(add));
+  summary?.intent_ticks?.forEach(add);
+  return merged.sort((left, right) => {
+    const leftElapsed = left.elapsed_ms ?? left.tick;
+    const rightElapsed = right.elapsed_ms ?? right.tick;
+    return leftElapsed - rightElapsed || left.tick - right.tick;
+  });
+}
+
+const INTENT_STATE_STYLE: Record<string, { stroke: string; text: string; label: string }> = {
+  warmup: { stroke: '#22d3ee', text: 'text-cyan-200', label: 'Warmup' },
+  rampup: { stroke: '#38bdf8', text: 'text-sky-200', label: 'RampUp' },
+  probing: { stroke: '#fde047', text: 'text-yellow-200', label: 'Probing' },
+  sustain: { stroke: '#a78bfa', text: 'text-violet-200', label: 'Sustain' },
+  stable: { stroke: '#34d399', text: 'text-emerald-200', label: 'Stable' },
+  violation: { stroke: '#fb7185', text: 'text-rose-200', label: 'Violation' },
+  recovery: { stroke: '#f59e0b', text: 'text-amber-200', label: 'Recovery' },
+};
+
+function intentStateStyle(state: string) {
+  return INTENT_STATE_STYLE[state.toLowerCase()] ?? { stroke: '#a1a1aa', text: 'text-zinc-300', label: state || 'Unknown' };
+}
+
+function firstFiniteNumber(values: Array<number | string | undefined>, fallback = 0): number {
+  for (const value of values) {
+    const numeric = Number(value);
+    if (Number.isFinite(numeric) && numeric > 0) return numeric;
+  }
+  return fallback;
+}
+
+function intentRuntimeTarget(summary: RunSummary | null, ticks: RunIntentTick[]) {
+  const metadata = summary?.metadata ?? {};
+  const tickWithTarget = ticks.find(tick => tick.target_unit || tick.target_value);
+  const unit = String(tickWithTarget?.target_unit ?? metadata.intent_target_unit ?? metadata.target_unit ?? 'vus').toLowerCase();
+  const value = firstFiniteNumber(
+    [
+      tickWithTarget?.target_value,
+      metadata.intent_target_value,
+      metadata.target_value,
+      unit === 'rps' ? metadata.target_rps : metadata.target_vus,
+    ],
+    0,
+  );
+  return {
+    unit: unit === 'rps' ? 'rps' : 'vus',
+    value,
+  };
+}
+
+function intentRuntimeThresholds(summary: RunSummary | null) {
+  const metadata = summary?.metadata ?? {};
+  const p95Max = firstFiniteNumber([metadata.intent_p95_max_ms, metadata.latency_max_ms, metadata.p95_max_ms], 0);
+  const errorMax = firstFiniteNumber([metadata.intent_error_rate_max_pct, metadata.error_rate_max_pct], 0);
+  const parts: string[] = [];
+  if (p95Max > 0) parts.push(`p95 <= ${formatMs(p95Max)}`);
+  if (errorMax > 0) parts.push(`errors <= ${errorMax}%`);
+  return parts.join(' · ');
+}
+
+function IntentRuntimeTimeline({ ticks, summary }: { ticks: RunIntentTick[]; summary: RunSummary | null }) {
+  const width = 400;
+  const height = 200;
+  const left = 42;
+  const right = 382;
+  const top = 14;
+  const bottom = 172;
+  const durationMs = Math.max(summary ? summary.duration / 1e6 : 0, ...ticks.map(tick => tick.elapsed_ms ?? 0), 1000);
+  const target = intentRuntimeTarget(summary, ticks);
+  const isRpsTarget = target.unit === 'rps';
+  const metricLabel = isRpsTarget ? 'RPS' : 'VUs';
+  const subtitle = isRpsTarget
+    ? 'RPS held against the target while Relampo adjusts VUs under SLO guardrails.'
+    : 'Real VUs adjusted by the controller during this run.';
+  const thresholdSummary = intentRuntimeThresholds(summary);
+  const metricValue = (tick: RunIntentTick) => (isRpsTarget ? Math.max(0, tick.rps ?? 0) : Math.max(0, tick.next_vus || tick.current_vus));
+  const violationValue = (tick: RunIntentTick) => (isRpsTarget ? Math.max(0, tick.rps ?? 0) : Math.max(0, tick.current_vus));
+  const maxMetric = Math.max(1, target.value * 1.2, ...ticks.map(metricValue), ...ticks.map(violationValue));
+  const valueToY = (value: number) => bottom - (Math.max(0, value) / maxMetric) * (bottom - top);
+  const targetY = target.value > 0 ? valueToY(target.value) : null;
+  const points = ticks.map(tick => {
+    const elapsed = Math.max(0, tick.elapsed_ms ?? tick.tick * 1000);
+    const x = left + (Math.min(elapsed, durationMs) / durationMs) * (right - left);
+    return { tick, x, y: valueToY(metricValue(tick)), violationY: valueToY(violationValue(tick)) };
+  });
+  const violations = points.filter(point => !point.tick.slo_ok);
+  const recentTicks = ticks.slice().reverse();
+
+  return (
+    <div className="border border-white/10 bg-[#111111] p-4">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">Intent runtime timeline</p>
+          <p className="mt-1 text-xs text-zinc-400">{subtitle}</p>
+          <p className="mt-1 text-[11px] text-zinc-500">
+            Target {target.value > 0 ? `${formatRps(target.value)} ${metricLabel}` : metricLabel}
+            {thresholdSummary ? ` · ${thresholdSummary}` : ''}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-1.5 text-[10px]">
+          {Object.entries(INTENT_STATE_STYLE).map(([state, style]) => (
+            <span key={state} className={`inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/3 px-2 py-0.5 ${style.text}`}>
+              <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: style.stroke }} />
+              {style.label}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <svg viewBox={`0 0 ${width} ${height}`} className="h-56 w-full">
+        <line x1={left} y1={top} x2={left} y2={bottom} stroke="#3f3f46" strokeWidth="2" />
+        <line x1={left} y1={bottom} x2={right} y2={bottom} stroke="#3f3f46" strokeWidth="2" />
+        {[0, 1, 2, 3, 4].map(index => {
+          const y = top + index * ((bottom - top) / 4);
+          const value = maxMetric - (maxMetric / 4) * index;
+          return (
+            <g key={`intent-grid-${index}`}>
+              <line x1={left} y1={y} x2={right} y2={y} stroke="#27272a" strokeWidth="1" strokeDasharray={index === 4 ? '0' : '3 5'} />
+              <text x={left - 8} y={y + 3} textAnchor="end" className="fill-zinc-500 text-[9px]">
+                {isRpsTarget ? formatRps(value) : Math.round(value)}
+              </text>
+            </g>
+          );
+        })}
+        {[0, 1, 2, 3, 4].map(index => {
+          const x = left + index * ((right - left) / 4);
+          const seconds = Math.round((durationMs / 1000 / 4) * index);
+          return (
+            <g key={`intent-time-${index}`}>
+              <line x1={x} y1={top} x2={x} y2={bottom} stroke="#27272a" strokeWidth="1" />
+              <text x={x} y={bottom + 14} textAnchor="middle" className="fill-zinc-500 text-[9px]">
+                {formatDurationSeconds(seconds)}
+              </text>
+            </g>
+          );
+        })}
+
+        {isRpsTarget && targetY !== null && (
+          <g>
+            <line x1={left} y1={targetY} x2={right} y2={targetY} stroke="#facc15" strokeWidth="1.5" strokeDasharray="4 4" />
+            <text x={right - 4} y={targetY - 5} textAnchor="end" className="fill-yellow-200 text-[9px]">
+              target {formatRps(target.value)}
+            </text>
+          </g>
+        )}
+        {points.slice(1).map((point, index) => {
+          const previous = points[index];
+          const style = intentStateStyle(point.tick.state);
+          return (
+            <line
+              key={`intent-line-${point.tick.tick}-${index}`}
+              x1={previous.x}
+              y1={previous.y}
+              x2={point.x}
+              y2={point.y}
+              stroke={style.stroke}
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              vectorEffect="non-scaling-stroke"
+            />
+          );
+        })}
+        {points.length === 1 && (
+          <circle cx={points[0].x} cy={points[0].y} r="3" fill={intentStateStyle(points[0].tick.state).stroke} />
+        )}
+        {points.map(point => (
+          <circle
+            key={`intent-dot-${point.tick.tick}-${point.x}`}
+            cx={point.x}
+            cy={point.y}
+            r="2.2"
+            fill={intentStateStyle(point.tick.state).stroke}
+          >
+            <title>{intentTickTitle(point.tick)}</title>
+          </circle>
+        ))}
+        {violations.map(point => (
+          <g key={`intent-violation-${point.tick.tick}`} transform={`translate(${point.x} ${point.violationY})`}>
+            <line x1="-4" y1="-4" x2="4" y2="4" stroke="#f43f5e" strokeWidth="2" strokeLinecap="round" />
+            <line x1="4" y1="-4" x2="-4" y2="4" stroke="#f43f5e" strokeWidth="2" strokeLinecap="round" />
+            <title>{intentTickTitle(point.tick)}</title>
+          </g>
+        ))}
+        <text x="12" y="96" transform="rotate(-90 12 96)" textAnchor="middle" className="fill-zinc-500 text-[10px]">
+          {metricLabel}
+        </text>
+        <text x="212" y="196" textAnchor="middle" className="fill-zinc-500 text-[10px]">
+          Time
+        </text>
+      </svg>
+
+      <div className="mt-3 max-h-[13.75rem] overflow-auto">
+        <table className="w-full min-w-150 text-left text-xs">
+          <thead className="sticky top-0 z-10 bg-[#111111]">
+            <tr className="border-b border-white/5 text-[10px] font-bold uppercase tracking-[0.12em] text-zinc-500">
+              <th className="px-3 py-2">Time</th>
+              <th className="px-3 py-2">State</th>
+              <th className="px-3 py-2 text-right">VUs</th>
+              <th className="px-3 py-2 text-right">RPS</th>
+              <th className="px-3 py-2 text-right">p95</th>
+              <th className="px-3 py-2">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {recentTicks.map(tick => {
+              const style = intentStateStyle(tick.state);
+              return (
+                <tr key={`intent-row-${tick.tick}-${tick.elapsed_ms ?? ''}`} className="border-b border-white/5 last:border-b-0">
+                  <td className="px-3 py-2 font-mono text-zinc-400">{formatDurationSeconds(Math.round((tick.elapsed_ms ?? 0) / 1000))}</td>
+                  <td className={`px-3 py-2 font-semibold ${style.text}`}>{style.label}</td>
+                  <td className="px-3 py-2 text-right font-mono text-zinc-300">
+                    {tick.current_vus} {'->'} {tick.next_vus}
+                  </td>
+                  <td className="px-3 py-2 text-right font-mono text-zinc-300">{formatRps(tick.rps ?? 0)}</td>
+                  <td className="px-3 py-2 text-right font-mono text-zinc-300">{formatMs(tick.p95_ms ?? 0)}</td>
+                  <td className="max-w-80 px-3 py-2 text-zinc-300">
+                    <span className="font-mono text-zinc-100">{tick.action || 'hold'}</span>
+                    {tick.reason ? <span className="ml-2 text-zinc-500">{tick.reason}</span> : null}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function intentTickTitle(tick: RunIntentTick): string {
+  const elapsed = formatDurationSeconds(Math.round((tick.elapsed_ms ?? 0) / 1000));
+  return [
+    `time: ${elapsed}`,
+    `state: ${tick.state}`,
+    `vus: ${tick.current_vus} -> ${tick.next_vus}`,
+    `rps: ${formatRps(tick.rps ?? 0)}`,
+    `p95: ${formatMs(tick.p95_ms ?? 0)}`,
+    `error: ${(tick.error_rate_pct ?? 0).toFixed(2)}%`,
+    tick.reason ? `reason: ${tick.reason}` : '',
+  ].filter(Boolean).join('\n');
+}
+
+function IntentResultPanel({ result }: { result: RunIntentResult }) {
+  const tone = intentResultTone(result.verdict);
+  const target = result.target_value && result.target_unit
+    ? `${formatRps(result.target_value)} ${result.target_unit.toUpperCase()}`
+    : '-';
+  const estimatedCapacity = result.estimated_capacity || '-';
+  const responseMetric = result.response_time_metric || 'p95';
+  const bestResponseTime = result.best_response_time_ms ?? result.best_p95_ms ?? 0;
+
+  return (
+    <div className={`border ${tone.border} bg-[#111111] p-4`}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <div className={`mt-0.5 flex h-8 w-8 items-center justify-center border ${tone.border} ${tone.bg}`}>
+            {tone.icon}
+          </div>
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">Intent result</p>
+            <p className={`mt-1 text-lg font-semibold ${tone.text}`}>{tone.label}</p>
+            <p className="mt-1 max-w-4xl text-sm text-zinc-200">{result.message}</p>
+            {result.recommendation ? (
+              <p className="mt-2 max-w-4xl text-sm text-zinc-400">{result.recommendation}</p>
+            ) : null}
+          </div>
+        </div>
+        <div className="grid min-w-80 grid-cols-2 gap-2 text-xs md:grid-cols-4">
+          <IntentResultStat label="Target" value={target} />
+          <IntentResultStat label="Reached" value={result.target_reached ? 'Yes' : 'No'} tone={result.target_reached ? 'text-emerald-300' : 'text-rose-300'} />
+          <IntentResultStat label="Sustained" value={result.sustained ? 'Yes' : 'No'} tone={result.sustained ? 'text-emerald-300' : 'text-amber-300'} />
+          <IntentResultStat label="Estimated capacity" value={estimatedCapacity} />
+          <IntentResultStat label="Best RPS" value={formatRps(result.best_rps ?? 0)} />
+          <IntentResultStat label="Best VUs" value={String(result.best_vus ?? 0)} />
+          <IntentResultStat label={`Response ${responseMetric}`} value={formatMs(bestResponseTime)} />
+          <IntentResultStat label="Violations" value={String(result.violation_count ?? 0)} tone={(result.violation_count ?? 0) > 0 ? 'text-rose-300' : 'text-zinc-200'} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function IntentResultStat({ label, value, tone }: { label: string; value: string; tone?: string }) {
+  return (
+    <div className="border border-white/10 bg-white/3 px-3 py-2">
+      <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-zinc-500">{label}</p>
+      <p className={`mt-1 font-mono text-sm ${tone ?? 'text-zinc-200'}`}>{value}</p>
+    </div>
+  );
+}
+
+function intentResultTone(verdict: string) {
+  switch (verdict) {
+    case 'sustained':
+      return {
+        label: 'Target sustained',
+        text: 'text-emerald-300',
+        border: 'border-emerald-500/30',
+        bg: 'bg-emerald-500/10',
+        icon: <CheckCircle2 className="h-4 w-4 text-emerald-300" />,
+      };
+    case 'not_sustained':
+      return {
+        label: 'Target not sustained',
+        text: 'text-rose-300',
+        border: 'border-rose-500/30',
+        bg: 'bg-rose-500/10',
+        icon: <XCircle className="h-4 w-4 text-rose-300" />,
+      };
+    case 'partially_sustained':
+      return {
+        label: 'Partially sustained',
+        text: 'text-amber-300',
+        border: 'border-amber-500/30',
+        bg: 'bg-amber-500/10',
+        icon: <AlertTriangle className="h-4 w-4 text-amber-300" />,
+      };
+    default:
+      return {
+        label: 'Inconclusive',
+        text: 'text-sky-300',
+        border: 'border-sky-500/30',
+        bg: 'bg-sky-500/10',
+        icon: <Gauge className="h-4 w-4 text-sky-300" />,
+      };
+  }
+}
+
+function formatDurationSeconds(totalSeconds: number): string {
+  if (!Number.isFinite(totalSeconds) || totalSeconds <= 0) return '0s';
+  if (totalSeconds < 60) return `${totalSeconds}s`;
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`;
 }
 
 function StatCell({ icon, label, value, tone }: { icon: ReactNode; label: string; value: string; tone?: string }) {

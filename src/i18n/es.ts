@@ -563,7 +563,7 @@ export const esTranslations = {
       overview: {
         title: 'Resumen',
         description:
-          'El modo intent mapea directamente al contrato del controlador backend. Define el objetivo, elige la agresividad del controlador y el editor completará automáticamente los tiempos, guardrails y límites SLO.',
+          'Dile a Relampo el objetivo de tráfico y el tiempo de respuesta esperado. Relampo ajustará los usuarios virtuales durante la prueba para encontrar el mejor nivel que el sistema puede sostener.',
       },
       sections: {
         contract: {
@@ -588,15 +588,16 @@ export const esTranslations = {
         targetValue: 'Valor Objetivo',
         aggressiveness: 'Agresividad',
         warmup: 'Warmup',
+        rampUp: 'RampUp',
         window: 'Ventana',
         duration: 'Duración',
-        rampUp: 'Ramp Up',
-        rampDown: 'Ramp Down',
         iteration: 'Iteración',
         minVus: 'VUs Mínimos',
         maxVus: 'VUs Máximos',
         average: 'Promedio',
         p95MaxMs: 'P95 Máx (ms)',
+        latencyMetric: 'Métrica de tiempo de respuesta',
+        latencyMaxMs: 'Tiempo de respuesta máx (ms)',
         errorMaxPct: 'Error Máx (%)',
         error4xxMaxPct: '4xx Máx (%)',
         error5xxMaxPct: '5xx Máx (%)',
@@ -618,6 +619,7 @@ export const esTranslations = {
         suggested: 'Sugerido: {value}',
         iteration: 'El modo intent normalmente deja esto vacío.',
         average: 'Guía visible para el tiempo de respuesta promedio esperado.',
+        maxVusLockedToTarget: 'Bloqueado al objetivo de VUs para este intent.',
       },
     },
 
@@ -658,6 +660,22 @@ export const esTranslations = {
         rpsBand:
           'Banda RPS intent: el warmup es solo preparación y luego comienza la variabilidad controlada del RPS. Guardrails de VU: {min}..{max}.',
         targetReqPerMinute: '{value} req/min objetivo',
+        previewTitle: 'Vista del Control Intent',
+        previewTarget: 'Objetivo: {value} {unit}',
+        previewSubtitle: 'Capacidad del controlador: {min}..{max} VUs.',
+        warmupChip: 'Warmup {value}',
+        durationChip: 'Duración {value}',
+        warmupMarker: 'warmup {value}',
+        startTitle: 'Inicio',
+        startBody: 'La prueba empieza en {min} VU. El warmup observa la aplicación antes de hacer ajustes.',
+        controlTitle: 'Control adaptativo',
+        controlBodyRps:
+          'Relampo usa Little’s Law y escalado proporcional para acercarse a {target} {unit}, con subidas graduales dentro de {min}..{max} VUs.',
+        controlBodyVus:
+          'Relampo sube gradualmente hacia {target} {unit} y se frena cuando el tiempo de respuesta o los errores cruzan los límites.',
+        guardrailsTitle: 'Límites',
+        guardrailsBody:
+          'Tiempo de respuesta {metric} <= {response} ms, errores <= {error}%. Si se violan, entra en recuperación antes de volver a subir.',
       },
     },
 

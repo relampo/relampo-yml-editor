@@ -178,6 +178,66 @@ describe('YAMLLoadRunSession', () => {
     expect(summaryHeading.compareDocumentPosition(logsHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
+  it('uses RPS as the primary intent runtime chart metric when the intent target is RPS', async () => {
+    render(<YAMLLoadRunSession {...baseProps} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run load test' }));
+    await waitFor(() => expect(runApiMock.handlers).toHaveLength(1));
+
+    act(() => {
+      runApiMock.handlers[0].onMetrics(
+        metric({
+          intent_ticks: [
+            {
+              tick: 1,
+              elapsed_ms: 1000,
+              state: 'warmup',
+              action: 'hold',
+              reason: 'warmup_active',
+              slo_ok: true,
+              target_unit: 'rps',
+              target_value: 10,
+              current_vus: 2,
+              next_vus: 2,
+              delta_vus: 0,
+              rps: 9.5,
+              p95_ms: 180,
+              error_rate_pct: 0,
+              violations: 0,
+              recoveries: 0,
+              target_streak: 1,
+            },
+            {
+              tick: 2,
+              elapsed_ms: 2000,
+              state: 'violation',
+              action: 'decrease',
+              reason: 'p95_max_ms',
+              slo_ok: false,
+              target_unit: 'rps',
+              target_value: 10,
+              current_vus: 5,
+              next_vus: 2,
+              delta_vus: -3,
+              rps: 12,
+              p95_ms: 950,
+              error_rate_pct: 0,
+              violations: 1,
+              recoveries: 0,
+              target_streak: 0,
+            },
+          ],
+        }),
+      );
+    });
+
+    expect(screen.getByText('Intent runtime timeline')).toBeInTheDocument();
+    expect(screen.getByText(/RPS held against the target/i)).toBeInTheDocument();
+    expect(screen.getByText('Target 10.0 RPS')).toBeInTheDocument();
+    expect(screen.getAllByText('RPS').length).toBeGreaterThan(0);
+    expect(screen.getByText('p95_max_ms')).toBeInTheDocument();
+  });
+
   it('deduplicates replayed log batches and labels the retained tail', async () => {
     render(<YAMLLoadRunSession {...baseProps} />);
 

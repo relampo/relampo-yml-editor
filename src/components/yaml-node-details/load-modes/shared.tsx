@@ -55,6 +55,8 @@ export function LoadField({
 }: LoadFieldProps) {
   const inputId = useId();
   const helpId = `${inputId}-help`;
+  const inputValue =
+    typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' ? String(value) : '';
 
   return (
     <div className="space-y-2">
@@ -69,7 +71,7 @@ export function LoadField({
         type={type}
         maxLength={maxLength}
         disabled={disabled}
-        value={typeof value === 'boolean' ? String(value) : Array.isArray(value) ? '' : (value ?? '')}
+        value={inputValue}
         onChange={event => onChange(event.target.value)}
         placeholder={placeholder}
         aria-describedby={helpText ? helpId : undefined}

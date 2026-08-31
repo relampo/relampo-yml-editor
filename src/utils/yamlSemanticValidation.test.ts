@@ -100,6 +100,35 @@ describe('validateYAMLSemantics', () => {
     ]);
   });
 
+  it('rejects intent VU targets above Max VUs', () => {
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'test',
+      name: 'Test',
+      children: [
+        {
+          id: 'load',
+          type: 'load',
+          name: 'Load',
+          data: {
+            type: 'intent',
+            target: { type: 'vus', value: '10' },
+            duration: '1m',
+            min_vus: '1',
+            max_vus: '8',
+          },
+        },
+      ],
+    };
+
+    expect(validateYAMLSemantics(tree)).toEqual([
+      {
+        nodeId: 'load',
+        message: 'Intent Max VUs must be greater than or equal to the target VUs.',
+      },
+    ]);
+  });
+
   it('accepts valid segments load nodes', () => {
     const tree: YAMLNode = {
       id: 'root',

@@ -1,6 +1,7 @@
 import { useLanguage } from '../../contexts/LanguageContext';
 import {
   getIntentAutoConfig,
+  getIntentTargetData,
   loadColors,
   parseTimeToSeconds,
   type LoadData,
@@ -18,6 +19,10 @@ interface LoadVisualizationProps {
 
 export function LoadVisualization({ data, loadType, progressSeconds }: LoadVisualizationProps) {
   const { t } = useLanguage();
+  if (loadType === 'intent') {
+    return <IntentControlPreview data={data} t={t} />;
+  }
+
   const format = (key: string, values: Record<string, string | number> = {}) => formatTemplate(t, key, values);
   const model = computeLoadVisualizationModel(data, loadType, progressSeconds, t);
   const { yAxisLabel, peakUsers, hasFiniteDuration, totalTime, throughputPerMinute, showIntentVuBand, isIntentRps, intentMinVus, intentMaxVus, isIntent } =
@@ -67,6 +72,133 @@ export function LoadVisualization({ data, loadType, progressSeconds }: LoadVisua
   );
 }
 
+function IntentControlPreview({ data, t }: { data: LoadData; t: (key: string) => string }) {
+  const format = (key: string, values: Record<string, string | number> = {}) => formatTemplate(t, key, values);
+  const effectiveData: LoadData = {
+    ...getIntentAutoConfig(data),
+    ...Object.fromEntries(Object.entries(data).filter(([, value]) => value !== '' && value !== undefined)),
+  };
+  const latency = isPlainLoadObject(effectiveData.latency)
+    ? (effectiveData.latency as Record<string, string | number | undefined>)
+    : undefined;
+  const errorRate = isPlainLoadObject(effectiveData.error_rate)
+    ? (effectiveData.error_rate as Record<string, string | number | undefined>)
+    : undefined;
+  const target = getIntentTargetData(effectiveData);
+  const targetUnit = String(target.type || 'rps').toLowerCase() === 'vus' ? 'VUs' : 'RPS';
+  const targetValue = String(target.value || '0');
+  const minVus = String(effectiveData.min_vus || '1');
+  const maxVus = String(effectiveData.max_vus || minVus);
+  const durationSec = parseTimeToSeconds(String(effectiveData.duration || ''));
+  const warmupSec = Math.min(durationSec || Infinity, parseTimeToSeconds(String(effectiveData.warmup || '')));
+  const responseMetric = latency ? String(latency.metric || 'p95') : 'p95';
+  const responseLimit = latency ? String(latency.max_ms || '') : String(effectiveData.p95_max_ms || '');
+  const errorLimit = errorRate ? String(errorRate.max_pct || '') : String(effectiveData.error_rate_max_pct || '');
+  const warmupPct = durationSec > 0 ? Math.min(100, Math.max(0, (warmupSec / durationSec) * 100)) : 0;
+  const controlPct = Math.max(0, 100 - warmupPct);
+  const controlBodyKey =
+    targetUnit === 'RPS'
+      ? 'yamlEditor.loadVisualization.intent.controlBodyRps'
+      : 'yamlEditor.loadVisualization.intent.controlBodyVus';
+
+  return (
+    <div>
+      <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
+        {t('yamlEditor.loadVisualization.intent.previewTitle')}
+      </div>
+      <div className="bg-zinc-900/50 border border-white/10 rounded-lg p-3">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <p className="text-xs font-semibold text-zinc-200">
+              {format('yamlEditor.loadVisualization.intent.previewTarget', {
+                value: targetValue,
+                unit: targetUnit,
+              })}
+            </p>
+            <p className="mt-1 text-[11px] text-zinc-500">
+              {format('yamlEditor.loadVisualization.intent.previewSubtitle', {
+                min: minVus,
+                max: maxVus,
+              })}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-1.5 text-[10px] font-mono text-zinc-300">
+            <span className="rounded border border-white/10 bg-white/5 px-2 py-1">
+              {format('yamlEditor.loadVisualization.intent.warmupChip', { value: formatTimeLabel(warmupSec) })}
+            </span>
+            <span className="rounded border border-white/10 bg-white/5 px-2 py-1">
+              {format('yamlEditor.loadVisualization.intent.durationChip', {
+                value: durationSec > 0 ? formatTimeLabel(durationSec) : '∞',
+              })}
+            </span>
+          </div>
+        </div>
+
+        <div className="mb-3 overflow-hidden rounded border border-white/10 bg-zinc-950/50">
+          <div className="flex h-3">
+            {warmupPct > 0 && <div className="bg-cyan-400/75" style={{ width: `${warmupPct}%` }} />}
+            <div className="bg-amber-400/75" style={{ width: `${controlPct}%` }} />
+          </div>
+          <div className="grid grid-cols-3 px-3 py-2 text-[10px] text-zinc-500">
+            <span>0s</span>
+            <span className="text-center text-cyan-200">
+              {format('yamlEditor.loadVisualization.intent.warmupMarker', { value: formatTimeLabel(warmupSec) })}
+            </span>
+            <span className="text-right">
+              {durationSec > 0 ? formatTimeLabel(durationSec) : '∞'}
+            </span>
+          </div>
+        </div>
+
+        <div className="grid gap-2 md:grid-cols-3">
+          <IntentPreviewStep
+            title={t('yamlEditor.loadVisualization.intent.startTitle')}
+            body={format('yamlEditor.loadVisualization.intent.startBody', { min: minVus })}
+            accent="cyan"
+          />
+          <IntentPreviewStep
+            title={t('yamlEditor.loadVisualization.intent.controlTitle')}
+            body={format(controlBodyKey, { target: targetValue, unit: targetUnit, min: minVus, max: maxVus })}
+            accent="amber"
+          />
+          <IntentPreviewStep
+            title={t('yamlEditor.loadVisualization.intent.guardrailsTitle')}
+            body={format('yamlEditor.loadVisualization.intent.guardrailsBody', {
+              metric: responseMetric,
+              response: responseLimit || '-',
+              error: errorLimit || '-',
+            })}
+            accent="rose"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function IntentPreviewStep({
+  title,
+  body,
+  accent,
+}: {
+  title: string;
+  body: string;
+  accent: 'cyan' | 'amber' | 'rose';
+}) {
+  const accentClass = {
+    cyan: 'border-cyan-300/25 text-cyan-200',
+    amber: 'border-amber-300/25 text-amber-200',
+    rose: 'border-rose-300/25 text-rose-200',
+  }[accent];
+
+  return (
+    <div className={`rounded border bg-white/3 p-3 ${accentClass}`}>
+      <p className="text-[10px] font-bold uppercase tracking-[0.14em]">{title}</p>
+      <p className="mt-2 text-xs leading-5 text-zinc-300">{body}</p>
+    </div>
+  );
+}
+
 function formatTemplate(
   t: (key: string) => string,
   key: string,
@@ -76,6 +208,10 @@ function formatTemplate(
     (text, [token, value]) => text.replace(new RegExp(`\\{${token}\\}`, 'g'), String(value)),
     t(key),
   );
+}
+
+function isPlainLoadObject(value: unknown): value is Record<string, string | number | undefined> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function computeLoadVisualizationModel(
@@ -93,8 +229,9 @@ function computeLoadVisualizationModel(
         }
       : data;
   const visualizationPoints = getVisualizationPoints(effectiveData, loadType);
-  const intentTargetUnit = String(effectiveData.target_unit || 'rps').toLowerCase();
-  const intentTargetValue = Math.max(0, parseFloat(String(effectiveData.target_value || '0')) || 0);
+  const intentTarget = getIntentTargetData(effectiveData);
+  const intentTargetUnit = String(intentTarget.type || 'rps').toLowerCase();
+  const intentTargetValue = Math.max(0, parseFloat(String(intentTarget.value || '0')) || 0);
   const isIntent = loadType === 'intent';
   const isIntentVus = isIntent && intentTargetUnit === 'vus';
   const isIntentRps = isIntent && intentTargetUnit === 'rps';
@@ -120,7 +257,7 @@ function computeLoadVisualizationModel(
   const yAxisLabel = getYAxisLabel(effectiveData, loadType, intentTargetUnit, t);
   const vizColor = loadColors[loadType];
   const throughputPerMinute = (parseFloat(String(effectiveData.target_rps || '0')) || 0) * 60;
-  const intentTargetPerMinute = (parseFloat(String(effectiveData.target_value || '0')) || 0) * 60;
+  const intentTargetPerMinute = intentTargetValue * 60;
 
   const timeAxisTicks = [0, 1, 2, 3, 4].map(index => ({
     x: 40 + index * 85,
@@ -752,16 +889,22 @@ function getVisualizationPoints(data: LoadData, loadType: LoadType) {
   } else if (loadType === 'intent') {
     const duration = Math.max(1, parseTimeToSeconds(String(data.duration || '60s')));
     const warmup = Math.max(0, Math.min(duration, parseTimeToSeconds(String(data.warmup || '0s'))));
-    const targetUnit = String(data.target_unit || 'rps').toLowerCase();
+    const target = getIntentTargetData(data);
+    const targetUnit = String(target.type || 'rps').toLowerCase();
+    const targetValue = target.value ?? '';
     const baselineUsers =
       targetUnit === 'vus'
-        ? Math.max(1, parseFloat(String(data.target_value || data.min_vus || '1')) || 1)
-        : Math.max(1, parseFloat(String(data.target_value || '1')) || 1);
+        ? Math.max(1, parseFloat(String(targetValue || data.min_vus || '1')) || 1)
+        : Math.max(1, parseFloat(String(targetValue || '1')) || 1);
     const guardrailFloor = Math.max(0, parseFloat(String(data.min_vus || '0')) || 0);
     const steadyValue = targetUnit === 'vus' ? Math.max(baselineUsers, guardrailFloor) : baselineUsers;
 
-    if (warmup > 0) {
-      points.push({ time: 0, users: guardrailFloor }, { time: warmup, users: steadyValue });
+    if (targetUnit === 'vus' && warmup > 0) {
+      points.push(
+        { time: 0, users: guardrailFloor },
+        { time: warmup, users: guardrailFloor },
+        { time: warmup, users: steadyValue },
+      );
     } else {
       points.push({ time: 0, users: steadyValue });
     }

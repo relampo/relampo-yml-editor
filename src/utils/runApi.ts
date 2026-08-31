@@ -34,6 +34,7 @@ export interface RunMetricsSnapshot {
   total_failures: number;
   errors: number;
   requests?: RunRequestStat[];
+  intent_ticks?: RunIntentTick[];
 }
 
 interface RunState {
@@ -91,6 +92,59 @@ interface RunHistoryPoint {
   errors: number;
 }
 
+export interface RunIntentTick {
+  tick: number;
+  elapsed_ms?: number;
+  state: string;
+  action: string;
+  reason?: string;
+  slo_ok: boolean;
+  target_unit?: string;
+  target_value?: number;
+  current_vus: number;
+  next_vus: number;
+  delta_vus: number;
+  rps?: number;
+  avg_ms?: number;
+  p50_ms?: number;
+  p75_ms?: number;
+  p90_ms?: number;
+  p95_ms?: number;
+  p99_ms?: number;
+  error_rate_pct?: number;
+  error_4xx_pct?: number;
+  error_5xx_pct?: number;
+  violations: number;
+  recoveries: number;
+  target_streak: number;
+}
+
+export interface RunIntentResult {
+  verdict: string;
+  target_unit?: string;
+  target_value?: number;
+  target_reached: boolean;
+  sustained: boolean;
+  message: string;
+  recommendation?: string;
+  best_rps?: number;
+  best_vus?: number;
+  best_p95_ms?: number;
+  response_time_metric?: string;
+  best_response_time_ms?: number;
+  best_error_rate_pct?: number;
+  estimated_capacity?: string;
+  estimated_capacity_vus?: number;
+  estimated_capacity_rps?: number;
+  estimated_capacity_p95_ms?: number;
+  estimated_capacity_response_time_ms?: number;
+  violation_count?: number;
+  recovery_count?: number;
+  stable_tick_count?: number;
+  evaluated_tick_count?: number;
+  required_stable_ticks?: number;
+}
+
 export interface RunTransactionStat {
   name: string;
   count: number;
@@ -117,6 +171,8 @@ export interface RunSummary {
   requests: RunRequestStat[];
   transactions?: RunTransactionStat[];
   history?: RunHistoryPoint[];
+  intent_ticks?: RunIntentTick[];
+  intent_result?: RunIntentResult;
   node_resources?: RunNodeResource[];
   metadata?: Record<string, string>;
 }
@@ -276,7 +332,67 @@ function isRunMetricsSnapshot(value: unknown): value is RunMetricsSnapshot {
     isFiniteNumber(value.total_requests) &&
     isFiniteNumber(value.total_failures) &&
     isFiniteNumber(value.errors) &&
-    (value.requests === undefined || (Array.isArray(value.requests) && value.requests.every(isRunRequestStat)))
+    (value.requests === undefined || (Array.isArray(value.requests) && value.requests.every(isRunRequestStat))) &&
+    (value.intent_ticks === undefined || (Array.isArray(value.intent_ticks) && value.intent_ticks.every(isRunIntentTick)))
+  );
+}
+
+function isRunIntentTick(value: unknown): value is RunIntentTick {
+  return (
+    isRecord(value) &&
+    isFiniteNumber(value.tick) &&
+    (value.elapsed_ms === undefined || isFiniteNumber(value.elapsed_ms)) &&
+    typeof value.state === 'string' &&
+    typeof value.action === 'string' &&
+    (value.reason === undefined || typeof value.reason === 'string') &&
+    typeof value.slo_ok === 'boolean' &&
+    (value.target_unit === undefined || typeof value.target_unit === 'string') &&
+    (value.target_value === undefined || isFiniteNumber(value.target_value)) &&
+    isFiniteNumber(value.current_vus) &&
+    isFiniteNumber(value.next_vus) &&
+    isFiniteNumber(value.delta_vus) &&
+    (value.rps === undefined || isFiniteNumber(value.rps)) &&
+    (value.avg_ms === undefined || isFiniteNumber(value.avg_ms)) &&
+    (value.p50_ms === undefined || isFiniteNumber(value.p50_ms)) &&
+    (value.p75_ms === undefined || isFiniteNumber(value.p75_ms)) &&
+    (value.p90_ms === undefined || isFiniteNumber(value.p90_ms)) &&
+    (value.p95_ms === undefined || isFiniteNumber(value.p95_ms)) &&
+    (value.p99_ms === undefined || isFiniteNumber(value.p99_ms)) &&
+    (value.error_rate_pct === undefined || isFiniteNumber(value.error_rate_pct)) &&
+    (value.error_4xx_pct === undefined || isFiniteNumber(value.error_4xx_pct)) &&
+    (value.error_5xx_pct === undefined || isFiniteNumber(value.error_5xx_pct)) &&
+    isFiniteNumber(value.violations) &&
+    isFiniteNumber(value.recoveries) &&
+    isFiniteNumber(value.target_streak)
+  );
+}
+
+function isRunIntentResult(value: unknown): value is RunIntentResult {
+  return (
+    isRecord(value) &&
+    typeof value.verdict === 'string' &&
+    (value.target_unit === undefined || typeof value.target_unit === 'string') &&
+    (value.target_value === undefined || isFiniteNumber(value.target_value)) &&
+    typeof value.target_reached === 'boolean' &&
+    typeof value.sustained === 'boolean' &&
+    typeof value.message === 'string' &&
+    (value.recommendation === undefined || typeof value.recommendation === 'string') &&
+    (value.best_rps === undefined || isFiniteNumber(value.best_rps)) &&
+    (value.best_vus === undefined || isFiniteNumber(value.best_vus)) &&
+    (value.best_p95_ms === undefined || isFiniteNumber(value.best_p95_ms)) &&
+    (value.response_time_metric === undefined || typeof value.response_time_metric === 'string') &&
+    (value.best_response_time_ms === undefined || isFiniteNumber(value.best_response_time_ms)) &&
+    (value.best_error_rate_pct === undefined || isFiniteNumber(value.best_error_rate_pct)) &&
+    (value.estimated_capacity === undefined || typeof value.estimated_capacity === 'string') &&
+    (value.estimated_capacity_vus === undefined || isFiniteNumber(value.estimated_capacity_vus)) &&
+    (value.estimated_capacity_rps === undefined || isFiniteNumber(value.estimated_capacity_rps)) &&
+    (value.estimated_capacity_p95_ms === undefined || isFiniteNumber(value.estimated_capacity_p95_ms)) &&
+    (value.estimated_capacity_response_time_ms === undefined || isFiniteNumber(value.estimated_capacity_response_time_ms)) &&
+    (value.violation_count === undefined || isFiniteNumber(value.violation_count)) &&
+    (value.recovery_count === undefined || isFiniteNumber(value.recovery_count)) &&
+    (value.stable_tick_count === undefined || isFiniteNumber(value.stable_tick_count)) &&
+    (value.evaluated_tick_count === undefined || isFiniteNumber(value.evaluated_tick_count)) &&
+    (value.required_stable_ticks === undefined || isFiniteNumber(value.required_stable_ticks))
   );
 }
 
@@ -346,6 +462,8 @@ function isRunSummary(value: unknown): value is RunSummary {
     value.requests.every(isRunRequestStat) &&
     (value.transactions === undefined || (Array.isArray(value.transactions) && value.transactions.every(isRunTransactionStat))) &&
     (value.history === undefined || (Array.isArray(value.history) && value.history.every(isRunHistoryPoint))) &&
+    (value.intent_ticks === undefined || (Array.isArray(value.intent_ticks) && value.intent_ticks.every(isRunIntentTick))) &&
+    (value.intent_result === undefined || isRunIntentResult(value.intent_result)) &&
     (value.node_resources === undefined || (Array.isArray(value.node_resources) && value.node_resources.every(isRunNodeResource))) &&
     (value.metadata === undefined || isRunMetadata(value.metadata))
   );

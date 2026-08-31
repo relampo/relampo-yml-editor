@@ -627,10 +627,10 @@ scenarios:
     const scenario = tree.children!.find(c => c.type === 'scenarios')!.children![0];
     const load = scenario.children!.find(c => c.type === 'load');
     expect(load).toBeDefined();
-    expect(load!.data!.target_value).toBe(25);
-    expect(load!.data!.window).toBe('2s');
-    expect(load!.data!.p95_max_ms).toBe('800');
-    expect(load!.data!.error_rate_max_pct).toBe('1');
+    expect(load!.data!.target).toEqual({ type: 'rps', value: 25 });
+    expect(load!.data!.control_window).toBe('2s');
+    expect(load!.data!.latency).toBeUndefined();
+    expect(load!.data!.error_rate).toBeUndefined();
     expect(load!.data!.target_rps).toBeUndefined();
     expect(load!.data!.iterations).toBeUndefined();
   });
@@ -904,13 +904,16 @@ scenarios:
       .children![0].children!.find(c => c.type === 'load');
 
     expect(output).toContain('type: intent');
-    expect(output).toContain('target_value: 25');
-    expect(output).toContain('window: 2s');
+    expect(output).toContain('target:');
+    expect(output).toContain('type: rps');
+    expect(output).toContain('value: 25');
+    expect(output).toContain('control_window: 2s');
     expect(output).not.toContain('target_rps:');
+    expect(output).not.toContain('target_unit:');
     expect(output).not.toContain('iterations:');
-    expect(load!.data!.target_value).toBe(25);
-    expect(load!.data!.window).toBe('2s');
-    expect(load!.data!.p95_max_ms).toBe('800');
+    expect(load!.data!.target).toEqual({ type: 'rps', value: 25 });
+    expect(load!.data!.control_window).toBe('2s');
+    expect(load!.data!.latency).toBeUndefined();
   });
 
   it('preserves invalid intent target_unit values for validation on round-trip', () => {
@@ -931,10 +934,11 @@ scenarios:
 `;
     const tree = parseYAMLToTree(input)!;
     const load = tree.children!.find(c => c.type === 'scenarios')!.children![0].children!.find(c => c.type === 'load');
-    expect(load!.data!.target_unit).toBe('rpm');
+    expect(load!.data!.target).toEqual({ type: 'rpm', value: 10 });
 
     const output = treeToYAML(tree);
-    expect(output).toContain('target_unit: rpm');
+    expect(output).toContain('target:');
+    expect(output).toContain('type: rpm');
   });
 
   it('preserves unsupported intent stages through a parse and serialize cycle', () => {
@@ -993,8 +997,9 @@ scenarios:
     load.data!.p95_max_ms = '';
 
     const output = treeToYAML(tree);
-    expect(output).toContain('error_rate_max_pct: 2');
-    expect(output).not.toContain('p95_max_ms');
+    expect(output).toContain('error_rate:');
+    expect(output).toContain('max_pct: 2');
+    expect(output).not.toContain('latency:');
   });
 
   it('round-trips sql steps', () => {

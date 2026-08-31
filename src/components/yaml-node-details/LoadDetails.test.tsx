@@ -18,21 +18,22 @@ describe('LoadDetails', () => {
           name: 'Load Config',
           data: {
             type: 'intent',
-            target_unit: 'rps',
-            target_value: '20',
+            target: { type: 'rps', value: '20' },
             duration: '1m',
             warmup: '30s',
-            window: '2s',
+            ramp_up: '20s',
+            control_window: '2s',
             min_vus: '1',
             max_vus: '80',
-            p95_max_ms: '800',
-            error_rate_max_pct: '1',
+            latency: { metric: 'p95', max_ms: '800' },
+            error_rate: { max_pct: '1' },
           },
         }}
       />,
     );
 
     expect(screen.getByText('Intent Contract')).toBeInTheDocument();
+    expect(screen.getByText('RampUp')).toBeInTheDocument();
     expect(screen.getByText('Execution Guardrails')).toBeInTheDocument();
     expect(screen.getByText('SLO Bounds')).toBeInTheDocument();
   });
@@ -58,7 +59,7 @@ describe('LoadDetails', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Throughput' }));
 
-    expect(screen.queryByRole('button', { name: 'Intent' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Intent' })).toBeInTheDocument();
 
     expect(onNodeUpdate).toHaveBeenCalledWith(
       'load-2',
@@ -80,18 +81,16 @@ describe('LoadDetails', () => {
           name: 'Load Config',
           data: {
             type: 'intent',
-            target_unit: 'rps',
-            target_value: '20',
+            target: { type: 'rps', value: '20' },
             aggressiveness: 'medium',
             duration: '10m',
             warmup: '30s',
-            window: '2s',
-            ramp_up: '1m',
-            ramp_down: '1m',
+            ramp_up: '20s',
+            control_window: '2s',
             min_vus: '1',
             max_vus: '80',
-            p95_max_ms: '750',
-            error_rate_max_pct: '1',
+            latency: { metric: 'p95', max_ms: '750' },
+            error_rate: { max_pct: '1' },
             error_4xx_max_pct: '2',
             error_5xx_max_pct: '0.5',
           },
@@ -105,16 +104,15 @@ describe('LoadDetails', () => {
     expect(onNodeUpdate).toHaveBeenCalledWith(
       'load-3',
       expect.objectContaining({
-        target_value: '80',
+        target: { type: 'rps', value: '80' },
         duration: '10m',
         warmup: '30s',
-        window: '2s',
         ramp_up: '1m',
-        ramp_down: '1m',
+        control_window: '2s',
         min_vus: '4',
         max_vus: '20',
-        p95_max_ms: '800',
-        error_rate_max_pct: '1',
+        latency: { metric: 'p95', max_ms: '750' },
+        error_rate: { max_pct: '1' },
         error_4xx_max_pct: '2',
         error_5xx_max_pct: '0.5',
       }),

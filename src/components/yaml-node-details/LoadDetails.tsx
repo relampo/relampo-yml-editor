@@ -1,4 +1,4 @@
-import { Gauge, ListTree, Mountain, TrendingUp, Users } from 'lucide-react';
+import { Crosshair, Gauge, ListTree, Mountain, TrendingUp, Users } from 'lucide-react';
 import { useId } from 'react';
 import { LoadVisualization } from './LoadVisualization';
 import {
@@ -31,6 +31,7 @@ const LOAD_MODE_OPTIONS: Array<{
   { type: 'ramp_up_down', label: 'Ramp Up/Down', icon: Mountain },
   { type: 'throughput', label: 'Throughput', icon: Gauge },
   { type: 'segments', label: 'Segments', icon: ListTree },
+  { type: 'intent', label: 'Intent', icon: Crosshair },
 ];
 
 export function LoadDetails({ node, onNodeUpdate }: NodeDetailProps) {
@@ -62,7 +63,7 @@ export function LoadDetails({ node, onNodeUpdate }: NodeDetailProps) {
       return;
     }
 
-    if (loadType === 'intent' && ['target_unit', 'target_value', 'aggressiveness'].includes(field)) {
+    if (loadType === 'intent' && ['target', 'target_unit', 'target_value', 'aggressiveness'].includes(field)) {
       const nextData = { ...data, [field]: value };
       const { average_ms: _averageMs, ...autoConfig } = getIntentAutoConfig(toLoadData(nextData));
       updateData({ ...nextData, ...autoConfig });
