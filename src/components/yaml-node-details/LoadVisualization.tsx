@@ -5,7 +5,6 @@ import {
   loadColors,
   parseTimeToSeconds,
   type LoadData,
-  type LoadSegmentData,
   type LoadType,
 } from './loadUtils';
 
@@ -20,13 +19,28 @@ interface LoadVisualizationProps {
 export function LoadVisualization({ data, loadType, progressSeconds }: LoadVisualizationProps) {
   const { t } = useLanguage();
   if (loadType === 'intent') {
-    return <IntentControlPreview data={data} t={t} />;
+    return (
+      <IntentControlPreview
+        data={data}
+        t={t}
+      />
+    );
   }
 
   const format = (key: string, values: Record<string, string | number> = {}) => formatTemplate(t, key, values);
   const model = computeLoadVisualizationModel(data, loadType, progressSeconds, t);
-  const { yAxisLabel, peakUsers, hasFiniteDuration, totalTime, throughputPerMinute, showIntentVuBand, isIntentRps, intentMinVus, intentMaxVus, isIntent } =
-    model;
+  const {
+    yAxisLabel,
+    peakUsers,
+    hasFiniteDuration,
+    totalTime,
+    throughputPerMinute,
+    showIntentVuBand,
+    isIntentRps,
+    intentMinVus,
+    intentMaxVus,
+    isIntent,
+  } = model;
 
   return (
     <div>
@@ -44,18 +58,14 @@ export function LoadVisualization({ data, loadType, progressSeconds }: LoadVisua
             })}
           </span>
         </div>
-        <div className="mb-2 text-[11px] text-zinc-400">
-          {t('yamlEditor.loadVisualization.reference')}
-        </div>
+        <div className="mb-2 text-[11px] text-zinc-400">{t('yamlEditor.loadVisualization.reference')}</div>
         {loadType === 'throughput' && (
           <div className="mb-2 text-[11px] text-zinc-400">
             {format('yamlEditor.loadVisualization.throughputTarget', { value: throughputPerMinute.toFixed(0) })}
           </div>
         )}
         {showIntentVuBand && (
-          <div className="mb-2 text-[11px] text-amber-300/90">
-            {t('yamlEditor.loadVisualization.intent.vuBand')}
-          </div>
+          <div className="mb-2 text-[11px] text-amber-300/90">{t('yamlEditor.loadVisualization.intent.vuBand')}</div>
         )}
         {isIntentRps && (
           <div className="mb-2 rounded border border-yellow-400/20 bg-yellow-400/5 px-3 py-2 text-[11px] text-yellow-300/90">
@@ -65,8 +75,16 @@ export function LoadVisualization({ data, loadType, progressSeconds }: LoadVisua
             })}
           </div>
         )}
-        {isIntent && <IntentPhasesPanel model={model} t={t} />}
-        <LoadChartSvg model={model} t={t} />
+        {isIntent && (
+          <IntentPhasesPanel
+            model={model}
+            t={t}
+          />
+        )}
+        <LoadChartSvg
+          model={model}
+          t={t}
+        />
       </div>
     </div>
   );
@@ -136,17 +154,23 @@ function IntentControlPreview({ data, t }: { data: LoadData; t: (key: string) =>
 
         <div className="mb-3 overflow-hidden rounded border border-white/10 bg-zinc-950/50">
           <div className="flex h-3">
-            {warmupPct > 0 && <div className="bg-cyan-400/75" style={{ width: `${warmupPct}%` }} />}
-            <div className="bg-amber-400/75" style={{ width: `${controlPct}%` }} />
+            {warmupPct > 0 && (
+              <div
+                className="bg-cyan-400/75"
+                style={{ width: `${warmupPct}%` }}
+              />
+            )}
+            <div
+              className="bg-amber-400/75"
+              style={{ width: `${controlPct}%` }}
+            />
           </div>
           <div className="grid grid-cols-3 px-3 py-2 text-[10px] text-zinc-500">
             <span>0s</span>
             <span className="text-center text-cyan-200">
               {format('yamlEditor.loadVisualization.intent.warmupMarker', { value: formatTimeLabel(warmupSec) })}
             </span>
-            <span className="text-right">
-              {durationSec > 0 ? formatTimeLabel(durationSec) : '∞'}
-            </span>
+            <span className="text-right">{durationSec > 0 ? formatTimeLabel(durationSec) : '∞'}</span>
           </div>
         </div>
 
@@ -199,11 +223,7 @@ function IntentPreviewStep({
   );
 }
 
-function formatTemplate(
-  t: (key: string) => string,
-  key: string,
-  values: Record<string, string | number> = {},
-): string {
+function formatTemplate(t: (key: string) => string, key: string, values: Record<string, string | number> = {}): string {
   return Object.entries(values).reduce(
     (text, [token, value]) => text.replace(new RegExp(`\\{${token}\\}`, 'g'), String(value)),
     t(key),
@@ -248,10 +268,7 @@ function computeLoadVisualizationModel(
   );
   const maxUsers = Math.max(peakUsers, 10);
   const totalTime = Math.max(...visualizationPoints.map(point => point.time), 0);
-  const hasFiniteDuration =
-    loadType === 'segments'
-      ? totalTime > 0
-      : parseTimeToSeconds(String(effectiveData.duration ?? '')) > 0;
+  const hasFiniteDuration = parseTimeToSeconds(String(effectiveData.duration ?? '')) > 0;
   const maxTime = hasFiniteDuration ? totalTime || 1 : Math.max(totalTime, 60);
   const chartHeightPx = 184;
   const yAxisLabel = getYAxisLabel(effectiveData, loadType, intentTargetUnit, t);
@@ -269,16 +286,8 @@ function computeLoadVisualizationModel(
     label: range.key.startsWith('segment-') ? range.label : t(`yamlEditor.loadVisualization.ranges.${range.key}`),
   }));
   const transitionMarkers = getTransitionMarkers(effectiveData, loadType, totalTime);
-  const horizontalRanges = timeRanges.filter(
-    range =>
-      range.key === 'steady' ||
-      range.key === 'target',
-  );
-  const verticalRanges = timeRanges.filter(
-    range =>
-      range.key !== 'steady' &&
-      range.key !== 'target',
-  );
+  const horizontalRanges = timeRanges.filter(range => range.key === 'steady' || range.key === 'target');
+  const verticalRanges = timeRanges.filter(range => range.key !== 'steady' && range.key !== 'target');
   const chartPoints = visualizationPoints.map(point => ({
     ...point,
     x: 40 + (point.time / maxTime) * 340,
@@ -436,8 +445,16 @@ type LoadVisualizationModel = ReturnType<typeof computeLoadVisualizationModel>;
 
 function IntentPhasesPanel({ model, t }: { model: LoadVisualizationModel; t: (key: string) => string }) {
   const format = (key: string, values: Record<string, string | number> = {}) => formatTemplate(t, key, values);
-  const { isIntentVus, isIntentRps, intentWarmupPct, intentControlPct, intentBehaviorHint, intentWarmupSec, maxTime, intentTargetPerMinute } =
-    model;
+  const {
+    isIntentVus,
+    isIntentRps,
+    intentWarmupPct,
+    intentControlPct,
+    intentBehaviorHint,
+    intentWarmupSec,
+    maxTime,
+    intentTargetPerMinute,
+  } = model;
 
   return (
     <div className="mb-3 rounded-lg border border-white/10 bg-white/3 p-2.5">
@@ -534,7 +551,10 @@ function LoadChartSvg({ model, t }: { model: LoadVisualizationModel; t: (key: st
       <ChartRangeAndTransitionLabels model={model} />
       <IntentVuBandOverlay model={model} />
       <IntentRpsBandOverlay model={model} />
-      <ChartSeriesWithPlayhead model={model} t={t} />
+      <ChartSeriesWithPlayhead
+        model={model}
+        t={t}
+      />
     </svg>
   );
 }
@@ -689,8 +709,14 @@ function ChartRangeAndTransitionLabels({ model }: { model: LoadVisualizationMode
 }
 
 function IntentVuBandOverlay({ model }: { model: LoadVisualizationModel }) {
-  const { showIntentVuBand, intentBandY, intentBandHeight, intentTargetY, intentWarmupIdleLine, intentVuVariationLine } =
-    model;
+  const {
+    showIntentVuBand,
+    intentBandY,
+    intentBandHeight,
+    intentTargetY,
+    intentWarmupIdleLine,
+    intentVuVariationLine,
+  } = model;
 
   if (!showIntentVuBand) {
     return null;
@@ -741,8 +767,14 @@ function IntentVuBandOverlay({ model }: { model: LoadVisualizationModel }) {
 }
 
 function IntentRpsBandOverlay({ model }: { model: LoadVisualizationModel }) {
-  const { isIntentRps, intentRpsBandY, intentRpsBandHeight, intentTargetY, intentRpsWarmupLine, intentRpsVariationLine } =
-    model;
+  const {
+    isIntentRps,
+    intentRpsBandY,
+    intentRpsBandHeight,
+    intentTargetY,
+    intentRpsWarmupLine,
+    intentRpsVariationLine,
+  } = model;
 
   if (!isIntentRps) {
     return null;
@@ -833,8 +865,21 @@ function ChartSeriesWithPlayhead({ model, t }: { model: LoadVisualizationModel; 
       </text>
       {showPlayhead && (
         <g style={{ transform: `translateX(${playheadX}px)`, transition: 'transform 1s linear' }}>
-          <line x1={0} y1={8} x2={0} y2={170} stroke="#fde047" strokeWidth={2} strokeOpacity={0.9} />
-          <circle cx={0} cy={8} r={3.5} fill="#fde047" />
+          <line
+            x1={0}
+            y1={8}
+            x2={0}
+            y2={170}
+            stroke="#fde047"
+            strokeWidth={2}
+            strokeOpacity={0.9}
+          />
+          <circle
+            cx={0}
+            cy={8}
+            r={3.5}
+            fill="#fde047"
+          />
         </g>
       )}
     </>
@@ -882,10 +927,7 @@ function getVisualizationPoints(data: LoadData, loadType: LoadType) {
   } else if (loadType === 'throughput') {
     const targetRps = parseFloat(String(data.target_rps || '0')) || 10;
     const duration = parseTimeToSeconds(String(data.duration || '60s'));
-    points.push(
-      { time: 0, users: targetRps },
-      { time: duration, users: targetRps },
-    );
+    points.push({ time: 0, users: targetRps }, { time: duration, users: targetRps });
   } else if (loadType === 'intent') {
     const duration = Math.max(1, parseTimeToSeconds(String(data.duration || '60s')));
     const warmup = Math.max(0, Math.min(duration, parseTimeToSeconds(String(data.warmup || '0s'))));
@@ -910,28 +952,12 @@ function getVisualizationPoints(data: LoadData, loadType: LoadType) {
     }
 
     points.push({ time: duration, users: steadyValue });
-  } else if (loadType === 'segments') {
-    const segments = getSegmentVisualizationEntries(data);
-    for (const segment of segments) {
-      points.push(
-        { time: segment.start, users: segment.value },
-        { time: segment.end, users: segment.value },
-      );
-    }
   }
 
   return points;
 }
 
 function getTimeRanges(data: LoadData, loadType: LoadType, maxTime: number) {
-  if (loadType === 'segments') {
-    return getSegmentVisualizationEntries(data).map((segment, index) => ({
-      key: `segment-${index}`,
-      label: segment.name || `S${index + 1}`,
-      start: segment.start,
-      end: segment.end,
-    }));
-  }
   if (loadType === 'constant') {
     const rampUp = Math.max(0, parseTimeToSeconds(String(data.ramp_up || '0s')));
     return rampUp > 0
@@ -961,16 +987,6 @@ function getTimeRanges(data: LoadData, loadType: LoadType, maxTime: number) {
 }
 
 function getTransitionMarkers(data: LoadData, loadType: LoadType, maxTime: number) {
-  if (loadType === 'segments') {
-    return getSegmentVisualizationEntries(data)
-      .slice(1)
-      .map((segment, index) => ({
-        key: `segment-${index + 1}`,
-        time: segment.start,
-        label: formatTimeLabel(segment.start),
-      }))
-      .filter(marker => marker.time > 0 && marker.time < maxTime);
-  }
   if (loadType === 'constant') {
     const rampUp = Math.max(0, parseTimeToSeconds(String(data.ramp_up || '0s')));
     return rampUp > 0 && rampUp < maxTime ? [{ key: 'ramp-up', time: rampUp, label: formatTimeLabel(rampUp) }] : [];
@@ -996,72 +1012,10 @@ function getTransitionMarkers(data: LoadData, loadType: LoadType, maxTime: numbe
   ].filter(Boolean) as Array<{ key: string; time: number; label: string }>;
 }
 
-function getYAxisLabel(
-  data: LoadData,
-  loadType: LoadType,
-  intentTargetUnit: string,
-  t: (key: string) => string,
-) {
-  if (loadType === 'segments') {
-    const segments = normalizeVisualizationSegments(data.segments);
-    const hasRps = segments.some(segment => positiveNumber(segment.target_rps) > 0);
-    const hasVus = segments.some(segment => positiveNumber(segment.target_vus) > 0);
-    if (hasRps && !hasVus) return t('yamlEditor.loadVisualization.labels.rps');
-    if (hasVus && !hasRps) return t('yamlEditor.loadVisualization.labels.users');
-    return 'Target';
-  }
+function getYAxisLabel(data: LoadData, loadType: LoadType, intentTargetUnit: string, t: (key: string) => string) {
   return loadType === 'throughput' || (loadType === 'intent' && intentTargetUnit === 'rps')
     ? t('yamlEditor.loadVisualization.labels.rps')
     : t('yamlEditor.loadVisualization.labels.users');
-}
-
-function getSegmentVisualizationEntries(data: LoadData) {
-  const segments = normalizeVisualizationSegments(data.segments);
-  if (segments.length === 0) {
-    return [];
-  }
-
-  const explicitDurations = segments.map(segment => parseTimeToSeconds(String(segment.duration ?? '').trim()));
-  const hasAnyDuration = explicitDurations.some(duration => duration > 0);
-  const hasAllDurations = explicitDurations.every(duration => duration > 0);
-  const totalDuration = parseTimeToSeconds(String(data.duration ?? '').trim());
-  const fallbackDuration = !hasAnyDuration && totalDuration > 0 ? totalDuration / segments.length : 0;
-
-  let elapsed = 0;
-  return segments
-    .map((segment, index) => {
-      const duration = hasAllDurations ? explicitDurations[index] : fallbackDuration;
-      const value = segmentDisplayValue(segment);
-      const entry = {
-        name: String(segment.name ?? '').trim(),
-        start: elapsed,
-        end: elapsed + duration,
-        value,
-      };
-      elapsed = entry.end;
-      return entry;
-    })
-    .filter(entry => entry.end > entry.start && entry.value > 0);
-}
-
-function normalizeVisualizationSegments(value: LoadData['segments']): LoadSegmentData[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-  return value.filter(segment => segment && typeof segment === 'object') as LoadSegmentData[];
-}
-
-function segmentDisplayValue(segment: LoadSegmentData): number {
-  const targetVus = positiveNumber(segment.target_vus);
-  if (targetVus > 0) {
-    return targetVus;
-  }
-  return positiveNumber(segment.target_rps);
-}
-
-function positiveNumber(value: unknown): number {
-  const parsed = Number(String(value ?? '').trim());
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
 }
 
 function formatTimeLabel(seconds: number): string {

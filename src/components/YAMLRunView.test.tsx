@@ -94,7 +94,13 @@ const baseProps = {
 describe('YAMLLoadRunSession', () => {
   it('starts with the newest flushed tree revision instead of stale code', async () => {
     const flushPendingEdits = vi.fn(() => 'test:\n  name: newest-run\n');
-    render(<YAMLLoadRunSession {...baseProps} yamlCode={'test:\n  name: stale-run\n'} flushPendingEdits={flushPendingEdits} />);
+    render(
+      <YAMLLoadRunSession
+        {...baseProps}
+        yamlCode={'test:\n  name: stale-run\n'}
+        flushPendingEdits={flushPendingEdits}
+      />,
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'Run load test' }));
 
@@ -136,8 +142,26 @@ describe('YAMLLoadRunSession', () => {
         }),
       );
       runApiMock.handlers[0].onLog([
-        { seq: 0, ts: 1782249308000, level: 'request', vu: 1, method: 'GET', path: '/api/x', status: 200, latency_ms: 12 },
-        { seq: 1, ts: 1782249309000, level: 'request', vu: 1, method: 'GET', path: '/api/x', status: 200, latency_ms: 18 },
+        {
+          seq: 0,
+          ts: 1782249308000,
+          level: 'request',
+          vu: 1,
+          method: 'GET',
+          path: '/api/x',
+          status: 200,
+          latency_ms: 12,
+        },
+        {
+          seq: 1,
+          ts: 1782249309000,
+          level: 'request',
+          vu: 1,
+          method: 'GET',
+          path: '/api/x',
+          status: 200,
+          latency_ms: 18,
+        },
       ]);
     });
 
@@ -179,7 +203,11 @@ describe('YAMLLoadRunSession', () => {
   });
 
   it('uses RPS as the primary intent runtime chart metric when the intent target is RPS', async () => {
-    render(<YAMLLoadRunSession {...baseProps} />);
+    render(
+      <LanguageProvider>
+        <YAMLLoadRunSession {...baseProps} />
+      </LanguageProvider>,
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'Run load test' }));
     await waitFor(() => expect(runApiMock.handlers).toHaveLength(1));
@@ -353,7 +381,10 @@ describe('YAMLLoadRunSession', () => {
   it('flags on the planned profile when a Balanced Controller in Iterations mode caps the duration', async () => {
     render(
       <LanguageProvider>
-        <YAMLLoadRunSession {...baseProps} tree={balancedScenarioTree('iteraciones')} />
+        <YAMLLoadRunSession
+          {...baseProps}
+          tree={balancedScenarioTree('iteraciones')}
+        />
       </LanguageProvider>,
     );
     fireEvent.click(screen.getByRole('button', { name: 'Run load test' }));
@@ -370,7 +401,10 @@ describe('YAMLLoadRunSession', () => {
   it('does not flag the planned profile when the Balanced Controller runs in Virtual Users mode', async () => {
     render(
       <LanguageProvider>
-        <YAMLLoadRunSession {...baseProps} tree={balancedScenarioTree('usuarios_virtuales')} />
+        <YAMLLoadRunSession
+          {...baseProps}
+          tree={balancedScenarioTree('usuarios_virtuales')}
+        />
       </LanguageProvider>,
     );
     fireEvent.click(screen.getByRole('button', { name: 'Run load test' }));
@@ -431,7 +465,12 @@ describe('YAMLLoadRunSession', () => {
         },
       ],
     };
-    render(<YAMLLoadRunSession {...baseProps} tree={tree} />);
+    render(
+      <YAMLLoadRunSession
+        {...baseProps}
+        tree={tree}
+      />,
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'Run load test' }));
     await waitFor(() => expect(runApiMock.handlers).toHaveLength(1));
@@ -498,8 +537,24 @@ describe('YAMLLoadRunSession', () => {
         }),
       );
       runApiMock.handlers[0].onLog([
-        { seq: 0, ts: 1, level: 'request', method: 'GET', path: '/callback?code=runtime-value-1', status: 302, latency_ms: 10 },
-        { seq: 1, ts: 2, level: 'error', method: 'GET', path: '/callback?code=runtime-value-2', status: 502, latency_ms: 20 },
+        {
+          seq: 0,
+          ts: 1,
+          level: 'request',
+          method: 'GET',
+          path: '/callback?code=runtime-value-1',
+          status: 302,
+          latency_ms: 10,
+        },
+        {
+          seq: 1,
+          ts: 2,
+          level: 'error',
+          method: 'GET',
+          path: '/callback?code=runtime-value-2',
+          status: 502,
+          latency_ms: 20,
+        },
       ]);
     });
 
@@ -586,7 +641,12 @@ describe('YAMLLoadRunSession', () => {
       ],
     };
     const latency = { avg_ms: 20, min_ms: 18, max_ms: 22, p90_ms: 22, p95_ms: 22, p99_ms: 22 };
-    render(<YAMLLoadRunSession {...baseProps} tree={tree} />);
+    render(
+      <YAMLLoadRunSession
+        {...baseProps}
+        tree={tree}
+      />,
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'Run load test' }));
     await waitFor(() => expect(runApiMock.handlers).toHaveLength(1));
@@ -698,7 +758,12 @@ describe('YAMLLoadRunSession', () => {
         },
       ],
     };
-    render(<YAMLLoadRunSession {...baseProps} tree={tree} />);
+    render(
+      <YAMLLoadRunSession
+        {...baseProps}
+        tree={tree}
+      />,
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'Run load test' }));
     await waitFor(() => expect(runApiMock.handlers).toHaveLength(1));
@@ -708,16 +773,48 @@ describe('YAMLLoadRunSession', () => {
           total_requests: 21,
           requests: [
             {
-              name: 'Download identity', method: 'GET', path: '/user/signIdentities/download?idGroup=first', request_id: 10,
-              step_path: 'scenarios[0].steps[0]', count: 10, failures: 0, avg_ms: 10, min_ms: 5, max_ms: 20, p90_ms: 18, p95_ms: 19, p99_ms: 20,
+              name: 'Download identity',
+              method: 'GET',
+              path: '/user/signIdentities/download?idGroup=first',
+              request_id: 10,
+              step_path: 'scenarios[0].steps[0]',
+              count: 10,
+              failures: 0,
+              avg_ms: 10,
+              min_ms: 5,
+              max_ms: 20,
+              p90_ms: 18,
+              p95_ms: 19,
+              p99_ms: 20,
             },
             {
-              name: 'Logout redirect landing', method: 'GET', path: '/user/auth', request_id: 11,
-              step_path: 'scenarios[0].steps[1]', count: 10, failures: 0, avg_ms: 12, min_ms: 8, max_ms: 30, p90_ms: 25, p95_ms: 28, p99_ms: 30,
+              name: 'Logout redirect landing',
+              method: 'GET',
+              path: '/user/auth',
+              request_id: 11,
+              step_path: 'scenarios[0].steps[1]',
+              count: 10,
+              failures: 0,
+              avg_ms: 12,
+              min_ms: 8,
+              max_ms: 30,
+              p90_ms: 25,
+              p95_ms: 28,
+              p99_ms: 30,
             },
             {
-              name: 'Download identity duplicate', method: 'GET', path: '/user/signIdentities/download?idGroup=late', request_id: 10,
-              count: 1, failures: 1, avg_ms: 100, min_ms: 100, max_ms: 100, p90_ms: 100, p95_ms: 100, p99_ms: 100,
+              name: 'Download identity duplicate',
+              method: 'GET',
+              path: '/user/signIdentities/download?idGroup=late',
+              request_id: 10,
+              count: 1,
+              failures: 1,
+              avg_ms: 100,
+              min_ms: 100,
+              max_ms: 100,
+              p90_ms: 100,
+              p95_ms: 100,
+              p99_ms: 100,
             },
           ],
         }),
@@ -763,7 +860,12 @@ describe('YAMLLoadRunSession', () => {
         },
       ],
     };
-    render(<YAMLLoadRunSession {...baseProps} tree={tree} />);
+    render(
+      <YAMLLoadRunSession
+        {...baseProps}
+        tree={tree}
+      />,
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'Run load test' }));
     await waitFor(() => expect(runApiMock.handlers).toHaveLength(1));
@@ -773,16 +875,49 @@ describe('YAMLLoadRunSession', () => {
           total_requests: 3,
           requests: [
             {
-              name: 'Logout', method: 'GET', path: '/user/auth', request_id: 23,
-              step_path: 'scenarios[0].steps[2]', count: 1, failures: 0, avg_ms: 12, min_ms: 12, max_ms: 12, p90_ms: 12, p95_ms: 12, p99_ms: 12,
+              name: 'Logout',
+              method: 'GET',
+              path: '/user/auth',
+              request_id: 23,
+              step_path: 'scenarios[0].steps[2]',
+              count: 1,
+              failures: 0,
+              avg_ms: 12,
+              min_ms: 12,
+              max_ms: 12,
+              p90_ms: 12,
+              p95_ms: 12,
+              p99_ms: 12,
             },
             {
-              name: 'Sign identities', method: 'GET', path: '/user/signIdentities', request_id: 22,
-              step_path: 'scenarios[0].steps[1].balanced.steps[1]', count: 1, failures: 0, avg_ms: 10, min_ms: 10, max_ms: 10, p90_ms: 10, p95_ms: 10, p99_ms: 10,
+              name: 'Sign identities',
+              method: 'GET',
+              path: '/user/signIdentities',
+              request_id: 22,
+              step_path: 'scenarios[0].steps[1].balanced.steps[1]',
+              count: 1,
+              failures: 0,
+              avg_ms: 10,
+              min_ms: 10,
+              max_ms: 10,
+              p90_ms: 10,
+              p95_ms: 10,
+              p99_ms: 10,
             },
             {
-              name: 'Utilities', method: 'GET', path: '/user/utilities', request_id: 21,
-              step_path: 'scenarios[0].steps[1].balanced.steps[0]', count: 1, failures: 0, avg_ms: 11, min_ms: 11, max_ms: 11, p90_ms: 11, p95_ms: 11, p99_ms: 11,
+              name: 'Utilities',
+              method: 'GET',
+              path: '/user/utilities',
+              request_id: 21,
+              step_path: 'scenarios[0].steps[1].balanced.steps[0]',
+              count: 1,
+              failures: 0,
+              avg_ms: 11,
+              min_ms: 11,
+              max_ms: 11,
+              p90_ms: 11,
+              p95_ms: 11,
+              p99_ms: 11,
             },
           ],
         }),
@@ -848,14 +983,24 @@ describe('YAMLLoadRunSession', () => {
   });
 
   it('blocks the run and warns when there are validation errors', () => {
-    render(<YAMLLoadRunSession {...baseProps} validationErrors={['load duration is invalid']} />);
+    render(
+      <YAMLLoadRunSession
+        {...baseProps}
+        validationErrors={['load duration is invalid']}
+      />,
+    );
 
     expect(screen.getByRole('button', { name: 'Run load test' })).toBeDisabled();
     expect(screen.getByText(/validation failed before the load run/i)).toBeInTheDocument();
   });
 
   it('blocks the run when the document is not ready', () => {
-    render(<YAMLLoadRunSession {...baseProps} documentReady={false} />);
+    render(
+      <YAMLLoadRunSession
+        {...baseProps}
+        documentReady={false}
+      />,
+    );
 
     const runButton = screen.getByRole('button', { name: 'Run load test' });
     expect(runButton).toBeDisabled();

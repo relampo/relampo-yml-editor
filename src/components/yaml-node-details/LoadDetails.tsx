@@ -1,4 +1,4 @@
-import { Crosshair, Gauge, ListTree, Mountain, TrendingUp, Users } from 'lucide-react';
+import { Crosshair, Gauge, Mountain, TrendingUp, Users } from 'lucide-react';
 import { useId } from 'react';
 import { LoadVisualization } from './LoadVisualization';
 import {
@@ -16,7 +16,6 @@ import { ConstantLoadMode } from './load-modes/ConstantLoadMode';
 import { IntentLoadMode } from './load-modes/IntentLoadMode';
 import { RampLoadMode } from './load-modes/RampLoadMode';
 import { RampUpDownLoadMode } from './load-modes/RampUpDownLoadMode';
-import { SegmentsLoadMode } from './load-modes/SegmentsLoadMode';
 import { ThroughputLoadMode } from './load-modes/ThroughputLoadMode';
 import { createNodeDataUpdater } from './nodeDetailHelpers';
 import type { NodeDetailProps } from './types';
@@ -30,7 +29,6 @@ const LOAD_MODE_OPTIONS: Array<{
   { type: 'linear', label: 'Linear', icon: TrendingUp },
   { type: 'ramp_up_down', label: 'Ramp Up/Down', icon: Mountain },
   { type: 'throughput', label: 'Throughput', icon: Gauge },
-  { type: 'segments', label: 'Segments', icon: ListTree },
   { type: 'intent', label: 'Intent', icon: Crosshair },
 ];
 
@@ -113,10 +111,12 @@ export function LoadDetails({ node, onNodeUpdate }: NodeDetailProps) {
 
       <div className="h-px bg-white/10" />
 
-      <LoadVisualization
-        data={loadData}
-        loadType={loadType}
-      />
+      {loadType !== 'segments' && (
+        <LoadVisualization
+          data={loadData}
+          loadType={loadType}
+        />
+      )}
     </div>
   );
 }
@@ -196,10 +196,9 @@ function LoadModePanel({
 
   if (loadType === 'segments') {
     return (
-      <SegmentsLoadMode
-        data={data}
-        onChange={onChange}
-      />
+      <div className="rounded-xl border border-rose-400/20 bg-rose-400/[0.04] p-4 text-sm text-rose-200">
+        This load type is not supported by the editor or Pulse runtime. Remove <code>segments</code> before running.
+      </div>
     );
   }
 

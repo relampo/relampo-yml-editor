@@ -55,6 +55,7 @@ const intentLatencyMetrics = new Set(['avg', 'p50', 'p75', 'p90', 'p95', 'p99'])
 export interface IntentAutoConfig {
   warmup: string;
   ramp_up: string;
+  ramp_down: string;
   duration: string;
   window: string;
   min_vus: string;
@@ -146,55 +147,55 @@ const loadTypeDefaults: Record<LoadType, LoadData> = {
     iterations: '0',
     min_vus: '1',
     max_vus: '80',
+    ramp_up: '1m',
+    ramp_down: '1m',
   },
   intent: {
-    goal: 'sustain_target',
-    target: { type: 'rps', value: '3' },
+    target_unit: 'rps',
+    target_value: '3',
     duration: '10m',
     warmup: '30s',
     ramp_up: '30s',
-    control_window: '2s',
-    stability_window: '3',
-    latency: { metric: 'p95', max_ms: '800' },
-    error_rate: { max_pct: '1' },
+    ramp_down: '30s',
+    window: '2s',
+    p95_max_ms: '800',
+    error_rate_max_pct: '1',
     aggressiveness: 'medium',
     min_vus: '1',
     max_vus: '80',
   },
-  segments: {
-    duration: '1h',
-    iterations: '0',
-    segments: [
-      { name: 'baseline', target_rps: '5', max_vus: '20' },
-      { name: 'checkout_pressure', target_rps: '25', min_vus: '5', max_vus: '100' },
-      { name: 'fixed_users', target_vus: '50' },
-      { name: 'recovery', target_rps: '5', max_vus: '20' },
-    ],
-  },
+  segments: {},
 };
 
 const loadTypeAllowedKeys: Record<LoadType, string[]> = {
   constant: ['type', 'users', 'duration', 'iterations', 'ramp_up', 'run_until_stopped'],
   linear: ['type', 'start_users', 'end_users', 'duration', 'iterations', 'run_until_stopped'],
   ramp_up_down: ['type', 'users', 'duration', 'iterations', 'ramp_up', 'ramp_down', 'run_until_stopped'],
-  throughput: ['type', 'target_rps', 'duration', 'iterations', 'min_vus', 'max_vus', 'run_until_stopped'],
+  throughput: [
+    'type',
+    'target_rps',
+    'duration',
+    'iterations',
+    'ramp_up',
+    'ramp_down',
+    'min_vus',
+    'max_vus',
+    'run_until_stopped',
+  ],
   intent: [
     'type',
-    'goal',
-    'target',
+    'target_unit',
+    'target_value',
     'duration',
     'warmup',
     'ramp_up',
+    'ramp_down',
     'window',
-    'control_window',
-    'stability_window',
-    'latency',
     'p50_max_ms',
     'p75_max_ms',
     'p95_max_ms',
     'p99_max_ms',
     'p999_max_ms',
-    'error_rate',
     'error_rate_max_pct',
     'error_4xx_max_pct',
     'error_5xx_max_pct',
@@ -224,7 +225,7 @@ export function parseTimeToSeconds(timeStr: string): number {
   }
   const match = timeStr.trim().match(/^(\d+(?:\.\d+)?)(ms|s|m|h)?$/);
   if (!match) {
-    return 60;
+    return 0;
   }
   const [, value, unit] = match;
   const num = parseFloat(value);
@@ -314,13 +315,8 @@ export function getIntentAutoConfig(data: LoadData = {}): IntentAutoConfig {
   const warmupSeconds = clamp(roundToStep(durationSeconds * 0.05, 5), 15, 60);
   const rampUpSeconds = clamp(roundToStep(durationSeconds * 0.1, 5), 15, 90);
   const minVus =
-    targetUnit === 'vus'
-      ? Math.max(1, Math.floor(targetValue * 0.6))
-      : Math.max(1, Math.ceil(targetValue / 20));
-  const maxVus =
-    targetUnit === 'vus'
-      ? Math.ceil(targetValue)
-      : Math.max(minVus + 2, Math.ceil(targetValue / 4));
+    targetUnit === 'vus' ? Math.max(1, Math.floor(targetValue * 0.6)) : Math.max(1, Math.ceil(targetValue / 20));
+  const maxVus = targetUnit === 'vus' ? Math.ceil(targetValue) : Math.max(minVus + 2, Math.ceil(targetValue / 4));
   const latencySlack = Math.min(250, Math.floor(normalizedScale / 30) * 50);
   const averageMs = averageMsByAggressiveness[aggressiveness as keyof typeof averageMsByAggressiveness] + latencySlack;
   const p95MaxMs = p95MsByAggressiveness[aggressiveness as keyof typeof p95MsByAggressiveness] + latencySlack;
@@ -331,6 +327,7 @@ export function getIntentAutoConfig(data: LoadData = {}): IntentAutoConfig {
   return {
     warmup: formatSeconds(warmupSeconds),
     ramp_up: formatSeconds(rampUpSeconds),
+    ramp_down: formatSeconds(rampUpSeconds),
     duration: formatSeconds(durationSeconds),
     window: formatSeconds(windowSecondsByAggressiveness[aggressiveness as keyof typeof windowSecondsByAggressiveness]),
     min_vus: String(minVus),
@@ -346,7 +343,9 @@ export function getIntentAutoConfig(data: LoadData = {}): IntentAutoConfig {
 export function getIntentTargetData(data: LoadData = {}, options: { coerce?: boolean } = {}): IntentTargetData {
   const { coerce = true } = options;
   const rawTarget = isLoadObject(data.target) ? (data.target as IntentTargetData) : undefined;
-  const type = String(rawTarget?.type || data.target_unit || 'rps').toLowerCase().trim();
+  const type = String(rawTarget?.type || data.target_unit || 'rps')
+    .toLowerCase()
+    .trim();
   const value =
     scalarLoadValue(rawTarget?.value) ??
     scalarLoadValue(data.target_value) ??
@@ -361,7 +360,9 @@ export function getIntentTargetData(data: LoadData = {}, options: { coerce?: boo
 
 export function getIntentLatencyData(data: LoadData = {}): IntentLatencyData {
   const rawLatency = isLoadObject(data.latency) ? (data.latency as IntentLatencyData) : undefined;
-  const metric = String(rawLatency?.metric || 'p95').toLowerCase().trim();
+  const metric = String(rawLatency?.metric || 'p95')
+    .toLowerCase()
+    .trim();
   return {
     metric: intentLatencyMetrics.has(metric) ? metric : 'p95',
     max_ms: scalarLoadValue(rawLatency?.max_ms) ?? scalarLoadValue(data.p95_max_ms) ?? '',
@@ -410,25 +411,32 @@ export function buildLoadDataForType(
 
   if (loadType === 'intent') {
     const currentTarget = getIntentTargetData(source, { coerce: coerceIntentEnums });
-    const requestedTargetUnit = String(currentTarget.type || 'rps').toLowerCase().trim();
+    const requestedTargetUnit = String(currentTarget.type || 'rps')
+      .toLowerCase()
+      .trim();
     if (coerceIntentEnums) {
-      source.target = {
-        type: intentTargetUnits.has(requestedTargetUnit) ? requestedTargetUnit : 'rps',
-        value: currentTarget.value || '3',
-      };
+      source.target_unit = intentTargetUnits.has(requestedTargetUnit) ? requestedTargetUnit : 'rps';
+      source.target_value = currentTarget.value || '3';
     } else if (source.target !== undefined || source.target_unit !== undefined || source.target_value !== undefined) {
-      source.target = {
-        type: currentTarget.type,
-        value: currentTarget.value,
-      };
+      source.target_unit = currentTarget.type;
+      source.target_value = currentTarget.value;
     }
 
-    source.latency = getIntentLatencyData(source);
-    source.error_rate = getIntentErrorRateData(source);
-    if (source.control_window === undefined && source.window !== undefined) {
-      source.control_window = source.window;
+    const latency = getIntentLatencyData(source);
+    if (source.latency !== undefined) {
+      source.p95_max_ms = latency.max_ms;
+    } else if (source.p95_max_ms === undefined && latency.max_ms !== '') {
+      source.p95_max_ms = latency.max_ms;
     }
-    source.goal = source.goal || 'sustain_target';
+    const errorRate = getIntentErrorRateData(source);
+    if (source.error_rate !== undefined) {
+      source.error_rate_max_pct = errorRate.max_pct;
+    } else if (source.error_rate_max_pct === undefined && errorRate.max_pct !== '') {
+      source.error_rate_max_pct = errorRate.max_pct;
+    }
+    if (source.control_window !== undefined) {
+      source.window = source.control_window;
+    }
 
     const requestedAggressiveness = String(source.aggressiveness || defaults.aggressiveness || 'medium')
       .toLowerCase()
@@ -487,34 +495,29 @@ export function normalizeLoadDataForYaml(data: LoadData | Record<string, unknown
       coerceIntentEnums: false,
       preserveExplicitEmpty: true,
     });
+    const target = getIntentTargetData(normalizedIntent, { coerce: false });
+    if (normalizedIntent.target_unit === undefined && target.type) {
+      normalizedIntent.target_unit = target.type;
+    }
+    if (normalizedIntent.target_value === undefined && target.value !== '') {
+      normalizedIntent.target_value = target.value;
+    }
+    const latency = getIntentLatencyData(normalizedIntent);
+    if (normalizedIntent.p95_max_ms === undefined && latency.max_ms !== '') {
+      normalizedIntent.p95_max_ms = latency.max_ms;
+    }
+    const errorRate = getIntentErrorRateData(normalizedIntent);
+    if (normalizedIntent.error_rate_max_pct === undefined && errorRate.max_pct !== '') {
+      normalizedIntent.error_rate_max_pct = errorRate.max_pct;
+    }
     if (Array.isArray(rawData.stages)) {
       (normalizedIntent as Record<string, unknown>).stages = rawData.stages;
-    }
-    delete normalizedIntent.target_rps;
-    delete normalizedIntent.target_unit;
-    delete normalizedIntent.target_value;
-    delete normalizedIntent.p95_max_ms;
-    delete normalizedIntent.error_rate_max_pct;
-    delete normalizedIntent.iterations;
-    const latency = normalizedIntent.latency as IntentLatencyData | undefined;
-    if (latency && (latency.max_ms === '' || latency.max_ms === undefined)) {
-      delete normalizedIntent.latency;
-    }
-    const errorRate = normalizedIntent.error_rate as IntentErrorRateData | undefined;
-    if (errorRate && (errorRate.max_pct === '' || errorRate.max_pct === undefined)) {
-      delete normalizedIntent.error_rate;
     }
     return normalizedIntent;
   }
 
   if (loadType === 'segments') {
-    const normalizedSegments = buildLoadDataForType(loadType, scalarData, {
-      preserveExplicitEmpty: true,
-    });
-    if (Array.isArray(rawData.segments)) {
-      normalizedSegments.segments = rawData.segments as LoadSegmentData[];
-    }
-    return normalizedSegments;
+    return { ...rawData, type: rawData.type || 'segments' } as LoadData;
   }
 
   const normalized = {

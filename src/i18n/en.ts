@@ -524,7 +524,8 @@ export const enTranslations = {
           'Each child element must define a percentage greater than 0 and less than or equal to 100.',
         issueInvalidTotal: 'The total assigned percentage must be exactly 100. Current total: {total}%.',
         issueInvalidPartialTotal: 'The total assigned percentage must not exceed 100. Current total: {total}%.',
-        issueThinkTimeChild: 'think_time cannot be a balanced child — it consumes a load percentage without issuing requests.',
+        issueThinkTimeChild:
+          'think_time cannot be a balanced child — it consumes a load percentage without issuing requests.',
         issueNoRequestsChild: '"{name}" contains no requests: all VUs assigned to it will execute no load.',
       },
       included: {
@@ -580,7 +581,8 @@ export const enTranslations = {
         },
         slo: {
           title: 'SLO Bounds',
-          description: 'These values are shown for visibility and generated automatically from the selected intent profile.',
+          description:
+            'These values are shown for visibility and generated automatically from the selected intent profile.',
         },
       },
       fields: {
@@ -589,6 +591,7 @@ export const enTranslations = {
         aggressiveness: 'Aggressiveness',
         warmup: 'Warmup',
         rampUp: 'RampUp',
+        rampDown: 'Ramp Down',
         window: 'Window',
         duration: 'Duration',
         iteration: 'Iteration',
@@ -620,6 +623,51 @@ export const enTranslations = {
         iteration: 'Intent mode usually leaves this empty.',
         average: 'Displayed guidance for the expected average response time.',
         maxVusLockedToTarget: 'Locked to the target VUs for this intent.',
+      },
+      runtime: {
+        title: 'Intent runtime timeline',
+        subtitleRps: 'RPS held against the target while Relampo adjusts VUs under SLO guardrails.',
+        subtitleVus: 'Real VUs adjusted by the controller during this run.',
+        target: 'Target',
+        time: 'Time',
+        state: 'State',
+        vus: 'VUs',
+        rps: 'RPS',
+        p95: 'p95',
+        action: 'Action',
+        hold: 'hold',
+        error: 'error',
+        reason: 'reason',
+        reached: 'Reached',
+        sustained: 'Sustained',
+        estimatedCapacity: 'Estimated capacity',
+        bestRps: 'Best RPS',
+        bestVus: 'Best VUs',
+        response: 'Response {metric}',
+        violations: 'Violations',
+        yes: 'Yes',
+        no: 'No',
+        thresholdP95: 'p95 <= {value}',
+        thresholdErrors: 'errors <= {value}%',
+        states: {
+          warmup: 'Warmup',
+          rampup: 'RampUp',
+          probing: 'Probing',
+          sustain: 'Sustain',
+          stable: 'Stable',
+          violation: 'Violation',
+          recovery: 'Recovery',
+          unknown: 'Unknown',
+        },
+        verdicts: {
+          completed: 'Completed',
+          bestFeasible: 'Best feasible',
+          sustained: 'Target sustained',
+          notSustained: 'Target not sustained',
+          partiallySustained: 'Partially sustained',
+          inconclusive: 'Inconclusive',
+        },
+        resultTitle: 'Intent result',
       },
     },
 
@@ -654,7 +702,8 @@ export const enTranslations = {
         behaviorVus: 'After warmup, VUs are adjusted around target={target} within {min}..{max} to keep SLOs.',
         behaviorRps:
           'After warmup, RPS is adjusted around target={target} while respecting SLOs and VU guardrails {min}..{max}.',
-        vuBand: 'Intent control band: warmup is prep-only (cyan). Adjustments begin at the yellow marker right after warmup.',
+        vuBand:
+          'Intent control band: warmup is prep-only (cyan). Adjustments begin at the yellow marker right after warmup.',
         rpsBand: 'Intent RPS band: warmup is prep-only, then controlled RPS variability. VU guardrails: {min}..{max}.',
         targetReqPerMinute: '{value} req/min target',
         previewTitle: 'Intent Control Preview',
@@ -671,7 +720,8 @@ export const enTranslations = {
         controlBodyVus:
           'Relampo climbs toward {target} {unit} gradually and holds back when response time or errors cross the limits.',
         guardrailsTitle: 'Guardrails',
-        guardrailsBody: '{metric} response time <= {response} ms, error rate <= {error}%. Violations trigger recovery before growing again.',
+        guardrailsBody:
+          '{metric} response time <= {response} ms, error rate <= {error}%. Violations trigger recovery before growing again.',
       },
     },
 

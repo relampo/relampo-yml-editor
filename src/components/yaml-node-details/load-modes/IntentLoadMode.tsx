@@ -70,9 +70,7 @@ export function IntentLoadMode({ data, onChange }: LoadModeProps) {
     <div className="space-y-4">
       <section className="rounded-xl border border-yellow-400/20 bg-yellow-400/5 p-4 sm:p-5">
         <h4 className="text-sm font-semibold text-yellow-100">{t('yamlEditor.intent.overview.title')}</h4>
-        <p className="mt-1 text-xs leading-relaxed text-yellow-100/75">
-          {t('yamlEditor.intent.overview.description')}
-        </p>
+        <p className="mt-1 text-xs leading-relaxed text-yellow-100/75">{t('yamlEditor.intent.overview.description')}</p>
       </section>
 
       <AccordionSection
@@ -129,10 +127,17 @@ export function IntentLoadMode({ data, onChange }: LoadModeProps) {
             helpText={format('yamlEditor.intent.helpers.suggested', { value: autoConfig.ramp_up })}
           />
           <LoadField
+            label={t('yamlEditor.intent.fields.rampDown')}
+            value={data.ramp_down ?? ''}
+            placeholder={autoConfig.ramp_down}
+            onChange={value => onChange('ramp_down', limitedInputValue(value))}
+            helpText={format('yamlEditor.intent.helpers.suggested', { value: autoConfig.ramp_down })}
+          />
+          <LoadField
             label={t('yamlEditor.intent.fields.window')}
-            value={data.control_window ?? data.window ?? ''}
+            value={data.window ?? data.control_window ?? ''}
             placeholder={autoConfig.window}
-            onChange={value => onChange('control_window', limitedInputValue(value))}
+            onChange={value => onChange('window', limitedInputValue(value))}
             helpText={format('yamlEditor.intent.helpers.suggested', { value: autoConfig.window })}
           />
         </LoadGrid>
@@ -179,7 +184,7 @@ export function IntentLoadMode({ data, onChange }: LoadModeProps) {
           />
           <LoadField
             label={t('yamlEditor.intent.fields.maxVus')}
-            value={locksMaxVusToTarget ? intentTarget.value || autoConfig.max_vus : data.max_vus ?? ''}
+            value={locksMaxVusToTarget ? intentTarget.value || autoConfig.max_vus : (data.max_vus ?? '')}
             placeholder={autoConfig.max_vus}
             onChange={value => {
               if (!locksMaxVusToTarget) {

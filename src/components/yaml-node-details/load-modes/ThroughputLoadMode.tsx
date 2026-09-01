@@ -20,6 +20,8 @@ export function ThroughputLoadMode({ data, onChange }: LoadModeProps) {
     },
     { field: 'min_vus', label: 'Min VUs', placeholder: '1', type: 'number', helpText: 'Starting user floor.' },
     { field: 'max_vus', label: 'Max VUs', placeholder: '80', type: 'number', helpText: LOAD_USERS_HELP_TEXT },
+    { field: 'ramp_up', label: 'Ramp Up', placeholder: '1m', helpText: 'Time to reach the target rate.' },
+    { field: 'ramp_down', label: 'Ramp Down', placeholder: '1m', helpText: 'Time to reduce the target rate.' },
     { field: 'duration', label: 'Duration', placeholder: '10m', helpText: LOAD_DURATION_HELP_TEXT },
     { field: 'iterations', label: 'Iterations', placeholder: '0', type: 'number', helpText: LOAD_ITERATIONS_HELP_TEXT },
   ] as const;

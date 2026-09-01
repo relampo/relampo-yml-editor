@@ -4,7 +4,8 @@ import { localizeYAMLSemanticError, validateYAMLSemantics } from './yamlSemantic
 
 describe('localizeYAMLSemanticError', () => {
   it('translates unsupported load stages for Spanish users', () => {
-    const message = 'Load stages are documented but unsupported by the editor and Pulse runtime. Remove stages before running.';
+    const message =
+      'Load stages are documented but unsupported by the editor and Pulse runtime. Remove stages before running.';
 
     expect(localizeYAMLSemanticError(message, 'es')).toBe(
       'Las etapas de carga están documentadas, pero el editor y el runtime de Pulse no las admiten. Elimina stages antes de ejecutar.',
@@ -114,6 +115,10 @@ describe('validateYAMLSemantics', () => {
             type: 'intent',
             target: { type: 'vus', value: '10' },
             duration: '1m',
+            warmup: '10s',
+            ramp_up: '10s',
+            ramp_down: '10s',
+            window: '2s',
             min_vus: '1',
             max_vus: '8',
           },
@@ -129,37 +134,47 @@ describe('validateYAMLSemantics', () => {
     ]);
   });
 
-  it('accepts valid segments load nodes', () => {
+  it('validates the full intent contract for RPS targets', () => {
     const tree: YAMLNode = {
       id: 'root',
       type: 'test',
       name: 'Test',
       children: [
         {
-          id: 'scenario',
-          type: 'scenario',
-          name: 'Scenario',
-          children: [
-            {
-              id: 'load',
-              type: 'load',
-              name: 'Load',
-              data: {
-                type: 'segments',
-                duration: '1h',
-                iterations: '10',
-                segments: [{ target_rps: '5', max_vus: '20' }, { target_vus: '50' }],
-              },
-            },
-          ],
+          id: 'load',
+          type: 'load',
+          name: 'Load',
+          data: {
+            type: 'intent',
+            target_unit: 'rps',
+            target_value: '-1',
+            duration: 'invalid',
+            warmup: '2m',
+            ramp_up: 'invalid',
+            ramp_down: '0s',
+            window: 'invalid',
+            min_vus: '10',
+            max_vus: '5',
+            p95_max_ms: '-1',
+            error_rate_max_pct: '101',
+          },
         },
       ],
     };
 
-    expect(validateYAMLSemantics(tree)).toEqual([]);
+    expect(validateYAMLSemantics(tree).map(issue => issue.message)).toEqual([
+      'Intent target value must be greater than 0.',
+      'Intent Min VUs must be less than Max VUs.',
+      'Intent load requires Duration greater than 0.',
+      'Intent Ramp Up must be greater than 0.',
+      'Intent Ramp Down must be greater than 0.',
+      'Intent Window must be greater than 0.',
+      'Intent p95 latency limit must be greater than 0.',
+      'Intent error rate limit must be between 0 and 100.',
+    ]);
   });
 
-  it('rejects segments with both RPS and VU targets', () => {
+  it('blocks the unsupported segments load type', () => {
     const tree: YAMLNode = {
       id: 'root',
       type: 'test',
@@ -172,7 +187,7 @@ describe('validateYAMLSemantics', () => {
           data: {
             type: 'segments',
             duration: '1m',
-            segments: [{ target_rps: '5', target_vus: '10' }],
+            segments: [{ target_rps: '5', max_vus: '10' }],
           },
         },
       ],
@@ -181,12 +196,12 @@ describe('validateYAMLSemantics', () => {
     expect(validateYAMLSemantics(tree)).toEqual([
       {
         nodeId: 'load',
-        message: 'Segment 1 must define exactly one target: Target RPS or Target VUs.',
+        message: 'Load segments are not supported by the editor and Pulse runtime. Remove segments before running.',
       },
     ]);
   });
 
-  it('rejects RPS segments without Max VUs', () => {
+  it('blocks segments embedded in another load type', () => {
     const tree: YAMLNode = {
       id: 'root',
       type: 'test',
@@ -197,8 +212,10 @@ describe('validateYAMLSemantics', () => {
           type: 'load',
           name: 'Load',
           data: {
-            type: 'segments',
+            type: 'throughput',
             duration: '1m',
+            target_rps: '5',
+            max_vus: '10',
             segments: [{ target_rps: '5' }],
           },
         },
@@ -208,40 +225,7 @@ describe('validateYAMLSemantics', () => {
     expect(validateYAMLSemantics(tree)).toEqual([
       {
         nodeId: 'load',
-        message: 'Segment 1 with Target RPS requires Max VUs.',
-      },
-    ]);
-  });
-
-  it('rejects segments whose durations do not equal the root duration', () => {
-    const tree: YAMLNode = {
-      id: 'root',
-      type: 'test',
-      name: 'Test',
-      children: [
-        {
-          id: 'load',
-          type: 'load',
-          name: 'Load',
-          data: {
-            type: 'segments',
-            duration: '10m',
-            segments: [
-              { duration: '1m', target_vus: '10' },
-              { duration: '2m', target_rps: '25', max_vus: '100' },
-              { duration: '4m', target_vus: '5' },
-              { duration: '1m', target_rps: '5', max_vus: '20' },
-              { duration: '3m', target_rps: '2', max_vus: '10' },
-            ],
-          },
-        },
-      ],
-    };
-
-    expect(validateYAMLSemantics(tree)).toEqual([
-      {
-        nodeId: 'load',
-        message: 'Segments Duration total must equal load Duration (10m). Current segments total is 11m.',
+        message: 'Load segments are not supported by the editor and Pulse runtime. Remove segments before running.',
       },
     ]);
   });
@@ -453,7 +437,8 @@ describe('validateYAMLSemantics', () => {
     expect(validateYAMLSemantics(tree)).toEqual([
       {
         nodeId: 'load-1',
-        message: 'Load stages are documented but unsupported by the editor and Pulse runtime. Remove stages before running.',
+        message:
+          'Load stages are documented but unsupported by the editor and Pulse runtime. Remove stages before running.',
       },
     ]);
   });
@@ -468,7 +453,19 @@ describe('validateYAMLSemantics', () => {
           id: 'load-intent',
           type: 'load',
           name: 'Intent Load',
-          data: { type: 'intent', target_value: 10, stages: [{ duration: '30s', target: 10 }] },
+          data: {
+            type: 'intent',
+            target_unit: 'rps',
+            target_value: 10,
+            duration: '1m',
+            warmup: '10s',
+            ramp_up: '10s',
+            ramp_down: '10s',
+            window: '2s',
+            min_vus: 1,
+            max_vus: 20,
+            stages: [{ duration: '30s', target: 10 }],
+          },
         },
       ],
     };
@@ -476,7 +473,8 @@ describe('validateYAMLSemantics', () => {
     expect(validateYAMLSemantics(tree)).toEqual([
       {
         nodeId: 'load-intent',
-        message: 'Load stages are documented but unsupported by the editor and Pulse runtime. Remove stages before running.',
+        message:
+          'Load stages are documented but unsupported by the editor and Pulse runtime. Remove stages before running.',
       },
     ]);
   });
