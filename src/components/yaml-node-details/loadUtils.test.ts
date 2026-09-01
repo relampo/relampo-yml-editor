@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { getIntentAutoConfig, normalizeLoadDataForYaml, parseTimeToSeconds } from './loadUtils';
+import { getIntentAutoConfig, isValidDuration, normalizeLoadDataForYaml, parseTimeToSeconds } from './loadUtils';
+
+describe('parseTimeToSeconds', () => {
+  it('returns zero for malformed durations', () => {
+    expect(parseTimeToSeconds('not-a-duration')).toBe(0);
+  });
+
+  it('rejects durations that overflow the numeric representation', () => {
+    expect(isValidDuration(`${'9'.repeat(309)}h`)).toBe(false);
+  });
+});
 
 describe('normalizeLoadDataForYaml manual-stop contract', () => {
   it('drops the cleared duration/iterations the manual-stop checkbox produces', () => {
@@ -43,6 +53,10 @@ describe('normalizeLoadDataForYaml unsupported structures', () => {
 });
 
 describe('normalizeLoadDataForYaml segments contract', () => {
+  it('does not inject a default profile when segments are missing', () => {
+    expect(normalizeLoadDataForYaml({ type: 'segments' })).toEqual({ type: 'segments' });
+  });
+
   it('preserves segments load definitions when saving YAML', () => {
     const segments = [
       { name: 'baseline', target_rps: '5', max_vus: '20' },

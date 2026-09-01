@@ -3,6 +3,7 @@ import {
   getIntentAutoConfig,
   getIntentTargetData,
   loadColors,
+  normalizeLoadSegments,
   parseTimeToSeconds,
   type LoadData,
   type LoadSegmentData,
@@ -973,7 +974,7 @@ function getTimeRanges(data: LoadData, loadType: LoadType, maxTime: number) {
   if (loadType === 'segments') {
     return getSegmentVisualizationEntries(data).map((segment, index) => ({
       key: `segment-${index}`,
-      label: segment.name || `S${index + 1}`,
+      label: [segment.name, segment.targetLabel].filter(Boolean).join(' · ') || `S${index + 1}`,
       start: segment.start,
       end: segment.end,
     }));
@@ -1049,7 +1050,7 @@ function getYAxisLabel(data: LoadData, loadType: LoadType, intentTargetUnit: str
     const hasVus = segments.some(segment => positiveNumber(segment.target_vus) > 0);
     if (hasRps && !hasVus) return t('yamlEditor.loadVisualization.labels.rps');
     if (hasVus && !hasRps) return t('yamlEditor.loadVisualization.labels.users');
-    return 'Target';
+    return t('yamlEditor.loadVisualization.labels.capacity');
   }
   return loadType === 'throughput' || (loadType === 'intent' && intentTargetUnit === 'rps')
     ? t('yamlEditor.loadVisualization.labels.rps')
@@ -1067,17 +1068,21 @@ function getSegmentVisualizationEntries(data: LoadData) {
   const hasAllDurations = explicitDurations.every(duration => duration > 0);
   const totalDuration = parseTimeToSeconds(String(data.duration ?? '').trim());
   const fallbackDuration = !hasAnyDuration && totalDuration > 0 ? totalDuration / segments.length : 0;
+  const hasRps = segments.some(segment => positiveNumber(segment.target_rps) > 0);
+  const hasVus = segments.some(segment => positiveNumber(segment.target_vus) > 0);
+  const useCapacityAxis = hasRps && hasVus;
 
   let elapsed = 0;
   return segments
     .map((segment, index) => {
       const duration = hasAllDurations ? explicitDurations[index] : fallbackDuration;
-      const value = segmentDisplayValue(segment);
+      const { value, targetLabel } = segmentDisplayValue(segment, useCapacityAxis);
       const entry = {
         name: String(segment.name ?? '').trim(),
         start: elapsed,
         end: elapsed + duration,
         value,
+        targetLabel,
       };
       elapsed = entry.end;
       return entry;
@@ -1086,18 +1091,20 @@ function getSegmentVisualizationEntries(data: LoadData) {
 }
 
 function normalizeVisualizationSegments(value: LoadData['segments']): LoadSegmentData[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-  return value.filter(segment => segment && typeof segment === 'object') as LoadSegmentData[];
+  return normalizeLoadSegments(value);
 }
 
-function segmentDisplayValue(segment: LoadSegmentData): number {
+function segmentDisplayValue(segment: LoadSegmentData, useCapacityAxis: boolean): { value: number; targetLabel: string } {
   const targetVus = positiveNumber(segment.target_vus);
   if (targetVus > 0) {
-    return targetVus;
+    return { value: targetVus, targetLabel: `${targetVus} VUs` };
   }
-  return positiveNumber(segment.target_rps);
+  const targetRps = positiveNumber(segment.target_rps);
+  const maxVus = positiveNumber(segment.max_vus);
+  return {
+    value: useCapacityAxis ? maxVus : targetRps,
+    targetLabel: maxVus > 0 ? `${targetRps} RPS (max ${maxVus} VUs)` : `${targetRps} RPS`,
+  };
 }
 
 function positiveNumber(value: unknown): number {

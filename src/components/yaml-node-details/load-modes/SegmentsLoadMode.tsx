@@ -7,7 +7,13 @@ import {
   LoadModeProps,
   LoadSection,
 } from './shared';
-import type { LoadDataValue, LoadSegmentData } from '../loadUtils';
+import {
+  getSegmentDurationSummary,
+  normalizeLoadSegments,
+  type LoadDataValue,
+  type LoadSegmentData,
+  type SegmentTargetType,
+} from '../loadUtils';
 
 const GLOBAL_SEGMENT_FIELDS = [
   { field: 'duration', label: 'Total Duration', placeholder: '1h', helpText: LOAD_DURATION_HELP_TEXT },
@@ -41,7 +47,7 @@ export function SegmentsLoadMode({ data, onChange }: LoadModeProps) {
     onChange('segments', next);
   };
 
-  const updateSegmentTargetType = (index: number, targetType: string) => {
+  const updateSegmentTargetType = (index: number, targetType: SegmentTargetType) => {
     const next = segments.map((segment, segmentIndex) => {
       if (segmentIndex !== index) return segment;
       const currentTarget = String(segment.target_rps ?? segment.target_vus ?? '').trim() || (targetType === 'rps' ? '5' : '50');
@@ -180,14 +186,14 @@ function SegmentInput({
   onChange,
   disabled = false,
 }: {
-  value: LoadDataValue;
+  value: string | number | undefined;
   placeholder?: string;
   onChange: (value: string) => void;
   disabled?: boolean;
 }) {
   return (
     <input
-      value={typeof value === 'boolean' || Array.isArray(value) ? '' : (value ?? '')}
+      value={value ?? ''}
       placeholder={placeholder}
       disabled={disabled}
       onChange={event => onChange(event.target.value.slice(0, 32))}
@@ -196,11 +202,17 @@ function SegmentInput({
   );
 }
 
-function SegmentTargetTypeSelect({ value, onChange }: { value: 'rps' | 'vus'; onChange: (value: string) => void }) {
+function SegmentTargetTypeSelect({
+  value,
+  onChange,
+}: {
+  value: SegmentTargetType;
+  onChange: (value: SegmentTargetType) => void;
+}) {
   return (
     <select
       value={value}
-      onChange={event => onChange(event.target.value)}
+      onChange={event => onChange(event.target.value === 'vus' ? 'vus' : 'rps')}
       className="min-h-10 w-full border-0 border-r border-white/5 bg-transparent px-3 py-2 font-mono text-sm text-zinc-200 outline-none focus:bg-white/[0.03]"
     >
       <option value="rps">RPS</option>
@@ -210,11 +222,7 @@ function SegmentTargetTypeSelect({ value, onChange }: { value: 'rps' | 'vus'; on
 }
 
 function normalizeSegments(value: LoadDataValue): LoadSegmentData[] {
-  if (!Array.isArray(value)) {
-    return [{ ...DEFAULT_SEGMENT }];
-  }
-  const segments = value.filter(segment => segment && typeof segment === 'object') as LoadSegmentData[];
-  return segments.length > 0 ? segments : [{ ...DEFAULT_SEGMENT }];
+  return normalizeLoadSegments(value, [DEFAULT_SEGMENT]);
 }
 
 function removeEmptySegmentFields(segment: LoadSegmentData): LoadSegmentData {
@@ -223,40 +231,17 @@ function removeEmptySegmentFields(segment: LoadSegmentData): LoadSegmentData {
   ) as LoadSegmentData;
 }
 
-function segmentTargetType(segment: LoadSegmentData): 'rps' | 'vus' {
+function segmentTargetType(segment: LoadSegmentData): SegmentTargetType {
   return segment.target_vus !== undefined && String(segment.target_vus).trim() !== '' ? 'vus' : 'rps';
 }
 
 function getDurationSummary(rootDuration: LoadDataValue, segments: LoadSegmentData[]) {
-  const rootSeconds = parseDurationSeconds(String(rootDuration ?? '').trim());
-  const segmentSeconds = segments.reduce((total, segment) => {
-    return total + parseDurationSeconds(String(segment.duration ?? '').trim());
-  }, 0);
-  const hasSegmentDurations = segments.some(segment => parseDurationSeconds(String(segment.duration ?? '').trim()) > 0);
-  const matches = !hasSegmentDurations || rootSeconds === 0 || Math.abs(rootSeconds - segmentSeconds) < 0.001;
+  const summary = getSegmentDurationSummary(rootDuration, segments);
   return {
-    matches,
-    rootLabel: rootSeconds > 0 ? formatDuration(rootSeconds) : 'auto',
-    segmentsLabel: hasSegmentDurations ? formatDuration(segmentSeconds) : 'auto',
+    matches: summary.matches,
+    rootLabel: summary.rootSeconds > 0 ? formatDuration(summary.rootSeconds) : 'auto',
+    segmentsLabel: summary.hasSegmentDurations ? formatDuration(summary.segmentSeconds) : 'auto',
   };
-}
-
-function parseDurationSeconds(value: string): number {
-  const match = value.match(/^(\d+(?:\.\d+)?)(ms|s|m|h)?$/);
-  if (!match) return 0;
-  const amount = Number(match[1]);
-  if (!Number.isFinite(amount)) return 0;
-  switch (match[2]) {
-    case 'ms':
-      return amount / 1000;
-    case 'm':
-      return amount * 60;
-    case 'h':
-      return amount * 3600;
-    case 's':
-    default:
-      return amount;
-  }
 }
 
 function formatDuration(seconds: number): string {

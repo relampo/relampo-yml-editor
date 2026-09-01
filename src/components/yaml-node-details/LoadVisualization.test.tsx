@@ -123,4 +123,24 @@ describe('LoadVisualization', () => {
     expect(screen.getByText('30s')).toBeInTheDocument();
     expect(screen.queryByText('Steady')).not.toBeInTheDocument();
   });
+
+  it('uses VU capacity as the axis for mixed RPS and VU segments', () => {
+    renderWithLanguage(
+      <LoadVisualization
+        loadType="segments"
+        data={{
+          type: 'segments',
+          duration: '20s',
+          segments: [
+            { name: 'rps-block', target_rps: '25', max_vus: '100' },
+            { name: 'vus-block', target_vus: '25' },
+          ],
+        }}
+      />,
+    );
+
+    expect(screen.getByText(/Peak VU capacity:\s*100\s*\|\s*Total:\s*20s/i)).toBeInTheDocument();
+    expect(screen.getByText(/rps-block.*25 RPS \(max 100 VUs\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/vus-block.*25 VUs/i)).toBeInTheDocument();
+  });
 });
