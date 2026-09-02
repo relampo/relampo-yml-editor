@@ -1,4 +1,9 @@
-import { normalizeLoadType, parseTimeToSeconds } from '../components/yaml-node-details/loadUtils';
+import {
+  getSegmentDurationSummary,
+  isValidDuration,
+  normalizeLoadType,
+  parseTimeToSeconds,
+} from '../components/yaml-node-details/loadUtils';
 import type { YAMLNode } from '../types/yaml';
 import { normalizeBalancedExecutionMode } from './balancedController';
 
@@ -11,16 +16,12 @@ const UNSUPPORTED_STAGES_MESSAGE =
   'Load stages are documented but unsupported by the editor and Pulse runtime. Remove stages before running.';
 const UNSUPPORTED_STAGES_MESSAGE_ES =
   'Las etapas de carga están documentadas, pero el editor y el runtime de Pulse no las admiten. Elimina stages antes de ejecutar.';
-const UNSUPPORTED_SEGMENTS_MESSAGE =
-  'Load segments are not supported by the editor and Pulse runtime. Remove segments before running.';
-const UNSUPPORTED_SEGMENTS_MESSAGE_ES =
-  'El editor y el runtime de Pulse no admiten segmentos de carga. Elimina segments antes de ejecutar.';
+const UNSUPPORTED_THROUGHPUT_SEGMENTS_MESSAGE =
+  'Throughput load does not support segments. Remove segments before running.';
 
 export function localizeYAMLSemanticError(message: string, language: string): string {
   if (language === 'es' && message === UNSUPPORTED_STAGES_MESSAGE) return UNSUPPORTED_STAGES_MESSAGE_ES;
   if (language !== 'es' && message === UNSUPPORTED_STAGES_MESSAGE_ES) return UNSUPPORTED_STAGES_MESSAGE;
-  if (language === 'es' && message === UNSUPPORTED_SEGMENTS_MESSAGE) return UNSUPPORTED_SEGMENTS_MESSAGE_ES;
-  if (language !== 'es' && message === UNSUPPORTED_SEGMENTS_MESSAGE_ES) return UNSUPPORTED_SEGMENTS_MESSAGE;
   return message;
 }
 
@@ -86,22 +87,16 @@ export function validateYAMLSemantics(tree: YAMLNode | null): YAMLSemanticIssue[
       });
     }
 
-    if (
-      node.type === 'load' &&
-      (normalizeLoadType(node.data?.type) === 'segments' || Object.hasOwn(node.data ?? {}, 'segments'))
-    ) {
-      issues.push({
-        nodeId: node.id,
-        message: UNSUPPORTED_SEGMENTS_MESSAGE,
-      });
-    }
-
     if (node.type === 'load' && normalizeLoadType(node.data?.type) === 'throughput') {
       validateThroughputLoadNode(node, issues);
     }
 
     if (node.type === 'load' && normalizeLoadType(node.data?.type) === 'intent') {
       validateIntentLoadNode(node, issues);
+    }
+
+    if (node.type === 'load' && normalizeLoadType(node.data?.type) === 'segments') {
+      validateSegmentsLoadNode(node, issues);
     }
 
     // Manual-stop is a non-intent contract; intent loads have no such control,
@@ -141,6 +136,21 @@ export function validateYAMLSemantics(tree: YAMLNode | null): YAMLSemanticIssue[
 }
 
 function validateThroughputLoadNode(node: YAMLNode, issues: YAMLSemanticIssue[]) {
+  if (Object.hasOwn(node.data ?? {}, 'segments')) {
+    issues.push({
+      nodeId: node.id,
+      message: UNSUPPORTED_THROUGHPUT_SEGMENTS_MESSAGE,
+    });
+  }
+
+  const duration = valueText(node.data?.duration);
+  if (duration !== '' && (!isValidDuration(duration) || parseTimeToSeconds(duration) <= 0)) {
+    issues.push({
+      nodeId: node.id,
+      message: 'Throughput load Duration must be a positive duration when provided.',
+    });
+  }
+
   const targetRps = Number(String(node.data?.target_rps ?? '').trim() || 0);
   if (!Number.isFinite(targetRps) || targetRps <= 0) {
     issues.push({
@@ -158,15 +168,22 @@ function validateThroughputLoadNode(node: YAMLNode, issues: YAMLSemanticIssue[])
     return;
   }
 
-  const minVus = Number(String(node.data?.min_vus ?? '').trim() || 0);
+  const minVusValue = valueText(node.data?.min_vus);
+  const minVus = Number(minVusValue);
   const maxVus = Number(maxVusValue);
-  if (!Number.isFinite(maxVus) || maxVus <= 0) {
+  if (minVusValue !== '' && !isPositiveInteger(minVus)) {
     issues.push({
       nodeId: node.id,
-      message: 'Throughput Max VUs must be greater than 0.',
+      message: 'Throughput Min VUs must be a positive integer.',
     });
   }
-  if (Number.isFinite(minVus) && minVus > 0 && Number.isFinite(maxVus) && maxVus > 0 && minVus > maxVus) {
+  if (!isPositiveInteger(maxVus)) {
+    issues.push({
+      nodeId: node.id,
+      message: 'Throughput Max VUs must be a positive integer.',
+    });
+  }
+  if (isPositiveInteger(minVus) && isPositiveInteger(maxVus) && minVus > maxVus) {
     issues.push({
       nodeId: node.id,
       message: 'Throughput Min VUs cannot be greater than Max VUs.',
@@ -287,4 +304,161 @@ function positiveNumber(value: unknown): number | null {
 function nonNegativeNumber(value: unknown): number | null {
   const parsed = Number(String(value ?? '').trim());
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+}
+
+function validateSegmentsLoadNode(node: YAMLNode, issues: YAMLSemanticIssue[]) {
+  const segments = Array.isArray(node.data?.segments) ? node.data.segments : [];
+  if (segments.length === 0) {
+    issues.push({
+      nodeId: node.id,
+      message: 'Segments load requires at least one segment.',
+    });
+    return;
+  }
+
+  const durationSummary = getSegmentDurationSummary(node.data?.duration, segments);
+  const rootDurationValue = valueText(node.data?.duration);
+  if (!durationSummary.rootDurationValid && rootDurationValue !== '') {
+    issues.push({
+      nodeId: node.id,
+      message: 'Segments load Duration must be a positive duration when provided.',
+    });
+  }
+
+  durationSummary.segmentDurationValues.forEach((duration, index) => {
+    if (duration !== '' && (!isValidDuration(duration) || parseTimeToSeconds(duration) <= 0)) {
+      issues.push({
+        nodeId: node.id,
+        message: `Segment ${index + 1} must define a positive Duration.`,
+      });
+    }
+  });
+  if (durationSummary.hasMixedDurations) {
+    issues.push({
+      nodeId: node.id,
+      message: 'Segments must either all define Duration or all use the total Duration.',
+    });
+  }
+  if (durationSummary.explicitDurationCount === 0 && rootDurationValue === '') {
+    issues.push({
+      nodeId: node.id,
+      message: 'Segments load requires a total Duration when segment durations are omitted.',
+    });
+  }
+  if (
+    durationSummary.explicitDurationCount === 0 &&
+    durationSummary.rootSeconds > 0 &&
+    !durationSummary.matches
+  ) {
+    issues.push({
+      nodeId: node.id,
+      message: 'Segments load Duration must divide evenly across segments when segment durations are omitted.',
+    });
+  }
+  if (
+    durationSummary.explicitDurationCount === segments.length &&
+    durationSummary.rootSeconds > 0 &&
+    durationSummary.allSegmentDurationsValid &&
+    !durationSummary.matches
+  ) {
+    const segmentDurationTotal = durationSummary.segmentSeconds;
+    issues.push({
+      nodeId: node.id,
+      message: `Segments Duration total must equal load Duration (${formatDuration(durationSummary.rootSeconds)}). Current segments total is ${formatDuration(segmentDurationTotal)}.`,
+    });
+  }
+
+  segments.forEach((segment, index) => {
+    const targetRpsValue = valueText(segment?.target_rps);
+    const targetVusValue = valueText(segment?.target_vus);
+    const targetRps = Number(targetRpsValue);
+    const targetVus = Number(targetVusValue);
+    const hasTargetRps = targetRpsValue !== '';
+    const hasTargetVus = targetVusValue !== '';
+    if (hasTargetRps === hasTargetVus) {
+      issues.push({
+        nodeId: node.id,
+        message: `Segment ${index + 1} must define exactly one target: Target RPS or Target VUs.`,
+      });
+    }
+    if (hasTargetRps && !Number.isFinite(targetRps)) {
+      issues.push({
+        nodeId: node.id,
+        message: `Segment ${index + 1} Target RPS must be numeric.`,
+      });
+    } else if (hasTargetRps && targetRps <= 0) {
+      issues.push({
+        nodeId: node.id,
+        message: `Segment ${index + 1} Target RPS must be greater than 0.`,
+      });
+    }
+    if (hasTargetVus && !Number.isInteger(targetVus)) {
+      issues.push({
+        nodeId: node.id,
+        message: `Segment ${index + 1} Target VUs must be an integer.`,
+      });
+    } else if (hasTargetVus && targetVus <= 0) {
+      issues.push({
+        nodeId: node.id,
+        message: `Segment ${index + 1} Target VUs must be greater than 0.`,
+      });
+    }
+
+    const minVusValue = valueText(segment?.min_vus);
+    const maxVusValue = valueText(segment?.max_vus);
+    const minVus = Number(minVusValue);
+    const maxVus = Number(maxVusValue);
+    if (hasTargetRps && !hasTargetVus && maxVusValue === '') {
+      issues.push({
+        nodeId: node.id,
+        message: `Segment ${index + 1} with Target RPS requires Max VUs.`,
+      });
+    }
+    if (hasTargetRps && !hasTargetVus && minVusValue !== '' && !isPositiveInteger(minVus)) {
+      issues.push({
+        nodeId: node.id,
+        message: `Segment ${index + 1} Min VUs must be a positive integer.`,
+      });
+    }
+    if (hasTargetRps && !hasTargetVus && maxVusValue !== '' && !isPositiveInteger(maxVus)) {
+      issues.push({
+        nodeId: node.id,
+        message: `Segment ${index + 1} Max VUs must be a positive integer.`,
+      });
+    }
+    if (
+      hasTargetRps &&
+      !hasTargetVus &&
+      isPositiveInteger(minVus) &&
+      isPositiveInteger(maxVus) &&
+      minVus > maxVus
+    ) {
+      issues.push({
+        nodeId: node.id,
+        message: `Segment ${index + 1} Max VUs cannot be less than Min VUs.`,
+      });
+    }
+    if (hasTargetVus && (minVusValue !== '' || maxVusValue !== '')) {
+      issues.push({
+        nodeId: node.id,
+        message: `Segment ${index + 1} can use Min VUs / Max VUs only with Target RPS.`,
+      });
+    }
+  });
+}
+
+function valueText(value: unknown): string {
+  return String(value ?? '').trim();
+}
+
+function isPositiveInteger(value: number): boolean {
+  return Number.isInteger(value) && Number.isFinite(value) && value > 0;
+}
+
+function formatDuration(seconds: number): string {
+  if (seconds > 0 && seconds < 1) return `${Math.round(seconds * 1000)}ms`;
+  const rounded = Math.max(0, Math.round(seconds));
+  if (rounded % 3600 === 0 && rounded > 0) return `${rounded / 3600}h`;
+  if (rounded % 60 === 0 && rounded > 0) return `${rounded / 60}m`;
+  return `${rounded}s`;
 }

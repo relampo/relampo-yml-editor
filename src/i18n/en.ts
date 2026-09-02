@@ -684,6 +684,7 @@ export const enTranslations = {
         time: 'Time',
         users: 'Users',
         rps: 'RPS',
+        capacity: 'VU capacity',
       },
       phases: {
         warmup: 'warmup',

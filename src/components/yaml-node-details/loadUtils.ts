@@ -9,6 +9,7 @@ export type LoadSegmentData = {
   min_vus?: string | number;
   max_vus?: string | number;
 };
+export type SegmentTargetType = 'rps' | 'vus';
 export type IntentTargetData = {
   type?: string;
   value?: string | number;
@@ -30,6 +31,17 @@ export type LoadDataValue =
   | IntentErrorRateData
   | undefined;
 export type LoadData = Record<string, LoadDataValue>;
+
+export function normalizeLoadSegments(value: unknown, fallback: LoadSegmentData[] = []): LoadSegmentData[] {
+  if (!Array.isArray(value)) {
+    return fallback.map(segment => ({ ...segment }));
+  }
+  const segments = value.filter(
+    (segment): segment is LoadSegmentData =>
+      segment !== null && typeof segment === 'object' && !Array.isArray(segment),
+  );
+  return segments.length > 0 ? segments : fallback.map(segment => ({ ...segment }));
+}
 
 export function toLoadData(value: Record<string, unknown> | undefined): LoadData {
   if (!value) return {};
@@ -147,8 +159,6 @@ const loadTypeDefaults: Record<LoadType, LoadData> = {
     iterations: '0',
     min_vus: '1',
     max_vus: '80',
-    ramp_up: '1m',
-    ramp_down: '1m',
   },
   intent: {
     target_unit: 'rps',
@@ -164,24 +174,23 @@ const loadTypeDefaults: Record<LoadType, LoadData> = {
     min_vus: '1',
     max_vus: '80',
   },
-  segments: {},
+  segments: {
+    duration: '1h',
+    iterations: '0',
+    segments: [
+      { name: 'baseline', target_rps: '5', max_vus: '20' },
+      { name: 'checkout_pressure', target_rps: '25', min_vus: '5', max_vus: '100' },
+      { name: 'fixed_users', target_vus: '50' },
+      { name: 'recovery', target_rps: '5', max_vus: '20' },
+    ],
+  },
 };
 
 const loadTypeAllowedKeys: Record<LoadType, string[]> = {
   constant: ['type', 'users', 'duration', 'iterations', 'ramp_up', 'run_until_stopped'],
   linear: ['type', 'start_users', 'end_users', 'duration', 'iterations', 'run_until_stopped'],
   ramp_up_down: ['type', 'users', 'duration', 'iterations', 'ramp_up', 'ramp_down', 'run_until_stopped'],
-  throughput: [
-    'type',
-    'target_rps',
-    'duration',
-    'iterations',
-    'ramp_up',
-    'ramp_down',
-    'min_vus',
-    'max_vus',
-    'run_until_stopped',
-  ],
+  throughput: ['type', 'target_rps', 'duration', 'iterations', 'min_vus', 'max_vus', 'run_until_stopped'],
   intent: [
     'type',
     'target_unit',
@@ -242,6 +251,73 @@ export function parseTimeToSeconds(timeStr: string): number {
     default:
       return num;
   }
+}
+
+export function isValidDuration(value: unknown): boolean {
+  const text = String(value ?? '').trim();
+  return text === '' || (/^(\d+(?:\.\d+)?)(ms|s|m|h)?$/.test(text) && Number.isFinite(parseTimeToSeconds(text)));
+}
+
+function isDurationEvenlyDivisible(durationSeconds: number, segmentCount: number): boolean {
+  if (!Number.isFinite(durationSeconds) || durationSeconds <= 0 || segmentCount <= 0) {
+    return false;
+  }
+  const nanoseconds = Math.round(durationSeconds * 1_000_000_000);
+  return Number.isSafeInteger(nanoseconds) && nanoseconds % segmentCount === 0;
+}
+
+function areDurationsEqual(leftSeconds: number, rightSeconds: number): boolean {
+  const leftNanoseconds = Math.round(leftSeconds * 1_000_000_000);
+  const rightNanoseconds = Math.round(rightSeconds * 1_000_000_000);
+  return Number.isSafeInteger(leftNanoseconds) && Number.isSafeInteger(rightNanoseconds) && leftNanoseconds === rightNanoseconds;
+}
+
+export interface SegmentDurationSummary {
+  rootSeconds: number;
+  segmentSeconds: number;
+  segmentDurationValues: string[];
+  explicitDurationCount: number;
+  hasSegmentDurations: boolean;
+  hasMixedDurations: boolean;
+  rootDurationValid: boolean;
+  allSegmentDurationsValid: boolean;
+  matches: boolean;
+}
+
+export function getSegmentDurationSummary(rootDuration: unknown, segments: LoadSegmentData[]): SegmentDurationSummary {
+  const rootDurationValue = String(rootDuration ?? '').trim();
+  const rootSeconds = parseTimeToSeconds(rootDurationValue);
+  const segmentDurationValues = segments.map(segment => String(segment.duration ?? '').trim());
+  const explicitDurationCount = segmentDurationValues.filter(value => value !== '').length;
+  const hasSegmentDurations = explicitDurationCount > 0;
+  const allSegmentDurationsValid = segmentDurationValues.every(
+    value => value !== '' && isValidDuration(value) && parseTimeToSeconds(value) > 0,
+  );
+  const hasMixedDurations = hasSegmentDurations && explicitDurationCount !== segments.length;
+  const rootDurationValid =
+    rootDurationValue === '' || (isValidDuration(rootDurationValue) && rootSeconds > 0);
+  const segmentSeconds = segmentDurationValues.reduce(
+    (total, duration) => total + parseTimeToSeconds(duration),
+    0,
+  );
+  const matches =
+    rootDurationValid &&
+    !hasMixedDurations &&
+    (hasSegmentDurations
+      ? allSegmentDurationsValid && (rootDurationValue === '' || areDurationsEqual(rootSeconds, segmentSeconds))
+      : rootSeconds > 0 && isDurationEvenlyDivisible(rootSeconds, segments.length));
+
+  return {
+    rootSeconds,
+    segmentSeconds,
+    segmentDurationValues,
+    explicitDurationCount,
+    hasSegmentDurations,
+    hasMixedDurations,
+    rootDurationValid,
+    allSegmentDurationsValid,
+    matches,
+  };
 }
 
 function formatSeconds(seconds: number): string {
@@ -391,6 +467,7 @@ export function limitedInputValue(value: string): string {
 interface LoadDataBuildOptions {
   coerceIntentEnums?: boolean;
   preserveExplicitEmpty?: boolean;
+  applyDefaults?: boolean;
 }
 
 export function buildLoadDataForType(
@@ -398,7 +475,7 @@ export function buildLoadDataForType(
   currentData: LoadData = {},
   options: LoadDataBuildOptions = {},
 ): LoadData {
-  const { coerceIntentEnums = true, preserveExplicitEmpty = false } = options;
+  const { coerceIntentEnums = true, preserveExplicitEmpty = false, applyDefaults = true } = options;
   const defaults =
     loadType === 'intent'
       ? { ...loadTypeDefaults.intent, ...getIntentAutoConfig(currentData) }
@@ -467,6 +544,10 @@ export function buildLoadDataForType(
     }
   }
 
+  if (!applyDefaults) {
+    return normalized;
+  }
+
   for (const [key, defaultValue] of Object.entries(defaults)) {
     if (key === 'type' || !allowed.has(key)) {
       continue;
@@ -517,9 +598,15 @@ export function normalizeLoadDataForYaml(data: LoadData | Record<string, unknown
   }
 
   if (loadType === 'segments') {
-    return { ...rawData, type: rawData.type || 'segments' } as LoadData;
+    const normalizedSegments = buildLoadDataForType(loadType, scalarData, {
+      preserveExplicitEmpty: true,
+      applyDefaults: false,
+    });
+    if (Array.isArray(rawData.segments)) {
+      normalizedSegments.segments = rawData.segments as LoadSegmentData[];
+    }
+    return normalizedSegments;
   }
-
   const normalized = {
     ...rawData,
     type: getYamlLoadType(loadType),

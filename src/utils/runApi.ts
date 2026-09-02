@@ -26,7 +26,6 @@ export interface RunMetricsSnapshot {
   elapsed_ms: number;
   rps: number;
   active_users: number;
-  configured_vus?: number;
   executed_vus?: number;
   avg_latency: number;
   p95_latency: number;
@@ -325,7 +324,6 @@ function isRunMetricsSnapshot(value: unknown): value is RunMetricsSnapshot {
     isFiniteNumber(value.elapsed_ms) &&
     isFiniteNumber(value.rps) &&
     isFiniteNumber(value.active_users) &&
-    (value.configured_vus === undefined || isFiniteNumber(value.configured_vus)) &&
     (value.executed_vus === undefined || isFiniteNumber(value.executed_vus)) &&
     isFiniteNumber(value.avg_latency) &&
     isFiniteNumber(value.p95_latency) &&

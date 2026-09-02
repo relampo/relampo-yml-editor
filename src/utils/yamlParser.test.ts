@@ -636,6 +636,24 @@ scenarios:
     expect(load!.data!.iterations).toBeUndefined();
   });
 
+  it('preserves a missing segments list so semantic validation can reject it', () => {
+    const yaml = `
+test:
+  name: t
+scenarios:
+  - name: s
+    load:
+      type: segments
+    steps: []
+`;
+
+    const tree = parseYAMLToTree(yaml)!;
+    const load = tree.children!.find(c => c.type === 'scenarios')!.children![0].children!.find(c => c.type === 'load');
+
+    expect(load!.data!.segments).toBeUndefined();
+    expect(treeToYAML(tree)).not.toContain('target_rps:');
+  });
+
   it('parses data_source node', () => {
     const yaml = `
 test:

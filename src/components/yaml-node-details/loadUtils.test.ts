@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { getIntentAutoConfig, normalizeLoadDataForYaml, parseTimeToSeconds } from './loadUtils';
+import { getIntentAutoConfig, isValidDuration, normalizeLoadDataForYaml, parseTimeToSeconds } from './loadUtils';
+
+describe('parseTimeToSeconds', () => {
+  it('returns zero for malformed durations', () => {
+    expect(parseTimeToSeconds('not-a-duration')).toBe(0);
+  });
+
+  it('rejects durations that overflow the numeric representation', () => {
+    expect(isValidDuration(`${'9'.repeat(309)}h`)).toBe(false);
+  });
+});
 
 describe('normalizeLoadDataForYaml manual-stop contract', () => {
   it('drops the cleared duration/iterations the manual-stop checkbox produces', () => {
@@ -42,12 +52,31 @@ describe('normalizeLoadDataForYaml unsupported structures', () => {
   });
 });
 
-describe('normalizeLoadDataForYaml unsupported load types', () => {
-  it('preserves unsupported segments without injecting editor defaults', () => {
-    const normalized = normalizeLoadDataForYaml({ type: 'segments', segments: [] }) as Record<string, unknown>;
+describe('normalizeLoadDataForYaml segments contract', () => {
+  it('does not inject a default profile when segments are missing', () => {
+    expect(normalizeLoadDataForYaml({ type: 'segments' })).toEqual({ type: 'segments' });
+  });
 
-    expect(normalized).toEqual({ type: 'segments', segments: [] });
-    expect(normalized.duration).toBeUndefined();
+  it('preserves segments load definitions when saving YAML', () => {
+    const segments = [
+      { name: 'baseline', target_rps: '5', max_vus: '20' },
+      { name: 'fixed_users', target_vus: '50' },
+    ];
+
+    const normalized = normalizeLoadDataForYaml({
+      type: 'segments',
+      duration: '1h',
+      iterations: '10',
+      segments,
+      users: '20',
+    }) as Record<string, unknown>;
+
+    expect(normalized).toEqual({
+      type: 'segments',
+      duration: '1h',
+      iterations: '10',
+      segments,
+    });
   });
 });
 

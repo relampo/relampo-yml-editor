@@ -685,6 +685,7 @@ export const esTranslations = {
         time: 'Tiempo',
         users: 'Usuarios',
         rps: 'RPS',
+        capacity: 'Capacidad de VU',
       },
       phases: {
         warmup: 'warmup',

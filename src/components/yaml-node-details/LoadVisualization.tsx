@@ -3,8 +3,10 @@ import {
   getIntentAutoConfig,
   getIntentTargetData,
   loadColors,
+  normalizeLoadSegments,
   parseTimeToSeconds,
   type LoadData,
+  type LoadSegmentData,
   type LoadType,
 } from './loadUtils';
 
@@ -268,7 +270,10 @@ function computeLoadVisualizationModel(
   );
   const maxUsers = Math.max(peakUsers, 10);
   const totalTime = Math.max(...visualizationPoints.map(point => point.time), 0);
-  const hasFiniteDuration = parseTimeToSeconds(String(effectiveData.duration ?? '')) > 0;
+  const hasFiniteDuration =
+    loadType === 'segments'
+      ? totalTime > 0
+      : parseTimeToSeconds(String(effectiveData.duration ?? '')) > 0;
   const maxTime = hasFiniteDuration ? totalTime || 1 : Math.max(totalTime, 60);
   const chartHeightPx = 184;
   const yAxisLabel = getYAxisLabel(effectiveData, loadType, intentTargetUnit, t);
@@ -952,12 +957,28 @@ function getVisualizationPoints(data: LoadData, loadType: LoadType) {
     }
 
     points.push({ time: duration, users: steadyValue });
+  } else if (loadType === 'segments') {
+    const segments = getSegmentVisualizationEntries(data);
+    for (const segment of segments) {
+      points.push(
+        { time: segment.start, users: segment.value },
+        { time: segment.end, users: segment.value },
+      );
+    }
   }
 
   return points;
 }
 
 function getTimeRanges(data: LoadData, loadType: LoadType, maxTime: number) {
+  if (loadType === 'segments') {
+    return getSegmentVisualizationEntries(data).map((segment, index) => ({
+      key: `segment-${index}`,
+      label: [segment.name, segment.targetLabel].filter(Boolean).join(' · ') || `S${index + 1}`,
+      start: segment.start,
+      end: segment.end,
+    }));
+  }
   if (loadType === 'constant') {
     const rampUp = Math.max(0, parseTimeToSeconds(String(data.ramp_up || '0s')));
     return rampUp > 0
@@ -987,6 +1008,21 @@ function getTimeRanges(data: LoadData, loadType: LoadType, maxTime: number) {
 }
 
 function getTransitionMarkers(data: LoadData, loadType: LoadType, maxTime: number) {
+  if (loadType === 'segments') {
+    const markers: Array<{ key: string; time: number; label: string }> = [];
+    const entries = getSegmentVisualizationEntries(data);
+    for (let index = 1; index < entries.length; index += 1) {
+      const segment = entries[index];
+      if (segment.start > 0 && segment.start < maxTime) {
+        markers.push({
+          key: `segment-${index}`,
+          time: segment.start,
+          label: formatTimeLabel(segment.start),
+        });
+      }
+    }
+    return markers;
+  }
   if (loadType === 'constant') {
     const rampUp = Math.max(0, parseTimeToSeconds(String(data.ramp_up || '0s')));
     return rampUp > 0 && rampUp < maxTime ? [{ key: 'ramp-up', time: rampUp, label: formatTimeLabel(rampUp) }] : [];
@@ -1013,9 +1049,76 @@ function getTransitionMarkers(data: LoadData, loadType: LoadType, maxTime: numbe
 }
 
 function getYAxisLabel(data: LoadData, loadType: LoadType, intentTargetUnit: string, t: (key: string) => string) {
+  if (loadType === 'segments') {
+    const segments = normalizeVisualizationSegments(data.segments);
+    const hasRps = segments.some(segment => positiveNumber(segment.target_rps) > 0);
+    const hasVus = segments.some(segment => positiveNumber(segment.target_vus) > 0);
+    if (hasRps && !hasVus) return t('yamlEditor.loadVisualization.labels.rps');
+    if (hasVus && !hasRps) return t('yamlEditor.loadVisualization.labels.users');
+    return t('yamlEditor.loadVisualization.labels.capacity');
+  }
   return loadType === 'throughput' || (loadType === 'intent' && intentTargetUnit === 'rps')
     ? t('yamlEditor.loadVisualization.labels.rps')
     : t('yamlEditor.loadVisualization.labels.users');
+}
+
+function getSegmentVisualizationEntries(data: LoadData) {
+  const segments = normalizeVisualizationSegments(data.segments);
+  if (segments.length === 0) {
+    return [];
+  }
+
+  const explicitDurations = segments.map(segment => parseTimeToSeconds(String(segment.duration ?? '').trim()));
+  const hasAnyDuration = explicitDurations.some(duration => duration > 0);
+  const hasAllDurations = explicitDurations.every(duration => duration > 0);
+  const totalDuration = parseTimeToSeconds(String(data.duration ?? '').trim());
+  const fallbackDuration = !hasAnyDuration && totalDuration > 0 ? totalDuration / segments.length : 0;
+  const hasRps = segments.some(segment => positiveNumber(segment.target_rps) > 0);
+  const hasVus = segments.some(segment => positiveNumber(segment.target_vus) > 0);
+  const useCapacityAxis = hasRps && hasVus;
+
+  const entries: Array<{ name: string; start: number; end: number; value: number; targetLabel: string }> = [];
+  let elapsed = 0;
+  for (let index = 0; index < segments.length; index += 1) {
+    const segment = segments[index];
+    const duration = hasAllDurations ? explicitDurations[index] : fallbackDuration;
+    const { value, targetLabel } = segmentDisplayValue(segment, useCapacityAxis);
+    const start = elapsed;
+    const end = elapsed + duration;
+    elapsed = end;
+    if (end > start && value > 0) {
+      entries.push({
+        name: String(segment.name ?? '').trim(),
+        start,
+        end,
+        value,
+        targetLabel,
+      });
+    }
+  }
+  return entries;
+}
+
+function normalizeVisualizationSegments(value: LoadData['segments']): LoadSegmentData[] {
+  return normalizeLoadSegments(value);
+}
+
+function segmentDisplayValue(segment: LoadSegmentData, useCapacityAxis: boolean): { value: number; targetLabel: string } {
+  const targetVus = positiveNumber(segment.target_vus);
+  if (targetVus > 0) {
+    return { value: targetVus, targetLabel: `${targetVus} VUs` };
+  }
+  const targetRps = positiveNumber(segment.target_rps);
+  const maxVus = positiveNumber(segment.max_vus);
+  return {
+    value: useCapacityAxis ? maxVus : targetRps,
+    targetLabel: maxVus > 0 ? `${targetRps} RPS (max ${maxVus} VUs)` : `${targetRps} RPS`,
+  };
+}
+
+function positiveNumber(value: unknown): number {
+  const parsed = Number(String(value ?? '').trim());
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
 }
 
 function formatTimeLabel(seconds: number): string {

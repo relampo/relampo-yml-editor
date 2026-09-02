@@ -174,34 +174,7 @@ describe('validateYAMLSemantics', () => {
     ]);
   });
 
-  it('blocks the unsupported segments load type', () => {
-    const tree: YAMLNode = {
-      id: 'root',
-      type: 'test',
-      name: 'Test',
-      children: [
-        {
-          id: 'load',
-          type: 'load',
-          name: 'Load',
-          data: {
-            type: 'segments',
-            duration: '1m',
-            segments: [{ target_rps: '5', max_vus: '10' }],
-          },
-        },
-      ],
-    };
-
-    expect(validateYAMLSemantics(tree)).toEqual([
-      {
-        nodeId: 'load',
-        message: 'Load segments are not supported by the editor and Pulse runtime. Remove segments before running.',
-      },
-    ]);
-  });
-
-  it('blocks segments embedded in another load type', () => {
+  it('rejects invalid throughput VU capacities', () => {
     const tree: YAMLNode = {
       id: 'root',
       type: 'test',
@@ -214,8 +187,116 @@ describe('validateYAMLSemantics', () => {
           data: {
             type: 'throughput',
             duration: '1m',
-            target_rps: '5',
-            max_vus: '10',
+            target_rps: '25',
+            min_vus: '-1',
+            max_vus: 'not-a-number',
+          },
+        },
+      ],
+    };
+
+    expect(validateYAMLSemantics(tree)).toEqual([
+      { nodeId: 'load', message: 'Throughput Min VUs must be a positive integer.' },
+      { nodeId: 'load', message: 'Throughput Max VUs must be a positive integer.' },
+    ]);
+  });
+
+  it('rejects segments embedded in a throughput load', () => {
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'test',
+      name: 'Test',
+      children: [
+        {
+          id: 'load',
+          type: 'load',
+          name: 'Load',
+          data: {
+            type: 'throughput',
+            duration: '1m',
+            target_rps: '25',
+            max_vus: '50',
+            segments: [{ target_rps: '5', max_vus: '10' }],
+          },
+        },
+      ],
+    };
+
+    expect(validateYAMLSemantics(tree)).toEqual([
+      { nodeId: 'load', message: 'Throughput load does not support segments. Remove segments before running.' },
+    ]);
+  });
+
+  it('accepts valid segments load nodes', () => {
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'test',
+      name: 'Test',
+      children: [
+        {
+          id: 'scenario',
+          type: 'scenario',
+          name: 'Scenario',
+          children: [
+            {
+              id: 'load',
+              type: 'load',
+              name: 'Load',
+              data: {
+                type: 'segments',
+                duration: '1h',
+                iterations: '10',
+                segments: [{ target_rps: '5', max_vus: '20' }, { target_vus: '50' }],
+              },
+            },
+          ],
+        },
+      ],
+    };
+
+    expect(validateYAMLSemantics(tree)).toEqual([]);
+  });
+
+  it('rejects segments with both RPS and VU targets', () => {
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'test',
+      name: 'Test',
+      children: [
+        {
+          id: 'load',
+          type: 'load',
+          name: 'Load',
+          data: {
+            type: 'segments',
+            duration: '1m',
+            segments: [{ target_rps: '5', target_vus: '10' }],
+          },
+        },
+      ],
+    };
+
+    expect(validateYAMLSemantics(tree)).toEqual([
+      {
+        nodeId: 'load',
+        message: 'Segment 1 must define exactly one target: Target RPS or Target VUs.',
+      },
+    ]);
+  });
+
+  it('rejects RPS segments without Max VUs', () => {
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'test',
+      name: 'Test',
+      children: [
+        {
+          id: 'load',
+          type: 'load',
+          name: 'Load',
+          data: {
+            type: 'segments',
+            duration: '1m',
             segments: [{ target_rps: '5' }],
           },
         },
@@ -225,7 +306,149 @@ describe('validateYAMLSemantics', () => {
     expect(validateYAMLSemantics(tree)).toEqual([
       {
         nodeId: 'load',
-        message: 'Load segments are not supported by the editor and Pulse runtime. Remove segments before running.',
+        message: 'Segment 1 with Target RPS requires Max VUs.',
+      },
+    ]);
+  });
+
+  it('rejects invalid segment capacities', () => {
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'test',
+      name: 'Test',
+      children: [
+        {
+          id: 'load',
+          type: 'load',
+          name: 'Load',
+          data: {
+            type: 'segments',
+            duration: '1m',
+            segments: [{ target_rps: '5', min_vus: '2.5', max_vus: '-1' }],
+          },
+        },
+      ],
+    };
+
+    expect(validateYAMLSemantics(tree)).toEqual([
+      { nodeId: 'load', message: 'Segment 1 Min VUs must be a positive integer.' },
+      { nodeId: 'load', message: 'Segment 1 Max VUs must be a positive integer.' },
+    ]);
+  });
+
+  it('rejects malformed and non-positive segment durations', () => {
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'test',
+      name: 'Test',
+      children: [
+        {
+          id: 'load',
+          type: 'load',
+          name: 'Load',
+          data: {
+            type: 'segments',
+            duration: 'not-a-duration',
+            segments: [{ duration: '0s', target_vus: '10' }],
+          },
+        },
+      ],
+    };
+
+    expect(validateYAMLSemantics(tree)).toEqual([
+      { nodeId: 'load', message: 'Segments load Duration must be a positive duration when provided.' },
+      { nodeId: 'load', message: 'Segment 1 must define a positive Duration.' },
+    ]);
+  });
+
+  it('rejects total durations that cannot be divided evenly across omitted segment durations', () => {
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'test',
+      name: 'Test',
+      children: [
+        {
+          id: 'load',
+          type: 'load',
+          name: 'Load',
+          data: {
+            type: 'segments',
+            duration: '10s',
+            segments: [
+              { target_vus: '10' },
+              { target_vus: '20' },
+              { target_vus: '30' },
+            ],
+          },
+        },
+      ],
+    };
+
+    expect(validateYAMLSemantics(tree)).toEqual([
+      { nodeId: 'load', message: 'Segments load Duration must divide evenly across segments when segment durations are omitted.' },
+    ]);
+  });
+
+  it('rejects explicit segment durations that differ by one nanosecond', () => {
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'test',
+      name: 'Test',
+      children: [
+        {
+          id: 'load',
+          type: 'load',
+          name: 'Load',
+          data: {
+            type: 'segments',
+            duration: '10s',
+            segments: [
+              { duration: '3.333333333s', target_vus: '10' },
+              { duration: '3.333333333s', target_vus: '20' },
+              { duration: '3.333333333s', target_vus: '30' },
+            ],
+          },
+        },
+      ],
+    };
+
+    expect(validateYAMLSemantics(tree)).toEqual([
+      {
+        nodeId: 'load',
+        message: 'Segments Duration total must equal load Duration (10s). Current segments total is 10s.',
+      },
+    ]);
+  });
+
+  it('rejects segments whose durations do not equal the root duration', () => {
+    const tree: YAMLNode = {
+      id: 'root',
+      type: 'test',
+      name: 'Test',
+      children: [
+        {
+          id: 'load',
+          type: 'load',
+          name: 'Load',
+          data: {
+            type: 'segments',
+            duration: '10m',
+            segments: [
+              { duration: '1m', target_vus: '10' },
+              { duration: '2m', target_rps: '25', max_vus: '100' },
+              { duration: '4m', target_vus: '5' },
+              { duration: '1m', target_rps: '5', max_vus: '20' },
+              { duration: '3m', target_rps: '2', max_vus: '10' },
+            ],
+          },
+        },
+      ],
+    };
+
+    expect(validateYAMLSemantics(tree)).toEqual([
+      {
+        nodeId: 'load',
+        message: 'Segments Duration total must equal load Duration (10m). Current segments total is 11m.',
       },
     ]);
   });
