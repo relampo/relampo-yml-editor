@@ -1,13 +1,23 @@
 import { ChevronDown } from 'lucide-react';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useLanguage } from '../../../contexts/LanguageContext';
-import { getIntentAutoConfig, limitedInputValue } from '../loadUtils';
-import { LoadDisplayField, LoadField, LoadGrid, LoadModeProps, LoadSelectField } from './shared';
+import {
+  getIntentAutoConfig,
+  getIntentErrorRateData,
+  getIntentLatencyData,
+  getIntentTargetData,
+  limitedInputValue,
+} from '../loadUtils';
+import { LoadField, LoadGrid, LoadModeProps, LoadSelectField } from './shared';
 
 export function IntentLoadMode({ data, onChange }: LoadModeProps) {
   const { t } = useLanguage();
-  const intentTargetUnit = String(data.target_unit || 'rps').toLowerCase();
-  const intentTargetPerMinute = (parseFloat(String(data.target_value || '0')) || 0) * 60;
+  const intentTarget = getIntentTargetData(data);
+  const intentLatency = getIntentLatencyData(data);
+  const intentErrorRate = getIntentErrorRateData(data);
+  const intentTargetUnit = String(intentTarget.type || 'rps').toLowerCase();
+  const intentTargetPerMinute = (parseFloat(String(intentTarget.value || '0')) || 0) * 60;
+  const locksMaxVusToTarget = intentTargetUnit === 'vus';
   const autoConfig = getIntentAutoConfig(data);
   const [expandedSections, setExpandedSections] = useState({
     contract: true,
@@ -15,6 +25,16 @@ export function IntentLoadMode({ data, onChange }: LoadModeProps) {
     guardrails: true,
     slo: true,
   });
+
+  useEffect(() => {
+    if (!locksMaxVusToTarget) {
+      return;
+    }
+    const targetValue = String(intentTarget.value || '').trim();
+    if (targetValue !== '' && String(data.max_vus ?? '').trim() !== targetValue) {
+      onChange('max_vus', targetValue);
+    }
+  }, [data.max_vus, intentTarget.value, locksMaxVusToTarget, onChange]);
 
   const toggleSection = (section: keyof typeof expandedSections) => {
     setExpandedSections(current => ({
@@ -27,14 +47,30 @@ export function IntentLoadMode({ data, onChange }: LoadModeProps) {
       (text, [token, value]) => text.replace(new RegExp(`\\{${token}\\}`, 'g'), String(value)),
       t(key),
     );
+  const updateTarget = (field: 'type' | 'value', value: string) => {
+    onChange('target', {
+      ...intentTarget,
+      [field]: field === 'value' ? limitedInputValue(value) : value,
+    });
+  };
+  const updateLatency = (field: 'metric' | 'max_ms', value: string) => {
+    onChange('latency', {
+      ...intentLatency,
+      [field]: field === 'max_ms' ? limitedInputValue(value) : value,
+    });
+  };
+  const updateErrorRate = (value: string) => {
+    onChange('error_rate', {
+      ...intentErrorRate,
+      max_pct: limitedInputValue(value),
+    });
+  };
 
   return (
     <div className="space-y-4">
       <section className="rounded-xl border border-yellow-400/20 bg-yellow-400/5 p-4 sm:p-5">
         <h4 className="text-sm font-semibold text-yellow-100">{t('yamlEditor.intent.overview.title')}</h4>
-        <p className="mt-1 text-xs leading-relaxed text-yellow-100/75">
-          {t('yamlEditor.intent.overview.description')}
-        </p>
+        <p className="mt-1 text-xs leading-relaxed text-yellow-100/75">{t('yamlEditor.intent.overview.description')}</p>
       </section>
 
       <AccordionSection
@@ -46,8 +82,8 @@ export function IntentLoadMode({ data, onChange }: LoadModeProps) {
         <LoadGrid>
           <LoadSelectField
             label={t('yamlEditor.intent.fields.targetUnit')}
-            value={String(data.target_unit || 'rps')}
-            onChange={value => onChange('target_unit', value)}
+            value={intentTargetUnit}
+            onChange={value => updateTarget('type', value)}
             options={[
               { label: t('yamlEditor.intent.options.targetUnitRps'), value: 'rps' },
               { label: t('yamlEditor.intent.options.targetUnitVus'), value: 'vus' },
@@ -55,9 +91,9 @@ export function IntentLoadMode({ data, onChange }: LoadModeProps) {
           />
           <LoadField
             label={t('yamlEditor.intent.fields.targetValue')}
-            value={data.target_value || ''}
+            value={intentTarget.value || ''}
             placeholder="25"
-            onChange={value => onChange('target_value', limitedInputValue(value))}
+            onChange={value => updateTarget('value', value)}
             type="number"
             helpText={
               intentTargetUnit === 'rps'
@@ -84,8 +120,22 @@ export function IntentLoadMode({ data, onChange }: LoadModeProps) {
             helpText={format('yamlEditor.intent.helpers.suggested', { value: autoConfig.warmup })}
           />
           <LoadField
+            label={t('yamlEditor.intent.fields.rampUp')}
+            value={data.ramp_up ?? ''}
+            placeholder={autoConfig.ramp_up}
+            onChange={value => onChange('ramp_up', limitedInputValue(value))}
+            helpText={format('yamlEditor.intent.helpers.suggested', { value: autoConfig.ramp_up })}
+          />
+          <LoadField
+            label={t('yamlEditor.intent.fields.rampDown')}
+            value={data.ramp_down ?? ''}
+            placeholder={autoConfig.ramp_down}
+            onChange={value => onChange('ramp_down', limitedInputValue(value))}
+            helpText={format('yamlEditor.intent.helpers.suggested', { value: autoConfig.ramp_down })}
+          />
+          <LoadField
             label={t('yamlEditor.intent.fields.window')}
-            value={data.window ?? ''}
+            value={data.window ?? data.control_window ?? ''}
             placeholder={autoConfig.window}
             onChange={value => onChange('window', limitedInputValue(value))}
             helpText={format('yamlEditor.intent.helpers.suggested', { value: autoConfig.window })}
@@ -106,20 +156,6 @@ export function IntentLoadMode({ data, onChange }: LoadModeProps) {
             placeholder={autoConfig.duration}
             onChange={value => onChange('duration', limitedInputValue(value))}
             helpText={format('yamlEditor.intent.helpers.suggested', { value: autoConfig.duration })}
-          />
-          <LoadField
-            label={t('yamlEditor.intent.fields.rampUp')}
-            value={data.ramp_up ?? ''}
-            placeholder={autoConfig.ramp_up}
-            onChange={value => onChange('ramp_up', limitedInputValue(value))}
-            helpText={format('yamlEditor.intent.helpers.suggested', { value: autoConfig.ramp_up })}
-          />
-          <LoadField
-            label={t('yamlEditor.intent.fields.rampDown')}
-            value={data.ramp_down ?? ''}
-            placeholder={autoConfig.ramp_down}
-            onChange={value => onChange('ramp_down', limitedInputValue(value))}
-            helpText={format('yamlEditor.intent.helpers.suggested', { value: autoConfig.ramp_down })}
           />
           <LoadField
             label={t('yamlEditor.intent.fields.iteration')}
@@ -148,11 +184,20 @@ export function IntentLoadMode({ data, onChange }: LoadModeProps) {
           />
           <LoadField
             label={t('yamlEditor.intent.fields.maxVus')}
-            value={data.max_vus ?? ''}
+            value={locksMaxVusToTarget ? intentTarget.value || autoConfig.max_vus : (data.max_vus ?? '')}
             placeholder={autoConfig.max_vus}
-            onChange={value => onChange('max_vus', limitedInputValue(value))}
+            onChange={value => {
+              if (!locksMaxVusToTarget) {
+                onChange('max_vus', limitedInputValue(value));
+              }
+            }}
             type="number"
-            helpText={format('yamlEditor.intent.helpers.suggested', { value: autoConfig.max_vus })}
+            disabled={locksMaxVusToTarget}
+            helpText={
+              locksMaxVusToTarget
+                ? t('yamlEditor.intent.helpers.maxVusLockedToTarget')
+                : format('yamlEditor.intent.helpers.suggested', { value: autoConfig.max_vus })
+            }
           />
         </LoadGrid>
       </AccordionSection>
@@ -164,24 +209,32 @@ export function IntentLoadMode({ data, onChange }: LoadModeProps) {
         onToggle={() => toggleSection('slo')}
       >
         <LoadGrid>
-          <LoadDisplayField
-            label={t('yamlEditor.intent.fields.average')}
-            value={`${autoConfig.average_ms} ms`}
-            helpText={t('yamlEditor.intent.helpers.average')}
-          />
           <LoadField
-            label={t('yamlEditor.intent.fields.p95MaxMs')}
-            value={data.p95_max_ms ?? ''}
+            label={t('yamlEditor.intent.fields.latencyMaxMs')}
+            value={intentLatency.max_ms ?? ''}
             placeholder={autoConfig.p95_max_ms}
-            onChange={value => onChange('p95_max_ms', limitedInputValue(value))}
+            onChange={value => updateLatency('max_ms', value)}
             type="number"
             helpText={format('yamlEditor.intent.helpers.suggested', { value: autoConfig.p95_max_ms })}
           />
+          <LoadSelectField
+            label={t('yamlEditor.intent.fields.latencyMetric')}
+            value={String(intentLatency.metric || 'p95')}
+            onChange={value => updateLatency('metric', value)}
+            options={[
+              { label: 'avg', value: 'avg' },
+              { label: 'p50', value: 'p50' },
+              { label: 'p75', value: 'p75' },
+              { label: 'p90', value: 'p90' },
+              { label: 'p95', value: 'p95' },
+              { label: 'p99', value: 'p99' },
+            ]}
+          />
           <LoadField
             label={t('yamlEditor.intent.fields.errorMaxPct')}
-            value={data.error_rate_max_pct ?? ''}
+            value={intentErrorRate.max_pct ?? ''}
             placeholder={autoConfig.error_rate_max_pct}
-            onChange={value => onChange('error_rate_max_pct', limitedInputValue(value))}
+            onChange={value => updateErrorRate(value)}
             type="number"
             helpText={format('yamlEditor.intent.helpers.suggested', { value: autoConfig.error_rate_max_pct })}
           />

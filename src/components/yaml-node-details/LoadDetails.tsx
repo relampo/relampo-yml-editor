@@ -1,4 +1,4 @@
-import { Gauge, Mountain, TrendingUp, Users } from 'lucide-react';
+import { Crosshair, Gauge, Mountain, TrendingUp, Users } from 'lucide-react';
 import { useId } from 'react';
 import { LoadVisualization } from './LoadVisualization';
 import {
@@ -29,6 +29,7 @@ const LOAD_MODE_OPTIONS: Array<{
   { type: 'linear', label: 'Linear', icon: TrendingUp },
   { type: 'ramp_up_down', label: 'Ramp Up/Down', icon: Mountain },
   { type: 'throughput', label: 'Throughput', icon: Gauge },
+  { type: 'intent', label: 'Intent', icon: Crosshair },
 ];
 
 export function LoadDetails({ node, onNodeUpdate }: NodeDetailProps) {
@@ -60,7 +61,7 @@ export function LoadDetails({ node, onNodeUpdate }: NodeDetailProps) {
       return;
     }
 
-    if (loadType === 'intent' && ['target_unit', 'target_value', 'aggressiveness'].includes(field)) {
+    if (loadType === 'intent' && ['target', 'target_unit', 'target_value', 'aggressiveness'].includes(field)) {
       const nextData = { ...data, [field]: value };
       const { average_ms: _averageMs, ...autoConfig } = getIntentAutoConfig(toLoadData(nextData));
       updateData({ ...nextData, ...autoConfig });
@@ -101,7 +102,7 @@ export function LoadDetails({ node, onNodeUpdate }: NodeDetailProps) {
         onChange={handleChange}
       />
 
-      {loadType !== 'intent' && (
+      {loadType !== 'intent' && loadType !== 'segments' && (
         <ManualStopControl
           checked={data.run_until_stopped === true}
           onChange={checked => handleChange('run_until_stopped', checked)}
@@ -110,10 +111,12 @@ export function LoadDetails({ node, onNodeUpdate }: NodeDetailProps) {
 
       <div className="h-px bg-white/10" />
 
-      <LoadVisualization
-        data={loadData}
-        loadType={loadType}
-      />
+      {loadType !== 'segments' && (
+        <LoadVisualization
+          data={loadData}
+          loadType={loadType}
+        />
+      )}
     </div>
   );
 }
@@ -188,6 +191,14 @@ function LoadModePanel({
         data={data}
         onChange={onChange}
       />
+    );
+  }
+
+  if (loadType === 'segments') {
+    return (
+      <div className="rounded-xl border border-rose-400/20 bg-rose-400/[0.04] p-4 text-sm text-rose-200">
+        This load type is not supported by the editor or Pulse runtime. Remove <code>segments</code> before running.
+      </div>
     );
   }
 

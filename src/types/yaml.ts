@@ -65,6 +65,7 @@ export interface YAMLNodeData {
   error_4xx_max_pct?: YAMLInputValue;
   error_5xx_max_pct?: YAMLInputValue;
   error_policy?: YAMLNodeData;
+  error_rate?: YAMLNodeData;
   error_rate_max_pct?: YAMLInputValue;
   expression?: string;
   extract?: YAMLNodeData[] | YAMLNodeData | StringMap;
@@ -75,6 +76,7 @@ export interface YAMLNodeData {
   follow_redirects?: boolean;
   from?: string;
   group?: YAMLInputValue;
+  goal?: string;
   headers?: StringMap;
   host?: string;
   id?: string;
@@ -83,15 +85,18 @@ export interface YAMLNodeData {
   jar_scope?: string;
   kind?: string;
   left_boundary?: string;
+  latency?: YAMLNodeData;
   length?: YAMLInputValue;
   match_no?: YAMLInputValue;
   max?: YAMLInputValue;
   max_elements?: YAMLInputValue;
   max_idle_conns?: YAMLInputValue;
   max_ms?: YAMLInputValue;
+  max_pct?: YAMLInputValue;
   max_size_mb?: YAMLInputValue;
   max_vus?: YAMLInputValue;
   mean?: YAMLInputValue;
+  metric?: string;
   method?: string;
   mime?: string;
   mime_type?: string;
@@ -127,12 +132,14 @@ export interface YAMLNodeData {
   ssl_mode?: string;
   spark?: YAMLNodeData[];
   stages?: YAMLNodeData[];
+  segments?: YAMLNodeData[];
   steps?: YAMLNodeData[];
   size?: YAMLInputValue;
   start_users?: YAMLInputValue;
   std_dev?: YAMLInputValue;
   target_rps?: YAMLInputValue;
-  target?: YAMLInputValue;
+  target_vus?: YAMLInputValue;
+  target?: YAMLInputValue | YAMLNodeData;
   target_unit?: string;
   target_value?: YAMLInputValue;
   think_time?: YAMLInputValue | YAMLNodeData;
@@ -152,6 +159,8 @@ export interface YAMLNodeData {
   warmup?: YAMLInputValue;
   when?: string;
   window?: YAMLInputValue;
+  control_window?: YAMLInputValue;
+  stability_window?: YAMLInputValue;
   max_open_conns?: YAMLInputValue;
   request?: YAMLNodeData;
 }
