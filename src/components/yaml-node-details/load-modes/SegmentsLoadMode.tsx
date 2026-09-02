@@ -1,4 +1,5 @@
 import { Plus, Trash2 } from 'lucide-react';
+import { useRef } from 'react';
 import {
   LOAD_DURATION_HELP_TEXT,
   LOAD_ITERATIONS_HELP_TEXT,
@@ -29,6 +30,8 @@ const DEFAULT_SEGMENT: LoadSegmentData = {
 export function SegmentsLoadMode({ data, onChange }: LoadModeProps) {
   const segments = normalizeSegments(data.segments);
   const durationSummary = getDurationSummary(data.duration, segments);
+  const rowKeysRef = useRef<string[]>([]);
+  const rowKeys = syncSegmentRowKeys(rowKeysRef.current, segments.length);
 
   const updateSegment = (index: number, field: keyof LoadSegmentData, value: string) => {
     const next = segments.map((segment, segmentIndex) => {
@@ -75,11 +78,14 @@ export function SegmentsLoadMode({ data, onChange }: LoadModeProps) {
   };
 
   const addSegment = () => {
+    rowKeysRef.current = [...rowKeys, crypto.randomUUID()];
     onChange('segments', [...segments, { ...DEFAULT_SEGMENT }]);
   };
 
   const removeSegment = (index: number) => {
     const next = segments.filter((_, segmentIndex) => segmentIndex !== index);
+    const nextKeys = rowKeys.filter((_, segmentIndex) => segmentIndex !== index);
+    rowKeysRef.current = next.length > 0 ? nextKeys : [crypto.randomUUID()];
     onChange('segments', next.length > 0 ? next : [{ ...DEFAULT_SEGMENT }]);
   };
 
@@ -118,9 +124,11 @@ export function SegmentsLoadMode({ data, onChange }: LoadModeProps) {
           <div className="px-3 py-2">VU Range</div>
           <div />
         </div>
-        {segments.map((segment, index) => (
+        {segments.map((segment, index) => {
+          const rowKey = rowKeys[index];
+          return (
           <div
-            key={index}
+            key={rowKey}
             className="grid grid-cols-[1.2fr_0.75fr_0.7fr_0.7fr_0.8fr_40px] border-b border-white/5 last:border-b-0"
           >
             <SegmentInput
@@ -135,6 +143,7 @@ export function SegmentsLoadMode({ data, onChange }: LoadModeProps) {
             />
             <SegmentTargetTypeSelect
               value={segmentTargetType(segment)}
+              ariaLabel={`Target type for segment ${index + 1}`}
               onChange={value => updateSegmentTargetType(index, value)}
             />
             <SegmentInput
@@ -165,7 +174,8 @@ export function SegmentsLoadMode({ data, onChange }: LoadModeProps) {
               <Trash2 className="h-4 w-4" />
             </button>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       <button
@@ -204,14 +214,17 @@ function SegmentInput({
 
 function SegmentTargetTypeSelect({
   value,
+  ariaLabel,
   onChange,
 }: {
   value: SegmentTargetType;
+  ariaLabel: string;
   onChange: (value: SegmentTargetType) => void;
 }) {
   return (
     <select
       value={value}
+      aria-label={ariaLabel}
       onChange={event => onChange(event.target.value === 'vus' ? 'vus' : 'rps')}
       className="min-h-10 w-full border-0 border-r border-white/5 bg-transparent px-3 py-2 font-mono text-sm text-zinc-200 outline-none focus:bg-white/[0.03]"
     >
@@ -223,6 +236,16 @@ function SegmentTargetTypeSelect({
 
 function normalizeSegments(value: LoadDataValue): LoadSegmentData[] {
   return normalizeLoadSegments(value, [DEFAULT_SEGMENT]);
+}
+
+function syncSegmentRowKeys(keys: string[], count: number): string[] {
+  while (keys.length < count) {
+    keys.push(crypto.randomUUID());
+  }
+  if (keys.length > count) {
+    keys.length = count;
+  }
+  return keys;
 }
 
 function removeEmptySegmentFields(segment: LoadSegmentData): LoadSegmentData {

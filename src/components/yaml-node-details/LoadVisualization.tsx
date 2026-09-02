@@ -1009,14 +1009,19 @@ function getTimeRanges(data: LoadData, loadType: LoadType, maxTime: number) {
 
 function getTransitionMarkers(data: LoadData, loadType: LoadType, maxTime: number) {
   if (loadType === 'segments') {
-    return getSegmentVisualizationEntries(data)
-      .slice(1)
-      .map((segment, index) => ({
-        key: `segment-${index + 1}`,
-        time: segment.start,
-        label: formatTimeLabel(segment.start),
-      }))
-      .filter(marker => marker.time > 0 && marker.time < maxTime);
+    const markers: Array<{ key: string; time: number; label: string }> = [];
+    const entries = getSegmentVisualizationEntries(data);
+    for (let index = 1; index < entries.length; index += 1) {
+      const segment = entries[index];
+      if (segment.start > 0 && segment.start < maxTime) {
+        markers.push({
+          key: `segment-${index}`,
+          time: segment.start,
+          label: formatTimeLabel(segment.start),
+        });
+      }
+    }
+    return markers;
   }
   if (loadType === 'constant') {
     const rampUp = Math.max(0, parseTimeToSeconds(String(data.ramp_up || '0s')));
@@ -1072,22 +1077,26 @@ function getSegmentVisualizationEntries(data: LoadData) {
   const hasVus = segments.some(segment => positiveNumber(segment.target_vus) > 0);
   const useCapacityAxis = hasRps && hasVus;
 
+  const entries: Array<{ name: string; start: number; end: number; value: number; targetLabel: string }> = [];
   let elapsed = 0;
-  return segments
-    .map((segment, index) => {
-      const duration = hasAllDurations ? explicitDurations[index] : fallbackDuration;
-      const { value, targetLabel } = segmentDisplayValue(segment, useCapacityAxis);
-      const entry = {
+  for (let index = 0; index < segments.length; index += 1) {
+    const segment = segments[index];
+    const duration = hasAllDurations ? explicitDurations[index] : fallbackDuration;
+    const { value, targetLabel } = segmentDisplayValue(segment, useCapacityAxis);
+    const start = elapsed;
+    const end = elapsed + duration;
+    elapsed = end;
+    if (end > start && value > 0) {
+      entries.push({
         name: String(segment.name ?? '').trim(),
-        start: elapsed,
-        end: elapsed + duration,
+        start,
+        end,
         value,
         targetLabel,
-      };
-      elapsed = entry.end;
-      return entry;
-    })
-    .filter(entry => entry.end > entry.start && entry.value > 0);
+      });
+    }
+  }
+  return entries;
 }
 
 function normalizeVisualizationSegments(value: LoadData['segments']): LoadSegmentData[] {
