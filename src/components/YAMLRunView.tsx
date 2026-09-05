@@ -27,6 +27,7 @@ import {
   type RunIntentTick,
   type RunLogLine,
   type RunMetricsSnapshot,
+  type RunNodeMeasurements,
   type RunRequestStat,
   type RunStatus,
   type RunSummary,
@@ -101,8 +102,8 @@ function formatDurationNs(nanoseconds: number): string {
   return `${minutes}m ${seconds.toString().padStart(2, '0')}s`;
 }
 
-function formatSummaryRate(value: number): string {
-  return formatRps(Number.isFinite(value) && value > 0 ? value : 0);
+function formatSummaryRate(value: number | null | undefined): string {
+  return value == null || !Number.isFinite(value) ? 'Unavailable' : formatRps(value);
 }
 
 function summaryConfiguredVUs(summary: RunSummary): number {
@@ -111,10 +112,13 @@ function summaryConfiguredVUs(summary: RunSummary): number {
   return summary.executed_vus ?? 0;
 }
 
-function maxNodeResource(summary: RunSummary, field: 'mem_peak_mb' | 'cpu_peak' | 'go_peak'): number | null {
-  const resources = summary.node_resources ?? [];
-  if (resources.length === 0) return null;
-  return Math.max(...resources.map(resource => resource[field]));
+function maxNodeMeasurement(summary: RunSummary, field: keyof RunNodeMeasurements): { value: number; node: string } | null {
+  let peak: { value: number; node: string } | null = null;
+  for (const resource of summary.node_resources ?? []) {
+    const value = resource.measurements?.[field];
+    if (value != null && Number.isFinite(value) && (!peak || value > peak.value)) peak = { value, node: resource.node };
+  }
+  return peak;
 }
 
 const STATUS_LABELS: Record<RunStatus, string> = {
@@ -280,18 +284,7 @@ export function YAMLLoadRunSession({
   const hasValidationErrors = validationErrors.length > 0;
   const latest = snapshots[snapshots.length - 1] ?? null;
   const liveSummary = useMemo(() => buildLiveRunSummary(latest, runRequestTargets), [latest, runRequestTargets]);
-  // After `done` we keep the final summary's cumulative totals but override its
-  // per-request rows with the last live snapshot's. The backend's final summary
-  // records resolved literal URLs that carry no step_path/chain identity, so it
-  // can't be correlated back to YAML template steps; the live snapshot can. Rows
-  // therefore come from the last mapped snapshot, which — being cumulative up to
-  // `done` — matches the totals in practice, at the cost of not being the literal
-  // `done.summary` request list.
-  const visibleSummary = useMemo(() => {
-    if (!summary) return liveSummary;
-    if (!liveSummary?.requests.length) return summary;
-    return { ...summary, requests: liveSummary.requests };
-  }, [liveSummary, summary]);
+  const visibleSummary = summary ?? liveSummary;
   const intentTicks = useMemo(() => collectIntentTicks(snapshots, summary), [snapshots, summary]);
   const hasRunActivity = snapshots.length > 0 || logs.length > 0 || summary != null;
 
@@ -432,10 +425,7 @@ export function YAMLLoadRunSession({
 
       {runError && <RunErrorBanner message={runError} />}
 
-      <StatsRow
-        latest={latest}
-        errorRate={errorRate}
-      />
+      {!summary && <StatsRow latest={latest} errorRate={errorRate} />}
 
       <div className="min-h-0 flex-1 overflow-y-auto p-4">
         {!hasRunActivity ? (
@@ -446,7 +436,7 @@ export function YAMLLoadRunSession({
           </div>
         ) : (
           <div className="space-y-4">
-            <MetricsCharts snapshots={snapshots} />
+            <MetricsCharts snapshots={summary?.history ?? snapshots} />
 
             {plannedLoadNode && plannedLoadType !== 'intent' && plannedLoadType !== 'segments' && (
               <PlannedLoadProfilePanel
@@ -627,11 +617,11 @@ function StatsRow({ latest, errorRate }: { latest: RunMetricsSnapshot | null; er
 }
 
 // Throughput / p95 latency / active VUs sparkline row.
-function MetricsCharts({ snapshots }: { snapshots: RunMetricsSnapshot[] }) {
+function MetricsCharts({ snapshots }: { snapshots: Pick<RunMetricsSnapshot, 'rps' | 'p95_latency' | 'active_users'>[] }) {
   return (
     <div className="grid gap-3 lg:grid-cols-3">
       <Sparkline
-        title="Throughput"
+        title="Throughput (interval)"
         unit="req/s"
         color="#fde047"
         values={snapshots.map(s => s.rps)}
@@ -1414,32 +1404,30 @@ function RunSummaryPanel({
 }) {
   const requests = summary.requests ?? [];
   const durationSeconds = summary.duration / 1e9;
-  const transactionCount = summary.transactions?.reduce((total, transaction) => total + transaction.count, 0);
+  const completed = summary.overview?.completed_transactions ?? (summary.transactions?.every(tx => tx.completed != null) ? summary.transactions.reduce((total, tx) => total + (tx.completed ?? 0), 0) : undefined);
+  const incomplete = summary.overview?.incomplete_transactions ?? (summary.transactions?.every(tx => tx.incomplete != null) ? summary.transactions.reduce((total, tx) => total + (tx.incomplete ?? 0), 0) : undefined);
+  const tps = summary.overview ? summary.overview.tps : durationSeconds > 0 && completed != null ? completed / durationSeconds : null;
+  const tpsNotApplicable = summary.overview ? summary.overview.tps_status === 'not_applicable' : durationSeconds > 0 && summary.transactions_configured === false;
   const executedVUs = summary.executed_vus ?? 0;
   const configuredVUs = Math.max(summaryConfiguredVUs(summary), executedVUs);
-  const memPeakMB = maxNodeResource(summary, 'mem_peak_mb');
-  const cpuPeak = maxNodeResource(summary, 'cpu_peak');
-  const goPeak = maxNodeResource(summary, 'go_peak');
+  const measured = (field: keyof RunNodeMeasurements, unit: string, digits = 0): string => {
+    const peak = maxNodeMeasurement(summary, field);
+    if (!peak) return 'Unavailable';
+    const node = (summary.node_resources?.length ?? 0) > 1 ? ` (${peak.node})` : '';
+    return `${peak.value.toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits })}${unit}${node}`;
+  };
+  const failurePercent = summary.overview ? summary.overview.failure_percent : summary.total_requests > 0 ? summary.total_failures * 100 / summary.total_requests : null;
   const metrics = [
+    { label: 'Status', value: STATUS_LABELS[(summary.status || status) as RunStatus] ?? 'Unavailable' },
     { label: 'Duration', value: formatDurationNs(summary.duration) },
     { label: 'VUs (exec/conf)', value: `${executedVUs}/${configuredVUs}` },
     { label: 'Total Requests', value: summary.total_requests.toLocaleString() },
-    {
-      label: 'ERRs',
-      value: summary.total_failures.toLocaleString(),
-      tone: summary.total_failures > 0 ? 'text-red-300' : undefined,
-    },
-    { label: 'RPS', value: formatSummaryRate(durationSeconds > 0 ? summary.total_requests / durationSeconds : 0) },
-    {
-      label: 'TPS',
-      value:
-        transactionCount == null
-          ? '—'
-          : formatSummaryRate(durationSeconds > 0 ? transactionCount / durationSeconds : 0),
-    },
-    { label: 'MEM Peak', value: memPeakMB == null ? '—' : `${memPeakMB.toLocaleString()} MB` },
-    { label: 'CPU Peak', value: cpuPeak == null ? '—' : `${cpuPeak.toFixed(1)}%` },
-    { label: 'Go', value: goPeak == null ? '—' : goPeak.toLocaleString() },
+    { label: 'Failed Requests', value: `${summary.total_failures.toLocaleString()} (${failurePercent == null ? 'Unavailable' : `${failurePercent.toFixed(2)}%`})`, tone: summary.total_failures > 0 ? 'text-red-300' : undefined },
+    { label: 'RPS', value: formatSummaryRate(summary.overview ? summary.overview.rps : durationSeconds > 0 ? summary.total_requests / durationSeconds : null) },
+    { label: 'TPS', value: tpsNotApplicable ? 'Not applicable' : formatSummaryRate(tps) },
+    { label: 'RSS Peak', value: measured('rss_peak_mib', ' MiB') },
+    { label: 'CPU Peak', value: measured('cpu_percent_peak', '%', 1) },
+    { label: 'Goroutines Peak', value: measured('goroutines_peak', '') },
   ];
   return (
     <div className="border border-white/10 bg-[#111111]">
@@ -1454,7 +1442,7 @@ function RunSummaryPanel({
           <CheckCircle2 className="h-4 w-4 text-emerald-300" />
         )}
         <p className="text-sm font-semibold text-zinc-100">
-          {status === 'stopped' ? 'Run stopped — partial summary' : 'Run summary'}
+          {status === 'stopped' ? 'Run stopped — partial summary' : summary.partial ? 'Run summary — partial' : 'Run summary'}
         </p>
         {reportUrl && (
           <a
@@ -1480,6 +1468,30 @@ function RunSummaryPanel({
         ))}
       </div>
 
+      <div className="space-y-2 border-t border-white/10 px-4 py-3 text-xs text-zinc-400">
+        <p>{summary.test_name} · {summary.metadata?.execution_mode ?? 'Local'} · {summary.start_time || 'Start unavailable'} → {summary.end_time || 'End unavailable'}</p>
+        <p>RPS and TPS are execution averages. Charts show rates for each measured interval.</p>
+        {summary.expected_nodes != null && <p>Nodes: {summary.received_nodes?.length ?? 0}/{summary.expected_nodes}. Missing: {summary.missing_nodes?.join(', ') || 'None'}.</p>}
+        {summary.report_schema_version == null && summary.transactions?.some(tx => tx.completed == null) && <p>Legacy transaction rate: {formatSummaryRate(durationSeconds > 0 ? summary.transactions.reduce((total, tx) => total + tx.count, 0) / durationSeconds : null)} TPS. Completion counts are unavailable.</p>}
+        <div className="flex flex-wrap gap-4">
+          <p><span>Completed transactions</span>: {completed?.toLocaleString() ?? 'Unavailable'}</p>
+          <p><span>Incomplete transactions</span>: {incomplete?.toLocaleString() ?? 'Unavailable'}</p>
+        </div>
+        {summary.node_resources?.map(resource => (
+          <div key={resource.node} className="flex flex-wrap gap-4 border-t border-white/5 pt-2">
+            <span>{resource.node}</span>
+            {resource.measurements ? <>
+              <p><span>RSS peak</span>: {resource.measurements.rss_peak_mib == null ? 'Unavailable' : `${resource.measurements.rss_peak_mib.toLocaleString()} MiB`}</p>
+              <p><span>RSS peak percent</span>: {resource.measurements.rss_peak_percent == null ? 'Unavailable' : `${resource.measurements.rss_peak_percent.toFixed(1)}%`}</p>
+              <p><span>Go heap peak</span>: {resource.measurements.go_heap_peak_mib == null ? 'Unavailable' : `${resource.measurements.go_heap_peak_mib.toLocaleString()} MiB`}</p>
+              <p><span>Memory capacity</span>: {resource.measurements.memory_capacity_mib == null ? 'Unavailable' : `${resource.measurements.memory_capacity_mib.toLocaleString()} MiB`}</p>
+              <p>CPU capacity: {resource.measurements.cpu_capacity ?? 'Unavailable'} cores</p>
+              <p>Goroutines (start / peak / end): {resource.measurements.goroutines_start ?? 'Unavailable'} / {resource.measurements.goroutines_peak ?? 'Unavailable'} / {resource.measurements.goroutines_end ?? 'Unavailable'}</p>
+            </> : <p>Legacy measurements: MEM Peak {resource.mem_peak_mb} MB, CPU Peak {resource.cpu_peak}%, Go {resource.go_peak}. Memory source and CPU scale are unknown.</p>}
+          </div>
+        ))}
+      </div>
+
       {requests.length > 0 && (
         <div className="overflow-x-auto">
           <table className="w-full min-w-150 text-left text-xs">
@@ -1489,6 +1501,7 @@ function RunSummaryPanel({
                 <th className="px-3 py-2 text-right">Count</th>
                 <th className="px-3 py-2 text-right">Fail</th>
                 <th className="px-3 py-2 text-right">Avg</th>
+                <th className="px-3 py-2 text-right">p50</th>
                 <th className="px-3 py-2 text-right">p90</th>
                 <th className="px-3 py-2 text-right">p95</th>
                 <th className="px-3 py-2 text-right">p99</th>
@@ -1520,6 +1533,7 @@ function RunSummaryPanel({
                     {request.failures.toLocaleString()}
                   </td>
                   <td className="px-3 py-2 text-right font-mono text-zinc-300">{formatMs(request.avg_ms)}</td>
+                  <td className="px-3 py-2 text-right font-mono text-zinc-300">{request.p50_ms == null ? 'Unavailable' : formatMs(request.p50_ms)}</td>
                   <td className="px-3 py-2 text-right font-mono text-zinc-300">{formatMs(request.p90_ms)}</td>
                   <td className="px-3 py-2 text-right font-mono text-zinc-300">{formatMs(request.p95_ms)}</td>
                   <td className="px-3 py-2 text-right font-mono text-zinc-300">
