@@ -23,6 +23,8 @@ export type RunStatus = 'running' | 'completed' | 'stopped' | 'errored';
 // reporter.TimePoint shape: latency in ms, ts in unix seconds).
 export interface RunMetricsSnapshot {
   ts: number;
+  ts_ms?: number;
+  interval_seconds?: number;
   elapsed_ms: number;
   rps: number;
   active_users: number;
@@ -84,6 +86,8 @@ export interface RunRequestStat {
 
 interface RunHistoryPoint {
   ts: number;
+  ts_ms?: number;
+  interval_seconds?: number;
   rps: number;
   active_users: number;
   avg_latency: number;
@@ -146,11 +150,31 @@ export interface RunIntentResult {
 
 export interface RunTransactionStat {
   name: string;
+  completed?: number;
+  incomplete?: number;
+  avg_ms?: number;
+  p50_ms?: number;
+  p90_ms?: number;
+  p95_ms?: number;
+  p99_ms?: number;
   count: number;
   failures: number;
 }
 
+export interface RunNodeMeasurements {
+  rss_peak_mib?: number;
+  go_heap_peak_mib?: number;
+  memory_capacity_mib?: number;
+  rss_peak_percent?: number;
+  cpu_capacity?: number;
+  cpu_percent_peak?: number;
+  goroutines_start?: number;
+  goroutines_peak?: number;
+  goroutines_end?: number;
+}
+
 export interface RunNodeResource {
+  measurements?: RunNodeMeasurements;
   node: string;
   mem_peak_mb: number;
   cpu_peak: number;
@@ -160,6 +184,21 @@ export interface RunNodeResource {
 // Final report (mirrors the subset of reporter.Summary the dashboard renders).
 // `duration` is a Go time.Duration serialized as integer nanoseconds.
 export interface RunSummary {
+  report_schema_version?: number;
+  status?: string;
+  partial?: boolean;
+  expected_nodes?: number;
+  received_nodes?: string[];
+  missing_nodes?: string[];
+  transactions_configured?: boolean;
+  overview?: {
+    rps: number | null;
+    tps: number | null;
+    tps_status: 'available' | 'not_applicable' | 'unavailable';
+    failure_percent: number | null;
+    completed_transactions: number;
+    incomplete_transactions: number;
+  };
   test_name: string;
   start_time: string;
   end_time: string;
@@ -248,8 +287,8 @@ export function streamLoadRun(runId: string, handlers: RunStreamHandlers): () =>
   });
   source.addEventListener('metrics', message => {
     const metrics = stream.parse<RunMetricsSnapshot>(message, isRunMetricsSnapshot);
-    if (metrics && !seenMetricTimestamps.has(metrics.ts)) {
-      seenMetricTimestamps.add(metrics.ts);
+    if (metrics && !seenMetricTimestamps.has(metrics.ts_ms ?? metrics.ts * 1000)) {
+      seenMetricTimestamps.add(metrics.ts_ms ?? metrics.ts * 1000);
       handlers.onMetrics(metrics);
     }
   });
@@ -321,6 +360,8 @@ function isRunMetricsSnapshot(value: unknown): value is RunMetricsSnapshot {
   return (
     isRecord(value) &&
     isFiniteNumber(value.ts) &&
+    (value.ts_ms === undefined || isFiniteNumber(value.ts_ms)) &&
+    (value.interval_seconds === undefined || isFiniteNumber(value.interval_seconds)) &&
     isFiniteNumber(value.elapsed_ms) &&
     isFiniteNumber(value.rps) &&
     isFiniteNumber(value.active_users) &&
@@ -415,6 +456,8 @@ function isRunHistoryPoint(value: unknown): value is RunHistoryPoint {
   return (
     isRecord(value) &&
     isFiniteNumber(value.ts) &&
+    (value.ts_ms === undefined || isFiniteNumber(value.ts_ms)) &&
+    (value.interval_seconds === undefined || isFiniteNumber(value.interval_seconds)) &&
     isFiniteNumber(value.rps) &&
     isFiniteNumber(value.active_users) &&
     isFiniteNumber(value.avg_latency) &&
@@ -428,17 +471,24 @@ function isRunTransactionStat(value: unknown): value is RunTransactionStat {
     isRecord(value) &&
     typeof value.name === 'string' &&
     isFiniteNumber(value.count) &&
-    isFiniteNumber(value.failures)
+    isFiniteNumber(value.failures) &&
+    ['completed', 'incomplete', 'avg_ms', 'p50_ms', 'p90_ms', 'p95_ms', 'p99_ms'].every(key => value[key] === undefined || isFiniteNumber(value[key]))
   );
 }
 
 function isRunNodeResource(value: unknown): value is RunNodeResource {
+  if (!isRecord(value)) return false;
+  const measurements = value.measurements;
   return (
     isRecord(value) &&
     typeof value.node === 'string' &&
     isFiniteNumber(value.mem_peak_mb) &&
     isFiniteNumber(value.cpu_peak) &&
-    isFiniteNumber(value.go_peak)
+    isFiniteNumber(value.go_peak) &&
+    (measurements === undefined || (isRecord(measurements) && [
+      'rss_peak_mib', 'go_heap_peak_mib', 'memory_capacity_mib', 'rss_peak_percent', 'cpu_capacity', 'cpu_percent_peak',
+      'goroutines_start', 'goroutines_peak', 'goroutines_end',
+    ].every(key => measurements[key] === undefined || isFiniteNumber(measurements[key]))))
   );
 }
 
@@ -456,6 +506,19 @@ function isRunSummary(value: unknown): value is RunSummary {
     isFiniteNumber(value.total_requests) &&
     isFiniteNumber(value.total_failures) &&
     (value.executed_vus === undefined || isFiniteNumber(value.executed_vus)) &&
+    (value.report_schema_version === undefined || isFiniteNumber(value.report_schema_version)) &&
+    (value.status === undefined || typeof value.status === 'string') &&
+    (value.partial === undefined || typeof value.partial === 'boolean') &&
+    (value.expected_nodes === undefined || isFiniteNumber(value.expected_nodes)) &&
+    (value.received_nodes === undefined || (Array.isArray(value.received_nodes) && value.received_nodes.every(node => typeof node === 'string'))) &&
+    (value.missing_nodes === undefined || (Array.isArray(value.missing_nodes) && value.missing_nodes.every(node => typeof node === 'string'))) &&
+    (value.transactions_configured === undefined || typeof value.transactions_configured === 'boolean') &&
+    (value.overview === undefined || (isRecord(value.overview) &&
+      (value.overview.rps === null || isFiniteNumber(value.overview.rps)) &&
+      (value.overview.tps === null || isFiniteNumber(value.overview.tps)) &&
+      ['available', 'not_applicable', 'unavailable'].includes(String(value.overview.tps_status)) &&
+      (value.overview.failure_percent === null || isFiniteNumber(value.overview.failure_percent)) &&
+      isFiniteNumber(value.overview.completed_transactions) && isFiniteNumber(value.overview.incomplete_transactions))) &&
     Array.isArray(value.requests) &&
     value.requests.every(isRunRequestStat) &&
     (value.transactions === undefined || (Array.isArray(value.transactions) && value.transactions.every(isRunTransactionStat))) &&

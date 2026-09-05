@@ -92,6 +92,56 @@ const baseProps = {
 };
 
 describe('YAMLLoadRunSession', () => {
+  it('shows completed-transaction rates and explicit resource measurements from the final report', async () => {
+    render(<YAMLLoadRunSession {...baseProps} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Run load test' }));
+    await waitFor(() => expect(runApiMock.handlers).toHaveLength(1));
+    act(() => {
+      runApiMock.handlers[0].onDone({ status: 'completed', error: null, summary: summary({
+        report_schema_version: 2,
+        status: 'completed',
+        duration: 500_000_000,
+        transactions_configured: true,
+        transactions: [{ name: 'Checkout', count: 3, completed: 2, incomplete: 1, failures: 1 }],
+        overview: { rps: 400, tps: 4, tps_status: 'available', failure_percent: 1, completed_transactions: 2, incomplete_transactions: 1 },
+        node_resources: [{ node: 'local', mem_peak_mb: 999, cpu_peak: 999, go_peak: 999, measurements: {
+          rss_peak_mib: 64, go_heap_peak_mib: 12, rss_peak_percent: 25, memory_capacity_mib: 256,
+          cpu_percent_peak: 0, cpu_capacity: 2, goroutines_start: 3, goroutines_peak: 8, goroutines_end: 4,
+        } }],
+      }) });
+    });
+    expect(screen.getByText('TPS').parentElement).toHaveTextContent('4.0');
+    expect(screen.queryByText('Req/s')).not.toBeInTheDocument();
+    expect(screen.getByText('RSS Peak').parentElement).toHaveTextContent('64 MiB');
+    expect(screen.getByText('CPU Peak').parentElement).toHaveTextContent('0.0%');
+    expect(screen.getByText('Goroutines Peak').parentElement).toHaveTextContent('8');
+    expect(screen.getByText('Completed transactions').parentElement).toHaveTextContent('2');
+    expect(screen.getByText('Incomplete transactions').parentElement).toHaveTextContent('1');
+    expect(screen.getByText('Go heap peak').parentElement).toHaveTextContent('12 MiB');
+    expect(screen.getByText('Memory capacity').parentElement).toHaveTextContent('256 MiB');
+    expect(screen.getByRole('columnheader', { name: 'p50' })).toBeInTheDocument();
+  });
+
+  it.each([
+    { duration: 500_000_000, configured: true, rate: 0, availability: 'available' as const, expected: '0.0' },
+    { duration: 500_000_000, configured: false, rate: null, availability: 'not_applicable' as const, expected: 'Not applicable' },
+    { duration: 0, configured: true, rate: null, availability: 'unavailable' as const, expected: 'Unavailable' },
+    { duration: 0, configured: false, rate: null, availability: 'unavailable' as const, expected: 'Unavailable' },
+  ])('keeps zero, unavailable and not-applicable rates distinct ($expected)', async ({ duration, configured, rate, availability, expected }) => {
+    render(<YAMLLoadRunSession {...baseProps} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Run load test' }));
+    await waitFor(() => expect(runApiMock.handlers).toHaveLength(1));
+    act(() => runApiMock.handlers[0].onDone({ status: 'stopped', error: null, summary: summary({
+      report_schema_version: 2, status: 'stopped', partial: true, duration, transactions_configured: configured,
+      overview: { rps: duration > 0 ? 0 : null, tps: rate, tps_status: availability, failure_percent: null, completed_transactions: 0, incomplete_transactions: 0 },
+      transactions: [], node_resources: [{ node: 'local', mem_peak_mb: 999, cpu_peak: 999, go_peak: 999, measurements: {} }],
+    }) }));
+    expect(screen.getByText('TPS').parentElement).toHaveTextContent(expected);
+    expect(screen.getByText('RSS Peak').parentElement).toHaveTextContent('Unavailable');
+    expect(screen.getByText('CPU Peak').parentElement).toHaveTextContent('Unavailable');
+    expect(screen.getByText('Run stopped — partial summary')).toBeInTheDocument();
+  });
+
   it('starts with the newest flushed tree revision instead of stale code', async () => {
     const flushPendingEdits = vi.fn(() => 'test:\n  name: newest-run\n');
     render(
@@ -188,14 +238,13 @@ describe('YAMLLoadRunSession', () => {
     expect(screen.getByText('VUs (exec/conf)')).toBeInTheDocument();
     expect(screen.getByText('8/10')).toBeInTheDocument();
     expect(screen.getByText('TPS')).toBeInTheDocument();
-    expect(screen.getByText('33.3')).toBeInTheDocument();
-    expect(screen.getByText('MEM Peak')).toBeInTheDocument();
-    expect(screen.getByText('64 MB')).toBeInTheDocument();
-    expect(screen.getByText('CPU Peak')).toBeInTheDocument();
-    expect(screen.getByText('42.5%')).toBeInTheDocument();
-    expect(screen.getByText('Go')).toBeInTheDocument();
-    expect(screen.getByText('12')).toBeInTheDocument();
-    expect(screen.getByText('ERRs')).toBeInTheDocument();
+    expect(screen.getByText('TPS').parentElement).toHaveTextContent('Unavailable');
+    expect(screen.getByText(/Legacy transaction rate: 33.3 TPS/)).toBeInTheDocument();
+    expect(screen.getByText('RSS Peak').parentElement).toHaveTextContent('Unavailable');
+    expect(screen.getByText(/Legacy measurements: MEM Peak 64 MB, CPU Peak 42.5%, Go 12/)).toBeInTheDocument();
+    expect(screen.getByText('Failed Requests').parentElement).toHaveTextContent('2 (1.00%)');
+    expect(within(screen.getByRole('table')).getByText('/x')).toBeInTheDocument();
+    expect(within(screen.getByRole('table')).getByText('88ms')).toBeInTheDocument();
 
     const summaryHeading = screen.getByText('Run summary');
     const logsHeading = screen.getByText('Live logs');

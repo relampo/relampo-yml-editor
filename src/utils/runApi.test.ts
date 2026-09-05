@@ -64,6 +64,27 @@ describe('stopLoadRun', () => {
 });
 
 describe('streamLoadRun', () => {
+  it('rejects malformed optional report measurements before delivering a final summary', () => {
+    class FakeEventSource {
+      static instance: FakeEventSource;
+      close = vi.fn();
+      readyState = 1;
+      onerror: (() => void) | null = null;
+      listeners = new Map<string, (event: Event) => void>();
+      constructor() { FakeEventSource.instance = this; }
+      addEventListener(type: string, listener: (event: Event) => void) { this.listeners.set(type, listener); }
+    }
+    vi.stubGlobal('EventSource', FakeEventSource);
+    const handlers = { onState: vi.fn(), onMetrics: vi.fn(), onLog: vi.fn(), onDone: vi.fn(), onConnectionError: vi.fn() };
+    streamLoadRun('run-1', handlers);
+    FakeEventSource.instance.listeners.get('done')?.({ data: JSON.stringify({ status: 'completed', summary: {
+      test_name: 'invalid', start_time: '', end_time: '', duration: 1, total_requests: 0, total_failures: 0, requests: [],
+      node_resources: [{ node: 'local', mem_peak_mb: 0, cpu_peak: 0, go_peak: 0, measurements: { rss_peak_mib: 'unknown' } }],
+    } }) } as unknown as MessageEvent);
+    expect(handlers.onDone).not.toHaveBeenCalled();
+    expect(handlers.onConnectionError).toHaveBeenCalledOnce();
+  });
+
   it('delivers reconnect duplicates once and ignores events after terminal completion', () => {
     class FakeEventSource {
       static instances: FakeEventSource[] = [];
