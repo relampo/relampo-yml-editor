@@ -92,6 +92,66 @@ const baseProps = {
 };
 
 describe('YAMLLoadRunSession', () => {
+  it.each([false, true])('renders partial-node metadata and missing or zero resources (zero=%s)', async zero => {
+    render(<YAMLLoadRunSession {...baseProps} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Run load test' }));
+    await waitFor(() => expect(runApiMock.handlers).toHaveLength(1));
+    act(() => runApiMock.handlers[0].onDone({ status: 'completed', error: null, summary: summary({
+      status: 'completed', partial: true, expected_nodes: 2, received_nodes: ['local'], missing_nodes: ['node-2'],
+      start_time: '', end_time: '', total_requests: 0, total_failures: 0, transactions: [], transactions_configured: false,
+      metadata: { execution_mode: 'Distributed' },
+      node_resources: [{ node: 'local', mem_peak_mb: 99, cpu_peak: 99, go_peak: 99, measurements: zero ? {
+        rss_peak_mib: 0, rss_peak_percent: 0, go_heap_peak_mib: 0, memory_capacity_mib: 0, cpu_capacity: 0,
+        goroutines_start: 0, goroutines_peak: 0, goroutines_end: 0,
+      } : {} }],
+    }) }));
+    expect(screen.getByText('Run summary — partial')).toBeInTheDocument();
+    expect(screen.getByText('Nodes: 1/2. Missing: node-2.')).toBeInTheDocument();
+    expect(screen.getByText(/Studio load run · Distributed · Start unavailable → End unavailable/)).toBeInTheDocument();
+    expect(screen.getByText('TPS').parentElement).toHaveTextContent('Not applicable');
+    expect(screen.getByText('Failed Requests').parentElement).toHaveTextContent('0 (Unavailable)');
+    expect(screen.getByText('RSS peak percent').parentElement).toHaveTextContent(zero ? '0.0%' : 'Unavailable');
+    expect(screen.getByText('Go heap peak').parentElement).toHaveTextContent(zero ? '0 MiB' : 'Unavailable');
+    expect(screen.getByText('Memory capacity').parentElement).toHaveTextContent(zero ? '0 MiB' : 'Unavailable');
+    expect(screen.getByText(zero ? 'CPU capacity: 0 cores' : 'CPU capacity: Unavailable cores')).toBeInTheDocument();
+    expect(screen.getByText(zero ? 'Goroutines (start / peak / end): 0 / 0 / 0' : 'Goroutines (start / peak / end): Unavailable / Unavailable / Unavailable')).toBeInTheDocument();
+  });
+
+  it('uses each highest node measurement and replaces live cards with the final summary', async () => {
+    render(<YAMLLoadRunSession {...baseProps} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Run load test' }));
+    await waitFor(() => expect(runApiMock.handlers).toHaveLength(1));
+    act(() => runApiMock.handlers[0].onMetrics(metric({ rps: 999 })));
+    expect(screen.getByText('Req/s').parentElement).toHaveTextContent('999');
+    act(() => runApiMock.handlers[0].onDone({ status: 'completed', error: null, summary: summary({
+      node_resources: [
+        { node: 'a', mem_peak_mb: 999, cpu_peak: 999, go_peak: 999, measurements: { rss_peak_mib: 80, cpu_percent_peak: 10, goroutines_peak: 5 } },
+        { node: 'b', mem_peak_mb: 999, cpu_peak: 999, go_peak: 999, measurements: { rss_peak_mib: 20, cpu_percent_peak: 40, goroutines_peak: 3 } },
+        { node: 'c', mem_peak_mb: 999, cpu_peak: 999, go_peak: 999, measurements: { rss_peak_mib: 30, cpu_percent_peak: 20, goroutines_peak: 9 } },
+      ],
+    }) }));
+    expect(screen.queryByText('Req/s')).not.toBeInTheDocument();
+    expect(screen.getByText('RSS Peak').parentElement).toHaveTextContent('80 MiB (a)');
+    expect(screen.getByText('CPU Peak').parentElement).toHaveTextContent('40.0% (b)');
+    expect(screen.getByText('Goroutines Peak').parentElement).toHaveTextContent('9 (c)');
+    expect(screen.getByText('RPS').parentElement).toHaveTextContent('66.7');
+  });
+
+  it.each([
+    { name: 'complete observations', transactions: [{ name: 'a', count: 4, failures: 1, completed: 3, incomplete: 1 }, { name: 'b', count: 3, failures: 0, completed: 2, incomplete: 1 }], duration: 500_000_000, tps: '10.0', completed: '5', incomplete: '2' },
+    { name: 'mixed legacy observations', transactions: [{ name: 'a', count: 4, failures: 1, completed: 3, incomplete: 1 }, { name: 'b', count: 3, failures: 0 }], duration: 500_000_000, tps: 'Unavailable', completed: 'Unavailable', incomplete: 'Unavailable' },
+    { name: 'zero duration', transactions: [{ name: 'a', count: 4, failures: 1, completed: 3, incomplete: 1 }], duration: 0, tps: 'Unavailable', completed: '3', incomplete: '1' },
+    { name: 'absent observations', transactions: undefined, duration: 500_000_000, tps: 'Unavailable', completed: 'Unavailable', incomplete: 'Unavailable' },
+  ])('keeps fallback rates honest for $name', async ({ transactions, duration, tps, completed, incomplete }) => {
+    render(<YAMLLoadRunSession {...baseProps} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Run load test' }));
+    await waitFor(() => expect(runApiMock.handlers).toHaveLength(1));
+    act(() => runApiMock.handlers[0].onDone({ status: 'completed', error: null, summary: summary({ transactions, duration }) }));
+    expect(screen.getByText('TPS').parentElement?.textContent).toBe(`${tps}TPS`);
+    expect(screen.getByText('Completed transactions').parentElement?.textContent).toBe(`Completed transactions: ${completed}`);
+    expect(screen.getByText('Incomplete transactions').parentElement?.textContent).toBe(`Incomplete transactions: ${incomplete}`);
+  });
+
   it('shows completed-transaction rates and explicit resource measurements from the final report', async () => {
     render(<YAMLLoadRunSession {...baseProps} />);
     fireEvent.click(screen.getByRole('button', { name: 'Run load test' }));

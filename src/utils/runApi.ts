@@ -350,6 +350,7 @@ function isRunRequestStat(value: unknown): value is RunRequestStat {
     isFiniteNumber(value.avg_ms) &&
     isFiniteNumber(value.min_ms) &&
     isFiniteNumber(value.max_ms) &&
+    (value.p50_ms === undefined || isFiniteNumber(value.p50_ms)) &&
     isFiniteNumber(value.p90_ms) &&
     isFiniteNumber(value.p95_ms) &&
     (value.p99_ms === undefined || isFiniteNumber(value.p99_ms))
@@ -516,7 +517,7 @@ function isRunSummary(value: unknown): value is RunSummary {
     (value.overview === undefined || (isRecord(value.overview) &&
       (value.overview.rps === null || isFiniteNumber(value.overview.rps)) &&
       (value.overview.tps === null || isFiniteNumber(value.overview.tps)) &&
-      ['available', 'not_applicable', 'unavailable'].includes(String(value.overview.tps_status)) &&
+      typeof value.overview.tps_status === 'string' && ['available', 'not_applicable', 'unavailable'].includes(value.overview.tps_status) &&
       (value.overview.failure_percent === null || isFiniteNumber(value.overview.failure_percent)) &&
       isFiniteNumber(value.overview.completed_transactions) && isFiniteNumber(value.overview.incomplete_transactions))) &&
     Array.isArray(value.requests) &&
