@@ -145,4 +145,26 @@ describe('LoadDetails', () => {
       }),
     );
   });
+
+  it('renders the load pattern visualization for segments', () => {
+    renderWithLanguage(
+      <LoadDetails
+        node={{
+          id: 'load-segments',
+          type: 'load',
+          name: 'Load Config',
+          data: {
+            type: 'segments',
+            duration: '1m',
+            segments: [
+              { name: 'baseline', target_rps: '5', max_vus: '20' },
+              { name: 'fixed_users', target_vus: '10' },
+            ],
+          },
+        }}
+      />,
+    );
+
+    expect(screen.getByText('Load Pattern Visualization')).toBeInTheDocument();
+  });
 });

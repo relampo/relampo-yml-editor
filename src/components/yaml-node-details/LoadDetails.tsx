@@ -113,12 +113,10 @@ export function LoadDetails({ node, onNodeUpdate }: NodeDetailProps) {
 
       <div className="h-px bg-white/10" />
 
-      {loadType !== 'segments' && (
-        <LoadVisualization
-          data={loadData}
-          loadType={loadType}
-        />
-      )}
+      <LoadVisualization
+        data={loadData}
+        loadType={loadType}
+      />
     </div>
   );
 }
