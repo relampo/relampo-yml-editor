@@ -43,7 +43,6 @@ export function LoadDetails({ node, onNodeUpdate }: NodeDetailProps) {
     if (field === 'type') {
       const selectedType = normalizeLoadType(value);
       updateData({
-        ...data,
         ...buildLoadDataForType(selectedType, loadData),
         __name: `Load: ${getLoadTypeLabel(selectedType)}`,
       });
