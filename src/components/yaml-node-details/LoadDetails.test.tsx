@@ -3,12 +3,43 @@ import type { ReactElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { LanguageProvider } from '../../contexts/LanguageContext';
 import { LoadDetails } from './LoadDetails';
+import type { YAMLNode } from '../../types/yaml';
+import { applyNodeUpdateToTree } from '../../utils/nodeUpdate';
+import { validateYAMLSemantics } from '../../utils/yamlSemanticValidation';
 
 function renderWithLanguage(ui: ReactElement) {
   return render(<LanguageProvider>{ui}</LanguageProvider>);
 }
 
 describe('LoadDetails', () => {
+  it('switches edited segments to valid throughput without retaining segment data', () => {
+    let node: YAMLNode = {
+      id: 'load-segments',
+      type: 'load',
+      name: 'Load: Segments',
+      data: {
+        type: 'segments',
+        duration: '1m',
+        segments: [{ target_rps: '5', max_vus: '100' }],
+      },
+    };
+    const onNodeUpdate = (id: string, data: Record<string, unknown>) => {
+      node = applyNodeUpdateToTree(node, id, data);
+    };
+    const view = renderWithLanguage(<LoadDetails node={node} onNodeUpdate={onNodeUpdate} />);
+
+    fireEvent.change(screen.getByDisplayValue('5'), { target: { value: '10' } });
+    view.rerender(
+      <LanguageProvider><LoadDetails node={node} onNodeUpdate={onNodeUpdate} /></LanguageProvider>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Throughput' }));
+
+    expect(node.name).toBe('Load: Throughput');
+    expect(node.data).toMatchObject({ type: 'throughput', duration: '1m', target_rps: '20' });
+    expect(node.data).not.toHaveProperty('segments');
+    expect(validateYAMLSemantics(node)).toEqual([]);
+  });
+
   it('renders the intent form in grouped sections', () => {
     renderWithLanguage(
       <LoadDetails
