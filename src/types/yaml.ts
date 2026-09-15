@@ -1,7 +1,7 @@
 import type { StringMap } from './shared';
 
 type YAMLScalar = string | number | boolean | null;
-export type YAMLValue = YAMLScalar | YAMLValue[] | { [key: string]: YAMLValue | undefined } | undefined;
+export type YAMLValue = YAMLScalar | Uint8Array | YAMLValue[] | { [key: string]: YAMLValue | undefined } | undefined;
 
 type YAMLInputValue = string | number;
 

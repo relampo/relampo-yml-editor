@@ -141,6 +141,34 @@ describe('parseYAMLToTree', () => {
     expect(() => parseYAMLToTree('{')).toThrow();
   });
 
+  it('parses a recorded binary response body', () => {
+    const yaml = `
+test:
+  name: Binary response
+scenarios:
+  - name: Images
+    steps:
+      - request:
+          method: GET
+          url: /image.jpg
+          response:
+            body: !!binary |
+              /9j/2Q==
+`;
+
+    const tree = parseYAMLToTree(yaml)!;
+    const request = tree.children!.find(c => c.type === 'scenarios')!.children![0].children!.find(
+      c => c.type === 'steps',
+    )!.children![0];
+    const body = request.data?.response?.body;
+
+    expect(body).toBeInstanceOf(Uint8Array);
+    expect(Array.from(body as Uint8Array)).toEqual([255, 216, 255, 217]);
+    const output = treeToYAML(tree);
+    expect(output).toContain('!!binary');
+    expect(() => parseYAMLToTree(output)).not.toThrow();
+  });
+
   it('parses test metadata', () => {
     const yaml = `
 test:

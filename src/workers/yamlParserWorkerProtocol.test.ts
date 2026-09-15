@@ -4,6 +4,27 @@ import { treeToYAML } from '../utils/yamlParser';
 import { handleParseWorkerRequest } from './yamlParserWorkerProtocol';
 
 describe('YAML parser Worker protocol', () => {
+  it('parses a recorded binary response body', () => {
+    const response = handleParseWorkerRequest({
+      id: 40,
+      yaml: `
+test:
+  name: Binary response
+scenarios:
+  - name: Images
+    steps:
+      - request:
+          method: GET
+          url: /image.jpg
+          response:
+            body: !!binary |
+              /9j/2Q==
+`,
+    });
+
+    expect(response).toMatchObject({ id: 40, ok: true });
+  });
+
   it('returns the request id and a correct tree for a 2M character, 50K line document', () => {
     const comments = Array.from({ length: 50_000 }, (_, index) => `# ${String(index).padStart(5, '0')} ${'x'.repeat(34)}`).join('\n');
     const yaml = `${comments}\ntest:\n  name: large-worker-document\n  future_test:\n    flags: [first, second]\nfuture_root:\n  ordered: [alpha, beta, gamma]\nscenarios:\n  - name: smoke\n    future_scenario: keep\n    steps:\n      - request:\n          method: GET\n          url: /health\n          future_request:\n            values: [one, two]\n`;

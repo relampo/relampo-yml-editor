@@ -23,6 +23,7 @@ function isPlainRecord(value: unknown): value is Record<string, unknown> {
 
 function isYAMLValue(value: unknown, ancestors = new WeakSet<object>()): value is YAMLValue {
   if (value === null || value === undefined || ['string', 'number', 'boolean'].includes(typeof value)) return true;
+  if (value instanceof Uint8Array) return true;
   if (typeof value !== 'object' || ancestors.has(value)) return false;
 
   ancestors.add(value);
@@ -44,6 +45,18 @@ const ROOT_FIELDS = new Set([
   'metrics',
 ]);
 
+const YAML_SCHEMA = jsyaml.DEFAULT_SCHEMA.extend({
+  // DEFAULT_SCHEMA supports !!binary but also converts ISO timestamps to Date.
+  // Keep the previous JSON_SCHEMA timestamp behavior so unknown fields stay lossless.
+  implicit: [
+    new jsyaml.Type('tag:yaml.org,2002:timestamp', {
+      kind: 'scalar',
+      resolve: value => value !== null && /^\d{4}-\d{1,2}-\d{1,2}(?:$|[Tt \t])/.test(value),
+      construct: value => value,
+    }),
+  ],
+});
+
 function unknownFields(value: Record<string, unknown>, knownFields: ReadonlySet<string>): Record<string, YAMLValue> | undefined {
   const unknown: Record<string, YAMLValue> = {};
   for (const [key, fieldValue] of Object.entries(value)) {
@@ -60,7 +73,7 @@ export function parseYAMLToTree(yamlString: string, defaultRootName?: string): Y
     return null;
   }
   try {
-    const parsed = jsyaml.load(yamlString, { schema: jsyaml.JSON_SCHEMA });
+    const parsed = jsyaml.load(yamlString, { schema: YAML_SCHEMA });
     if (!parsed) return null;
     if (!isPlainRecord(parsed) || !isYAMLValue(parsed)) throw new Error('YAML document root must be a safe mapping');
     return convertToTree(parsed, undefined, defaultRootName);
