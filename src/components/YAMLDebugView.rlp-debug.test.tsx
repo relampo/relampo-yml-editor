@@ -846,6 +846,57 @@ describe('YAMLDebugSession RLP debug fixes', () => {
     expect(screen.queryByText('Regex value not found: javax.faces.ViewState')).toBeNull();
   });
 
+  it('shows resolved built-ins from URL, query, headers, and body in the Variables tab (RLP-732/RLP-733)', async () => {
+    const request: YAMLNode = {
+      id: 'builtins',
+      type: 'request',
+      name: '[1] GET /users/{{_uuid}}',
+      data: {
+        request_id: 1,
+        method: 'GET',
+        url: '/users/{{_uuid}}',
+        query_params: { choice: '{{_randomFrom("1","5")}}' },
+        headers: { 'X-Trace': 'trace-{{_uuid}}' },
+        body: { id: '{{_randomInt(1,2)}}' },
+      } as YAMLNode['data'],
+    };
+
+    render(
+      <YAMLDebugSession
+        tree={{ id: 'root', type: 'root', name: 'root', children: [request] }}
+        yamlCode={'test:\n  name: builtins-debug\n'}
+        documentReady
+        validationErrors={[]}
+        onSelectNode={vi.fn()}
+        onEditNode={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
+
+    act(() => {
+      debugApiMock.handlers[0].onEvent(
+        event({
+          name: '[1] GET /users/{{_uuid}}',
+          path: '/users/user-42?choice=5',
+          request_id: 1,
+          request_headers: { 'X-Trace': 'trace-abc' },
+          request_body: '{"id":"2"}',
+        }),
+      );
+    });
+
+    fireEvent.click((await screen.findByText('#1')).closest('button')!);
+    fireEvent.click(screen.getByRole('button', { name: 'variables' }));
+
+    expect(await screen.findByText('user-42')).toBeInTheDocument();
+    expect(screen.getByText('5')).toBeInTheDocument();
+    expect(screen.getByText('abc')).toBeInTheDocument();
+    expect(screen.getByText('2')).toBeInTheDocument();
+    expect(screen.getAllByText('Resolved')).toHaveLength(4);
+  });
+
   it('shows variables captured earlier in a redirect even when its recorded URL is already resolved (RLP-597)', async () => {
     const parent: YAMLNode = {
       id: 'parent',

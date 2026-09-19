@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  builtinRowsForRequestNode,
   debugEventRequestNumber,
   matchDebugEventTarget,
   skippedRedirectHops,
@@ -176,6 +177,33 @@ describe('matchDebugEventTarget — redirect chain follow-ups', () => {
     const finalNode = matchDebugEventTarget(finalEvent, nodes);
     expect(finalNode?.id).toBe('f21');
     expect(debugEventRequestNumber(finalEvent, finalNode, nodes)).toBe('21');
+  });
+
+  it('keeps the recorded Tree number when a redirected event carries the parent ID (RLP-736)', () => {
+    const parent: YAMLNode = {
+      id: 'parent-41',
+      type: 'request',
+      name: '[41] POST /start',
+      data: { request_id: 41, method: 'POST', url: '/start', chain_id: 'rc-41', chain_role: 'parent' },
+    };
+    const final: YAMLNode = {
+      id: 'final-42',
+      type: 'request',
+      name: '[42] GET /landing',
+      data: { request_id: 42, enabled: false, method: 'GET', url: '/landing', chain_id: 'rc-41', chain_role: 'final' },
+    };
+    const finalEvent = event({
+      name: '[41] GET /landing',
+      path: '/landing',
+      request_id: 41,
+      chain_id: 'rc-41',
+      chain_role: 'final',
+      redirect_index: 1,
+    });
+    const matched = matchDebugEventTarget(finalEvent, [parent, final]);
+
+    expect(matched?.id).toBe('final-42');
+    expect(debugEventRequestNumber(finalEvent, matched, [parent, final])).toBe('42');
   });
 
   it('keeps the attached RLP-674 request 16 number when the runtime event uses request 15', () => {
@@ -694,6 +722,48 @@ describe('variableRowsForRequestNode', () => {
     const snapshot = { 'javax.faces.ViewState': 'vs-token' };
     expect(variableRowsForRequestNode(extractor, snapshot)).toEqual([['javax.faces.ViewState (RES)', 'vs-token']]);
     expect(variableRowsForRequestNode(consumer, snapshot)).toEqual([['javax.faces.ViewState (REQ)', 'vs-token']]);
+  });
+});
+
+describe('builtinRowsForRequestNode', () => {
+  it('resolves built-ins from URL, query, headers, and JSON body locations', () => {
+    const node: YAMLNode = {
+      id: 'builtins',
+      type: 'request',
+      name: 'builtins',
+      data: {
+        url: '/users/{{_uuid}}',
+        query_params: { choice: '{{_randomFrom("1","5")}}' },
+        headers: { 'X-Trace': 'trace-{{_uuid}}' },
+        body: { id: '{{_randomInt(1,2)}}' },
+      } as YAMLNode['data'],
+    };
+
+    expect(
+      builtinRowsForRequestNode(node, {
+        requestUrl: '/users/user-42?choice=5',
+        requestHeaders: { 'X-Trace': 'trace-abc' },
+        requestBody: '{"id":"2"}',
+      }),
+    ).toEqual([
+      { location: 'URL', expression: '{{_uuid}}', value: 'user-42', status: 'resolved' },
+      { location: 'Query', expression: '{{_randomFrom("1","5")}}', value: '5', status: 'resolved' },
+      { location: 'Headers', expression: '{{_uuid}}', value: 'abc', status: 'resolved' },
+      { location: 'Body', expression: '{{_randomInt(1,2)}}', value: '2', status: 'resolved' },
+    ]);
+  });
+
+  it('keeps a built-in visible when the request did not capture a value', () => {
+    const node: YAMLNode = {
+      id: 'missing-builtin',
+      type: 'request',
+      name: 'missing-builtin',
+      data: { headers: { 'X-Trace': '{{_uuid}}' } },
+    };
+
+    expect(builtinRowsForRequestNode(node, { requestHeaders: {} })).toEqual([
+      { location: 'Headers', expression: '{{_uuid}}', value: 'Not captured', status: 'not captured' },
+    ]);
   });
 });
 
