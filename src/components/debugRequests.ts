@@ -720,3 +720,203 @@ export function variableRowsForRequestNode(
     ];
   });
 }
+
+export type BuiltinDebugRow = {
+  location: 'URL' | 'Query' | 'Headers' | 'Body';
+  expression: string;
+  value: string;
+  status: 'resolved' | 'not captured';
+};
+
+type BuiltinReference = {
+  location: BuiltinDebugRow['location'];
+  expression: string;
+  template: string;
+  expressionIndex: number;
+  fieldPath: string[];
+};
+
+function templateExpressions(value: string): string[] {
+  const expressions: string[] = [];
+  let cursor = 0;
+  while (cursor < value.length) {
+    const start = value.indexOf('{{', cursor);
+    if (start < 0) break;
+    let depth = 1;
+    let position = start + 2;
+    while (position < value.length && depth > 0) {
+      if (value.startsWith('{{', position)) {
+        depth += 1;
+        position += 2;
+        continue;
+      }
+      if (value.startsWith('}}', position)) {
+        depth -= 1;
+        position += 2;
+        continue;
+      }
+      position += 1;
+    }
+    if (depth !== 0) break;
+    const expression = value.slice(start, position);
+    if (/\b_[A-Za-z][A-Za-z0-9_]*/.test(expression)) expressions.push(expression);
+    cursor = position;
+  }
+  return expressions;
+}
+
+function builtinLocationForKey(key: string): BuiltinDebugRow['location'] | null {
+  switch (key.toLowerCase()) {
+    case 'url':
+    case 'path':
+      return 'URL';
+    case 'query':
+    case 'query_params':
+    case 'queryparams':
+      return 'Query';
+    case 'headers':
+    case 'request_headers':
+      return 'Headers';
+    case 'body':
+    case 'body_raw':
+    case 'form':
+    case 'form_data':
+      return 'Body';
+    default:
+      return null;
+  }
+}
+
+function collectBuiltinReferences(
+  value: unknown,
+  location: BuiltinDebugRow['location'] | null,
+  fieldPath: string[],
+  into: BuiltinReference[],
+): void {
+  if (typeof value === 'string') {
+    const expressions = templateExpressions(value);
+    expressions.forEach((expression, expressionIndex) => {
+      into.push({
+        location: location ?? 'Body',
+        expression,
+        template: value,
+        expressionIndex,
+        fieldPath,
+      });
+    });
+    return;
+  }
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => collectBuiltinReferences(item, location, [...fieldPath, String(index)], into));
+    return;
+  }
+  if (!value || typeof value !== 'object') return;
+  Object.entries(value as Record<string, unknown>).forEach(([key, child]) => {
+    const childLocation = builtinLocationForKey(key) ?? location;
+    const childPath = childLocation && childLocation !== location ? [] : [...fieldPath, key];
+    collectBuiltinReferences(child, childLocation, childPath, into);
+  });
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function resolveTemplateValue(template: string, runtimeValue: string, expressionIndex: number): string | null {
+  const expressions = templateExpressions(template);
+  if (expressions.length === 0) return null;
+  if (template.trim() === expressions[expressionIndex]) return runtimeValue;
+  let pattern = '^';
+  let cursor = 0;
+  expressions.forEach(expression => {
+    const start = template.indexOf(expression, cursor);
+    if (start < 0) return;
+    pattern += escapeRegExp(template.slice(cursor, start)) + '(.+?)';
+    cursor = start + expression.length;
+  });
+  pattern += escapeRegExp(template.slice(cursor)) + '$';
+  const match = runtimeValue.match(new RegExp(pattern, 's'));
+  return match?.[expressionIndex + 1] ?? null;
+}
+
+function lookupPath(value: unknown, path: string[]): unknown {
+  return path.reduce<unknown>((current, key) => {
+    if (current && typeof current === 'object') return (current as Record<string, unknown>)[key];
+    return undefined;
+  }, value);
+}
+
+function headerValue(headers: Record<string, string> | undefined, name: string | undefined): string | null {
+  if (!headers || !name) return null;
+  const entry = Object.entries(headers).find(([key]) => key.toLowerCase() === name.toLowerCase());
+  return entry?.[1] ?? null;
+}
+
+function pathWithoutQuery(raw: string): string {
+  const queryless = raw.split('?')[0] || '/';
+  if (!/^https?:\/\//i.test(queryless)) return queryless;
+  try {
+    return decodeURIComponent(new URL(queryless).pathname || '/');
+  } catch {
+    return queryless;
+  }
+}
+
+function runtimeBuiltinValue(reference: BuiltinReference, context: VariableValueContext): string | null {
+  const field = reference.fieldPath.at(-1);
+  if (reference.location === 'Headers') {
+    const runtime = headerValue(context.requestHeaders, field);
+    return runtime === null ? null : resolveTemplateValue(reference.template, runtime, reference.expressionIndex);
+  }
+  if (reference.location === 'Query') {
+    try {
+      const runtimeURL = new URL(context.requestUrl ?? '', 'http://relampo.local');
+      const runtime = field ? runtimeURL.searchParams.get(field) : null;
+      return runtime === null ? null : resolveTemplateValue(reference.template, runtime, reference.expressionIndex);
+    } catch {
+      return null;
+    }
+  }
+  if (reference.location === 'URL') {
+    const runtime = pathWithoutQuery(normalizePath(context.requestUrl ?? ''));
+    const template = pathWithoutQuery(reference.template);
+    return resolveTemplateValue(template, runtime, reference.expressionIndex);
+  }
+  let runtimeBody: unknown = context.requestBody ?? '';
+  try {
+    runtimeBody = JSON.parse(context.requestBody ?? '');
+  } catch {
+    // Form and plain-text bodies are resolved against the raw payload below.
+  }
+  const runtime = typeof runtimeBody === 'string' ? runtimeBody : lookupPath(runtimeBody, reference.fieldPath);
+  if (runtime === undefined || runtime === null) return null;
+  return resolveTemplateValue(reference.template, String(runtime), reference.expressionIndex);
+}
+
+export function builtinRowsForRequestNode(
+  node: YAMLNode | null,
+  context: VariableValueContext = {},
+): BuiltinDebugRow[] {
+  if (!node) return [];
+  const references: BuiltinReference[] = [];
+  collectBuiltinReferences(node.data, null, [], references);
+  node.children?.forEach(child => {
+    if (REQUEST_TYPES.has(child.type)) return;
+    const location = builtinLocationForKey(child.type) ?? (child.type === 'extractor' ? null : 'Body');
+    if (location) collectBuiltinReferences(child.data, location, [], references);
+  });
+
+  const seen = new Set<string>();
+  return references.flatMap(reference => {
+    const key = `${reference.location}\u0000${reference.fieldPath.join('.')}\u0000${reference.expression}`;
+    if (seen.has(key)) return [];
+    seen.add(key);
+    const value = runtimeBuiltinValue(reference, context);
+    return [{
+      location: reference.location,
+      expression: reference.expression,
+      value: value ?? MISSING_VARIABLE_VALUE,
+      status: value === null ? 'not captured' : 'resolved',
+    }];
+  });
+}
