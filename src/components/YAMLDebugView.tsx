@@ -104,6 +104,16 @@ function formatLatency(latencyMs: number): string {
   return latencyMs < 10 ? `${latencyMs.toFixed(1)}ms` : `${Math.round(latencyMs)}ms`;
 }
 
+function formatBuiltinDiagnostic(diagnostic: NonNullable<EngineEvent['builtin']>): string {
+  const details = [
+    diagnostic.code,
+    diagnostic.argument === undefined ? '' : `argument ${diagnostic.argument}`,
+    diagnostic.position === undefined ? '' : `position ${diagnostic.position}`,
+  ].filter(Boolean);
+  const name = diagnostic.function || 'built-in';
+  return details.length > 0 ? `${name} (${details.join(', ')})` : name;
+}
+
 function statusTone(status: DebugStatus): string {
   switch (status) {
     case 'passed':
@@ -1217,6 +1227,25 @@ function DebugOverviewInspector({ event }: { event: EngineEvent }) {
         title="Result"
         value={event.err || (event.status ? `HTTP ${event.status}` : 'Completed')}
       />
+      {event.builtin && (
+        <div className="grid gap-3 rounded border border-amber-400/25 bg-amber-400/5 p-3 md:grid-cols-2" aria-label="Built-in diagnostic">
+          <DebugLine
+            icon={<AlertTriangle className="h-4 w-4 text-amber-300" />}
+            title="Built-in"
+            value={formatBuiltinDiagnostic(event.builtin)}
+          />
+          <DebugLine
+            icon={<TerminalSquare className="h-4 w-4 text-zinc-300" />}
+            title="Step path"
+            value={event.builtin.step_path || event.step_path || '—'}
+          />
+          <DebugLine
+            icon={<TerminalSquare className="h-4 w-4 text-zinc-300" />}
+            title="Request ID"
+            value={event.builtin.request_id === undefined ? '—' : String(event.builtin.request_id)}
+          />
+        </div>
+      )}
     </div>
   );
 }
