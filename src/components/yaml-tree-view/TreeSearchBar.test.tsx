@@ -54,9 +54,38 @@ describe('TreeSearchBar replace controls', () => {
 
     expect(onReplace).toHaveBeenLastCalledWith('replacement', 1);
     expect(screen.getByLabelText('Replace match position')).toHaveTextContent('2 / 3');
+    expect(screen.getByRole('button', { name: 'Replace selected' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Replace all' })).toBeDisabled();
+    expect(screen.getByText('1 replacement')).toHaveClass('text-yellow-400');
+  });
 
+  it('disables both actions after Replace all and re-enables them when the replacement changes', () => {
+    const onReplace = vi.fn(() => 2);
+
+    render(
+      <TreeSearchBar
+        value="needle"
+        onChange={vi.fn()}
+        onClear={vi.fn()}
+        onReplace={onReplace}
+        replaceMatchCount={2}
+        currentMatchIndex={0}
+        onCurrentMatchIndexChange={vi.fn()}
+        searchMatchCount={0}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Replace' }));
+    fireEvent.change(screen.getByLabelText('Replacement text'), { target: { value: 'replacement' } });
     fireEvent.click(screen.getByRole('button', { name: 'Replace all' }));
+
     expect(onReplace).toHaveBeenLastCalledWith('replacement', undefined);
+    expect(screen.getByRole('button', { name: 'Replace selected' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Replace all' })).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText('Replacement text'), { target: { value: 'another' } });
+    expect(screen.getByRole('button', { name: 'Replace selected' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Replace all' })).toBeEnabled();
   });
 
   it('applies the tree search only after Search or Enter', () => {
