@@ -179,6 +179,33 @@ describe('matchDebugEventTarget — redirect chain follow-ups', () => {
     expect(debugEventRequestNumber(finalEvent, finalNode, nodes)).toBe('21');
   });
 
+  it('keeps the recorded Tree number when a redirected event carries the parent ID (RLP-736)', () => {
+    const parent: YAMLNode = {
+      id: 'parent-41',
+      type: 'request',
+      name: '[41] POST /start',
+      data: { request_id: 41, method: 'POST', url: '/start', chain_id: 'rc-41', chain_role: 'parent' },
+    };
+    const final: YAMLNode = {
+      id: 'final-42',
+      type: 'request',
+      name: '[42] GET /landing',
+      data: { request_id: 42, enabled: false, method: 'GET', url: '/landing', chain_id: 'rc-41', chain_role: 'final' },
+    };
+    const finalEvent = event({
+      name: '[41] GET /landing',
+      path: '/landing',
+      request_id: 41,
+      chain_id: 'rc-41',
+      chain_role: 'final',
+      redirect_index: 1,
+    });
+    const matched = matchDebugEventTarget(finalEvent, [parent, final]);
+
+    expect(matched?.id).toBe('final-42');
+    expect(debugEventRequestNumber(finalEvent, matched, [parent, final])).toBe('42');
+  });
+
   it('keeps the attached RLP-674 request 16 number when the runtime event uses request 15', () => {
     const parent: YAMLNode = {
       id: 'request-15',
