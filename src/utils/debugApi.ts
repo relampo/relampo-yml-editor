@@ -60,6 +60,7 @@ export interface EngineEvent {
   redirect_index?: number;
   redirect_source?: string;
   builtin?: BuiltinDiagnostic;
+  spark_phase?: 'before' | 'after';
   debug?: boolean;
   embedded?: boolean;
   // The outer key is lowercase (Event json tag), but the inner AssertionResult
