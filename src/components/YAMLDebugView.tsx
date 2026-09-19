@@ -103,6 +103,16 @@ function formatLatency(latencyMs: number): string {
   return latencyMs < 10 ? `${latencyMs.toFixed(1)}ms` : `${Math.round(latencyMs)}ms`;
 }
 
+function formatBuiltinDiagnostic(diagnostic: NonNullable<EngineEvent['builtin']>): string {
+  const details = [
+    diagnostic.code,
+    diagnostic.argument === undefined ? '' : `argument ${diagnostic.argument}`,
+    diagnostic.position === undefined ? '' : `position ${diagnostic.position}`,
+  ].filter(Boolean);
+  const name = diagnostic.function || 'built-in';
+  return details.length > 0 ? `${name} (${details.join(', ')})` : name;
+}
+
 function statusTone(status: DebugStatus): string {
   switch (status) {
     case 'passed':
@@ -1122,39 +1132,60 @@ function DebugInspectorContent({
   }
 
   return (
-    <div className="grid gap-3 md:grid-cols-2">
-      <DebugLine
-        icon={<Eye className="h-4 w-4 text-yellow-300" />}
-        title="Step"
-        // Show what the run actually sent, sourced from the event like the
-        // timeline and the header above — not the recorded node name, which
-        // bakes in the capture-time value of any correlated placeholder. When an
-        // extraction fails the node name still reads NROEXP=2026-88-001-0168
-        // while the request went out as NROEXP=Regex+value+not+found, so reading
-        // from the node made Overview contradict the Request tab. RLP-593.
-        value={event.path || event.name}
-      />
-      <DebugLine
-        icon={<Clock3 className="h-4 w-4 text-zinc-300" />}
-        title="Latency"
-        value={formatLatency(event.latency_ms)}
-      />
-      <DebugLine
-        icon={<TerminalSquare className="h-4 w-4 text-zinc-300" />}
-        title="VU"
-        value={event.vu ? `Virtual user ${event.vu}` : '—'}
-      />
-      <DebugLine
-        icon={
-          event.err ? (
-            <XCircle className="h-4 w-4 text-red-300" />
-          ) : (
-            <ShieldCheck className="h-4 w-4 text-emerald-300" />
-          )
-        }
-        title="Result"
-        value={event.err || (event.status ? `HTTP ${event.status}` : 'Completed')}
-      />
+    <div className="space-y-3">
+      <div className="grid gap-3 md:grid-cols-2">
+        <DebugLine
+          icon={<Eye className="h-4 w-4 text-yellow-300" />}
+          title="Step"
+          // Show what the run actually sent, sourced from the event like the
+          // timeline and the header above — not the recorded node name, which
+          // bakes in the capture-time value of any correlated placeholder. When an
+          // extraction fails the node name still reads NROEXP=2026-88-001-0168
+          // while the request went out as NROEXP=Regex+value+not+found, so reading
+          // from the node made Overview contradict the Request tab. RLP-593.
+          value={event.path || event.name}
+        />
+        <DebugLine
+          icon={<Clock3 className="h-4 w-4 text-zinc-300" />}
+          title="Latency"
+          value={formatLatency(event.latency_ms)}
+        />
+        <DebugLine
+          icon={<TerminalSquare className="h-4 w-4 text-zinc-300" />}
+          title="VU"
+          value={event.vu ? `Virtual user ${event.vu}` : '—'}
+        />
+        <DebugLine
+          icon={
+            event.err ? (
+              <XCircle className="h-4 w-4 text-red-300" />
+            ) : (
+              <ShieldCheck className="h-4 w-4 text-emerald-300" />
+            )
+          }
+          title="Result"
+          value={event.err || (event.status ? `HTTP ${event.status}` : 'Completed')}
+        />
+      </div>
+      {event.builtin && (
+        <div className="grid gap-3 rounded border border-amber-400/25 bg-amber-400/5 p-3 md:grid-cols-2" aria-label="Built-in diagnostic">
+          <DebugLine
+            icon={<AlertTriangle className="h-4 w-4 text-amber-300" />}
+            title="Built-in"
+            value={formatBuiltinDiagnostic(event.builtin)}
+          />
+          <DebugLine
+            icon={<TerminalSquare className="h-4 w-4 text-zinc-300" />}
+            title="Step path"
+            value={event.builtin.step_path || event.step_path || '—'}
+          />
+          <DebugLine
+            icon={<TerminalSquare className="h-4 w-4 text-zinc-300" />}
+            title="Request ID"
+            value={event.builtin.request_id === undefined ? '—' : String(event.builtin.request_id)}
+          />
+        </div>
+      )}
     </div>
   );
 }

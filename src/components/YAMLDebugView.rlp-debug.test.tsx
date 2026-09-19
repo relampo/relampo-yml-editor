@@ -244,6 +244,45 @@ describe('YAMLDebugSession RLP debug fixes', () => {
     expect(screen.queryByText('Redirect', { exact: true })).toBeNull();
   });
 
+  it('shows invalid built-in diagnostics with request trace location (RLP-734)', async () => {
+    render(
+      <YAMLDebugSession
+        tree={null}
+        yamlCode={'test:\n  name: builtin-error\n'}
+        documentReady
+        validationErrors={[]}
+        onSelectNode={vi.fn()}
+        onEditNode={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
+
+    act(() => {
+      debugApiMock.handlers[0].onEvent(
+        event({
+          path: '/users/{{_randomInt(1)}}',
+          err: 'invalid arguments for _randomInt',
+          step_path: 'scenarios[0].steps[0]',
+          request_id: 7,
+          builtin: {
+            code: 'invalid_arguments',
+            function: '_randomInt',
+            argument: 1,
+            position: 8,
+            step_path: 'scenarios[0].steps[0]',
+            request_id: 7,
+          },
+        }),
+      );
+    });
+
+    expect(await screen.findByText('_randomInt (invalid_arguments, argument 1, position 8)')).toBeInTheDocument();
+    expect(screen.getByText('scenarios[0].steps[0]')).toBeInTheDocument();
+    expect(screen.getByText('invalid arguments for _randomInt')).toBeInTheDocument();
+  });
+
   it('counts redirect finals identified only by step_path for older payloads (RLP-588)', async () => {
     render(
       <YAMLDebugSession

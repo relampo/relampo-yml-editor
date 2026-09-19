@@ -12,6 +12,15 @@ interface EngineAssertionResult {
   Message: string;
 }
 
+export interface BuiltinDiagnostic {
+  code?: string;
+  function?: string;
+  argument?: number;
+  position?: number;
+  step_path?: string;
+  request_id?: number;
+}
+
 interface EngineRedirectHop {
   status: number;
   method?: string;
@@ -50,6 +59,7 @@ export interface EngineEvent {
   chain_role?: string;
   redirect_index?: number;
   redirect_source?: string;
+  builtin?: BuiltinDiagnostic;
   debug?: boolean;
   embedded?: boolean;
   // The outer key is lowercase (Event json tag), but the inner AssertionResult
