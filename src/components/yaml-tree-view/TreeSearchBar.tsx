@@ -26,18 +26,24 @@ export function TreeSearchBar({
   const [searchDraft, setSearchDraft] = useState(value);
   const [replacementText, setReplacementText] = useState('');
   const [replaceMessage, setReplaceMessage] = useState('');
+  const [replaceApplied, setReplaceApplied] = useState(false);
   const matchCount = replaceOpen ? replaceMatchCount : 0;
   const currentMatch = Math.min(currentMatchIndex, Math.max(matchCount - 1, 0));
 
   const applySearch = () => {
     const executedQuery = searchDraft.trim();
     setSearchDraft(executedQuery);
+    setReplaceApplied(false);
+    setReplaceMessage('');
     onCurrentMatchIndexChange(0);
     onChange(executedQuery);
   };
 
   const handleReplace = (matchIndex?: number) => {
     const replacements = onReplace(replacementText, matchIndex);
+    if (replacements > 0) {
+      setReplaceApplied(true);
+    }
     setReplaceMessage(replacements > 0 ? `${replacements} replacement${replacements === 1 ? '' : 's'}` : 'No matches');
   };
 
@@ -74,6 +80,7 @@ export function TreeSearchBar({
               setReplaceOpen(false);
               setReplacementText('');
               setReplaceMessage('');
+              setReplaceApplied(false);
               onCurrentMatchIndexChange(0);
               onClear();
             }}
@@ -118,6 +125,7 @@ export function TreeSearchBar({
               onChange={event => {
                 setReplacementText(event.target.value);
                 setReplaceMessage('');
+                setReplaceApplied(false);
               }}
               className="min-w-0 flex-1 bg-[#0a0a0a] border border-white/10 rounded px-3 py-1.5 text-sm text-zinc-300 placeholder-zinc-500 outline-none focus:border-yellow-400/60"
             />
@@ -147,7 +155,7 @@ export function TreeSearchBar({
             <button
               type="button"
               onClick={() => handleReplace(currentMatch)}
-              disabled={!value.trim() || !replacementText || matchCount === 0}
+              disabled={replaceApplied || !value.trim() || !replacementText || matchCount === 0}
               className="shrink-0 px-2.5 py-1.5 bg-yellow-400/10 border border-yellow-400/30 rounded text-xs text-yellow-400 enabled:hover:bg-yellow-400/20 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Replace selected
@@ -157,12 +165,12 @@ export function TreeSearchBar({
             <button
               type="button"
               onClick={() => handleReplace()}
-              disabled={!value.trim() || !replacementText || matchCount === 0}
+              disabled={replaceApplied || !value.trim() || !replacementText || matchCount === 0}
               className="shrink-0 px-2.5 py-1.5 bg-yellow-400/10 border border-yellow-400/30 rounded text-xs text-yellow-400 enabled:hover:bg-yellow-400/20 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Replace all
             </button>
-            {replaceMessage && <span className="shrink-0 text-xs text-zinc-500">{replaceMessage}</span>}
+            {replaceMessage && <span className="shrink-0 text-xs text-yellow-400">{replaceMessage}</span>}
           </div>
         </div>
       )}
