@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  builtinRowsForRequestNode,
   debugEventRequestNumber,
   matchDebugEventTarget,
   skippedRedirectHops,
@@ -694,6 +695,48 @@ describe('variableRowsForRequestNode', () => {
     const snapshot = { 'javax.faces.ViewState': 'vs-token' };
     expect(variableRowsForRequestNode(extractor, snapshot)).toEqual([['javax.faces.ViewState (RES)', 'vs-token']]);
     expect(variableRowsForRequestNode(consumer, snapshot)).toEqual([['javax.faces.ViewState (REQ)', 'vs-token']]);
+  });
+});
+
+describe('builtinRowsForRequestNode', () => {
+  it('resolves built-ins from URL, query, headers, and JSON body locations', () => {
+    const node: YAMLNode = {
+      id: 'builtins',
+      type: 'request',
+      name: 'builtins',
+      data: {
+        url: '/users/{{_uuid}}',
+        query_params: { choice: '{{_randomFrom("1","5")}}' },
+        headers: { 'X-Trace': 'trace-{{_uuid}}' },
+        body: { id: '{{_randomInt(1,2)}}' },
+      } as YAMLNode['data'],
+    };
+
+    expect(
+      builtinRowsForRequestNode(node, {
+        requestUrl: '/users/user-42?choice=5',
+        requestHeaders: { 'X-Trace': 'trace-abc' },
+        requestBody: '{"id":"2"}',
+      }),
+    ).toEqual([
+      { location: 'URL', expression: '{{_uuid}}', value: 'user-42', status: 'resolved' },
+      { location: 'Query', expression: '{{_randomFrom("1","5")}}', value: '5', status: 'resolved' },
+      { location: 'Headers', expression: '{{_uuid}}', value: 'abc', status: 'resolved' },
+      { location: 'Body', expression: '{{_randomInt(1,2)}}', value: '2', status: 'resolved' },
+    ]);
+  });
+
+  it('keeps a built-in visible when the request did not capture a value', () => {
+    const node: YAMLNode = {
+      id: 'missing-builtin',
+      type: 'request',
+      name: 'missing-builtin',
+      data: { headers: { 'X-Trace': '{{_uuid}}' } },
+    };
+
+    expect(builtinRowsForRequestNode(node, { requestHeaders: {} })).toEqual([
+      { location: 'Headers', expression: '{{_uuid}}', value: 'Not captured', status: 'not captured' },
+    ]);
   });
 });
 
