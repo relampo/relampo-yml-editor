@@ -908,34 +908,89 @@ function DebugDetailPanel({
   );
 }
 
+type DebugInspectorContentProps = {
+  entry: DebugEntry;
+  tab: DetailTab;
+  redirectedInfo?: RedirectedRequestInfo | null;
+  requestTargets: YAMLNode[];
+  variableSnapshot: Record<string, string>;
+};
+
 function DebugInspectorContent({
   entry,
   tab,
   redirectedInfo,
   requestTargets,
   variableSnapshot,
-}: {
-  entry: DebugEntry;
-  tab: DetailTab;
-  redirectedInfo?: RedirectedRequestInfo | null;
-  requestTargets: YAMLNode[];
-  variableSnapshot: Record<string, string>;
-}) {
-  const [requestSearch, setRequestSearch] = useState('');
-  const [requestSearchMode, setRequestSearchMode] = useState<SearchMode>('text');
-  const [requestMatchIndex, setRequestMatchIndex] = useState(0);
-  const [responseSearch, setResponseSearch] = useState('');
-  const [responseSearchMode, setResponseSearchMode] = useState<SearchMode>('text');
-  const [responseMatchIndex, setResponseMatchIndex] = useState(0);
+}: DebugInspectorContentProps) {
+  switch (tab) {
+    case 'request':
+      return <DebugRequestInspector event={entry.event} />;
+    case 'response':
+      return <DebugResponseInspector event={entry.event} />;
+    case 'assertions':
+      return <DebugAssertionsInspector event={entry.event} />;
+    case 'variables':
+      return <DebugVariablesInspector entry={entry} variableSnapshot={variableSnapshot} />;
+    case 'logs':
+      return (
+        <DebugLogsInspector
+          event={entry.event}
+          redirectedInfo={redirectedInfo}
+          requestTargets={requestTargets}
+        />
+      );
+    default:
+      return <DebugOverviewInspector event={entry.event} />;
+  }
+}
 
-  const { event } = entry;
-  const requestRows: Array<[string, string]> = [
+function DebugRequestInspector({ event }: { event: EngineEvent }) {
+  const [search, setSearch] = useState('');
+  const [searchMode, setSearchMode] = useState<SearchMode>('text');
+  const [matchIndex, setMatchIndex] = useState(0);
+  const rows: Array<[string, string]> = [
     ['URL', event.path || '<unknown>'],
     ['Method', event.method],
     ...Object.entries(event.request_headers ?? {}),
   ];
-  const requestBody = event.request_body || '<empty>';
-  const responseRows: Array<[string, string]> = [
+  const body = event.request_body || '<empty>';
+  const searchText = [...rows.map(([label, value]) => `${label}: ${value}`), body].join('\n');
+  const totalMatches = findMatchRanges(searchText, search, searchMode).length;
+  return (
+    <div className="space-y-3">
+      <DebugSearchControls
+        value={search}
+        mode={searchMode}
+        placeholder="Search in request..."
+        totalMatches={totalMatches}
+        currentMatchIndex={matchIndex}
+        onChange={value => {
+          setSearch(value);
+          setMatchIndex(0);
+        }}
+        onModeChange={mode => {
+          setSearchMode(mode);
+          setMatchIndex(0);
+        }}
+        onNavigate={setMatchIndex}
+      />
+      <DebugSection
+        rows={rows}
+        body={body}
+        searchText={search}
+        searchMode={searchMode}
+        currentMatchIndex={matchIndex}
+      />
+    </div>
+  );
+}
+
+function DebugResponseInspector({ event }: { event: EngineEvent }) {
+  const [search, setSearch] = useState('');
+  const [searchMode, setSearchMode] = useState<SearchMode>('text');
+  const [matchIndex, setMatchIndex] = useState(0);
+  const rows: Array<[string, string]> = [
     ['Status', event.status ? String(event.status) : '—'],
     ['Duration', formatLatency(event.latency_ms)],
     ...Object.entries(event.response_headers ?? {}),
@@ -943,211 +998,191 @@ function DebugInspectorContent({
   // Collapse a binary response body to the same notice the recorded Response
   // view shows, so the live Debug body and the recording stay comparable instead
   // of one dumping mojibake and the other {"0":48,...}. RLP-555.
-  const responseBody = event.response_body
+  const body = event.response_body
     ? (binaryBodyDisplay(event.response_body, event.response_headers) ?? event.response_body)
     : '<empty>';
-  const responseBodyDownload = binaryBodyDownloadFromBase64(event.response_body_base64, event.response_headers);
+  const bodyDownload = binaryBodyDownloadFromBase64(event.response_body_base64, event.response_headers);
+  const searchText = [...rows.map(([label, value]) => `${label}: ${value}`), body].join('\n');
+  const totalMatches = findMatchRanges(searchText, search, searchMode).length;
+  return (
+    <div className="space-y-3">
+      <DebugSearchControls
+        value={search}
+        mode={searchMode}
+        placeholder="Search in response..."
+        totalMatches={totalMatches}
+        currentMatchIndex={matchIndex}
+        onChange={value => {
+          setSearch(value);
+          setMatchIndex(0);
+        }}
+        onModeChange={mode => {
+          setSearchMode(mode);
+          setMatchIndex(0);
+        }}
+        onNavigate={setMatchIndex}
+      />
+      <DebugSection
+        rows={rows}
+        body={body}
+        bodyDownload={bodyDownload}
+        searchText={search}
+        searchMode={searchMode}
+        currentMatchIndex={matchIndex}
+      />
+    </div>
+  );
+}
 
-  if (tab === 'request') {
-    const requestSearchText = [...requestRows.map(([label, value]) => `${label}: ${value}`), requestBody].join('\n');
-    const totalMatches = findMatchRanges(requestSearchText, requestSearch, requestSearchMode).length;
-    return (
-      <div className="space-y-3">
-        <DebugSearchControls
-          value={requestSearch}
-          mode={requestSearchMode}
-          placeholder="Search in request..."
-          totalMatches={totalMatches}
-          currentMatchIndex={requestMatchIndex}
-          onChange={value => {
-            setRequestSearch(value);
-            setRequestMatchIndex(0);
-          }}
-          onModeChange={mode => {
-            setRequestSearchMode(mode);
-            setRequestMatchIndex(0);
-          }}
-          onNavigate={setRequestMatchIndex}
-        />
-        <DebugSection
-          rows={requestRows}
-          body={requestBody}
-          searchText={requestSearch}
-          searchMode={requestSearchMode}
-          currentMatchIndex={requestMatchIndex}
-        />
-      </div>
-    );
+function DebugAssertionsInspector({ event }: { event: EngineEvent }) {
+  const assertions = event.assertions ?? [];
+  if (assertions.length === 0) {
+    return <p className="text-sm text-zinc-500">No assertions were evaluated for this request.</p>;
   }
-
-  if (tab === 'response') {
-    const responseSearchText = [...responseRows.map(([label, value]) => `${label}: ${value}`), responseBody].join('\n');
-    const totalMatches = findMatchRanges(responseSearchText, responseSearch, responseSearchMode).length;
-    return (
-      <div className="space-y-3">
-        <DebugSearchControls
-          value={responseSearch}
-          mode={responseSearchMode}
-          placeholder="Search in response..."
-          totalMatches={totalMatches}
-          currentMatchIndex={responseMatchIndex}
-          onChange={value => {
-            setResponseSearch(value);
-            setResponseMatchIndex(0);
-          }}
-          onModeChange={mode => {
-            setResponseSearchMode(mode);
-            setResponseMatchIndex(0);
-          }}
-          onNavigate={setResponseMatchIndex}
+  return (
+    <div className="space-y-3">
+      {assertions.map(assertion => (
+        <DebugLine
+          key={`${assertion.Name}-${assertion.Passed}-${assertion.Message}`}
+          icon={
+            assertion.Passed ? (
+              <CheckCircle2 className="h-4 w-4 text-emerald-300" />
+            ) : (
+              <XCircle className="h-4 w-4 text-red-300" />
+            )
+          }
+          title={assertion.Name || 'Assertion'}
+          value={assertion.Message || (assertion.Passed ? 'Passed' : 'Failed')}
         />
-        <DebugSection
-          rows={responseRows}
-          body={responseBody}
-          bodyDownload={responseBodyDownload}
-          searchText={responseSearch}
-          searchMode={responseSearchMode}
-          currentMatchIndex={responseMatchIndex}
-        />
-      </div>
-    );
-  }
+      ))}
+    </div>
+  );
+}
 
-  if (tab === 'assertions') {
-    const assertions = event.assertions ?? [];
-    if (assertions.length === 0) {
-      return <p className="text-sm text-zinc-500">No assertions were evaluated for this request.</p>;
-    }
-    return (
-      <div className="space-y-3">
-        {assertions.map(assertion => (
-          <DebugLine
-            key={`${assertion.Name}-${assertion.Passed}-${assertion.Message}`}
-            icon={
-              assertion.Passed ? (
-                <CheckCircle2 className="h-4 w-4 text-emerald-300" />
-              ) : (
-                <XCircle className="h-4 w-4 text-red-300" />
-              )
-            }
-            title={assertion.Name || 'Assertion'}
-            value={assertion.Message || (assertion.Passed ? 'Passed' : 'Failed')}
-          />
-        ))}
-      </div>
-    );
+function DebugVariablesInspector({
+  entry,
+  variableSnapshot,
+}: {
+  entry: DebugEntry;
+  variableSnapshot: Record<string, string>;
+}) {
+  const { event } = entry;
+  const variableContext = {
+    requestBody: event.request_body,
+    requestHeaders: event.request_headers,
+    requestUrl: event.path,
+    responseBody: event.response_body,
+    responseHeaders: event.response_headers,
+    statusLine: event.status ? String(event.status) : undefined,
+  };
+  const builtins = builtinRowsForRequestNode(entry.node, variableContext);
+  const variables = variableRowsForRequestNode(entry.node, variableSnapshot, variableContext);
+  if (variables.length === 0 && builtins.length === 0) {
+    const usedNames = requestVariableNames(entry.node);
+    const message =
+      entry.node && usedNames.length === 0
+        ? 'This request neither extracts nor uses any variables.'
+        : 'No variable values were captured for this request.';
+    return <p className="text-sm text-zinc-500">{message}</p>;
   }
-
-  if (tab === 'variables') {
-    const variableContext = {
-      requestBody: event.request_body,
-      requestHeaders: event.request_headers,
-      requestUrl: event.path,
-      responseBody: event.response_body,
-      responseHeaders: event.response_headers,
-      statusLine: event.status ? String(event.status) : undefined,
-    };
-    const builtins = builtinRowsForRequestNode(entry.node, variableContext);
-    const variables = variableRowsForRequestNode(entry.node, variableSnapshot, {
-      ...variableContext,
-    });
-    if (variables.length === 0 && builtins.length === 0) {
-      const usedNames = requestVariableNames(entry.node);
-      const message =
-        entry.node && usedNames.length === 0
-          ? 'This request neither extracts nor uses any variables.'
-          : 'No variable values were captured for this request.';
-      return <p className="text-sm text-zinc-500">{message}</p>;
-    }
-    return (
-      <div className="space-y-4">
-        {builtins.length > 0 && (
-          <div className="overflow-hidden rounded border border-white/10 bg-[#050505]" aria-label="Built-in values">
-            <div className="grid grid-cols-[5rem_minmax(0,1fr)_minmax(0,1fr)_auto] gap-3 border-b border-white/10 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
-              <span>Location</span>
-              <span>Expression</span>
-              <span>Resolved value</span>
-              <span>Status</span>
-            </div>
-            {builtins.map(row => (
-              <div
-                key={`${row.location}-${row.expression}`}
-                className="grid grid-cols-[5rem_minmax(0,1fr)_minmax(0,1fr)_auto] items-start gap-3 border-b border-white/5 px-3 py-2 text-xs last:border-b-0"
-              >
-                <span className="text-zinc-400">{row.location}</span>
-                <code className="break-all text-yellow-200">{row.expression}</code>
-                <span className="break-all text-zinc-200">{row.value}</span>
-                <span className={row.status === 'resolved' ? 'text-emerald-300' : 'text-amber-300'}>
-                  {row.status === 'resolved' ? 'Resolved' : 'Not captured'}
-                </span>
-              </div>
-            ))}
+  return (
+    <div className="space-y-4">
+      {builtins.length > 0 && (
+        <div className="overflow-hidden rounded border border-white/10 bg-[#050505]" aria-label="Built-in values">
+          <div className="grid grid-cols-[5rem_minmax(0,1fr)_minmax(0,1fr)_auto] gap-3 border-b border-white/10 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
+            <span>Location</span>
+            <span>Expression</span>
+            <span>Resolved value</span>
+            <span>Status</span>
           </div>
-        )}
-        {variables.length > 0 && <DebugSection rows={variables} wrapLabels />}
-      </div>
-    );
-  }
-
-  if (tab === 'logs') {
-    const time = formatEventTime(event.ts);
-    const redirectHops = event.redirects ?? [];
-    const sourceLogLabel = redirectedInfo ? redirectSourceLogLabel(redirectedInfo, requestTargets, event.path) : '';
-    return (
-      <div className="max-w-full overflow-hidden border border-white/10 bg-[#050505] p-4 font-mono text-xs leading-6 text-zinc-300 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
-        <p className="text-emerald-300 break-words">[{time}] debug session received request event</p>
-        <p className="text-blue-300 break-all">
-          [{time}] {event.method} {event.path || event.name} - {event.status || '—'} ({formatLatency(event.latency_ms)})
-        </p>
-        {redirectHops.length > 0 && (
-          // These rows are the redirect chain that led to the response above —
-          // not the request's own status. Spell that out so a final 200 that
-          // followed 302s no longer reads as if the request itself were a 302.
-          // RLP-585 #7.
-          <p className="text-zinc-400 break-words">
-            [{time}] followed {redirectHops.length} redirect{redirectHops.length === 1 ? '' : 's'} before this{' '}
-            {event.status || ''} response:
-          </p>
-        )}
-        {redirectHops.map((hop, index) => {
-          const targetStatus = redirectHops[index + 1]?.status ?? event.status;
-          const targetMethod = redirectHops[index + 1]?.method ?? event.method;
-          const sourceUrl = absoluteDebugUrl(hop.url, event.path);
-          const targetUrl = absoluteDebugUrl(
-            index === redirectHops.length - 1
-              ? event.path
-              : (redirectHops[index + 1]?.url ?? hop.location ?? hop.target_url),
-            sourceUrl || event.path,
-          );
-          return (
-            <p
-              key={`${hop.status}-${hop.method ?? ''}-${hop.url ?? ''}-${hop.location ?? hop.target_url ?? ''}`}
-              className="pl-6 text-zinc-400 break-all"
+          {builtins.map(row => (
+            <div
+              key={`${row.location}-${row.expression}`}
+              className="grid grid-cols-[5rem_minmax(0,1fr)_minmax(0,1fr)_auto] items-start gap-3 border-b border-white/5 px-3 py-2 text-xs last:border-b-0"
             >
-              ↳ hop {index + 1}: {hop.status || '—'} {hop.method ? `${hop.method} ` : ''}
-              {sourceUrl} → {targetStatus || '—'} {targetMethod ? `${targetMethod} ` : ''}
-              {targetUrl}
-            </p>
-          );
-        })}
-        {/* RLP-598 #1: on the final 200 the full hop chain above already names the
-            immediate predecessor, so drop the redundant "launched by" line there.
-            Intermediate 302 children (no hop chain yet) still show it. */}
-        {redirectedInfo && redirectHops.length === 0 && (
-          <p className="text-zinc-400 break-all">
-            [{time}] redirected request: {sourceLogLabel || redirectedInfo.sourceRequestLabel} → {event.status || '—'}{' '}
-            {event.method} {absoluteDebugUrl(event.path || redirectedInfo.matchedLocation, event.path)}
-          </p>
-        )}
-        {event.err && (
-          <p className="text-red-300">
-            [{time}] {event.err}
-          </p>
-        )}
-      </div>
-    );
-  }
+              <span className="text-zinc-400">{row.location}</span>
+              <code className="break-all text-yellow-200">{row.expression}</code>
+              <span className="break-all text-zinc-200">{row.value}</span>
+              <span className={row.status === 'resolved' ? 'text-emerald-300' : 'text-amber-300'}>
+                {row.status === 'resolved' ? 'Resolved' : 'Not captured'}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+      {variables.length > 0 && <DebugSection rows={variables} wrapLabels />}
+    </div>
+  );
+}
 
+function DebugLogsInspector({
+  event,
+  redirectedInfo,
+  requestTargets,
+}: {
+  event: EngineEvent;
+  redirectedInfo?: RedirectedRequestInfo | null;
+  requestTargets: YAMLNode[];
+}) {
+  const time = formatEventTime(event.ts);
+  const redirectHops = event.redirects ?? [];
+  const sourceLogLabel = redirectedInfo ? redirectSourceLogLabel(redirectedInfo, requestTargets, event.path) : '';
+  return (
+    <div className="max-w-full overflow-hidden border border-white/10 bg-[#050505] p-4 font-mono text-xs leading-6 text-zinc-300 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+      <p className="text-emerald-300 break-words">[{time}] debug session received request event</p>
+      <p className="text-blue-300 break-all">
+        [{time}] {event.method} {event.path || event.name} - {event.status || '—'} ({formatLatency(event.latency_ms)})
+      </p>
+      {redirectHops.length > 0 && (
+        // These rows are the redirect chain that led to the response above —
+        // not the request's own status. Spell that out so a final 200 that
+        // followed 302s no longer reads as if the request itself were a 302.
+        // RLP-585 #7.
+        <p className="text-zinc-400 break-words">
+          [{time}] followed {redirectHops.length} redirect{redirectHops.length === 1 ? '' : 's'} before this{' '}
+          {event.status || ''} response:
+        </p>
+      )}
+      {redirectHops.map((hop, index) => {
+        const targetStatus = redirectHops[index + 1]?.status ?? event.status;
+        const targetMethod = redirectHops[index + 1]?.method ?? event.method;
+        const sourceUrl = absoluteDebugUrl(hop.url, event.path);
+        const targetUrl = absoluteDebugUrl(
+          index === redirectHops.length - 1
+            ? event.path
+            : (redirectHops[index + 1]?.url ?? hop.location ?? hop.target_url),
+          sourceUrl || event.path,
+        );
+        return (
+          <p
+            key={`${hop.status}-${hop.method ?? ''}-${hop.url ?? ''}-${hop.location ?? hop.target_url ?? ''}`}
+            className="pl-6 text-zinc-400 break-all"
+          >
+            ↳ hop {index + 1}: {hop.status || '—'} {hop.method ? `${hop.method} ` : ''}
+            {sourceUrl} → {targetStatus || '—'} {targetMethod ? `${targetMethod} ` : ''}
+            {targetUrl}
+          </p>
+        );
+      })}
+      {/* RLP-598 #1: on the final 200 the full hop chain above already names the
+          immediate predecessor, so drop the redundant "launched by" line there.
+          Intermediate 302 children (no hop chain yet) still show it. */}
+      {redirectedInfo && redirectHops.length === 0 && (
+        <p className="text-zinc-400 break-all">
+          [{time}] redirected request: {sourceLogLabel || redirectedInfo.sourceRequestLabel} → {event.status || '—'}{' '}
+          {event.method} {absoluteDebugUrl(event.path || redirectedInfo.matchedLocation, event.path)}
+        </p>
+      )}
+      {event.err && (
+        <p className="text-red-300">
+          [{time}] {event.err}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function DebugOverviewInspector({ event }: { event: EngineEvent }) {
   return (
     <div className="grid gap-3 md:grid-cols-2">
       <DebugLine
