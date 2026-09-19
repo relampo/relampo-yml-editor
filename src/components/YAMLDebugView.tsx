@@ -32,6 +32,7 @@ import {
   debugEventRequestNumber,
   isRedirectStepEvent,
   matchDebugEventTarget,
+  builtinRowsForRequestNode,
   requestVariableNames,
   skippedRedirectHops,
   variableRowsForRequestNode,
@@ -1076,15 +1077,17 @@ function DebugVariablesInspector({
   variableSnapshot: Record<string, string>;
 }) {
   const { event } = entry;
-  const variables = variableRowsForRequestNode(entry.node, variableSnapshot, {
+  const variableContext = {
     requestBody: event.request_body,
     requestHeaders: event.request_headers,
     requestUrl: event.path,
     responseBody: event.response_body,
     responseHeaders: event.response_headers,
     statusLine: event.status ? String(event.status) : undefined,
-  });
-  if (variables.length === 0) {
+  };
+  const builtins = builtinRowsForRequestNode(entry.node, variableContext);
+  const variables = variableRowsForRequestNode(entry.node, variableSnapshot, variableContext);
+  if (variables.length === 0 && builtins.length === 0) {
     const usedNames = requestVariableNames(entry.node);
     const message =
       entry.node && usedNames.length === 0
@@ -1092,8 +1095,36 @@ function DebugVariablesInspector({
         : 'No variable values were captured for this request.';
     return <p className="text-sm text-zinc-500">{message}</p>;
   }
-  return <DebugSection rows={variables} wrapLabels />;
+  return (
+    <div className="space-y-4">
+      {builtins.length > 0 && (
+        <div className="overflow-hidden rounded border border-white/10 bg-[#050505]" aria-label="Built-in values">
+          <div className="grid grid-cols-[5rem_minmax(0,1fr)_minmax(0,1fr)_auto] gap-3 border-b border-white/10 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
+            <span>Location</span>
+            <span>Expression</span>
+            <span>Resolved value</span>
+            <span>Status</span>
+          </div>
+          {builtins.map(row => (
+            <div
+              key={`${row.location}-${row.expression}`}
+              className="grid grid-cols-[5rem_minmax(0,1fr)_minmax(0,1fr)_auto] items-start gap-3 border-b border-white/5 px-3 py-2 text-xs last:border-b-0"
+            >
+              <span className="text-zinc-400">{row.location}</span>
+              <code className="break-all text-yellow-200">{row.expression}</code>
+              <span className="break-all text-zinc-200">{row.value}</span>
+              <span className={row.status === 'resolved' ? 'text-emerald-300' : 'text-amber-300'}>
+                {row.status === 'resolved' ? 'Resolved' : 'Not captured'}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+      {variables.length > 0 && <DebugSection rows={variables} wrapLabels />}
+    </div>
+  );
 }
+
 function DebugLogsInspector({
   event,
   redirectedInfo,
