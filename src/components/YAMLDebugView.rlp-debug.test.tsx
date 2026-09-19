@@ -283,6 +283,54 @@ describe('YAMLDebugSession RLP debug fixes', () => {
     expect(screen.getByText('invalid arguments for _randomInt')).toBeInTheDocument();
   });
 
+  it('shows Spark before and after console logs with request context (RLP-742)', async () => {
+    render(
+      <YAMLDebugSession
+        tree={null}
+        yamlCode={'test:\n  name: spark-logs\n'}
+        documentReady
+        validationErrors={[]}
+        onSelectNode={vi.fn()}
+        onEditNode={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
+
+    act(() => {
+      debugApiMock.handlers[0].onEvent(
+        event({
+          method: 'SPARK',
+          name: 'spark-log: before value',
+          path: '',
+          request_id: 12,
+          step_path: 'scenarios[0].steps[0]',
+          spark_phase: 'before',
+        }),
+      );
+      debugApiMock.handlers[0].onEvent(
+        event({
+          method: 'SPARK',
+          name: 'spark-log: after value',
+          path: '',
+          request_id: 12,
+          step_path: 'scenarios[0].steps[0]',
+          spark_phase: 'after',
+        }),
+      );
+    });
+
+    expect((await screen.findAllByText('spark-log: after value')).length).toBeGreaterThan(0);
+    expect(screen.getByText('Spark after')).toBeInTheDocument();
+    expect(screen.getByText('scenarios[0].steps[0] · request 12')).toBeInTheDocument();
+
+    const beforeRow = screen.getByRole('button', { name: /SPARKspark-log: before value/ });
+    fireEvent.click(beforeRow);
+    expect(screen.getByText('Spark before')).toBeInTheDocument();
+    expect(screen.getAllByText('spark-log: before value').length).toBeGreaterThan(0);
+  });
+
   it('counts redirect finals identified only by step_path for older payloads (RLP-588)', async () => {
     render(
       <YAMLDebugSession

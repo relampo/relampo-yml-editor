@@ -67,6 +67,7 @@ type DebugTimelineFilter = 'requests' | 'passed' | 'failed' | 'redirects';
 type StoredDebugEntry = Omit<DebugEntry, 'node'>;
 
 function entryStatus(event: EngineEvent): DebugStatus {
+  if (event.method === 'SPARK') return 'warning';
   if (event.err) return 'failed';
   if (event.status >= 400) return 'failed';
   if ((event.assertions ?? []).some(assertion => !assertion.Passed)) return 'failed';
@@ -362,13 +363,14 @@ export function YAMLDebugSession({
   const activeEntry =
     filteredTimelineEntries.find(entry => entry.id === activeId) ||
     filteredTimelineEntries[filteredTimelineEntries.length - 1];
-  const passed = entries.filter(entry => entry.status === 'passed').length;
-  const failed = entries.filter(entry => entry.status === 'failed').length;
+  const requestEntries = entries.filter(entry => entry.event.method !== 'SPARK');
+  const passed = requestEntries.filter(entry => entry.status === 'passed').length;
+  const failed = requestEntries.filter(entry => entry.status === 'failed').length;
   // Count the same redirect follow-up steps the tree labels REDIRECTED, so the
   // summary reconciles with the tree (RLP-588). Counting 3xx response statuses
   // instead diverged: it swept in 304 Not Modified and standalone 302s (e.g. a
   // sign-off) that never produced a labeled follow-up step.
-  const redirects = entries.reduce((count, entry) => count + (isRedirectStepEvent(entry.event) ? 1 : 0), 0);
+  const redirects = requestEntries.reduce((count, entry) => count + (isRedirectStepEvent(entry.event) ? 1 : 0), 0);
   const hasValidationErrors = validationErrors.length > 0;
 
   const startRun = async () => {
@@ -466,7 +468,7 @@ export function YAMLDebugSession({
       />
 
       <DebugStatsBar
-        total={entries.length}
+        total={requestEntries.length}
         passed={passed}
         failed={failed}
         redirects={redirects}
@@ -933,6 +935,7 @@ function DebugInspectorContent({
   requestTargets,
   variableSnapshot,
 }: DebugInspectorContentProps) {
+  if (entry.event.method === 'SPARK') return <DebugSparkInspector event={entry.event} />;
   switch (tab) {
     case 'request':
       return <DebugRequestInspector event={entry.event} />;
@@ -953,6 +956,25 @@ function DebugInspectorContent({
     default:
       return <DebugOverviewInspector event={entry.event} />;
   }
+}
+
+function DebugSparkInspector({ event }: { event: EngineEvent }) {
+  const phase = event.spark_phase || 'unknown';
+  return (
+    <div className="space-y-3">
+      <div className="rounded border border-amber-400/25 bg-amber-400/5 p-4" aria-label="Spark log">
+        <DebugLine
+          icon={<TerminalSquare className="h-4 w-4 text-amber-300" />}
+          title={`Spark ${phase}`}
+          value={event.name}
+        />
+        <p className="mt-3 break-all font-mono text-xs text-zinc-500">
+          {event.step_path || 'No step path'}
+          {event.request_id === undefined ? '' : ` · request ${event.request_id}`}
+        </p>
+      </div>
+    </div>
+  );
 }
 
 function DebugRequestInspector({ event }: { event: EngineEvent }) {
