@@ -94,6 +94,21 @@ function isTimelineEvent(event: EngineEvent): boolean {
   return Boolean(method) && method !== 'INFO' && method !== 'SYSTEM' && method !== 'THINK_TIME' && !event.embedded;
 }
 
+function isRequestEvent(event: EngineEvent): boolean {
+  const method = String(event.method ?? '')
+    .trim()
+    .toUpperCase();
+  return (
+    Boolean(method) &&
+    method !== 'INFO' &&
+    method !== 'SYSTEM' &&
+    method !== 'SPARK' &&
+    method !== 'THINK_TIME' &&
+    method !== 'ERROR_POLICY' &&
+    !event.embedded
+  );
+}
+
 function formatEventTime(timestamp: string): string {
   const date = new Date(timestamp);
   if (Number.isNaN(date.getTime())) return timestamp;
@@ -363,7 +378,7 @@ export function YAMLDebugSession({
   const activeEntry =
     filteredTimelineEntries.find(entry => entry.id === activeId) ||
     filteredTimelineEntries[filteredTimelineEntries.length - 1];
-  const requestEntries = entries.filter(entry => entry.event.method !== 'SPARK');
+  const requestEntries = entries.filter(entry => isRequestEvent(entry.event));
   const passed = requestEntries.filter(entry => entry.status === 'passed').length;
   const failed = requestEntries.filter(entry => entry.status === 'failed').length;
   // Count the same redirect follow-up steps the tree labels REDIRECTED, so the
@@ -935,6 +950,9 @@ function DebugInspectorContent({
   requestTargets,
   variableSnapshot,
 }: DebugInspectorContentProps) {
+  if (entry.event.method === 'ERROR_POLICY' && entry.event.error_policy) {
+    return <DebugErrorPolicyInspector event={entry.event} />;
+  }
   if (entry.event.method === 'SPARK') return <DebugSparkInspector event={entry.event} />;
   switch (tab) {
     case 'request':
@@ -972,6 +990,38 @@ function DebugSparkInspector({ event }: { event: EngineEvent }) {
           {event.step_path || 'No step path'}
           {event.request_id === undefined ? '' : ` · request ${event.request_id}`}
         </p>
+      </div>
+    </div>
+  );
+}
+
+function DebugErrorPolicyInspector({ event }: { event: EngineEvent }) {
+  const decision = event.error_policy;
+  if (!decision) return null;
+
+  return (
+    <div className="space-y-3">
+      <div className="rounded border border-amber-400/25 bg-amber-400/5 p-4" aria-label="Error policy decision">
+        <DebugLine
+          icon={<ShieldCheck className="h-4 w-4 text-amber-300" />}
+          title="Policy"
+          value={`${decision.key || 'unknown'} → ${decision.action || 'unknown'}`}
+        />
+        <DebugLine
+          icon={<TerminalSquare className="h-4 w-4 text-zinc-300" />}
+          title="Request"
+          value={decision.request_path || event.path || '—'}
+        />
+        <DebugLine
+          icon={<XCircle className="h-4 w-4 text-red-300" />}
+          title="Original error"
+          value={decision.original_error || event.err || '—'}
+        />
+        <DebugLine
+          icon={<TerminalSquare className="h-4 w-4 text-zinc-300" />}
+          title="Step path"
+          value={event.step_path || '—'}
+        />
       </div>
     </div>
   );
