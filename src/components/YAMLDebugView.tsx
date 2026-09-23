@@ -1013,6 +1013,16 @@ function DebugErrorPolicyInspector({ event }: { event: EngineEvent }) {
           value={decision.request_path || event.path || '—'}
         />
         <DebugLine
+          icon={<Users className="h-4 w-4 text-zinc-300" />}
+          title="VU"
+          value={event.vu === undefined ? '—' : `Virtual user ${event.vu}`}
+        />
+        <DebugLine
+          icon={<TerminalSquare className="h-4 w-4 text-zinc-300" />}
+          title="Iteration"
+          value={event.iteration === undefined ? '—' : String(event.iteration)}
+        />
+        <DebugLine
           icon={<XCircle className="h-4 w-4 text-red-300" />}
           title="Original error"
           value={decision.original_error || event.err || '—'}

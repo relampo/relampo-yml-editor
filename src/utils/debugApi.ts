@@ -53,6 +53,7 @@ export interface EngineEvent {
   error_policy?: ErrorPolicyDecision;
   concurrency: number;
   vu?: number;
+  iteration?: number;
   rows_returned?: number;
   rows_affected?: number;
   transaction?: string;

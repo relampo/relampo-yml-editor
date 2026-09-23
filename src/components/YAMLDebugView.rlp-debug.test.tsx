@@ -481,6 +481,8 @@ describe('YAMLDebugSession RLP debug fixes', () => {
     const policyDecision = screen.getByLabelText('Error policy decision');
     expect(policyDecision).toBeInTheDocument();
     expect(within(policyDecision).getByText('on_5xx → next_iteration')).toBeInTheDocument();
+    expect(within(policyDecision).getByText('VU')).toBeInTheDocument();
+    expect(within(policyDecision).getByText('Virtual user 2')).toBeInTheDocument();
     expect(within(policyDecision).getByText('Iteration')).toBeInTheDocument();
     expect(within(policyDecision).getByText('3')).toBeInTheDocument();
     expect(screen.getByText('expected 500')).toBeInTheDocument();
