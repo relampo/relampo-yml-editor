@@ -21,6 +21,13 @@ export interface BuiltinDiagnostic {
   request_id?: number;
 }
 
+export interface ErrorPolicyDecision {
+  key?: string;
+  action?: string;
+  original_error?: string;
+  request_path?: string;
+}
+
 interface EngineRedirectHop {
   status: number;
   method?: string;
@@ -43,8 +50,10 @@ export interface EngineEvent {
   status: number;
   latency_ms: number;
   err?: string;
+  error_policy?: ErrorPolicyDecision;
   concurrency: number;
   vu?: number;
+  iteration?: number;
   rows_returned?: number;
   rows_affected?: number;
   transaction?: string;

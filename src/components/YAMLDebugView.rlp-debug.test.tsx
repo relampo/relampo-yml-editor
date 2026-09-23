@@ -431,6 +431,63 @@ describe('YAMLDebugSession RLP debug fixes', () => {
     expect(within(timeline).queryByRole('button', { name: /GET.*\/failed/ })).not.toBeInTheDocument();
   });
 
+  it('shows error policy evidence without counting it as a request', async () => {
+    render(
+      <YAMLDebugSession
+        tree={null}
+        yamlCode={'test:\n  name: error-policy-events\n'}
+        documentReady
+        validationErrors={[]}
+        onSelectNode={vi.fn()}
+        onEditNode={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
+
+    act(() => {
+      debugApiMock.handlers[0].onEvent(
+        event({ name: 'Failed request', path: '/failed', status: 200, err: 'expected 500' }),
+      );
+      debugApiMock.handlers[0].onEvent(
+        event({
+          name: 'error_policy',
+          method: 'ERROR_POLICY',
+          path: '/failed',
+          status: 200,
+          err: 'expected 500',
+          error_policy: {
+            key: 'on_5xx',
+            action: 'next_iteration',
+            original_error: 'expected 500',
+            request_path: '/failed',
+          },
+          vu: 2,
+          iteration: 3,
+          step_path: 'scenarios[0].steps[0]',
+        }),
+      );
+      debugApiMock.handlers[0].onEvent(event({ name: 'Following request', path: '/following' }));
+    });
+
+    const timeline = screen.getByRole('region', { name: 'Execution timeline' });
+    expect(within(timeline).getByRole('button', { name: /ERROR_POLICY.*\/failed/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Requests: 2. Filter execution timeline.' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Passed: 1. Filter execution timeline.' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Failed: 1. Filter execution timeline.' })).toBeInTheDocument();
+
+    fireEvent.click(within(timeline).getByRole('button', { name: /ERROR_POLICY.*\/failed/ }));
+    const policyDecision = screen.getByLabelText('Error policy decision');
+    expect(policyDecision).toBeInTheDocument();
+    expect(within(policyDecision).getByText('on_5xx → next_iteration')).toBeInTheDocument();
+    expect(within(policyDecision).getByText('VU')).toBeInTheDocument();
+    expect(within(policyDecision).getByText('Virtual user 2')).toBeInTheDocument();
+    expect(within(policyDecision).getByText('Iteration')).toBeInTheDocument();
+    expect(within(policyDecision).getByText('3')).toBeInTheDocument();
+    expect(screen.getByText('expected 500')).toBeInTheDocument();
+  });
+
   it('keeps original counts and shows an empty timeline when a filter has no matches', async () => {
     render(
       <YAMLDebugSession
