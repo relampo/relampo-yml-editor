@@ -463,6 +463,8 @@ describe('YAMLDebugSession RLP debug fixes', () => {
             original_error: 'expected 500',
             request_path: '/failed',
           },
+          vu: 2,
+          iteration: 3,
           step_path: 'scenarios[0].steps[0]',
         }),
       );
@@ -476,8 +478,11 @@ describe('YAMLDebugSession RLP debug fixes', () => {
     expect(screen.getByRole('button', { name: 'Failed: 1. Filter execution timeline.' })).toBeInTheDocument();
 
     fireEvent.click(within(timeline).getByRole('button', { name: /ERROR_POLICY.*\/failed/ }));
-    expect(screen.getByLabelText('Error policy decision')).toBeInTheDocument();
-    expect(screen.getByText('on_5xx → next_iteration')).toBeInTheDocument();
+    const policyDecision = screen.getByLabelText('Error policy decision');
+    expect(policyDecision).toBeInTheDocument();
+    expect(within(policyDecision).getByText('on_5xx → next_iteration')).toBeInTheDocument();
+    expect(within(policyDecision).getByText('Iteration')).toBeInTheDocument();
+    expect(within(policyDecision).getByText('3')).toBeInTheDocument();
     expect(screen.getByText('expected 500')).toBeInTheDocument();
   });
 
