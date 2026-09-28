@@ -887,7 +887,7 @@ function DebugDetailPanel({
                     : 'border-b-2 border-transparent text-zinc-500 hover:text-zinc-300'
                 }`}
               >
-                {tab}
+                {tab === 'variables' ? <span className="normal-case">Variables and Built-in</span> : tab}
               </button>
             ))}
           </div>
