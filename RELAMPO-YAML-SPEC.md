@@ -633,6 +633,9 @@ steps:
 ## Spark Scripts
 
 **Spark Scripts** son bloques de JavaScript que se ejecutan antes o después de cada request.
+Usa `vars.get("nombre")` para leer variables y `vars.set("nombre", valor)` para escribirlas.
+Relampo ejecuta los extractores antes del script `after` del mismo request.
+Lee la variable con `vars.get("NOMBRE")`, usando el mismo nombre definido en `var:`.
 
 ### Sintaxis
 
@@ -645,31 +648,31 @@ steps:
       spark:
         - when: before
           script: |
-            vars.timestamp = Date.now();
-            vars.requestId = Math.random().toString(36).substring(7);
-            console.log("Starting request: " + vars.requestId);
+            vars.set("timestamp", Date.now());
+            vars.set("requestId", Math.random().toString(36).substring(7));
+            console.log("Starting request: " + vars.get("requestId"));
 
         - when: after
           script: |
             if (response.status === 200) {
               console.log("✓ Request successful");
-              vars.responseTime = response.duration_ms;
+              vars.set("responseTime", response.latency_ms);
             } else {
-              console.error("✗ Request failed: " + response.status);
+              console.log("✗ Request failed: " + response.status);
             }
 ```
 
 ### Variables Disponibles
 
-| Variable               | Disponible   | Descripción                  |
-| ---------------------- | ------------ | ---------------------------- |
-| `vars`                 | before/after | Objeto para variables custom |
-| `response`             | after only   | Objeto con la respuesta      |
-| `response.status`      | after only   | Código HTTP                  |
-| `response.body`        | after only   | Cuerpo de la respuesta       |
-| `response.headers`     | after only   | Headers de respuesta         |
-| `response.duration_ms` | after only   | Tiempo en ms                 |
-| `console.log()`        | before/after | Logging                      |
+| Elemento                   | Disponible   | Descripción                       |
+| -------------------------- | ------------ | --------------------------------- |
+| `vars.get("name")`        | before/after | Lee una variable                  |
+| `vars.set("name", value)` | before/after | Guarda una variable               |
+| `response`                 | after only   | Objeto con la respuesta           |
+| `response.status`          | after only   | Código HTTP                       |
+| `response.body`            | after only   | Cuerpo de la respuesta            |
+| `response.latency_ms`      | after only   | Latencia en milisegundos          |
+| `console.log()`            | before/after | Escribe un mensaje de depuración  |
 
 ### Casos de Uso
 
@@ -679,10 +682,11 @@ steps:
 spark:
   - when: before
     script: |
-      vars.uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
         var r = Math.random() * 16 | 0;
         return (c == 'x' ? r : (r & 0x3 | 0x8)).toString(16);
       });
+      vars.set("uuid", uuid);
 ```
 
 #### Validar Respuesta
@@ -693,9 +697,9 @@ spark:
     script: |
       const data = JSON.parse(response.body);
       if (data.users.length === 0) {
-        console.error("No users returned!");
+        console.log("No users returned!");
       }
-      vars.userCount = data.users.length;
+      vars.set("userCount", data.users.length);
 ```
 
 #### Extraer Token con Regex
@@ -706,8 +710,8 @@ spark:
     script: |
       const match = response.body.match(/token=([a-f0-9]+)/);
       if (match) {
-        vars.authToken = match[1];
-        console.log("Token: " + vars.authToken.substring(0, 8) + "...");
+        vars.set("authToken", match[1]);
+        console.log("Token extracted");
       }
 ```
 
@@ -1193,22 +1197,27 @@ scenarios:
           name: 'Get CSRF'
           method: GET
           url: /login
-          spark:
-            - when: before
-              script: |
-                vars.sessionStart = Date.now();
-                console.log("Starting session...");
-
-            - when: after
-              script: |
-                if (response.status !== 200) {
-                  console.error("Failed to get CSRF token");
-                }
           extractors:
             - type: regex
               var: CSRF_TOKEN
               pattern: "csrf_token='([a-f0-9]+)'"
               default: 'NO_TOKEN'
+          spark:
+            - when: before
+              script: |
+                vars.set("sessionStart", Date.now());
+                console.log("Starting session...");
+
+            - when: after
+              script: |
+                if (response.status !== 200) {
+                  console.log("Failed to get CSRF token");
+                } else {
+                  const csrfToken = vars.get("CSRF_TOKEN");
+                  if (csrfToken) {
+                    console.log("CSRF token captured");
+                  }
+                }
 
       # Submit Login
       - request:
@@ -1226,14 +1235,14 @@ scenarios:
           spark:
             - when: after
               script: |
-                const duration = Date.now() - vars.sessionStart;
+                const duration = Date.now() - vars.get("sessionStart");
                 console.log("Login completed in " + duration + "ms");
 
                 if (response.body.includes("Welcome")) {
-                  vars.loginSuccess = true;
+                  vars.set("loginSuccess", true);
                 } else {
-                  vars.loginSuccess = false;
-                  console.error("Login failed!");
+                  vars.set("loginSuccess", false);
+                  console.log("Login failed!");
                 }
           extractors:
             - type: jsonpath

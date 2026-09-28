@@ -21,18 +21,17 @@ Los componentes fundamentales que hacen a Relampo único y poderoso para pruebas
 ```yaml
 # Preparación antes del request
 spark_before: |
-  vars.timestamp = Date.now();
-  vars.signature = crypto.sign(vars.payload);
-  vars.correlation_id = uuid.v4();
+  vars.set('timestamp', Date.now());
+  vars.set('correlation_id', Date.now().toString());
 
 # Procesamiento después del request
 spark_after: |
-  console.log("Response time:", response.time);
-  vars.processedData = parseComplexResponse(response.body);
+  console.log("Response time:", response.latency_ms);
+  vars.set('processedData', response.body);
 
   // Lógica condicional
   if (response.status !== 200) {
-    vars.retry = true;
+    vars.set('retry', true);
   }
 ```
 
@@ -283,13 +282,13 @@ scenarios:
       # 2. Add to cart
       - post: /api/cart
         spark_before: |
-          vars.cart_payload = {
-            productId: vars.product_id,
+          vars.set('cart_payload', {
+            productId: vars.get('product_id'),
             quantity: 1,
             timestamp: Date.now(),
-            session: vars.session_id
-          };
-          console.log("Adding to cart:", vars.product_name);
+            session: vars.get('session_id')
+          });
+          console.log("Adding to cart:", vars.get('product_name'));
 
         body: '{{cart_payload}}'
 
@@ -305,8 +304,8 @@ scenarios:
             $.cart.total: '{{price}}'
 
         spark_after: |
-          console.log("Cart created:", vars.cart_id);
-          vars.checkout_ready = true;
+          console.log("Cart created:", vars.get('cart_id'));
+          vars.set('checkout_ready', true);
 
         breath:
           mean: 4s
@@ -316,11 +315,11 @@ scenarios:
       # 3. Checkout
       - post: /api/checkout
         spark_before: |
-          vars.checkout_payload = {
-            cartId: vars.cart_id,
+          vars.set('checkout_payload', {
+            cartId: vars.get('cart_id'),
             paymentMethod: "credit_card",
-            correlationId: uuid.v4()
-          };
+            correlationId: Date.now().toString()
+          });
 
         body: '{{checkout_payload}}'
 
@@ -336,7 +335,7 @@ scenarios:
             $.order.total: '{{cart_total}}'
 
         spark_after: |
-          console.log("Order completed:", vars.order_id);
+          console.log("Order completed:", vars.get('order_id'));
           metrics.increment("orders_completed");
 
         breath: 1s

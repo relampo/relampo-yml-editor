@@ -179,16 +179,16 @@ export function SparkCodeEditor({ value, onChange, minHeight = '250px' }: SparkC
         <div className="text-xs text-zinc-400 mb-2 font-semibold">{t('yamlEditor.spark.quickReference')}</div>
         <div className="grid grid-cols-2 gap-2 text-xs">
           <div>
-            <code className="text-cyan-400">vars</code>
-            <span className="text-zinc-400"> - Read/write variables</span>
+            <code className="text-cyan-400">vars.get("name")</code>
+            <span className="text-zinc-400"> - {t('yamlEditor.spark.readVariable')}</span>
           </div>
           <div>
             <code className="text-cyan-400">response</code>
             <span className="text-zinc-400"> - Response object (after)</span>
           </div>
           <div>
-            <code className="text-pink-400">vars.myVar</code>
-            <span className="text-zinc-400"> - Access variable</span>
+            <code className="text-pink-400">vars.set("name", value)</code>
+            <span className="text-zinc-400"> - {t('yamlEditor.spark.writeVariable')}</span>
           </div>
           <div>
             <code className="text-pink-400">response.status</code>
@@ -197,6 +197,10 @@ export function SparkCodeEditor({ value, onChange, minHeight = '250px' }: SparkC
           <div>
             <code className="text-pink-400">response.body</code>
             <span className="text-zinc-400"> - Response body</span>
+          </div>
+          <div>
+            <code className="text-pink-400">response.latency_ms</code>
+            <span className="text-zinc-400"> - Response latency</span>
           </div>
           <div>
             <code className="text-yellow-300">console.log()</code>

@@ -213,6 +213,9 @@ Los siguientes elementos NO pueden ser arrastrados:
 
 ## 📝 Ejemplos de Organización Válida
 
+Relampo ejecuta los extractores antes del script Spark `after` del mismo request.
+Lee el valor con `vars.get("NOMBRE")`, usando el mismo nombre definido en `var:`.
+
 ### ✅ Correcto: Request con children
 
 ```yaml
@@ -223,10 +226,13 @@ Los siguientes elementos NO pueden ser arrastrados:
     spark: # ⚡ Pre/Post processors
       - when: before
         script: |
-          vars.timestamp = Date.now();
+          vars.set("timestamp", Date.now());
       - when: after
         script: |
-          vars.token = response.body.match(/token=(\w+)/)[1];
+          const token = vars.get("TOKEN");
+          if (token) {
+            console.log("TOKEN was captured");
+          }
     extractors: # 🔍 Extractors
       - type: regex
         var: TOKEN

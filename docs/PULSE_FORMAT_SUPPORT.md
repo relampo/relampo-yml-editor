@@ -75,6 +75,10 @@ scenarios:
 ## ⚡ Spark Scripts
 
 Spark Scripts son bloques de JavaScript que se ejecutan **antes** o **después** de cada request.
+Usa `vars.get("nombre")` para leer variables y `vars.set("nombre", valor)` para escribirlas.
+Relampo ejecuta los extractores antes del script `after` del mismo request.
+Lee la variable con `vars.get("NOMBRE")`, usando el mismo nombre definido en `var:`.
+En `after`, `response` ofrece `status`, `body` y `latency_ms`.
 
 ### Sintaxis
 
@@ -87,18 +91,18 @@ Spark Scripts son bloques de JavaScript que se ejecutan **antes** o **después**
       - when: before
         script: |
           // Código JavaScript ejecutado ANTES del request
-          vars.timestamp = Date.now();
-          vars.requestId = Math.random().toString(36).substring(7);
-          console.log("Starting request: " + vars.requestId);
+          vars.set("timestamp", Date.now());
+          vars.set("requestId", Math.random().toString(36).substring(7));
+          console.log("Starting request: " + vars.get("requestId"));
 
       - when: after
         script: |
           // Código JavaScript ejecutado DESPUÉS del request
           if (response.status === 200) {
             console.log("✓ Request successful");
-            vars.responseTime = response.duration_ms;
+            vars.set("responseTime", response.latency_ms);
           } else {
-            console.error("✗ Request failed: " + response.status);
+            console.log("✗ Request failed: " + response.status);
           }
 ```
 
@@ -106,12 +110,12 @@ Spark Scripts son bloques de JavaScript que se ejecutan **antes** o **después**
 
 | Variable               | Disponible   | Descripción                          |
 | ---------------------- | ------------ | ------------------------------------ |
-| `vars`                 | before/after | Objeto para almacenar/leer variables |
+| `vars.get("name")`        | before/after | Lee una variable del escenario       |
+| `vars.set("name", value)` | before/after | Guarda una variable del escenario    |
 | `response`             | after only   | Objeto con la respuesta del request  |
 | `response.status`      | after only   | Código de estado HTTP                |
 | `response.body`        | after only   | Cuerpo de la respuesta               |
-| `response.headers`     | after only   | Headers de la respuesta              |
-| `response.duration_ms` | after only   | Tiempo de respuesta en ms            |
+| `response.latency_ms`  | after only   | Latencia de la respuesta en ms       |
 | `console.log()`        | before/after | Función para logging                 |
 
 ### Casos de Uso Comunes
@@ -122,10 +126,11 @@ Spark Scripts son bloques de JavaScript que se ejecutan **antes** o **después**
 spark:
   - when: before
     script: |
-      vars.uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
         var r = Math.random() * 16 | 0;
         return (c == 'x' ? r : (r & 0x3 | 0x8)).toString(16);
       });
+      vars.set("uuid", uuid);
 ```
 
 #### 2. Validar respuestas
@@ -136,9 +141,9 @@ spark:
     script: |
       const data = JSON.parse(response.body);
       if (data.users.length === 0) {
-        console.error("No users returned!");
+        console.log("No users returned!");
       }
-      vars.userCount = data.users.length;
+      vars.set("userCount", data.users.length);
 ```
 
 #### 3. Extraer tokens dinámicamente
@@ -149,8 +154,8 @@ spark:
     script: |
       const match = response.body.match(/token=([a-f0-9]+)/);
       if (match) {
-        vars.authToken = match[1];
-        console.log("Token extracted: " + vars.authToken.substring(0, 8) + "...");
+        vars.set("authToken", match[1]);
+        console.log("Token extracted");
       }
 ```
 
@@ -372,12 +377,14 @@ scenarios:
           spark:
             - when: before
               script: |
-                vars.sessionStart = Date.now();
+                vars.set("sessionStart", Date.now());
                 console.log("Starting login flow...");
             - when: after
               script: |
                 if (response.status !== 200) {
-                  console.error("Failed to load login page");
+                  console.log("Failed to load login page");
+                } else {
+                  console.log("CSRF token captured");
                 }
           extractors:
             - type: regex
@@ -405,14 +412,14 @@ scenarios:
           spark:
             - when: after
               script: |
-                const duration = Date.now() - vars.sessionStart;
+                const duration = Date.now() - vars.get("sessionStart");
                 console.log("Login completed in " + duration + "ms");
 
                 if (response.body.includes("Welcome")) {
-                  vars.loginSuccess = true;
+                  vars.set("loginSuccess", true);
                 } else {
-                  vars.loginSuccess = false;
-                  console.error("Login failed!");
+                  vars.set("loginSuccess", false);
+                  console.log("Login failed!");
                 }
           extractors:
             - type: jsonpath
@@ -494,8 +501,9 @@ scenarios:
                   - when: after
                     script: |
                       if (response.status === 200) {
-                        vars.cartItems = (vars.cartItems || 0) + 1;
-                        console.log("Cart items: " + vars.cartItems);
+                        const cartItems = (vars.get("cartItems") || 0) + 1;
+                        vars.set("cartItems", cartItems);
+                        console.log("Cart items: " + vars.get("cartItems"));
                       }
                 assertions:
                   - type: status

@@ -55,17 +55,18 @@ Scripts JavaScript que se ejecutan antes/después de cada request.
     spark:
       - when: before
         script: |
-          vars.timestamp = Date.now();
-          vars.sessionId = Math.random().toString(36);
+          vars.set("timestamp", Date.now());
+          vars.set("sessionId", Math.random().toString(36));
           console.log("Starting request...");
 
       - when: after
         script: |
-          if (response.status === 200) {
-            vars.token = response.body.match(/token=(\w+)/)[1];
-            console.log("Token extracted: " + vars.token);
+          const match = response.body.match(/token=(\w+)/);
+          if (response.status === 200 && match) {
+            vars.set("token", match[1]);
+            console.log("Token extracted");
           } else {
-            console.error("Request failed: " + response.status);
+            console.log("Request failed or token was not found: " + response.status);
           }
 ```
 
@@ -77,8 +78,7 @@ Scripts JavaScript que se ejecutan antes/después de cada request.
 | `response`             | after only   | Objeto con la respuesta              |
 | `response.status`      | after only   | Código HTTP                          |
 | `response.body`        | after only   | Cuerpo de la respuesta               |
-| `response.headers`     | after only   | Headers de respuesta                 |
-| `response.duration_ms` | after only   | Tiempo de respuesta                  |
+| `response.latency_ms`  | after only   | Latencia en milisegundos             |
 | `console.log()`        | before/after | Para debugging                       |
 
 ---
@@ -95,8 +95,8 @@ El editor de Spark Scripts incluye:
 | Strings    | 🟢 Green  | `"hello"`, `'world'`, `` `template` ``             |
 | Numbers    | 🟠 Orange | `123`, `3.14`, `0xFF`                              |
 | Built-ins  | 🔵 Cyan   | `vars`, `response`, `console`, `Math`, `JSON`      |
-| Methods    | 🟡 Yellow | `.log()`, `.match()`, `.parse()`                   |
-| Properties | 💗 Pink   | `vars.myVar`, `response.status`                    |
+| Methods    | 🟡 Yellow | `vars.get()`, `vars.set()`, `.log()`, `.match()`, `.parse()` |
+| Properties | 💗 Pink   | `response.status`, `response.body`                 |
 | Comments   | ⚪ Gray   | `// comment`, `/* block */`                        |
 | Operators  | ⚪ Gray   | `+`, `-`, `===`, `&&`, `                           |     | `   |
 

@@ -442,6 +442,8 @@ export const enTranslations = {
     // Spark editor
     spark: {
       quickReference: 'Quick Reference:',
+      readVariable: 'Read variable',
+      writeVariable: 'Write variable',
       checkSyntax: 'Check Syntax',
       checking: 'Checking...',
     },

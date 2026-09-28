@@ -608,7 +608,7 @@ props.setBody(
 // Leer respuesta
 const status = response.status;
 const body = response.body;
-const headers = response.headers;
+const latencyMs = response.latency_ms;
 
 // Procesar respuesta JSON
 if (status === 200) {
