@@ -28,6 +28,11 @@ export interface ErrorPolicyDecision {
   request_path?: string;
 }
 
+export interface SkippedRequestInfo {
+  count?: number;
+  reason?: string;
+}
+
 interface EngineRedirectHop {
   status: number;
   method?: string;
@@ -51,6 +56,7 @@ export interface EngineEvent {
   latency_ms: number;
   err?: string;
   error_policy?: ErrorPolicyDecision;
+  skipped?: SkippedRequestInfo;
   concurrency: number;
   vu?: number;
   iteration?: number;

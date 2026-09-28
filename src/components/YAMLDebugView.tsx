@@ -60,6 +60,7 @@ export type DebugEntry = {
   event: EngineEvent;
   node: YAMLNode | null;
   status: DebugStatus;
+  skippedRequestEvents?: EngineEvent[];
 };
 
 type DebugTimelineFilter = 'requests' | 'passed' | 'failed' | 'redirects';
@@ -84,13 +85,12 @@ function filterTimelineEntries(entries: DebugEntry[], filter: DebugTimelineFilte
   return entries.filter(entry => entry.status === filter);
 }
 
-// The engine only emits request-level events for actual steps; INFO events
-// are verbose-run messages, SYSTEM events are lifecycle markers (e.g.
-// VUS_DRAINED) and embedded events are sub-resources of a page load.
+// INFO, SYSTEM, THINK_TIME and embedded events are not debug timeline data.
+// ERROR_POLICY and SKIPPED pass through so the reducer can attach them to their
+// request instead of creating extra request cards.
 function isTimelineEvent(event: EngineEvent): boolean {
   const method = String(event.method ?? '').trim().toUpperCase();
-  // Think Time affects pacing, not request execution. Keep it out of Debug so
-  // the timeline and request details only describe observable work.
+  // Think Time affects pacing, not request execution.
   return Boolean(method) && method !== 'INFO' && method !== 'SYSTEM' && method !== 'THINK_TIME' && !event.embedded;
 }
 
@@ -105,8 +105,50 @@ function isRequestEvent(event: EngineEvent): boolean {
     method !== 'SPARK' &&
     method !== 'THINK_TIME' &&
     method !== 'ERROR_POLICY' &&
+    method !== 'SKIPPED' &&
     !event.embedded
   );
+}
+
+function isErrorPolicyForRequest(request: EngineEvent, policy: EngineEvent): boolean {
+  if (!isRequestEvent(request)) return false;
+  if (policy.vu !== undefined && request.vu !== undefined && request.vu !== policy.vu) return false;
+  if (policy.iteration !== undefined && request.iteration !== undefined && request.iteration !== policy.iteration) {
+    return false;
+  }
+  if (policy.request_id !== undefined && request.request_id !== undefined && policy.request_id !== request.request_id) {
+    return false;
+  }
+  if (policy.step_path && request.step_path && policy.step_path !== request.step_path) return false;
+
+  if (policy.request_id !== undefined && policy.request_id === request.request_id) return true;
+  if (policy.step_path && policy.step_path === request.step_path) return true;
+
+  const requestPath = policy.error_policy?.request_path || policy.path;
+  return Boolean(requestPath) && request.path === requestPath;
+}
+
+function isRelatedStepPath(left: string, right: string): boolean {
+  return (
+    left === right ||
+    left.startsWith(`${right}.`) ||
+    left.startsWith(`${right}[`) ||
+    right.startsWith(`${left}.`) ||
+    right.startsWith(`${left}[`)
+  );
+}
+
+function isSkippedEventForPolicy(request: EngineEvent, skipped: EngineEvent): boolean {
+  if (!request.error_policy) return false;
+  if (request.vu !== undefined && skipped.vu !== undefined && request.vu !== skipped.vu) return false;
+  if (request.iteration !== undefined && skipped.iteration !== undefined && request.iteration !== skipped.iteration) {
+    return false;
+  }
+  if (request.request_id !== undefined && skipped.request_id !== undefined && request.request_id !== skipped.request_id) {
+    return false;
+  }
+  if (request.step_path && skipped.step_path && !isRelatedStepPath(request.step_path, skipped.step_path)) return false;
+  return true;
 }
 
 function formatEventTime(timestamp: string): string {
@@ -193,6 +235,57 @@ function runStateReducer(state: RunState, action: RunAction): RunState {
       return { ...state, isRunning: true };
     case 'event_received': {
       const previous = state.entryEvents;
+      const method = action.event.method.trim().toUpperCase();
+      if (method === 'ERROR_POLICY') {
+        if (!action.event.error_policy) return state;
+
+        let requestIndex = -1;
+        for (let index = previous.length - 1; index >= 0; index -= 1) {
+          if (isErrorPolicyForRequest(previous[index].event, action.event)) {
+            requestIndex = index;
+            break;
+          }
+        }
+        if (requestIndex < 0) return state;
+
+        return {
+          ...state,
+          entryEvents: previous.map((entry, index) =>
+            index === requestIndex
+              ? {
+                  ...entry,
+                  event: {
+                    ...entry.event,
+                    request_id: entry.event.request_id ?? action.event.request_id,
+                    step_path: entry.event.step_path || action.event.step_path,
+                    iteration: entry.event.iteration ?? action.event.iteration,
+                    vu: entry.event.vu ?? action.event.vu,
+                    error_policy: action.event.error_policy,
+                  },
+                }
+              : entry,
+          ),
+        };
+      }
+      if (method === 'SKIPPED') {
+        let requestIndex = -1;
+        for (let index = previous.length - 1; index >= 0; index -= 1) {
+          if (isSkippedEventForPolicy(previous[index].event, action.event)) {
+            requestIndex = index;
+            break;
+          }
+        }
+        if (requestIndex >= 0) {
+          return {
+            ...state,
+            entryEvents: previous.map((entry, index) =>
+              index === requestIndex
+                ? { ...entry, skippedRequestEvents: [...(entry.skippedRequestEvents ?? []), action.event] }
+                : entry,
+            ),
+          };
+        }
+      }
       return {
         ...state,
         entryEvents: [
@@ -887,7 +980,7 @@ function DebugDetailPanel({
                     : 'border-b-2 border-transparent text-zinc-500 hover:text-zinc-300'
                 }`}
               >
-                {tab === 'variables' ? <span className="normal-case">Variables and Built-in</span> : tab}
+                {tab}
               </button>
             ))}
           </div>
@@ -940,9 +1033,6 @@ function DebugInspectorContent({
   requestTargets,
   variableSnapshot,
 }: DebugInspectorContentProps) {
-  if (entry.event.method === 'ERROR_POLICY' && entry.event.error_policy) {
-    return <DebugErrorPolicyInspector event={entry.event} />;
-  }
   if (entry.event.method === 'SPARK') return <DebugSparkInspector event={entry.event} />;
   switch (tab) {
     case 'request':
@@ -962,7 +1052,12 @@ function DebugInspectorContent({
         />
       );
     default:
-      return <DebugOverviewInspector event={entry.event} />;
+      return (
+        <DebugOverviewInspector
+          event={entry.event}
+          skippedRequestEvents={entry.skippedRequestEvents ?? []}
+        />
+      );
   }
 }
 
@@ -985,9 +1080,17 @@ function DebugSparkInspector({ event }: { event: EngineEvent }) {
   );
 }
 
-function DebugErrorPolicyInspector({ event }: { event: EngineEvent }) {
+function DebugErrorPolicyInspector({
+  event,
+  skippedRequestEvents,
+}: {
+  event: EngineEvent;
+  skippedRequestEvents: EngineEvent[];
+}) {
   const decision = event.error_policy;
   if (!decision) return null;
+  const skippedCount = skippedRequestEvents.reduce((count, skipped) => count + (skipped.skipped?.count ?? 0), 0);
+  const skippedReasons = [...new Set(skippedRequestEvents.map(skipped => skipped.skipped?.reason).filter(Boolean))];
 
   return (
     <div className="space-y-3">
@@ -996,16 +1099,6 @@ function DebugErrorPolicyInspector({ event }: { event: EngineEvent }) {
           icon={<ShieldCheck className="h-4 w-4 text-amber-300" />}
           title="Policy"
           value={`${decision.key || 'unknown'} → ${decision.action || 'unknown'}`}
-        />
-        <DebugLine
-          icon={<TerminalSquare className="h-4 w-4 text-zinc-300" />}
-          title="Request"
-          value={decision.request_path || event.path || '—'}
-        />
-        <DebugLine
-          icon={<Users className="h-4 w-4 text-zinc-300" />}
-          title="VU"
-          value={event.vu === undefined ? '—' : `Virtual user ${event.vu}`}
         />
         <DebugLine
           icon={<TerminalSquare className="h-4 w-4 text-zinc-300" />}
@@ -1022,6 +1115,17 @@ function DebugErrorPolicyInspector({ event }: { event: EngineEvent }) {
           title="Step path"
           value={event.step_path || '—'}
         />
+        {skippedRequestEvents.length > 0 && (
+          <DebugLine
+            icon={<TerminalSquare className="h-4 w-4 text-zinc-300" />}
+            title="Skipped requests"
+            value={
+              skippedCount > 0
+                ? `${skippedCount}${skippedReasons.length > 0 ? ` · ${skippedReasons.join(', ')}` : ''}`
+                : `${skippedRequestEvents.length} skipped events`
+            }
+          />
+        )}
       </div>
     </div>
   );
@@ -1264,41 +1368,52 @@ function DebugLogsInspector({
   );
 }
 
-function DebugOverviewInspector({ event }: { event: EngineEvent }) {
+function DebugOverviewInspector({
+  event,
+  skippedRequestEvents,
+}: {
+  event: EngineEvent;
+  skippedRequestEvents: EngineEvent[];
+}) {
   return (
-    <div className="grid gap-3 md:grid-cols-2">
-      <DebugLine
-        icon={<Eye className="h-4 w-4 text-yellow-300" />}
-        title="Step"
-        // Show what the run actually sent, sourced from the event like the
-        // timeline and the header above — not the recorded node name, which
-        // bakes in the capture-time value of any correlated placeholder. When an
-        // extraction fails the node name still reads NROEXP=2026-88-001-0168
-        // while the request went out as NROEXP=Regex+value+not+found, so reading
-        // from the node made Overview contradict the Request tab. RLP-593.
-        value={event.path || event.name}
-      />
-      <DebugLine
-        icon={<Clock3 className="h-4 w-4 text-zinc-300" />}
-        title="Latency"
-        value={formatLatency(event.latency_ms)}
-      />
-      <DebugLine
-        icon={<TerminalSquare className="h-4 w-4 text-zinc-300" />}
-        title="VU"
-        value={event.vu ? `Virtual user ${event.vu}` : '—'}
-      />
-      <DebugLine
-        icon={
-          event.err ? (
-            <XCircle className="h-4 w-4 text-red-300" />
-          ) : (
-            <ShieldCheck className="h-4 w-4 text-emerald-300" />
-          )
-        }
-        title="Result"
-        value={event.err || (event.status ? `HTTP ${event.status}` : 'Completed')}
-      />
+    <div className="space-y-3">
+      <div className="grid gap-3 md:grid-cols-2">
+        <DebugLine
+          icon={<Eye className="h-4 w-4 text-yellow-300" />}
+          title="Step"
+          // Show what the run actually sent, sourced from the event like the
+          // timeline and the header above — not the recorded node name, which
+          // bakes in the capture-time value of any correlated placeholder. When an
+          // extraction fails the node name still reads NROEXP=2026-88-001-0168
+          // while the request went out as NROEXP=Regex+value+not+found, so reading
+          // from the node made Overview contradict the Request tab. RLP-593.
+          value={event.path || event.name}
+        />
+        <DebugLine
+          icon={<Clock3 className="h-4 w-4 text-zinc-300" />}
+          title="Latency"
+          value={formatLatency(event.latency_ms)}
+        />
+        <DebugLine
+          icon={<TerminalSquare className="h-4 w-4 text-zinc-300" />}
+          title="VU"
+          value={event.vu ? `Virtual user ${event.vu}` : '—'}
+        />
+        <DebugLine
+          icon={
+            event.err ? (
+              <XCircle className="h-4 w-4 text-red-300" />
+            ) : (
+              <ShieldCheck className="h-4 w-4 text-emerald-300" />
+            )
+          }
+          title="Result"
+          value={event.err || (event.status ? `HTTP ${event.status}` : 'Completed')}
+        />
+      </div>
+      {event.error_policy && (
+        <DebugErrorPolicyInspector event={event} skippedRequestEvents={skippedRequestEvents} />
+      )}
     </div>
   );
 }

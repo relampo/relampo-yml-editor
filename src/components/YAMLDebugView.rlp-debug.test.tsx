@@ -430,7 +430,7 @@ describe('YAMLDebugSession RLP debug fixes', () => {
     expect(within(timeline).queryByRole('button', { name: /GET.*\/failed/ })).not.toBeInTheDocument();
   });
 
-  it('shows error policy evidence without counting it as a request', async () => {
+  it('shows error policy evidence in its request overview without counting it as a request', async () => {
     render(
       <YAMLDebugSession
         tree={null}
@@ -467,24 +467,51 @@ describe('YAMLDebugSession RLP debug fixes', () => {
           step_path: 'scenarios[0].steps[0]',
         }),
       );
+      debugApiMock.handlers[0].onEvent(
+        event({
+          name: '[vu-2] skipped requests',
+          method: 'SKIPPED',
+          path: '',
+          status: 0,
+          latency_ms: 0,
+          vu: 2,
+          iteration: 3,
+          step_path: 'scenarios[0].steps[0]',
+          skipped: { count: 1, reason: 'next_iteration' },
+        }),
+      );
+      debugApiMock.handlers[0].onEvent(
+        event({
+          name: '[vu-2] skipped requests',
+          method: 'SKIPPED',
+          path: '',
+          status: 0,
+          latency_ms: 0,
+          vu: 2,
+          iteration: 3,
+          step_path: 'scenarios[0].steps[0]',
+          skipped: { count: 1, reason: 'next_iteration' },
+        }),
+      );
       debugApiMock.handlers[0].onEvent(event({ name: 'Following request', path: '/following' }));
     });
 
     const timeline = screen.getByRole('region', { name: 'Execution timeline' });
-    expect(within(timeline).getByRole('button', { name: /ERROR_POLICY.*\/failed/ })).toBeInTheDocument();
+    expect(within(timeline).queryByRole('button', { name: /ERROR_POLICY.*\/failed/ })).not.toBeInTheDocument();
+    expect(within(timeline).queryByRole('button', { name: /SKIPPED.*skipped requests/ })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Requests: 2. Filter execution timeline.' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Passed: 1. Filter execution timeline.' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Failed: 1. Filter execution timeline.' })).toBeInTheDocument();
 
-    fireEvent.click(within(timeline).getByRole('button', { name: /ERROR_POLICY.*\/failed/ }));
+    fireEvent.click(within(timeline).getByRole('button', { name: /GET.*\/failed/ }));
     const policyDecision = screen.getByLabelText('Error policy decision');
     expect(policyDecision).toBeInTheDocument();
     expect(within(policyDecision).getByText('on_5xx → next_iteration')).toBeInTheDocument();
-    expect(within(policyDecision).getByText('VU')).toBeInTheDocument();
-    expect(within(policyDecision).getByText('Virtual user 2')).toBeInTheDocument();
+    expect(screen.getByText('Virtual user 2')).toBeInTheDocument();
     expect(within(policyDecision).getByText('Iteration')).toBeInTheDocument();
     expect(within(policyDecision).getByText('3')).toBeInTheDocument();
-    expect(screen.getByText('expected 500')).toBeInTheDocument();
+    expect(within(policyDecision).getByText('expected 500')).toBeInTheDocument();
+    expect(within(policyDecision).getByText('2 · next_iteration')).toBeInTheDocument();
   });
 
   it('keeps original counts and shows an empty timeline when a filter has no matches', async () => {
