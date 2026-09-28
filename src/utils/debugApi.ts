@@ -21,6 +21,13 @@ export interface BuiltinDiagnostic {
   request_id?: number;
 }
 
+export interface BuiltinInvocation {
+  expression: string;
+  value?: unknown;
+  status: string;
+  origin?: string;
+}
+
 export interface ErrorPolicyDecision {
   key?: string;
   action?: string;
@@ -75,6 +82,7 @@ export interface EngineEvent {
   redirect_index?: number;
   redirect_source?: string;
   builtin?: BuiltinDiagnostic;
+  builtin_invocations?: BuiltinInvocation[];
   spark_phase?: 'before' | 'after';
   debug?: boolean;
   embedded?: boolean;

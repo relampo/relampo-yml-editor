@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
-  builtinRowsForRequestNode,
   debugEventRequestNumber,
   matchDebugEventTarget,
+  requestVariableNames,
   skippedRedirectHops,
   variableRowsForRequestNode,
 } from './debugRequests';
@@ -301,6 +301,21 @@ describe('matchDebugEventTarget — redirect chain follow-ups', () => {
 });
 
 describe('variableRowsForRequestNode', () => {
+  it('keeps built-in expressions out of request variables', () => {
+    const node: YAMLNode = {
+      id: 'builtin-variables',
+      type: 'request',
+      name: 'builtin-variables',
+      data: {
+        url: '/users/{{_uuid}}',
+        body: '{{_add({{count}},1)}}',
+      } as YAMLNode['data'],
+    };
+
+    expect(requestVariableNames(node)).toEqual(['count']);
+    expect(variableRowsForRequestNode(node, {})).toEqual([['count (REQ)', 'Not captured']]);
+  });
+
   it('shows nothing when the event has no mapped node instead of dumping every variable', () => {
     // RLP-585 #5: unmapped events used to dump all in-scope variables, leaking
     // data-source columns (user/pass) onto requests that never touch them.
@@ -722,48 +737,6 @@ describe('variableRowsForRequestNode', () => {
     const snapshot = { 'javax.faces.ViewState': 'vs-token' };
     expect(variableRowsForRequestNode(extractor, snapshot)).toEqual([['javax.faces.ViewState (RES)', 'vs-token']]);
     expect(variableRowsForRequestNode(consumer, snapshot)).toEqual([['javax.faces.ViewState (REQ)', 'vs-token']]);
-  });
-});
-
-describe('builtinRowsForRequestNode', () => {
-  it('resolves built-ins from URL, query, headers, and JSON body locations', () => {
-    const node: YAMLNode = {
-      id: 'builtins',
-      type: 'request',
-      name: 'builtins',
-      data: {
-        url: '/users/{{_uuid}}',
-        query_params: { choice: '{{_randomFrom("1","5")}}' },
-        headers: { 'X-Trace': 'trace-{{_uuid}}' },
-        body: { id: '{{_randomInt(1,2)}}' },
-      } as YAMLNode['data'],
-    };
-
-    expect(
-      builtinRowsForRequestNode(node, {
-        requestUrl: '/users/user-42?choice=5',
-        requestHeaders: { 'X-Trace': 'trace-abc' },
-        requestBody: '{"id":"2"}',
-      }),
-    ).toEqual([
-      { location: 'URL', expression: '{{_uuid}}', value: 'user-42', status: 'resolved' },
-      { location: 'Query', expression: '{{_randomFrom("1","5")}}', value: '5', status: 'resolved' },
-      { location: 'Headers', expression: '{{_uuid}}', value: 'abc', status: 'resolved' },
-      { location: 'Body', expression: '{{_randomInt(1,2)}}', value: '2', status: 'resolved' },
-    ]);
-  });
-
-  it('keeps a built-in visible when the request did not capture a value', () => {
-    const node: YAMLNode = {
-      id: 'missing-builtin',
-      type: 'request',
-      name: 'missing-builtin',
-      data: { headers: { 'X-Trace': '{{_uuid}}' } },
-    };
-
-    expect(builtinRowsForRequestNode(node, { requestHeaders: {} })).toEqual([
-      { location: 'Headers', expression: '{{_uuid}}', value: 'Not captured', status: 'not captured' },
-    ]);
   });
 });
 

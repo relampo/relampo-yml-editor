@@ -32,7 +32,6 @@ import {
   debugEventRequestNumber,
   isRedirectStepEvent,
   matchDebugEventTarget,
-  builtinRowsForRequestNode,
   requestVariableNames,
   skippedRedirectHops,
   variableRowsForRequestNode,
@@ -44,9 +43,26 @@ import { DebugSection } from './debugSection';
 import { buildSearchRegex, findMatchRanges, type SearchMode } from './debugSearch';
 import { createStoredRunStore, fingerprint, type StoredRun } from '../utils/studioRunStore';
 
-type DetailTab = 'overview' | 'request' | 'response' | 'assertions' | 'variables' | 'logs';
+type DetailTab = 'overview' | 'request' | 'response' | 'assertions' | 'variables' | 'builtins' | 'logs';
 
-const REQUEST_DETAIL_TABS: DetailTab[] = ['overview', 'request', 'response', 'assertions', 'variables', 'logs'];
+const REQUEST_DETAIL_TABS: DetailTab[] = [
+  'overview',
+  'request',
+  'response',
+  'assertions',
+  'variables',
+  'builtins',
+  'logs',
+];
+const DETAIL_TAB_LABELS: Record<DetailTab, string> = {
+  overview: 'Overview',
+  request: 'Request',
+  response: 'Response',
+  assertions: 'Assertions',
+  variables: 'Variables',
+  builtins: 'Built-ins',
+  logs: 'Logs',
+};
 
 // The last debug run is parked in sessionStorage so a page reload can re-attach
 // and let the backend replay the run's history.
@@ -973,14 +989,15 @@ function DebugDetailPanel({
               <button
                 key={tab}
                 type="button"
+                aria-label={tab === 'builtins' ? 'Built-ins' : tab}
                 onClick={() => onTabChange(tab)}
-                className={`px-2.5 py-2.5 text-xs font-semibold capitalize transition-colors ${
+                className={`px-2.5 py-2.5 text-xs font-semibold transition-colors ${
                   detailTab === tab
                     ? 'border-b-2 border-yellow-400 text-yellow-300'
                     : 'border-b-2 border-transparent text-zinc-500 hover:text-zinc-300'
                 }`}
               >
-                {tab}
+                {DETAIL_TAB_LABELS[tab]}
               </button>
             ))}
           </div>
@@ -1043,6 +1060,8 @@ function DebugInspectorContent({
       return <DebugAssertionsInspector event={entry.event} />;
     case 'variables':
       return <DebugVariablesInspector entry={entry} variableSnapshot={variableSnapshot} />;
+    case 'builtins':
+      return <DebugBuiltinsInspector event={entry.event} />;
     case 'logs':
       return (
         <DebugLogsInspector
@@ -1261,10 +1280,9 @@ function DebugVariablesInspector({
     responseHeaders: event.response_headers,
     statusLine: event.status ? String(event.status) : undefined,
   };
-  const builtins = builtinRowsForRequestNode(entry.node, variableContext);
   const variables = variableRowsForRequestNode(entry.node, variableSnapshot, variableContext);
-  if (variables.length === 0 && builtins.length === 0) {
-    const usedNames = requestVariableNames(entry.node);
+  if (variables.length === 0) {
+    const usedNames = requestVariableNames(entry.node, variableSnapshot);
     const message =
       entry.node && usedNames.length === 0
         ? 'This request neither extracts nor uses any variables.'
@@ -1272,33 +1290,44 @@ function DebugVariablesInspector({
     return <p className="text-sm text-zinc-500">{message}</p>;
   }
   return (
-    <div className="space-y-4">
-      {builtins.length > 0 && (
-        <div className="overflow-hidden rounded border border-white/10 bg-[#050505]" aria-label="Built-in values">
-          <div className="grid grid-cols-[5rem_minmax(0,1fr)_minmax(0,1fr)_auto] gap-3 border-b border-white/10 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
-            <span>Location</span>
-            <span>Expression</span>
-            <span>Resolved value</span>
-            <span>Status</span>
-          </div>
-          {builtins.map(row => (
-            <div
-              key={`${row.location}-${row.expression}`}
-              className="grid grid-cols-[5rem_minmax(0,1fr)_minmax(0,1fr)_auto] items-start gap-3 border-b border-white/5 px-3 py-2 text-xs last:border-b-0"
-            >
-              <span className="text-zinc-400">{row.location}</span>
-              <code className="break-all text-yellow-200">{row.expression}</code>
-              <span className="break-all text-zinc-200">{row.value}</span>
-              <span className={row.status === 'resolved' ? 'text-emerald-300' : 'text-amber-300'}>
-                {row.status === 'resolved' ? 'Resolved' : 'Not captured'}
-              </span>
-            </div>
-          ))}
+    <DebugSection rows={variables} wrapLabels />
+  );
+}
+
+function DebugBuiltinsInspector({ event }: { event: EngineEvent }) {
+  const invocations = event.builtin_invocations ?? [];
+  if (invocations.length === 0) {
+    return <p className="text-sm text-zinc-500">No built-in functions were called for this request.</p>;
+  }
+  return (
+    <div className="overflow-hidden rounded border border-white/10 bg-[#050505]" aria-label="Built-in invocations">
+      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.8fr)] gap-3 border-b border-white/10 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
+        <span>Expression</span>
+        <span>Value</span>
+        <span>Origin</span>
+      </div>
+      {invocations.map((invocation, index) => (
+        <div
+          key={`${index}-${invocation.expression}-${invocation.origin ?? ''}`}
+          className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.8fr)] items-start gap-3 border-b border-white/5 px-3 py-2 text-xs last:border-b-0"
+        >
+          <code className="break-all text-yellow-200">{invocation.expression}</code>
+          <span className={`break-all ${invocation.status === 'failed' ? 'text-red-300' : 'text-zinc-200'}`}>
+            {invocation.status === 'failed' ? 'Failed' : formatBuiltinValue(invocation.value)}
+          </span>
+          <span className="break-all text-zinc-400">{invocation.origin || '—'}</span>
         </div>
-      )}
-      {variables.length > 0 && <DebugSection rows={variables} wrapLabels />}
+      ))}
     </div>
   );
+}
+
+function formatBuiltinValue(value: unknown): string {
+  try {
+    return JSON.stringify(value) ?? 'undefined';
+  } catch {
+    return String(value);
+  }
 }
 
 function DebugLogsInspector({

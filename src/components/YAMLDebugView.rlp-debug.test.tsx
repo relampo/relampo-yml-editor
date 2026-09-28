@@ -929,7 +929,7 @@ describe('YAMLDebugSession RLP debug fixes', () => {
     expect(screen.queryByText('Regex value not found: javax.faces.ViewState')).toBeNull();
   });
 
-  it('shows resolved built-ins from URL, query, headers, and body in the Variables tab (RLP-732/RLP-733)', async () => {
+  it('shows runtime built-in invocations in their own tab with exact JSON values', async () => {
     const request: YAMLNode = {
       id: 'builtins',
       type: 'request',
@@ -966,18 +966,95 @@ describe('YAMLDebugSession RLP debug fixes', () => {
           request_id: 1,
           request_headers: { 'X-Trace': 'trace-abc' },
           request_body: '{"id":"2"}',
+          builtin_invocations: [
+            { expression: '{{_uuid}}', value: 'user-42', status: 'resolved', origin: 'URL' },
+            { expression: '{{_randomFrom("1","5")}}', value: '2', status: 'resolved', origin: 'Query.choice' },
+            { expression: '{{_uuid}}', value: 'abc', status: 'resolved', origin: 'Headers.X-Trace' },
+            { expression: '{{_randomInt(1,2)}}', value: 2, status: 'resolved', origin: 'Body.id' },
+          ],
         }),
       );
     });
 
     fireEvent.click((await screen.findByText('#1')).closest('button')!);
     fireEvent.click(screen.getByRole('button', { name: 'variables' }));
+    expect(screen.queryByLabelText('Built-in invocations')).toBeNull();
+    expect(screen.queryByText('{{_uuid}}')).toBeNull();
 
-    expect(await screen.findByText('user-42')).toBeInTheDocument();
-    expect(screen.getByText('5')).toBeInTheDocument();
-    expect(screen.getByText('abc')).toBeInTheDocument();
-    expect(screen.getByText('2')).toBeInTheDocument();
-    expect(screen.getAllByText('Resolved')).toHaveLength(4);
+    fireEvent.click(screen.getByRole('button', { name: 'Built-ins' }));
+    expect(await screen.findByLabelText('Built-in invocations')).toBeInTheDocument();
+    expect(screen.getAllByText('{{_uuid}}')).toHaveLength(2);
+    expect(screen.getByText('"2"')).toBeInTheDocument();
+    expect(screen.getByText('2', { exact: true })).toBeInTheDocument();
+    expect(screen.getByText('Body.id')).toBeInTheDocument();
+    expect(screen.queryByText('Resolved')).toBeNull();
+  });
+
+  it('shows an empty state in the Built-ins tab when the request has no trace rows', async () => {
+    const request: YAMLNode = {
+      id: 'empty-builtins',
+      type: 'request',
+      name: '[1] GET /users',
+      data: { request_id: 1, method: 'GET', url: '/users' } as YAMLNode['data'],
+    };
+    render(
+      <YAMLDebugSession
+        tree={{ id: 'root', type: 'root', name: 'root', children: [request] }}
+        yamlCode={'test:\n  name: empty-builtins\n'}
+        documentReady
+        validationErrors={[]}
+        onSelectNode={vi.fn()}
+        onEditNode={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
+    act(() => {
+      debugApiMock.handlers[0].onEvent(event({ name: '[1] GET /users', path: '/users', request_id: 1 }));
+    });
+    fireEvent.click((await screen.findByText('#1')).closest('button')!);
+    fireEvent.click(screen.getByRole('button', { name: 'Built-ins' }));
+    expect(await screen.findByText('No built-in functions were called for this request.')).toBeInTheDocument();
+  });
+
+  it('shows a short failed row when a built-in invocation fails', async () => {
+    const request: YAMLNode = {
+      id: 'builtins-failed',
+      type: 'request',
+      name: '[1] GET /users',
+      data: { request_id: 1, method: 'GET', url: '/users' } as YAMLNode['data'],
+    };
+    render(
+      <YAMLDebugSession
+        tree={{ id: 'root', type: 'root', name: 'root', children: [request] }}
+        yamlCode={'test:\n  name: builtins-debug\n'}
+        documentReady
+        validationErrors={[]}
+        onSelectNode={vi.fn()}
+        onEditNode={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
+    act(() => {
+      debugApiMock.handlers[0].onEvent(
+        event({
+          name: '[1] GET /users',
+          path: '/users',
+          request_id: 1,
+          err: 'built-in _randomInt failed: minimum must not exceed maximum',
+          builtin_invocations: [
+            { expression: '{{_randomInt(2,1)}}', status: 'failed', origin: 'URL' },
+          ],
+        }),
+      );
+    });
+    fireEvent.click((await screen.findByText('#1')).closest('button')!);
+    fireEvent.click(screen.getByRole('button', { name: 'Built-ins' }));
+    expect(screen.getAllByText('Failed', { exact: true })).toHaveLength(3);
+    expect(screen.getByText('{{_randomInt(2,1)}}')).toBeInTheDocument();
+    expect(screen.getByText('URL')).toBeInTheDocument();
+    expect(screen.queryByText(/minimum must not exceed maximum/)).toBeNull();
   });
 
   it('shows variables captured earlier in a redirect even when its recorded URL is already resolved (RLP-597)', async () => {

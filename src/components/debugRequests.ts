@@ -412,34 +412,50 @@ function requestExtractorVariableNames(node: YAMLNode | null): string[] {
   return [...names];
 }
 
-// Match `{{name}}` where the inner name is anything but a brace (trimmed by the
-// caller). Correlation variables are routinely named with dots or hyphens —
-// `javax.faces.ViewState`, `x-correlation-id` — so restricting to an identifier
-// charset silently dropped them: the run still carried the value and the request
-// still referenced it, but the Variables tab never listed it. That looked
-// "intermittent" because plain names worked and dotted ones didn't. Over-
-// capturing here is harmless: variableRowsForRequestNode only surfaces names that
-// actually exist in the run's variable map, so junk never reaches the UI.
-// RLP-597 / RLP-584.
-const PLACEHOLDER_PATTERN = /\{\{([^{}]+)\}\}/g;
-
-// Pull every `{{var}}` reference out of an arbitrary request-config value (the
-// url, headers, query params, body, auth — whatever shape `node.data` holds).
-function collectPlaceholderNames(value: unknown, into: Set<string>): void {
+// Pull variable references from a request config. Built-in expressions belong
+// in the Built-ins tab, while nested variable references inside them still
+// belong here. An explicit variable name takes priority over a built-in name.
+function collectPlaceholderNames(value: unknown, into: Set<string>, variables: Record<string, string>): void {
   if (typeof value === 'string') {
-    for (const match of value.matchAll(PLACEHOLDER_PATTERN)) {
-      const name = match[1].trim();
-      if (name) into.add(name);
+    let cursor = 0;
+    while (cursor < value.length) {
+      const start = value.indexOf('{{', cursor);
+      if (start < 0) break;
+      let depth = 1;
+      let end = start + 2;
+      while (end < value.length && depth > 0) {
+        if (value.startsWith('{{', end)) {
+          depth += 1;
+          end += 2;
+        } else if (value.startsWith('}}', end)) {
+          depth -= 1;
+          end += 2;
+        } else {
+          end += 1;
+        }
+      }
+      if (depth !== 0) break;
+      const expression = value.slice(start + 2, end - 2).trim();
+      if (isBuiltinExpression(expression) && !Object.prototype.hasOwnProperty.call(variables, expression)) {
+        collectPlaceholderNames(expression, into, variables);
+      } else if (expression) {
+        into.add(expression);
+      }
+      cursor = end;
     }
     return;
   }
   if (Array.isArray(value)) {
-    value.forEach(item => collectPlaceholderNames(item, into));
+    value.forEach(item => collectPlaceholderNames(item, into, variables));
     return;
   }
   if (value && typeof value === 'object') {
-    Object.values(value as Record<string, unknown>).forEach(item => collectPlaceholderNames(item, into));
+    Object.values(value as Record<string, unknown>).forEach(item => collectPlaceholderNames(item, into, variables));
   }
+}
+
+function isBuiltinExpression(expression: string): boolean {
+  return /^[_$](?![_$])[A-Za-z][A-Za-z0-9_.]*(?:\s*\(|$)/.test(expression);
 }
 
 // The variable names a request *uses* (vs. extracts): `{{placeholders}}` woven
@@ -448,10 +464,10 @@ function collectPlaceholderNames(value: unknown, into: Set<string>): void {
 // never widen back to "every variable in scope", which is what RLP-585 removed
 // to stop unrelated data-source columns leaking onto requests that don't touch
 // them.
-function requestReferencedVariableNames(node: YAMLNode | null): string[] {
+function requestReferencedVariableNames(node: YAMLNode | null, variables: Record<string, string> = {}): string[] {
   if (!node) return [];
   const names = new Set<string>();
-  collectPlaceholderNames(node.data, names);
+  collectPlaceholderNames(node.data, names, variables);
   node.children?.forEach(child => {
     // Header/body config edited through the detail UI lives on child config
     // nodes (e.g. the `headers` child) and is serialized from there, not from
@@ -459,7 +475,7 @@ function requestReferencedVariableNames(node: YAMLNode | null): string[] {
     // surfaces if we scan child data too. Skip nested request children so a
     // controller's sub-requests never leak their placeholders up here. RLP-584.
     if (REQUEST_TYPES.has(child.type)) return;
-    collectPlaceholderNames(child.data, names);
+    collectPlaceholderNames(child.data, names, variables);
     if (child.type === 'data_source') {
       const bind = child.data?.bind;
       if (bind && typeof bind === 'object') {
@@ -473,9 +489,9 @@ function requestReferencedVariableNames(node: YAMLNode | null): string[] {
 // Every variable name relevant to a request's Variables tab: what it extracts
 // followed by what it references. Order is stable (extractors first) and
 // duplicates collapse. RLP-584.
-export function requestVariableNames(node: YAMLNode | null): string[] {
+export function requestVariableNames(node: YAMLNode | null, variables: Record<string, string> = {}): string[] {
   const names = new Set<string>();
-  for (const name of [...requestExtractorVariableNames(node), ...requestReferencedVariableNames(node)]) {
+  for (const name of [...requestExtractorVariableNames(node), ...requestReferencedVariableNames(node, variables)]) {
     names.add(name);
   }
   return [...names];
@@ -602,7 +618,7 @@ function requestVariableRoles(
     else roles.set(name, new Set([role]));
   };
   requestExtractorVariableNames(node).forEach(name => tag(name, 'RES'));
-  requestReferencedVariableNames(node).forEach(name => tag(name, 'REQ'));
+  requestReferencedVariableNames(node, variables).forEach(name => tag(name, 'REQ'));
   runtimeRequestVariableNames(variables, context).forEach(name => tag(name, 'REQ'));
   return roles;
 }
@@ -718,205 +734,5 @@ export function variableRowsForRequestNode(
       variableRowLabel(name, variableRoles),
       resolvedValue === undefined ? MISSING_VARIABLE_VALUE : displayVariableValue(resolvedValue),
     ];
-  });
-}
-
-export type BuiltinDebugRow = {
-  location: 'URL' | 'Query' | 'Headers' | 'Body';
-  expression: string;
-  value: string;
-  status: 'resolved' | 'not captured';
-};
-
-type BuiltinReference = {
-  location: BuiltinDebugRow['location'];
-  expression: string;
-  template: string;
-  expressionIndex: number;
-  fieldPath: string[];
-};
-
-function templateExpressions(value: string): string[] {
-  const expressions: string[] = [];
-  let cursor = 0;
-  while (cursor < value.length) {
-    const start = value.indexOf('{{', cursor);
-    if (start < 0) break;
-    let depth = 1;
-    let position = start + 2;
-    while (position < value.length && depth > 0) {
-      if (value.startsWith('{{', position)) {
-        depth += 1;
-        position += 2;
-        continue;
-      }
-      if (value.startsWith('}}', position)) {
-        depth -= 1;
-        position += 2;
-        continue;
-      }
-      position += 1;
-    }
-    if (depth !== 0) break;
-    const expression = value.slice(start, position);
-    if (/\b_[A-Za-z][A-Za-z0-9_]*/.test(expression)) expressions.push(expression);
-    cursor = position;
-  }
-  return expressions;
-}
-
-function builtinLocationForKey(key: string): BuiltinDebugRow['location'] | null {
-  switch (key.toLowerCase()) {
-    case 'url':
-    case 'path':
-      return 'URL';
-    case 'query':
-    case 'query_params':
-    case 'queryparams':
-      return 'Query';
-    case 'headers':
-    case 'request_headers':
-      return 'Headers';
-    case 'body':
-    case 'body_raw':
-    case 'form':
-    case 'form_data':
-      return 'Body';
-    default:
-      return null;
-  }
-}
-
-function collectBuiltinReferences(
-  value: unknown,
-  location: BuiltinDebugRow['location'] | null,
-  fieldPath: string[],
-  into: BuiltinReference[],
-): void {
-  if (typeof value === 'string') {
-    const expressions = templateExpressions(value);
-    expressions.forEach((expression, expressionIndex) => {
-      into.push({
-        location: location ?? 'Body',
-        expression,
-        template: value,
-        expressionIndex,
-        fieldPath,
-      });
-    });
-    return;
-  }
-  if (Array.isArray(value)) {
-    value.forEach((item, index) => collectBuiltinReferences(item, location, [...fieldPath, String(index)], into));
-    return;
-  }
-  if (!value || typeof value !== 'object') return;
-  Object.entries(value as Record<string, unknown>).forEach(([key, child]) => {
-    const childLocation = builtinLocationForKey(key) ?? location;
-    const childPath = childLocation && childLocation !== location ? [] : [...fieldPath, key];
-    collectBuiltinReferences(child, childLocation, childPath, into);
-  });
-}
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-function resolveTemplateValue(template: string, runtimeValue: string, expressionIndex: number): string | null {
-  const expressions = templateExpressions(template);
-  if (expressions.length === 0) return null;
-  if (template.trim() === expressions[expressionIndex]) return runtimeValue;
-  let pattern = '^';
-  let cursor = 0;
-  expressions.forEach(expression => {
-    const start = template.indexOf(expression, cursor);
-    if (start < 0) return;
-    pattern += escapeRegExp(template.slice(cursor, start)) + '(.+?)';
-    cursor = start + expression.length;
-  });
-  pattern += escapeRegExp(template.slice(cursor)) + '$';
-  const match = runtimeValue.match(new RegExp(pattern, 's'));
-  return match?.[expressionIndex + 1] ?? null;
-}
-
-function lookupPath(value: unknown, path: string[]): unknown {
-  return path.reduce<unknown>((current, key) => {
-    if (current && typeof current === 'object') return (current as Record<string, unknown>)[key];
-    return undefined;
-  }, value);
-}
-
-function headerValue(headers: Record<string, string> | undefined, name: string | undefined): string | null {
-  if (!headers || !name) return null;
-  const entry = Object.entries(headers).find(([key]) => key.toLowerCase() === name.toLowerCase());
-  return entry?.[1] ?? null;
-}
-
-function pathWithoutQuery(raw: string): string {
-  const queryless = raw.split('?')[0] || '/';
-  if (!/^https?:\/\//i.test(queryless)) return queryless;
-  try {
-    return decodeURIComponent(new URL(queryless).pathname || '/');
-  } catch {
-    return queryless;
-  }
-}
-
-function runtimeBuiltinValue(reference: BuiltinReference, context: VariableValueContext): string | null {
-  const field = reference.fieldPath.at(-1);
-  if (reference.location === 'Headers') {
-    const runtime = headerValue(context.requestHeaders, field);
-    return runtime === null ? null : resolveTemplateValue(reference.template, runtime, reference.expressionIndex);
-  }
-  if (reference.location === 'Query') {
-    try {
-      const runtimeURL = new URL(context.requestUrl ?? '', 'http://relampo.local');
-      const runtime = field ? runtimeURL.searchParams.get(field) : null;
-      return runtime === null ? null : resolveTemplateValue(reference.template, runtime, reference.expressionIndex);
-    } catch {
-      return null;
-    }
-  }
-  if (reference.location === 'URL') {
-    const runtime = pathWithoutQuery(normalizePath(context.requestUrl ?? ''));
-    const template = pathWithoutQuery(reference.template);
-    return resolveTemplateValue(template, runtime, reference.expressionIndex);
-  }
-  let runtimeBody: unknown = context.requestBody ?? '';
-  try {
-    runtimeBody = JSON.parse(context.requestBody ?? '');
-  } catch {
-    // Form and plain-text bodies are resolved against the raw payload below.
-  }
-  const runtime = typeof runtimeBody === 'string' ? runtimeBody : lookupPath(runtimeBody, reference.fieldPath);
-  if (runtime === undefined || runtime === null) return null;
-  return resolveTemplateValue(reference.template, String(runtime), reference.expressionIndex);
-}
-
-export function builtinRowsForRequestNode(
-  node: YAMLNode | null,
-  context: VariableValueContext = {},
-): BuiltinDebugRow[] {
-  if (!node) return [];
-  const references: BuiltinReference[] = [];
-  collectBuiltinReferences(node.data, null, [], references);
-  node.children?.forEach(child => {
-    if (REQUEST_TYPES.has(child.type)) return;
-    const location = builtinLocationForKey(child.type) ?? (child.type === 'extractor' ? null : 'Body');
-    if (location) collectBuiltinReferences(child.data, location, [], references);
-  });
-
-  const seen = new Set<string>();
-  return references.flatMap(reference => {
-    const key = `${reference.location}\u0000${reference.fieldPath.join('.')}\u0000${reference.expression}`;
-    if (seen.has(key)) return [];
-    seen.add(key);
-    const value = runtimeBuiltinValue(reference, context);
-    return [{
-      location: reference.location,
-      expression: reference.expression,
-      value: value ?? MISSING_VARIABLE_VALUE,
-      status: value === null ? 'not captured' : 'resolved',
-    }];
   });
 }
