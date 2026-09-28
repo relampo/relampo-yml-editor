@@ -244,7 +244,7 @@ describe('YAMLDebugSession RLP debug fixes', () => {
     expect(screen.queryByText('Redirect', { exact: true })).toBeNull();
   });
 
-  it('shows invalid built-in diagnostics with request trace location (RLP-734)', async () => {
+  it('shows built-in failures in Result without a separate diagnostic card (RLP-734)', async () => {
     render(
       <YAMLDebugSession
         tree={null}
@@ -278,9 +278,8 @@ describe('YAMLDebugSession RLP debug fixes', () => {
       );
     });
 
-    expect(await screen.findByText('_randomInt (invalid_arguments, argument 1, position 8)')).toBeInTheDocument();
-    expect(screen.getByText('scenarios[0].steps[0]')).toBeInTheDocument();
-    expect(screen.getByText('invalid arguments for _randomInt')).toBeInTheDocument();
+    expect(await screen.findByText('invalid arguments for _randomInt')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Built-in diagnostic')).not.toBeInTheDocument();
   });
 
   it('shows Spark before and after console logs with request context (RLP-742)', async () => {
