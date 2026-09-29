@@ -23,7 +23,7 @@ export interface BuiltinDiagnostic {
 
 export interface BuiltinInvocation {
   expression: string;
-  value?: unknown;
+  value: unknown;
   status: string;
   origin?: string;
 }

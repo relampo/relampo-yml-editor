@@ -971,6 +971,8 @@ describe('YAMLDebugSession RLP debug fixes', () => {
             { expression: '{{_randomFrom("1","5")}}', value: '2', status: 'resolved', origin: 'Query.choice' },
             { expression: '{{_uuid}}', value: 'abc', status: 'resolved', origin: 'Headers.X-Trace' },
             { expression: '{{_randomInt(1,2)}}', value: 2, status: 'resolved', origin: 'Body.id' },
+            { expression: '{{_randomInt(0,0)}}', value: 0, status: 'resolved', origin: 'Body.zero' },
+            { expression: '{{_randomBoolean()}}', value: false, status: 'resolved', origin: 'Body.enabled' },
           ],
         }),
       );
@@ -986,6 +988,10 @@ describe('YAMLDebugSession RLP debug fixes', () => {
     expect(screen.getAllByText('{{_uuid}}')).toHaveLength(2);
     expect(screen.getByText('"2"')).toBeInTheDocument();
     expect(screen.getByText('2', { exact: true })).toBeInTheDocument();
+    const zeroRow = screen.getByText('{{_randomInt(0,0)}}').parentElement;
+    const falseRow = screen.getByText('{{_randomBoolean()}}').parentElement;
+    expect(zeroRow?.children[1]).toHaveTextContent(/^0$/);
+    expect(falseRow?.children[1]).toHaveTextContent(/^false$/);
     expect(screen.getByText('Body.id')).toBeInTheDocument();
     expect(screen.queryByText('Resolved')).toBeNull();
   });
@@ -1044,7 +1050,7 @@ describe('YAMLDebugSession RLP debug fixes', () => {
           request_id: 1,
           err: 'built-in _randomInt failed: minimum must not exceed maximum',
           builtin_invocations: [
-            { expression: '{{_randomInt(2,1)}}', status: 'failed', origin: 'URL' },
+            { expression: '{{_randomInt(2,1)}}', value: null, status: 'failed', origin: 'URL' },
           ],
         }),
       );

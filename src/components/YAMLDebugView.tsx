@@ -1276,6 +1276,7 @@ function DebugVariablesInspector({
     requestBody: event.request_body,
     requestHeaders: event.request_headers,
     requestUrl: event.path,
+    builtinValues: event.builtin_invocations?.map(invocation => invocation.value),
     responseBody: event.response_body,
     responseHeaders: event.response_headers,
     statusLine: event.status ? String(event.status) : undefined,
@@ -1324,9 +1325,9 @@ function DebugBuiltinsInspector({ event }: { event: EngineEvent }) {
 
 function formatBuiltinValue(value: unknown): string {
   try {
-    return JSON.stringify(value) ?? 'undefined';
+    return JSON.stringify(value) ?? '—';
   } catch {
-    return String(value);
+    return '—';
   }
 }
 

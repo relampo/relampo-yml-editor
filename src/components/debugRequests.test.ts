@@ -316,6 +316,22 @@ describe('variableRowsForRequestNode', () => {
     expect(variableRowsForRequestNode(node, {})).toEqual([['count (REQ)', 'Not captured']]);
   });
 
+  it('does not mistake a built-in result for a variable with the same value', () => {
+    const node: YAMLNode = {
+      id: 'builtin-value',
+      type: 'request',
+      name: 'GET /users/{{_randomInt(1,2)}}',
+      data: { method: 'GET', url: '/users/{{_randomInt(1,2)}}' },
+    };
+
+    expect(
+      variableRowsForRequestNode(node, { unrelated: '2' }, {
+        requestUrl: '/users/2',
+        builtinValues: [2],
+      }),
+    ).toEqual([]);
+  });
+
   it('shows nothing when the event has no mapped node instead of dumping every variable', () => {
     // RLP-585 #5: unmapped events used to dump all in-scope variables, leaking
     // data-source columns (user/pass) onto requests that never touch them.

@@ -507,6 +507,7 @@ export type VariableValueContext = {
   requestBody?: string;
   requestHeaders?: Record<string, string>;
   requestUrl?: string;
+  builtinValues?: unknown[];
   responseBody?: string;
   responseHeaders?: Record<string, string>;
   statusLine?: string;
@@ -563,6 +564,7 @@ function runtimeRequestValues(context: VariableValueContext): Set<string> {
 
 function runtimeRequestVariableNames(variables: Record<string, string>, context: VariableValueContext): string[] {
   const requestValues = runtimeRequestValues(context);
+  const builtinValues = new Set((context.builtinValues ?? []).map(value => String(value)));
   const namesByValue = new Map<string, string[]>();
   Object.entries(variables).forEach(([name, value]) => {
     if (!value) return;
@@ -573,7 +575,11 @@ function runtimeRequestVariableNames(variables: Record<string, string>, context:
   // Reverse correlation is only trustworthy when a runtime value identifies a
   // single variable. Two captures can legitimately share a value (e.g. code1
   // and code2), so ambiguous matches remain driven by explicit placeholders.
-  return [...namesByValue].flatMap(([value, names]) => (requestValues.has(value) && names.length === 1 ? names : []));
+  // Built-in outputs are excluded because an unrelated variable can match them
+  // by value alone.
+  return [...namesByValue].flatMap(([value, names]) => (
+    requestValues.has(value) && !builtinValues.has(value) && names.length === 1 ? names : []
+  ));
 }
 
 function resolvedRequestUrlVariables(node: YAMLNode | null, context: VariableValueContext): Map<string, string> {
