@@ -753,7 +753,7 @@ function MonacoResponseBodyEditor({ value, searchText, searchMode, currentMatchI
         height="100%"
         language="json"
         value={value}
-        onMount={editor => {
+        onMount={(editor: MonacoEditorNS.IStandaloneCodeEditor) => {
           editorRef.current = editor;
           decorationsRef.current = editor.createDecorationsCollection([]);
         }}

@@ -169,7 +169,7 @@ function SQLQueryEditor({ query, onChange, helper }: SQLQueryEditorProps) {
           height="220px"
           defaultLanguage="sql"
           value={query}
-          onChange={value => onChange(value || '')}
+          onChange={(value: string | undefined) => onChange(value || '')}
           theme="vs-dark"
           options={{
             minimap: { enabled: false },
