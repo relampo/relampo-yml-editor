@@ -849,11 +849,11 @@ function MonacoBodyEditor({
         height="100%"
         language={language}
         value={value}
-        onMount={editor => {
+        onMount={(editor: MonacoEditorNS.IStandaloneCodeEditor) => {
           editorRef.current = editor;
           decorationsRef.current = editor.createDecorationsCollection([]);
         }}
-        onChange={next => onChange(next || '')}
+        onChange={(next: string | undefined) => onChange(next || '')}
         theme="vs-dark"
         options={{
           minimap: { enabled: false },
@@ -885,4 +885,3 @@ function MonacoBodyEditor({
     </div>
   );
 }
-

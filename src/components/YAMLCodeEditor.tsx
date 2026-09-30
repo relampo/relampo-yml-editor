@@ -189,7 +189,7 @@ function YAMLMonacoPane({ value, readOnly, onChange, onMount, options }: YAMLMon
         height="100%"
         language="yaml-relampo"
         value={value}
-        onChange={nextValue => {
+        onChange={(nextValue: string | undefined) => {
           if (!readOnly) onChange(nextValue || '');
         }}
         onMount={onMount}
