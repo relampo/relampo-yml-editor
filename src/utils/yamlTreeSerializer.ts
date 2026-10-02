@@ -284,7 +284,7 @@ function stepNodeToObject(node: YAMLNode): any {
   if (node.type === 'parallel') {
     const childSteps = node.children?.map(stepNodeToObject) || [];
 
-    const { steps: _steps, enabled: _enabled, ...parallelData } = node.data || {};
+    const { steps: _steps, enabled: _enabled, ...parallelData } = sanitizeBalancedNodeData(node.data) || {};
     const res: any = {
       ...(node.unknownData || {}),
       parallel: {

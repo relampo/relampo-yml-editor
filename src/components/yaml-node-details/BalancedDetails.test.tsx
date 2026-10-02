@@ -13,6 +13,30 @@ function renderWithLanguage(node: YAMLNode) {
 }
 
 describe('BalancedDetails excluded children', () => {
+  it('shows a Parallel Controller as one included branch', () => {
+    renderWithLanguage({
+      id: 'balanced-parallel',
+      type: 'balanced',
+      name: 'Traffic mix',
+      data: { type: 'total', mode: 'usuarios_virtuales' },
+      children: [{
+        id: 'parallel',
+        type: 'parallel',
+        name: 'Concurrent reads',
+        data: { __balancedPercentage: 100 },
+        children: [
+          { id: 'a', type: 'get', name: 'Request A' },
+          { id: 'b', type: 'get', name: 'Request B' },
+        ],
+      }],
+    });
+
+    expect(screen.getByText('Parallel Controller')).toBeInTheDocument();
+    expect(screen.getByText('Concurrent reads')).toBeInTheDocument();
+    expect(screen.queryByText('Request A')).not.toBeInTheDocument();
+    expect(screen.queryByText('Request B')).not.toBeInTheDocument();
+  });
+
   it('renders excluded children in a collapsible list', () => {
     renderWithLanguage({
       id: 'balanced-1',

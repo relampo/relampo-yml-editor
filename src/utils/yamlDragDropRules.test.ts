@@ -64,6 +64,17 @@ describe('yamlDragDropRules', () => {
   });
 
   describe('balanced controller containment (RLP-475)', () => {
+    it('allows adding and moving complete parallel branches', () => {
+      expect(canContain('balanced', 'parallel')).toBe(true);
+      expect(canDrop('parallel', 'balanced', 'inside')).toBe(true);
+      expect(canDrop('parallel', 'get', 'before', 'balanced')).toBe(true);
+      expect(canDrop('parallel', 'get', 'after', 'balanced')).toBe(true);
+      expect(validateTreeStructure({
+        type: 'balanced',
+        children: [{ type: 'parallel', children: [{ type: 'get' }, { type: 'post' }] }],
+      })).toEqual({ valid: true, errors: [] });
+    });
+
     it('rejects think_time as a direct balanced child', () => {
       expect(canContain('balanced', 'think_time')).toBe(false);
     });

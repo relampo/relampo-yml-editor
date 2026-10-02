@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowLeftRight, CheckCircle2, ChevronDown, CircleDashed, Database, Globe, GitBranch, Layers, Repeat, RotateCcw } from 'lucide-react';
+import { AlertTriangle, ArrowLeftRight, CheckCircle2, ChevronDown, CircleDashed, Database, Globe, GitBranch, Layers, Repeat, RotateCcw, Waves } from 'lucide-react';
 import { useState } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import {
@@ -40,6 +40,8 @@ function getBalancedItemLabel(type: string, t: TranslateFn) {
       return t('yamlEditor.balanced.itemLabels.group');
     case 'transaction':
       return t('yamlEditor.balanced.itemLabels.transaction');
+    case 'parallel':
+      return t('yamlEditor.balanced.itemLabels.parallel');
     case 'if':
       return t('yamlEditor.balanced.itemLabels.if');
     case 'loop':
@@ -63,6 +65,8 @@ function getBalancedItemIcon(type: string) {
       return <Layers className="w-5 h-5" />;
     case 'transaction':
       return <ArrowLeftRight className="w-5 h-5" />;
+    case 'parallel':
+      return <Waves className="w-5 h-5" />;
     case 'if':
       return <GitBranch className="w-5 h-5" />;
     case 'loop':
