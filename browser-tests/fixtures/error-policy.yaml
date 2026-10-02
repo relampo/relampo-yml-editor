@@ -1,0 +1,15 @@
+test:
+  name: RLP-756 real policies
+http_defaults:
+  base_url: http://127.0.0.1:18756
+  timeout: 100ms
+scenarios:
+  - name: policies
+    error_policy:
+      on_4xx: continue
+      on_5xx: continue
+      on_timeout: continue
+    steps:
+      - get: /400
+      - get: /500
+      - get: /timeout

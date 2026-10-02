@@ -1115,6 +1115,11 @@ function DebugErrorPolicyInspector({
     <div className="space-y-3">
       <div className="rounded border border-amber-400/25 bg-amber-400/5 p-4" aria-label="Error policy decision">
         <DebugLine
+          icon={<XCircle className="h-4 w-4 text-red-300" />}
+          title="Error type"
+          value={decision.key === 'on_timeout' ? 'Timeout' : event.status ? `HTTP ${event.status}` : decision.key || 'Unknown'}
+        />
+        <DebugLine
           icon={<ShieldCheck className="h-4 w-4 text-amber-300" />}
           title="Policy"
           value={`${decision.key || 'unknown'} → ${decision.action || 'unknown'}`}
