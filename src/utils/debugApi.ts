@@ -1,3 +1,4 @@
+import { trackStudioRunStarted, trackStudioRunCompleted, setAnalyticsVersion, initializeAnalytics } from './analytics';
 // Client for the relampo studio debug-run API (RLP-507 Phase 1).
 // When the editor is served by `relampo studio` the API lives on the same
 // origin; during `vite dev` point VITE_DEBUG_API_URL at a running studio.
@@ -198,6 +199,8 @@ export async function probeStudio(): Promise<StudioInfo | null> {
             debug: body.capabilities.debug === true,
           }
         : undefined;
+    setAnalyticsVersion(body.editorVersion);
+    initializeAnalytics();
     const defaultView = ['tree', 'code', 'debug', 'run'].includes(body.defaultView) ? body.defaultView : undefined;
     return {
       studio: true,
@@ -237,6 +240,7 @@ export async function startDebugRun(yaml: string, options: StartDebugRunOptions 
   if (!isRecord(body) || typeof body.id !== 'string' || body.id.length === 0) {
     throw new Error('debug run did not return a run id');
   }
+  trackStudioRunStarted(body.id, 'debug');
   return body.id;
 }
 
@@ -308,6 +312,7 @@ export function streamDebugRun(runId: string, handlers: DebugStreamHandlers): ()
     const payload = stream.parse<DebugDonePayload>(message, isDebugDonePayload);
     if (!payload || stream.isFinished()) return;
     stream.close();
+    trackStudioRunCompleted(runId, payload.error ? 'failure' : 'success');
     handlers.onDone(payload.error ?? null);
   });
 

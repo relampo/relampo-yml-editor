@@ -1,3 +1,4 @@
+import { logStatsigEvent } from '../../utils/analytics';
 import { useRef, useState } from 'react';
 import type { YAMLNode } from '../../types/yaml';
 import { normalizeYamlFileName } from '../yamlEditorHelpers';
@@ -94,6 +95,7 @@ export function useYamlFileUpload({
       syncCodeToTree(content, { force: true, defaultRootName: displayName });
       setCurrentFileName(normalizeYamlFileName(file.name));
       setHasDocumentActivity(true);
+      logStatsigEvent('studio_document_opened');
       setIsDirty(false);
       clearInput?.();
     };

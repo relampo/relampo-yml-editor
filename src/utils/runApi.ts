@@ -1,3 +1,4 @@
+import { trackStudioRunStarted, trackStudioRunCompleted } from './analytics';
 // Client for the relampo studio load-run API: a full `relampo run` load test
 // (the scenario's real load config) driven from the editor's Run view. Unlike
 // the debug API (one pass, 1-2 VUs, per-request events) this streams aggregated
@@ -251,6 +252,7 @@ export async function startLoadRun(yaml: string): Promise<string> {
   if (!isRecord(body) || typeof body.id !== 'string' || body.id.length === 0) {
     throw new Error('load run did not return a run id');
   }
+  trackStudioRunStarted(body.id, 'load');
   return body.id;
 }
 
@@ -306,6 +308,7 @@ export function streamLoadRun(runId: string, handlers: RunStreamHandlers): () =>
     const payload = stream.parse<RunDonePayload>(message, isRunDonePayload);
     if (!payload || stream.isFinished()) return;
     stream.close();
+    trackStudioRunCompleted(runId, payload.status);
     handlers.onDone({
       status: payload.status,
       error: payload.error ?? null,

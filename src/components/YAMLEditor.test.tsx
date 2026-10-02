@@ -11,6 +11,8 @@ import { YAMLEditor } from './YAMLEditor';
 
 vi.mock('../utils/analytics', () => ({
   logStatsigEvent: vi.fn(),
+  getAnalyticsConsent: () => false,
+  setAnalyticsConsent: vi.fn(),
 }));
 
 vi.mock('../utils/debugApi', () => ({
