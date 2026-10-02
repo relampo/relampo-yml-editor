@@ -845,3 +845,15 @@ describe('skippedRedirectHops — recorded chain longer than the live run (RLP-6
     expect(skippedRedirectHops(events, chain())).toHaveLength(3);
   });
 });
+
+describe('RLP-758 distinct declared variables and built-ins', () => {
+ it('keeps the declared variable value independently of raw expression and token', () => {
+  const node: YAMLNode = { id:'product',type:'request',name:'GET /product',data:{url:'/product'},children:[] };
+  expect(variableRowsForRequestNode(node,{product:'{{_randomInt(37,37)}}',token:'separate-test-token'},{declaredBuiltinValues:{product:'37'}})).toEqual([['product (VAR)','37']]);
+ });
+});
+
+it('keeps a later variable assignment distinct from the builtin result (RLP-758)', () => {
+ const node: YAMLNode={id:'product',type:'request',name:'GET /product',data:{url:'/product'},children:[]};
+ expect(variableRowsForRequestNode(node,{product:'42'},{declaredBuiltinValues:{product:'37'}})).toEqual([['product (VAR)','42']]);
+});
