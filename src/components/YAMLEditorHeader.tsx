@@ -1,3 +1,4 @@
+import { UsageMetricsConsent } from './UsageMetricsConsent';
 import { ChevronDown, FilePlus, Save, Upload } from 'lucide-react';
 import { Button } from './ui/button';
 import {
@@ -64,6 +65,7 @@ export function YAMLEditorHeader({
 
         {/* Right: Buttons + Language Toggle */}
         <div className="flex items-center gap-4">
+          <UsageMetricsConsent language={language} />
           {/* Action Buttons */}
           <div className="flex items-center gap-2">
             {!isDocumentEmpty && (

@@ -1,3 +1,4 @@
+import { logStatsigEvent } from '../utils/analytics';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import yaml from 'js-yaml';
 import { clearActiveDraft, saveActiveDraft } from '../utils/yamlDraftStorage';
@@ -229,6 +230,7 @@ export function useYAMLPersistence({
     a.download = normalizeYamlFileName(currentFileName);
     document.body.appendChild(a);
     a.click();
+    logStatsigEvent('studio_document_exported', { outcome: 'success' });
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     setHasDocumentActivity(true);

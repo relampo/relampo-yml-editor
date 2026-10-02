@@ -1,3 +1,4 @@
+import { logStatsigEvent } from '../../utils/analytics';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { YAMLNode } from '../../types/yaml';
 import { autoRebalanceBalancedControllers } from '../../utils/balancedController';
@@ -87,6 +88,7 @@ export function useYamlDocumentSync({
   const applySemanticValidation = useCallback(
     (tree: YAMLNode | null) => {
       const issues = validateYAMLSemantics(tree);
+      logStatsigEvent('studio_validation_completed', { outcome: issues.length ? 'failure' : 'success' });
       setValidationErrors(issues.map(issue => localizeYAMLSemanticError(issue.message, language)));
       setValidationNodeIds?.(issues.map(issue => issue.nodeId));
     },

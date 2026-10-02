@@ -1,3 +1,4 @@
+import { logStatsigEvent } from '../../utils/analytics';
 import { useEffect, useRef, useState } from 'react';
 import { probeStudio } from '../../utils/debugApi';
 import { getActiveDraft } from '../../utils/yamlDraftStorage';
@@ -117,6 +118,7 @@ export function useYamlDocumentLifecycle({
       }
 
       if (initialYaml.trim()) setIsFileLoading(true);
+      if (initialYaml.trim()) logStatsigEvent('studio_document_opened');
       setYamlCode(initialYaml);
       setYamlContent(initialYaml);
       setCurrentFileName(initialFileName);
