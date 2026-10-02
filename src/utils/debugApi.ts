@@ -27,6 +27,7 @@ export interface BuiltinInvocation {
   value: unknown;
   status: string;
   origin?: string;
+    error?: string;
 }
 
 export interface ErrorPolicyDecision {

@@ -244,7 +244,7 @@ describe('YAMLDebugSession RLP debug fixes', () => {
     expect(screen.queryByText('Redirect', { exact: true })).toBeNull();
   });
 
-  it('shows built-in failures in Result without a separate diagnostic card (RLP-734)', async () => {
+  it('moves built-in evaluation details to Built-ins (RLP-757)', async () => {
     render(
       <YAMLDebugSession
         tree={null}
@@ -278,7 +278,11 @@ describe('YAMLDebugSession RLP debug fixes', () => {
       );
     });
 
-    expect(await screen.findByText('invalid arguments for _randomInt')).toBeInTheDocument();
+    expect(await screen.findByText('Built-in evaluation failed. See Built-ins.')).toBeInTheDocument();
+    expect(screen.queryByText('invalid arguments for _randomInt')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Built-ins' }));
+    expect(screen.getByText('_randomInt')).toBeInTheDocument();
+    expect(screen.getByText('invalid arguments for _randomInt')).toBeInTheDocument();
     expect(screen.queryByLabelText('Built-in diagnostic')).not.toBeInTheDocument();
   });
 
