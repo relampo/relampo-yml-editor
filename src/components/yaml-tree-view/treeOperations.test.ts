@@ -27,6 +27,24 @@ function findRequest(node: YAMLNode): YAMLNode | undefined {
 }
 
 describe('replaceTextInEnabledRequests', () => {
+  it.each([
+    ['files', 'files:\n            - field: file\n              path: token.txt', 'token', 'authToken'],
+    ['think_time', 'think_time: 1s', '1s', '2s'],
+    ['data_source', 'data_source:\n            type: csv\n            file: token.csv', 'token', 'authToken'],
+  ])('counts and saves only the child-owned %s value', (_field, fragment, search, replacement) => {
+    const tree = parseYAMLToTree(`test:\n  name: replacement\nscenarios:\n  - name: test\n    steps:\n      - request:\n          method: POST\n          url: /upload\n          ${fragment}\n`)!;
+    expect(getReplaceableMatchNodeIds(tree, search, true)).toHaveLength(1);
+    for (const index of [undefined, 0]) {
+      const result = replaceTextInEnabledRequestsAtMatch(tree, search, replacement, index, true).result;
+      expect(result.replacements).toBe(1);
+      const saved = treeToYAML(result.tree);
+      expect(saved).toContain(replacement);
+      expect(saved).not.toContain(search);
+      const reloaded = parseYAMLToTree(saved)!;
+      expect(getReplaceableMatchNodeIds(reloaded, replacement, true)).toHaveLength(1);
+    }
+  });
+
   it('returns replaceable match node ids in replacement order', () => {
     const tree: YAMLNode = {
       id: 'steps',
