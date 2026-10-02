@@ -514,6 +514,21 @@ describe('YAMLDebugSession RLP debug fixes', () => {
     expect(within(policyDecision).getByText('2 · next_iteration')).toBeInTheDocument();
   });
 
+  it.each([{ status: 400, key: 'on_4xx', label: 'HTTP 400' }, { status: 500, key: 'on_5xx', label: 'HTTP 500' }, { status: 0, key: 'on_timeout', label: 'Timeout' }])('identifies $label on its owning request (RLP-756)', async ({ status, key, label }) => {
+    render(<YAMLDebugSession tree={null} yamlCode={'test:\n  name: policy\n'} documentReady validationErrors={[]} onSelectNode={vi.fn()} onEditNode={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
+    act(() => {
+      debugApiMock.handlers[0].onEvent(event({ path: '/failed', status, err: 'request failed', request_id: 3, vu: 1, iteration: 1 }));
+      debugApiMock.handlers[0].onEvent(event({ method: 'ERROR_POLICY', path: '/failed', status, request_id: 3, vu: 1, iteration: 1, error_policy: { key, action: 'continue', original_error: 'request failed', request_path: '/failed' } }));
+    });
+    expect(screen.getByRole('button', { name: 'Requests: 1. Filter execution timeline.' })).toBeInTheDocument();
+    const card = screen.getByLabelText('Error policy decision');
+    expect(within(card).getByText(label)).toBeInTheDocument();
+    expect(within(card).getByText(`${key} → continue`)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /ERROR_POLICY/ })).not.toBeInTheDocument();
+  });
+
   it('keeps original counts and shows an empty timeline when a filter has no matches', async () => {
     render(
       <YAMLDebugSession
