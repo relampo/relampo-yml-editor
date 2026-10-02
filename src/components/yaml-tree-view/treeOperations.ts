@@ -239,8 +239,9 @@ function countTextInValue(value: unknown, search: string, urlEncoded = false): n
   }
 
   if (value && typeof value === 'object') {
-    return Object.values(value).reduce(
-      (count, item) => count + countTextInValue(item, search, urlEncoded),
+    return Object.entries(value).reduce(
+      (count, [key, item]) =>
+        count + (key === 'response' || key === 'response_preview' ? 0 : countTextInValue(item, search, urlEncoded)),
       0,
     );
   }
@@ -287,6 +288,7 @@ function replaceTextInValue(
     let changed = false;
     const nextValue = Object.fromEntries(
       Object.entries(value).map(([key, item]) => {
+        if (key === 'response' || key === 'response_preview') return [key, item];
         const [nextItem, itemMatches, itemReplacements, itemChanged] = replaceTextInValue(
           item,
           search,
@@ -321,6 +323,7 @@ function replaceRequestData(
   headersCountedByChild = false,
   targetMatchIndex?: number,
   matchOffset: { value: number } = { value: 0 },
+  excludedKeys: Set<string> = new Set(),
 ): [YAMLNodeData | undefined, number, number, boolean] {
   if (!data || typeof data !== 'object' || Array.isArray(data)) return [data, 0, 0, false];
 
@@ -329,7 +332,13 @@ function replaceRequestData(
   let changed = false;
   const nextData = Object.fromEntries(
     Object.entries(data).map(([key, value]) => {
-      if (key === 'enabled' || key === 'method' || key === 'response' || key === 'response_preview') {
+      if (
+        excludedKeys.has(key) ||
+        key === 'enabled' ||
+        key === 'method' ||
+        key === 'response' ||
+        key === 'response_preview'
+      ) {
         return [key, value];
       }
       const ignoreMatches = key === 'headers' && headersCountedByChild;
@@ -351,6 +360,26 @@ function replaceRequestData(
   return [changed ? nextData : data, matches, replacements, changed];
 }
 
+// The serializer owns these values through child nodes. Skip stale parent copies,
+// so replacement counts describe the YAML that will actually be saved.
+function childOwnedDataKeys(node: YAMLNode): Set<string> {
+  const keys = new Set<string>();
+  if (node.children?.length) keys.add('steps');
+  for (const child of node.children ?? []) {
+    if (['load', 'cookies', 'cache_manager', 'error_policy', 'headers', 'steps'].includes(child.type))
+      keys.add(child.type);
+    if (child.type === 'spark_before' || child.type === 'spark_after' || child.type === 'spark') keys.add('spark');
+    if (child.type === 'extractor') keys.add('extractors');
+    if (child.type === 'extract') keys.add('extract');
+    if (child.type === 'assertion' || child.type === 'assert') {
+      keys.add('assertions');
+      keys.add('assert');
+    }
+    if (node.type === 'scenario' && child.type === 'steps') keys.add('description');
+  }
+  return keys;
+}
+
 /** Replace literal text in enabled requests and their headers, excluding recorded responses. */
 export function replaceTextInEnabledRequests(
   tree: YAMLNode,
@@ -367,19 +396,25 @@ export function countTextInEnabledRequests(tree: YAMLNode, search: string): numb
 
 /**
  * Return one node ID for each replaceable occurrence, in replacement order.
- * Responses and disabled subtrees are intentionally outside this traversal.
+ * Responses are excluded. Whole-document mode also includes variables, component
+ * values, and disabled nodes; the legacy request-only scope stays available.
  */
-export function getReplaceableMatchNodeIds(tree: YAMLNode, search: string): string[] {
+export function getReplaceableMatchNodeIds(tree: YAMLNode, search: string, wholeDocument = false): string[] {
   if (!search) return [];
 
   const matchNodeIds: string[] = [];
   const visit = (node: YAMLNode, inheritedEnabled: boolean) => {
     const enabled = inheritedEnabled && node.data?.enabled !== false;
 
-    if (enabled && (REQUEST_TYPES.has(node.type) || node.type === 'headers')) {
+    if (wholeDocument || (enabled && (REQUEST_TYPES.has(node.type) || node.type === 'headers'))) {
       const headersCountedByChild =
         REQUEST_TYPES.has(node.type) && (node.children?.some(child => child.type === 'headers') ?? false);
-      const nodeMatches = countRequestData(node.data, search, headersCountedByChild);
+      const nodeMatches = countRequestData(
+        node.data,
+        search,
+        headersCountedByChild,
+        wholeDocument ? childOwnedDataKeys(node) : new Set(),
+      );
       matchNodeIds.push(...Array.from({ length: nodeMatches }, () => node.id));
     }
 
@@ -390,11 +425,23 @@ export function getReplaceableMatchNodeIds(tree: YAMLNode, search: string): stri
   return matchNodeIds;
 }
 
-function countRequestData(data: YAMLNodeData | undefined, search: string, headersCountedByChild: boolean): number {
+function countRequestData(
+  data: YAMLNodeData | undefined,
+  search: string,
+  headersCountedByChild: boolean,
+  excludedKeys = new Set<string>(),
+): number {
   if (!data || typeof data !== 'object' || Array.isArray(data)) return 0;
 
   return Object.entries(data).reduce((matches, [key, value]) => {
-    if (key === 'enabled' || key === 'method' || key === 'response' || key === 'response_preview') return matches;
+    if (
+      excludedKeys.has(key) ||
+      key === 'enabled' ||
+      key === 'method' ||
+      key === 'response' ||
+      key === 'response_preview'
+    )
+      return matches;
     if (key === 'headers' && headersCountedByChild) return matches;
     return matches + countTextInValue(value, search, key === 'url');
   }, 0);
@@ -406,6 +453,7 @@ export function replaceTextInEnabledRequestsAtMatch(
   search: string,
   replacement: string,
   targetMatchIndex?: number,
+  wholeDocument = false,
 ): { result: { tree: YAMLNode; replacements: number }; matches: number } {
   if (!search) return { result: { tree, replacements: 0 }, matches: 0 };
   if (!replacement) {
@@ -422,7 +470,7 @@ export function replaceTextInEnabledRequestsAtMatch(
     let replacements = 0;
     let changed = false;
 
-    if (enabled && (REQUEST_TYPES.has(node.type) || node.type === 'headers')) {
+    if (wholeDocument || (enabled && (REQUEST_TYPES.has(node.type) || node.type === 'headers'))) {
       // Only a request node duplicates its headers into a child; a `headers`
       // node has none, so it always owns its own tally.
       const [replacedData, dataMatches, dataReplacements, dataChanged] = replaceRequestData(
@@ -432,6 +480,7 @@ export function replaceTextInEnabledRequestsAtMatch(
         hasHeadersChild,
         targetMatchIndex,
         matchOffset,
+        wholeDocument ? childOwnedDataKeys(node) : new Set(),
       );
       nextData = replacedData;
       matches += dataMatches;
@@ -472,7 +521,11 @@ export function replaceTextInEnabledRequestsAtMatch(
           updatedData: nextData as Record<string, unknown> | undefined,
           explicitName: projectedRequestName,
         }).name
-      : node.name;
+      : typeof nextData?.__name === 'string'
+        ? nextData.__name
+        : node.name === currentDataName && typeof nextData?.name === 'string'
+          ? nextData.name
+          : node.name;
 
     return [
       {
@@ -519,9 +572,7 @@ export function removeNodeFromTree(tree: YAMLNode, nodeId: string): YAMLNode {
   if (tree.children) {
     return {
       ...tree,
-      children: tree.children.flatMap(child =>
-        child.id === nodeId ? [] : [removeNodeFromTree(child, nodeId)],
-      ),
+      children: tree.children.flatMap(child => (child.id === nodeId ? [] : [removeNodeFromTree(child, nodeId)])),
     };
   }
 
@@ -706,11 +757,7 @@ export function syncRedirectSourceFollowRedirects(
 }
 
 /** Which node a drop lands under: the target itself for `inside`, else its parent. */
-function destinationParentId(
-  tree: YAMLNode,
-  targetId: string,
-  position: 'before' | 'after' | 'inside',
-): string | null {
+function destinationParentId(tree: YAMLNode, targetId: string, position: 'before' | 'after' | 'inside'): string | null {
   if (position === 'inside') return targetId;
   const findParent = (node: YAMLNode): string | null => {
     if (node.children?.some(child => child.id === targetId)) return node.id;

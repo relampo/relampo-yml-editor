@@ -65,7 +65,7 @@ export function YAMLTreeView({
   } = useTreeViewSelection({ tree, selectedNode, selectedNodeIds, onSelectionChange, onSearchChange });
   const searchMatchCount = useMemo(() => countMatchingNodes(tree, searchQuery), [searchQuery, tree]);
   const replaceableMatchNodeIds = useMemo(
-    () => (tree ? getReplaceableMatchNodeIds(tree, searchQuery) : []),
+    () => (tree ? getReplaceableMatchNodeIds(tree, searchQuery, true) : []),
     [searchQuery, tree],
   );
   const activeReplaceMatchNodeId =
@@ -96,7 +96,7 @@ export function YAMLTreeView({
 
   const handleReplace = (replacement: string, matchIndex?: number) => {
     if (!tree) return 0;
-    const result = replaceTextInEnabledRequestsAtMatch(tree, searchQuery, replacement, matchIndex).result;
+    const result = replaceTextInEnabledRequestsAtMatch(tree, searchQuery, replacement, matchIndex, true).result;
     if (result.replacements > 0) onTreeChange(result.tree);
     return result.replacements;
   };
