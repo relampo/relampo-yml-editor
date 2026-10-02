@@ -1277,6 +1277,7 @@ function DebugVariablesInspector({
     requestHeaders: event.request_headers,
     requestUrl: event.path,
     builtinValues: event.builtin_invocations?.map(invocation => invocation.value),
+    declaredBuiltinValues: Object.fromEntries((event.builtin_invocations ?? []).filter(invocation => invocation.origin?.startsWith('Variables.') && invocation.status === 'resolved').map(invocation => [invocation.origin!.slice('Variables.'.length), typeof invocation.value === 'string' ? invocation.value : JSON.stringify(invocation.value) ?? 'Not captured'])),
     responseBody: event.response_body,
     responseHeaders: event.response_headers,
     statusLine: event.status ? String(event.status) : undefined,

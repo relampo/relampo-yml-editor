@@ -1,0 +1,12 @@
+test:
+  name: RLP-760 independent values
+variables:
+  product: '{{_randomInt(37,37)}}'
+  token: separate-test-token
+http_defaults:
+  base_url: http://127.0.0.1:18756
+scenarios:
+  - name: variables
+    steps:
+      - get: /unused
+      - get: /{{product}}

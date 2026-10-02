@@ -501,13 +501,14 @@ export function requestVariableNames(node: YAMLNode | null, variables: Record<st
 // response (an extractor/regex lives on this request). REQ = the request
 // sends/uses it — a {{placeholder}} in its url/headers/body/params, or a
 // data-source bind. RLP-597.
-export type VariableRole = 'REQ' | 'RES';
+export type VariableRole = 'REQ' | 'RES' | 'VAR';
 
 export type VariableValueContext = {
   requestBody?: string;
   requestHeaders?: Record<string, string>;
   requestUrl?: string;
   builtinValues?: unknown[];
+  declaredBuiltinValues?: Record<string, string>;
   responseBody?: string;
   responseHeaders?: Record<string, string>;
   statusLine?: string;
@@ -626,6 +627,7 @@ function requestVariableRoles(
   requestExtractorVariableNames(node).forEach(name => tag(name, 'RES'));
   requestReferencedVariableNames(node, variables).forEach(name => tag(name, 'REQ'));
   runtimeRequestVariableNames(variables, context).forEach(name => tag(name, 'REQ'));
+  Object.keys(context.declaredBuiltinValues ?? {}).forEach(name => { if (!roles.has(name)) tag(name, 'VAR'); });
   return roles;
 }
 
@@ -634,7 +636,7 @@ function requestVariableRoles(
 // extracts it and `javax.faces.ViewState (REQ)` on one that uses it. A name that
 // is both keeps one row tagged `(REQ, RES)`. RLP-597.
 export function variableRowLabel(name: string, roles: Set<VariableRole> | undefined): string {
-  const tags = (['REQ', 'RES'] as VariableRole[]).filter(role => roles?.has(role));
+  const tags = (['REQ', 'RES', 'VAR'] as VariableRole[]).filter(role => roles?.has(role));
   return tags.length ? `${name} (${tags.join(', ')})` : name;
 }
 
@@ -729,7 +731,9 @@ export function variableRowsForRequestNode(
   const sent = resolvedRequestUrlVariables(node, context);
   return [...roles].map<[string, string]>(([name, variableRoles]) => {
     const resolvedValue =
-      variableRoles?.has('RES') && extracted.has(name)
+      Object.prototype.hasOwnProperty.call(context.declaredBuiltinValues ?? {}, name)
+        ? context.declaredBuiltinValues![name]
+        : variableRoles?.has('RES') && extracted.has(name)
         ? extracted.get(name)
         : variableRoles?.has('REQ') && sent.has(name)
           ? sent.get(name)
