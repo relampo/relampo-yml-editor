@@ -730,9 +730,11 @@ export function variableRowsForRequestNode(
   const extracted = responseExtractorValues(node, context);
   const sent = resolvedRequestUrlVariables(node, context);
   return [...roles].map<[string, string]>(([name, variableRoles]) => {
+    const declaredValue = context.declaredBuiltinValues?.[name];
+    const capturedValue = variables[name];
     const resolvedValue =
-      Object.prototype.hasOwnProperty.call(context.declaredBuiltinValues ?? {}, name)
-        ? context.declaredBuiltinValues![name]
+      declaredValue !== undefined
+        ? capturedValue !== undefined && !capturedValue.includes('{{') && !capturedValue.includes('${') ? capturedValue : declaredValue
         : variableRoles?.has('RES') && extracted.has(name)
         ? extracted.get(name)
         : variableRoles?.has('REQ') && sent.has(name)
