@@ -1,0 +1,11 @@
+test:
+  name: RLP-757 evaluation failure
+variables:
+  lower: 2
+  upper: 1
+http_defaults:
+  base_url: http://127.0.0.1:18756
+scenarios:
+  - name: builtin failure
+    steps:
+      - get: /{{_randomInt({{lower}},{{upper}})}}

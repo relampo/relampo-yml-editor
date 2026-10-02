@@ -1296,7 +1296,7 @@ function DebugVariablesInspector({
 }
 
 function DebugBuiltinsInspector({ event }: { event: EngineEvent }) {
-  const invocations = event.builtin_invocations ?? [];
+  const invocations = event.builtin_invocations ?? (event.builtin ? [{ expression: event.builtin.function, value: null, status: 'failed', origin: event.builtin.step_path, error: event.err }] : []);
   if (invocations.length === 0) {
     return <p className="text-sm text-zinc-500">No built-in functions were called for this request.</p>;
   }
@@ -1314,7 +1314,8 @@ function DebugBuiltinsInspector({ event }: { event: EngineEvent }) {
         >
           <code className="break-all text-yellow-200">{invocation.expression}</code>
           <span className={`break-all ${invocation.status === 'failed' ? 'text-red-300' : 'text-zinc-200'}`}>
-            {invocation.status === 'failed' ? 'Failed' : formatBuiltinValue(invocation.value)}
+            <span>{invocation.status === 'failed' ? 'Failed' : formatBuiltinValue(invocation.value)}</span>
+            {invocation.status === 'failed' && (invocation.error || (event.builtin?.function && invocation.expression?.includes(event.builtin.function) && event.err)) && <span className="mt-1 block text-red-300">{invocation.error || event.err}</span>}
           </span>
           <span className="break-all text-zinc-400">{invocation.origin || '—'}</span>
         </div>
@@ -1438,7 +1439,7 @@ function DebugOverviewInspector({
             )
           }
           title="Result"
-          value={event.err || (event.status ? `HTTP ${event.status}` : 'Completed')}
+          value={event.builtin ? 'Built-in evaluation failed. See Built-ins.' : event.err || (event.status ? `HTTP ${event.status}` : 'Completed')}
         />
       </div>
       {event.error_policy && (
