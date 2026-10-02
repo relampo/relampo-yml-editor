@@ -1,6 +1,10 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { LanguageProvider } from '../../../contexts/LanguageContext';
+import type { ReactElement } from 'react';
+import { fireEvent, render as rtlRender, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { ConstantLoadMode } from './ConstantLoadMode';
+
+const render = (ui: ReactElement) => rtlRender(<LanguageProvider>{ui}</LanguageProvider>);
 
 describe('ConstantLoadMode', () => {
   it('uses accessible helper text instead of placeholders for load fields', () => {
