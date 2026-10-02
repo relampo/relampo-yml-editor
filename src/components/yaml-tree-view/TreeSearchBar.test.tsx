@@ -1,7 +1,11 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { LanguageProvider } from '../../contexts/LanguageContext';
+import type { ReactElement } from 'react';
+import { fireEvent, render as rtlRender, screen } from '@testing-library/react';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { TreeSearchBar } from './TreeSearchBar';
+
+const render = (ui: ReactElement) => rtlRender(<LanguageProvider>{ui}</LanguageProvider>);
 
 describe('TreeSearchBar replace controls', () => {
   it('copies the active tree search into Replace and shows its match count', () => {

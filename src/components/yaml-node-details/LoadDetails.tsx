@@ -1,3 +1,4 @@
+import { useLanguage } from '../../contexts/LanguageContext';
 import { Crosshair, Gauge, ListTree, Mountain, TrendingUp, Users } from 'lucide-react';
 import { useId } from 'react';
 import { LoadVisualization } from './LoadVisualization';
@@ -35,6 +36,7 @@ const LOAD_MODE_OPTIONS: Array<{
 ];
 
 export function LoadDetails({ node, onNodeUpdate }: NodeDetailProps) {
+  const { t } = useLanguage();
   const { data, updateData, updateField } = createNodeDataUpdater(node, onNodeUpdate);
   const loadData = toLoadData(data as Record<string, unknown>);
   const loadType = normalizeLoadType(loadData.type);
@@ -75,7 +77,7 @@ export function LoadDetails({ node, onNodeUpdate }: NodeDetailProps) {
   return (
     <div className="space-y-6">
       <div>
-        <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">Load Pattern</div>
+        <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">{t('studioControls.loadPattern')}</div>
         <div className="flex flex-wrap gap-2">
           {LOAD_MODE_OPTIONS.map(option => {
             const Icon = option.icon;
@@ -90,7 +92,7 @@ export function LoadDetails({ node, onNodeUpdate }: NodeDetailProps) {
                 style={isActive ? selectedLoadButtonStyle[option.type] : undefined}
               >
                 <Icon className="h-3.5 w-3.5" />
-                <span>{option.label}</span>
+                <span>{t(`studioControls.${option.type}`)}</span>
               </button>
             );
           })}
@@ -121,6 +123,7 @@ export function LoadDetails({ node, onNodeUpdate }: NodeDetailProps) {
 }
 
 function ManualStopControl({ checked, onChange }: { checked: boolean; onChange: (checked: boolean) => void }) {
+  const { t } = useLanguage();
   const helpId = useId();
 
   return (
@@ -134,13 +137,12 @@ function ManualStopControl({ checked, onChange }: { checked: boolean; onChange: 
           className="mt-0.5 h-4 w-4 rounded border-white/20 bg-[#151515] accent-amber-400"
         />
         <span>
-          <span className="block font-medium">Run until manually stopped</span>
+          <span className="block font-medium">{t('studioControls.manualStop')}</span>
           <span
             id={helpId}
             className="mt-1 block text-xs leading-relaxed text-zinc-400"
           >
-            Explicitly runs until Stop or Ctrl+C, subject to the active license duration limit. Duration and iterations
-            are cleared.
+            {t('studioControls.manualStopHelp')}
           </span>
         </span>
       </label>
