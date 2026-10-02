@@ -984,14 +984,14 @@ function DebugDetailPanel({
             </div>
           </div>
 
-          <div className="flex items-center border-b border-white/5 px-3">
+          <div aria-label="Request detail tabs" className="flex shrink-0 items-center overflow-x-auto border-b border-white/5 px-3">
             {REQUEST_DETAIL_TABS.map(tab => (
               <button
                 key={tab}
                 type="button"
                 aria-label={tab === 'builtins' ? 'Built-ins' : tab}
                 onClick={() => onTabChange(tab)}
-                className={`px-2.5 py-2.5 text-xs font-semibold transition-colors ${
+                className={`shrink-0 px-2.5 py-2.5 text-xs font-semibold transition-colors ${
                   detailTab === tab
                     ? 'border-b-2 border-yellow-400 text-yellow-300'
                     : 'border-b-2 border-transparent text-zinc-500 hover:text-zinc-300'
