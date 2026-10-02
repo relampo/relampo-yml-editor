@@ -321,6 +321,9 @@ export function YAMLEditor() {
         onRemoveHost={handleRemoveHost}
         onToggleEnabled={handleToggleNodeEnabled}
       />
+      <footer className="shrink-0 border-t border-white/5 px-3 py-1 text-xs text-zinc-400">
+        Relampo Editor · {import.meta.env.VITE_EDITOR_VERSION || 'development'}
+      </footer>
     </div>
   );
 }
