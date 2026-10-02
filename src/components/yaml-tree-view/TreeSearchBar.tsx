@@ -34,6 +34,7 @@ export function TreeSearchBar({
   const [replaceApplied, setReplaceApplied] = useState(false);
   const matchCount = replaceOpen ? replaceMatchCount : 0;
   const currentMatch = Math.min(currentMatchIndex, Math.max(matchCount - 1, 0));
+  const replacementDisabled = replaceApplied || !value.trim() || !replacementText || matchCount === 0;
 
   const applySearch = () => {
     const executedQuery = searchDraft.trim();
@@ -160,7 +161,7 @@ export function TreeSearchBar({
             <button
               type="button"
               onClick={() => handleReplace(currentMatch)}
-              disabled={replaceApplied || !value.trim() || !replacementText || matchCount === 0}
+              disabled={replacementDisabled}
               className="shrink-0 px-2.5 py-1.5 bg-yellow-400/10 border border-yellow-400/30 rounded text-xs text-yellow-400 enabled:hover:bg-yellow-400/20 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {t('studioControls.selected')}
@@ -170,7 +171,7 @@ export function TreeSearchBar({
             <button
               type="button"
               onClick={() => handleReplace()}
-              disabled={replaceApplied || !value.trim() || !replacementText || matchCount === 0}
+              disabled={replacementDisabled}
               className="shrink-0 px-2.5 py-1.5 bg-yellow-400/10 border border-yellow-400/30 rounded text-xs text-yellow-400 enabled:hover:bg-yellow-400/20 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {t('studioControls.all')}
