@@ -240,8 +240,7 @@ function countTextInValue(value: unknown, search: string, urlEncoded = false): n
 
   if (value && typeof value === 'object') {
     return Object.entries(value).reduce(
-      (count, [key, item]) =>
-        count + (key === 'response' || key === 'response_preview' ? 0 : countTextInValue(item, search, urlEncoded)),
+      (count, [, item]) => count + countTextInValue(item, search, urlEncoded),
       0,
     );
   }
@@ -288,7 +287,6 @@ function replaceTextInValue(
     let changed = false;
     const nextValue = Object.fromEntries(
       Object.entries(value).map(([key, item]) => {
-        if (key === 'response' || key === 'response_preview') return [key, item];
         const [nextItem, itemMatches, itemReplacements, itemChanged] = replaceTextInValue(
           item,
           search,
@@ -332,13 +330,7 @@ function replaceRequestData(
   let changed = false;
   const nextData = Object.fromEntries(
     Object.entries(data).map(([key, value]) => {
-      if (
-        excludedKeys.has(key) ||
-        key === 'enabled' ||
-        key === 'method' ||
-        key === 'response' ||
-        key === 'response_preview'
-      ) {
+      if (excludedKeys.has(key)) {
         return [key, value];
       }
       const ignoreMatches = key === 'headers' && headersCountedByChild;
@@ -380,6 +372,16 @@ function childOwnedDataKeys(node: YAMLNode): Set<string> {
   return keys;
 }
 
+// Reserved request fields have meaning only at the request boundary. A variable,
+// header, or JSON body property with the same name remains an editable value.
+function replacementExcludedKeys(node: YAMLNode, wholeDocument: boolean): Set<string> {
+  const keys = wholeDocument ? childOwnedDataKeys(node) : new Set<string>();
+  if (REQUEST_TYPES.has(node.type)) {
+    for (const key of ['enabled', 'method', 'response', 'response_preview']) keys.add(key);
+  }
+  return keys;
+}
+
 /** Replace literal text in enabled requests and their headers, excluding recorded responses. */
 export function replaceTextInEnabledRequests(
   tree: YAMLNode,
@@ -413,7 +415,7 @@ export function getReplaceableMatchNodeIds(tree: YAMLNode, search: string, whole
         node.data,
         search,
         headersCountedByChild,
-        wholeDocument ? childOwnedDataKeys(node) : new Set(),
+        replacementExcludedKeys(node, wholeDocument),
       );
       matchNodeIds.push(...Array.from({ length: nodeMatches }, () => node.id));
     }
@@ -434,14 +436,7 @@ function countRequestData(
   if (!data || typeof data !== 'object' || Array.isArray(data)) return 0;
 
   return Object.entries(data).reduce((matches, [key, value]) => {
-    if (
-      excludedKeys.has(key) ||
-      key === 'enabled' ||
-      key === 'method' ||
-      key === 'response' ||
-      key === 'response_preview'
-    )
-      return matches;
+    if (excludedKeys.has(key)) return matches;
     if (key === 'headers' && headersCountedByChild) return matches;
     return matches + countTextInValue(value, search, key === 'url');
   }, 0);
@@ -480,7 +475,7 @@ export function replaceTextInEnabledRequestsAtMatch(
         hasHeadersChild,
         targetMatchIndex,
         matchOffset,
-        wholeDocument ? childOwnedDataKeys(node) : new Set(),
+        replacementExcludedKeys(node, wholeDocument),
       );
       nextData = replacedData;
       matches += dataMatches;
