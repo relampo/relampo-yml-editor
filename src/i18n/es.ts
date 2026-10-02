@@ -601,6 +601,7 @@ export const esTranslations = {
         sql: 'Paso SQL',
         group: 'Grupo',
         transaction: 'Transacción',
+        parallel: 'Controlador Parallel',
         if: 'Controlador If',
         loop: 'Controlador Loop',
         retry: 'Controlador Retry',

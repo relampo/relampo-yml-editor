@@ -600,6 +600,7 @@ export const enTranslations = {
         sql: 'SQL Request',
         group: 'Group',
         transaction: 'Transaction',
+        parallel: 'Parallel Controller',
         if: 'If Controller',
         loop: 'Loop Controller',
         retry: 'Retry Controller',

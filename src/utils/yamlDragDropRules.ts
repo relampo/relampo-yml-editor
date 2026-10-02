@@ -101,6 +101,7 @@ const BALANCED_CHILD_ELEMENTS: YAMLNodeType[] = [
   ...SQL_SAMPLERS,
   'group',
   'transaction',
+  'parallel',
   'if',
   'loop',
   'retry',

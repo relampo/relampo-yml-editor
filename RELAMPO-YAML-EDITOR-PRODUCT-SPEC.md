@@ -166,6 +166,12 @@ Balanced Controller behavior is explicit:
 - It has an execution mode based on `iteraciones` or virtual users.
 - Only enabled, load-bearing descendants receive a percentage.
 - Requests, SQL, and controllers that can issue work are load-bearing.
+- A direct `parallel` child is one complete balanced branch in both execution
+  modes and both distribution types. Its percentage applies to the block.
+- Selected users execute all enabled steps in that parallel block concurrently.
+  Its request count can differ from its share of users or iterations.
+- The editor allows adding and moving parallel branches, labels them as Parallel
+  Controllers, and preserves their percentage when saving and reopening YAML.
 - Timers, assertions, extractors, scripts, and empty containers are not
   load-bearing.
 - A total distribution must sum to 100 percent.

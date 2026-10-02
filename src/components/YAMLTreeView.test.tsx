@@ -122,6 +122,25 @@ function mockMatchMedia(matches: Record<string, boolean>) {
 }
 
 describe('YAMLTreeView context menu', () => {
+  it('adds a Parallel Controller inside a Balanced Controller', () => {
+    renderInteractiveTreeView({
+      tree: {
+        id: 'balanced',
+        type: 'balanced',
+        name: 'Traffic mix',
+        expanded: true,
+        data: { type: 'total', mode: 'usuarios_virtuales' },
+        children: [],
+      },
+    });
+
+    fireEvent.contextMenu(screen.getByRole('treeitem', { name: /Traffic mix/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Parallel Controller/ }));
+
+    expect(screen.getByRole('treeitem', { name: /Parallel Controller/ })).toBeInTheDocument();
+    vi.mocked(HTMLElement.prototype.scrollIntoView).mockClear();
+  });
+
   afterEach(() => {
     Object.defineProperty(window, 'innerHeight', {
       configurable: true,

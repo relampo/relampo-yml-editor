@@ -355,6 +355,13 @@ export function getAddableItems(
         color: 'text-blue-400',
       },
       {
+        type: 'parallel',
+        label: 'Parallel Controller',
+        description: 'Run child steps concurrently',
+        icon: <Waves className={iconClass} />,
+        color: 'text-cyan-400',
+      },
+      {
         type: 'if',
         label: 'If Controller',
         description: 'Conditional execution',
