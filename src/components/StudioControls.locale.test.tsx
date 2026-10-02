@@ -29,5 +29,6 @@ describe('Studio controls language', () => {
     fireEvent.click(screen.getByText('EN'));
     expect(screen.getByPlaceholderText('Search nodes...')).toBeVisible();
     expect(screen.getByLabelText('Virtual Users')).toHaveValue(2);
+    expect(screen.getByText('2 replacements')).toBeVisible();
   });
 });

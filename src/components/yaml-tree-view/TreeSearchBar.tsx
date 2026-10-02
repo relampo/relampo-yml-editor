@@ -27,7 +27,10 @@ export function TreeSearchBar({
   const [replaceOpen, setReplaceOpen] = useState(false);
   const [searchDraft, setSearchDraft] = useState(value);
   const [replacementText, setReplacementText] = useState('');
-  const [replaceMessage, setReplaceMessage] = useState('');
+  const [replacementResult, setReplacementResult] = useState<number | null>(null);
+  const replaceMessage = replacementResult === null ? '' : replacementResult > 0
+    ? `${replacementResult} ${t(replacementResult === 1 ? 'studioControls.replacement' : 'studioControls.replacements')}`
+    : t('studioControls.noMatches');
   const [replaceApplied, setReplaceApplied] = useState(false);
   const matchCount = replaceOpen ? replaceMatchCount : 0;
   const currentMatch = Math.min(currentMatchIndex, Math.max(matchCount - 1, 0));
@@ -36,7 +39,7 @@ export function TreeSearchBar({
     const executedQuery = searchDraft.trim();
     setSearchDraft(executedQuery);
     setReplaceApplied(false);
-    setReplaceMessage('');
+    setReplacementResult(null);
     onCurrentMatchIndexChange(0);
     onChange(executedQuery);
   };
@@ -46,7 +49,7 @@ export function TreeSearchBar({
     if (replacements > 0) {
       setReplaceApplied(true);
     }
-    setReplaceMessage(replacements > 0 ? `${replacements} ${t(replacements === 1 ? 'studioControls.replacement' : 'studioControls.replacements')}` : t('studioControls.noMatches'));
+    setReplacementResult(replacements);
   };
 
   return (
@@ -81,7 +84,7 @@ export function TreeSearchBar({
               setSearchDraft('');
               setReplaceOpen(false);
               setReplacementText('');
-              setReplaceMessage('');
+              setReplacementResult(null);
               setReplaceApplied(false);
               onCurrentMatchIndexChange(0);
               onClear();
@@ -126,7 +129,7 @@ export function TreeSearchBar({
               value={replacementText}
               onChange={event => {
                 setReplacementText(event.target.value);
-                setReplaceMessage('');
+                setReplacementResult(null);
                 setReplaceApplied(false);
               }}
               className="min-w-0 flex-1 bg-[#0a0a0a] border border-white/10 rounded px-3 py-1.5 text-sm text-zinc-300 placeholder-zinc-500 outline-none focus:border-yellow-400/60"
