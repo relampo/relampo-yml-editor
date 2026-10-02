@@ -282,52 +282,55 @@ describe('YAMLDebugSession RLP debug fixes', () => {
     expect(screen.queryByLabelText('Built-in diagnostic')).not.toBeInTheDocument();
   });
 
-  it('shows Spark before and after console logs with request context (RLP-742)', async () => {
+  it('shows Spark before and after as plain text in the owning request Logs tab (RLP-742)', async () => {
     render(
-      <YAMLDebugSession
-        tree={null}
-        yamlCode={'test:\n  name: spark-logs\n'}
-        documentReady
-        validationErrors={[]}
-        onSelectNode={vi.fn()}
-        onEditNode={vi.fn()}
-      />,
+      <YAMLDebugSession tree={null} yamlCode={'test: \n  name: spark-logs\n'} documentReady
+        validationErrors={[]} onSelectNode={vi.fn()} onEditNode={vi.fn()} />,
     );
-
     fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
     await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
-
+    const context = { request_id: 12, step_path: 'scenarios[0].steps[0]', vu: 1 };
     act(() => {
-      debugApiMock.handlers[0].onEvent(
-        event({
-          method: 'SPARK',
-          name: 'spark-log: before value',
-          path: '',
-          request_id: 12,
-          step_path: 'scenarios[0].steps[0]',
-          spark_phase: 'before',
-        }),
-      );
-      debugApiMock.handlers[0].onEvent(
-        event({
-          method: 'SPARK',
-          name: 'spark-log: after value',
-          path: '',
-          request_id: 12,
-          step_path: 'scenarios[0].steps[0]',
-          spark_phase: 'after',
-        }),
-      );
+      // The runtime emits both Spark phases before the measured request event.
+      debugApiMock.handlers[0].onEvent(event({ ...context, method: 'SPARK', name: 'spark-log: before value', spark_phase: 'before' }));
+      debugApiMock.handlers[0].onEvent(event({ ...context, method: 'SPARK', name: 'spark-log: after value', spark_phase: 'after' }));
+      debugApiMock.handlers[0].onEvent(event({ ...context, iteration: 1 }));
     });
+    expect(screen.queryByRole('button', { name: /SPARK/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Requests: 1. Filter execution timeline.' })).toBeInTheDocument();
+    expect(screen.queryByText(/spark-log: before value/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'logs' }));
+    expect(screen.getByText(/Spark before: spark-log: before value/).tagName).toBe('P');
+    expect(screen.getByText(/Spark after: spark-log: after value/).tagName).toBe('P');
+  });
 
-    expect((await screen.findAllByText('spark-log: after value')).length).toBeGreaterThan(0);
-    expect(screen.getByText('Spark after')).toBeInTheDocument();
-    expect(screen.getByText('scenarios[0].steps[0] · request 12')).toBeInTheDocument();
-
-    const beforeRow = screen.getByRole('button', { name: /SPARKspark-log: before value/ });
-    fireEvent.click(beforeRow);
-    expect(screen.getByText('Spark before')).toBeInTheDocument();
-    expect(screen.getAllByText('spark-log: before value').length).toBeGreaterThan(0);
+  it('keeps interleaved VUs and repeated Spark executions on their own request (RLP-742)', async () => {
+    render(
+      <YAMLDebugSession tree={null} yamlCode={'test: \n  name: spark-logs\n'} documentReady
+        validationErrors={[]} onSelectNode={vi.fn()} onEditNode={vi.fn()} />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
+    const context = { request_id: 12, step_path: 'scenarios[0].steps[0]' };
+    const emit = (overrides: Partial<EngineEvent>) => debugApiMock.handlers[0].onEvent(event({ ...context, ...overrides }));
+    act(() => {
+      emit({ vu: 1, method: 'SPARK', name: 'VU one first', spark_phase: 'before' });
+      emit({ vu: 2, method: 'SPARK', name: 'VU two', spark_phase: 'before' });
+      emit({ vu: 2, path: '/second' });
+      emit({ vu: 1, path: '/first' });
+      emit({ vu: 1, method: 'SPARK', name: 'VU one repeated', spark_phase: 'after' });
+      emit({ vu: 1, path: '/repeated' });
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'logs' }));
+    expect(screen.getByText(/Spark after: VU one repeated/)).toBeInTheDocument();
+    expect(screen.queryByText(/VU one first/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/VU two/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /GET\/first/ }));
+    expect(screen.getByText(/Spark before: VU one first/)).toBeInTheDocument();
+    expect(screen.queryByText(/VU one repeated/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /GET\/second/ }));
+    expect(screen.getByText(/Spark before: VU two/)).toBeInTheDocument();
+    expect(screen.queryByText(/VU one first/)).not.toBeInTheDocument();
   });
 
   it('counts redirect finals identified only by step_path for older payloads (RLP-588)', async () => {

@@ -77,6 +77,7 @@ export type DebugEntry = {
   node: YAMLNode | null;
   status: DebugStatus;
   skippedRequestEvents?: EngineEvent[];
+  sparkLogs?: EngineEvent[];
 };
 
 type DebugTimelineFilter = 'requests' | 'passed' | 'failed' | 'redirects';
@@ -142,6 +143,19 @@ function isErrorPolicyForRequest(request: EngineEvent, policy: EngineEvent): boo
 
   const requestPath = policy.error_policy?.request_path || policy.path;
   return Boolean(requestPath) && request.path === requestPath;
+}
+
+// Both Spark phases arrive before the runtime emits the measured request.
+// Consume matching messages once, so repeated steps cannot inherit old logs.
+function isSparkForRequest(request: EngineEvent, spark: EngineEvent): boolean {
+  if (!isRequestEvent(request) || request.vu !== spark.vu) return false;
+  if (request.iteration !== undefined && spark.iteration !== undefined && request.iteration !== spark.iteration) return false;
+  if (request.request_id !== undefined && spark.request_id !== undefined && request.request_id !== spark.request_id) return false;
+  if (request.step_path && spark.step_path && request.step_path !== spark.step_path) return false;
+  return Boolean(
+    (spark.step_path && spark.step_path === request.step_path) ||
+    (spark.request_id !== undefined && spark.request_id === request.request_id),
+  );
 }
 
 function isRelatedStepPath(left: string, right: string): boolean {
@@ -227,6 +241,7 @@ const EMPTY_REDIRECTED_REQUEST_MAP: Record<string, RedirectedRequestInfo> = {};
 // plain useState in the component.
 type RunState = {
   entryEvents: StoredDebugEntry[];
+  pendingSparkLogs: EngineEvent[];
   isRunning: boolean;
   runCompleted: boolean;
   runError: string | null;
@@ -241,17 +256,20 @@ type RunAction =
   | { type: 'run_start_failed'; message: string }
   | { type: 'run_stopped' };
 
-const initialRunState: RunState = { entryEvents: [], isRunning: false, runCompleted: false, runError: null };
+const initialRunState: RunState = { entryEvents: [], pendingSparkLogs: [], isRunning: false, runCompleted: false, runError: null };
 
 function runStateReducer(state: RunState, action: RunAction): RunState {
   switch (action.type) {
     case 'run_started':
-      return { entryEvents: [], isRunning: true, runCompleted: false, runError: null };
+      return { entryEvents: [], pendingSparkLogs: [], isRunning: true, runCompleted: false, runError: null };
     case 'reattach_started':
       return { ...state, isRunning: true };
     case 'event_received': {
       const previous = state.entryEvents;
       const method = action.event.method.trim().toUpperCase();
+      if (method === 'SPARK') {
+        return { ...state, pendingSparkLogs: [...state.pendingSparkLogs, action.event] };
+      }
       if (method === 'ERROR_POLICY') {
         if (!action.event.error_policy) return state;
 
@@ -302,14 +320,17 @@ function runStateReducer(state: RunState, action: RunAction): RunState {
           };
         }
       }
+      const sparkLogs = state.pendingSparkLogs.filter(log => isSparkForRequest(action.event, log));
       return {
         ...state,
+        pendingSparkLogs: state.pendingSparkLogs.filter(log => !isSparkForRequest(action.event, log)),
         entryEvents: [
           ...previous,
           {
             id: `evt-${previous.length}`,
             index: previous.length + 1,
             event: action.event,
+            sparkLogs,
             status: entryStatus(action.event),
           },
         ],
@@ -319,7 +340,7 @@ function runStateReducer(state: RunState, action: RunAction): RunState {
       return { ...state, isRunning: false, runCompleted: true, runError: action.error };
     case 'connection_error':
       return action.quiet
-        ? { ...state, isRunning: false, runCompleted: false, entryEvents: [] }
+        ? { ...state, isRunning: false, runCompleted: false, entryEvents: [], pendingSparkLogs: [] }
         : { ...state, isRunning: false, runCompleted: false, runError: 'Lost connection to the studio server.' };
     case 'run_start_failed':
       return { ...state, isRunning: false, runCompleted: false, runError: action.message };
@@ -1050,7 +1071,6 @@ function DebugInspectorContent({
   requestTargets,
   variableSnapshot,
 }: DebugInspectorContentProps) {
-  if (entry.event.method === 'SPARK') return <DebugSparkInspector event={entry.event} />;
   switch (tab) {
     case 'request':
       return <DebugRequestInspector event={entry.event} />;
@@ -1066,6 +1086,7 @@ function DebugInspectorContent({
       return (
         <DebugLogsInspector
           event={entry.event}
+          sparkLogs={entry.sparkLogs ?? []}
           redirectedInfo={redirectedInfo}
           requestTargets={requestTargets}
         />
@@ -1078,25 +1099,6 @@ function DebugInspectorContent({
         />
       );
   }
-}
-
-function DebugSparkInspector({ event }: { event: EngineEvent }) {
-  const phase = event.spark_phase || 'unknown';
-  return (
-    <div className="space-y-3">
-      <div className="rounded border border-amber-400/25 bg-amber-400/5 p-4" aria-label="Spark log">
-        <DebugLine
-          icon={<TerminalSquare className="h-4 w-4 text-amber-300" />}
-          title={`Spark ${phase}`}
-          value={event.name}
-        />
-        <p className="mt-3 break-all font-mono text-xs text-zinc-500">
-          {event.step_path || 'No step path'}
-          {event.request_id === undefined ? '' : ` · request ${event.request_id}`}
-        </p>
-      </div>
-    </div>
-  );
 }
 
 function DebugErrorPolicyInspector({
@@ -1333,10 +1335,12 @@ function formatBuiltinValue(value: unknown): string {
 
 function DebugLogsInspector({
   event,
+  sparkLogs,
   redirectedInfo,
   requestTargets,
 }: {
   event: EngineEvent;
+  sparkLogs: EngineEvent[];
   redirectedInfo?: RedirectedRequestInfo | null;
   requestTargets: YAMLNode[];
 }) {
@@ -1389,6 +1393,11 @@ function DebugLogsInspector({
           {event.method} {absoluteDebugUrl(event.path || redirectedInfo.matchedLocation, event.path)}
         </p>
       )}
+      {sparkLogs.map((log, index) => (
+        <p key={index} className="text-amber-300">
+          [{formatEventTime(log.ts)}] Spark {log.spark_phase || 'unknown'}: {log.name}
+        </p>
+      ))}
       {event.err && (
         <p className="text-red-300">
           [{time}] {event.err}

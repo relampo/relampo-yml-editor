@@ -1,0 +1,23 @@
+test:
+  name: RLP-742 real Spark request logs
+http_defaults:
+  base_url: http://127.0.0.1:18742
+scenarios:
+  - name: owning request
+    steps:
+      - request:
+          method: GET
+          url: /first
+          spark:
+            - when: before
+              script: 'console.log("before first plain text")'
+            - when: after
+              script: 'console.log("after first status " + response.status)'
+      - request:
+          method: GET
+          url: /second
+          spark:
+            - when: before
+              script: 'console.log("before second plain text")'
+            - when: after
+              script: 'console.log("after second status " + response.status)'
