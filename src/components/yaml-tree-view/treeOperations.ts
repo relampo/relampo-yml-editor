@@ -358,8 +358,9 @@ function childOwnedDataKeys(node: YAMLNode): Set<string> {
   const keys = new Set<string>();
   if (node.children?.length) keys.add('steps');
   for (const child of node.children ?? []) {
-    if (['load', 'cookies', 'cache_manager', 'error_policy', 'headers', 'steps'].includes(child.type))
+    if (['load', 'cookies', 'cache_manager', 'error_policy', 'headers', 'steps', 'think_time', 'data_source'].includes(child.type))
       keys.add(child.type);
+    if (child.type === 'file') keys.add('files');
     if (child.type === 'spark_before' || child.type === 'spark_after' || child.type === 'spark') keys.add('spark');
     if (child.type === 'extractor') keys.add('extractors');
     if (child.type === 'extract') keys.add('extract');
