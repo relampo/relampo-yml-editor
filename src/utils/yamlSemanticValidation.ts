@@ -1,5 +1,7 @@
 import {
   getSegmentDurationSummary,
+  getSegmentStartVUs,
+  getSegmentRequiredTransition,
   isValidDuration,
   normalizeLoadType,
   parseTimeToSeconds,
@@ -398,6 +400,15 @@ function validateSegmentsLoadNode(node: YAMLNode, issues: YAMLSemanticIssue[]) {
         nodeId: node.id,
         message: `Segment ${index + 1} Target VUs must be greater than or equal to 0.`,
       });
+    }
+
+    const startVus = getSegmentStartVUs(segments, index);
+    if (hasTargetVus && !hasTargetRps && Number.isInteger(targetVus) && targetVus >= 0 && startVus !== undefined && ['constant', 'ramp_up', 'ramp_down'].includes(transition)) {
+      const required = getSegmentRequiredTransition(startVus, targetVus);
+      if (transition !== required) {
+        const label = { constant: 'Constant', ramp_up: 'Ramp up', ramp_down: 'Ramp down' }[required];
+        issues.push({ nodeId: node.id, message: `Segment ${index + 1} Transition must be ${label} from ${startVus} VUs to ${targetVus} VUs.` });
+      }
     }
 
     const minVusValue = valueText(segment?.min_vus);
