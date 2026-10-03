@@ -1,5 +1,5 @@
-import { Plus, Trash2 } from 'lucide-react';
-import { useRef } from 'react';
+import { ArrowDown, ArrowUp, GripVertical, Plus, Trash2 } from 'lucide-react';
+import { useRef, useState, type DragEvent } from 'react';
 import {
   LOAD_ITERATIONS_HELP_TEXT,
   LoadFieldGroup,
@@ -28,11 +28,59 @@ const DEFAULT_SEGMENT: LoadSegmentData = {
   max_vus: '100',
 };
 
+const SEGMENT_DRAG_TYPE = 'application/x-relampo-load-segment';
+
 export function SegmentsLoadMode({ data, onChange }: LoadModeProps) {
   const segments = normalizeSegments(data.segments);
   const durationSummary = getDurationSummary(data.duration, segments);
   const rowKeysRef = useRef<string[]>([]);
   const rowKeys = syncSegmentRowKeys(rowKeysRef.current, segments.length);
+  const draggedKeyRef = useRef<string | null>(null);
+  const [draggedKey, setDraggedKey] = useState<string | null>(null);
+  const [dropKey, setDropKey] = useState<string | null>(null);
+  const [moveAnnouncement, setMoveAnnouncement] = useState('');
+  // Do not let a reorder silently discard malformed imported entries filtered by the form.
+  const canReorder = Array.isArray(data.segments) && data.segments.length === segments.length;
+
+  const clearDrag = () => {
+    draggedKeyRef.current = null;
+    setDraggedKey(null);
+    setDropKey(null);
+  };
+
+  const moveSegment = (key: string, to: number) => {
+    const from = rowKeys.indexOf(key);
+    if (!canReorder || from < 0 || to < 0 || to >= segments.length || from === to) return;
+    const next = [...segments];
+    const nextKeys = [...rowKeys];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    nextKeys.splice(to, 0, nextKeys.splice(from, 1)[0]);
+    rowKeysRef.current = nextKeys;
+    // Publish the entire ordered list so existing semantic validation and preview
+    // recompute every predecessor relationship. Values are never corrected here.
+    onChange('segments', next);
+    setMoveAnnouncement(`${moved.name || 'Segment'} moved to position ${to + 1}.`);
+  };
+
+  const startDrag = (event: DragEvent<HTMLButtonElement>, key: string) => {
+    event.stopPropagation();
+    draggedKeyRef.current = key;
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData(SEGMENT_DRAG_TYPE, key);
+    setDraggedKey(key);
+  };
+
+  const dropSegment = (event: DragEvent<HTMLDivElement>, key: string) => {
+    if (!draggedKeyRef.current) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const sourceKey = draggedKeyRef.current;
+    if (event.dataTransfer.getData(SEGMENT_DRAG_TYPE) === sourceKey) {
+      moveSegment(sourceKey, rowKeys.indexOf(key));
+    }
+    clearDrag();
+  };
 
   const updateSegment = (index: number, field: keyof LoadSegmentData, value: string) => {
     const next = segments.map((segment, segmentIndex) => {
@@ -81,11 +129,13 @@ export function SegmentsLoadMode({ data, onChange }: LoadModeProps) {
   };
 
   const addSegment = () => {
+    clearDrag();
     rowKeysRef.current = [...rowKeys, crypto.randomUUID()];
     onChange('segments', [...segments, { ...DEFAULT_SEGMENT }]);
   };
 
   const removeSegment = (index: number) => {
+    clearDrag();
     const next = segments.filter((_, segmentIndex) => segmentIndex !== index);
     const nextKeys = rowKeys.filter((_, segmentIndex) => segmentIndex !== index);
     rowKeysRef.current = next.length > 0 ? nextKeys : [crypto.randomUUID()];
@@ -124,7 +174,8 @@ export function SegmentsLoadMode({ data, onChange }: LoadModeProps) {
       </div>
 
       <div className="mt-5 overflow-x-auto rounded-lg border border-white/10">
-        <div className="grid min-w-[800px] grid-cols-[minmax(130px,1fr)_100px_95px_95px_120px_160px_40px] border-b border-white/10 bg-white/[0.03] text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
+        <div className="grid min-w-[872px] grid-cols-[72px_minmax(130px,1fr)_100px_95px_95px_120px_160px_40px] border-b border-white/10 bg-white/[0.03] text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
+          <div className="px-2 py-2">Order</div>
           <div className="px-3 py-2">Name</div>
           <div className="px-3 py-2">Duration</div>
           <div className="px-3 py-2">Target Type</div>
@@ -138,8 +189,43 @@ export function SegmentsLoadMode({ data, onChange }: LoadModeProps) {
           return (
           <div
             key={rowKey}
-            className="grid min-w-[800px] grid-cols-[minmax(130px,1fr)_100px_95px_95px_120px_160px_40px] border-b border-white/5 last:border-b-0"
+            data-segment-row={rowKey}
+            onDragOver={event => {
+              if (!draggedKeyRef.current) return;
+              event.preventDefault();
+              event.stopPropagation();
+              event.dataTransfer.dropEffect = 'move';
+              setDropKey(rowKey);
+            }}
+            onDrop={event => dropSegment(event, rowKey)}
+            className={`grid min-w-[872px] grid-cols-[72px_minmax(130px,1fr)_100px_95px_95px_120px_160px_40px] border-b border-white/5 last:border-b-0 ${draggedKey === rowKey ? 'opacity-50' : ''} ${dropKey === rowKey && draggedKey !== rowKey ? 'bg-amber-300/10 ring-1 ring-inset ring-amber-300/40' : ''}`}
           >
+            <div className="flex items-center justify-center gap-1 border-r border-white/5 px-1">
+              <button
+                type="button"
+                draggable={canReorder && segments.length > 1}
+                disabled={!canReorder || segments.length < 2}
+                aria-label={`Drag segment ${index + 1}`}
+                title="Drag to reorder, or use the move buttons"
+                onDragStart={event => startDrag(event, rowKey)}
+                onDragEnd={clearDrag}
+                className="flex h-10 w-6 cursor-grab items-center justify-center rounded text-zinc-400 active:cursor-grabbing focus-visible:outline-2 focus-visible:outline-amber-300 disabled:opacity-30"
+              >
+                <GripVertical size={16} aria-hidden="true" />
+              </button>
+              <div className="flex flex-col">
+                <button type="button" aria-label={`Move segment ${index + 1} up`} disabled={!canReorder || index === 0}
+                  onClick={() => { clearDrag(); moveSegment(rowKey, index - 1); }}
+                  className="flex h-6 w-6 items-center justify-center rounded text-zinc-400 hover:text-amber-200 focus-visible:outline-2 focus-visible:outline-amber-300 disabled:opacity-30">
+                  <ArrowUp size={14} aria-hidden="true" />
+                </button>
+                <button type="button" aria-label={`Move segment ${index + 1} down`} disabled={!canReorder || index === segments.length - 1}
+                  onClick={() => { clearDrag(); moveSegment(rowKey, index + 1); }}
+                  className="flex h-6 w-6 items-center justify-center rounded text-zinc-400 hover:text-amber-200 focus-visible:outline-2 focus-visible:outline-amber-300 disabled:opacity-30">
+                  <ArrowDown size={14} aria-hidden="true" />
+                </button>
+              </div>
+            </div>
             <SegmentInput
               ariaLabel={`Name for segment ${index + 1}`}
               required
@@ -211,6 +297,9 @@ export function SegmentsLoadMode({ data, onChange }: LoadModeProps) {
           );
         })}
       </div>
+
+      <p className="mt-2 text-xs text-zinc-500">Drag a handle onto a row to move to its position, or use the arrows.</p>
+      <span role="status" aria-live="polite" className="sr-only">{moveAnnouncement}</span>
 
       <button
         type="button"
