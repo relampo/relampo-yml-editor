@@ -22,12 +22,31 @@ function mountSegments(segments: NonNullable<YAMLNode['data']>['segments']) {
 const vus = { name: 'pause', duration: '1m', transition: 'constant', target_vus: '0' };
 
 describe('Segments form RLP-765', () => {
-  it('keeps Min/Max visible and disabled for VUs and offers all VU transitions', () => {
+  it('RLP-766 preserves an invalid imported first Ramp down until corrected', () => {
+    const current = mountSegments([{ ...vus, target_vus: '20', transition: 'ramp_down' }]);
+    const transition = screen.getByLabelText('Transition for segment 1');
+    expect(transition).toHaveValue('ramp_down');
+    expect(within(transition).getByRole('option', { name: /Ramp down/ })).toBeDisabled();
+    expect(validateYAMLSemantics(current()).map(issue => issue.message)).toEqual(['Segment 1 cannot use Ramp down as the first segment.']);
+    fireEvent.change(transition, { target: { value: 'constant' } });
+    expect(validateYAMLSemantics(current())).toEqual([]);
+    expect(current().data!.segments![0].target_vus).toBe('20');
+  });
+
+  it('RLP-766 permits Ramp down after a preceding VU segment', () => {
+    const current = mountSegments([{ ...vus, target_vus: '20' }, vus]);
+    const transition = screen.getByLabelText('Transition for segment 2');
+    expect(within(transition).getByRole('option', { name: 'Ramp down' })).toBeEnabled();
+    fireEvent.change(transition, { target: { value: 'ramp_down' } });
+    expect(current().data!.segments![1].transition).toBe('ramp_down');
+    expect(validateYAMLSemantics(current())).toEqual([]);
+  });
+  it('keeps Min/Max disabled for VUs and permits only Constant/Ramp up initially', () => {
     const current = mountSegments([vus]);
     expect(screen.getByLabelText('VUs Min for segment 1')).toBeDisabled();
     expect(screen.getByLabelText('VUs Max for segment 1')).toBeDisabled();
     const transition = screen.getByLabelText('Transition for segment 1');
-    expect(within(transition).getAllByRole('option').map(option => option.textContent)).toEqual(['Select transition', 'Constant', 'Ramp up', 'Ramp down']);
+    expect(within(transition).getAllByRole('option').map(option => option.textContent)).toEqual(['Select transition', 'Constant', 'Ramp up']);
     expect(validateYAMLSemantics(current())).toEqual([]);
     fireEvent.change(transition, { target: { value: 'ramp_up' } });
     expect(current().data!.segments![0].transition).toBe('ramp_up');
@@ -78,7 +97,7 @@ describe('Segments form RLP-765', () => {
   });
 
   it('round-trips zero targets, zero RPS minima and transitions through YAML', () => {
-    const root = parseYAMLToTree(`test:\n  name: segments\nscenarios:\n  - name: test\n    load:\n      type: segments\n      segments:\n        - name: pause\n          duration: 1m\n          transition: ramp_down\n          target_vus: 0\n        - name: rps\n          duration: 20s\n          transition: constant\n          target_rps: 2.5\n          min_vus: 0\n          max_vus: 1\n    steps:\n      - get: /health\n`)!;
+    const root = parseYAMLToTree(`test:\n  name: segments\nscenarios:\n  - name: test\n    load:\n      type: segments\n      segments:\n        - name: baseline\n          duration: 1m\n          transition: constant\n          target_vus: 20\n        - name: pause\n          duration: 1m\n          transition: ramp_down\n          target_vus: 0\n        - name: rps\n          duration: 20s\n          transition: constant\n          target_rps: 2.5\n          min_vus: 0\n          max_vus: 1\n    steps:\n      - get: /health\n`)!;
     const output = treeToYAML(root);
     expect(output).toContain('transition: ramp_down');
     expect(output).toContain('target_vus: 0');
