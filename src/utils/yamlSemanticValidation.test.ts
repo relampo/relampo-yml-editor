@@ -290,7 +290,7 @@ describe('validateYAMLSemantics', () => {
 
   it('rejects explicit segment totals differing by a nanosecond', () => {
     const node: YAMLNode = { id: 'load', type: 'load', name: 'Segments', data: {
-      type: 'segments', duration: '10s', segments: [1,2,3].map(i => ({ name: `segment_${i}`, duration: '3.333333333s', transition: 'constant', target_vus: i })),
+      type: 'segments', duration: '10s', segments: [1,2,3].map(i => ({ name: `segment_${i}`, duration: '3.333333333s', transition: i === 1 ? 'constant' : 'ramp_up', target_vus: i })),
     }};
     expect(validateYAMLSemantics(node)).toEqual([{ nodeId: 'load', message: 'Segments Duration total must equal load Duration (10s). Current segments total is 10s.' }]);
   });
