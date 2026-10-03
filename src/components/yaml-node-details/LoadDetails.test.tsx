@@ -12,6 +12,25 @@ function renderWithLanguage(ui: ReactElement) {
 }
 
 describe('LoadDetails', () => {
+  it('switches a constant load to a valid default Segments profile', () => {
+    let node: YAMLNode = {
+      id: 'load-constant',
+      type: 'load',
+      name: 'Load: Constant',
+      data: { type: 'constant', users: '10', duration: '1h', iterations: '0' },
+    };
+    const onNodeUpdate = (id: string, data: Record<string, unknown>) => {
+      node = applyNodeUpdateToTree(node, id, data);
+    };
+    renderWithLanguage(<LoadDetails node={node} onNodeUpdate={onNodeUpdate} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Segments' }));
+
+    expect(node.name).toBe('Load: Segments');
+    expect(node.data?.type).toBe('segments');
+    expect(validateYAMLSemantics(node)).toEqual([]);
+  });
+
   it('switches edited segments to valid throughput without retaining segment data', () => {
     let node: YAMLNode = {
       id: 'load-segments',
