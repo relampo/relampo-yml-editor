@@ -310,6 +310,13 @@ export function getSegmentDurationSummary(rootDuration: unknown, segments: LoadS
   };
 }
 
+export function deriveSegmentDuration(segments: LoadSegmentData[]): string {
+  const summary = getSegmentDurationSummary(undefined, segments);
+  return summary.allSegmentDurationsValid && segments.length > 0
+    ? `${summary.segmentSeconds.toLocaleString('en-US', { useGrouping: false, maximumSignificantDigits: 21 })}s`
+    : '';
+}
+
 function formatSeconds(seconds: number): string {
   if (seconds < 1) {
     return `${Math.max(100, Math.round(seconds * 1000))}ms`;
@@ -551,6 +558,10 @@ export function buildLoadDataForType(
     if (normalized[key] === undefined || normalized[key] === '') {
       normalized[key] = defaultValue;
     }
+  }
+
+  if (loadType === 'segments' && normalizeLoadType(currentData.type) !== 'segments') {
+    normalized.duration = deriveSegmentDuration(normalizeLoadSegments(normalized.segments));
   }
 
   return normalized;

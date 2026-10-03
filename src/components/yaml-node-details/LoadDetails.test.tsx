@@ -40,6 +40,44 @@ describe('LoadDetails', () => {
     expect(validateYAMLSemantics(node)).toEqual([]);
   });
 
+  it('switches a five-minute constant load to segments with a valid derived duration', () => {
+    let node: YAMLNode = {
+      id: 'load-five-minutes', type: 'load', name: 'Load: Constant',
+      data: { type: 'constant', users: '10', duration: '5m' },
+    };
+    const onNodeUpdate = (id: string, data: Record<string, unknown>) => {
+      node = applyNodeUpdateToTree(node, id, data);
+    };
+    const view = renderWithLanguage(<LoadDetails node={node} onNodeUpdate={onNodeUpdate} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Segments' }));
+    view.rerender(<LanguageProvider><LoadDetails node={node} onNodeUpdate={onNodeUpdate} /></LanguageProvider>);
+
+    expect(node.data).toMatchObject({ type: 'segments', duration: '3600s' });
+    expect(screen.getByLabelText('Total Duration')).toHaveValue('1h');
+    expect(validateYAMLSemantics(node)).toEqual([]);
+  });
+
+  it('keeps a nanosecond segment valid when editing its name', () => {
+    let node: YAMLNode = {
+      id: 'load-tiny', type: 'load', name: 'Load: Segments',
+      data: {
+        type: 'segments',
+        segments: [{ name: 'tiny', duration: '0.000000001s', transition: 'constant', target_vus: '1' }],
+      },
+    };
+    const onNodeUpdate = (id: string, data: Record<string, unknown>) => {
+      node = applyNodeUpdateToTree(node, id, data);
+    };
+    renderWithLanguage(<LoadDetails node={node} onNodeUpdate={onNodeUpdate} />);
+    expect(validateYAMLSemantics(node)).toEqual([]);
+
+    fireEvent.change(screen.getByDisplayValue('tiny'), { target: { value: 'renamed' } });
+
+    expect(node.data?.duration).toBe('0.000000001s');
+    expect(validateYAMLSemantics(node)).toEqual([]);
+  });
+
   it('renders the intent form in grouped sections', () => {
     renderWithLanguage(
       <LoadDetails

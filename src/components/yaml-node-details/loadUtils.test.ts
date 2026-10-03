@@ -1,5 +1,39 @@
 import { describe, expect, it } from 'vitest';
-import { getIntentAutoConfig, isValidDuration, normalizeLoadDataForYaml, parseTimeToSeconds } from './loadUtils';
+import { buildLoadDataForType, deriveSegmentDuration, getIntentAutoConfig, isValidDuration, normalizeLoadDataForYaml, parseTimeToSeconds } from './loadUtils';
+
+describe('derived segment durations', () => {
+  it.each(['constant', 'linear', 'ramp_up_down', 'throughput', 'intent'])(
+    'replaces the previous %s duration when switching to segments', type => {
+      const data = buildLoadDataForType('segments', { type, duration: '5m' });
+      expect(data.duration).toBe('3600s');
+    },
+  );
+
+  it('derives a finite duration when switching from manual stop', () => {
+    const data = buildLoadDataForType('segments', { type: 'constant', run_until_stopped: true, duration: '' });
+    expect(data.duration).toBe('3600s');
+    expect(data).not.toHaveProperty('run_until_stopped');
+  });
+
+  it.each(['0.000000001s', '0.0000000001s', '1234567s'])(
+    'preserves %s without exponent notation or digit grouping', duration => {
+      const derived = deriveSegmentDuration([{ duration }]);
+      expect(derived).toBe(duration);
+      expect(isValidDuration(derived)).toBe(true);
+      expect(parseTimeToSeconds(derived)).toBe(parseTimeToSeconds(duration));
+    },
+  );
+
+  it('leaves incomplete segments without a derived duration', () => {
+    expect(deriveSegmentDuration([{ duration: '1m' }, {}])).toBe('');
+    expect(deriveSegmentDuration([])).toBe('');
+  });
+
+  it('preserves imported mismatched durations for validation', () => {
+    const data = { type: 'segments', duration: '5m', segments: [{ duration: '1h' }] };
+    expect(normalizeLoadDataForYaml(data)).toEqual(data);
+  });
+});
 
 describe('parseTimeToSeconds', () => {
   it('returns zero for malformed durations', () => {
