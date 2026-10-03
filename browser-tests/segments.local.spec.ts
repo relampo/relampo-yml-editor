@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
+import { load } from 'js-yaml';
 
 const segmentYaml = `test:
   name: Segments browser
@@ -23,6 +24,35 @@ scenarios:
     steps:
       - get: /health
 `;
+
+for (const transition of ['constant', 'ramp_up']) {
+  test(`RLP-766 rejects an imported initial Ramp down and corrects it to ${transition}`, async ({ page }, testInfo) => {
+    await page.route('**/api/studio/info', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ studio: false, initialScript: null, capabilities: { loadRun: false, dataSourceFiles: false, debug: false } }) }));
+    await page.goto('/');
+    const invalidYaml = segmentYaml.replace('transition: constant', 'transition: ramp_down');
+    await page.locator('input[type="file"]').setInputFiles({ name: 'invalid-initial-ramp.yaml', mimeType: 'text/yaml', buffer: Buffer.from(invalidYaml) });
+    await page.getByText('Load: Segments', { exact: true }).first().click();
+    const first = page.getByLabel('Transition for segment 1');
+    await expect(first).toHaveValue('ramp_down');
+    await expect(first.locator('option[value="ramp_down"]')).toBeDisabled();
+    const issue = page.getByText('Segment 1 cannot use Ramp down as the first segment.', { exact: true }).first();
+    await expect(issue).toBeVisible();
+    await first.selectOption(transition);
+    await expect(first).toHaveValue(transition);
+    await expect(first.locator('option')).toHaveText(['Select transition', 'Constant', 'Ramp up']);
+    await expect(issue).not.toBeVisible();
+    await expect(page.getByLabel('Transition for segment 3').locator('option[value="ramp_down"]')).toBeEnabled();
+    await page.screenshot({ path: testInfo.outputPath(`first-${transition}.png`), fullPage: true });
+    const downloadPromise = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Save' }).click();
+    await page.getByRole('menuitem', { name: /Save with responses/ }).click();
+    const download = await downloadPromise;
+    const output = await readFile(await download.path(), 'utf8');
+    const parsed = load(output) as { scenarios: Array<{ load: { segments: Array<{ target_vus: number; transition: string }> } }> };
+    expect(parsed.scenarios[0].load.segments[0]).toMatchObject({ target_vus: 0, transition });
+    expect(output).toContain('transition: ramp_down');
+  });
+}
 
 test('RLP-765 edits segment targets, transitions, bounds and total duration in Chromium', async ({ page }, testInfo) => {
   const errors: string[] = [];
