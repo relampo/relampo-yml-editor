@@ -306,10 +306,13 @@ export function getSegmentDurationSummary(rootDuration: unknown, segments: LoadS
   const hasMixedDurations = hasSegmentDurations && explicitDurationCount !== segments.length;
   const rootDurationValid =
     rootDurationValue === '' || (isValidDuration(rootDurationValue) && rootSeconds > 0);
-  const segmentSeconds = segmentDurationValues.reduce(
-    (total, duration) => total + parseTimeToSeconds(duration),
-    0,
-  );
+  // The multiset of durations is unchanged by reordering. Sum in a stable
+  // order and at the backend's nanosecond precision so floating-point addition
+  // cannot change the exported total (e.g. 100ms + 200ms + 300ms).
+  const segmentSeconds = Number(segmentDurationValues
+    .map(duration => parseTimeToSeconds(duration))
+    .sort((a, b) => a - b)
+    .reduce((total, seconds) => total + seconds, 0).toFixed(9));
   const matches =
     segments.length > 0 && rootDurationValid && allSegmentDurationsValid &&
     (rootDurationValue === '' || areDurationsEqual(rootSeconds, segmentSeconds));
