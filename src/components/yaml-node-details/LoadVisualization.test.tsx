@@ -132,8 +132,8 @@ describe('LoadVisualization', () => {
           type: 'segments',
           duration: '20s',
           segments: [
-            { name: 'rps-block', target_rps: '25', max_vus: '100' },
-            { name: 'vus-block', target_vus: '25' },
+            { name: 'rps-block', duration: '10s', transition: 'constant', target_rps: '25', max_vus: '100' },
+            { name: 'vus-block', duration: '10s', transition: 'constant', target_vus: '25' },
           ],
         }}
       />,

@@ -316,6 +316,14 @@ function validateSegmentsLoadNode(node: YAMLNode, issues: YAMLSemanticIssue[]) {
     return;
   }
 
+  const malformedSegments = segments.flatMap((segment, index) =>
+    segment === null || typeof segment !== 'object' || Array.isArray(segment) ? [index] : [],
+  );
+  if (malformedSegments.length > 0) {
+    malformedSegments.forEach(index => issues.push({ nodeId: node.id, message: `Segment ${index + 1} must be a mapping.` }));
+    return;
+  }
+
   const durationSummary = getSegmentDurationSummary(node.data?.duration, segments);
   const rootDurationValue = valueText(node.data?.duration);
   if (!durationSummary.rootDurationValid && rootDurationValue !== '') {
@@ -326,35 +334,10 @@ function validateSegmentsLoadNode(node: YAMLNode, issues: YAMLSemanticIssue[]) {
   }
 
   durationSummary.segmentDurationValues.forEach((duration, index) => {
-    if (duration !== '' && (!isValidDuration(duration) || parseTimeToSeconds(duration) <= 0)) {
-      issues.push({
-        nodeId: node.id,
-        message: `Segment ${index + 1} must define a positive Duration.`,
-      });
+    if (duration === '' || !isValidDuration(duration) || parseTimeToSeconds(duration) <= 0) {
+      issues.push({ nodeId: node.id, message: `Segment ${index + 1} must define a positive Duration.` });
     }
   });
-  if (durationSummary.hasMixedDurations) {
-    issues.push({
-      nodeId: node.id,
-      message: 'Segments must either all define Duration or all use the total Duration.',
-    });
-  }
-  if (durationSummary.explicitDurationCount === 0 && rootDurationValue === '') {
-    issues.push({
-      nodeId: node.id,
-      message: 'Segments load requires a total Duration when segment durations are omitted.',
-    });
-  }
-  if (
-    durationSummary.explicitDurationCount === 0 &&
-    durationSummary.rootSeconds > 0 &&
-    !durationSummary.matches
-  ) {
-    issues.push({
-      nodeId: node.id,
-      message: 'Segments load Duration must divide evenly across segments when segment durations are omitted.',
-    });
-  }
   if (
     durationSummary.explicitDurationCount === segments.length &&
     durationSummary.rootSeconds > 0 &&
@@ -369,6 +352,16 @@ function validateSegmentsLoadNode(node: YAMLNode, issues: YAMLSemanticIssue[]) {
   }
 
   segments.forEach((segment, index) => {
+    if (valueText(segment?.name) === '') {
+      issues.push({ nodeId: node.id, message: `Segment ${index + 1} Name is required.` });
+    }
+    const transition = valueText(segment?.transition);
+    if (transition === '') {
+      issues.push({ nodeId: node.id, message: `Segment ${index + 1} Transition is required.` });
+    } else if (!['constant', 'ramp_up', 'ramp_down'].includes(transition)) {
+      issues.push({ nodeId: node.id, message: `Segment ${index + 1} Transition must be Constant, Ramp up or Ramp down.` });
+    }
+
     const targetRpsValue = valueText(segment?.target_rps);
     const targetVusValue = valueText(segment?.target_vus);
     const targetRps = Number(targetRpsValue);
@@ -397,10 +390,10 @@ function validateSegmentsLoadNode(node: YAMLNode, issues: YAMLSemanticIssue[]) {
         nodeId: node.id,
         message: `Segment ${index + 1} Target VUs must be an integer.`,
       });
-    } else if (hasTargetVus && targetVus <= 0) {
+    } else if (hasTargetVus && targetVus < 0) {
       issues.push({
         nodeId: node.id,
-        message: `Segment ${index + 1} Target VUs must be greater than 0.`,
+        message: `Segment ${index + 1} Target VUs must be greater than or equal to 0.`,
       });
     }
 
@@ -408,16 +401,22 @@ function validateSegmentsLoadNode(node: YAMLNode, issues: YAMLSemanticIssue[]) {
     const maxVusValue = valueText(segment?.max_vus);
     const minVus = Number(minVusValue);
     const maxVus = Number(maxVusValue);
+    if (hasTargetRps && !hasTargetVus && transition !== '' && transition !== 'constant') {
+      issues.push({ nodeId: node.id, message: `Segment ${index + 1} Target RPS only supports Constant Transition.` });
+    }
+    if (hasTargetRps && !hasTargetVus && minVusValue === '') {
+      issues.push({ nodeId: node.id, message: `Segment ${index + 1} with Target RPS requires Min VUs.` });
+    }
     if (hasTargetRps && !hasTargetVus && maxVusValue === '') {
       issues.push({
         nodeId: node.id,
         message: `Segment ${index + 1} with Target RPS requires Max VUs.`,
       });
     }
-    if (hasTargetRps && !hasTargetVus && minVusValue !== '' && !isPositiveInteger(minVus)) {
+    if (hasTargetRps && !hasTargetVus && minVusValue !== '' && (!Number.isInteger(minVus) || minVus < 0)) {
       issues.push({
         nodeId: node.id,
-        message: `Segment ${index + 1} Min VUs must be a positive integer.`,
+        message: `Segment ${index + 1} Min VUs must be an integer greater than or equal to 0.`,
       });
     }
     if (hasTargetRps && !hasTargetVus && maxVusValue !== '' && !isPositiveInteger(maxVus)) {
@@ -429,13 +428,13 @@ function validateSegmentsLoadNode(node: YAMLNode, issues: YAMLSemanticIssue[]) {
     if (
       hasTargetRps &&
       !hasTargetVus &&
-      isPositiveInteger(minVus) &&
+      minVusValue !== '' && Number.isInteger(minVus) && minVus >= 0 &&
       isPositiveInteger(maxVus) &&
-      minVus > maxVus
+      minVus >= maxVus
     ) {
       issues.push({
         nodeId: node.id,
-        message: `Segment ${index + 1} Max VUs cannot be less than Min VUs.`,
+        message: `Segment ${index + 1} Max VUs must be greater than Min VUs.`,
       });
     }
     if (hasTargetVus && (minVusValue !== '' || maxVusValue !== '')) {

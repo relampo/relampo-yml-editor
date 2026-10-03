@@ -961,7 +961,7 @@ function getVisualizationPoints(data: LoadData, loadType: LoadType) {
     const segments = getSegmentVisualizationEntries(data);
     for (const segment of segments) {
       points.push(
-        { time: segment.start, users: segment.value },
+        { time: segment.start, users: segment.startValue },
         { time: segment.end, users: segment.value },
       );
     }
@@ -1052,7 +1052,7 @@ function getYAxisLabel(data: LoadData, loadType: LoadType, intentTargetUnit: str
   if (loadType === 'segments') {
     const segments = normalizeVisualizationSegments(data.segments);
     const hasRps = segments.some(segment => positiveNumber(segment.target_rps) > 0);
-    const hasVus = segments.some(segment => positiveNumber(segment.target_vus) > 0);
+    const hasVus = segments.some(segment => Object.hasOwn(segment, 'target_vus'));
     if (hasRps && !hasVus) return t('yamlEditor.loadVisualization.labels.rps');
     if (hasVus && !hasRps) return t('yamlEditor.loadVisualization.labels.users');
     return t('yamlEditor.loadVisualization.labels.capacity');
@@ -1069,29 +1069,29 @@ function getSegmentVisualizationEntries(data: LoadData) {
   }
 
   const explicitDurations = segments.map(segment => parseTimeToSeconds(String(segment.duration ?? '').trim()));
-  const hasAnyDuration = explicitDurations.some(duration => duration > 0);
   const hasAllDurations = explicitDurations.every(duration => duration > 0);
-  const totalDuration = parseTimeToSeconds(String(data.duration ?? '').trim());
-  const fallbackDuration = !hasAnyDuration && totalDuration > 0 ? totalDuration / segments.length : 0;
   const hasRps = segments.some(segment => positiveNumber(segment.target_rps) > 0);
-  const hasVus = segments.some(segment => positiveNumber(segment.target_vus) > 0);
+  const hasVus = segments.some(segment => Object.hasOwn(segment, 'target_vus'));
   const useCapacityAxis = hasRps && hasVus;
 
-  const entries: Array<{ name: string; start: number; end: number; value: number; targetLabel: string }> = [];
+  const entries: Array<{ name: string; start: number; end: number; value: number; startValue: number; targetLabel: string }> = [];
   let elapsed = 0;
   for (let index = 0; index < segments.length; index += 1) {
     const segment = segments[index];
-    const duration = hasAllDurations ? explicitDurations[index] : fallbackDuration;
+    const duration = hasAllDurations ? explicitDurations[index] : 0;
     const { value, targetLabel } = segmentDisplayValue(segment, useCapacityAxis);
     const start = elapsed;
     const end = elapsed + duration;
     elapsed = end;
-    if (end > start && value > 0) {
+    const isVURamp = Object.hasOwn(segment, 'target_vus') && ['ramp_up', 'ramp_down'].includes(String(segment.transition));
+    const startValue = isVURamp ? (entries.at(-1)?.value ?? (segment.transition === 'ramp_down' ? value : 0)) : value;
+    if (end > start) {
       entries.push({
         name: String(segment.name ?? '').trim(),
         start,
         end,
         value,
+        startValue,
         targetLabel,
       });
     }
@@ -1105,7 +1105,7 @@ function normalizeVisualizationSegments(value: LoadData['segments']): LoadSegmen
 
 function segmentDisplayValue(segment: LoadSegmentData, useCapacityAxis: boolean): { value: number; targetLabel: string } {
   const targetVus = positiveNumber(segment.target_vus);
-  if (targetVus > 0) {
+  if (Object.hasOwn(segment, 'target_vus')) {
     return { value: targetVus, targetLabel: `${targetVus} VUs` };
   }
   const targetRps = positiveNumber(segment.target_rps);

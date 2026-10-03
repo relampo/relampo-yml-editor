@@ -139,6 +139,7 @@ export interface YAMLNodeData {
   std_dev?: YAMLInputValue;
   target_rps?: YAMLInputValue;
   target_vus?: YAMLInputValue;
+  transition?: string;
   target?: YAMLInputValue | YAMLNodeData;
   target_unit?: string;
   target_value?: YAMLInputValue;

@@ -20,7 +20,7 @@ describe('LoadDetails', () => {
       data: {
         type: 'segments',
         duration: '1m',
-        segments: [{ target_rps: '5', max_vus: '100' }],
+        segments: [{ name: 'rps', duration: '1m', transition: 'constant', target_rps: '5', min_vus: '0', max_vus: '100' }],
       },
     };
     const onNodeUpdate = (id: string, data: Record<string, unknown>) => {
@@ -35,7 +35,7 @@ describe('LoadDetails', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Throughput' }));
 
     expect(node.name).toBe('Load: Throughput');
-    expect(node.data).toMatchObject({ type: 'throughput', duration: '1m', target_rps: '20' });
+    expect(node.data).toMatchObject({ type: 'throughput', duration: '60s', target_rps: '20' });
     expect(node.data).not.toHaveProperty('segments');
     expect(validateYAMLSemantics(node)).toEqual([]);
   });

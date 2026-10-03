@@ -9,6 +9,7 @@ import {
   normalizeLoadType,
   selectedLoadButtonStyle,
   toLoadData,
+  getSegmentDurationSummary,
   type LoadData,
   type LoadDataValue,
   type LoadType,
@@ -71,6 +72,11 @@ export function LoadDetails({ node, onNodeUpdate }: NodeDetailProps) {
       return;
     }
 
+    if (loadType === 'segments' && field === 'segments' && Array.isArray(value)) {
+      const summary = getSegmentDurationSummary(undefined, value);
+      updateData({ ...data, segments: value, duration: summary.allSegmentDurationsValid ? `${summary.segmentSeconds}s` : '' });
+      return;
+    }
     updateField(field, value);
   };
 
