@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildLoadDataForType, deriveSegmentDuration, getIntentAutoConfig, isValidDuration, normalizeLoadDataForYaml, parseTimeToSeconds } from './loadUtils';
+import { buildLoadDataForType, deriveSegmentDuration, getIntentAutoConfig, getSegmentDurationSummary, isValidDuration, normalizeLoadDataForYaml, parseTimeToSeconds } from './loadUtils';
 
 describe('derived segment durations', () => {
   it.each(['constant', 'linear', 'ramp_up_down', 'throughput', 'intent'])(
@@ -27,6 +27,35 @@ describe('derived segment durations', () => {
   it('leaves incomplete segments without a derived duration', () => {
     expect(deriveSegmentDuration([{ duration: '1m' }, {}])).toBe('');
     expect(deriveSegmentDuration([])).toBe('');
+  });
+
+  it.each(['0.12345678901234568s', `0.${'0'.repeat(99)}1s`])(
+    'retains the accepted numeric precision of %s', duration => {
+      expect(deriveSegmentDuration([{ duration }])).toBe(duration);
+      expect(getSegmentDurationSummary(undefined, [{ duration }]).segmentSeconds).toBe(parseTimeToSeconds(duration));
+    },
+  );
+
+  it.each([
+    { durations: ['100ms', '200ms', '300ms'], expected: '0.6s' },
+    { durations: ['0.1s', '0.2s', '0.3s'], expected: '0.6s' },
+    { durations: ['0.0000000001s', '0.0000000002s', '0.0000000003s'], expected: '0.0000000006s' },
+    { durations: ['0.0000001ms', '0.0000002ms', '0.0000003ms'], expected: '0.0000000006s' },
+    { durations: ['1s', '0.0000000001s', '0.0000000002s'], expected: '1.0000000003s' },
+    { durations: ['0.1s', '0.2s', '0.0000000001s'], expected: '0.3000000001s' },
+  ])('preserves the total $expected through every segment order', ({ durations, expected }) => {
+    const permutations = [[0, 1, 2], [0, 2, 1], [1, 0, 2], [1, 2, 0], [2, 0, 1], [2, 1, 0]];
+    for (const order of permutations) {
+      const segments = order.map(index => ({ duration: durations[index] }));
+      expect(deriveSegmentDuration(segments)).toBe(expected);
+      expect(isValidDuration(deriveSegmentDuration(segments))).toBe(true);
+      expect(getSegmentDurationSummary(expected, segments)).toMatchObject({
+        segmentSeconds: parseTimeToSeconds(expected),
+        allSegmentDurationsValid: true,
+        matches: true,
+      });
+      expect(segments.map(segment => segment.duration)).toEqual(order.map(index => durations[index]));
+    }
   });
 
   it('preserves imported mismatched durations for validation', () => {

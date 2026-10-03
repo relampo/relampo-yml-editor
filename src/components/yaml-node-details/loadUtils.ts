@@ -282,6 +282,26 @@ function areDurationsEqual(leftSeconds: number, rightSeconds: number): boolean {
   return Number.isSafeInteger(leftNanoseconds) && Number.isSafeInteger(rightNanoseconds) && leftNanoseconds === rightNanoseconds;
 }
 
+function sumDurationSeconds(seconds: number[]): number {
+  if (seconds.some(value => !Number.isFinite(value))) {
+    return seconds.reduce((total, value) => total + value, 0);
+  }
+
+  // Add the decimal representations exactly, then convert back to a number
+  // once. This preserves accepted precision and makes totals order-independent.
+  const decimals = seconds.map(value => {
+    const [mantissa, exponent = '0'] = String(value).split('e');
+    const [integer, fraction = ''] = mantissa.split('.');
+    return { coefficient: BigInt(integer + fraction), scale: fraction.length - Number(exponent) };
+  });
+  const scale = decimals.reduce((maximum, decimal) => Math.max(maximum, decimal.scale), 0);
+  const total = decimals.reduce(
+    (sum, decimal) => sum + decimal.coefficient * 10n ** BigInt(scale - decimal.scale),
+    0n,
+  );
+  return Number(`${total}e-${scale}`);
+}
+
 export interface SegmentDurationSummary {
   rootSeconds: number;
   segmentSeconds: number;
@@ -306,13 +326,7 @@ export function getSegmentDurationSummary(rootDuration: unknown, segments: LoadS
   const hasMixedDurations = hasSegmentDurations && explicitDurationCount !== segments.length;
   const rootDurationValid =
     rootDurationValue === '' || (isValidDuration(rootDurationValue) && rootSeconds > 0);
-  // The multiset of durations is unchanged by reordering. Sum in a stable
-  // order and at the backend's nanosecond precision so floating-point addition
-  // cannot change the exported total (e.g. 100ms + 200ms + 300ms).
-  const segmentSeconds = Number(segmentDurationValues
-    .map(duration => parseTimeToSeconds(duration))
-    .sort((a, b) => a - b)
-    .reduce((total, seconds) => total + seconds, 0).toFixed(9));
+  const segmentSeconds = sumDurationSeconds(segmentDurationValues.map(duration => parseTimeToSeconds(duration)));
   const matches =
     segments.length > 0 && rootDurationValid && allSegmentDurationsValid &&
     (rootDurationValue === '' || areDurationsEqual(rootSeconds, segmentSeconds));
