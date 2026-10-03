@@ -176,7 +176,10 @@ export function SegmentsLoadMode({ data, onChange }: LoadModeProps) {
               <option value="" disabled>Select transition</option>
               <option value="constant">Constant</option>
               {segmentTargetType(segment) === 'vus' && <option value="ramp_up">Ramp up</option>}
-              {segmentTargetType(segment) === 'vus' && <option value="ramp_down">Ramp down</option>}
+              {segmentTargetType(segment) === 'vus' && index > 0 && <option value="ramp_down">Ramp down</option>}
+              {segmentTargetType(segment) === 'vus' && index === 0 && segment.transition === 'ramp_down' && (
+                <option value="ramp_down" disabled>Ramp down (invalid for first segment)</option>
+              )}
             </select>
             <div className="grid grid-cols-2 gap-1 px-2 py-2">
               <SegmentInput

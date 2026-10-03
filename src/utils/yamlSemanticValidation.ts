@@ -368,6 +368,9 @@ function validateSegmentsLoadNode(node: YAMLNode, issues: YAMLSemanticIssue[]) {
     const targetVus = Number(targetVusValue);
     const hasTargetRps = targetRpsValue !== '';
     const hasTargetVus = targetVusValue !== '';
+    if (hasTargetVus && !hasTargetRps && index === 0 && transition === 'ramp_down') {
+      issues.push({ nodeId: node.id, message: 'Segment 1 cannot use Ramp down as the first segment.' });
+    }
     if (hasTargetRps === hasTargetVus) {
       issues.push({
         nodeId: node.id,
