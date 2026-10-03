@@ -4,6 +4,7 @@ import {
   getIntentTargetData,
   loadColors,
   normalizeLoadSegments,
+  getSegmentStartVUs,
   parseTimeToSeconds,
   type LoadData,
   type LoadSegmentData,
@@ -87,6 +88,19 @@ export function LoadVisualization({ data, loadType, progressSeconds }: LoadVisua
           model={model}
           t={t}
         />
+        {loadType === 'segments' && (
+          <div className="mt-2 text-[11px] text-zinc-400">
+            <p>VU capacity · RPS Target (dashed) · RPS VUs Min/Max (shaded)</p>
+            <ol className="mt-1 space-y-1" aria-label="Configured load segments">
+              {getSegmentVisualizationEntries(data).map((entry, index) => (
+                <li key={index}>
+                  {index + 1}. {entry.name} · {entry.targetLabel} · {formatTimeLabel(entry.start)}–{formatTimeLabel(entry.end)}
+                  {entry.targetRps > 0 && ` · ${entry.minVus}–${entry.value} VUs`}
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -283,7 +297,7 @@ function computeLoadVisualizationModel(
 
   const timeAxisTicks = [0, 1, 2, 3, 4].map(index => ({
     x: 40 + index * 85,
-    label: !hasFiniteDuration && index === 4 ? '∞' : formatTimeLabel(Math.round((maxTime / 4) * index)),
+    label: !hasFiniteDuration && index === 4 ? '∞' : formatTimeLabel((maxTime / 4) * index),
   }));
 
   const timeRanges = getTimeRanges(effectiveData, loadType, totalTime).map(range => ({
@@ -292,7 +306,7 @@ function computeLoadVisualizationModel(
   }));
   const transitionMarkers = getTransitionMarkers(effectiveData, loadType, totalTime);
   const horizontalRanges = timeRanges.filter(range => range.key === 'steady' || range.key === 'target');
-  const verticalRanges = timeRanges.filter(range => range.key !== 'steady' && range.key !== 'target');
+  const verticalRanges = timeRanges.filter(range => range.key !== 'steady' && range.key !== 'target' && !range.key.startsWith('segment-'));
   const chartPoints = visualizationPoints.map(point => ({
     ...point,
     x: 40 + (point.time / maxTime) * 340,
@@ -301,6 +315,16 @@ function computeLoadVisualizationModel(
   const firstChartPoint = chartPoints[0] ?? { x: 40, y: 170 };
   const secondChartPoint = chartPoints[1] ?? firstChartPoint;
   const linePoints = chartPoints.map(point => `${point.x},${point.y}`).join(' ');
+  const segmentRpsEntries = loadType === 'segments' ? getSegmentVisualizationEntries(effectiveData).filter(entry => entry.targetRps > 0) : [];
+  const maxSegmentRps = Math.max(1, ...segmentRpsEntries.map(entry => entry.targetRps));
+  const segmentRpsOverlays = segmentRpsEntries.map(entry => ({
+    ...entry,
+    x1: 40 + entry.start / maxTime * 340,
+    x2: 40 + entry.end / maxTime * 340,
+    targetY: 170 - entry.targetRps / maxSegmentRps * 160,
+    minY: 170 - entry.minVus / maxUsers * 160,
+    maxY: 170 - entry.value / maxUsers * 160,
+  }));
   const areaPoints = [
     '40,170',
     ...chartPoints.map(point => `${point.x},${point.y}`),
@@ -423,6 +447,8 @@ function computeLoadVisualizationModel(
     firstChartPoint,
     secondChartPoint,
     linePoints,
+    segmentRpsOverlays,
+    maxSegmentRps,
     areaPoints,
     horizontalRangeLabels,
     angledRangeLabels,
@@ -560,7 +586,26 @@ function LoadChartSvg({ model, t }: { model: LoadVisualizationModel; t: (key: st
         model={model}
         t={t}
       />
+      <SegmentRpsOverlay model={model} />
     </svg>
+  );
+}
+
+function SegmentRpsOverlay({ model }: { model: LoadVisualizationModel }) {
+  const { segmentRpsOverlays, maxSegmentRps } = model;
+  if (segmentRpsOverlays.length === 0) return null;
+  return (
+    <g>
+      <text x="398" y="8" textAnchor="end" fontSize="9" fill="#67e8f9">RPS</text>
+      {[0, 1, 2, 3, 4].map(index => <text key={index} x="398" y={14 + index * 40} textAnchor="end" fontSize="8" fill="#67e8f9">{Number((maxSegmentRps * (4 - index) / 4).toFixed(2))}</text>)}
+      {segmentRpsOverlays.map((entry, index) => (
+        <g key={index} aria-label={`${entry.name}: ${entry.targetRps} RPS; VUs ${entry.minVus}–${entry.value}`}>
+          <rect data-segment-vus-band={entry.name} x={entry.x1} y={entry.maxY} width={entry.x2 - entry.x1} height={Math.max(0, entry.minY - entry.maxY)} fill="#f59e0b18" />
+          <line data-segment-rps-target={entry.targetRps} x1={entry.x1} x2={entry.x2} y1={entry.targetY} y2={entry.targetY} stroke="#67e8f9" strokeWidth="2" strokeDasharray="6 5" />
+          <title>{`${entry.name}: ${entry.targetRps} RPS, ${entry.start}s–${entry.end}s; ${entry.minVus}–${entry.value} VUs`}</title>
+        </g>
+      ))}
+    </g>
   );
 }
 
@@ -1053,7 +1098,6 @@ function getYAxisLabel(data: LoadData, loadType: LoadType, intentTargetUnit: str
     const segments = normalizeVisualizationSegments(data.segments);
     const hasRps = segments.some(segment => positiveNumber(segment.target_rps) > 0);
     const hasVus = segments.some(segment => Object.hasOwn(segment, 'target_vus'));
-    if (hasRps && !hasVus) return t('yamlEditor.loadVisualization.labels.rps');
     if (hasVus && !hasRps) return t('yamlEditor.loadVisualization.labels.users');
     return t('yamlEditor.loadVisualization.labels.capacity');
   }
@@ -1070,21 +1114,17 @@ function getSegmentVisualizationEntries(data: LoadData) {
 
   const explicitDurations = segments.map(segment => parseTimeToSeconds(String(segment.duration ?? '').trim()));
   const hasAllDurations = explicitDurations.every(duration => duration > 0);
-  const hasRps = segments.some(segment => positiveNumber(segment.target_rps) > 0);
-  const hasVus = segments.some(segment => Object.hasOwn(segment, 'target_vus'));
-  const useCapacityAxis = hasRps && hasVus;
-
-  const entries: Array<{ name: string; start: number; end: number; value: number; startValue: number; targetLabel: string }> = [];
+  const entries: Array<{ name: string; start: number; end: number; value: number; startValue: number; targetLabel: string; targetRps: number; minVus: number }> = [];
   let elapsed = 0;
   for (let index = 0; index < segments.length; index += 1) {
     const segment = segments[index];
     const duration = hasAllDurations ? explicitDurations[index] : 0;
-    const { value, targetLabel } = segmentDisplayValue(segment, useCapacityAxis);
+    const { value, targetLabel } = segmentDisplayValue(segment);
     const start = elapsed;
     const end = elapsed + duration;
     elapsed = end;
     const isVURamp = Object.hasOwn(segment, 'target_vus') && ['ramp_up', 'ramp_down'].includes(String(segment.transition));
-    const startValue = isVURamp ? (entries.at(-1)?.value ?? (segment.transition === 'ramp_down' ? value : 0)) : value;
+    const startValue = isVURamp ? (getSegmentStartVUs(segments, index) ?? (segment.transition === 'ramp_down' ? value : 0)) : value;
     if (end > start) {
       entries.push({
         name: String(segment.name ?? '').trim(),
@@ -1093,6 +1133,8 @@ function getSegmentVisualizationEntries(data: LoadData) {
         value,
         startValue,
         targetLabel,
+        targetRps: Object.hasOwn(segment, 'target_vus') ? 0 : positiveNumber(segment.target_rps),
+        minVus: positiveNumber(segment.min_vus),
       });
     }
   }
@@ -1103,7 +1145,7 @@ function normalizeVisualizationSegments(value: LoadData['segments']): LoadSegmen
   return normalizeLoadSegments(value);
 }
 
-function segmentDisplayValue(segment: LoadSegmentData, useCapacityAxis: boolean): { value: number; targetLabel: string } {
+function segmentDisplayValue(segment: LoadSegmentData): { value: number; targetLabel: string } {
   const targetVus = positiveNumber(segment.target_vus);
   if (Object.hasOwn(segment, 'target_vus')) {
     return { value: targetVus, targetLabel: `${targetVus} VUs` };
@@ -1111,7 +1153,7 @@ function segmentDisplayValue(segment: LoadSegmentData, useCapacityAxis: boolean)
   const targetRps = positiveNumber(segment.target_rps);
   const maxVus = positiveNumber(segment.max_vus);
   return {
-    value: useCapacityAxis ? maxVus : targetRps,
+    value: maxVus,
     targetLabel: maxVus > 0 ? `${targetRps} RPS (max ${maxVus} VUs)` : `${targetRps} RPS`,
   };
 }
@@ -1123,8 +1165,9 @@ function positiveNumber(value: unknown): number {
 
 function formatTimeLabel(seconds: number): string {
   if (seconds > 0 && seconds < 1) {
-    return `${Math.max(1, Math.round(seconds * 1000))}ms`;
+    return `${Number((seconds * 1000).toFixed(6))}ms`;
   }
+  if (seconds > 0 && !Number.isInteger(seconds)) return `${Number(seconds.toFixed(9))}s`;
   const rounded = Math.max(0, Math.round(seconds));
   if (rounded < 60) return `${rounded}s`;
   const minutes = Math.floor(rounded / 60);

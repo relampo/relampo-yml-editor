@@ -83,7 +83,7 @@ describe('Segments form RLP-765', () => {
   });
 
   it('derives a read-only total from segment edits, addition and removal', () => {
-    const current = mountSegments([vus, { ...vus, name: 'ramp', duration: '20s', target_vus: '2', transition: 'ramp_up' }, { ...vus, name: 'end', duration: '2m' }]);
+    const current = mountSegments([vus, { ...vus, name: 'ramp', duration: '20s', target_vus: '2', transition: 'ramp_up' }, { ...vus, name: 'end', duration: '2m', transition: 'ramp_down' }]);
     expect(screen.getByLabelText('Total Duration')).toHaveValue('200s');
     expect(screen.getByLabelText('Total Duration')).toHaveAttribute('readonly');
     fireEvent.change(screen.getByLabelText('Duration for segment 2'), { target: { value: '40s' } });
@@ -93,7 +93,10 @@ describe('Segments form RLP-765', () => {
     expect(validateYAMLSemantics(current())).toEqual([]);
     fireEvent.click(screen.getByRole('button', { name: 'Remove segment 2' }));
     expect(current().data!.duration).toBe('240s');
+    expect(validateYAMLSemantics(current()).map(issue => issue.message)).toEqual(['Segment 2 Transition must be Constant from 0 VUs to 0 VUs.']);
     expect(current().data!.segments!.map(segment => segment.name)).toEqual(['pause', 'end', 'new_segment']);
+    fireEvent.change(screen.getByLabelText('Transition for segment 2'), { target: { value: 'constant' } });
+    expect(validateYAMLSemantics(current())).toEqual([]);
   });
 
   it('round-trips zero targets, zero RPS minima and transitions through YAML', () => {
