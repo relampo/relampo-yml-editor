@@ -11,6 +11,23 @@ export type LoadSegmentData = {
   max_vus?: string | number;
 };
 export type SegmentTargetType = 'rps' | 'vus';
+
+// Only configured values determine continuity; live RPS feedback is independent.
+export function getSegmentStartVUs(segments: LoadSegmentData[], index: number): number | undefined {
+  if (index <= 0) return undefined;
+  const previous = segments[index - 1];
+  const hasVus = String(previous?.target_vus ?? '').trim() !== '';
+  const hasRps = String(previous?.target_rps ?? '').trim() !== '';
+  if (hasVus === hasRps) return undefined;
+  const raw = hasVus ? previous.target_vus : previous.max_vus;
+  if (String(raw ?? '').trim() === '') return undefined;
+  const value = Number(raw);
+  return Number.isInteger(value) && value >= 0 && (hasVus || value > 0) ? value : undefined;
+}
+
+export function getSegmentRequiredTransition(start: number, target: number): 'constant' | 'ramp_up' | 'ramp_down' {
+  return target > start ? 'ramp_up' : target < start ? 'ramp_down' : 'constant';
+}
 export type IntentTargetData = {
   type?: string;
   value?: string | number;

@@ -308,8 +308,8 @@ function getDurationSummary(rootDuration: LoadDataValue, segments: LoadSegmentDa
 }
 
 function formatDuration(seconds: number): string {
-  if (seconds > 0 && seconds < 1) return `${Math.round(seconds * 1000)}ms`;
+  if (seconds > 0 && seconds < 1) return `${Number((seconds * 1000).toFixed(6))}ms`;
   if (seconds % 3600 === 0) return `${seconds / 3600}h`;
   if (seconds % 60 === 0) return `${seconds / 60}m`;
-  return `${Math.round(seconds)}s`;
+  return `${Number(seconds.toFixed(9))}s`;
 }
