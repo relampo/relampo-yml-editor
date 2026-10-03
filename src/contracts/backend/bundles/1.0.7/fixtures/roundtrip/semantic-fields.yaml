@@ -1,0 +1,28 @@
+test:
+  name: contract-roundtrip
+  future_test:
+    enabled: true
+future_root:
+  owner: backend
+scenarios:
+  - name: smoke
+    future_scenario: keep-me
+    steps:
+      - group:
+          name: checks
+          future_group:
+            mode: experimental
+          steps:
+            - request:
+                method: GET
+                url: /health
+                future_request: keep-me
+                assertions:
+                  - type: status
+                    value: 200
+                    future_assertion: keep-me
+                extractors:
+                  - type: regex
+                    var: token
+                    pattern: token=(.*)
+                    future_extractor: keep-me
