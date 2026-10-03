@@ -74,7 +74,7 @@ function dataScope(
     case 'retry':
     case 'one_time':
     case 'on_error':
-      return { supported: knownFields[node.type] || CONTROLLER_KNOWN_FIELDS[node.type], prefix: [...path, node.type] };
+      return { supported: new Set([...(knownFields[node.type] || []), ...CONTROLLER_KNOWN_FIELDS[node.type]]), prefix: [...path, node.type] };
     case 'request':
     case 'get':
     case 'post':

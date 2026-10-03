@@ -1,7 +1,6 @@
 import { Plus, Trash2 } from 'lucide-react';
 import { useRef } from 'react';
 import {
-  LOAD_DURATION_HELP_TEXT,
   LOAD_ITERATIONS_HELP_TEXT,
   LoadFieldGroup,
   LoadGrid,
@@ -17,12 +16,14 @@ import {
 } from '../loadUtils';
 
 const GLOBAL_SEGMENT_FIELDS = [
-  { field: 'duration', label: 'Total Duration', placeholder: '1h', helpText: LOAD_DURATION_HELP_TEXT },
   { field: 'iterations', label: 'Iterations', placeholder: '0', type: 'number', helpText: LOAD_ITERATIONS_HELP_TEXT },
 ] as const;
 
 const DEFAULT_SEGMENT: LoadSegmentData = {
   name: 'new_segment',
+  duration: '1m',
+  transition: 'constant',
+  min_vus: '0',
   target_rps: '5',
   max_vus: '100',
 };
@@ -45,7 +46,7 @@ export function SegmentsLoadMode({ data, onChange }: LoadModeProps) {
         delete updated.min_vus;
         delete updated.max_vus;
       }
-      return removeEmptySegmentFields(updated);
+      return updated;
     });
     onChange('segments', next);
   };
@@ -63,6 +64,8 @@ export function SegmentsLoadMode({ data, onChange }: LoadModeProps) {
       } else {
         delete updated.target_vus;
         updated.target_rps = currentTarget;
+        updated.transition = 'constant';
+        updated.min_vus = updated.min_vus ?? '0';
         if (String(updated.max_vus ?? '').trim() === '') {
           updated.max_vus = '100';
         }
@@ -92,9 +95,14 @@ export function SegmentsLoadMode({ data, onChange }: LoadModeProps) {
   return (
     <LoadSection
       title="Segments Profile"
-      description="Run sequential load blocks with either an RPS target or a fixed VU target."
+      description="Run consecutive segments with VU transitions or a constant RPS target and adaptive VUs within Min/Max."
     >
       <LoadGrid>
+        <label className="text-sm text-zinc-400">
+          Total Duration
+          <input aria-label="Total Duration" readOnly value={durationSummary.segmentsLabel}
+            className="mt-1 w-full rounded-md border border-white/10 bg-white/[0.03] px-3 py-2 font-mono text-zinc-200" />
+        </label>
         <LoadFieldGroup
           data={data}
           fields={GLOBAL_SEGMENT_FIELDS}
@@ -111,17 +119,18 @@ export function SegmentsLoadMode({ data, onChange }: LoadModeProps) {
       >
         <span className="font-medium">Duration check</span>
         <span className="ml-2 font-mono">
-          total {durationSummary.rootLabel} · segments {durationSummary.segmentsLabel}
+          segments total {durationSummary.segmentsLabel}
         </span>
       </div>
 
-      <div className="mt-5 overflow-hidden rounded-lg border border-white/10">
-        <div className="grid grid-cols-[1.2fr_0.75fr_0.7fr_0.7fr_0.8fr_40px] border-b border-white/10 bg-white/[0.03] text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
+      <div className="mt-5 overflow-x-auto rounded-lg border border-white/10">
+        <div className="grid min-w-[800px] grid-cols-[minmax(130px,1fr)_100px_95px_95px_120px_160px_40px] border-b border-white/10 bg-white/[0.03] text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
           <div className="px-3 py-2">Name</div>
           <div className="px-3 py-2">Duration</div>
           <div className="px-3 py-2">Target Type</div>
           <div className="px-3 py-2">Target</div>
-          <div className="px-3 py-2">VU Range</div>
+          <div className="px-3 py-2">Transition</div>
+          <div className="px-3 py-2">VUs Min / Max</div>
           <div />
         </div>
         {segments.map((segment, index) => {
@@ -129,16 +138,20 @@ export function SegmentsLoadMode({ data, onChange }: LoadModeProps) {
           return (
           <div
             key={rowKey}
-            className="grid grid-cols-[1.2fr_0.75fr_0.7fr_0.7fr_0.8fr_40px] border-b border-white/5 last:border-b-0"
+            className="grid min-w-[800px] grid-cols-[minmax(130px,1fr)_100px_95px_95px_120px_160px_40px] border-b border-white/5 last:border-b-0"
           >
             <SegmentInput
+              ariaLabel={`Name for segment ${index + 1}`}
+              required
               value={segment.name}
               placeholder={`segment_${index + 1}`}
               onChange={value => updateSegment(index, 'name', value)}
             />
             <SegmentInput
+              ariaLabel={`Duration for segment ${index + 1}`}
+              required
               value={segment.duration}
-              placeholder="auto"
+              placeholder="1m"
               onChange={value => updateSegment(index, 'duration', value)}
             />
             <SegmentTargetTypeSelect
@@ -147,18 +160,36 @@ export function SegmentsLoadMode({ data, onChange }: LoadModeProps) {
               onChange={value => updateSegmentTargetType(index, value)}
             />
             <SegmentInput
+              ariaLabel={`Target for segment ${index + 1}`}
+              required
               value={segment.target_rps ?? segment.target_vus}
               placeholder={segmentTargetType(segment) === 'vus' ? '50' : '5'}
               onChange={value => updateSegmentTargetValue(index, value)}
             />
+            <select
+              aria-label={`Transition for segment ${index + 1}`}
+              required
+              value={segment.transition ?? ''}
+              onChange={event => updateSegment(index, 'transition', event.target.value)}
+              className="min-h-10 w-full border-0 border-r border-white/5 bg-transparent px-3 py-2 text-sm text-zinc-200 outline-none"
+            >
+              <option value="" disabled>Select transition</option>
+              <option value="constant">Constant</option>
+              {segmentTargetType(segment) === 'vus' && <option value="ramp_up">Ramp up</option>}
+              {segmentTargetType(segment) === 'vus' && <option value="ramp_down">Ramp down</option>}
+            </select>
             <div className="grid grid-cols-2 gap-1 px-2 py-2">
               <SegmentInput
+                ariaLabel={`VUs Min for segment ${index + 1}`}
+                required={segmentTargetType(segment) === 'rps'}
                 value={segment.min_vus}
                 placeholder="min"
                 onChange={value => updateSegment(index, 'min_vus', value)}
                 disabled={segmentTargetType(segment) === 'vus'}
               />
               <SegmentInput
+                ariaLabel={`VUs Max for segment ${index + 1}`}
+                required={segmentTargetType(segment) === 'rps'}
                 value={segment.max_vus}
                 placeholder="max"
                 onChange={value => updateSegment(index, 'max_vus', value)}
@@ -195,14 +226,20 @@ function SegmentInput({
   placeholder,
   onChange,
   disabled = false,
+  ariaLabel,
+  required = false,
 }: {
   value: string | number | undefined;
   placeholder?: string;
   onChange: (value: string) => void;
   disabled?: boolean;
+  ariaLabel: string;
+  required?: boolean;
 }) {
   return (
     <input
+      aria-label={ariaLabel}
+      required={required}
       value={value ?? ''}
       placeholder={placeholder}
       disabled={disabled}
@@ -224,6 +261,7 @@ function SegmentTargetTypeSelect({
   return (
     <select
       value={value}
+      required
       aria-label={ariaLabel}
       onChange={event => onChange(event.target.value === 'vus' ? 'vus' : 'rps')}
       className="min-h-10 w-full border-0 border-r border-white/5 bg-transparent px-3 py-2 font-mono text-sm text-zinc-200 outline-none focus:bg-white/[0.03]"
@@ -255,15 +293,14 @@ function removeEmptySegmentFields(segment: LoadSegmentData): LoadSegmentData {
 }
 
 function segmentTargetType(segment: LoadSegmentData): SegmentTargetType {
-  return segment.target_vus !== undefined && String(segment.target_vus).trim() !== '' ? 'vus' : 'rps';
+  return Object.hasOwn(segment, 'target_vus') ? 'vus' : 'rps';
 }
 
 function getDurationSummary(rootDuration: LoadDataValue, segments: LoadSegmentData[]) {
   const summary = getSegmentDurationSummary(rootDuration, segments);
   return {
     matches: summary.matches,
-    rootLabel: summary.rootSeconds > 0 ? formatDuration(summary.rootSeconds) : 'auto',
-    segmentsLabel: summary.hasSegmentDurations ? formatDuration(summary.segmentSeconds) : 'auto',
+    segmentsLabel: summary.allSegmentDurationsValid ? formatDuration(summary.segmentSeconds) : 'incomplete',
   };
 }
 

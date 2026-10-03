@@ -3,6 +3,7 @@ const loadTypes = ['constant', 'linear', 'ramp_up_down', 'throughput', 'intent',
 export type LoadType = (typeof loadTypes)[number];
 export type LoadSegmentData = {
   name?: string;
+  transition?: string;
   duration?: string | number;
   target_rps?: string | number;
   target_vus?: string | number;
@@ -178,10 +179,10 @@ const loadTypeDefaults: Record<LoadType, LoadData> = {
     duration: '1h',
     iterations: '0',
     segments: [
-      { name: 'baseline', target_rps: '5', max_vus: '20' },
-      { name: 'checkout_pressure', target_rps: '25', min_vus: '5', max_vus: '100' },
-      { name: 'fixed_users', target_vus: '50' },
-      { name: 'recovery', target_rps: '5', max_vus: '20' },
+      { name: 'baseline', duration: '15m', transition: 'constant', target_rps: '5', min_vus: '0', max_vus: '20' },
+      { name: 'checkout_pressure', duration: '15m', transition: 'constant', target_rps: '25', min_vus: '5', max_vus: '100' },
+      { name: 'fixed_users', duration: '15m', transition: 'constant', target_vus: '50' },
+      { name: 'recovery', duration: '15m', transition: 'constant', target_rps: '5', min_vus: '0', max_vus: '20' },
     ],
   },
 };
@@ -258,14 +259,6 @@ export function isValidDuration(value: unknown): boolean {
   return text === '' || (/^(\d+(?:\.\d+)?)(ms|s|m|h)?$/.test(text) && Number.isFinite(parseTimeToSeconds(text)));
 }
 
-function isDurationEvenlyDivisible(durationSeconds: number, segmentCount: number): boolean {
-  if (!Number.isFinite(durationSeconds) || durationSeconds <= 0 || segmentCount <= 0) {
-    return false;
-  }
-  const nanoseconds = Math.round(durationSeconds * 1_000_000_000);
-  return Number.isSafeInteger(nanoseconds) && nanoseconds % segmentCount === 0;
-}
-
 function areDurationsEqual(leftSeconds: number, rightSeconds: number): boolean {
   const leftNanoseconds = Math.round(leftSeconds * 1_000_000_000);
   const rightNanoseconds = Math.round(rightSeconds * 1_000_000_000);
@@ -287,7 +280,7 @@ export interface SegmentDurationSummary {
 export function getSegmentDurationSummary(rootDuration: unknown, segments: LoadSegmentData[]): SegmentDurationSummary {
   const rootDurationValue = String(rootDuration ?? '').trim();
   const rootSeconds = parseTimeToSeconds(rootDurationValue);
-  const segmentDurationValues = segments.map(segment => String(segment.duration ?? '').trim());
+  const segmentDurationValues = segments.map(segment => String(segment?.duration ?? '').trim());
   const explicitDurationCount = segmentDurationValues.filter(value => value !== '').length;
   const hasSegmentDurations = explicitDurationCount > 0;
   const allSegmentDurationsValid = segmentDurationValues.every(
@@ -301,11 +294,8 @@ export function getSegmentDurationSummary(rootDuration: unknown, segments: LoadS
     0,
   );
   const matches =
-    rootDurationValid &&
-    !hasMixedDurations &&
-    (hasSegmentDurations
-      ? allSegmentDurationsValid && (rootDurationValue === '' || areDurationsEqual(rootSeconds, segmentSeconds))
-      : rootSeconds > 0 && isDurationEvenlyDivisible(rootSeconds, segments.length));
+    segments.length > 0 && rootDurationValid && allSegmentDurationsValid &&
+    (rootDurationValue === '' || areDurationsEqual(rootSeconds, segmentSeconds));
 
   return {
     rootSeconds,
