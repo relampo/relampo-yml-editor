@@ -521,7 +521,14 @@ describe('YAMLDebugSession RLP debug fixes', () => {
     expect(within(policyDecision).getByText('2 · next_iteration')).toBeInTheDocument();
   });
 
-  it.each([{ status: 400, key: 'on_4xx', label: 'HTTP 400' }, { status: 500, key: 'on_5xx', label: 'HTTP 500' }, { status: 0, key: 'on_timeout', label: 'Timeout' }])('identifies $label on its owning request (RLP-756)', async ({ status, key, label }) => {
+  it.each([
+    { status: 400, key: 'on_4xx', label: 'HTTP 400' },
+    { status: 500, key: 'on_5xx', label: 'HTTP 500' },
+    { status: 0, key: 'on_timeout', label: 'Timeout' },
+    { status: 200, key: 'on_error', label: 'Other error' },
+    { status: 0, key: 'on_error', label: 'Other error' },
+    { status: 500, key: 'on_error', label: 'HTTP 500' },
+  ])('identifies $label for $key with status $status on its owning request (RLP-756, RLP-626)', async ({ status, key, label }) => {
     render(<YAMLDebugSession tree={null} yamlCode={'test:\n  name: policy\n'} documentReady validationErrors={[]} onSelectNode={vi.fn()} onEditNode={vi.fn()} />);
     fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
     await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));

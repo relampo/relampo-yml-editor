@@ -1119,7 +1119,11 @@ function DebugErrorPolicyInspector({
         <DebugLine
           icon={<XCircle className="h-4 w-4 text-red-300" />}
           title="Error type"
-          value={decision.key === 'on_timeout' ? 'Timeout' : event.status ? `HTTP ${event.status}` : decision.key || 'Unknown'}
+          value={decision.key === 'on_timeout'
+            ? 'Timeout'
+            : (event.status ?? 0) >= 400
+              ? `HTTP ${event.status}`
+              : decision.key === 'on_error' ? 'Other error' : decision.key || 'Unknown'}
         />
         <DebugLine
           icon={<ShieldCheck className="h-4 w-4 text-amber-300" />}
