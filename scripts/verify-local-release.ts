@@ -14,16 +14,17 @@ const backendDir = process.env.RELAMPO_BACKEND_DIR
   ? path.resolve(process.env.RELAMPO_BACKEND_DIR)
   : path.resolve(editorDir, '..', 'relampo-backend');
 const backendE2EDir = path.join(backendDir, 'e2e');
+const studioBinary = path.join(backendE2EDir, '.tmp', 'relampo-studio');
 const embeddedEditorDir = path.join(backendDir, 'internal', 'studio', 'assets', 'dist');
 const evidencePath = path.join(editorDir, 'output', 'local-release-evidence.json');
 const evidence: EvidenceStep[] = [];
 
-async function run(command: string[], cwd: string) {
+async function run(command: string[], cwd: string, env = globalThis.process.env) {
   const printable = command.join(' ');
   console.log(`\n[local-release] ${printable}`);
   const process = Bun.spawn(command, {
     cwd,
-    env: { ...globalThis.process.env },
+    env,
     stdin: 'inherit',
     stdout: 'inherit',
     stderr: 'inherit',
@@ -64,6 +65,12 @@ await run(['bun', 'run', 'test'], editorDir);
 await run(['bun', 'run', 'build'], editorDir);
 await run(['bun', 'run', 'test:browser'], editorDir);
 await replaceEmbeddedEditorBuild();
-await run(['bun', 'run', 'test'], backendE2EDir);
+await mkdir(path.dirname(studioBinary), { recursive: true });
+await run(['go', 'build', '-tags', 'embedui', '-o', studioBinary, './cmd/relampo'], backendDir);
+await run(['bun', 'run', 'test'], backendE2EDir, {
+  ...globalThis.process.env,
+  RELAMPO_STUDIO_BINARY: studioBinary,
+  STUDIO_URL: '',
+});
 
 console.log(`\n[local-release] All gates passed. Evidence: ${evidencePath}`);

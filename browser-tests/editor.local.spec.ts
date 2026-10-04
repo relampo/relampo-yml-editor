@@ -123,7 +123,7 @@ test('shows the full loaded YAML file name in the Recording form details', async
   await expect(fileName).toHaveAttribute('readonly', '');
 });
 
-test('Tree search and replace updates allowed matches and preserves responses', async ({ page }) => {
+test('Tree search and replace updates document matches and preserves responses', async ({ page }) => {
   await mockStudioInfo(page, replaceYaml);
   await page.goto('/');
 
@@ -139,15 +139,15 @@ test('Tree search and replace updates allowed matches and preserves responses', 
 
   await expect(page.getByLabel('Find text to replace')).toHaveValue('token');
   await expect(page.getByLabel('Find text to replace')).toHaveAttribute('readonly', '');
-  await expect(page.getByLabel('Replace match position')).toHaveText('1 / 3');
+  await expect(page.getByLabel('Replace match position')).toHaveText('1 / 4');
   await expect(page.getByText('res', { exact: true }).first()).toBeVisible();
 
   await page.getByRole('button', { name: 'Next replace match' }).click();
-  await expect(page.getByLabel('Replace match position')).toHaveText('2 / 3');
+  await expect(page.getByLabel('Replace match position')).toHaveText('2 / 4');
 
   await page.getByRole('textbox', { name: 'Replacement text' }).fill('updated');
   await page.getByRole('button', { name: 'Replace selected' }).click();
-  await expect(page.getByLabel('Replace match position')).toHaveText('2 / 2');
+  await expect(page.getByLabel('Replace match position')).toHaveText('2 / 3');
   await expect(page.getByText('Element details', { exact: true })).toBeVisible();
   await expect(page.getByLabel('Name', { exact: true })).toBeVisible();
 
@@ -158,10 +158,13 @@ test('Tree search and replace updates allowed matches and preserves responses', 
   const selectedYaml = await readFile(await selectedDownload.path(), 'utf8');
   expect(selectedYaml).toContain('url: /health?token=first&next=updated');
   expect(selectedYaml).toContain('url: /allowed?token=third');
+  expect(selectedYaml).toContain('url: /disabled?token=disabled');
 
+  await page.getByRole('textbox', { name: 'Replacement text' }).fill('');
+  await page.getByRole('textbox', { name: 'Replacement text' }).fill('updated');
   await page.getByRole('button', { name: 'Replace all', exact: true }).click();
   await expect(page.getByLabel('Replace match position')).toHaveText('0 / 0');
-  await expect(page.getByText('2 replacements', { exact: true })).toBeVisible();
+  await expect(page.getByText('3 replacements', { exact: true })).toBeVisible();
   await expect(page.getByText('Element details', { exact: true })).toBeVisible();
   await expect(page.getByLabel('Name', { exact: true })).toBeVisible();
 
@@ -171,7 +174,8 @@ test('Tree search and replace updates allowed matches and preserves responses', 
   const download = await downloadPromise;
   const downloadedYaml = await readFile(await download.path(), 'utf8');
   expect(downloadedYaml).toContain('body: response-token');
-  expect(downloadedYaml).toContain('/disabled?token=disabled');
+  expect(downloadedYaml).toContain('/disabled?updated=disabled');
+  expect(downloadedYaml).toContain('enabled: false');
   expect(downloadedYaml).not.toContain('/health?token=first');
   expect(downloadedYaml).not.toContain('/allowed?token=third');
 

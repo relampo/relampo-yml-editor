@@ -424,42 +424,27 @@ export function CacheManagerDetails({ node, onNodeUpdate }: NodeDetailProps) {
   );
 }
 
-const errorPolicyTabStyle = {
-  on_4xx: {
-    backgroundColor: 'rgba(245, 158, 11, 0.20)',
-    color: '#fcd34d',
-    borderColor: 'rgba(252, 211, 77, 0.50)',
-    boxShadow: '0 10px 22px rgba(245, 158, 11, 0.20)',
-  },
-  on_5xx: {
-    backgroundColor: 'rgba(244, 63, 94, 0.20)',
-    color: '#fda4af',
-    borderColor: 'rgba(253, 164, 175, 0.55)',
-    boxShadow: '0 10px 22px rgba(244, 63, 94, 0.20)',
-  },
-  on_timeout: {
-    backgroundColor: 'rgba(56, 189, 248, 0.20)',
-    color: '#7dd3fc',
-    borderColor: 'rgba(125, 211, 252, 0.55)',
-    boxShadow: '0 10px 22px rgba(56, 189, 248, 0.20)',
-  },
-} as const;
+const errorPolicyRules = [
+  { key: 'on_4xx', label: 'On 4xx', icon: AlertTriangle },
+  { key: 'on_5xx', label: 'On 5xx', icon: ServerCrash },
+  { key: 'on_timeout', label: 'On Timeout', icon: Clock3 },
+  { key: 'on_error', label: 'Other Errors', icon: AlertTriangle },
+] as const;
 
 export function ErrorPolicyDetails({ node, onNodeUpdate }: NodeDetailProps) {
   const { data, updateData } = createNodeDataUpdater(node, onNodeUpdate);
-  const activeRules = Array.isArray(data.active_rules)
-    ? data.active_rules.filter((rule: string) => ['on_4xx', 'on_5xx', 'on_timeout'].includes(rule))
-    : [];
-  const currentValueForRule = (rule: 'on_4xx' | 'on_5xx' | 'on_timeout') =>
-    String(data[rule] || (rule === 'on_4xx' ? 'continue' : 'stop'));
+  const activeRules = errorPolicyRules.filter(({ key }) => String(data[key] || '').trim()).map(({ key }) => key);
+  const currentValueForRule = (rule: typeof errorPolicyRules[number]['key']) => {
+    const value = String(data[rule] || 'continue');
+    return value === 'stop' ? 'stop_user' : value;
+  };
 
-  const toggleRule = (rule: 'on_4xx' | 'on_5xx' | 'on_timeout') => {
-    updateData({
-      ...data,
-      active_rules: activeRules.includes(rule)
-        ? activeRules.filter((activeRule: string) => activeRule !== rule)
-        : [...activeRules, rule],
-    });
+  const toggleRule = (rule: typeof errorPolicyRules[number]['key']) => {
+    const nextData = { ...data };
+    delete nextData.active_rules;
+    if (activeRules.includes(rule)) delete nextData[rule];
+    else nextData[rule] = 'continue';
+    updateData(nextData);
   };
 
   return (
@@ -467,66 +452,46 @@ export function ErrorPolicyDetails({ node, onNodeUpdate }: NodeDetailProps) {
       <div>
         <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">Rules</div>
         <div className="flex flex-wrap items-center gap-1">
-          <button
-            type="button"
-            onClick={() => toggleRule('on_4xx')}
-            className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${activeRules.includes('on_4xx') ? 'border-current text-white ring-1 ring-white/30' : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/6'}`}
-            style={activeRules.includes('on_4xx') ? errorPolicyTabStyle.on_4xx : undefined}
-          >
-            <span className="inline-flex items-center gap-1.5">
-              <AlertTriangle className="h-3.5 w-3.5" />
-              <span>On 4xx</span>
-            </span>
-          </button>
-          <button
-            type="button"
-            onClick={() => toggleRule('on_5xx')}
-            className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${activeRules.includes('on_5xx') ? 'border-current text-white ring-1 ring-white/30' : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/6'}`}
-            style={activeRules.includes('on_5xx') ? errorPolicyTabStyle.on_5xx : undefined}
-          >
-            <span className="inline-flex items-center gap-1.5">
-              <ServerCrash className="h-3.5 w-3.5" />
-              <span>On 5xx</span>
-            </span>
-          </button>
-          <button
-            type="button"
-            onClick={() => toggleRule('on_timeout')}
-            className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${activeRules.includes('on_timeout') ? 'border-current text-white ring-1 ring-white/30' : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/6'}`}
-            style={activeRules.includes('on_timeout') ? errorPolicyTabStyle.on_timeout : undefined}
-          >
-            <span className="inline-flex items-center gap-1.5">
-              <Clock3 className="h-3.5 w-3.5" />
-              <span>On Timeout</span>
-            </span>
-          </button>
+          {errorPolicyRules.map(({ key, label, icon: Icon }) => (
+            <button
+              key={key}
+              type="button"
+              aria-pressed={activeRules.includes(key)}
+              onClick={() => toggleRule(key)}
+              className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${activeRules.includes(key) ? 'border-yellow-400/50 text-yellow-300 bg-yellow-400/10' : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/6'}`}
+            >
+              <span className="inline-flex items-center gap-1.5">
+                <Icon className="h-3.5 w-3.5" />
+                <span>{label}</span>
+              </span>
+            </button>
+          ))}
         </div>
       </div>
       <div className="h-px bg-white/10" />
-
-      <div className="grid grid-cols-3 gap-4">
-        {(['on_4xx', 'on_5xx', 'on_timeout'] as const).map(rule => {
-          const label = rule === 'on_4xx' ? 'On 4xx Action' : rule === 'on_5xx' ? 'On 5xx Action' : 'On Timeout Action';
-          return (
-            <div
-              key={rule}
-              className={activeRules.includes(rule) ? '' : 'opacity-50'}
-            >
-              <SelectField
-                label={label}
-                value={currentValueForRule(rule)}
-                field={rule}
-                onChange={(_, value) => updateData({ ...data, [rule]: value })}
-                options={[
-                  { label: 'continue', value: 'continue' },
-                  { label: 'stop', value: 'stop' },
-                ]}
-                disabled={!activeRules.includes(rule)}
-                noMargin
-              />
-            </div>
-          );
-        })}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {errorPolicyRules.map(({ key, label }) => (
+          <div key={key} className={activeRules.includes(key) ? '' : 'opacity-50'}>
+            <SelectField
+              label={`${label} Action`}
+              value={currentValueForRule(key)}
+              field={key}
+              onChange={(_, value) => updateData({ ...data, [key]: value })}
+              options={[
+                { label: 'Continue', value: 'continue' },
+                { label: 'Next iteration', value: 'next_iteration' },
+                { label: 'Stop user', value: 'stop_user' },
+              ]}
+              disabled={!activeRules.includes(key)}
+              noMargin
+            />
+          </div>
+        ))}
+      </div>
+      <div className="rounded border border-white/10 bg-black/20 px-3 py-2 text-xs text-zinc-300 space-y-2">
+        <p>Continue runs the next step. Next iteration skips the remaining steps for this user. Stop user ends only this user.</p>
+        <p>Other Errors covers connection, TLS, assertion and correlation failures. It also applies when no specific rule is set.</p>
+        {data.enabled === false && <p>This policy is disabled in YAML. Set enabled to true to apply its rules.</p>}
       </div>
     </div>
   );

@@ -382,8 +382,9 @@ export function createNodeByType(
         name: 'Error Policy',
         data: {
           on_4xx: 'continue',
-          on_5xx: 'stop',
-          on_timeout: 'stop',
+          on_5xx: 'stop_user',
+          on_timeout: 'stop_user',
+          on_error: 'continue',
         },
       };
     default:
