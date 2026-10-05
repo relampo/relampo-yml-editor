@@ -991,6 +991,31 @@ describe('YAMLDebugSession RLP debug fixes', () => {
     expect(screen.queryByText('next-iteration')).not.toBeInTheDocument();
   });
 
+  it('keeps HTTP success visible with an extraction diagnostic and no active policy', async () => {
+    const request: YAMLNode = { id: 'source', type: 'request', name: '[1] GET /source',
+      data: { request_id: 1, method: 'GET', url: '/source' },
+      children: [{ id: 'extractor', type: 'extractor', name: 'Extract code', data: { var: 'code', type: 'regex', pattern: 'code=([^&]+)' } }] };
+    render(<YAMLDebugSession tree={{ id: 'root', type: 'root', name: 'root', children: [request] }}
+      yamlCode={'test:\n  name: diagnostic-only\n'} documentReady validationErrors={[]}
+      onSelectNode={vi.fn()} onEditNode={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
+    act(() => {
+      debugApiMock.handlers[0].onEvent(event({ request_id: 1, path: '/source', status: 200,
+        variables: { code: 'previous-capture' },
+        extraction_diagnostics: [{ Name: 'extract:code', Passed: false, Message: 'code was not found' }] }));
+      debugApiMock.handlers[0].onDone(null);
+    });
+    expectPassedStatusPill();
+    expect(screen.queryByText('Error Type')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'assertions' }));
+    expect(screen.getByText('code was not found')).toBeInTheDocument();
+    expect(screen.getByText('Extraction diagnostics')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'variables' }));
+    expect(screen.getByText('Not captured')).toBeInTheDocument();
+    expect(screen.queryByText('previous-capture')).not.toBeInTheDocument();
+  });
+
   it('shows runtime built-in invocations in their own tab with exact JSON values', async () => {
     const request: YAMLNode = {
       id: 'builtins',
