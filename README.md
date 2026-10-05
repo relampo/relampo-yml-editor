@@ -47,3 +47,7 @@ VITE_STATSIG_ENVIRONMENT=development
 
 The editor labels these actions Continue, Next iteration (same user), and Stop this user.
 The YAML values stay unchanged when saving or reopening a script.
+
+Debug shows a policy decision only when the runtime applies a configured rule.
+If no `on_error` rule applies, missing captures appear under Extraction diagnostics in Assertions.
+They keep a successful HTTP response as Passed. HTTP errors and explicit assertion failures still appear as Failed.

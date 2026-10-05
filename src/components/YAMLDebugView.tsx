@@ -1253,7 +1253,8 @@ function DebugResponseInspector({ event }: { event: EngineEvent }) {
 
 function DebugAssertionsInspector({ event }: { event: EngineEvent }) {
   const assertions = event.assertions ?? [];
-  if (assertions.length === 0) {
+  const diagnostics = event.extraction_diagnostics ?? [];
+  if (assertions.length === 0 && diagnostics.length === 0) {
     return <p className="text-sm text-zinc-500">No assertions were evaluated for this request.</p>;
   }
   return (
@@ -1272,6 +1273,19 @@ function DebugAssertionsInspector({ event }: { event: EngineEvent }) {
           value={assertion.Message || (assertion.Passed ? 'Passed' : 'Failed')}
         />
       ))}
+      {diagnostics.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="text-xs font-semibold text-amber-300">Extraction diagnostics</h3>
+          {diagnostics.map(diagnostic => (
+            <DebugLine
+              key={`${diagnostic.Name}-${diagnostic.Message}`}
+              icon={<AlertTriangle className="h-4 w-4 text-amber-300" />}
+              title={diagnostic.Name || 'Extractor'}
+              value={diagnostic.Message || 'Not captured'}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -1471,6 +1485,16 @@ function DebugOverviewInspector({
 
 function debugVariableSnapshot(activeEntry: DebugEntry, entries: DebugEntry[]): Record<string, string> {
   const snapshot = { ...(activeEntry.event.variables ?? {}) };
+  const extractedNames = new Set(requestExtractorVariableNames(activeEntry.node));
+  const clearFailedCaptures = (event: EngineEvent) => {
+    [...(event.extraction_diagnostics ?? []), ...(event.assertions ?? [])].forEach(result => {
+      if (!result.Passed && result.Name.startsWith('extract:')) {
+        const name = result.Name.slice('extract:'.length);
+        if (extractedNames.has(name)) delete snapshot[name];
+      }
+    });
+  };
+  clearFailedCaptures(activeEntry.event);
   const eventChainId = String(activeEntry.event.chain_id ?? '').trim();
   const chainId = eventChainId || String(activeEntry.node?.data?.chain_id ?? '').trim();
   const chainRole = String(activeEntry.event.chain_role ?? activeEntry.node?.data?.chain_role ?? '').toLowerCase();
@@ -1516,7 +1540,6 @@ function debugVariableSnapshot(activeEntry: DebugEntry, entries: DebugEntry[]): 
     }
   }
 
-  const extractedNames = new Set(requestExtractorVariableNames(activeEntry.node));
   for (let index = activeIndex + 1; index < entries.length; index += 1) {
     const candidate = entries[index];
     if (!isSameChain(candidate)) continue;
@@ -1525,8 +1548,10 @@ function debugVariableSnapshot(activeEntry: DebugEntry, entries: DebugEntry[]): 
     // their values back to their owner, without changing values sent by REQ.
     const captures = Object.fromEntries(Object.entries(candidate.event.variables ?? {}).filter(([name]) => extractedNames.has(name)));
     mergeCapturedVariables(captures, true);
+    clearFailedCaptures(candidate.event);
   }
 
+  clearFailedCaptures(activeEntry.event);
   return snapshot;
 }
 
