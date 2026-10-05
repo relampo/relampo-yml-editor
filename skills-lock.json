@@ -26,6 +26,12 @@
       "sourceType": "autoskills-registry",
       "computedHash": "82fb11a63fb1e35ee2469516ed02d54695f783115b1540c0e783197af4240a3a"
     },
+    "gdp-ts": {
+      "source": "rauchg/gdp-ts",
+      "sourceType": "github",
+      "skillPath": "skills/gdp-ts/SKILL.md",
+      "computedHash": "77779b495dbb6291b953d87610e394319f85430fbb4b4b09c8c8a1e06d92e1e3"
+    },
     "react-best-practices": {
       "source": "vercel-labs/agent-skills",
       "sourceType": "autoskills-registry",
