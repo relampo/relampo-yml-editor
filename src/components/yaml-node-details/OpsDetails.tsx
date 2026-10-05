@@ -479,8 +479,8 @@ export function ErrorPolicyDetails({ node, onNodeUpdate }: NodeDetailProps) {
               onChange={(_, value) => updateData({ ...data, [key]: value })}
               options={[
                 { label: 'Continue', value: 'continue' },
-                { label: 'Next iteration', value: 'next_iteration' },
-                { label: 'Stop user', value: 'stop_user' },
+                { label: 'Next iteration (same user)', value: 'next_iteration' },
+                { label: 'Stop this user', value: 'stop_user' },
               ]}
               disabled={!activeRules.includes(key)}
               noMargin
@@ -489,7 +489,7 @@ export function ErrorPolicyDetails({ node, onNodeUpdate }: NodeDetailProps) {
         ))}
       </div>
       <div className="rounded border border-white/10 bg-black/20 px-3 py-2 text-xs text-zinc-300 space-y-2">
-        <p>Continue runs the next step. Next iteration skips the remaining steps for this user. Stop user ends only this user.</p>
+        <p>Continue runs the next step. Next iteration skips the remaining steps and starts another iteration of the same virtual user. Stop this user ends only the failing virtual user.</p>
         <p>Other Errors covers connection, TLS, assertion and correlation failures. It also applies when no specific rule is set.</p>
         {data.enabled === false && <p>This policy is disabled in YAML. Set enabled to true to apply its rules.</p>}
       </div>

@@ -31,10 +31,10 @@ describe('Error policy editing and saving', () => {
     render(<PolicyEditor yaml={importedYAML} />);
     const otherErrors = screen.getByRole('combobox', { name: 'Other Errors Action' });
     expect(otherErrors).toBeEnabled();
-    expect(otherErrors).toHaveTextContent('Next iteration');
+    expect(otherErrors).toHaveTextContent('Next iteration (same user)');
     expect(screen.getByRole('combobox', { name: 'On 5xx Action' })).toBeEnabled();
     fireEvent.keyDown(otherErrors, { key: 'Enter' });
-    fireEvent.click(await screen.findByRole('option', { name: 'Stop user' }));
+    fireEvent.click(await screen.findByRole('option', { name: 'Stop this user' }));
     expect(screen.getByLabelText('Saved YAML').textContent).toContain('on_error: stop_user');
     expect(screen.getByLabelText('Saved YAML').textContent).toContain('on_5xx: stop');
   });
@@ -51,8 +51,8 @@ describe('Error policy editing and saving', () => {
 
   it('explains the user scope and keeps legacy stop unchanged until edited', () => {
     render(<PolicyEditor yaml={importedYAML} />);
-    expect(screen.getByRole('combobox', { name: 'On 5xx Action' })).toHaveTextContent('Stop user');
-    expect(screen.getByText(/Stop user ends only this user/)).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'On 5xx Action' })).toHaveTextContent('Stop this user');
+    expect(screen.getByText(/Stop this user ends only the failing virtual user/)).toBeInTheDocument();
     expect(screen.getByLabelText('Saved YAML').textContent).toContain('on_5xx: stop');
   });
 

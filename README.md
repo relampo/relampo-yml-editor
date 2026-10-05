@@ -37,3 +37,13 @@ Set a browser-safe Statsig client SDK key before building or running the app:
 VITE_STATSIG_CLIENT_KEY=client-your-key
 VITE_STATSIG_ENVIRONMENT=development
 ```
+
+## Error policy actions
+
+- `continue` runs the next step.
+- `next_iteration` skips the remaining steps and starts another iteration of the same virtual user.
+- `stop_user` stops only the failing virtual user. Other users continue.
+- Legacy `stop` keeps the same meaning as `stop_user`.
+
+The editor labels these actions Continue, Next iteration (same user), and Stop this user.
+The YAML values stay unchanged when saving or reopening a script.
