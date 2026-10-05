@@ -2,6 +2,7 @@ import js from '@eslint/js';
 import reactRefresh from 'eslint-plugin-react-refresh';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
+import gdp from '@gdp-ts/core/lint/eslint';
 
 export default tseslint.config(
   {
@@ -101,4 +102,13 @@ export default tseslint.config(
       'preserve-caught-error': 'off',
     },
   },
+  {
+    files: ['src/proofs/**/*.ts'],
+    rules: {
+      // gdp-ts uses one named interface per proof to keep proof inference distinct.
+      '@typescript-eslint/no-empty-object-type': ['error', { allowInterfaces: 'with-single-extends' }],
+    },
+  },
+  ...gdp({ files: ['src/**/*.{ts,tsx}'] }),
+  ...gdp({ strict: true, files: ['src/utils/dataSourceUpload.mistakes.ts'] }),
 );

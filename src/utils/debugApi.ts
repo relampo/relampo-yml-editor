@@ -6,6 +6,8 @@ import { trackStudioRunStarted, trackStudioRunCompleted, setAnalyticsVersion, in
 import { studioAuthHeaders, withStudioToken } from './studioAuth';
 import { getRuntimeConfig } from './runtimeConfig';
 import { createValidatedEventStream, isRecord } from './sseMessage';
+import { name, type Named } from '@gdp-ts/core';
+import { supportedDataSourceFile, type SupportedDataSourceFile } from '../proofs/supportedDataSourceFile';
 
 interface EngineAssertionResult {
   Name: string;
@@ -247,8 +249,19 @@ export async function startDebugRun(yaml: string, options: StartDebugRunOptions 
 }
 
 export async function uploadStudioDataSourceFile(file: File): Promise<StudioDataSourceUpload> {
+  return name(file, namedFile => {
+    const proof = supportedDataSourceFile(namedFile);
+    if (!proof) throw new Error('only .csv and .txt data source files are supported');
+    return uploadSupportedStudioDataSourceFile(namedFile, proof);
+  });
+}
+
+export async function uploadSupportedStudioDataSourceFile<F>(
+  file: Named<F, File>,
+  _proof: SupportedDataSourceFile<F>,
+): Promise<StudioDataSourceUpload> {
   const form = new FormData();
-  form.append('file', file);
+  form.append('file', file.value);
   const response = await fetchAgent(`${apiBase()}/api/studio/data-source-files`, {
     method: 'POST',
     body: form,

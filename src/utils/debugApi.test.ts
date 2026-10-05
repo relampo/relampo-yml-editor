@@ -265,11 +265,40 @@ describe('uploadStudioDataSourceFile', () => {
   });
 
   it('surfaces Studio upload errors', async () => {
-    mockFetch({ error: 'only .csv and .txt data source files are supported' }, false);
+    mockFetch({ error: 'upload directory is not configured' }, false);
 
-    await expect(uploadStudioDataSourceFile(new File(['{}'], 'users.json'))).rejects.toThrow(
-      'only .csv and .txt data source files are supported',
+    await expect(uploadStudioDataSourceFile(new File(['alice'], 'users.txt'))).rejects.toThrow(
+      'upload directory is not configured',
     );
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['users.json', 'users.csv.exe', 'users', 'users.csv\n', 'users.txt '])(
+    'rejects %s before sending a request',
+    async filename => {
+      mockFetch({ path: '.relampo/datasources/users.txt' });
+
+      await expect(uploadStudioDataSourceFile(new File(['alice'], filename))).rejects.toThrow(
+        'only .csv and .txt data source files are supported',
+      );
+      expect(fetch).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(['users.CSV', 'users.TxT'])('uploads the original file named %s', async filename => {
+    mockFetch({ name: filename, path: `.relampo/datasources/${filename}` });
+    const file = new File(['alice'], filename);
+
+    await expect(uploadStudioDataSourceFile(file)).resolves.toEqual({
+      name: filename,
+      path: `.relampo/datasources/${filename}`,
+    });
+
+    const request = vi.mocked(fetch).mock.calls[0][1];
+    const form = request?.body;
+    expect(form).toBeInstanceOf(FormData);
+    if (!(form instanceof FormData)) throw new Error('Expected multipart upload');
+    expect(form.get('file')).toBe(file);
   });
 });
 

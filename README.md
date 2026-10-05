@@ -29,6 +29,17 @@ Run `bun install` to install the dependencies.
 
 Run `bun run dev` to start the development server.
 
+## Proof-backed data source uploads
+
+The Studio CSV/TXT upload flow includes a small `gdp-ts` example:
+
+- `src/proofs/supportedDataSourceFile.ts` checks the selected file's extension and creates a proof for that exact file.
+- The network upload requires the named file and its proof. A proof for another file does not compile.
+- `src/utils/dataSourceUpload.mistakes.ts` contains compiler regression checks for missing, mismatched, or forged proofs. Run `bun run typecheck` to check them.
+- The `gdp-ts` ESLint preset prevents proof creation outside trusted modules and prevents exporting proof creators.
+
+Unsupported extensions fail before a network request. This client check does not validate file contents or replace backend upload security checks.
+
 ## Statsig Analytics
 
 Set a browser-safe Statsig client SDK key before building or running the app:
