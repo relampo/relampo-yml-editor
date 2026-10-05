@@ -958,6 +958,64 @@ describe('YAMLDebugSession RLP debug fixes', () => {
     expect(screen.queryByText('Regex value not found: javax.faces.ViewState')).toBeNull();
   });
 
+  it('shows a hop capture from its completed chain across interleaved users and iterations', async () => {
+    const parent: YAMLNode = { id: 'parent', type: 'request', name: '[2] GET /start',
+      data: { request_id: 2, method: 'GET', url: '/start', chain_id: 'rc-2', chain_role: 'parent' } };
+    const hop: YAMLNode = { id: 'hop', type: 'request', name: '[3] GET /hop',
+      data: { request_id: 3, method: 'GET', url: '/hop', enabled: false, chain_id: 'rc-2', chain_role: 'hop' },
+      children: [{ id: 'code-extractor', type: 'extractor', name: 'Extract code',
+        data: { type: 'regex', var: 'code', pattern: 'code=([^&]+)' } }] };
+    const final: YAMLNode = { id: 'final', type: 'request', name: '[4] GET /final',
+      data: { request_id: 4, method: 'GET', url: '/final', enabled: false, chain_id: 'rc-2', chain_role: 'final' } };
+    render(<YAMLDebugSession tree={{ id: 'root', type: 'root', name: 'root', children: [parent, hop, final] }}
+      yamlCode={'test:\n  name: hop-capture\n'} documentReady validationErrors={[]}
+      onSelectNode={vi.fn()} onEditNode={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
+    act(() => {
+      const emit = (value: Partial<EngineEvent>) => debugApiMock.handlers[0].onEvent(event({
+        request_id: 2, chain_id: 'rc-2', vu: 1, iteration: 1, ...value }));
+      emit({ path: '/start', status: 302, chain_role: 'parent' });
+      emit({ path: '/hop', status: 302, chain_role: 'hop', redirect_index: 1, variables: { code: 'Not captured' } });
+      emit({ path: '/start', vu: 2, chain_role: 'parent' });
+      emit({ path: '/final', vu: 2, chain_role: 'final', redirect_index: 2, variables: { code: 'other-user' } });
+      emit({ path: '/final', chain_role: 'final', redirect_index: 2, variables: { code: 'right-chain-value' } });
+      emit({ path: '/start', iteration: 2, chain_role: 'parent' });
+      emit({ path: '/final', iteration: 2, chain_role: 'final', redirect_index: 2, variables: { code: 'next-iteration' } });
+    });
+    fireEvent.click(screen.getByText('#3').closest('button')!);
+    fireEvent.click(screen.getByRole('button', { name: 'variables' }));
+    expect(await screen.findByText('code (RES)')).toBeInTheDocument();
+    expect(screen.getByText('right-chain-value')).toBeInTheDocument();
+    expect(screen.queryByText('other-user')).not.toBeInTheDocument();
+    expect(screen.queryByText('next-iteration')).not.toBeInTheDocument();
+  });
+
+  it('keeps HTTP success visible with an extraction diagnostic and no active policy', async () => {
+    const request: YAMLNode = { id: 'source', type: 'request', name: '[1] GET /source',
+      data: { request_id: 1, method: 'GET', url: '/source' },
+      children: [{ id: 'extractor', type: 'extractor', name: 'Extract code', data: { var: 'code', type: 'regex', pattern: 'code=([^&]+)' } }] };
+    render(<YAMLDebugSession tree={{ id: 'root', type: 'root', name: 'root', children: [request] }}
+      yamlCode={'test:\n  name: diagnostic-only\n'} documentReady validationErrors={[]}
+      onSelectNode={vi.fn()} onEditNode={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
+    act(() => {
+      debugApiMock.handlers[0].onEvent(event({ request_id: 1, path: '/source', status: 200,
+        variables: { code: 'previous-capture' },
+        extraction_diagnostics: [{ Name: 'extract:code', Passed: false, Message: 'code was not found' }] }));
+      debugApiMock.handlers[0].onDone(null);
+    });
+    expectPassedStatusPill();
+    expect(screen.queryByText('Error Type')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'assertions' }));
+    expect(screen.getByText('code was not found')).toBeInTheDocument();
+    expect(screen.getByText('Extraction diagnostics')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'variables' }));
+    expect(screen.getByText('Not captured')).toBeInTheDocument();
+    expect(screen.queryByText('previous-capture')).not.toBeInTheDocument();
+  });
+
   it('shows runtime built-in invocations in their own tab with exact JSON values', async () => {
     const request: YAMLNode = {
       id: 'builtins',

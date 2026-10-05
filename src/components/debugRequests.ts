@@ -401,7 +401,7 @@ function extractorVariableName(node: YAMLNode): string | null {
   return null;
 }
 
-function requestExtractorVariableNames(node: YAMLNode | null): string[] {
+export function requestExtractorVariableNames(node: YAMLNode | null): string[] {
   if (!node?.children) return [];
   const names = new Set<string>();
   node.children.forEach(child => {
