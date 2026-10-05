@@ -1,0 +1,10 @@
+test:
+  name: Proof-backed upload browser test
+data_source:
+  type: csv
+  file: ''
+  variable_names: username,role
+scenarios:
+  - name: upload-smoke
+    steps:
+      - get: /health

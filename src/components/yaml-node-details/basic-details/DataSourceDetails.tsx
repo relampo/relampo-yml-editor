@@ -50,6 +50,7 @@ export function DataSourceDetails({
   const sourcePath = String(sourceData.file || sourceData.path || '');
   const { language } = useLanguage();
   const latestSourceData = useRef(sourceData);
+  const [previewRevision, setPreviewRevision] = useState(0);
 
   useEffect(() => {
     latestSourceData.current = sourceData;
@@ -119,6 +120,7 @@ export function DataSourceDetails({
               fileBrowseEnabled
                 ? async file => {
                     const uploaded = await uploadStudioDataSourceFile(file);
+                    setPreviewRevision(revision => revision + 1);
                     return uploaded.path;
                   }
                 : undefined
@@ -205,6 +207,7 @@ export function DataSourceDetails({
         path={sourcePath}
         type={sourceData.type || 'csv'}
         variableNames={sourceData.variable_names || ''}
+        revision={previewRevision}
       />
 
       {showDiagnosis && (
@@ -232,11 +235,13 @@ function DataSourcePreviewPanel({
   path,
   type,
   variableNames,
+  revision,
 }: {
   enabled: boolean;
   path: string;
   type: NonNullable<EditorDataSource['type']>;
   variableNames: string;
+  revision: number;
 }) {
   const trimmedPath = path.trim();
   const [state, setState] = useState<PreviewState>({ status: 'idle' });
@@ -264,7 +269,7 @@ function DataSourcePreviewPanel({
         setState({ status: 'error', message: error instanceof Error ? error.message : 'Preview unavailable' });
       });
     return () => controller.abort();
-  }, [enabled, trimmedPath]);
+  }, [enabled, trimmedPath, revision]);
 
   const columns = useMemo(() => previewColumns(type, variableNames), [type, variableNames]);
   const rows = useMemo(() => previewRows(type, state.status === 'ready' ? state.lines : []), [state, type]);

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { LanguageProvider } from '../contexts/LanguageContext';
@@ -150,6 +150,110 @@ describe('YAMLNodeDetails data source file browsing', () => {
       '/api/studio/data-source-preview?path=users.csv',
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     );
+  });
+
+  it.each(['users.csv', 'replacement.csv'])('refreshes the preview after a successful upload returns %s', async uploadedPath => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ path: 'users.csv', lines: ['alice'], truncated: false }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ name: 'users.csv', path: uploadedPath }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ path: uploadedPath, lines: ['bob'], truncated: false }),
+      });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<StatefulDetails initialNode={dataSourceNode} options={{ dataSourceFileBrowseEnabled: true }} />);
+    expect(await screen.findByText('alice')).toBeInTheDocument();
+    const originalSignal: AbortSignal = fetchMock.mock.calls[0][1].signal;
+
+    const input = document.querySelector<HTMLInputElement>('input[type="file"]');
+    expect(input).not.toBeNull();
+    fireEvent.change(input as HTMLInputElement, {
+      target: { files: [new File(['bob'], 'users.csv', { type: 'text/csv' })] },
+    });
+
+    expect(await screen.findByText('bob')).toBeInTheDocument();
+    expect(screen.queryByText('alice')).not.toBeInTheDocument();
+    expect(screen.getByPlaceholderText('path/to/file.csv')).toHaveValue(uploadedPath);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      `/api/studio/data-source-preview?path=${uploadedPath}`,
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+    expect(originalSignal.aborted).toBe(true);
+  });
+
+  it('keeps the existing preview when a replacement upload fails', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ path: 'users.csv', lines: ['alice'], truncated: false }),
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        json: async () => ({ error: 'Storage temporarily unavailable' }),
+      });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<StatefulDetails initialNode={dataSourceNode} options={{ dataSourceFileBrowseEnabled: true }} />);
+    expect(await screen.findByText('alice')).toBeInTheDocument();
+
+    const input = document.querySelector<HTMLInputElement>('input[type="file"]');
+    expect(input).not.toBeNull();
+    fireEvent.change(input as HTMLInputElement, {
+      target: { files: [new File(['bob'], 'users.csv', { type: 'text/csv' })] },
+    });
+
+    expect(await screen.findByText('Storage temporarily unavailable')).toBeInTheDocument();
+    expect(screen.getByText('alice')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('path/to/file.csv')).toHaveValue('users.csv');
+    expect(screen.getByRole('button', { name: 'Browse' })).toBeEnabled();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('ignores an older preview response after a same-path upload refreshes the rows', async () => {
+    let resolveInitialPreview: (value: unknown) => void = () => {};
+    const initialPreview = new Promise(resolve => {
+      resolveInitialPreview = resolve;
+    });
+    const fetchMock = vi.fn()
+      .mockReturnValueOnce(initialPreview)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ name: 'users.csv', path: 'users.csv' }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ path: 'users.csv', lines: ['bob'], truncated: false }),
+      });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<StatefulDetails initialNode={dataSourceNode} options={{ dataSourceFileBrowseEnabled: true }} />);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    const originalSignal: AbortSignal = fetchMock.mock.calls[0][1].signal;
+
+    const input = document.querySelector<HTMLInputElement>('input[type="file"]');
+    expect(input).not.toBeNull();
+    fireEvent.change(input as HTMLInputElement, {
+      target: { files: [new File(['bob'], 'users.csv', { type: 'text/csv' })] },
+    });
+    expect(await screen.findByText('bob')).toBeInTheDocument();
+
+    await act(async () => {
+      resolveInitialPreview({
+        ok: true,
+        json: async () => ({ path: 'users.csv', lines: ['alice'], truncated: false }),
+      });
+    });
+
+    expect(screen.getByText('bob')).toBeInTheDocument();
+    expect(screen.queryByText('alice')).not.toBeInTheDocument();
+    expect(originalSignal.aborted).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
   it('preserves data source edits while a file upload is pending', async () => {
