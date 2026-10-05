@@ -33,6 +33,7 @@ import {
   isRedirectStepEvent,
   matchDebugEventTarget,
   requestVariableNames,
+  requestExtractorVariableNames,
   skippedRedirectHops,
   variableRowsForRequestNode,
   type DebugStatus,
@@ -1476,9 +1477,11 @@ function debugVariableSnapshot(activeEntry: DebugEntry, entries: DebugEntry[]): 
   const requestId = activeEntry.event.request_id;
   const activeIndex = entries.findIndex(entry => entry.id === activeEntry.id);
   if ((!chainId && requestId == null) || activeIndex < 0) return snapshot;
+  if (activeEntry.node?.data?.follow_redirects === false) return snapshot;
   const activeVu = activeEntry.event.vu ?? 0;
+  const activeIteration = activeEntry.event.iteration ?? 0;
   const isSameChain = (candidate: DebugEntry) => {
-    if ((candidate.event.vu ?? 0) !== activeVu) return false;
+    if ((candidate.event.vu ?? 0) !== activeVu || (candidate.event.iteration ?? 0) !== activeIteration) return false;
     const candidateEventChainId = String(candidate.event.chain_id ?? '').trim();
     // Some engine versions omit chain_id from the parent event while still
     // stamping it on redirect follow-ups. Prefer explicit IDs when both sides
@@ -1511,15 +1514,17 @@ function debugVariableSnapshot(activeEntry: DebugEntry, entries: DebugEntry[]): 
       mergeCapturedVariables(candidate.event.variables, false);
       if (isParent(candidate)) break;
     }
-    return snapshot;
   }
 
-  if (activeEntry.node?.data?.follow_redirects === false) return snapshot;
-
+  const extractedNames = new Set(requestExtractorVariableNames(activeEntry.node));
   for (let index = activeIndex + 1; index < entries.length; index += 1) {
     const candidate = entries[index];
-    if (!isSameChain(candidate) || isParent(candidate)) break;
-    mergeCapturedVariables(candidate.event.variables, true);
+    if (!isSameChain(candidate)) continue;
+    if (isParent(candidate)) break;
+    // The runtime evaluates redirect extractors at the final response. Bring
+    // their values back to their owner, without changing values sent by REQ.
+    const captures = Object.fromEntries(Object.entries(candidate.event.variables ?? {}).filter(([name]) => extractedNames.has(name)));
+    mergeCapturedVariables(captures, true);
   }
 
   return snapshot;
