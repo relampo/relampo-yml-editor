@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "contract_version": "1.0.10",
-  "backend_sha": "eae731c590e858b3b3d35d55c0d534e1024d13b5",
+  "backend_sha": "e473b15380058910ca22ab76878c08cf86b91bc8",
   "source_files": {
     "pkg/engine/engine_dispatcher.go": "311527ba1046bbc81897f663ef792733b37cd67cb5d26c36cfbc94a755fef989",
     "pkg/engine/engine_helpers.go": "5012a9819f172b06c52f862e579967bf25181cb34fa707b6ffa262e44648fafb",
@@ -38,18 +38,19 @@
     "cmd/relampo/cloud_report.go": "54a9d574fdaa36d089736cb88ac28c5c8d7d7f45afd9d00d3f280e4bbbc3fd34",
     "cmd/relampo/distributed_artifacts.go": "a30307a154b6ef5bfb1d54ed9dfd80a7cb9557a9589ec8b50661bd930a07c0df",
     "cmd/relampo/distributed.go": "29bf88f75fe72a2f175c151208b48b83c64d1f00982fe6a45f870df2048feee5",
-    "cmd/relampo/distributed_run.go": "3e06e6228c250433e341f27d03ee6c6e2132b627fe259b46ff58cf8d37351536",
+    "cmd/relampo/distributed_run.go": "4f5949d16d5c7bfa434ff0527e167c31211e27990b7945e94181cdfb3e039c11",
     "cmd/relampo/distributed_gitlab.go": "b08c4d9c12d7f9d600e7cd092690e81bfc4292a5bea738e9439e7a93080ac754",
-    "cmd/relampo/distributed_gitlab_multi.go": "b1c9504ee8e11c05f2b2be9cfe7447b71fd028a327f3b0cf7bb77d4fa0542c98",
-    "cmd/relampo/distributed_gitlab_original.go": "580e9295d62eb3a98c5820f4e67b66ef0a267227e74531658a24f4885df8c980",
-    "cmd/relampo/distributed_gitlab_parallel.go": "22d7bfe1c2d01e9fd6d1f8e7f660ac74d4abd862d36fd8e719a8b08d8905f86c",
-    "cmd/relampo/distributed_gitlab_parallel_workflow.go": "767d8e87c62c5550d64312b1e946da9c3e6ae36ca1fbe240f8e353854dd31312",
+    "cmd/relampo/distributed_gitlab_multi.go": "4ab3a6de2e31e9f7e1c0d2b2a3e3ca73304c3d1cb57fb39cf1fbdc3b69224536",
+    "cmd/relampo/distributed_gitlab_original.go": "4ef565370c3aaed1d1675ae74c2e3fc6e6820dadd35dddcc2763c0020034ce2c",
+    "cmd/relampo/distributed_gitlab_parallel.go": "8bd32a77dfa5fc54bfaa514e73cb4fe9be781c0c2c6cf410805876daa3cd0be7",
+    "cmd/relampo/distributed_gitlab_parallel_workflow.go": "2b8c2e1d2e03c412ffea95cd0c466751bf4a01d2ea3049b9a4ae6e359d81a5e3",
     "cmd/relampo/distributed_worker_preflight.go": "d8bf664a6ebbeb840a26453a1d03ea9925114940d34f165493a608474b66cfe9",
     "cmd/relampo/distributed_scenario.go": "fb6d1cc092d9910a6f25a73e8458c86471dcdf869f1e50350d524f76aeedbe4c",
     "cmd/relampo/distributed_github_multi.go": "b68d211a4b259a83c0e78d4d2e4a10e39c994e5880e3f21843269f2f1244a77d",
     "cmd/relampo/distributed_github_inventory.go": "7e7517b733086b984a8a753b83e3a9a88fdfe9ed2282020e3a1575d5bc87d563",
     "cmd/relampo/distributed_data_sources.go": "1cf25547665b79e832ea36688fae8b2c96dfef26bfd0af1c4a7400fb863ef2da",
-    "cmd/relampo/cloud_report_command.go": "751e9d699526c61b94aed17542cbd1bb1a1c682bed453b5cfab965f3c1056965"
+    "cmd/relampo/cloud_report_command.go": "751e9d699526c61b94aed17542cbd1bb1a1c682bed453b5cfab965f3c1056965",
+    "cmd/relampo/distributed_gitlab_sequential.go": "f957ceabff7af9ff65b2d564fbd53add1f25e622b4c498fdf825e927e774d32e"
   },
   "validation_error_codes": [
     "builtin_syntax",
