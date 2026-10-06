@@ -91,6 +91,7 @@ export function YAMLEditor() {
     handleNewOpen,
     resetIdentityForNewDocument,
     debugViewEnabled,
+    multiScenarioDebugEnabled,
     runViewEnabled,
     dataSourceFileBrowseEnabled,
     defaultViewMode,
@@ -283,6 +284,7 @@ export function YAMLEditor() {
         onSelectViewMode={setViewMode}
         language={language}
         debugViewEnabled={debugViewEnabled}
+        multiScenarioDebugEnabled={multiScenarioDebugEnabled}
         runViewEnabled={runViewEnabled}
         isDebugViewActive={isDebugViewActive}
         isRunViewActive={isRunViewActive}

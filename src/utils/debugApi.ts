@@ -106,6 +106,7 @@ export interface DebugStreamHandlers {
 export type DebugVUs = 1 | 2;
 
 export interface StartDebugRunOptions {
+  scenarioName?: string;
   vus?: DebugVUs;
 }
 
@@ -154,6 +155,8 @@ interface StudioCapabilities {
   dataSourceFiles?: boolean;
   // debug unlocks the Debug view backed by POST /api/debug/runs.
   debug?: boolean;
+  multiScenarioDebug?: boolean;
+  multiScenarioRun?: boolean;
 }
 
 export interface StudioInfo {
@@ -201,6 +204,8 @@ export async function probeStudio(): Promise<StudioInfo | null> {
             loadRun: body.capabilities.loadRun === true,
             dataSourceFiles: body.capabilities.dataSourceFiles === true,
             debug: body.capabilities.debug === true,
+            multiScenarioDebug: body.capabilities.multiScenarioDebug === true,
+            multiScenarioRun: body.capabilities.multiScenarioRun === true,
           }
         : undefined;
     setAnalyticsVersion(body.editorVersion);
@@ -228,7 +233,7 @@ export async function startDebugRun(yaml: string, options: StartDebugRunOptions 
   const response = await fetchAgent(`${apiBase()}/api/debug/runs`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ yaml, vus }),
+    body: JSON.stringify({ yaml, vus, ...(options.scenarioName ? { scenarioName: options.scenarioName } : {}) }),
   });
   if (!response.ok) {
     let message = `debug run failed to start (HTTP ${response.status})`;

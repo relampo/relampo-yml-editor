@@ -8,6 +8,7 @@ type YAMLEditorDetailsPanelProps = {
   isRunViewActive: boolean;
   language: string;
   debugViewEnabled: boolean;
+  multiScenarioDebugEnabled: boolean;
   runViewEnabled: boolean;
   yamlTree: YAMLNode | null;
   yamlCode: string;
@@ -35,6 +36,7 @@ export function YAMLEditorDetailsPanel({
   isRunViewActive,
   language,
   debugViewEnabled,
+  multiScenarioDebugEnabled,
   runViewEnabled,
   yamlTree,
   yamlCode,
@@ -76,6 +78,7 @@ export function YAMLEditorDetailsPanel({
         {debugViewEnabled && (
           <div className={isDebugViewActive ? 'h-full' : 'hidden'}>
             <YAMLDebugSession
+              multiScenarioDebugEnabled={multiScenarioDebugEnabled}
               tree={yamlTree}
               yamlCode={yamlCode}
               flushPendingEdits={flushPendingEdits}

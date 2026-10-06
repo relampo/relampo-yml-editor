@@ -26,6 +26,7 @@ import {
   Users,
   XCircle,
 } from 'lucide-react';
+import { parseYAMLToTree } from '../utils/yamlParser';
 import type { RedirectedRequestInfo, YAMLNode } from '../types/yaml';
 import {
   collectDebugEventTargets,
@@ -227,10 +228,19 @@ interface YAMLDebugSessionProps {
   // YAML while the tree already shows an uncommitted edit.
   flushPendingEdits?: () => string;
   documentReady: boolean;
+  multiScenarioDebugEnabled?: boolean;
   validationErrors: string[];
   redirectedRequestMap?: Record<string, RedirectedRequestInfo>;
   onSelectNode: (node: YAMLNode | null) => void;
   onEditNode: (node: YAMLNode) => void;
+}
+
+function scenarioNodes(tree: YAMLNode | null): YAMLNode[] {
+  return tree?.children?.find(node => node.type === 'scenarios')?.children ?? [];
+}
+
+function targetsForScenario(tree: YAMLNode | null, scenarioName?: string): YAMLNode[] {
+  return collectDebugEventTargets(scenarioName ? scenarioNodes(tree).find(node => node.data?.name === scenarioName) ?? null : tree);
 }
 
 const EMPTY_REDIRECTED_REQUEST_MAP: Record<string, RedirectedRequestInfo> = {};
@@ -357,6 +367,7 @@ export function YAMLDebugSession({
   yamlCode,
   flushPendingEdits,
   documentReady,
+  multiScenarioDebugEnabled = false,
   validationErrors,
   redirectedRequestMap = EMPTY_REDIRECTED_REQUEST_MAP,
   onSelectNode,
@@ -366,11 +377,15 @@ export function YAMLDebugSession({
   const { entryEvents, isRunning, runCompleted, runError } = runState;
   const [activeId, setActiveId] = useState<string | null>(null);
   const [detailTab, setDetailTab] = useState<DetailTab>('overview');
+  const [scenarioName, setScenarioName] = useState('');
+  const scenarios = useMemo(() => scenarioNodes(tree), [tree]);
+  const isMultiScenario = scenarios.length > 1;
+  const selectionBlocked = isMultiScenario && (!multiScenarioDebugEnabled || !scenarios.some(node => node.data?.name === scenarioName));
   const [debugVUs, setDebugVUs] = useState<DebugVUs>(1);
   const [timelineFilter, setTimelineFilter] = useState<DebugTimelineFilter>('requests');
   const timelineButtonRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
 
-  const currentDebugEventTargets = useMemo(() => collectDebugEventTargets(tree), [tree]);
+  const currentDebugEventTargets = useMemo(() => targetsForScenario(tree, isMultiScenario ? scenarioName : undefined), [tree, isMultiScenario, scenarioName]);
   // A completed run belongs to the script snapshot that started it. Keep its
   // request targets stable so later Tree edits cannot remap old timeline rows
   // to different recorded request numbers after the run. RLP-442.
@@ -489,11 +504,17 @@ export function YAMLDebugSession({
         return;
       }
       reattachedRef.current = true;
-      setRunDebugEventTargets(currentDebugEventTargets);
+      if (isMultiScenario && (!multiScenarioDebugEnabled || !scenarios.some(node => node.data?.name === storedRun.scenarioName))) {
+        runStore.clear();
+        storedRunRef.current = null;
+        return;
+      }
+      setScenarioName(storedRun.scenarioName ?? '');
+      setRunDebugEventTargets(targetsForScenario(tree, storedRun.scenarioName));
       dispatchRunState({ type: 'reattach_started' });
       subscribe(storedRun.id, true);
     },
-    [currentDebugEventTargets, documentReady, subscribe, yamlCode],
+    [documentReady, isMultiScenario, multiScenarioDebugEnabled, scenarios, subscribe, tree, yamlCode],
   );
 
   const activeEntry =
@@ -522,7 +543,20 @@ export function YAMLDebugSession({
       return;
     }
     if (!scriptAtStart.trim()) return;
-    setRunDebugEventTargets(currentDebugEventTargets);
+    let snapshotTree: YAMLNode | null;
+    try {
+      snapshotTree = parseYAMLToTree(scriptAtStart);
+    } catch (error) {
+      dispatchRunState({ type: 'run_start_failed', message: error instanceof Error ? error.message : String(error) });
+      return;
+    }
+    const snapshotScenarios = scenarioNodes(snapshotTree);
+    const selectedName = snapshotScenarios.length > 1 ? scenarioName : undefined;
+    if (snapshotScenarios.length > 1 && (!multiScenarioDebugEnabled || !snapshotScenarios.some(node => node.data?.name === selectedName))) {
+      dispatchRunState({ type: 'run_start_failed', message: 'Select a scenario from the current script before Debug.' });
+      return;
+    }
+    setRunDebugEventTargets(selectedName ? targetsForScenario(snapshotTree, selectedName) : currentDebugEventTargets);
     const token = (startTokenRef.current += 1);
     stopStreamRef.current?.();
     setActiveId(null);
@@ -530,9 +564,9 @@ export function YAMLDebugSession({
     setDetailTab('overview');
     dispatchRunState({ type: 'run_started' });
     try {
-      const runId = await startDebugRun(scriptAtStart, { vus: debugVUs });
+      const runId = await startDebugRun(scriptAtStart, { vus: debugVUs, ...(selectedName ? { scenarioName: selectedName } : {}) });
       if (token === startTokenRef.current) {
-        runStore.store({ id: runId, fp: fingerprint(scriptAtStart) });
+        runStore.store({ id: runId, fp: fingerprint(scriptAtStart), ...(selectedName ? { scenarioName: selectedName } : {}) });
         subscribe(runId, false);
       }
     } catch (error) {
@@ -595,7 +629,23 @@ export function YAMLDebugSession({
         onStop={stopRun}
         debugVUs={debugVUs}
         onDebugVUsChange={setDebugVUs}
+        selectionBlocked={selectionBlocked}
       />
+
+      {isMultiScenario && (
+        <div className="border-b border-white/5 px-5 py-3 text-sm text-zinc-300">
+          {multiScenarioDebugEnabled ? (
+            <label className="flex items-center gap-3">
+              Debug scenario
+              <select aria-label="Debug scenario" value={scenarioName} onChange={event => setScenarioName(event.target.value)} disabled={isRunning}
+                className="rounded border border-white/20 bg-[#161616] px-3 py-2">
+                <option value="">Select a scenario</option>
+                {scenarios.map(node => <option key={node.id} value={String(node.data?.name ?? '')}>{node.name}</option>)}
+              </select>
+            </label>
+          ) : <p>This Relampo backend does not support scenario selection for Debug.</p>}
+        </div>
+      )}
 
       <DebugRunAlerts
         hasValidationErrors={hasValidationErrors}
@@ -647,6 +697,7 @@ function DebugToolbar({
   onStop,
   debugVUs,
   onDebugVUsChange,
+  selectionBlocked,
 }: {
   isRunning: boolean;
   documentReady: boolean;
@@ -656,6 +707,7 @@ function DebugToolbar({
   onStop: () => void;
   debugVUs: DebugVUs;
   onDebugVUsChange: (vus: DebugVUs) => void;
+  selectionBlocked: boolean;
 }) {
   return (
     <div className="border-b border-white/5 px-5 py-3">
@@ -668,7 +720,7 @@ function DebugToolbar({
           <button
             type="button"
             onClick={onRun}
-            disabled={!documentReady || isRunning || hasValidationErrors || !yamlCode.trim()}
+            disabled={!documentReady || isRunning || hasValidationErrors || !yamlCode.trim() || selectionBlocked}
             className="inline-flex h-9 items-center gap-2 rounded border border-yellow-400/40 bg-yellow-400 px-3 text-sm font-semibold text-black transition-colors hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Play className="h-4 w-4" />
@@ -686,7 +738,7 @@ function DebugToolbar({
           <button
             type="button"
             onClick={onRun}
-            disabled={!documentReady || isRunning || hasValidationErrors || !yamlCode.trim()}
+            disabled={!documentReady || isRunning || hasValidationErrors || !yamlCode.trim() || selectionBlocked}
             className="inline-flex h-9 w-9 items-center justify-center rounded border border-white/10 bg-white/3 text-zinc-300 transition-colors hover:bg-white/6 disabled:opacity-40"
             aria-label="Re-run debug"
             title="Re-run debug"

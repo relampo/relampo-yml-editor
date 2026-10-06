@@ -53,6 +53,7 @@ export function useYamlDocumentLifecycle({
 
   // Studio detection + the optional CLI-mounted script are resolved together in
   // the init effect below (one /api/studio/info probe).
+  const [multiScenarioDebugEnabled, setMultiScenarioDebugEnabled] = useState(false);
   const [debugViewEnabled, setDebugViewEnabled] = useState(DEBUG_VIEW_FORCED);
   const [runViewEnabled, setRunViewEnabled] = useState(RUN_VIEW_FORCED);
   const [dataSourceFileBrowseEnabled, setDataSourceFileBrowseEnabled] = useState(false);
@@ -105,6 +106,7 @@ export function useYamlDocumentLifecycle({
       if (isCancelled) return;
 
       if (studioInfo?.studio) {
+        setMultiScenarioDebugEnabled(studioInfo.capabilities?.multiScenarioDebug === true);
         setDataSourceFileBrowseEnabled(studioInfo.capabilities?.dataSourceFiles === true);
         if (!DEBUG_VIEW_FORCED && studioInfo.capabilities?.debug === true) setDebugViewEnabled(true);
         if (!RUN_VIEW_FORCED && studioInfo.capabilities?.loadRun) setRunViewEnabled(true);
@@ -182,6 +184,7 @@ export function useYamlDocumentLifecycle({
     handleNewOpen,
     resetIdentityForNewDocument,
     debugViewEnabled,
+    multiScenarioDebugEnabled,
     runViewEnabled,
     dataSourceFileBrowseEnabled,
     defaultViewMode,
