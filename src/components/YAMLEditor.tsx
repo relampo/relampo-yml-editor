@@ -93,6 +93,7 @@ export function YAMLEditor() {
     debugViewEnabled,
     multiScenarioDebugEnabled,
     runViewEnabled,
+    multiScenarioRunEnabled,
     dataSourceFileBrowseEnabled,
     defaultViewMode,
   } = useYamlDocumentLifecycle({
@@ -286,6 +287,7 @@ export function YAMLEditor() {
         debugViewEnabled={debugViewEnabled}
         multiScenarioDebugEnabled={multiScenarioDebugEnabled}
         runViewEnabled={runViewEnabled}
+        multiScenarioRunEnabled={multiScenarioRunEnabled}
         isDebugViewActive={isDebugViewActive}
         isRunViewActive={isRunViewActive}
         yamlTree={yamlTree}

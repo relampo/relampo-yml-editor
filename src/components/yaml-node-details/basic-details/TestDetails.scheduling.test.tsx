@@ -21,6 +21,7 @@ scenarios:
    load: {users: 1, iterations: 1}
    steps: [{get: /same}]
 `);
+    if (!tree) throw new Error('Expected a parsed script');
     render(<TestDetails node={tree} onNodeUpdate={(_id, data) => { tree.data = data as YAMLNodeData; }} />);
     fireEvent.change(screen.getByRole('combobox', { name: 'Scenario scheduling' }), { target: { value: 'parallel' } });
     const yaml = treeToYAML(tree);
