@@ -35,6 +35,14 @@ function show(enabled = true, flushPendingEdits?: () => string) {
 }
 
 describe('selected scenario Debug', () => {
+ it('keeps single-script syntax errors on the existing backend error path', async () => {
+  const single = 'test: {name: single}\nscenarios: [{name: only, steps: [{get: /one}]}]\n';
+  render(<YAMLDebugSession tree={parseYAMLToTree(single)} yamlCode={single} documentReady validationErrors={[]}
+    flushPendingEdits={() => 'broken: ['} onSelectNode={vi.fn()} onEditNode={vi.fn()} />);
+  fireEvent.click(screen.getByRole('button', {name:'Run Debug'}));
+  await waitFor(() => expect(api.start).toHaveBeenCalledWith('broken: [', {vus:1}));
+ });
+
  for (const vus of [1,2]) {
   it(`requires selection and posts the full script with ${vus} VUs`, async () => {
    show();
