@@ -36,7 +36,20 @@
     "cmd/relampo/distributed_summary.go": "060cddc3c681a0d6aa860e5f30684b99f5d9cf3a4f5a1b7bd0f1dc471ab5e2ed",
     "cmd/relampo-worker/multi_execution.go": "0a3721ed3a7bac1bc8c54d213a77e43bb52d870c93854cff484e44d4d9faeabd",
     "cmd/relampo/cloud_report.go": "54a9d574fdaa36d089736cb88ac28c5c8d7d7f45afd9d00d3f280e4bbbc3fd34",
-    "cmd/relampo/distributed_artifacts.go": "ab14fc7ee28964c15bdb9e38661e227b76b4be44a6d9c4e4baaa9c28de4767f3"
+    "cmd/relampo/distributed_artifacts.go": "a30307a154b6ef5bfb1d54ed9dfd80a7cb9557a9589ec8b50661bd930a07c0df",
+    "cmd/relampo/distributed.go": "29bf88f75fe72a2f175c151208b48b83c64d1f00982fe6a45f870df2048feee5",
+    "cmd/relampo/distributed_run.go": "22a7bbdbae6e001bfa66c2c883b8f82cbbcbf34d1bf064f9dfcd5f88acc2c6c6",
+    "cmd/relampo/distributed_gitlab.go": "b08c4d9c12d7f9d600e7cd092690e81bfc4292a5bea738e9439e7a93080ac754",
+    "cmd/relampo/distributed_gitlab_multi.go": "b1c9504ee8e11c05f2b2be9cfe7447b71fd028a327f3b0cf7bb77d4fa0542c98",
+    "cmd/relampo/distributed_gitlab_original.go": "580e9295d62eb3a98c5820f4e67b66ef0a267227e74531658a24f4885df8c980",
+    "cmd/relampo/distributed_gitlab_parallel.go": "22d7bfe1c2d01e9fd6d1f8e7f660ac74d4abd862d36fd8e719a8b08d8905f86c",
+    "cmd/relampo/distributed_gitlab_parallel_workflow.go": "767d8e87c62c5550d64312b1e946da9c3e6ae36ca1fbe240f8e353854dd31312",
+    "cmd/relampo/distributed_worker_preflight.go": "0a8ea16c0dcce6c72f3028b9f7ee8ba900ceb0ec7838ed5c95a5907dd2a06be0",
+    "cmd/relampo/distributed_scenario.go": "fb6d1cc092d9910a6f25a73e8458c86471dcdf869f1e50350d524f76aeedbe4c",
+    "cmd/relampo/distributed_github_multi.go": "4ceeafe1ec2f66f9ccdcddf19413e5bcdc203b05a1de8b599b48f9e0ba39ee1e",
+    "cmd/relampo/distributed_github_inventory.go": "7e7517b733086b984a8a753b83e3a9a88fdfe9ed2282020e3a1575d5bc87d563",
+    "cmd/relampo/distributed_data_sources.go": "1cf25547665b79e832ea36688fae8b2c96dfef26bfd0af1c4a7400fb863ef2da",
+    "cmd/relampo/cloud_report_command.go": "751e9d699526c61b94aed17542cbd1bb1a1c682bed453b5cfab965f3c1056965"
   },
   "validation_error_codes": [
     "builtin_syntax",
