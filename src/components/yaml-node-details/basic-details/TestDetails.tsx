@@ -46,6 +46,24 @@ export function TestDetails({ node, onNodeUpdate, fileName }: NamedNodeDetailPro
         </div>
       </div>
 
+      {(node.children?.find(child => child.type === 'scenarios')?.children?.length ?? 0) > 1 && (
+        <div>
+          <label htmlFor="test-scenario-mode" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+            Scenario scheduling
+          </label>
+          <select
+            id="test-scenario-mode"
+            value={data.scenario_mode ?? ''}
+            onChange={event => updateField('scenario_mode', event.target.value)}
+            className="w-full px-3 py-2 bg-[#111111] border border-white/10 rounded text-sm text-zinc-300"
+          >
+            <option value="">Choose scheduling</option>
+            <option value="sequential">Sequential</option>
+            <option value="parallel">Parallel</option>
+          </select>
+        </div>
+      )}
+
       <div>
         <label
           htmlFor="test-detail-file-name"

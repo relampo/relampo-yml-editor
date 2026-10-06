@@ -295,3 +295,51 @@ it.each(['received_nodes', 'missing_nodes'])('rejects mixed valid and invalid %s
   expect(handlers.onDone).not.toHaveBeenCalled();
   expect(handlers.onConnectionError).toHaveBeenCalledOnce();
 });
+
+it.each([
+  { complete: 'true' },
+  { total_elapsed: '1' },
+  { workload_duration: null },
+  { request_latency: { count: 1, avg_ms: 0, min_ms: 0, max_ms: 0, p50_ms: 0, p90_ms: 0, p95_ms: 'zero', p99_ms: 0 } },
+  { scenarios: [{ name: 'A', outcome: 'unknown', complete: true, result: report }] },
+  { scenarios: [{ name: 'A', outcome: 'failed', complete: true, result: { ...report, total_requests: '0' } }] },
+  { requests: [{ ...request, scenario_name: 1 }] },
+])('rejects invalid multi-scenario report fields: %j', invalid => {
+  const { source, handlers } = start();
+  source.emit('done', { status: 'completed', summary: { ...report, ...invalid } });
+  expect(handlers.onDone).not.toHaveBeenCalled();
+  expect(handlers.onConnectionError).toHaveBeenCalledOnce();
+});
+
+it('rejects malformed scoped progress before delivering it', () => {
+  const { source, handlers } = start();
+  source.emit('metrics', { ...history, elapsed_ms: 100, avg_latency: 0, p95_latency: 0, total_requests: 0, total_failures: 0,
+    scenarios: [{ name: 'A', status: 'running', total_requests: '0', total_failures: 0, executed_vus: 0 }],
+  });
+  expect(handlers.onMetrics).not.toHaveBeenCalled();
+  expect(handlers.onConnectionError).toHaveBeenCalledOnce();
+});
+
+it('accepts Studio integer node identity in live requests and logs', () => {
+  const { source, handlers } = start();
+  source.emit('metrics', { ...history, elapsed_ms: 100, avg_latency: 0, p95_latency: 0, total_requests: 1, total_failures: 0,
+    requests: [{ ...request, scenario_name: 'A', node_id: 1 }],
+  });
+  source.emit('log', [{ seq: 1, ts: 100, level: 'request', method: 'GET', path: '/', scenario_name: 'A', node_id: 1 }]);
+  expect(handlers.onMetrics).toHaveBeenCalledOnce();
+  expect(handlers.onLog).toHaveBeenCalledOnce();
+  expect(handlers.onConnectionError).not.toHaveBeenCalled();
+});
+
+it('delivers each multi lifecycle snapshot in the same millisecond and suppresses exact replay', () => {
+  const { source, handlers } = start();
+  const snapshot = { ...history, elapsed_ms: 100, avg_latency: 0, p95_latency: 0, total_requests: 0, total_failures: 0,
+    scenarios: [{ name: 'A', status: 'running', total_requests: 0, total_failures: 0, executed_vus: 0 }],
+  };
+  source.emit('metrics', { ...snapshot, seq: 1 });
+  const finished = { ...snapshot, seq: 2, total_requests: 1, scenarios: [{ name: 'A', status: 'finished', total_requests: 1, total_failures: 0, executed_vus: 1 }] };
+  source.emit('metrics', finished);
+  source.emit('metrics', finished);
+  expect(handlers.onMetrics).toHaveBeenCalledTimes(2);
+  expect(handlers.onMetrics).toHaveBeenLastCalledWith(finished);
+});

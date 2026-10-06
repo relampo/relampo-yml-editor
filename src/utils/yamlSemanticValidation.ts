@@ -34,12 +34,8 @@ export function validateYAMLSemantics(tree: YAMLNode | null): YAMLSemanticIssue[
 
   const issues: YAMLSemanticIssue[] = [];
   const scenarioNodes: YAMLNode[] = [];
-  let scenariosNodeId: string | null = null;
 
   const collectScenarios = (node: YAMLNode) => {
-    if (node.type === 'scenarios' && scenariosNodeId === null) {
-      scenariosNodeId = node.id;
-    }
     if (node.type === 'scenario') {
       scenarioNodes.push(node);
     }
@@ -48,10 +44,15 @@ export function validateYAMLSemantics(tree: YAMLNode | null): YAMLSemanticIssue[
 
   collectScenarios(tree);
   if (scenarioNodes.length > 1) {
-    issues.push({
-      nodeId: scenariosNodeId ?? tree.id,
-      message: 'Relampo Studio supports only one scenario. Remove or merge extra scenarios before running Debug.',
-    });
+    if (!['sequential', 'parallel'].includes(String(tree.data?.scenario_mode ?? ''))) {
+      issues.push({ nodeId: tree.id, message: 'Choose sequential or parallel scenario scheduling for multiple scenarios.' });
+    }
+    const seen = new Set<string>();
+    for (const scenario of scenarioNodes) {
+      const name = String(scenario.data?.name ?? scenario.name ?? '').trim();
+      if (!name || seen.has(name)) issues.push({ nodeId: scenario.id, message: 'Multiple scenarios require unique, non-empty names.' });
+      seen.add(name);
+    }
   }
 
   const walk = (node: YAMLNode, scenarioIterations = 0) => {
