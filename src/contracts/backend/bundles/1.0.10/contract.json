@@ -22,11 +22,21 @@
     "pkg/engine/multi_scenario.go": "1b688add8f6603d1021d84aabea712efeff18abe10666df07f058c1988317fbd",
     "pkg/engine/script_settings.go": "1dce4dc3880d49b867385b0a27cdde7ad75acc1221e37b43f315b4c56611fe45",
     "pkg/engine/multi_preflight.go": "5b1d768afa96245de313299a56231646689eb4fb010281b0f7e5a444f12fe457",
-    "pkg/engine/engine_events_aggregate.go": "fd842d3f7592f22984a30c19fe0ecf06a6b25aefd1c8975ffb2036f85aeb299c",
+    "pkg/engine/engine_events_aggregate.go": "3eee26d91c416617d931929f4b736e59833f0ded0b15c12dbd779cf7852d7a11",
     "pkg/reporter/console.go": "e1e9f5c9c15070fef8678cd48e5cf0f071cb889dbc21162b74edb04a3521917e",
     "pkg/engine/scenario_selection.go": "501c871632879a6c1a9c8ab58ae8e520f48c86ab1136093f88938d60a315e552",
     "pkg/engine/distributed_scenarios.go": "20cb91da882a2cdc5f394f6590a6bab307823b84057f0c93b66bc46e6ec2fc85",
-    "pkg/reporter/execution_manifest.go": "fa6ea326e6a54a212e7c7b874cc3bba69d3d0c62f4241d994a64417c54064921"
+    "pkg/reporter/execution_manifest.go": "a3438f8ab0166ed72eea2b48ce16994c63c186bd63ba1e9935a99c662babd761",
+    "pkg/engine/scenario_contracts.go": "f6ca35736f43f170fcbe4470d118b0d4c38816cde9c98529c283ae38c1f9d7fc",
+    "pkg/reporter/identified_execution.go": "cec7665779d22e93de908cf58592889e2d3214f7492b95050b7de9ed111de655",
+    "pkg/reporter/execution_artifacts.go": "ed3645651086be4f7449cddd5e368f3e7f69ce6224e84c323b4dbee21ba34764",
+    "pkg/reporter/reporter.go": "2d42936bdf5113129ece25fe0d6d9ca5c4f54a63eebac8b693f53f66546f7ae2",
+    "pkg/reporter/reporting_metrics.go": "55b466f367c143918373bd525fbfccac6aa7a0e2521034fe9100bb8a9f43db49",
+    "cmd/relampo/identified_report.go": "bf956ea77ada6d0db03053fd85242f9e4d1dbcd663662191f2e85fdefb70336c",
+    "cmd/relampo/distributed_summary.go": "060cddc3c681a0d6aa860e5f30684b99f5d9cf3a4f5a1b7bd0f1dc471ab5e2ed",
+    "cmd/relampo-worker/multi_execution.go": "0a3721ed3a7bac1bc8c54d213a77e43bb52d870c93854cff484e44d4d9faeabd",
+    "cmd/relampo/cloud_report.go": "48e7f42852ec7c6deafedf5ee3d1905b17544e2bc2afdb266a327afea43dcbfc",
+    "cmd/relampo/distributed_artifacts.go": "ab14fc7ee28964c15bdb9e38661e227b76b4be44a6d9c4e4baaa9c28de4767f3"
   },
   "validation_error_codes": [
     "builtin_syntax",
