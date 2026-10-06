@@ -9,6 +9,7 @@ import { trackStudioRunStarted, trackStudioRunCompleted } from './analytics';
 import { studioAuthHeaders, withStudioToken } from './studioAuth';
 import { getRuntimeConfig } from './runtimeConfig';
 import { createValidatedEventStream, isRecord } from './sseMessage';
+import { load } from 'js-yaml';
 
 function apiBase(): string {
   return getRuntimeConfig().apiBaseUrl;
@@ -22,7 +23,19 @@ export type RunStatus = 'running' | 'completed' | 'stopped' | 'errored';
 
 // One ~1s aggregate sample (mirrors the backend loadRunSnapshot /
 // reporter.TimePoint shape: latency in ms, ts in unix seconds).
+export interface RunScenarioProgress {
+  name: string;
+  status: 'pending' | 'running' | 'finished';
+  started_at?: string;
+  ended_at?: string;
+  total_requests: number;
+  total_failures: number;
+  executed_vus: number;
+}
+
 export interface RunMetricsSnapshot {
+  seq?: number;
+  scenarios?: RunScenarioProgress[];
   ts: number;
   ts_ms?: number;
   interval_seconds?: number;
@@ -50,6 +63,8 @@ type RunLogLevel = 'request' | 'info' | 'error' | 'system';
 // One line of the live log feed. Request events carry the structured fields;
 // lifecycle/info events use `message`.
 export interface RunLogLine {
+  scenario_name?: string;
+  node_id?: string | number;
   seq: number;
   ts: number; // unix milliseconds
   level: RunLogLevel;
@@ -65,6 +80,9 @@ export interface RunLogLine {
 // live snapshots additionally carry runtime identity fields so the editor can
 // map resolved URLs and redirects back to their stable YAML steps.
 export interface RunRequestStat {
+  scenario_name?: string;
+  node_id?: string | number;
+  request_key?: string;
   name: string;
   method: string;
   path: string;
@@ -150,6 +168,8 @@ export interface RunIntentResult {
 }
 
 export interface RunTransactionStat {
+  scenario_name?: string;
+  node_id?: string | number;
   name: string;
   completed?: number;
   incomplete?: number;
@@ -184,7 +204,32 @@ export interface RunNodeResource {
 
 // Final report (mirrors the subset of reporter.Summary the dashboard renders).
 // `duration` is a Go time.Duration serialized as integer nanoseconds.
+export interface RunLatency {
+  count: number;
+  avg_ms: number;
+  min_ms: number;
+  max_ms: number;
+  p50_ms: number;
+  p90_ms: number;
+  p95_ms: number;
+  p99_ms: number;
+}
+
+export interface RunScenarioResult {
+  name: string;
+  outcome: 'completed' | 'failed' | 'stopped';
+  complete: boolean;
+  error?: string;
+  result: RunSummary;
+}
+
 export interface RunSummary {
+  complete?: boolean;
+  total_elapsed?: number;
+  workload_duration?: number;
+  request_latency?: RunLatency;
+  transaction_latency?: RunLatency;
+  scenarios?: RunScenarioResult[];
   report_schema_version?: number;
   status?: string;
   partial?: boolean;
@@ -232,11 +277,20 @@ export interface RunStreamHandlers {
 
 // Starts a load run. The backend executes the scenario's real load config from
 // the YAML (no VU/duration override), so the payload is just the script.
+export function hasMultipleRunScenarios(yaml: string): boolean {
+  try {
+    const script = load(yaml);
+    return isRecord(script) && Array.isArray(script.scenarios) && script.scenarios.length > 1;
+  } catch {
+    return false;
+  }
+}
+
 export async function startLoadRun(yaml: string): Promise<string> {
   const response = await fetch(`${apiBase()}/api/run`, {
     method: 'POST',
     headers: studioAuthHeaders({ 'Content-Type': 'application/json' }),
-    body: JSON.stringify({ yaml }),
+    body: JSON.stringify(hasMultipleRunScenarios(yaml) ? { yaml, multi_scenario_contract_version: 1 } : { yaml }),
   });
   if (!response.ok) {
     let message = `load run failed to start (HTTP ${response.status})`;
@@ -281,7 +335,7 @@ export function streamLoadRun(runId: string, handlers: RunStreamHandlers): () =>
   );
   const { source } = stream;
   const seenLogSequences = new Set<number>();
-  const seenMetricTimestamps = new Set<number>();
+  const seenMetricTimestamps = new Set<string>();
 
   source.addEventListener('state', message => {
     const state = stream.parse<RunState>(message, isRunState);
@@ -289,8 +343,9 @@ export function streamLoadRun(runId: string, handlers: RunStreamHandlers): () =>
   });
   source.addEventListener('metrics', message => {
     const metrics = stream.parse<RunMetricsSnapshot>(message, isRunMetricsSnapshot);
-    if (metrics && !seenMetricTimestamps.has(metrics.ts_ms ?? metrics.ts * 1000)) {
-      seenMetricTimestamps.add(metrics.ts_ms ?? metrics.ts * 1000);
+    const identity = metrics?.seq === undefined ? `time:${metrics?.ts_ms ?? (metrics?.ts ?? 0) * 1000}` : `sequence:${metrics.seq}`;
+    if (metrics && !seenMetricTimestamps.has(identity)) {
+      seenMetricTimestamps.add(identity);
       handlers.onMetrics(metrics);
     }
   });
@@ -348,6 +403,8 @@ function isRunRequestStat(value: unknown): value is RunRequestStat {
     typeof value.name === 'string' &&
     typeof value.method === 'string' &&
     typeof value.path === 'string' &&
+    isRunScope(value) &&
+    (value.request_key === undefined || typeof value.request_key === 'string') &&
     isFiniteNumber(value.count) &&
     isFiniteNumber(value.failures) &&
     isFiniteNumber(value.avg_ms) &&
@@ -363,6 +420,7 @@ function isRunRequestStat(value: unknown): value is RunRequestStat {
 function isRunMetricsSnapshot(value: unknown): value is RunMetricsSnapshot {
   return (
     isRecord(value) &&
+    (value.seq === undefined || (isFiniteNumber(value.seq) && Number.isInteger(value.seq) && value.seq > 0)) &&
     isFiniteNumber(value.ts) &&
     (value.ts_ms === undefined || isFiniteNumber(value.ts_ms)) &&
     (value.interval_seconds === undefined || isFiniteNumber(value.interval_seconds)) &&
@@ -376,7 +434,8 @@ function isRunMetricsSnapshot(value: unknown): value is RunMetricsSnapshot {
     isFiniteNumber(value.total_failures) &&
     isFiniteNumber(value.errors) &&
     (value.requests === undefined || (Array.isArray(value.requests) && value.requests.every(isRunRequestStat))) &&
-    (value.intent_ticks === undefined || (Array.isArray(value.intent_ticks) && value.intent_ticks.every(isRunIntentTick)))
+    (value.intent_ticks === undefined || (Array.isArray(value.intent_ticks) && value.intent_ticks.every(isRunIntentTick))) &&
+    (value.scenarios === undefined || (Array.isArray(value.scenarios) && value.scenarios.every(isRunScenarioProgress)))
   );
 }
 
@@ -442,6 +501,7 @@ function isRunIntentResult(value: unknown): value is RunIntentResult {
 function isRunLogLine(value: unknown): value is RunLogLine {
   if (!isRecord(value)) return false;
   return (
+    isRunScope(value) &&
     isFiniteNumber(value.seq) &&
     isFiniteNumber(value.ts) &&
     (value.level === 'request' || value.level === 'info' || value.level === 'error' || value.level === 'system') &&
@@ -473,6 +533,7 @@ function isRunHistoryPoint(value: unknown): value is RunHistoryPoint {
 function isRunTransactionStat(value: unknown): value is RunTransactionStat {
   return (
     isRecord(value) &&
+    isRunScope(value) &&
     typeof value.name === 'string' &&
     isFiniteNumber(value.count) &&
     isFiniteNumber(value.failures) &&
@@ -500,9 +561,36 @@ function isRunMetadata(value: unknown): value is Record<string, string> {
   return isRecord(value) && Object.values(value).every(item => typeof item === 'string');
 }
 
+function isRunScope(value: Record<string, unknown>): boolean {
+  return (value.scenario_name === undefined || typeof value.scenario_name === 'string') &&
+    (value.node_id === undefined || typeof value.node_id === 'string' || (isFiniteNumber(value.node_id) && Number.isInteger(value.node_id)));
+}
+
+function isRunScenarioProgress(value: unknown): value is RunScenarioProgress {
+  return isRecord(value) && typeof value.name === 'string' && typeof value.status === 'string' && ['pending', 'running', 'finished'].includes(String(value.status)) &&
+    (value.started_at === undefined || typeof value.started_at === 'string') &&
+    (value.ended_at === undefined || typeof value.ended_at === 'string') &&
+    ['total_requests', 'total_failures', 'executed_vus'].every(key => isFiniteNumber(value[key]));
+}
+
+function isRunLatency(value: unknown): value is RunLatency {
+  return isRecord(value) && ['count', 'avg_ms', 'min_ms', 'max_ms', 'p50_ms', 'p90_ms', 'p95_ms', 'p99_ms'].every(key => isFiniteNumber(value[key]));
+}
+
+function isRunScenarioResult(value: unknown): value is RunScenarioResult {
+  return isRecord(value) && typeof value.name === 'string' && typeof value.outcome === 'string' && ['completed', 'failed', 'stopped'].includes(String(value.outcome)) &&
+    typeof value.complete === 'boolean' && (value.error === undefined || typeof value.error === 'string') && isRunSummary(value.result);
+}
+
 function isRunSummary(value: unknown): value is RunSummary {
   return (
     isRecord(value) &&
+    (value.complete === undefined || typeof value.complete === 'boolean') &&
+    (value.total_elapsed === undefined || isFiniteNumber(value.total_elapsed)) &&
+    (value.workload_duration === undefined || isFiniteNumber(value.workload_duration)) &&
+    (value.request_latency === undefined || isRunLatency(value.request_latency)) &&
+    (value.transaction_latency === undefined || isRunLatency(value.transaction_latency)) &&
+    (value.scenarios === undefined || (Array.isArray(value.scenarios) && value.scenarios.every(isRunScenarioResult))) &&
     typeof value.test_name === 'string' &&
     typeof value.start_time === 'string' &&
     typeof value.end_time === 'string' &&

@@ -20,6 +20,7 @@ import type { YAMLNode } from '../types/yaml';
 import { useLanguage } from '../contexts/LanguageContext';
 import {
   loadRunReportUrl,
+  hasMultipleRunScenarios,
   startLoadRun,
   stopLoadRun,
   streamLoadRun,
@@ -242,6 +243,8 @@ function loadRunReducer(state: LoadRunState, action: LoadRunAction): LoadRunStat
   }
 }
 
+const MULTI_BACKEND_MESSAGE = 'This Studio backend does not support multiple scenarios. Update Relampo to run this script.';
+
 interface YAMLLoadRunSessionProps {
   tree: YAMLNode | null;
   yamlCode: string;
@@ -250,6 +253,7 @@ interface YAMLLoadRunSessionProps {
   flushPendingEdits?: () => string;
   documentReady: boolean;
   validationErrors: string[];
+  multiScenarioRunEnabled?: boolean;
 }
 
 export function YAMLLoadRunSession({
@@ -258,6 +262,7 @@ export function YAMLLoadRunSession({
   flushPendingEdits,
   documentReady,
   validationErrors,
+  multiScenarioRunEnabled = false,
 }: YAMLLoadRunSessionProps) {
   const [runState, dispatch] = useReducer(loadRunReducer, initialLoadRunState);
   const { snapshots, isRunning, isStopping, runError, runStatus, summary, logs } = runState;
@@ -274,6 +279,9 @@ export function YAMLLoadRunSession({
 
   const loadNodes = useMemo(() => collectLoadNodes(tree), [tree]);
   const runRequestTargets = useMemo(() => collectDebugEventTargets(tree), [tree]);
+  const isMultiScenario = loadNodes.length > 1 || hasMultipleRunScenarios(yamlCode);
+  const incompatibleMulti = isMultiScenario && !multiScenarioRunEnabled;
+  const [resultScope, setResultScope] = useState('');
   const plannedLoadNode = loadNodes[0] ?? null;
   const plannedLoadType = plannedLoadNode ? normalizeLoadType(plannedLoadNode.data?.type) : null;
   const iterationBudgetCapsDuration = useMemo(() => {
@@ -284,7 +292,8 @@ export function YAMLLoadRunSession({
   const hasValidationErrors = validationErrors.length > 0;
   const latest = snapshots[snapshots.length - 1] ?? null;
   const liveSummary = useMemo(() => buildLiveRunSummary(latest, runRequestTargets), [latest, runRequestTargets]);
-  const visibleSummary = summary ?? liveSummary;
+  const selectedResult = summary?.scenarios?.find(scenario => scenario.name === resultScope);
+  const visibleSummary = selectedResult?.result ?? summary ?? liveSummary;
   const intentTicks = useMemo(() => collectIntentTicks(snapshots, summary), [snapshots, summary]);
   const hasRunActivity = snapshots.length > 0 || logs.length > 0 || summary != null;
 
@@ -358,6 +367,11 @@ export function YAMLLoadRunSession({
       return;
     }
     if (!scriptAtStart.trim()) return;
+    if (!multiScenarioRunEnabled && hasMultipleRunScenarios(scriptAtStart)) {
+      dispatch({ type: 'flush_failed', error: MULTI_BACKEND_MESSAGE });
+      return;
+    }
+    setResultScope('');
     const token = (startTokenRef.current += 1);
     stopStreamRef.current?.();
     activeRunIdRef.current = null;
@@ -415,17 +429,19 @@ export function YAMLLoadRunSession({
         isStopping={isStopping}
         isRunning={isRunning}
         documentReady={documentReady}
-        hasValidationErrors={hasValidationErrors}
+        hasValidationErrors={hasValidationErrors || incompatibleMulti}
         yamlCode={yamlCode}
+        multiScenario={isMultiScenario}
         onStartRun={startRun}
         onStopRun={stopRun}
       />
 
+      {incompatibleMulti && <RunErrorBanner message={MULTI_BACKEND_MESSAGE} />}
       {hasValidationErrors && <ValidationErrorBanner errors={validationErrors} />}
 
       {runError && <RunErrorBanner message={runError} />}
 
-      {!summary && <StatsRow latest={latest} errorRate={errorRate} />}
+      {!summary && <StatsRow latest={latest} errorRate={errorRate} noObservations={isMultiScenario && latest?.total_requests === 0} />}
 
       <div className="min-h-0 flex-1 overflow-y-auto p-4">
         {!hasRunActivity ? (
@@ -437,8 +453,26 @@ export function YAMLLoadRunSession({
         ) : (
           <div className="space-y-4">
             <MetricsCharts snapshots={summary?.history ?? snapshots} />
+            {latest?.scenarios && (
+              <table aria-label="Scenario progress" className="w-full text-left text-xs text-zinc-300">
+                <thead><tr><th>Scenario</th><th>State</th><th>Executed VUs</th><th>Requests</th><th>Failures</th></tr></thead>
+                <tbody>{latest.scenarios.map(scenario => <tr key={scenario.name}>
+                  <td>{scenario.name}</td><td>{scenario.status}</td><td>{scenario.executed_vus}</td>
+                  <td>{scenario.total_requests}</td><td>{scenario.total_failures}</td>
+                </tr>)}</tbody>
+              </table>
+            )}
+            {summary?.scenarios && (
+              <label className="flex gap-3 text-sm text-zinc-300">Result scope
+                <select aria-label="Result scope" className="bg-zinc-900" value={resultScope} onChange={event => setResultScope(event.target.value)}>
+                  <option value="">Global</option>
+                  {summary.scenarios.map(scenario => <option key={scenario.name} value={scenario.name}>{scenario.name}</option>)}
+                </select>
+              </label>
+            )}
+            {selectedResult && <p className="text-sm text-zinc-300">{selectedResult.name}: {selectedResult.outcome}. Evidence: {selectedResult.complete ? 'Complete' : 'Partial'}.{selectedResult.error && ` ${selectedResult.error}`}</p>}
 
-            {plannedLoadNode && plannedLoadType !== 'intent' && plannedLoadType !== 'segments' && (
+            {!isMultiScenario && plannedLoadNode && plannedLoadType !== 'intent' && plannedLoadType !== 'segments' && (
               <PlannedLoadProfilePanel
                 plannedLoadNode={plannedLoadNode}
                 plannedLoadType={plannedLoadType}
@@ -461,7 +495,8 @@ export function YAMLLoadRunSession({
             {visibleSummary && (
               <RunSummaryPanel
                 summary={visibleSummary}
-                status={runStatus}
+                status={selectedResult ? selectedResult.outcome === 'failed' ? 'errored' : selectedResult.outcome : runStatus}
+                scenarioResult={selectedResult != null}
                 reportUrl={summary && activeRunIdRef.current ? loadRunReportUrl(activeRunIdRef.current) : undefined}
               />
             )}
@@ -487,6 +522,7 @@ function RunToolbar({
   yamlCode,
   onStartRun,
   onStopRun,
+  multiScenario = false,
 }: {
   runStatus: RunStatus | null;
   isStopping: boolean;
@@ -494,6 +530,7 @@ function RunToolbar({
   documentReady: boolean;
   hasValidationErrors: boolean;
   yamlCode: string;
+  multiScenario?: boolean;
   onStartRun: () => void;
   onStopRun: () => void;
 }) {
@@ -502,7 +539,7 @@ function RunToolbar({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">Load test session</p>
-          <h2 className="mt-1 text-base font-semibold text-zinc-100">Run the scenario's full load profile</h2>
+          <h2 className="mt-1 text-base font-semibold text-zinc-100">{multiScenario ? 'Run all scenarios' : "Run the scenario's full load profile"}</h2>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {runStatus && (
@@ -578,7 +615,7 @@ function RunErrorBanner({ message }: { message: string }) {
 }
 
 // The six live stat cards (req/s, p95, avg, error rate, VUs, requests).
-function StatsRow({ latest, errorRate }: { latest: RunMetricsSnapshot | null; errorRate: string }) {
+function StatsRow({ latest, errorRate, noObservations = false }: { latest: RunMetricsSnapshot | null; errorRate: string; noObservations?: boolean }) {
   return (
     <div className="grid grid-cols-2 border-b border-white/5 bg-[#0a0a0a] sm:grid-cols-3 lg:grid-cols-6">
       <StatCell
@@ -589,12 +626,12 @@ function StatsRow({ latest, errorRate }: { latest: RunMetricsSnapshot | null; er
       <StatCell
         icon={<Gauge className="h-4 w-4 text-blue-300" />}
         label="p95"
-        value={latest ? formatMs(latest.p95_latency) : '—'}
+        value={noObservations ? 'Unavailable' : latest ? formatMs(latest.p95_latency) : '—'}
       />
       <StatCell
         icon={<Activity className="h-4 w-4 text-emerald-300" />}
         label="Avg"
-        value={latest ? formatMs(latest.avg_latency) : '—'}
+        value={noObservations ? 'Unavailable' : latest ? formatMs(latest.avg_latency) : '—'}
       />
       <StatCell
         icon={<OctagonX className="h-4 w-4 text-red-300" />}
@@ -1322,14 +1359,15 @@ const LOG_LEVEL_TONE: Record<RunLogLine['level'], string> = {
 };
 
 function logLineText(line: RunLogLine): string {
+  const scope = line.scenario_name ? `[${line.scenario_name}] ` : '';
   if (line.method) {
     const vu = line.vu ? `VU${line.vu} ` : '';
     const status = line.status ? ` → ${line.status}` : '';
     const latency = line.latency_ms != null ? ` (${formatMs(line.latency_ms)})` : '';
     const error = line.message ? `  ${line.message}` : '';
-    return `${vu}${line.method} ${line.path || ''}${status}${latency}${error}`;
+    return `${scope}${vu}${line.method} ${line.path || ''}${status}${latency}${error}`;
   }
-  return line.message || '';
+  return `${scope}${line.message || ''}`;
 }
 
 // A live-tailing log feed of engine events (one panel, capped client-side and
@@ -1397,10 +1435,12 @@ function RunSummaryPanel({
   summary,
   status,
   reportUrl,
+  scenarioResult = false,
 }: {
   summary: RunSummary;
   status: RunStatus | null;
   reportUrl?: string;
+  scenarioResult?: boolean;
 }) {
   const requests = summary.requests ?? [];
   const durationSeconds = summary.duration / 1e9;
@@ -1418,7 +1458,16 @@ function RunSummaryPanel({
   };
   const failurePercent = summary.overview ? summary.overview.failure_percent : summary.total_requests > 0 ? summary.total_failures * 100 / summary.total_requests : null;
   const metrics = [
-    { label: 'Status', value: STATUS_LABELS[(summary.status || status) as RunStatus] ?? 'Unavailable' },
+    { label: 'Status', value: summary.status === 'failed' ? 'Failed' : STATUS_LABELS[(summary.status || status) as RunStatus] ?? 'Unavailable' },
+    ...(summary.complete === undefined ? [] : [{ label: 'Evidence', value: summary.complete ? 'Complete' : 'Partial' }]),
+    ...(summary.scenarios ? [
+      { label: 'Total elapsed', value: formatDurationNs(summary.total_elapsed ?? summary.duration) },
+      { label: 'Workload duration', value: formatDurationNs(summary.workload_duration ?? summary.duration) },
+    ] : []),
+    ...(scenarioResult || summary.request_latency || summary.scenarios || summary.requests.some(request => request.scenario_name) ? [
+      { label: 'Request p95', value: summary.request_latency ? formatMs(summary.request_latency.p95_ms) : 'Unavailable' },
+      { label: 'Transaction p95', value: summary.transaction_latency ? formatMs(summary.transaction_latency.p95_ms) : 'Unavailable' },
+    ] : []),
     { label: 'Duration', value: formatDurationNs(summary.duration) },
     { label: 'VUs (exec/conf)', value: `${executedVUs}/${configuredVUs}` },
     { label: 'Total Requests', value: summary.total_requests.toLocaleString() },
@@ -1442,7 +1491,7 @@ function RunSummaryPanel({
           <CheckCircle2 className="h-4 w-4 text-emerald-300" />
         )}
         <p className="text-sm font-semibold text-zinc-100">
-          {status === 'stopped' ? 'Run stopped — partial summary' : summary.partial ? 'Run summary — partial' : 'Run summary'}
+          {status === 'stopped' && summary.complete === undefined && !scenarioResult ? 'Run stopped — partial summary' : summary.partial ? 'Run summary — partial' : 'Run summary'}
         </p>
         {reportUrl && (
           <a
@@ -1469,7 +1518,7 @@ function RunSummaryPanel({
       </div>
 
       <div className="space-y-2 border-t border-white/10 px-4 py-3 text-xs text-zinc-400">
-        <p>{summary.test_name} · {summary.metadata?.execution_mode ?? 'Local'} · {summary.start_time || 'Start unavailable'} → {summary.end_time || 'End unavailable'}</p>
+        <p>{summary.test_name} · {summary.metadata?.execution_mode ?? 'Local'} · {(scenarioResult && summary.start_time.startsWith('0001-01-01') ? '' : summary.start_time) || 'Start unavailable'} → {(scenarioResult && summary.end_time.startsWith('0001-01-01') ? '' : summary.end_time) || 'End unavailable'}</p>
         <p>RPS and TPS are execution averages. Charts show rates for each measured interval.</p>
         {summary.expected_nodes != null && <p>Nodes: {summary.received_nodes?.length ?? 0}/{summary.expected_nodes}. Missing: {summary.missing_nodes?.join(', ') || 'None'}.</p>}
         {summary.report_schema_version == null && summary.transactions?.some(tx => tx.completed == null) && <p>Legacy transaction rate: {formatSummaryRate(durationSeconds > 0 ? summary.transactions.reduce((total, tx) => total + tx.count, 0) / durationSeconds : null)} TPS. Completion counts are unavailable.</p>}
@@ -1524,6 +1573,7 @@ function RunSummaryPanel({
                     <span className="mr-2 rounded border border-blue-400/25 bg-blue-400/10 px-1.5 py-0.5 text-[10px] font-semibold text-blue-300">
                       {request.method}
                     </span>
+                    {request.scenario_name && <span className="mr-2 text-zinc-400">{request.scenario_name}</span>}
                     {request.path || request.name}
                   </td>
                   <td className="px-3 py-2 text-right font-mono text-zinc-300">{request.count.toLocaleString()}</td>
@@ -1553,6 +1603,11 @@ function buildLiveRunSummary(latest: RunMetricsSnapshot | null, requestTargets: 
   if (!latest) return null;
   const requests = new Map<string, RunRequestStat>();
   (latest.requests ?? []).forEach(request => {
+    if (request.scenario_name) {
+      const key = [request.scenario_name, request.node_id ?? '', request.request_key ?? liveRunSummaryFallbackKey(request)].join('\u0000');
+      addLiveRunSummaryRequest(requests, key, request);
+      return;
+    }
     const target = matchDebugEventTarget(request, requestTargets);
     if (target) {
       addLiveRunSummaryRequest(requests, `target:${target.id}`, {

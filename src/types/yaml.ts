@@ -1,5 +1,7 @@
 import type { StringMap } from './shared';
 
+export type ScenarioMode = 'sequential' | 'parallel';
+
 type YAMLScalar = string | number | boolean | null;
 export type YAMLValue = YAMLScalar | Uint8Array | YAMLValue[] | { [key: string]: YAMLValue | undefined } | undefined;
 
@@ -128,6 +130,7 @@ export interface YAMLNodeData {
   response?: YAMLResponseData;
   right_boundary?: string;
   run_until_stopped?: boolean;
+	 scenario_mode?: ScenarioMode;
   script?: string;
   ssl_mode?: string;
   spark?: YAMLNodeData[];

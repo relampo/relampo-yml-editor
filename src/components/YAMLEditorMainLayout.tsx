@@ -11,7 +11,9 @@ interface YAMLEditorMainLayoutProps {
   onSelectViewMode: (mode: EditorViewMode) => void;
   language: string;
   debugViewEnabled: boolean;
+  multiScenarioDebugEnabled: boolean;
   runViewEnabled: boolean;
+  multiScenarioRunEnabled?: boolean;
   isDebugViewActive: boolean;
   isRunViewActive: boolean;
   yamlTree: YAMLNode | null;
@@ -54,7 +56,9 @@ export function YAMLEditorMainLayout({
   onSelectViewMode,
   language,
   debugViewEnabled,
+  multiScenarioDebugEnabled,
   runViewEnabled,
+  multiScenarioRunEnabled,
   isDebugViewActive,
   isRunViewActive,
   yamlTree,
@@ -134,7 +138,9 @@ export function YAMLEditorMainLayout({
         isRunViewActive={isRunViewActive}
         language={language}
         debugViewEnabled={debugViewEnabled}
+        multiScenarioDebugEnabled={multiScenarioDebugEnabled}
         runViewEnabled={runViewEnabled}
+        multiScenarioRunEnabled={multiScenarioRunEnabled}
         yamlTree={yamlTree}
         yamlCode={yamlCode}
         flushPendingEdits={flushPendingEdits}

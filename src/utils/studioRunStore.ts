@@ -7,6 +7,7 @@
 export interface StoredRun {
   id: string;
   fp: string;
+  scenarioName?: string;
 }
 
 // Cheap, stable (djb2) fingerprint of the document.
