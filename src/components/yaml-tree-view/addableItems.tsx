@@ -80,7 +80,7 @@ function filterAddableItemsByContainment(parentType: YAMLNodeType, items: Addabl
 export function getAddableItems(
   parentType: YAMLNodeType,
   t: (key: string) => string,
-  parentNode?: Pick<YAMLNode, 'children'>,
+  _parentNode?: Pick<YAMLNode, 'children'>,
 ): AddableItem[] {
   const iconClass = 'w-4 h-4';
 
@@ -125,9 +125,6 @@ export function getAddableItems(
   }
 
   if (parentType === 'scenarios') {
-    const hasScenario = parentNode?.children?.some(child => child.type === 'scenario') ?? false;
-    if (hasScenario) return [];
-
     return [
       {
         type: 'scenario',

@@ -29,7 +29,7 @@ describe('YAMLContextMenu', () => {
     expect(screen.getByRole('button', { name: 'Think Time Pause between requests' })).toBeInTheDocument();
   });
 
-  it('does not offer a second scenario under scenarios', () => {
+  it('offers another scenario under a populated scenarios container', () => {
     render(
       <LanguageProvider>
         <YAMLContextMenu
@@ -48,8 +48,7 @@ describe('YAMLContextMenu', () => {
       </LanguageProvider>,
     );
 
-    expect(screen.queryByRole('button', { name: 'Scenario New load scenario' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Scenario New load scenario' })).toBeInTheDocument();
   });
 
   it('offers scenario creation when scenarios is empty', () => {
@@ -74,7 +73,9 @@ describe('YAMLContextMenu', () => {
     expect(screen.getByRole('button', { name: 'Scenario New load scenario' })).toBeInTheDocument();
   });
 
-  it('does not offer duplicate for scenarios', () => {
+  it('offers duplicate and copy for individual scenarios', () => {
+    const onDuplicate = vi.fn();
+    const onCopy = vi.fn();
     render(
       <LanguageProvider>
         <YAMLContextMenu
@@ -89,12 +90,16 @@ describe('YAMLContextMenu', () => {
           onClose={vi.fn()}
           onAddNode={vi.fn()}
           onRemove={vi.fn()}
-          onDuplicate={vi.fn()}
+          onDuplicate={onDuplicate}
+          onCopy={onCopy}
         />
       </LanguageProvider>,
     );
 
-    expect(screen.queryByRole('button', { name: 'Duplicate' })).not.toBeInTheDocument();
+    screen.getByRole('button', { name: 'Duplicate' }).click();
+    screen.getByRole('button', { name: 'Copy' }).click();
+    expect(onDuplicate).toHaveBeenCalledWith('scenario-1');
+    expect(onCopy).toHaveBeenCalledWith('scenario-1');
   });
 
   it('offers copy and compatible paste actions for request children', () => {

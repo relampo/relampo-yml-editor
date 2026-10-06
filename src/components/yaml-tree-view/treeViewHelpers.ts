@@ -1,17 +1,14 @@
 import type { YAMLNode } from '../../types/yaml';
 import type { YAMLAddableNodeType } from './addableItems';
+import { canContain } from '../../utils/yamlDragDropRules';
 import { buildSearchIndex, nodeMatchExpandsDescendants, type SearchNodeState } from './search';
 
 export function canAddNodeToTarget(target: YAMLNode, nodeType: YAMLAddableNodeType) {
-  return !(
-    nodeType === 'scenario' &&
-    target.type === 'scenarios' &&
-    target.children?.some(child => child.type === 'scenario')
-  );
+  return canContain(target.type, nodeType);
 }
 
 export function canDuplicateNode(node: YAMLNode | null | undefined) {
-  return node?.type !== 'scenario' && node?.type !== 'scenarios';
+  return Boolean(node && !['root', 'test', 'scenarios', 'steps'].includes(node.type));
 }
 
 export function computeVisibleNodes(

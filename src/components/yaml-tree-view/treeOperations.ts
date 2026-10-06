@@ -540,16 +540,24 @@ export function replaceTextInEnabledRequestsAtMatch(
   return { result: { tree: updatedTree, replacements }, matches };
 }
 
+function prepareScenarioForInsertion(node: YAMLNode, siblings: YAMLNode[]): YAMLNode {
+  if (node.type !== 'scenario') return node;
+  const baseName = (node.name || node.data?.name || '').trim() || 'New Scenario';
+  const names = new Set(siblings.filter(child => child.type === 'scenario').map(child => child.name.trim()));
+  let name = baseName;
+  for (let suffix = 2; names.has(name); suffix += 1) name = `${baseName} ${suffix}`;
+  return { ...node, name, data: { ...node.data, name } };
+}
+
 export function addNodeToTree(tree: YAMLNode, parentId: string, newNode: YAMLNode): YAMLNode {
   if (tree.id === parentId) {
     const children = tree.children || [];
-    if (newNode.type === 'scenario' && tree.type === 'scenarios' && children.some(child => child.type === 'scenario')) {
-      return tree;
-    }
+    if (newNode.type === 'scenario' && tree.type !== 'scenarios') return tree;
+    const insertedNode = prepareScenarioForInsertion(newNode, children);
 
     return {
       ...tree,
-      children: [newNode, ...children],
+      children: newNode.type === 'scenario' ? [...children, insertedNode] : [insertedNode, ...children],
       expanded: true,
     };
   }
@@ -596,8 +604,9 @@ export function duplicateNodeInTree(tree: YAMLNode, nodeId: string, copySuffix: 
 
     const index = node.children.findIndex(child => child.id === nodeId);
     if (index !== -1) {
+      if (!canContain(node.type, newNode.type)) return node;
       const newChildren = [...node.children];
-      newChildren.splice(index + 1, 0, newNode);
+      newChildren.splice(index + 1, 0, prepareScenarioForInsertion(newNode, newChildren));
       return { ...node, children: newChildren };
     }
 
@@ -616,8 +625,11 @@ export function insertNodesAfterTarget(tree: YAMLNode, targetId: string, newNode
 
   const index = tree.children.findIndex(child => child.id === targetId);
   if (index !== -1) {
+    if (!newNodes.every(node => canContain(tree.type, node.type))) return tree;
     const newChildren = [...tree.children];
-    newChildren.splice(index + 1, 0, ...newNodes);
+    newNodes.forEach((node, offset) => {
+      newChildren.splice(index + 1 + offset, 0, prepareScenarioForInsertion(node, newChildren));
+    });
     return { ...tree, children: newChildren };
   }
 
@@ -630,6 +642,8 @@ export function insertNodesAfterTarget(tree: YAMLNode, targetId: string, newNode
 export function cloneNodeSnapshot(node: YAMLNode): YAMLNode {
   return {
     ...node,
+    ...(node.data ? { data: structuredClone(node.data) } : {}),
+    ...(node.unknownData ? { unknownData: structuredClone(node.unknownData) } : {}),
     children: node.children?.map(cloneNodeSnapshot),
   };
 }
@@ -640,7 +654,7 @@ export function cloneNodeWithNewIds(node: YAMLNode, copySuffix?: string): YAMLNo
   const clone = (source: YAMLNode): YAMLNode => {
     const newId = createNodeId();
     const sourceChainId = source.data?.chain_id;
-    let data = source.data;
+    let data = source.data ? structuredClone(source.data) : undefined;
 
     if (sourceChainId) {
       let clonedChainId = chainIdMap.get(sourceChainId);
@@ -648,14 +662,15 @@ export function cloneNodeWithNewIds(node: YAMLNode, copySuffix?: string): YAMLNo
         clonedChainId = `rc-${newId}`;
         chainIdMap.set(sourceChainId, clonedChainId);
       }
-      data = { ...source.data, chain_id: clonedChainId };
+      data = { ...data, chain_id: clonedChainId };
     }
 
     return {
       ...source,
       id: newId,
-      name: copySuffix ? `${source.name} (${copySuffix})` : source.name,
+      name: copySuffix && (node.type !== 'scenario' || source === node) ? `${source.name} (${copySuffix})` : source.name,
       ...(data ? { data } : {}),
+      ...(source.unknownData ? { unknownData: structuredClone(source.unknownData) } : {}),
       children: source.children?.map(clone),
     };
   };

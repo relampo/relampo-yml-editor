@@ -28,7 +28,9 @@ function buildUpdatedNode(node: YAMLNode, updatedData: NodeUpdateData): YAMLNode
     ...node,
     type: requestPresentation?.type ?? node.type,
     name: requestPresentation?.name ?? __name ?? node.name,
-    data: cleanData as YAMLNode['data'],
+    data: (node.type === 'scenario' && typeof __name === 'string'
+      ? { ...cleanData, name: __name }
+      : cleanData) as YAMLNode['data'],
   };
 }
 
