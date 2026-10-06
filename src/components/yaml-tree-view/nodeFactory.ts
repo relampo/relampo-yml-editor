@@ -14,8 +14,9 @@ export function createNodeByType(
     const scenarioId = createNodeId();
     return {
       id: 'root',
-      type: 'root',
+      type: 'test',
       name: 'Test Plan',
+      data: { name: 'Test Plan' },
       expanded: true,
       children: [
         {

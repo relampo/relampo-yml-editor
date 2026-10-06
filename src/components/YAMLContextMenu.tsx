@@ -84,11 +84,11 @@ export function YAMLContextMenu({
   const canAddChildren = addableItems.length > 0;
   const canShowNodeActions = node.type !== 'root' && node.type !== 'test' && node.type !== 'scenarios' && node.type !== 'steps';
   const canToggleEnabled = canShowNodeActions && Boolean(onToggleEnabled);
-  const canDuplicate = canShowNodeActions && node.type !== 'scenario' && Boolean(onDuplicate);
-  const canCopy = canShowNodeActions && node.type !== 'scenario' && Boolean(onCopy);
+  const canDuplicate = canShowNodeActions && Boolean(onDuplicate);
+  const canCopy = canShowNodeActions && Boolean(onCopy);
   const canRemove = canShowNodeActions;
 
-  if (!canAddChildren && !canToggleEnabled && !canDuplicate && !canRemove) {
+  if (!canAddChildren && !canToggleEnabled && !canDuplicate && !canRemove && !canPaste) {
     return null;
   }
 
@@ -157,7 +157,7 @@ export function YAMLContextMenu({
           </button>
         )}
 
-      {canRemove && (
+      {(canRemove || canPaste) && (
         <>
           <div className="h-px bg-white/5 my-1" />
 
@@ -203,14 +203,16 @@ export function YAMLContextMenu({
             </button>
           )}
 
-          <button
-            type="button"
-            onClick={onRemove}
-            className="w-full px-3 py-2 flex items-center gap-3 hover:bg-red-500/10 text-left transition-colors text-red-400"
-          >
-            <Trash2 className="w-4 h-4" />
-            <span className="text-sm">{t('yamlEditor.common.delete')}</span>
-          </button>
+          {canRemove && (
+            <button
+              type="button"
+              onClick={onRemove}
+              className="w-full px-3 py-2 flex items-center gap-3 hover:bg-red-500/10 text-left transition-colors text-red-400"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span className="text-sm">{t('yamlEditor.common.delete')}</span>
+            </button>
+          )}
         </>
       )}
     </div>

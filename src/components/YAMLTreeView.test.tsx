@@ -4,6 +4,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest
 import { LanguageProvider } from '../contexts/LanguageContext';
 import { yamlMapData, type YAMLNode } from '../types/yaml';
 import { YAMLTreeView } from './YAMLTreeView';
+import { parseYAMLToTree } from '../utils/yamlParser';
 
 const originalInnerHeight = window.innerHeight;
 const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
@@ -120,6 +121,53 @@ function mockMatchMedia(matches: Record<string, boolean>) {
     })),
   });
 }
+
+describe('scenario mutation selection', () => {
+  it('selects added and duplicated scenarios, supports container paste, and clears deleted selection', async () => {
+    let latestTree: YAMLNode | null = null;
+    let selectedIds: string[] = [];
+    const scenarios = () => latestTree!.children!.find(node => node.type === 'scenarios')!.children!;
+    renderInteractiveTreeView({
+      tree: parseYAMLToTree('test: {name: Plan}\nscenarios: [{name: Source, steps: [{get: /health}]}]')!,
+      onTreeStateChange: (tree, ids) => { latestTree = tree; selectedIds = ids; },
+    });
+    fireEvent.contextMenu(screen.getByRole('treeitem', { name: /^Scenarios$/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Scenario New load scenario' }));
+    await waitFor(() => expect(selectedIds).toEqual([scenarios()[1].id]));
+    expect(scenarios()[1].name).toBe('New Scenario');
+
+    fireEvent.contextMenu(screen.getByRole('treeitem', { name: /^Source$/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Duplicate' }));
+    await waitFor(() => expect(selectedIds).toEqual([scenarios()[1].id]));
+    expect(scenarios()[1].name).toBe('Source (Copy)');
+    fireEvent.keyDown(screen.getByRole('tree'), { key: 'c', ctrlKey: true });
+    fireEvent.contextMenu(screen.getByRole('treeitem', { name: /^Scenarios$/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Paste' }));
+    await waitFor(() => expect(selectedIds).toEqual([scenarios()[3].id]));
+    expect(scenarios()[3].name).toBe('Source (Copy) (Copy)');
+    fireEvent.keyDown(screen.getByRole('tree'), { key: 'Delete' });
+    await waitFor(() => expect(selectedIds).toEqual([]));
+    expect(scenarios()).toHaveLength(3);
+  });
+
+  it('duplicates a multi-selection through the keyboard with unique names and fresh selection', async () => {
+    const tree = parseYAMLToTree('test: {name: Plan, scenario_mode: sequential}\nscenarios: [{name: A, steps: []}, {name: B, steps: []}]')!;
+    const originalScenarios = tree.children!.find(node => node.type === 'scenarios')!.children!;
+    let latestTree = tree;
+    let selectedIds: string[] = [];
+    renderInteractiveTreeView({
+      tree,
+      selectedNodeIds: originalScenarios.map(node => node.id),
+      selectedNodeId: originalScenarios[1].id,
+      onTreeStateChange: (current, ids) => { latestTree = current; selectedIds = ids; },
+    });
+    fireEvent.keyDown(screen.getByRole('tree'), { key: 'd', ctrlKey: true });
+    await waitFor(() => expect(selectedIds).toHaveLength(2));
+    const scenarios = latestTree.children!.find(node => node.type === 'scenarios')!.children!;
+    expect(scenarios.map(node => node.name)).toEqual(['A', 'A (Copy)', 'B', 'B (Copy)']);
+    expect(selectedIds).toEqual([scenarios[1].id, scenarios[3].id]);
+  });
+});
 
 describe('YAMLTreeView context menu', () => {
   it('adds a Parallel Controller inside a Balanced Controller', () => {

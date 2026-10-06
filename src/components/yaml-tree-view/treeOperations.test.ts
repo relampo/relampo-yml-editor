@@ -469,7 +469,7 @@ describe('transaction grouping operations', () => {
     expect(result).toBe(tree);
   });
 
-  it('does not add a second scenario under scenarios', () => {
+  it('appends another scenario without changing existing execution order', () => {
     const tree = createBaseTree();
 
     const result = addNodeToTree(tree, 'scenarios', {
@@ -479,7 +479,7 @@ describe('transaction grouping operations', () => {
       children: [],
     });
 
-    expect(findNodeById(result, 'scenarios')?.children?.map(child => child.id)).toEqual(['scenario-1']);
+    expect(findNodeById(result, 'scenarios')?.children?.map(child => child.id)).toEqual(['scenario-1', 'scenario-2']);
   });
 
   it('reindexes step paths after inserting a data source before requests', () => {

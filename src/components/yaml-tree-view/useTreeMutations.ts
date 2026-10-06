@@ -16,7 +16,7 @@ import {
   updateNodeEnabled,
   wrapNodesInTransaction,
 } from './treeOperations';
-import { canAddNodeToTarget, canDuplicateNode, findNodeById } from './treeViewHelpers';
+import { buildParentMap, canAddNodeToTarget, canDuplicateNode, findNodeById } from './treeViewHelpers';
 
 interface ContextMenuState {
   x: number;
@@ -60,6 +60,23 @@ export function useTreeMutations({
 }: UseTreeMutationsParams) {
   const [clipboardNodes, setClipboardNodes] = useState<YAMLNode[]>([]);
 
+  // Commit the new tree and its selection together. Selecting before the parent
+  // accepts the tree can leave the details panel pointing at a stale node.
+  const commitInsertedTree = (updatedTree: YAMLNode) => {
+    const previousIds = buildParentMap(tree);
+    const insertedNodes: YAMLNode[] = [];
+    const collect = (node: YAMLNode) => {
+      if (!previousIds.has(node.id)) insertedNodes.push(node);
+      else node.children?.forEach(collect);
+    };
+    collect(updatedTree);
+    if (!insertedNodes.length) return;
+    onTreeChange(updatedTree, {
+      primaryId: insertedNodes[insertedNodes.length - 1].id,
+      nodeIds: insertedNodes.map(node => node.id),
+    });
+  };
+
   const handleNodeToggle = (nodeId: string) => {
     if (!tree) return;
 
@@ -75,24 +92,15 @@ export function useTreeMutations({
     if (!contextMenu || !tree) return;
 
     const targetIds = getContextActionTargetIds();
-    const createdNodes: YAMLNode[] = [];
-
     const updatedTree = targetIds.reduce((currentTree, targetId) => {
       const target = findNodeById(currentTree, targetId);
       if (!target) return currentTree;
       if (!canAddNodeToTarget(target, nodeType)) return currentTree;
 
       const newNode = createNodeByType(nodeType, { balancedName: t('yamlEditor.balanced.name') });
-      createdNodes.push(newNode);
       return addNodeToTree(currentTree, targetId, newNode);
     }, tree);
-    onTreeChange(updatedTree);
-    if (createdNodes.length > 0) {
-      onSelectionChange(
-        createdNodes[createdNodes.length - 1],
-        createdNodes.map(node => node.id),
-      );
-    }
+    commitInsertedTree(updatedTree);
     handleCloseContextMenu();
   };
 
@@ -109,7 +117,7 @@ export function useTreeMutations({
       },
       tree,
     );
-    onTreeChange(updatedTree);
+    commitInsertedTree(updatedTree);
     handleCloseContextMenu();
   };
 
@@ -214,7 +222,8 @@ export function useTreeMutations({
 
     let updatedTree: YAMLNode;
     if (canPasteInside) {
-      updatedTree = [...pastedNodes].reverse().reduce(
+      const insertionOrder = targetNode.type === 'scenarios' ? pastedNodes : [...pastedNodes].reverse();
+      updatedTree = insertionOrder.reduce(
         (currentTree, node) => addNodeToTree(currentTree, targetNode.id, node),
         tree,
       );
@@ -227,11 +236,7 @@ export function useTreeMutations({
       updatedTree = insertNodesAfterTarget(tree, targetNode.id, pastedNodes);
     }
 
-    onTreeChange(updatedTree);
-    onSelectionChange(
-      pastedNodes[pastedNodes.length - 1] || null,
-      pastedNodes.map(node => node.id),
-    );
+    commitInsertedTree(updatedTree);
   };
 
   const handleBulkDuplicate = () => {
@@ -246,7 +251,7 @@ export function useTreeMutations({
       },
       tree,
     );
-    onTreeChange(updatedTree);
+    commitInsertedTree(updatedTree);
   };
 
   const handleBulkToggleEnabled = () => {
