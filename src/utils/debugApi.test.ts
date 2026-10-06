@@ -61,12 +61,12 @@ describe('probeStudio', () => {
 
   it('reports the loadRun capability when the studio advertises it', async () => {
     mockFetch({ studio: true, capabilities: { loadRun: true, dataSourceFiles: true, debug: true } });
-    expect((await probeStudio())?.capabilities).toEqual({ loadRun: true, dataSourceFiles: true, debug: true });
+    expect((await probeStudio())?.capabilities).toEqual({ loadRun: true, dataSourceFiles: true, debug: true, multiScenarioRun: false, multiScenarioDebug: false });
   });
 
   it('defaults loadRun to false when capabilities are present without it', async () => {
     mockFetch({ studio: true, capabilities: {} });
-    expect((await probeStudio())?.capabilities).toEqual({ loadRun: false, dataSourceFiles: false, debug: false });
+    expect((await probeStudio())?.capabilities).toEqual({ loadRun: false, dataSourceFiles: false, debug: false, multiScenarioRun: false, multiScenarioDebug: false });
   });
 
   it('returns version and default-view information from the CLI', async () => {
@@ -88,6 +88,11 @@ describe('probeStudio', () => {
     });
   });
 
+  it('reports explicit multi-scenario capabilities', async () => {
+    mockFetch({ studio: true, capabilities: { multiScenarioRun: true, multiScenarioDebug: true } });
+    expect((await probeStudio())?.capabilities).toMatchObject({ multiScenarioRun: true, multiScenarioDebug: true });
+  });
+
   it('omits capabilities for older studio builds that do not send them', async () => {
     mockFetch({ studio: true });
     expect((await probeStudio())?.capabilities).toBeUndefined();
@@ -95,6 +100,15 @@ describe('probeStudio', () => {
 });
 
 describe('startDebugRun', () => {
+  it('posts full YAML with an explicit scenario selection', async () => {
+    mockFetch({ id: 'selected-2' });
+    const yaml = 'test: {scenario_mode: parallel}\nscenarios: [{name: first}, {name: second}]\n';
+    await expect(startDebugRun(yaml, { vus: 2, scenarioName: 'second' })).resolves.toBe('selected-2');
+    expect(fetch).toHaveBeenCalledWith('/api/debug/runs', expect.objectContaining({
+      body: JSON.stringify({ yaml, vus: 2, scenarioName: 'second' }),
+    }));
+  });
+
   it('posts the selected debug VUs with the YAML', async () => {
     mockFetch({ id: 'run-2' });
 
