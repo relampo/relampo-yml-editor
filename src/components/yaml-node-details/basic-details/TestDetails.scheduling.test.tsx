@@ -32,3 +32,15 @@ scenarios:
     expect(validateYAMLSemantics(parseYAMLToTree(yaml))).toEqual([]);
   });
 });
+
+it.each(['', 'name: " "', 'name: same'])('rejects missing, blank, or duplicate multi names: %s', name => {
+  const tree = parseYAMLToTree(`test: {scenario_mode: sequential}
+scenarios:
+- name: same
+  steps: [{get: /same}]
+- ${name || 'steps: [{get: /same}]'}
+${name ? '  steps: [{get: /same}]' : ''}
+`);
+  const issues = validateYAMLSemantics(tree);
+  expect(issues.some(issue => issue.message === 'Multiple scenarios require unique, non-empty names.')).toBe(true);
+});

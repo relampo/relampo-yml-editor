@@ -49,7 +49,8 @@ export function validateYAMLSemantics(tree: YAMLNode | null): YAMLSemanticIssue[
     }
     const seen = new Set<string>();
     for (const scenario of scenarioNodes) {
-      const name = String(scenario.data?.name ?? scenario.name ?? '').trim();
+      const rawName = scenario.data ? scenario.data.name : scenario.name;
+      const name = typeof rawName === 'string' ? rawName.trim() : '';
       if (!name || seen.has(name)) issues.push({ nodeId: scenario.id, message: 'Multiple scenarios require unique, non-empty names.' });
       seen.add(name);
     }
