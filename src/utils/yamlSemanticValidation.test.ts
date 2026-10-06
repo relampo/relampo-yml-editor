@@ -430,7 +430,7 @@ describe('validateYAMLSemantics', () => {
     ]);
   });
 
-  it('flags more than one scenario', () => {
+  it('requires scheduling for more than one scenario', () => {
     const tree: YAMLNode = {
       id: 'root',
       type: 'test',
@@ -450,8 +450,8 @@ describe('validateYAMLSemantics', () => {
 
     expect(validateYAMLSemantics(tree)).toEqual([
       {
-        nodeId: 'scenarios',
-        message: 'Relampo Studio supports only one scenario. Remove or merge extra scenarios before running Debug.',
+        nodeId: 'root',
+        message: 'Choose sequential or parallel scenario scheduling for multiple scenarios.',
       },
     ]);
   });
