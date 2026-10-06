@@ -362,6 +362,51 @@ function runStateReducer(state: RunState, action: RunAction): RunState {
   }
 }
 
+function buildTimelineEntries(entries: DebugEntry[], debugEventTargets: YAMLNode[]): DebugEntry[] {
+  const skipped = skippedRedirectHops(
+    entries.map(entry => entry.event),
+    debugEventTargets,
+  );
+  if (skipped.length === 0) return entries;
+  const placeholdersByAnchor = new Map<number, DebugEntry[]>();
+  skipped.forEach(hop => {
+    const anchor = entries[hop.afterEventIndex];
+    if (!anchor) return;
+    const child = hop.node;
+    const event: EngineEvent = {
+      ts: '',
+      name: child.name,
+      method: String(child.data?.method ?? anchor.event.method ?? 'GET').toUpperCase(),
+      path: String(child.data?.url ?? child.data?.path ?? child.name ?? ''),
+      status: 0,
+      latency_ms: 0,
+      concurrency: 0,
+      vu: anchor.event.vu,
+      request_id: anchor.event.request_id,
+      chain_id: String(child.data?.chain_id ?? anchor.event.chain_id ?? ''),
+      chain_role: String(child.data?.chain_role ?? ''),
+      redirect_index: hop.position,
+    };
+    const placeholder: DebugEntry = {
+      id: `skip-${anchor.id}-${child.id}`,
+      index: 0,
+      event,
+      node: child,
+      status: 'skipped',
+    };
+    const list = placeholdersByAnchor.get(hop.afterEventIndex);
+    if (list) list.push(placeholder);
+    else placeholdersByAnchor.set(hop.afterEventIndex, [placeholder]);
+  });
+  const woven: DebugEntry[] = [];
+  entries.forEach((entry, index) => {
+    woven.push(entry);
+    const extras = placeholdersByAnchor.get(index);
+    if (extras) woven.push(...extras);
+  });
+  return woven;
+}
+
 export function YAMLDebugSession({
   tree,
   yamlCode,
@@ -406,51 +451,10 @@ export function YAMLDebugSession({
   // no event and would silently vanish (for example, #124 without #125). Weave
   // them back as read-only "skipped" placeholders right after their chain's last
   // real row, so the timeline stays faithful to the recorded chain. RLP-607.
-  const timelineEntries = useMemo<DebugEntry[]>(() => {
-    if (!runCompleted) return entries;
-    const skipped = skippedRedirectHops(
-      entries.map(entry => entry.event),
-      debugEventTargets,
-    );
-    if (skipped.length === 0) return entries;
-    const placeholdersByAnchor = new Map<number, DebugEntry[]>();
-    skipped.forEach(hop => {
-      const anchor = entries[hop.afterEventIndex];
-      if (!anchor) return;
-      const child = hop.node;
-      const event: EngineEvent = {
-        ts: '',
-        name: child.name,
-        method: String(child.data?.method ?? anchor.event.method ?? 'GET').toUpperCase(),
-        path: String(child.data?.url ?? child.data?.path ?? child.name ?? ''),
-        status: 0,
-        latency_ms: 0,
-        concurrency: 0,
-        vu: anchor.event.vu,
-        request_id: anchor.event.request_id,
-        chain_id: String(child.data?.chain_id ?? anchor.event.chain_id ?? ''),
-        chain_role: String(child.data?.chain_role ?? ''),
-        redirect_index: hop.position,
-      };
-      const placeholder: DebugEntry = {
-        id: `skip-${anchor.id}-${child.id}`,
-        index: 0,
-        event,
-        node: child,
-        status: 'skipped',
-      };
-      const list = placeholdersByAnchor.get(hop.afterEventIndex);
-      if (list) list.push(placeholder);
-      else placeholdersByAnchor.set(hop.afterEventIndex, [placeholder]);
-    });
-    const woven: DebugEntry[] = [];
-    entries.forEach((entry, index) => {
-      woven.push(entry);
-      const extras = placeholdersByAnchor.get(index);
-      if (extras) woven.push(...extras);
-    });
-    return woven;
-  }, [debugEventTargets, entries, runCompleted]);
+  const timelineEntries = useMemo<DebugEntry[]>(
+    () => runCompleted ? buildTimelineEntries(entries, debugEventTargets) : entries,
+    [debugEventTargets, entries, runCompleted],
+  );
   const filteredTimelineEntries = useMemo(
     () => filterTimelineEntries(timelineEntries, timelineFilter),
     [timelineFilter, timelineEntries],
