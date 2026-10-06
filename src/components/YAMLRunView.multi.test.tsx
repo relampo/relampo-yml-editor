@@ -73,3 +73,25 @@ it('keeps live identities and selects exact final scenario results', async () =>
   expect(screen.getByText('RSS Peak').parentElement).toHaveTextContent('Unavailable');
   expect(within(screen.getByRole('combobox', { name: 'Result scope' })).getByRole('option', { name: 'Global' })).toBeInTheDocument();
 });
+
+it('shows configured users separately from users executed before local Stop', async () => {
+  vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => ({ id: 'early-stop' }) })));
+  vi.stubGlobal('EventSource', ServerStream);
+  render(<YAMLLoadRunSession {...props} multiScenarioRunEnabled />);
+  fireEvent.click(screen.getByRole('button', { name: 'Run load test' }));
+  await waitFor(() => expect(ServerStream.instance).toBeDefined());
+  act(() => ServerStream.instance.emit('done', { status: 'stopped', summary: {
+    ...child('all'), status: 'stopped', executed_vus: 2, total_elapsed: 1e9, workload_duration: 1e9,
+    scenarios: [{ name: 'A', outcome: 'stopped', complete: false,
+      load_contract: { scenario_name: 'A', peak_vus: 100, duration: 600e9, load: { users: 100, duration: '10m', ramp_up: '10m' } },
+      result: { ...child('A'), status: 'stopped', executed_vus: 2, metadata: { configured_vus: '100' } },
+    }, { name: 'B', outcome: 'stopped', complete: false,
+      load_contract: { scenario_name: 'B', peak_vus: 2, duration: 0, load: { users: 2, iterations: 1 } },
+      result: { ...child('B'), status: 'stopped', executed_vus: 0, metadata: { configured_vus: '2' } },
+    }],
+  } }));
+  fireEvent.change(screen.getByRole('combobox', { name: 'Result scope' }), { target: { value: 'A' } });
+  expect(screen.getByText('VUs (exec/conf)').parentElement).toHaveTextContent('2/100');
+  fireEvent.change(screen.getByRole('combobox', { name: 'Result scope' }), { target: { value: 'B' } });
+  expect(screen.getByText('VUs (exec/conf)').parentElement).toHaveTextContent('0/2');
+});
