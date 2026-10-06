@@ -543,12 +543,15 @@ export function YAMLDebugSession({
       return;
     }
     if (!scriptAtStart.trim()) return;
-    let snapshotTree: YAMLNode | null;
+    let snapshotTree: YAMLNode | null = tree;
     try {
       snapshotTree = parseYAMLToTree(scriptAtStart);
     } catch (error) {
-      dispatchRunState({ type: 'run_start_failed', message: error instanceof Error ? error.message : String(error) });
-      return;
+      // Single Debug keeps its existing backend validation and error messages.
+      if (isMultiScenario) {
+        dispatchRunState({ type: 'run_start_failed', message: error instanceof Error ? error.message : String(error) });
+        return;
+      }
     }
     const snapshotScenarios = scenarioNodes(snapshotTree);
     const selectedName = snapshotScenarios.length > 1 ? scenarioName : undefined;
