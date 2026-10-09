@@ -1,0 +1,502 @@
+{
+  "schema_version": 1,
+  "contract_version": "1.0.11",
+  "backend_sha": "9dc90a3a3da78a78f6411fdf153a9bf3dd2a1c91",
+  "source_files": {
+    ".goreleaser.yaml": "c2ecef0bf2b3905a2aed05628cedfcf4f89790a924efebcfd42314d053023744",
+    "cmd/relampo-worker/main.go": "69a5654c3cfc47455d73b11ec8cdeb2c69733c1efe01feca8777304b64ccbb7c",
+    "cmd/relampo-worker/multi_authorization.go": "b2427993ba6914bdff9b13a53a0192b4cb45c0fd7499afeb65ad8927cb2f4a5d",
+    "cmd/relampo-worker/multi_execution.go": "dca0b7ad571c12591dad7bc1b62df182f5173518da2e982336a7b3e3efc103bb",
+    "cmd/relampo-worker/native_phase.go": "543a1e559b79f06f0cdd2066357bcf1c0762aa098f53d5e2e63a12ebd6f310f0",
+    "cmd/relampo/cloud_report.go": "54a9d574fdaa36d089736cb88ac28c5c8d7d7f45afd9d00d3f280e4bbbc3fd34",
+    "cmd/relampo/cloud_report_command.go": "751e9d699526c61b94aed17542cbd1bb1a1c682bed453b5cfab965f3c1056965",
+    "cmd/relampo/distributed.go": "f98a3ae1f6ec96089da9e5777cf2fa3b8d2af98efcbdf9d25c1456f3057c611d",
+    "cmd/relampo/distributed_artifacts.go": "a30307a154b6ef5bfb1d54ed9dfd80a7cb9557a9589ec8b50661bd930a07c0df",
+    "cmd/relampo/distributed_data_sources.go": "6c9b3e567ebcf27d43ebdc3274caccd91cd028034e0179e8ca08d01c715d9c37",
+    "cmd/relampo/distributed_github_inventory.go": "7e7517b733086b984a8a753b83e3a9a88fdfe9ed2282020e3a1575d5bc87d563",
+    "cmd/relampo/distributed_github_multi.go": "6446d056e1809031069bce115fd8afe1095b16c5f633fa1d09d597ebc66ef228",
+    "cmd/relampo/distributed_gitlab.go": "b08c4d9c12d7f9d600e7cd092690e81bfc4292a5bea738e9439e7a93080ac754",
+    "cmd/relampo/distributed_gitlab_multi.go": "4ab3a6de2e31e9f7e1c0d2b2a3e3ca73304c3d1cb57fb39cf1fbdc3b69224536",
+    "cmd/relampo/distributed_gitlab_original.go": "4ef565370c3aaed1d1675ae74c2e3fc6e6820dadd35dddcc2763c0020034ce2c",
+    "cmd/relampo/distributed_gitlab_parallel.go": "8bd32a77dfa5fc54bfaa514e73cb4fe9be781c0c2c6cf410805876daa3cd0be7",
+    "cmd/relampo/distributed_gitlab_parallel_workflow.go": "27099bbb1caba12043d257949c284c0fc654407134913ec6513a44ff5a6c23a0",
+    "cmd/relampo/distributed_gitlab_sequential.go": "f957ceabff7af9ff65b2d564fbd53add1f25e622b4c498fdf825e927e774d32e",
+    "cmd/relampo/distributed_gitlab_workflow.go": "1af7504c8100af8c5113d56cf2be83d21ddb51a6f7039aaf3ea3ac5d6c396e98",
+    "cmd/relampo/distributed_native_phase.go": "3e13730f16577a2c0204109ab04bae76878775f1c1c66ad317f305e9e11d741e",
+    "cmd/relampo/distributed_run.go": "0844764a30453242e9c5135e19164f9978269ac0567f17f1283c87792d9344e9",
+    "cmd/relampo/distributed_scenario.go": "412973a8dc50127a05b7abfca1e9f07ff8656e423b1a73ed8a7ec7782f846463",
+    "cmd/relampo/distributed_summary.go": "060cddc3c681a0d6aa860e5f30684b99f5d9cf3a4f5a1b7bd0f1dc471ab5e2ed",
+    "cmd/relampo/distributed_worker_preflight.go": "43d45b24c2c0a7d547659e44fe802308c2b4820485011ad6b7abff28afe22730",
+    "cmd/relampo/identified_report.go": "bf956ea77ada6d0db03053fd85242f9e4d1dbcd663662191f2e85fdefb70336c",
+    "cmd/relampo/main.go": "ba93511c3fe83eb2cb685b5f56e19cef6ba59c2600c37efd1b78a12353fa9bf6",
+    "cmd/relampo/preflight.go": "abc99b3d65a3219ce566109c83bfc05ee7b2fbaacc6e69f82e09a7fd6289ea99",
+    "internal/correlate/apply.go": "d280b8866a4c2e6af90300ef95218d4d085e5d049a1c8e9cb4762fafa4453d59",
+    "internal/correlate/component_defaults.go": "41329a9207af77a44d203b5a52c4580a1e0f46ed98e0a55b8137b253a475e606",
+    "internal/correlate/parser.go": "7b4c2ce9471ddd9a31b7abce1ab85426aa31f2707eaeb26bc8987e0e9fd9d88d",
+    "internal/licensing/authorize.go": "98b0187a02bc8f7662ee1cd3a43830892bc713b0c9f345c4f5e8d66ad87dfc8b",
+    "internal/licensing/client.go": "ccaa75461211ca1a0ade050bce49e8a89cd7367136dad7a2503661162c2752b1",
+    "internal/licensing/multi_authorization.go": "df521777515ab1364e3ef166fe8e4d36a68c9befddf19be90dbf573a303a7d0c",
+    "internal/licensing/runauth.go": "b15e13c86b4faad471b37e864fb67eaa1dd34c1c10e267a985c0c5167722dec7",
+    "internal/multiscenario/availability.go": "426f4b704e07e6f6bd0d7872e2fbf251e27761593a00c12611786d58f9ba69c8",
+    "internal/studio/api.go": "e1d10ed28a757a7e37e59b8737fa7722a911677204a7ef2057c69062a332ad28",
+    "internal/studio/loadRuns.go": "c545d24085c4e997a4590135cb0737d0bb2610342d07f555dfade50dd4bdab8c",
+    "internal/studio/runs.go": "cf837be5ff419ca60c5470d5d25d7c1ac214f15958568f99b4939acc24768067",
+    "pkg/engine/distributed_scenarios.go": "20cb91da882a2cdc5f394f6590a6bab307823b84057f0c93b66bc46e6ec2fc85",
+    "pkg/engine/engine_dispatcher.go": "8bf37ee8428a2dbf7026826c8686df85a2934e7e3634109a231e5d8348a46c5b",
+    "pkg/engine/engine_events_aggregate.go": "3eee26d91c416617d931929f4b736e59833f0ded0b15c12dbd779cf7852d7a11",
+    "pkg/engine/engine_executor.go": "af423bb71384b462a886ed4583c644f056d24956bb5829a78f2fea2629bdcf4e",
+    "pkg/engine/engine_helpers.go": "885c61940d32592580185020a4176adbd49c6d020336602f6ac9698d17c0c9c0",
+    "pkg/engine/engine_intent.go": "6c359f38a790113f0fd9541b151eced3a12808e15258fdde536136bd9d215714",
+    "pkg/engine/engine_models.go": "9ee11d82fbd5d4edf685b09f63f7a3196a5269fa9efdd89526bbd66874b8dfaf",
+    "pkg/engine/multi_preflight.go": "a1c72a13ee58951ab232d37e3f7ba55dcdb49333475073255ca308bb899abe5f",
+    "pkg/engine/multi_scenario.go": "2b6a77fb7be573fd2b98e2d578c4f64a94854dbfa8ed0fd70b49015e9415ed8b",
+    "pkg/engine/scenario_contracts.go": "f6ca35736f43f170fcbe4470d118b0d4c38816cde9c98529c283ae38c1f9d7fc",
+    "pkg/engine/scenario_selection.go": "501c871632879a6c1a9c8ab58ae8e520f48c86ab1136093f88938d60a315e552",
+    "pkg/engine/script_settings.go": "e66cddd4fa18744943304060e79172f70c8057480ccd4a5808812082aa46f145",
+    "pkg/engine/segments.go": "eca790c4c052b6596205be361492fbbe55348a8e99c44bed631d4c3a93f0a6ca",
+    "pkg/engine/segments_controller.go": "8ae889688eac0f771a96be2e8b070bc209c8f58f8128e77f4b0a1b99de56669d",
+    "pkg/engine/stages.go": "91625f5e381bf8db8cad595ee07060e2d4a3a89430a1bc8b2b011a3f1b54a06f",
+    "pkg/reporter/console.go": "e1e9f5c9c15070fef8678cd48e5cf0f071cb889dbc21162b74edb04a3521917e",
+    "pkg/reporter/execution_artifacts.go": "ed3645651086be4f7449cddd5e368f3e7f69ce6224e84c323b4dbee21ba34764",
+    "pkg/reporter/execution_manifest.go": "9bc1782d75ca881785d2ac667409c93124465f718d30efd9b8a7f106c0a38016",
+    "pkg/reporter/identified_execution.go": "1bbf1a423f647b246d55dfc5477d85340c35f6b734af242bf3199dc5a06f2d92",
+    "pkg/reporter/reporter.go": "2d42936bdf5113129ece25fe0d6d9ca5c4f54a63eebac8b693f53f66546f7ae2",
+    "pkg/reporter/reporting_metrics.go": "55b466f367c143918373bd525fbfccac6aa7a0e2521034fe9100bb8a9f43db49",
+    "pkg/reporter/summary_from_engine.go": "cbd47a38f157436817eb261abe87b351e190fb6ca4f66da4da458a78c0261ee8",
+    "pkg/runtime/assertions.go": "0de838aba99acb2fe21544d588555779ff020d45dff08f442b12cafa117b42c2",
+    "pkg/runtime/auth.go": "9e92c1a99af80a8e8fa66dd0149984c2872e8d92f98c904641559c3c1acb1ae3",
+    "pkg/runtime/balanced.go": "91f7c5fc1a8fe4ab2ebb83b81c52fea64b750cb6be08f7f3acff0ea316b935c4",
+    "pkg/runtime/component_configuration.go": "3dab6e2dda779998828a91999759d87968531ccbd1b45891e6e304a71e62c80e",
+    "pkg/runtime/component_diagnostics.go": "b743941cc20c6bb63cc1c5a80e44a9780b019062838839adf88822ad311b047d",
+    "pkg/runtime/component_execution.go": "cf52dafd71c885ebf9ca6c9ee77402e0a4c889420f5f001c73bc02449085f280",
+    "pkg/runtime/component_inputs.go": "f059e5158fabeac4d16fb4932d9d8a1cc403c8099723fdb7caf1ddb7c5147eed",
+    "pkg/runtime/component_one_time.go": "18b68174f9cfcbe3372a4a4b83c44948499f53c3d7d1026009b6f1444a526b2d",
+    "pkg/runtime/component_redirects.go": "a91ce62eb949b5bef37518801e528101a6e50f8b0e32c2a0e67f884b892cb678",
+    "pkg/runtime/component_sql_assertions.go": "652b3c697e39679cd2ef24fbff5346373233dc74a16289fda13171cdedfbc176",
+    "pkg/runtime/component_validation.go": "f8c85b8fd3100be3ff31b016e2e55eca48398665b7110bcc0f205490ab62d176",
+    "pkg/runtime/config_view.go": "19af805f478de773b10ce083ab5ed6f1aa1974d97d28a566955eee368e6a72f6",
+    "pkg/runtime/control_flow.go": "2f639f87659e080f4712f5fe552930680da129b773c8002b0835361447ee2945",
+    "pkg/runtime/datasource.go": "bffe5e2c00d43c6f123501dbddc0ad403435af3d60156c611ef998a5c48f83ef",
+    "pkg/runtime/error_policy.go": "fa158681e395e5e08b3ea079cb96d225894949202c3d261f37b005b14d842694",
+    "pkg/runtime/exec.go": "8c4522e0bdac60c6f851209064411f2264c8562d2d9919ea696c9c558c62d112",
+    "pkg/runtime/model.go": "b93eb3cb002a4b1a1da3b7b74bcf1b15213284baec1b826765579715071507d0",
+    "pkg/runtime/one_time.go": "00d09744c77132a063a8fb74718fa1eca5a1df8db8c82bfe1a03989baa9b3c13",
+    "pkg/runtime/parallel.go": "d45728c751797ef0ca8003f13a8f5412cdb4368299634a400e4463386fb0e8d1",
+    "pkg/runtime/request.go": "6f0559c17f1f4255e4c1b27cb47ceec5912a681554f060de9a8ae530ff2af3e3",
+    "pkg/runtime/sql.go": "accf4451c1cf3705512b761311416f3533e0beaabaf165b9dbb622d33afbde3b",
+    "pkg/runtime/sql_types.go": "215707a9327ded77c4b7d05447394fe787e5ff31ed634571e2dbe72e9120e5d6",
+    "pkg/runtime/transaction.go": "651c42ddc981999aea9b70c9ec50d832ce777ac84016aebed19617ad535688db",
+    "pkg/runtime/url.go": "5b0b75d0b82ac159a59ba3907513942d0ae443019b5fa5bf18dc3645894c9a44",
+    "pkg/validator/load_config.go": "6efda3bc372589014f1ef092d8560a7bbe327d20205e8173cc20252ef53ceaa7",
+    "pkg/validator/validator.go": "da5453b86657f7d144f25bbf24038a190fb51887d5c870885076e91fe30dd378",
+    "pkg/validator/validator_segments.go": "f0ade6059d983cc9f6052611b0e086334b71d4eb25d7b19db156db3167c63861",
+    "pkg/validator/validator_stages.go": "d69ba662a13977d8a0a706a51acdb8fca5972250b39a48e3f1d1790f727b3ad9",
+    "pkg/validator/validator_throughput_load.go": "5f9e81607510d95ac3b841a04be7ad58a7fefcf0fd3de2a71f9ad7775a3a0e8d",
+    "scripts/publish-develop-release.sh": "a04a22ba685c29f4641b5c3750308074de2db2096d7b6e0e6ef63db0b73586cf",
+    "scripts/write-worker-capabilities.py": "b23e683793f6d334919adf77c5425772fb57dddee98ebb822056346515bad946"
+  },
+  "validation_error_codes": [
+    "builtin_syntax",
+    "duplicate_value",
+    "invalid_value",
+    "required_field",
+    "schema_mismatch",
+    "unsupported_value",
+    "yaml_syntax"
+  ],
+  "known_fields": {
+    "root": [
+      "component_configuration_version",
+      "defaults",
+      "test",
+      "variables",
+      "data_source",
+      "http_defaults",
+      "grpc_defaults",
+      "webrtc_defaults",
+      "scenarios",
+      "metrics"
+    ],
+    "test": [
+      "name",
+      "description",
+      "version",
+      "scenario_mode"
+    ],
+    "data_source": [
+      "type",
+      "file",
+      "path",
+      "mode",
+      "strategy",
+      "on_exhausted",
+      "variable_names",
+      "bind"
+    ],
+    "load": [
+      "type",
+      "users",
+      "iterations",
+      "duration",
+      "ramp_up",
+      "ramp_down",
+      "start_users",
+      "end_users",
+      "target_rps",
+      "target_unit",
+      "target_value",
+      "goal",
+      "target",
+      "min_vus",
+      "max_vus",
+      "aggressiveness",
+      "run_until_stopped",
+      "stages",
+      "segments",
+      "warmup",
+      "window",
+      "control_window",
+      "stability_window",
+      "latency",
+      "error_rate",
+      "error_rate_max_pct",
+      "error_4xx_max_pct",
+      "error_5xx_max_pct",
+      "p50_max_ms",
+      "p75_max_ms",
+      "p95_max_ms",
+      "p99_max_ms",
+      "p999_max_ms"
+    ],
+    "load_stage": [
+      "name",
+      "type",
+      "duration",
+      "open_ended",
+      "users",
+      "start_users",
+      "end_users"
+    ],
+    "load_segment": [
+      "name",
+      "duration",
+      "target_rps",
+      "target_vus",
+      "min_vus",
+      "max_vus"
+    ],
+    "metrics": [
+      "percentiles"
+    ],
+    "error_policy": [
+      "enabled",
+      "on_error",
+      "on_4xx",
+      "on_5xx",
+      "on_timeout"
+    ],
+    "profile": [
+      "load_type",
+      "concurrency",
+      "duration",
+      "ramp_up",
+      "ramp_down",
+      "iterations",
+      "target_rps"
+    ],
+    "http_defaults": [
+      "connection_scope",
+      "dns_cache_ttl",
+      "base_url",
+      "allowed_redirect_origins",
+      "headers",
+      "auth",
+      "timeout",
+      "disable_http2",
+      "max_idle_conns",
+      "max_idle_conns_per_host",
+      "max_conns_per_host",
+      "dial_timeout",
+      "tls_handshake_timeout",
+      "response_header_timeout",
+      "follow_redirects",
+      "retry_policy",
+      "retrieve_embedded_resources",
+      "embedded_resource_types",
+      "embedded_resource_blacklist"
+    ],
+    "auth": [
+      "type",
+      "token",
+      "name",
+      "value",
+      "in",
+      "username",
+      "password"
+    ],
+    "scenario": [
+      "requests",
+      "defaults",
+      "data_source",
+      "name",
+      "profile",
+      "load",
+      "cookies",
+      "cache_manager",
+      "error_policy",
+      "steps"
+    ],
+    "cookies": [
+      "clear_each_iteration",
+      "policy",
+      "cookies"
+    ],
+    "cookie": [
+      "name",
+      "value",
+      "domain",
+      "path"
+    ],
+    "cache_manager": [
+      "clear_each_iteration",
+      "max_elements"
+    ],
+    "group": [
+      "defaults",
+      "name",
+      "auth",
+      "enabled",
+      "steps"
+    ],
+    "controller": [
+      "defaults",
+      "name",
+      "auth",
+      "enabled",
+      "steps"
+    ],
+    "assertions": [
+      "assertions"
+    ],
+    "one_time": [
+      "defaults",
+      "name",
+      "description",
+      "auth",
+      "enabled",
+      "steps"
+    ],
+    "balanced": [
+      "defaults",
+      "name",
+      "type",
+      "mode",
+      "enabled",
+      "steps"
+    ],
+    "if": [
+      "defaults",
+      "condition",
+      "steps"
+    ],
+    "loop": [
+      "defaults",
+      "count",
+      "break_on",
+      "steps"
+    ],
+    "retry": [
+      "defaults",
+      "attempts",
+      "on",
+      "backoff",
+      "initial_delay",
+      "max_delay",
+      "multiplier",
+      "steps"
+    ],
+    "think_time": [
+      "duration",
+      "min",
+      "max",
+      "mean",
+      "std_dev",
+      "distribution",
+      "enabled"
+    ],
+    "request": [
+      "auth",
+      "request_id",
+      "method",
+      "url",
+      "headers",
+      "query_params",
+      "body",
+      "body_raw",
+      "timeout",
+      "cookie_override",
+      "cache_override",
+      "extract",
+      "extractors",
+      "assert",
+      "assertions",
+      "spark",
+      "files",
+      "think_time",
+      "retry",
+      "on_error",
+      "error_policy",
+      "throughput",
+      "data_source",
+      "name",
+      "enabled",
+      "recorded_at",
+      "retrieve_embedded_resources",
+      "redirect_automatically",
+      "follow_redirects",
+      "chain_id",
+      "chain_role",
+      "response",
+      "response_preview"
+    ],
+    "throughput": [
+      "enabled",
+      "target_rps"
+    ],
+    "response": [
+      "status",
+      "headers",
+      "size_bytes",
+      "time_ms"
+    ],
+    "extractor": [
+      "type",
+      "var",
+      "variable",
+      "from",
+      "pattern",
+      "path",
+      "expression",
+      "header",
+      "transform",
+      "left_boundary",
+      "right_boundary",
+      "default",
+      "template",
+      "match_no",
+      "capture_mode",
+      "capture_index",
+      "group"
+    ],
+    "spark": [
+      "name",
+      "when",
+      "script"
+    ],
+    "file": [
+      "field",
+      "path",
+      "mime"
+    ],
+    "assertion": [
+      "type",
+      "value",
+      "path",
+      "name",
+      "max_ms",
+      "size"
+    ],
+    "sql": [
+      "assertions",
+      "think_time",
+      "name",
+      "dialect",
+      "kind",
+      "connection",
+      "query",
+      "params",
+      "allow_writes",
+      "validate_connectivity",
+      "timeout",
+      "on_error",
+      "error_policy"
+    ],
+    "sql_connection": [
+      "host",
+      "port",
+      "database",
+      "user",
+      "password",
+      "ssl_mode",
+      "max_open_conns",
+      "max_idle_conns",
+      "conn_max_lifetime"
+    ],
+    "defaults": [
+      "data_source",
+      "think_time",
+      "http",
+      "sql"
+    ],
+    "http_component_defaults": [
+      "headers",
+      "auth",
+      "timeout",
+      "follow_redirects",
+      "redirect_automatically",
+      "retrieve_embedded_resources",
+      "error_policy",
+      "assertions",
+      "cookies",
+      "cache"
+    ],
+    "sql_component_defaults": [
+      "error_policy",
+      "assertions"
+    ],
+    "component_data_source": [
+      "type",
+      "file",
+      "path",
+      "mode",
+      "strategy",
+      "on_exhausted",
+      "variable_names",
+      "bind",
+      "enabled"
+    ]
+  },
+  "poc_exclusions": [
+    "grpc",
+    "webrtc",
+    "websocket"
+  ],
+  "fixtures": [
+    {
+      "kind": "valid",
+      "path": "fixtures/valid/full.yaml",
+      "sha256": "aa91b8b723d7842b93246453b1469c8f5333df687002916002d9fcff73c564fb"
+    },
+    {
+      "kind": "invalid",
+      "path": "fixtures/invalid/missing-scenarios.yaml",
+      "sha256": "c38a0b324cb89e572a4ed6c1d3eb11c4aac6d73149f75224f722e137ad563e0e",
+      "expected_errors": [
+        {
+          "code": "required_field",
+          "field": "scenarios"
+        }
+      ]
+    },
+    {
+      "kind": "forward",
+      "path": "fixtures/forward/unknown-fields.yaml",
+      "sha256": "0a1d0769e73ebb466bcad1ad09a15a90634da7f66bf0a3baad669df439209a35"
+    },
+    {
+      "kind": "roundtrip",
+      "path": "fixtures/roundtrip/semantic-fields.yaml",
+      "sha256": "42c1f7d79607ff5d274431a70c940b2eea813fa133c3eabd47e5c02b3d174ff7"
+    }
+  ]
+}
