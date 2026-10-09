@@ -16,9 +16,14 @@ export interface YAMLResponseData {
 
 export interface YAMLNodeData {
   __allowTypeSelection?: boolean;
+  __assertionsWrapper?: boolean;
+  __controller?: boolean;
+  defaults?: YAMLNodeData;
+  webrtc?: YAMLValue;
   __balancedPercentage?: YAMLInputValue;
   __lockedType?: string;
   __name?: string;
+  __scalarIf?: boolean;
   __scalarLoop?: boolean;
   __scalarRetry?: boolean;
   __stepsInController?: boolean;
@@ -232,6 +237,11 @@ export interface YAMLNode {
   data?: YAMLNodeData;
   /** Semantic fields that the editor does not model, kept for lossless saves. */
   unknownData?: Record<string, YAMLValue>;
+  /** Original sampler input and display snapshot keep absence distinct from UI defaults. */
+  authoredData?: YAMLNodeData;
+  authoredChildTypes?: string[];
+  initialData?: YAMLNodeData;
+  componentEdits?: string[];
   expanded?: boolean;
   path?: Array<string | number>; // Path in the YAML tree for synchronization
 }

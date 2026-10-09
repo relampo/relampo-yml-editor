@@ -174,9 +174,7 @@ function normalizeSQLConnection(
 
   Object.keys(connection).forEach(key => {
     const value = connection[key];
-    if (value === '' || value === undefined || value === null) {
-      delete connection[key];
-    } else if (isPlainObject(value) && Object.keys(value).length === 0) {
+    if (value === undefined || (value === '' && ['driver', 'query', 'timeout', 'dialect'].includes(key))) {
       delete connection[key];
     }
   });
@@ -331,13 +329,13 @@ export function normalizeSQLForEditor(step: PlainRecord | undefined): SQLLike {
         ? sql.on_error
         : typeof sql.error_policy?.on_error === 'string'
           ? sql.error_policy.on_error
-          : 'stop',
+          : undefined,
     connection,
     params: Array.isArray(sql.params) || isPlainObject(sql.params) ? sql.params : (sql.params ?? []),
   };
 }
 
-export function normalizeSQLForYaml(step: PlainRecord | undefined): SQLLike {
+export function normalizeSQLForYaml(step: PlainRecord | undefined, preservePresence = false): SQLLike {
   const sql: SQLLike = { ...(step || {}) };
   const connection = normalizeSQLConnection(sql.connection, sql, { preserveEmpty: false });
 
@@ -345,12 +343,7 @@ export function normalizeSQLForYaml(step: PlainRecord | undefined): SQLLike {
     ...sql,
     kind: inferSQLKind(sql),
     allow_writes: sql.allow_writes === true || sql.allow_write === true,
-    on_error:
-      typeof sql.on_error === 'string'
-        ? sql.on_error
-        : typeof sql.error_policy?.on_error === 'string'
-          ? sql.error_policy.on_error
-          : undefined,
+    on_error: typeof sql.on_error === 'string' ? sql.on_error : undefined,
     connection: connection && Object.keys(connection).length > 0 ? connection : undefined,
   };
 
@@ -361,19 +354,20 @@ export function normalizeSQLForYaml(step: PlainRecord | undefined): SQLLike {
   delete normalized.max_idle_conns;
   delete normalized.conn_max_lifetime;
   delete normalized.conn_max_idle_time;
-  delete normalized.error_policy;
+  // Authored error_policy remains distinct from on_error for scoped fallback.
+  if (preservePresence) {
+    if (!('allow_writes' in sql) && !('allow_write' in sql)) delete normalized.allow_writes;
+    if ('on_error' in sql) normalized.on_error = sql.on_error;
+    if ('connection' in sql && !connection) normalized.connection = sql.connection;
+  }
 
   Object.keys(normalized).forEach(key => {
     const value = normalized[key];
-    if (value === '' || value === undefined || value === null) {
+    if (value === undefined || (value === '' && ['driver', 'query', 'timeout', 'dialect'].includes(key))) {
       delete normalized[key];
       return;
     }
-    if (Array.isArray(value) && value.length === 0) {
-      delete normalized[key];
-      return;
-    }
-    if (isPlainObject(value) && Object.keys(value).length === 0) {
+    if (!preservePresence && key === 'connection' && isPlainObject(value) && Object.keys(value).length === 0) {
       delete normalized[key];
     }
   });
@@ -418,11 +412,9 @@ export function normalizeRequestForEditor(
       : { enabled: false };
   };
 
-  const rawUrl = typeof (request as PlainRecord)?.url === 'string' ? (request as PlainRecord).url as string : '';
+  const rawUrl = typeof (request as PlainRecord)?.url === 'string' ? ((request as PlainRecord).url as string) : '';
   const queryParamsMap = (request as PlainRecord)?.query_params;
-  const mergedUrl = isPlainObject(queryParamsMap)
-    ? mergeQueryParamsIntoUrl(rawUrl, queryParamsMap)
-    : rawUrl;
+  const mergedUrl = isPlainObject(queryParamsMap) ? mergeQueryParamsIntoUrl(rawUrl, queryParamsMap) : rawUrl;
 
   const normalized: PlainRecord = { ...(request || {}) };
   if (isPlainObject(queryParamsMap)) {

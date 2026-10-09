@@ -6,6 +6,11 @@ import jsyaml from 'js-yaml';
 import { describe, expect, it } from 'vitest';
 import { parseYAMLToTree, treeToYAML } from '../../utils/yamlParser';
 import { collectUnknownFieldPaths } from '../../utils/unknownYamlFields';
+import {
+  HTTP_COMPONENT_FIELDS,
+  SQL_COMPONENT_FIELDS,
+  inspectComponentConfiguration,
+} from '../../utils/componentConfiguration';
 import slots from './slots.json';
 
 interface Fixture {
@@ -20,6 +25,7 @@ interface Manifest {
   contract_version: string;
   backend_sha: string;
   fixtures: Fixture[];
+  known_fields: Record<string, string[]>;
 }
 
 const snapshotRoot = dirname(fileURLToPath(import.meta.url));
@@ -49,6 +55,46 @@ for (const [slot, version] of Object.entries(slots)) {
         { code: 'required_field', field: 'scenarios' },
       ]);
     });
+
+    if (version === '1.0.11') {
+      it('pins component grammar and preserves scoped round-trip fixture presence', async () => {
+        const manifest = JSON.parse(await readFile(join(bundleRoot, 'contract.json'), 'utf8')) as Manifest;
+        expect(manifest.backend_sha).toBe('9dc90a3a3da78a78f6411fdf153a9bf3dd2a1c91');
+        expect(manifest.known_fields.http_component_defaults).toEqual([...HTTP_COMPONENT_FIELDS]);
+        expect(manifest.known_fields.sql_component_defaults).toEqual([...SQL_COMPONENT_FIELDS]);
+        const fixture = manifest.fixtures.find(item => item.kind === 'roundtrip')!;
+        const yaml = await readFile(join(bundleRoot, fixture.path), 'utf8');
+        const input = jsyaml.load(yaml) as Record<string, any>;
+        const output = jsyaml.load(treeToYAML(parseYAMLToTree(yaml)!)) as Record<string, any>;
+        expect(inspectComponentConfiguration(output).errors).toEqual([]);
+        expect(output.defaults).toEqual(input.defaults);
+        expect(output.scenarios[0].defaults).toEqual(input.scenarios[0].defaults);
+        const group = output.scenarios[0].steps[0].group;
+        expect(group.defaults).toEqual(input.scenarios[0].steps[0].group.defaults);
+        expect(group.steps).toHaveLength(3);
+        expect(group.steps[0].request).toMatchObject({
+          auth: { type: 'none' },
+          follow_redirects: false,
+          retrieve_embedded_resources: false,
+          think_time: { enabled: false },
+        });
+        expect(group.steps[1].request).toMatchObject({
+          auth: { type: 'none' },
+          assertions: [],
+          enabled: false,
+          follow_redirects: false,
+        });
+        expect(group.steps[2].sql).toMatchObject({
+          assertions: [],
+          think_time: { enabled: false },
+          future_sql_request: 'keep-me',
+        });
+        expect(group.steps[2].sql).not.toHaveProperty('on_error');
+        expect(collectUnknownFieldPaths(parseYAMLToTree(treeToYAML(parseYAMLToTree(yaml)!))!)).toContain(
+          'defaults.future_defaults',
+        );
+      });
+    }
 
     it('parses valid and forward fixtures offline', async () => {
       const manifest = JSON.parse(await readFile(join(bundleRoot, 'contract.json'), 'utf8')) as Manifest;

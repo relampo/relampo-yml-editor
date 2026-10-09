@@ -1,3 +1,4 @@
+import type { ComponentCapabilities } from '../../utils/componentConfiguration';
 import { logStatsigEvent } from '../../utils/analytics';
 import { useEffect, useRef, useState } from 'react';
 import { probeStudio } from '../../utils/debugApi';
@@ -53,6 +54,7 @@ export function useYamlDocumentLifecycle({
 
   // Studio detection + the optional CLI-mounted script are resolved together in
   // the init effect below (one /api/studio/info probe).
+  const [componentCapabilities, setComponentCapabilities] = useState<ComponentCapabilities | undefined>();
   const [multiScenarioDebugEnabled, setMultiScenarioDebugEnabled] = useState(false);
   const [debugViewEnabled, setDebugViewEnabled] = useState(DEBUG_VIEW_FORCED);
   const [runViewEnabled, setRunViewEnabled] = useState(RUN_VIEW_FORCED);
@@ -107,6 +109,7 @@ export function useYamlDocumentLifecycle({
       if (isCancelled) return;
 
       if (studioInfo?.studio) {
+        setComponentCapabilities(studioInfo.capabilities?.componentConfiguration);
         setMultiScenarioDebugEnabled(studioInfo.capabilities?.multiScenarioDebug === true);
         setMultiScenarioRunEnabled(studioInfo.capabilities?.multiScenarioRun === true);
         setDataSourceFileBrowseEnabled(studioInfo.capabilities?.dataSourceFiles === true);
@@ -187,6 +190,7 @@ export function useYamlDocumentLifecycle({
     resetIdentityForNewDocument,
     debugViewEnabled,
     multiScenarioDebugEnabled,
+    componentCapabilities,
     runViewEnabled,
     multiScenarioRunEnabled,
     dataSourceFileBrowseEnabled,

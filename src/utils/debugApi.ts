@@ -1,3 +1,4 @@
+import { componentCapabilityError, parseComponentCapabilities, type ComponentCapabilities } from './componentConfiguration';
 import { trackStudioRunStarted, trackStudioRunCompleted, setAnalyticsVersion, initializeAnalytics } from './analytics';
 // Client for the relampo studio debug-run API (RLP-507 Phase 1).
 // When the editor is served by `relampo studio` the API lives on the same
@@ -106,6 +107,7 @@ export interface DebugStreamHandlers {
 export type DebugVUs = 1 | 2;
 
 export interface StartDebugRunOptions {
+  componentCapabilities?: ComponentCapabilities;
   scenarioName?: string;
   vus?: DebugVUs;
 }
@@ -150,6 +152,7 @@ interface StudioInitialScript {
 // Optional studio features the backend advertises so the editor only shows UI
 // it supports. Absent on older studio builds, so every flag defaults to false.
 interface StudioCapabilities {
+  componentConfiguration?: ComponentCapabilities;
   // loadRun unlocks the Run (load test) view backed by POST /api/run.
   loadRun?: boolean;
   dataSourceFiles?: boolean;
@@ -198,9 +201,11 @@ export async function probeStudio(): Promise<StudioInfo | null> {
       raw && typeof raw.yaml === 'string'
         ? { name: typeof raw.name === 'string' && raw.name ? raw.name : 'script.yaml', yaml: raw.yaml }
         : undefined;
+    const componentConfiguration = parseComponentCapabilities(body.capabilities?.componentConfiguration);
     const capabilities =
       body.capabilities && typeof body.capabilities === 'object'
         ? {
+            ...(componentConfiguration ? { componentConfiguration } : {}),
             loadRun: body.capabilities.loadRun === true,
             dataSourceFiles: body.capabilities.dataSourceFiles === true,
             debug: body.capabilities.debug === true,
@@ -229,6 +234,8 @@ export async function probeStudio(): Promise<StudioInfo | null> {
 // The backend ignores the scenario's load, so duration/iterations stay out of
 // this payload.
 export async function startDebugRun(yaml: string, options: StartDebugRunOptions = {}): Promise<string> {
+  const compatibilityError = componentCapabilityError(yaml, options.componentCapabilities);
+  if (compatibilityError) throw new Error(compatibilityError);
   const vus = options.vus ?? 1;
   const response = await fetchAgent(`${apiBase()}/api/debug/runs`, {
     method: 'POST',
