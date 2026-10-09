@@ -219,7 +219,7 @@ http_defaults:
     expect(defaults!.data!.auth?.token).toBe('my-token');
   });
 
-  it('ignores unknown auth type in http_defaults', () => {
+  it('preserves unknown auth type in http_defaults for diagnostics', () => {
     const yaml = `
 test:
   name: t
@@ -230,7 +230,7 @@ http_defaults:
 `;
     const tree = parseYAMLToTree(yaml)!;
     const defaults = tree.children!.find(c => c.type === 'http_defaults');
-    expect(defaults!.data!.auth).toBeUndefined();
+    expect(defaults!.data!.auth).toEqual({ type: 'oauth2', token: 'x' });
   });
 
   it('parses scenarios and steps', () => {
@@ -1617,7 +1617,7 @@ scenarios:
   // RLP-522 / JMeter parity: the redirect modes are mutually exclusive. An
   // imported file carrying both flags must be normalized on save even if the
   // user never toggled either checkbox; "Redirect Automatically" wins.
-  it('drops follow_redirects when redirect_automatically is set, without toggling', () => {
+  it('preserves authored follow_redirects when redirect_automatically is set', () => {
     const input = `
 test:
   name: t
@@ -1633,7 +1633,7 @@ scenarios:
     const output = treeToYAML(parseYAMLToTree(input)!);
 
     expect(output).toContain('redirect_automatically: true');
-    expect(output).not.toContain('follow_redirects:');
+    expect(output).toContain('follow_redirects: false');
   });
 
   // RLP-517: follow_redirects is opt-in per request, but when
@@ -1684,7 +1684,7 @@ scenarios:
     expect(output).toContain('follow_redirects: true');
   });
 
-  it('prunes follow_redirects: false when there is no enabling global default', () => {
+  it('preserves explicit follow_redirects: false without a global default', () => {
     const input = `
 test:
   name: t
@@ -1700,7 +1700,7 @@ scenarios:
 `;
     const output = treeToYAML(parseYAMLToTree(input)!);
 
-    expect(output).not.toContain('follow_redirects:');
+    expect(output).toContain('follow_redirects: false');
   });
 });
 

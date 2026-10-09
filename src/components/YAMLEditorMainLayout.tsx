@@ -1,3 +1,4 @@
+import type { ComponentCapabilities } from '../utils/componentConfiguration';
 import type { RedirectSourceInfo, RedirectedRequestInfo, YAMLNode } from '../types/yaml';
 import type { EditorViewMode } from './EditorViewModeTabs';
 import { YAMLEditorDetailsPanel } from './YAMLEditorDetailsPanel';
@@ -14,6 +15,7 @@ interface YAMLEditorMainLayoutProps {
   multiScenarioDebugEnabled: boolean;
   runViewEnabled: boolean;
   multiScenarioRunEnabled?: boolean;
+  componentCapabilities?: ComponentCapabilities;
   isDebugViewActive: boolean;
   isRunViewActive: boolean;
   yamlTree: YAMLNode | null;
@@ -59,6 +61,7 @@ export function YAMLEditorMainLayout({
   multiScenarioDebugEnabled,
   runViewEnabled,
   multiScenarioRunEnabled,
+  componentCapabilities,
   isDebugViewActive,
   isRunViewActive,
   yamlTree,
@@ -141,6 +144,7 @@ export function YAMLEditorMainLayout({
         multiScenarioDebugEnabled={multiScenarioDebugEnabled}
         runViewEnabled={runViewEnabled}
         multiScenarioRunEnabled={multiScenarioRunEnabled}
+        componentCapabilities={componentCapabilities}
         yamlTree={yamlTree}
         yamlCode={yamlCode}
         flushPendingEdits={flushPendingEdits}

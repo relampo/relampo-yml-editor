@@ -1,3 +1,4 @@
+import { componentCapabilityError, type ComponentCapabilities } from '../utils/componentConfiguration';
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type ReactNode, type RefObject } from 'react';
 import {
   Activity,
@@ -254,6 +255,7 @@ interface YAMLLoadRunSessionProps {
   documentReady: boolean;
   validationErrors: string[];
   multiScenarioRunEnabled?: boolean;
+  componentCapabilities?: ComponentCapabilities;
 }
 
 export function YAMLLoadRunSession({
@@ -263,6 +265,7 @@ export function YAMLLoadRunSession({
   documentReady,
   validationErrors,
   multiScenarioRunEnabled = false,
+  componentCapabilities,
 }: YAMLLoadRunSessionProps) {
   const [runState, dispatch] = useReducer(loadRunReducer, initialLoadRunState);
   const { snapshots, isRunning, isStopping, runError, runStatus, summary, logs } = runState;
@@ -289,6 +292,8 @@ export function YAMLLoadRunSession({
     const duration = parseTimeToSeconds(String(plannedLoadNode.data?.duration ?? '').trim());
     return duration > 0 && hasIterationBudgetController(tree);
   }, [tree, plannedLoadNode]);
+  const componentError = componentCapabilityError(yamlCode, componentCapabilities);
+  validationErrors = componentError ? [...validationErrors, componentError] : validationErrors;
   const hasValidationErrors = validationErrors.length > 0;
   const latest = snapshots[snapshots.length - 1] ?? null;
   const liveSummary = useMemo(() => buildLiveRunSummary(latest, runRequestTargets), [latest, runRequestTargets]);
@@ -378,7 +383,9 @@ export function YAMLLoadRunSession({
     stopRequestedRef.current = false;
     dispatch({ type: 'run_started' });
     try {
-      const runId = await startLoadRun(scriptAtStart);
+      const runId = componentCapabilities
+        ? await startLoadRun(scriptAtStart, componentCapabilities)
+        : await startLoadRun(scriptAtStart);
       if (token !== startTokenRef.current) return;
       runStore.store({ id: runId, fp: fingerprint(scriptAtStart) });
       subscribe(runId, false);

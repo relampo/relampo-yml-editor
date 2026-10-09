@@ -1,3 +1,4 @@
+import { inspectTreeComponentConfiguration } from './componentConfiguration';
 import {
   getSegmentDurationSummary,
   getSegmentStartVUs,
@@ -32,7 +33,7 @@ export function validateYAMLSemantics(tree: YAMLNode | null): YAMLSemanticIssue[
     return [];
   }
 
-  const issues: YAMLSemanticIssue[] = [];
+  const issues: YAMLSemanticIssue[] = inspectTreeComponentConfiguration(tree).errors.map(issue => ({ nodeId: tree.id, message: issue.message }));
   const scenarioNodes: YAMLNode[] = [];
 
   const collectScenarios = (node: YAMLNode) => {

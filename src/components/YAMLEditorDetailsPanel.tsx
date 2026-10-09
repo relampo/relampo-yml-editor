@@ -1,3 +1,4 @@
+import type { ComponentCapabilities } from '../utils/componentConfiguration';
 import type { RedirectSourceInfo, RedirectedRequestInfo, YAMLNode } from '../types/yaml';
 import { YAMLDebugSession } from './YAMLDebugView';
 import { YAMLLoadRunSession } from './YAMLRunView';
@@ -11,6 +12,7 @@ type YAMLEditorDetailsPanelProps = {
   multiScenarioDebugEnabled: boolean;
   runViewEnabled: boolean;
   multiScenarioRunEnabled?: boolean;
+  componentCapabilities?: ComponentCapabilities;
   yamlTree: YAMLNode | null;
   yamlCode: string;
   flushPendingEdits: () => string;
@@ -40,6 +42,7 @@ export function YAMLEditorDetailsPanel({
   multiScenarioDebugEnabled,
   runViewEnabled,
   multiScenarioRunEnabled,
+  componentCapabilities,
   yamlTree,
   yamlCode,
   flushPendingEdits,
@@ -81,6 +84,7 @@ export function YAMLEditorDetailsPanel({
           <div className={isDebugViewActive ? 'h-full' : 'hidden'}>
             <YAMLDebugSession
               multiScenarioDebugEnabled={multiScenarioDebugEnabled}
+              componentCapabilities={componentCapabilities}
               tree={yamlTree}
               yamlCode={yamlCode}
               flushPendingEdits={flushPendingEdits}
@@ -97,6 +101,7 @@ export function YAMLEditorDetailsPanel({
           <div className={isRunViewActive ? 'h-full' : 'hidden'}>
             <YAMLLoadRunSession
               multiScenarioRunEnabled={multiScenarioRunEnabled}
+        componentCapabilities={componentCapabilities}
               tree={yamlTree}
               yamlCode={yamlCode}
               flushPendingEdits={flushPendingEdits}
@@ -108,6 +113,8 @@ export function YAMLEditorDetailsPanel({
         <div className={isDebugViewActive || isRunViewActive ? 'hidden' : 'h-full'}>
           <YAMLNodeDetails
             node={selectedNode}
+            tree={yamlTree}
+            componentCapabilities={componentCapabilities}
             baseUrl={baseUrl}
             hosts={hosts}
             redirectedInfo={selectedNode ? (redirectedRequestMap[selectedNode.id] ?? null) : null}

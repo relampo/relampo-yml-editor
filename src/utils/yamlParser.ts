@@ -1,3 +1,4 @@
+import { rememberAuthoredData } from './yamlAuthoredData';
 import type { YAMLNode, YAMLNodeData, YAMLValue } from '../types/yaml';
 import { getLoadTypeLabel, normalizeLoadDataForYaml } from '../components/yaml-node-details/loadUtils';
 import * as jsyaml from 'js-yaml';
@@ -57,7 +58,10 @@ const YAML_SCHEMA = jsyaml.DEFAULT_SCHEMA.extend({
   ],
 });
 
-function unknownFields(value: Record<string, unknown>, knownFields: ReadonlySet<string>): Record<string, YAMLValue> | undefined {
+function unknownFields(
+  value: Record<string, unknown>,
+  knownFields: ReadonlySet<string>,
+): Record<string, YAMLValue> | undefined {
   const unknown: Record<string, YAMLValue> = {};
   for (const [key, fieldValue] of Object.entries(value)) {
     if (knownFields.has(key)) continue;
@@ -150,7 +154,7 @@ function convertToTree(obj: any, _: string[] = [], defaultRootName?: string): YA
       name: 'HTTP Defaults',
       data: {
         ...obj.http_defaults,
-        auth: normalizeAuthForEditor(obj.http_defaults.auth),
+        auth: normalizeAuthForEditor(obj.http_defaults.auth) ?? obj.http_defaults.auth,
       },
       path: ['http_defaults'],
     });
@@ -306,6 +310,8 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
     return {
       id: stepId,
       type: 'sql',
+      authoredData: structuredClone(step.sql),
+      initialData: structuredClone(sql),
       name: buildSQLStepName(sql),
       data: sql,
       path: [...path, 'sql'],
@@ -339,7 +345,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
         name: 'Assertions',
         children: [],
         expanded: true,
-        data: { assertions: step.assertions },
+        data: { assertions: step.assertions, __assertionsWrapper: true },
         path,
         unknownData: unknownFields(step, new Set(['assertions', 'enabled'])),
       };
@@ -422,7 +428,10 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
   }
 
   // Group (Simple controller for organization)
-  if (step.group) {
+  if (step.group || step.controller) {
+    const isController = Boolean(step.controller);
+    const originalStep = step;
+    if (isController) step = { ...step, group: step.controller };
     const enabled = resolveEnabled(step.group);
     const groupNode: YAMLNode = {
       id: stepId,
@@ -432,11 +441,12 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       expanded: true,
       data: {
         ...step.group,
-        auth: normalizeAuthForEditor(step.group.auth),
+        ...(isController ? { __controller: true } : {}),
+        auth: normalizeAuthForEditor(step.group.auth) ?? step.group.auth,
         enabled,
       },
       path,
-      unknownData: unknownFields(step, new Set(['group', 'enabled'])),
+      unknownData: unknownFields(originalStep, new Set([isController ? 'controller' : 'group', 'enabled'])),
     };
 
     if (step.group.steps && Array.isArray(step.group.steps)) {
@@ -459,7 +469,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       expanded: true,
       data: {
         ...step.transaction,
-        auth: normalizeAuthForEditor(step.transaction.auth),
+        auth: normalizeAuthForEditor(step.transaction.auth) ?? step.transaction.auth,
         enabled,
       },
       path,
@@ -523,76 +533,64 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
     };
 
     balancedSteps.forEach((childStep: any, childIndex: number) => {
-        const balancedPercentage = childStep?.percentage;
-        const normalizedChildStep = { ...childStep };
-        delete normalizedChildStep.percentage;
+      const balancedPercentage = childStep?.percentage;
+      const normalizedChildStep = { ...childStep };
+      delete normalizedChildStep.percentage;
 
-        const childPath = stepsInController
-          ? [...path, 'balanced', 'steps', childIndex]
-          : [...path, 'steps', childIndex];
-        const childNode = convertStepToNode(normalizedChildStep, stepId, childIndex, childPath);
-        childNode.data = {
-          ...(childNode.data || {}),
-          __balancedPercentage: balancedPercentage ?? '',
-        };
-        balancedNode.children!.push(childNode);
-      });
+      const childPath = stepsInController ? [...path, 'balanced', 'steps', childIndex] : [...path, 'steps', childIndex];
+      const childNode = convertStepToNode(normalizedChildStep, stepId, childIndex, childPath);
+      childNode.data = {
+        ...(childNode.data || {}),
+        __balancedPercentage: balancedPercentage ?? '',
+      };
+      balancedNode.children!.push(childNode);
+    });
 
     return balancedNode;
   }
 
-  // If
+  // Scalar legacy conditions keep sibling steps; scoped conditions use a payload.
   if (step.if !== undefined) {
+    const ifData = isPlainRecord(step.if) ? step.if : { condition: step.if, __scalarIf: true };
+    const stepsInController = Array.isArray(ifData.steps);
+    const childSteps = stepsInController ? ifData.steps : Array.isArray(step.steps) ? step.steps : [];
+    const { steps: _steps, ...fields } = ifData;
     const ifNode: YAMLNode = {
       id: stepId,
       type: 'if',
-      name: `If: ${step.if}`,
+      name: `If: ${ifData.condition ?? 'true'}`,
       children: [],
       expanded: true,
-      data: { condition: step.if, enabled: isEnabled },
+      data: { ...fields, __stepsInController: stepsInController, enabled: resolveEnabled(ifData) },
       path,
       unknownData: unknownFields(step, new Set(['if', 'steps', 'enabled'])),
     };
-
-    if (step.steps && Array.isArray(step.steps)) {
-      step.steps.forEach((childStep: any, childIndex: number) => {
-        const childNode = convertStepToNode(childStep, stepId, childIndex, [...path, 'steps', childIndex]);
-        ifNode.children!.push(childNode);
-      });
-    }
-
+    childSteps.forEach((childStep: any, childIndex: number) => {
+      const childPath = stepsInController ? [...path, 'if', 'steps', childIndex] : [...path, 'steps', childIndex];
+      ifNode.children!.push(convertStepToNode(childStep, stepId, childIndex, childPath));
+    });
     return ifNode;
   }
 
-  // Loop
   if (step.loop !== undefined) {
-    const rawLoop = step.loop;
-    const loopData =
-      rawLoop && typeof rawLoop === 'object' && !Array.isArray(rawLoop)
-        ? rawLoop
-        : { count: rawLoop, __scalarLoop: true };
-
+    const loopData = isPlainRecord(step.loop) ? step.loop : { count: step.loop, __scalarLoop: true };
+    const stepsInController = Array.isArray(loopData.steps);
+    const childSteps = stepsInController ? loopData.steps : Array.isArray(step.steps) ? step.steps : [];
+    const { steps: _steps, ...fields } = loopData;
     const loopNode: YAMLNode = {
       id: stepId,
       type: 'loop',
       name: 'Loop',
       children: [],
       expanded: true,
-      data: {
-        ...loopData,
-        enabled: resolveEnabled(loopData),
-      },
+      data: { ...fields, __stepsInController: stepsInController, enabled: resolveEnabled(loopData) },
       path,
       unknownData: unknownFields(step, new Set(['loop', 'steps', 'enabled'])),
     };
-
-    if (step.steps && Array.isArray(step.steps)) {
-      step.steps.forEach((childStep: any, childIndex: number) => {
-        const childNode = convertStepToNode(childStep, stepId, childIndex, [...path, 'steps', childIndex]);
-        loopNode.children!.push(childNode);
-      });
-    }
-
+    childSteps.forEach((childStep: any, childIndex: number) => {
+      const childPath = stepsInController ? [...path, 'loop', 'steps', childIndex] : [...path, 'steps', childIndex];
+      loopNode.children!.push(convertStepToNode(childStep, stepId, childIndex, childPath));
+    });
     return loopNode;
   }
 
@@ -619,10 +617,10 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
     };
 
     retrySteps.forEach((childStep: any, childIndex: number) => {
-        const childPath = stepsInController ? [...path, 'retry', 'steps', childIndex] : [...path, 'steps', childIndex];
-        const childNode = convertStepToNode(childStep, stepId, childIndex, childPath);
-        retryNode.children!.push(childNode);
-      });
+      const childPath = stepsInController ? [...path, 'retry', 'steps', childIndex] : [...path, 'steps', childIndex];
+      const childNode = convertStepToNode(childStep, stepId, childIndex, childPath);
+      retryNode.children!.push(childNode);
+    });
 
     return retryNode;
   }
@@ -630,8 +628,7 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
   // One Time
   if (step.one_time !== undefined) {
     const rawOneTime = step.one_time;
-    const rawOneTimeData =
-      rawOneTime && typeof rawOneTime === 'object' && !Array.isArray(rawOneTime) ? rawOneTime : {};
+    const rawOneTimeData = rawOneTime && typeof rawOneTime === 'object' && !Array.isArray(rawOneTime) ? rawOneTime : {};
     const stepsInController = Array.isArray(rawOneTimeData.steps);
     const oneTimeSteps = stepsInController ? rawOneTimeData.steps : Array.isArray(step.steps) ? step.steps : [];
     const { steps: _steps, ...oneTimeData } = rawOneTimeData;
@@ -647,12 +644,10 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
     };
 
     oneTimeSteps.forEach((childStep: any, childIndex: number) => {
-        const childPath = stepsInController
-          ? [...path, 'one_time', 'steps', childIndex]
-          : [...path, 'steps', childIndex];
-        const childNode = convertStepToNode(childStep, stepId, childIndex, childPath);
-        oneTimeNode.children!.push(childNode);
-      });
+      const childPath = stepsInController ? [...path, 'one_time', 'steps', childIndex] : [...path, 'steps', childIndex];
+      const childNode = convertStepToNode(childStep, stepId, childIndex, childPath);
+      oneTimeNode.children!.push(childNode);
+    });
 
     return oneTimeNode;
   }
@@ -691,6 +686,20 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       children: [],
       expanded: false,
       unknownData: unknownFields(step, new Set(['data_source', 'enabled'])),
+    };
+  }
+
+  // Preserve the experimental payload while exposing its stable HTTP child flow.
+  if (isPlainRecord(step.webrtc) && Array.isArray(step.webrtc.steps)) {
+    return {
+      id: stepId,
+      type: 'step',
+      name: step.webrtc.name || 'WebRTC session',
+      data: step,
+      path,
+      children: step.webrtc.steps.map((child: any, index: number) =>
+        convertStepToNode(child, stepId, index, [...path, 'webrtc', 'steps', index]),
+      ),
     };
   }
 
@@ -889,5 +898,5 @@ function createRequestNode(
     });
   }
 
-  return requestNode;
+  return rememberAuthoredData(requestNode, requestData);
 }

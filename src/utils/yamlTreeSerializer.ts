@@ -1,3 +1,4 @@
+import { authoredNodeData } from './yamlAuthoredData';
 import type { YAMLNode } from '../types/yaml';
 import { normalizeLoadDataForYaml, toLoadData } from '../components/yaml-node-details/loadUtils';
 import {
@@ -12,6 +13,7 @@ import {
 import {
   normalizeAssertionForEngine,
   normalizeAuthForYaml,
+  normalizeAuthForEditor,
   normalizeExtractorForEngine,
   normalizeRequestForEditor,
   normalizeSQLForYaml,
@@ -75,11 +77,11 @@ function hasOnlyShortHttpData(node: YAMLNode): boolean {
     return true;
   }
 
-  const data = { ...(node.data as Record<string, any>) };
+  const data = { ...authoredNodeData(node) };
   for (const key of Object.keys(data)) {
     if (key.startsWith('__')) delete data[key];
   }
-  pruneDefaultRequestFields(data);
+  if (!node.authoredData) pruneDefaultRequestFields(data);
 
   if (typeof data.name === 'string') {
     const method = (data.method || node.type).toString().toUpperCase();
@@ -144,7 +146,7 @@ export function treeToObject(tree: YAMLNode): any {
         obj.data_source.name = child.name;
       }
     } else if (child.type === 'http_defaults') {
-      const auth = normalizeAuthForYaml(child.data?.auth);
+      const auth = normalizeAuthForYaml(child.data?.auth) ?? child.data?.auth;
       obj.http_defaults = {
         ...child.data,
         ...(auth ? { auth } : {}),
@@ -219,18 +221,14 @@ function stepNodeToObject(node: YAMLNode): any {
   }
 
   if (node.type === 'sql') {
-    const sqlStep = normalizeSQLForYaml(
-      sanitizeBalancedNodeData(node.data as Record<string, unknown> | undefined),
-    );
-    if (node.name && node.name !== node.data?.name) {
-      sqlStep.name = node.name;
-    }
+    const sqlStep = normalizeSQLForYaml(sanitizeBalancedNodeData(authoredNodeData(node)), Boolean(node.authoredData));
+    if (node.name && node.name !== node.data?.name && !node.authoredData) sqlStep.name = node.name;
     return { ...(node.unknownData || {}), sql: sqlStep };
   }
 
-  if (node.type === 'group') {
+  if (node.type === 'group' || node.type === 'simple') {
     const groupData = sanitizeBalancedNodeData(node.data);
-    if (node.data?.assertions && Array.isArray(node.data.assertions)) {
+    if (node.data?.__assertionsWrapper === true && Array.isArray(node.data.assertions)) {
       return {
         ...(node.unknownData || {}),
         assertions: node.data.assertions,
@@ -247,13 +245,17 @@ function stepNodeToObject(node: YAMLNode): any {
       },
     };
 
-    const auth = normalizeAuthForYaml(groupData?.auth);
+    const auth = normalizeAuthForYaml(groupData?.auth) ?? groupData?.auth;
     if (auth) {
       res.group.auth = auth;
     }
 
     if (node.data?.enabled === false) {
       res.enabled = false;
+    }
+    if (node.data?.__controller) {
+      res.controller = res.group;
+      delete res.group;
     }
     return res;
   }
@@ -270,7 +272,7 @@ function stepNodeToObject(node: YAMLNode): any {
       },
     };
 
-    const auth = normalizeAuthForYaml(transactionData?.auth);
+    const auth = normalizeAuthForYaml(transactionData?.auth) ?? transactionData?.auth;
     if (auth) {
       res.transaction.auth = auth;
     }
@@ -342,34 +344,32 @@ function stepNodeToObject(node: YAMLNode): any {
   }
 
   if (node.type === 'if') {
-    const ifData = sanitizeBalancedNodeData(node.data);
-    const res: any = {
-      ...(node.unknownData || {}),
-      if: ifData?.condition || 'true',
-      steps: node.children?.map(stepNodeToObject) || [],
-    };
-
-    if (node.data?.enabled === false) {
-      res.enabled = false;
-    }
+    const ifData = stripControllerSerializationMetadata(sanitizeBalancedNodeData(node.data), [
+      '__scalarIf',
+      '__stepsInController',
+      'steps',
+    ]);
+    const childSteps = node.children?.map(stepNodeToObject) || [];
+    const scalar = node.data?.__scalarIf && hasOnlyKeys(ifData, new Set(['condition']));
+    const res: any = { ...(node.unknownData || {}), if: scalar ? ifData.condition : { ...ifData } };
+    if (!scalar && node.data?.__stepsInController) res.if.steps = childSteps;
+    else res.steps = childSteps;
+    if (node.data?.enabled === false) res.enabled = false;
     return res;
   }
 
   if (node.type === 'loop') {
-    const rawLoopData = stripControllerSerializationMetadata(sanitizeBalancedNodeData(node.data), ['__scalarLoop']);
-    const shouldSerializeScalar =
-      Boolean(node.data && typeof node.data === 'object' && !Array.isArray(node.data) && node.data.__scalarLoop) &&
-      hasOnlyKeys(rawLoopData, LOOP_SHORTHAND_KEYS);
-    const loopData = shouldSerializeScalar ? rawLoopData.count : rawLoopData;
-    const res: any = {
-      ...(node.unknownData || {}),
-      loop: loopData,
-      steps: node.children?.map(stepNodeToObject) || [],
-    };
-
-    if (node.data?.enabled === false) {
-      res.enabled = false;
-    }
+    const rawLoopData = stripControllerSerializationMetadata(sanitizeBalancedNodeData(node.data), [
+      '__scalarLoop',
+      '__stepsInController',
+      'steps',
+    ]);
+    const shouldSerializeScalar = node.data?.__scalarLoop && hasOnlyKeys(rawLoopData, LOOP_SHORTHAND_KEYS);
+    const childSteps = node.children?.map(stepNodeToObject) || [];
+    const res: any = { ...(node.unknownData || {}), loop: shouldSerializeScalar ? rawLoopData.count : rawLoopData };
+    if (!shouldSerializeScalar && node.data?.__stepsInController) res.loop.steps = childSteps;
+    else res.steps = childSteps;
+    if (node.data?.enabled === false) res.enabled = false;
     return res;
   }
 
@@ -388,8 +388,7 @@ function stepNodeToObject(node: YAMLNode): any {
     const res: any = { ...(node.unknownData || {}), retry: retryData };
     if (stepsInController && retryData && typeof retryData === 'object') {
       res.retry = { ...retryData, steps: childSteps };
-    }
-    else res.steps = childSteps;
+    } else res.steps = childSteps;
 
     if (node.data?.enabled === false) {
       res.enabled = false;
@@ -503,30 +502,55 @@ function stepNodeToObject(node: YAMLNode): any {
     return res;
   }
 
+  if (node.type === 'step' && node.data?.webrtc && node.children)
+    return {
+      ...node.data,
+      webrtc: { ...(node.data.webrtc as Record<string, unknown>), steps: node.children.map(stepNodeToObject) },
+    };
   return node.data || {};
 }
 
-function requestNodeToObject(node: YAMLNode, methodFallback?: string): any {
+export function requestNodeToObject(node: YAMLNode, methodFallback?: string): any {
   const requestData = sanitizeBalancedNodeData({
-    ...(node.data || {}),
+    ...authoredNodeData(node),
     method: node.data?.method || methodFallback,
-  });
-  const normalizedRequest = normalizeRequestForEditor(requestData, followRedirectsEnabledByDefault);
+  }) as Record<string, any>;
+  const normalizedRequest = node.authoredData
+    ? requestData
+    : normalizeRequestForEditor(requestData, followRedirectsEnabledByDefault);
   const request: any = { ...(node.unknownData || {}), request: { ...normalizedRequest } };
-  pruneDefaultRequestFields(request.request);
+  if (!node.authoredData) pruneDefaultRequestFields(request.request);
+  if (request.request.auth) {
+    const normalizedAuth = normalizeAuthForEditor(request.request.auth);
+    if (normalizedAuth)
+      request.request.auth = {
+        ...request.request.auth,
+        type: normalizedAuth.type,
+        ...(normalizedAuth.in ? { in: normalizedAuth.in } : {}),
+      };
+  }
 
-  if (node.name && node.name !== node.data?.name) {
+  if (
+    node.name &&
+    node.name !== node.data?.name &&
+    (!node.authoredData || node.data?.name !== node.initialData?.name)
+  ) {
     request.request.name = node.name;
   }
 
-  delete request.request.spark;
-  delete request.request.extractors;
-  delete request.request.assertions;
-  delete request.request.extract;
-  delete request.request.assert;
-  delete request.request.files;
-  delete request.request.headers;
-  delete request.request.data_source;
+  for (const field of [
+    'spark',
+    'extractors',
+    'assertions',
+    'extract',
+    'assert',
+    'files',
+    'headers',
+    'data_source',
+    'think_time',
+    'error_policy',
+  ])
+    if (!node.componentEdits?.includes(field)) delete request.request[field];
 
   if (node.data?.enabled === false) {
     request.request.enabled = false;
@@ -580,7 +604,11 @@ function requestNodeToObject(node: YAMLNode, methodFallback?: string): any {
 
     const thinkTimeNode = node.children.find(child => child.type === 'think_time');
     if (thinkTimeNode) {
-      request.request.think_time = thinkTimeNode.data?.duration || thinkTimeNode.data;
+      const timer = thinkTimeNode.data;
+      request.request.think_time =
+        typeof requestData.think_time === 'string' && timer && Object.keys(timer).every(key => key === 'duration')
+          ? timer.duration
+          : timer;
     }
 
     const errorPolicyNode = node.children.find(child => child.type === 'error_policy');
@@ -616,5 +644,29 @@ function requestNodeToObject(node: YAMLNode, methodFallback?: string): any {
     }
   }
 
+  for (const key of [
+    'spark',
+    'extractors',
+    'assertions',
+    'extract',
+    'assert',
+    'files',
+    'headers',
+    'data_source',
+    'think_time',
+    'error_policy',
+  ]) {
+    const original = requestData[key];
+    const childType =
+      { assertions: 'assertion', extractors: 'extractor', files: 'file', spark: 'spark_before' }[key] || key;
+    if (node.authoredChildTypes?.includes(childType)) continue;
+    if (
+      request.request[key] === undefined &&
+      (original === null ||
+        (Array.isArray(original) && original.length === 0) ||
+        (original && typeof original === 'object' && Object.keys(original).length === 0))
+    )
+      request.request[key] = original;
+  }
   return request;
 }
