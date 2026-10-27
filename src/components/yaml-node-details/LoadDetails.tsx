@@ -45,8 +45,15 @@ export function LoadDetails({ node, onNodeUpdate }: NodeDetailProps) {
   const handleChange = (field: string, value: LoadDataValue) => {
     if (field === 'type') {
       const selectedType = normalizeLoadType(value);
+      // ponytail: remember only Segments in the tree; add other profiles if needed.
+      // toLoadData excludes this editor metadata from saved and executed YAML.
+      const segmentsProfile = loadType === 'segments' ? loadData : data.__segmentsProfile;
+      const source = selectedType === 'segments' && segmentsProfile && typeof segmentsProfile === 'object'
+        ? toLoadData({ ...segmentsProfile })
+        : loadData;
       updateData({
-        ...buildLoadDataForType(selectedType, loadData),
+        ...buildLoadDataForType(selectedType, source),
+        ...(segmentsProfile ? { __segmentsProfile: segmentsProfile } : {}),
         __name: `Load: ${getLoadTypeLabel(selectedType)}`,
       });
       return;

@@ -5,6 +5,7 @@ import { LanguageProvider } from '../../contexts/LanguageContext';
 import { LoadDetails } from './LoadDetails';
 import type { YAMLNode } from '../../types/yaml';
 import { applyNodeUpdateToTree } from '../../utils/nodeUpdate';
+import { parseYAMLToTree, treeToYAML } from '../../utils/yamlParser';
 import { validateYAMLSemantics } from '../../utils/yamlSemanticValidation';
 
 function renderWithLanguage(ui: ReactElement) {
@@ -255,4 +256,40 @@ describe('LoadDetails', () => {
 
     expect(screen.getByText('Load Pattern Visualization')).toBeInTheDocument();
   });
+});
+
+it('RLP-806 restores edited segments after switching models and reopening saved YAML', () => {
+  let node: YAMLNode = {
+    id: 'load-persist', type: 'load', name: 'Load: Segments', data: {
+      type: 'segments', iterations: '3', segments: [
+        { name: 'baseline', duration: '1m', transition: 'constant', target_vus: '5' },
+        { name: 'checkout', duration: '2m', transition: 'constant', target_vus: '25' },
+        { name: 'recovery', duration: '1m', transition: 'ramp_down', target_vus: '5' },
+      ],
+    },
+  };
+  const onNodeUpdate = (id: string, data: Record<string, unknown>) => { node = applyNodeUpdateToTree(node, id, data); };
+  const view = renderWithLanguage(<LoadDetails node={node} onNodeUpdate={onNodeUpdate} />);
+  const refresh = () => view.rerender(<LanguageProvider><LoadDetails node={node} onNodeUpdate={onNodeUpdate} /></LanguageProvider>);
+  fireEvent.change(screen.getByLabelText('Transition for segment 2'), { target: { value: 'ramp_up' } });
+  refresh();
+  fireEvent.change(screen.getByLabelText('Duration for segment 2'), { target: { value: '3m' } });
+  refresh();
+  const expected = node.data!.segments;
+  fireEvent.click(screen.getByRole('button', { name: 'Linear' }));
+  refresh();
+  expect(node.data).not.toHaveProperty('segments');
+  fireEvent.click(screen.getByRole('button', { name: 'Segments' }));
+  refresh();
+  expect(node.data!.segments).toEqual(expected);
+  expect(node.data!.duration).toBe('300s');
+  expect(node.data!.iterations).toBe('3');
+  expect(validateYAMLSemantics(node)).toEqual([]);
+  const tree = parseYAMLToTree('scenarios:\n  - name: saved\n    load:\n      type: constant\n      users: 1\n    steps: []\n')!;
+  const load = tree.children!.find(child => child.type === 'scenarios')!.children![0].children!.find(child => child.type === 'load')!;
+  const saved = treeToYAML(applyNodeUpdateToTree(tree, load.id, { ...node.data }));
+  expect(saved).not.toContain('__segmentsProfile');
+  const reopened = parseYAMLToTree(saved)!;
+  const reopenedLoad = reopened.children!.find(child => child.type === 'scenarios')!.children![0].children!.find(child => child.type === 'load')!;
+  expect(reopenedLoad.data!.segments).toEqual(expected);
 });

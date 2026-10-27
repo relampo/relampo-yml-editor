@@ -19,6 +19,7 @@ export interface YAMLNodeData {
   __balancedPercentage?: YAMLInputValue;
   __lockedType?: string;
   __name?: string;
+  __segmentsProfile?: YAMLNodeData;
   __scalarLoop?: boolean;
   __scalarRetry?: boolean;
   __stepsInController?: boolean;
