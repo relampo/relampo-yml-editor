@@ -7,8 +7,9 @@ async function importYaml(page: import('@playwright/test').Page, yaml: string) {
 }
 
 test.beforeEach(async ({ page }) => {
-  await page.route('**/api/studio/info', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ studio: false, initialScript: null, capabilities: { loadRun: false, dataSourceFiles: false, debug: false } }) }));
+  await page.route('**/api/studio/info', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ studio: true, initialScript: { name: 'ready.yaml', yaml: 'test: {name: initial-ready}\nscenarios: [{name: ready, steps: [{get: /}]}]\n' }, capabilities: { loadRun: false, dataSourceFiles: false, debug: false } }) }));
   await page.goto('/');
+  await expect(page.getByText('initial-ready', { exact: true }).first()).toBeVisible();
 });
 
 test('RLP-801 RLP-802 selects one model and retains the inactive profile across export and import', async ({ page }) => {

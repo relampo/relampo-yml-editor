@@ -3,6 +3,9 @@ import {
   getSegmentStartVUs,
   getSegmentRequiredTransition,
   isValidDuration,
+  isTerminalZeroSegment,
+  sumDurationSeconds,
+  areDurationsEqual,
   normalizeLoadType,
   parseTimeToSeconds,
 } from '../components/yaml-node-details/loadUtils';
@@ -102,7 +105,8 @@ export function validateYAMLSemantics(tree: YAMLNode | null): YAMLSemanticIssue[
       const duration = parseTimeToSeconds(String(node.data?.duration ?? ''));
       const up = parseTimeToSeconds(String(node.data?.ramp_up ?? ''));
       const down = parseTimeToSeconds(String(node.data?.ramp_down ?? ''));
-      if (duration > 0 && up + down > duration) {
+      const phaseDuration = sumDurationSeconds([up, down]);
+      if (duration > 0 && phaseDuration > duration && !areDurationsEqual(phaseDuration, duration)) {
         issues.push({ nodeId: node.id, code: 'load_phase_duration', message: 'Ramp Up + Ramp Down cannot exceed Duration.' });
       }
     }
@@ -256,7 +260,8 @@ function validateIntentLoadNode(node: YAMLNode, issues: YAMLSemanticIssue[]) {
   if (hasRampDown && (!isValidDuration(data.ramp_down) || rampDown < 0)) {
     issues.push({ nodeId: node.id, message: 'Intent Ramp Down cannot be negative.' });
   }
-  if (duration > 0 && warmup + rampUp + rampDown > duration) {
+  const phaseDuration = sumDurationSeconds([warmup, rampUp, rampDown]);
+  if (duration > 0 && phaseDuration > duration && !areDurationsEqual(phaseDuration, duration)) {
     issues.push({ nodeId: node.id, code: 'load_phase_duration', message: 'Intent Warm-up + Ramp Up + Ramp Down cannot exceed Duration.' });
   }
   if (hasWindow && window <= 0) {
@@ -353,8 +358,7 @@ function validateSegmentsLoadNode(node: YAMLNode, issues: YAMLSemanticIssue[]) {
   }
 
   durationSummary.segmentDurationValues.forEach((duration, index) => {
-    const terminal = segments[index];
-    const terminalZero = index > 0 && index === segments.length - 1 && terminal?.transition === 'constant' && valueText(terminal?.target_vus) === '0' && valueText(terminal?.target_rps) === '';
+    const terminalZero = isTerminalZeroSegment(segments, index);
     if (duration === '' || !isValidDuration(duration) || (parseTimeToSeconds(duration) <= 0 && !terminalZero)) {
       issues.push({ nodeId: node.id, message: `Segment ${index + 1} must define a positive Duration.` });
     }
