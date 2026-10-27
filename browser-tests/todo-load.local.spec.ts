@@ -27,6 +27,7 @@ test('RLP-801 RLP-802 selects one model and retains the inactive profile across 
   expect(parsed.scenarios[0]['x-studio-load-profiles']).toBeDefined();
   await importYaml(page, output);
   await page.getByText('Load: Linear', { exact: true }).first().click();
+  await expect(page.getByText('This document contains unknown fields that will be preserved.')).toHaveCount(0);
   await page.getByRole('button', { name: 'Constant', exact: true }).click();
   await expect(page.getByLabel('Virtual Users', { exact: true })).toHaveValue('7');
   await expect(page.getByLabel('Iterations', { exact: true })).toHaveValue('3');
