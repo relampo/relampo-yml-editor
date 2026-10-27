@@ -23,6 +23,8 @@ const knownFields = currentKnownFields();
 // contract omits these fields because execution ignores them, but the editor
 // supports them as preserved document data rather than forward-compatibility
 // fields that need a warning.
+const SCENARIO_KNOWN_FIELDS = new Set([...(knownFields.scenario || []), 'x-studio-load-profiles']);
+
 const TEST_KNOWN_FIELDS = new Set([
   ...(knownFields.test || []),
   'recorded_at',
@@ -62,7 +64,7 @@ function dataScope(
     case 'test':
       return { supported: TEST_KNOWN_FIELDS, prefix: ['test'] };
     case 'scenario':
-      return { scope: 'scenario', prefix: path };
+      return { supported: SCENARIO_KNOWN_FIELDS, prefix: path };
     case 'group':
     case 'simple':
     case 'transaction':

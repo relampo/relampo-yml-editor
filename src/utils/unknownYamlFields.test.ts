@@ -104,3 +104,8 @@ scenarios:
     ]);
   });
 });
+
+it('RLP-802 recognizes saved Studio load profiles while warning about unrelated fields', () => {
+  const tree = parseYAMLToTree('scenarios:\n  - name: profiles\n    load: {type: constant, users: 1, iterations: 1}\n    x-studio-load-profiles: {linear: {type: ramp, start_users: 1, end_users: 2}}\n    future_scenario: true\n    steps: [{get: /}]\n');
+  expect(collectUnknownFieldPaths(tree)).toEqual(['scenarios[0].future_scenario']);
+});
