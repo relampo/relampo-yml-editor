@@ -315,8 +315,9 @@ export interface SegmentDurationSummary {
 
 export function isTerminalZeroSegment(segments: LoadSegmentData[], index: number): boolean {
   const segment = segments[index];
+  const target = String(segment?.target_vus ?? '').trim();
   return index > 0 && index === segments.length - 1 && segment?.transition === 'constant' &&
-    String(segment.target_vus ?? '').trim() === '0' && String(segment.target_rps ?? '').trim() === '';
+    target !== '' && Number(target) === 0 && String(segment.target_rps ?? '').trim() === '';
 }
 
 export function getSegmentDurationSummary(rootDuration: unknown, segments: LoadSegmentData[]): SegmentDurationSummary {
@@ -644,7 +645,10 @@ export function normalizeLoadDataForYaml(data: LoadData | Record<string, unknown
       applyDefaults: false,
     });
     if (Array.isArray(rawData.segments)) {
-      normalizedSegments.segments = rawData.segments as LoadSegmentData[];
+      const segments = rawData.segments as LoadSegmentData[];
+      normalizedSegments.segments = segments.map((segment, index) =>
+        isTerminalZeroSegment(segments, index) ? { ...segment, target_vus: 0 } : segment,
+      );
     }
     return normalizedSegments;
   }

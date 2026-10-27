@@ -31,6 +31,9 @@ test('RLP-801 RLP-802 selects one model and retains the inactive profile across 
   await page.getByRole('button', { name: 'Constant', exact: true }).click();
   await expect(page.getByLabel('Virtual Users', { exact: true })).toHaveValue('7');
   await expect(page.getByLabel('Iterations', { exact: true })).toHaveValue('3');
+  await page.getByLabel('Virtual Users', { exact: true }).fill('9');
+  await page.getByRole('button', { name: 'Constant', exact: true }).click();
+  await expect(page.getByLabel('Virtual Users', { exact: true })).toHaveValue('9');
 });
 
 for (const type of ['ramp_up_down', 'intent']) {
@@ -59,4 +62,11 @@ test('RLP-803 RLP-807 accepts constant steps and terminal zero with matching sel
   const transition = page.getByLabel('Transition for segment 1');
   await expect(target).toHaveAttribute('class', await transition.getAttribute('class') ?? '');
   await expect(page.getByLabel('Duration for segment 3')).toHaveValue('0s');
+  await page.getByLabel('Target for segment 3').fill('0.0');
+  await expect(page.getByText(/must define a positive Duration/)).toHaveCount(0);
+  const downloaded = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await page.getByRole('menuitem', { name: /Save with responses/ }).click();
+  const parsed = load(await readFile(await (await downloaded).path(), 'utf8')) as { scenarios: Array<{ load: { segments: Array<{ target_vus: unknown }> } }> };
+  expect(parsed.scenarios[0].load.segments[2].target_vus).toBe(0);
 });

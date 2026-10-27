@@ -338,3 +338,17 @@ it('RLP-802 saves the selected model and restores inactive model settings after 
   expect(load().data?.duration).toBe(active?.duration);
   expect(load().data?.end_users).toBe(active?.end_users);
 });
+
+it('RLP-802 reselecting the active model keeps its latest edits', () => {
+  let node: YAMLNode = { id: 'load', type: 'load', name: 'Load', data: { type: 'constant', users: 7, iterations: 1 } };
+  const update = (id: string, data: Record<string, unknown>) => { node = applyNodeUpdateToTree(node, id, data); };
+  const view = renderWithLanguage(<LoadDetails node={node} onNodeUpdate={update} />);
+  const refresh = () => view.rerender(<LanguageProvider><LoadDetails node={node} onNodeUpdate={update} /></LanguageProvider>);
+  fireEvent.click(screen.getByRole('button', { name: 'Linear' })); refresh();
+  fireEvent.click(screen.getByRole('button', { name: 'Constant' })); refresh();
+  fireEvent.change(screen.getByLabelText('Virtual Users'), { target: { value: '9' } }); refresh();
+  fireEvent.click(screen.getByRole('button', { name: 'Constant' })); refresh();
+  expect(screen.getByLabelText('Virtual Users')).toHaveValue(9);
+  expect(node.data?.users).toBe('9');
+  expect(node.data?.__loadProfiles).not.toHaveProperty('constant');
+});
