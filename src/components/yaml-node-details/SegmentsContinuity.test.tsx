@@ -14,7 +14,7 @@ describe('RLP-767 segment continuity', () => {
       for (const transition of ['ramp_up', 'ramp_down', 'constant']) {
         it(`${previous.name} → VUs ${target} validates ${transition}`, () => {
           const issues = validateYAMLSemantics({ id: 'load', name: 'load', type: 'load', data: { type: 'segments', segments: [previous, { ...vus, target_vus: target, transition }] } });
-          if (transition === required) expect(issues).toEqual([]);
+          if (transition === 'constant' || transition === required) expect(issues).toEqual([]);
           else expect(issues.map(issue => issue.message)).toContain(`Segment 2 Transition must be ${required === 'constant' ? 'Constant' : required === 'ramp_up' ? 'Ramp up' : 'Ramp down'} from 40 VUs to ${target} VUs.`);
         });
       }

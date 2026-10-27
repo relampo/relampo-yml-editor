@@ -281,6 +281,15 @@ describe('handleSave', () => {
 // ─── handleDownload ───────────────────────────────────────────────────────
 
 describe('handleDownload', () => {
+  it.each(['ramp_up_down', 'intent'])('RLP-804 RLP-805 blocks export of invalid %s phases', type => {
+    const params = makeParams({ getPersistableYaml: () => `scenarios:\n  - name: phases\n    load: {type: ${type}, users: 1, duration: 1s, warmup: 1s, ramp_up: 1s, ramp_down: 1s}\n    steps: [{get: /}]\n` });
+    const { result } = renderHook(() => useYAMLPersistence(params));
+    act(() => result.current.handleDownload(true));
+    expect(URL.createObjectURL).not.toHaveBeenCalled();
+    expect(params.setError).toHaveBeenCalledWith(expect.stringContaining('cannot exceed Duration'));
+    expect(params.setIsDirty).not.toHaveBeenCalledWith(false);
+  });
+
   beforeEach(() => {
     vi.useFakeTimers();
     // Stub URL API (not available in jsdom)

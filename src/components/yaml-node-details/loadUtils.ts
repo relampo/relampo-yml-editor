@@ -156,7 +156,6 @@ const loadTypeDefaults: Record<LoadType, LoadData> = {
     users: '10',
     duration: '5m',
     iterations: '0',
-    ramp_up: '0s',
   },
   linear: {
     start_users: '1',
@@ -205,7 +204,7 @@ const loadTypeDefaults: Record<LoadType, LoadData> = {
 };
 
 const loadTypeAllowedKeys: Record<LoadType, string[]> = {
-  constant: ['type', 'users', 'duration', 'iterations', 'ramp_up', 'run_until_stopped'],
+  constant: ['type', 'users', 'duration', 'iterations', 'run_until_stopped'],
   linear: ['type', 'start_users', 'end_users', 'duration', 'iterations', 'run_until_stopped'],
   ramp_up_down: ['type', 'users', 'duration', 'iterations', 'ramp_up', 'ramp_down', 'run_until_stopped'],
   throughput: ['type', 'target_rps', 'duration', 'iterations', 'min_vus', 'max_vus', 'run_until_stopped'],
@@ -321,7 +320,9 @@ export function getSegmentDurationSummary(rootDuration: unknown, segments: LoadS
   const explicitDurationCount = segmentDurationValues.filter(value => value !== '').length;
   const hasSegmentDurations = explicitDurationCount > 0;
   const allSegmentDurationsValid = segmentDurationValues.every(
-    value => value !== '' && isValidDuration(value) && parseTimeToSeconds(value) > 0,
+    (value, index) => value !== '' && isValidDuration(value) && (parseTimeToSeconds(value) > 0 ||
+      (index > 0 && index === segments.length - 1 && segments[index].transition === 'constant' &&
+        String(segments[index].target_vus ?? '') === '0' && String(segments[index].target_rps ?? '') === '')),
   );
   const hasMixedDurations = hasSegmentDurations && explicitDurationCount !== segments.length;
   const rootDurationValid =

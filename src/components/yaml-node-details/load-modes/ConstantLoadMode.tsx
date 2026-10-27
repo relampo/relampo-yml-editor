@@ -12,7 +12,6 @@ export function ConstantLoadMode({ data, onChange }: LoadModeProps) {
     { field: 'users', label: t('studioControls.users'), type: 'number', helpText: t('studioControls.usersHelp') },
     { field: 'duration', label: t('studioControls.duration'), helpText: t('studioControls.durationHelp') },
     { field: 'iterations', label: t('studioControls.iterations'), type: 'number', helpText: t('studioControls.iterationsHelp') },
-    { field: 'ramp_up', label: t('studioControls.rampUp'), helpText: t('studioControls.durationHelp') },
   ] as const;
   return (
     <LoadSection

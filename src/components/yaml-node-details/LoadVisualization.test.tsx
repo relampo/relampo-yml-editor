@@ -67,10 +67,10 @@ describe('LoadVisualization', () => {
 
     expect(screen.getByText(/Peak Users:\s*15\s*\|\s*Total:\s*∞/i)).toBeInTheDocument();
     expect(screen.getAllByText('∞')).not.toHaveLength(0);
-    expect(container.querySelector('svg polyline[stroke-width="3"]')).toHaveAttribute('points', '40,170 380,10');
+    expect(container.querySelector('svg polyline[stroke-width="3"]')).toHaveAttribute('points', '40,10 380,10');
   });
 
-  it('treats unitless duration and ramp up values as seconds', () => {
+  it('treats unitless duration as seconds and ignores Constant ramp up', () => {
     renderWithLanguage(
       <LoadVisualization
         loadType="constant"
@@ -79,7 +79,7 @@ describe('LoadVisualization', () => {
     );
 
     expect(screen.getByText(/Total:\s*15s/i)).toBeInTheDocument();
-    expect(screen.getByText('5s')).toBeInTheDocument();
+    expect(screen.queryByText('Ramp Up')).not.toBeInTheDocument();
   });
 
   it('formats sub-second totals in milliseconds', () => {
@@ -107,7 +107,7 @@ describe('LoadVisualization', () => {
     expect(screen.getByText('3m 20s')).toBeInTheDocument();
   });
 
-  it('truncates a constant ramp at the run duration without reaching or turning back from the target', () => {
+  it('RLP-801 applies the Constant target immediately even with a legacy ramp', () => {
     const { container } = renderWithLanguage(
       <LoadVisualization
         loadType="constant"
@@ -115,13 +115,13 @@ describe('LoadVisualization', () => {
       />,
     );
 
-    expect(screen.getByText(/Peak Users:\s*9\s*\|\s*Total:\s*30s/i)).toBeInTheDocument();
+    expect(screen.getByText(/Peak Users:\s*15\s*\|\s*Total:\s*30s/i)).toBeInTheDocument();
     expect(container.querySelector('svg polyline[stroke-width="3"]')).toHaveAttribute(
       'points',
-      '40,170 380,26',
+      '40,10 380,10',
     );
     expect(screen.getByText('30s')).toBeInTheDocument();
-    expect(screen.queryByText('Steady')).not.toBeInTheDocument();
+    expect(screen.getByText('Steady')).toBeInTheDocument();
   });
 
   it('uses VU capacity as the axis for mixed RPS and VU segments', () => {
