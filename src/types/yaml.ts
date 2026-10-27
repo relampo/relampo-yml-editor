@@ -20,6 +20,7 @@ export interface YAMLNodeData {
   __lockedType?: string;
   __name?: string;
   __segmentsProfile?: YAMLNodeData;
+  __loadProfiles?: Record<string, Record<string, unknown>>;
   __scalarLoop?: boolean;
   __scalarRetry?: boolean;
   __stepsInController?: boolean;
