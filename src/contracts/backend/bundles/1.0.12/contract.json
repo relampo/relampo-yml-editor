@@ -1,0 +1,429 @@
+{
+  "schema_version": 1,
+  "contract_version": "1.0.12",
+  "backend_sha": "56650fc5f73675e81cfeb86a83f0fae415d35e12",
+  "source_files": {
+    "pkg/engine/engine_dispatcher.go": "488255b00fcef03d6540b7a486486b3319e5c307c15d42fe7c5aa8f677cce66f",
+    "pkg/engine/engine_helpers.go": "5012a9819f172b06c52f862e579967bf25181cb34fa707b6ffa262e44648fafb",
+    "pkg/engine/engine_intent.go": "6c359f38a790113f0fd9541b151eced3a12808e15258fdde536136bd9d215714",
+    "pkg/engine/stages.go": "91625f5e381bf8db8cad595ee07060e2d4a3a89430a1bc8b2b011a3f1b54a06f",
+    "pkg/runtime/model.go": "c24dce2765bdc842bb0f1ec796a270a4d217414c1673292331110671f387f364",
+    "pkg/runtime/config_view.go": "19af805f478de773b10ce083ab5ed6f1aa1974d97d28a566955eee368e6a72f6",
+    "pkg/runtime/error_policy.go": "ae6134a95eb0863954cfd0e8b8f87441b26f8ddefb65f1f3be0b6ed4800036fc",
+    "pkg/validator/load_config.go": "6efda3bc372589014f1ef092d8560a7bbe327d20205e8173cc20252ef53ceaa7",
+    "pkg/validator/validator.go": "968b9ae9e3afceeed707cc4c85aace4ba45f7ad3b98eeb0f0b8768a0ebae4b05",
+    "pkg/validator/validator_stages.go": "d69ba662a13977d8a0a706a51acdb8fca5972250b39a48e3f1d1790f727b3ad9",
+    "pkg/validator/validator_throughput_load.go": "5f9e81607510d95ac3b841a04be7ad58a7fefcf0fd3de2a71f9ad7775a3a0e8d",
+    "pkg/validator/validator_segments.go": "6c41c0ac69f19e4e8699077001049e807cc93e2c883e5c124af86edcf9c8bff8",
+    "pkg/engine/segments.go": "36bd60b9fcff0bedc3bfcfe3867b645eea0c8b057016a5a38f7a7f1f461836d6",
+    "pkg/engine/segments_controller.go": "8ae889688eac0f771a96be2e8b070bc209c8f58f8128e77f4b0a1b99de56669d",
+    "pkg/engine/engine_models.go": "02c82ba24f47013e035ee251e663f18cdde2cc0f05a0e58401b6a4662c5f5876",
+    "pkg/engine/engine_executor.go": "893d1bcf7166541ec359b7396accd757220928d2b27113051aade114986f9066",
+    "pkg/engine/multi_scenario.go": "2b6a77fb7be573fd2b98e2d578c4f64a94854dbfa8ed0fd70b49015e9415ed8b",
+    "pkg/engine/script_settings.go": "e66cddd4fa18744943304060e79172f70c8057480ccd4a5808812082aa46f145",
+    "pkg/engine/multi_preflight.go": "906fd010b1b00e56aa9ae70ace77e76ba8995d389b8601bffff764f6ee7ab2d4",
+    "pkg/engine/engine_events_aggregate.go": "3f1a68251e7acf63e40d333a5fbbe2d44ca1cbe1b738adcb53b8a2ddb0ad22ce",
+    "pkg/reporter/console.go": "e5dc11025dbac4adb199ff5cff26f3607f40fa8fc749785a16eb101929791882",
+    "pkg/engine/scenario_selection.go": "501c871632879a6c1a9c8ab58ae8e520f48c86ab1136093f88938d60a315e552",
+    "pkg/engine/distributed_scenarios.go": "20cb91da882a2cdc5f394f6590a6bab307823b84057f0c93b66bc46e6ec2fc85",
+    "pkg/reporter/execution_manifest.go": "904acbfa7cfb837dc40d7423bf9c458852007ce1a0d4a4a6bd25e902aa486529",
+    "pkg/engine/scenario_contracts.go": "f6ca35736f43f170fcbe4470d118b0d4c38816cde9c98529c283ae38c1f9d7fc",
+    "pkg/reporter/identified_execution.go": "1bbf1a423f647b246d55dfc5477d85340c35f6b734af242bf3199dc5a06f2d92",
+    "pkg/reporter/execution_artifacts.go": "ed3645651086be4f7449cddd5e368f3e7f69ce6224e84c323b4dbee21ba34764",
+    "pkg/reporter/reporter.go": "2d42936bdf5113129ece25fe0d6d9ca5c4f54a63eebac8b693f53f66546f7ae2",
+    "pkg/reporter/reporting_metrics.go": "55b466f367c143918373bd525fbfccac6aa7a0e2521034fe9100bb8a9f43db49",
+    "cmd/relampo/identified_report.go": "bf956ea77ada6d0db03053fd85242f9e4d1dbcd663662191f2e85fdefb70336c",
+    "cmd/relampo/distributed_summary.go": "060cddc3c681a0d6aa860e5f30684b99f5d9cf3a4f5a1b7bd0f1dc471ab5e2ed",
+    "cmd/relampo-worker/multi_execution.go": "dca0b7ad571c12591dad7bc1b62df182f5173518da2e982336a7b3e3efc103bb",
+    "cmd/relampo/cloud_report.go": "789dea9df7051f0ac030ce6daa87477345048f7cc03735b8a3e81a71f5f961e6",
+    "cmd/relampo/distributed_artifacts.go": "a30307a154b6ef5bfb1d54ed9dfd80a7cb9557a9589ec8b50661bd930a07c0df",
+    "cmd/relampo/distributed.go": "219fb29d949aee635ceb1c2d2537d6e3594fec144f2533d71f0f949ebb4c5408",
+    "cmd/relampo/distributed_run.go": "ebe1f8d7960c8190016a6b424780cfb5b5f3237808410b4704aa062ef85aa56a",
+    "cmd/relampo/distributed_gitlab.go": "a9f9305457c87c4e566d70cbab8e5611398606bc3ea153737b7a3896b52d18be",
+    "cmd/relampo/distributed_gitlab_multi.go": "4ab3a6de2e31e9f7e1c0d2b2a3e3ca73304c3d1cb57fb39cf1fbdc3b69224536",
+    "cmd/relampo/distributed_gitlab_original.go": "4ef565370c3aaed1d1675ae74c2e3fc6e6820dadd35dddcc2763c0020034ce2c",
+    "cmd/relampo/distributed_gitlab_parallel.go": "8bd32a77dfa5fc54bfaa514e73cb4fe9be781c0c2c6cf410805876daa3cd0be7",
+    "cmd/relampo/distributed_gitlab_parallel_workflow.go": "27099bbb1caba12043d257949c284c0fc654407134913ec6513a44ff5a6c23a0",
+    "cmd/relampo/distributed_worker_preflight.go": "0eaff2e3e9d63d3f9858eed18ff37d9dec2b145e4473dff1707b11100a3eb08d",
+    "cmd/relampo/distributed_scenario.go": "fb6d1cc092d9910a6f25a73e8458c86471dcdf869f1e50350d524f76aeedbe4c",
+    "cmd/relampo/distributed_github_multi.go": "8d3906a25770d44444dfadf8fa8dca85795a56b14353980584fd5e6674cbd881",
+    "cmd/relampo/distributed_github_inventory.go": "7e7517b733086b984a8a753b83e3a9a88fdfe9ed2282020e3a1575d5bc87d563",
+    "cmd/relampo/distributed_data_sources.go": "1cf25547665b79e832ea36688fae8b2c96dfef26bfd0af1c4a7400fb863ef2da",
+    "cmd/relampo/cloud_report_command.go": "deee2fc7e3cdc2744d7f05d6973ade933bb19be9cdd3475433ca7e3e06b2f97f",
+    "cmd/relampo/distributed_gitlab_sequential.go": "f957ceabff7af9ff65b2d564fbd53add1f25e622b4c498fdf825e927e774d32e",
+    ".goreleaser.yaml": "c2ecef0bf2b3905a2aed05628cedfcf4f89790a924efebcfd42314d053023744",
+    "cmd/relampo-worker/main.go": "0ff04f59cfbe978f05270742af21523f8f73ddc6451b2aed27ad59046b68d8a4",
+    "cmd/relampo/main.go": "9db783128f5bf39a4126a50c45b75ef63f1ae585e03dffddf7ad8b9150eef7f4",
+    "internal/multiscenario/availability.go": "426f4b704e07e6f6bd0d7872e2fbf251e27761593a00c12611786d58f9ba69c8",
+    "internal/studio/api.go": "1cb48bb212a8e07f1c3f356379394e4c814f61e139dc7725826984384198c91b",
+    "internal/studio/loadRuns.go": "c545d24085c4e997a4590135cb0737d0bb2610342d07f555dfade50dd4bdab8c",
+    "internal/studio/runs.go": "cf837be5ff419ca60c5470d5d25d7c1ac214f15958568f99b4939acc24768067",
+    "scripts/publish-develop-release.sh": "a04a22ba685c29f4641b5c3750308074de2db2096d7b6e0e6ef63db0b73586cf",
+    "scripts/write-worker-capabilities.py": "b23e683793f6d334919adf77c5425772fb57dddee98ebb822056346515bad946",
+    "internal/licensing/authorize.go": "98b0187a02bc8f7662ee1cd3a43830892bc713b0c9f345c4f5e8d66ad87dfc8b",
+    "internal/licensing/client.go": "ccaa75461211ca1a0ade050bce49e8a89cd7367136dad7a2503661162c2752b1",
+    "internal/licensing/multi_authorization.go": "df521777515ab1364e3ef166fe8e4d36a68c9befddf19be90dbf573a303a7d0c",
+    "internal/licensing/runauth.go": "b15e13c86b4faad471b37e864fb67eaa1dd34c1c10e267a985c0c5167722dec7",
+    "cmd/relampo-worker/multi_authorization.go": "b2427993ba6914bdff9b13a53a0192b4cb45c0fd7499afeb65ad8927cb2f4a5d",
+    "cmd/relampo-worker/native_phase.go": "543a1e559b79f06f0cdd2066357bcf1c0762aa098f53d5e2e63a12ebd6f310f0",
+    "cmd/relampo/distributed_native_phase.go": "3e13730f16577a2c0204109ab04bae76878775f1c1c66ad317f305e9e11d741e",
+    "pkg/reporter/summary_from_engine.go": "cbd47a38f157436817eb261abe87b351e190fb6ca4f66da4da458a78c0261ee8"
+  },
+  "validation_error_codes": [
+    "builtin_syntax",
+    "duplicate_value",
+    "invalid_value",
+    "required_field",
+    "schema_mismatch",
+    "unsupported_value",
+    "yaml_syntax"
+  ],
+  "known_fields": {
+    "root": [
+      "test",
+      "variables",
+      "data_source",
+      "http_defaults",
+      "grpc_defaults",
+      "webrtc_defaults",
+      "scenarios",
+      "metrics"
+    ],
+    "test": [
+      "name",
+      "description",
+      "version",
+      "scenario_mode"
+    ],
+    "data_source": [
+      "type",
+      "file",
+      "path",
+      "mode",
+      "strategy",
+      "on_exhausted",
+      "variable_names",
+      "bind"
+    ],
+    "load": [
+      "type",
+      "users",
+      "iterations",
+      "duration",
+      "ramp_up",
+      "ramp_down",
+      "start_users",
+      "end_users",
+      "target_rps",
+      "target_unit",
+      "target_value",
+      "goal",
+      "target",
+      "min_vus",
+      "max_vus",
+      "aggressiveness",
+      "run_until_stopped",
+      "stages",
+      "segments",
+      "warmup",
+      "window",
+      "control_window",
+      "stability_window",
+      "latency",
+      "error_rate",
+      "error_rate_max_pct",
+      "error_4xx_max_pct",
+      "error_5xx_max_pct",
+      "p50_max_ms",
+      "p75_max_ms",
+      "p95_max_ms",
+      "p99_max_ms",
+      "p999_max_ms"
+    ],
+    "load_stage": [
+      "name",
+      "type",
+      "duration",
+      "open_ended",
+      "users",
+      "start_users",
+      "end_users"
+    ],
+    "load_segment": [
+      "name",
+      "duration",
+      "target_rps",
+      "target_vus",
+      "min_vus",
+      "max_vus"
+    ],
+    "metrics": [
+      "percentiles"
+    ],
+    "error_policy": [
+      "enabled",
+      "on_error",
+      "on_4xx",
+      "on_5xx",
+      "on_timeout",
+      "on_connection_error"
+    ],
+    "profile": [
+      "load_type",
+      "concurrency",
+      "duration",
+      "ramp_up",
+      "ramp_down",
+      "iterations",
+      "target_rps"
+    ],
+    "http_defaults": [
+      "connection_scope",
+      "dns_cache_ttl",
+      "base_url",
+      "allowed_redirect_origins",
+      "headers",
+      "auth",
+      "timeout",
+      "disable_http2",
+      "max_idle_conns",
+      "max_idle_conns_per_host",
+      "max_conns_per_host",
+      "dial_timeout",
+      "tls_handshake_timeout",
+      "response_header_timeout",
+      "follow_redirects",
+      "retry_policy",
+      "retrieve_embedded_resources",
+      "embedded_resource_types",
+      "embedded_resource_blacklist"
+    ],
+    "auth": [
+      "type",
+      "token",
+      "name",
+      "value",
+      "in",
+      "username",
+      "password"
+    ],
+    "scenario": [
+      "data_source",
+      "name",
+      "profile",
+      "load",
+      "cookies",
+      "cache_manager",
+      "error_policy",
+      "steps"
+    ],
+    "cookies": [
+      "clear_each_iteration",
+      "policy",
+      "cookies"
+    ],
+    "cookie": [
+      "name",
+      "value",
+      "domain",
+      "path"
+    ],
+    "cache_manager": [
+      "clear_each_iteration",
+      "max_elements"
+    ],
+    "group": [
+      "name",
+      "auth",
+      "enabled",
+      "steps"
+    ],
+    "controller": [
+      "name",
+      "auth",
+      "enabled",
+      "steps"
+    ],
+    "assertions": [
+      "assertions"
+    ],
+    "one_time": [
+      "name",
+      "description",
+      "auth",
+      "enabled",
+      "steps"
+    ],
+    "balanced": [
+      "name",
+      "type",
+      "mode",
+      "enabled",
+      "steps"
+    ],
+    "if": [
+      "steps"
+    ],
+    "loop": [
+      "count",
+      "break_on",
+      "steps"
+    ],
+    "retry": [
+      "attempts",
+      "on",
+      "backoff",
+      "initial_delay",
+      "max_delay",
+      "multiplier",
+      "steps"
+    ],
+    "think_time": [
+      "duration",
+      "min",
+      "max",
+      "mean",
+      "std_dev",
+      "distribution",
+      "enabled"
+    ],
+    "request": [
+      "request_id",
+      "method",
+      "url",
+      "headers",
+      "query_params",
+      "body",
+      "body_raw",
+      "timeout",
+      "cookie_override",
+      "cache_override",
+      "extract",
+      "extractors",
+      "assert",
+      "assertions",
+      "spark",
+      "files",
+      "think_time",
+      "retry",
+      "on_error",
+      "error_policy",
+      "throughput",
+      "data_source",
+      "name",
+      "enabled",
+      "recorded_at",
+      "retrieve_embedded_resources",
+      "redirect_automatically",
+      "follow_redirects",
+      "chain_id",
+      "chain_role",
+      "response",
+      "response_preview"
+    ],
+    "throughput": [
+      "enabled",
+      "target_rps"
+    ],
+    "response": [
+      "status",
+      "headers",
+      "size_bytes",
+      "time_ms"
+    ],
+    "extractor": [
+      "type",
+      "var",
+      "variable",
+      "from",
+      "pattern",
+      "path",
+      "expression",
+      "header",
+      "transform",
+      "left_boundary",
+      "right_boundary",
+      "default",
+      "template",
+      "match_no",
+      "capture_mode",
+      "capture_index",
+      "group"
+    ],
+    "spark": [
+      "name",
+      "when",
+      "script"
+    ],
+    "file": [
+      "field",
+      "path",
+      "mime"
+    ],
+    "assertion": [
+      "type",
+      "value",
+      "path",
+      "name",
+      "max_ms",
+      "size"
+    ],
+    "sql": [
+      "name",
+      "dialect",
+      "kind",
+      "connection",
+      "query",
+      "params",
+      "allow_writes",
+      "validate_connectivity",
+      "timeout",
+      "on_error",
+      "error_policy"
+    ],
+    "sql_connection": [
+      "host",
+      "port",
+      "database",
+      "user",
+      "password",
+      "ssl_mode",
+      "max_open_conns",
+      "max_idle_conns",
+      "conn_max_lifetime"
+    ]
+  },
+  "poc_exclusions": [
+    "grpc",
+    "webrtc",
+    "websocket"
+  ],
+  "fixtures": [
+    {
+      "kind": "valid",
+      "path": "fixtures/valid/full.yaml",
+      "sha256": "3e6f50af564f08822ae7c9c2dca1504bb035a70d5f18d8a950d068a9b0be8e75"
+    },
+    {
+      "kind": "invalid",
+      "path": "fixtures/invalid/missing-scenarios.yaml",
+      "sha256": "da1feb633219f8ca2f69805532754a10fef7e899b5ee9ca34b64e80d27bdab5c",
+      "expected_errors": [
+        {
+          "code": "required_field",
+          "field": "scenarios"
+        }
+      ]
+    },
+    {
+      "kind": "forward",
+      "path": "fixtures/forward/unknown-fields.yaml",
+      "sha256": "d601760f7c7df287a2097f4677c87afa48c4456873ad881da097bd7f31892460"
+    },
+    {
+      "kind": "roundtrip",
+      "path": "fixtures/roundtrip/semantic-fields.yaml",
+      "sha256": "19c36f7e0f31f53607c9d2ce1d814fcd74c6a67cfaae22f7975717a221d4f217"
+    }
+  ]
+}
