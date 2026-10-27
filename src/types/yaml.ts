@@ -111,6 +111,7 @@ export interface YAMLNodeData {
   on_4xx?: string;
   on_5xx?: string;
   on_timeout?: string;
+  on_connection_error?: string;
   on_error?: string;
   options?: StringMap;
   p95_max_ms?: YAMLInputValue;
