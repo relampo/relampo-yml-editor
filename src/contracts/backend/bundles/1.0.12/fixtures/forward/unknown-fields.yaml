@@ -1,0 +1,14 @@
+test:
+  name: contract-forward
+  future_test:
+    enabled: true
+future_root:
+  owner: backend
+scenarios:
+  - name: smoke
+    future_scenario: keep-me
+    steps:
+      - request:
+          method: GET
+          url: /health
+          future_request: keep-me
