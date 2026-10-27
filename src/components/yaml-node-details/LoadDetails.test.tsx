@@ -293,3 +293,26 @@ it('RLP-806 restores edited segments after switching models and reopening saved 
   const reopenedLoad = reopened.children!.find(child => child.type === 'scenarios')!.children![0].children!.find(child => child.type === 'load')!;
   expect(reopenedLoad.data!.segments).toEqual(expected);
 });
+
+it.each([undefined, '2m'])('RLP-806 restores an imported profile with root duration %s before any segment edit', duration => {
+  const source = `scenarios:\n  - name: imported\n    load:\n      type: segments\n${duration ? `      duration: ${duration}\n` : ''}      segments:\n        - name: baseline\n          duration: 1m\n          target_vus: 5\n          transition: constant\n        - name: hold\n          duration: 1m\n          target_vus: 5\n          transition: constant\n    steps: []\n`;
+  let tree = parseYAMLToTree(source)!;
+  const loadNode = () => tree.children!.find(child => child.type === 'scenarios')!.children![0].children!.find(child => child.type === 'load')!;
+  const initialData = loadNode().data;
+  const onNodeUpdate = (id: string, data: Record<string, unknown>) => { tree = applyNodeUpdateToTree(tree, id, data); };
+  const view = renderWithLanguage(<LoadDetails node={loadNode()} onNodeUpdate={onNodeUpdate} />);
+  expect(validateYAMLSemantics(tree)).toEqual([]);
+  // Switch immediately after import: a segment edit would derive the root duration.
+  fireEvent.click(screen.getByRole('button', { name: 'Linear' }));
+  view.rerender(<LanguageProvider><LoadDetails node={loadNode()} onNodeUpdate={onNodeUpdate} /></LanguageProvider>);
+  fireEvent.click(screen.getByRole('button', { name: 'Segments' }));
+  view.rerender(<LanguageProvider><LoadDetails node={loadNode()} onNodeUpdate={onNodeUpdate} /></LanguageProvider>);
+  expect(loadNode().data!.duration).toBe(duration);
+  expect(loadNode().data!.segments).toEqual(initialData!.segments);
+  expect(validateYAMLSemantics(tree)).toEqual([]);
+  const saved = treeToYAML(tree);
+  expect(saved).not.toContain('__segmentsProfile');
+  tree = parseYAMLToTree(saved)!;
+  expect(loadNode().data).toEqual(initialData);
+  expect(validateYAMLSemantics(tree)).toEqual([]);
+});

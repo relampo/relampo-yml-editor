@@ -48,11 +48,12 @@ export function LoadDetails({ node, onNodeUpdate }: NodeDetailProps) {
       // ponytail: remember only Segments in the tree; add other profiles if needed.
       // toLoadData excludes this editor metadata from saved and executed YAML.
       const segmentsProfile = loadType === 'segments' ? loadData : data.__segmentsProfile;
-      const source = selectedType === 'segments' && segmentsProfile && typeof segmentsProfile === 'object'
+      const restoringSegments = selectedType === 'segments' && !!segmentsProfile && typeof segmentsProfile === 'object';
+      const source = restoringSegments
         ? toLoadData({ ...segmentsProfile })
         : loadData;
       updateData({
-        ...buildLoadDataForType(selectedType, source),
+        ...buildLoadDataForType(selectedType, source, { applyDefaults: !restoringSegments }),
         ...(segmentsProfile ? { __segmentsProfile: segmentsProfile } : {}),
         __name: `Load: ${getLoadTypeLabel(selectedType)}`,
       });
