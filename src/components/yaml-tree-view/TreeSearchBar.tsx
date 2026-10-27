@@ -1,6 +1,6 @@
 import { useLanguage } from '../../contexts/LanguageContext';
 import { ChevronDown, ChevronUp, Search, X } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 interface TreeSearchBarProps {
   value: string;
@@ -32,6 +32,7 @@ export function TreeSearchBar({
     ? `${replacementResult} ${t(replacementResult === 1 ? 'studioControls.replacement' : 'studioControls.replacements')}`
     : t('studioControls.noMatches');
   const [replaceApplied, setReplaceApplied] = useState(false);
+  const matchCountAtReplacement = useRef(0);
   const matchCount = replaceOpen ? replaceMatchCount : 0;
   const currentMatch = Math.min(currentMatchIndex, Math.max(matchCount - 1, 0));
   const replacementDisabled = replaceApplied || !value.trim() || !replacementText || matchCount === 0;
@@ -46,6 +47,7 @@ export function TreeSearchBar({
   };
 
   const handleReplace = (matchIndex?: number) => {
+    matchCountAtReplacement.current = matchCount;
     const replacements = onReplace(replacementText, matchIndex);
     if (replacements > 0) {
       setReplaceApplied(true);
@@ -140,7 +142,11 @@ export function TreeSearchBar({
             </span>
             <button
               type="button"
-              onClick={() => onCurrentMatchIndexChange(Math.max(currentMatch - 1, 0))}
+              onClick={() => {
+                setReplaceApplied(false);
+                setReplacementResult(null);
+                onCurrentMatchIndexChange(Math.max(currentMatch - 1, 0));
+              }}
               disabled={matchCount === 0}
               className="p-1.5 rounded border border-white/10 text-zinc-400 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-30"
               title={t('studioControls.previous')}
@@ -150,7 +156,11 @@ export function TreeSearchBar({
             </button>
             <button
               type="button"
-              onClick={() => onCurrentMatchIndexChange(Math.min(currentMatch + 1, matchCount - 1))}
+              onClick={() => {
+                setReplaceApplied(false);
+                setReplacementResult(null);
+                onCurrentMatchIndexChange(Math.min(currentMatch + (replaceApplied && matchCount < matchCountAtReplacement.current ? 0 : 1), matchCount - 1));
+              }}
               disabled={matchCount === 0}
               className="p-1.5 rounded border border-white/10 text-zinc-400 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-30"
               title={t('studioControls.next')}

@@ -291,3 +291,24 @@ describe('YAMLTreeView replacement', () => {
     expect((latestTree as YAMLNode | null)?.children?.[0].data?.url).toBe('/token');
   });
 });
+
+it('RLP-782 replaces successive requests without skipping the next remaining match', async () => {
+  let latest: YAMLNode | null = null;
+  renderInteractiveTreeView({ tree: { id: 'steps', type: 'steps', name: 'Steps', expanded: true,
+    children: [1, 2, 3].map(i => ({ id: `request-${i}`, type: 'request', name: `Request ${i}`, data: { method: 'GET', url: `/needle${i}`, enabled: true }, children: [] })),
+  }, onTreeStateChange: tree => { latest = tree; } });
+  fireEvent.change(screen.getByPlaceholderText('Search nodes...'), { target: { value: 'needle' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Search tree' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Replace' }));
+  fireEvent.change(screen.getByLabelText('Replacement text'), { target: { value: 'changed' } });
+  for (const i of [1, 2, 3]) {
+    fireEvent.click(screen.getByRole('button', { name: 'Replace selected' }));
+    await waitFor(() => expect(latest?.children?.[i - 1].data?.url).toBe(`/changed${i}`));
+    if (i < 3) {
+      fireEvent.click(screen.getByRole('button', { name: 'Next replace match' }));
+      expect(screen.getByRole('button', { name: 'Replace selected' })).toBeEnabled();
+    }
+  }
+  expect(screen.getByLabelText('Replace match position')).toHaveTextContent('0 / 0');
+  expect(screen.getByRole('button', { name: 'Replace selected' })).toBeDisabled();
+});
