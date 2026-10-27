@@ -286,7 +286,7 @@ describe('YAMLDebugSession RLP debug fixes', () => {
     expect(screen.queryByLabelText('Built-in diagnostic')).not.toBeInTheDocument();
   });
 
-  it('shows Spark before and after as plain text in the owning request Logs tab (RLP-742)', async () => {
+  it('shows Spark before and after as plain text in the owning request Spark tab (RLP-742)', async () => {
     render(
       <YAMLDebugSession tree={null} yamlCode={'test: \n  name: spark-logs\n'} documentReady
         validationErrors={[]} onSelectNode={vi.fn()} onEditNode={vi.fn()} />,
@@ -303,9 +303,11 @@ describe('YAMLDebugSession RLP debug fixes', () => {
     expect(screen.queryByRole('button', { name: /SPARK/ })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Requests: 1. Filter execution timeline.' })).toBeInTheDocument();
     expect(screen.queryByText(/spark-log: before value/)).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'logs' }));
+    fireEvent.click(screen.getByRole('button', { name: 'spark' }));
     expect(screen.getByText(/Spark before: spark-log: before value/).tagName).toBe('P');
     expect(screen.getByText(/Spark after: spark-log: after value/).tagName).toBe('P');
+    fireEvent.click(screen.getByRole('button', { name: 'logs' }));
+    expect(screen.queryByText(/spark-log:/)).not.toBeInTheDocument();
   });
 
   it('keeps interleaved VUs and repeated Spark executions on their own request (RLP-742)', async () => {
@@ -325,7 +327,7 @@ describe('YAMLDebugSession RLP debug fixes', () => {
       emit({ vu: 1, method: 'SPARK', name: 'VU one repeated', spark_phase: 'after' });
       emit({ vu: 1, path: '/repeated' });
     });
-    fireEvent.click(screen.getByRole('button', { name: 'logs' }));
+    fireEvent.click(screen.getByRole('button', { name: 'spark' }));
     expect(screen.getByText(/Spark after: VU one repeated/)).toBeInTheDocument();
     expect(screen.queryByText(/VU one first/)).not.toBeInTheDocument();
     expect(screen.queryByText(/VU two/)).not.toBeInTheDocument();
@@ -437,7 +439,7 @@ describe('YAMLDebugSession RLP debug fixes', () => {
     expect(within(timeline).queryByRole('button', { name: /GET.*\/failed/ })).not.toBeInTheDocument();
   });
 
-  it('shows error policy evidence in its request overview without counting it as a request', async () => {
+  it('keeps the failed result without extra policy details or another request', async () => {
     render(
       <YAMLDebugSession
         tree={null}
@@ -511,14 +513,10 @@ describe('YAMLDebugSession RLP debug fixes', () => {
     expect(screen.getByRole('button', { name: 'Failed: 1. Filter execution timeline.' })).toBeInTheDocument();
 
     fireEvent.click(within(timeline).getByRole('button', { name: /GET.*\/failed/ }));
-    const policyDecision = screen.getByLabelText('Error policy decision');
-    expect(policyDecision).toBeInTheDocument();
-    expect(within(policyDecision).getByText('on_5xx → next_iteration')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Error policy decision')).not.toBeInTheDocument();
     expect(screen.getByText('Virtual user 2')).toBeInTheDocument();
-    expect(within(policyDecision).getByText('Iteration')).toBeInTheDocument();
-    expect(within(policyDecision).getByText('3')).toBeInTheDocument();
-    expect(within(policyDecision).getByText('expected 500')).toBeInTheDocument();
-    expect(within(policyDecision).getByText('2 · next_iteration')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'Failed result' })).toBeInTheDocument();
+    expect(screen.getByText('Other error', { exact: true })).toBeInTheDocument();
   });
 
   it.each([
@@ -537,9 +535,9 @@ describe('YAMLDebugSession RLP debug fixes', () => {
       debugApiMock.handlers[0].onEvent(event({ method: 'ERROR_POLICY', path: '/failed', status, request_id: 3, vu: 1, iteration: 1, error_policy: { key, action: 'continue', original_error: 'request failed', request_path: '/failed' } }));
     });
     expect(screen.getByRole('button', { name: 'Requests: 1. Filter execution timeline.' })).toBeInTheDocument();
-    const card = screen.getByLabelText('Error policy decision');
-    expect(within(card).getByText(label)).toBeInTheDocument();
-    expect(within(card).getByText(`${key} → continue`)).toBeInTheDocument();
+    expect(screen.queryByLabelText('Error policy decision')).not.toBeInTheDocument();
+    expect(screen.getByText(label, { exact: true })).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'Failed result' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /ERROR_POLICY/ })).not.toBeInTheDocument();
   });
 
