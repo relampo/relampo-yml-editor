@@ -1,3 +1,4 @@
+import { nativeSelectClassName } from '../../ui/select';
 import { ArrowDown, ArrowUp, GripVertical, Plus, Trash2 } from 'lucide-react';
 import { useRef, useState, type DragEvent } from 'react';
 import {
@@ -257,7 +258,7 @@ export function SegmentsLoadMode({ data, onChange }: LoadModeProps) {
               required
               value={segment.transition ?? ''}
               onChange={event => updateSegment(index, 'transition', event.target.value)}
-              className="min-h-10 w-full border-0 border-r border-white/5 bg-transparent px-3 py-2 text-sm text-zinc-200 outline-none"
+              className={nativeSelectClassName}
             >
               <option value="" disabled>Select transition</option>
               <option value="constant">Constant</option>
@@ -356,7 +357,7 @@ function SegmentTargetTypeSelect({
       required
       aria-label={ariaLabel}
       onChange={event => onChange(event.target.value === 'vus' ? 'vus' : 'rps')}
-      className="min-h-10 w-full border-0 border-r border-white/5 bg-transparent px-3 py-2 font-mono text-sm text-zinc-200 outline-none focus:bg-white/[0.03]"
+      className={nativeSelectClassName}
     >
       <option value="rps">RPS</option>
       <option value="vus">VUs</option>

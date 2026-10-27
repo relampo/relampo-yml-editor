@@ -1,3 +1,4 @@
+import { nativeSelectClassName } from './ui/select';
 import { afterEach, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { YAMLLoadRunSession } from './YAMLRunView';
@@ -72,6 +73,7 @@ it('keeps live identities and selects exact final scenario results', async () =>
   expect(screen.getByText('Request p95').parentElement).toHaveTextContent('Unavailable');
   expect(screen.getByText('RSS Peak').parentElement).toHaveTextContent('Unavailable');
   expect(within(screen.getByRole('combobox', { name: 'Result scope' })).getByRole('option', { name: 'Global' })).toBeInTheDocument();
+  expect(screen.getByRole('combobox', { name: 'Result scope' })).toHaveAttribute('class', nativeSelectClassName);
 });
 
 it('shows configured users separately from users executed before local Stop', async () => {
