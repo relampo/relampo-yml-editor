@@ -1,3 +1,4 @@
+import { normalizeLoadDataForYaml } from './loadUtils';
 import { fireEvent, render, screen } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
@@ -313,6 +314,27 @@ it.each([undefined, '2m'])('RLP-806 restores an imported profile with root durat
   const saved = treeToYAML(tree);
   expect(saved).not.toContain('__segmentsProfile');
   tree = parseYAMLToTree(saved)!;
-  expect(loadNode().data).toEqual(initialData);
+  expect(normalizeLoadDataForYaml(loadNode().data!)).toEqual(initialData);
   expect(validateYAMLSemantics(tree)).toEqual([]);
+});
+
+it('RLP-802 saves the selected model and restores inactive model settings after YAML import', () => {
+  let tree = parseYAMLToTree('scenarios:\n  - name: selected\n    load: {type: constant, users: 7, iterations: 3}\n    steps: [{get: /}]\n')!;
+  const load = () => tree.children!.find(n => n.type === 'scenarios')!.children![0].children!.find(n => n.type === 'load')!;
+  const update = (id: string, data: Record<string, unknown>) => { tree = applyNodeUpdateToTree(tree, id, data); };
+  const view = renderWithLanguage(<LoadDetails node={load()} onNodeUpdate={update} />);
+  const refresh = () => view.rerender(<LanguageProvider><LoadDetails node={load()} onNodeUpdate={update} /></LanguageProvider>);
+  fireEvent.click(screen.getByRole('button', { name: 'Linear' })); refresh();
+  const active = load().data;
+  tree = parseYAMLToTree(treeToYAML(tree))!; refresh();
+  expect(screen.getByRole('button', { name: 'Linear' })).toHaveAttribute('aria-pressed', 'true');
+  expect(screen.getAllByRole('button', { pressed: true })).toHaveLength(1);
+  expect(load().data?.type).toBe('ramp');
+  fireEvent.click(screen.getByRole('button', { name: 'Constant' })); refresh();
+  expect(load().data?.users).toBe(7);
+  expect(load().data?.iterations).toBe(3);
+  expect(load().data?.duration).toBeUndefined();
+  fireEvent.click(screen.getByRole('button', { name: 'Linear' })); refresh();
+  expect(load().data?.duration).toBe(active?.duration);
+  expect(load().data?.end_users).toBe(active?.end_users);
 });

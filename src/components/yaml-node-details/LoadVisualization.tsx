@@ -941,18 +941,9 @@ function getVisualizationPoints(data: LoadData, loadType: LoadType) {
 
   if (loadType === 'constant') {
     const users = parseInt(String(data.users || '10'), 10) || 10;
-    const rampUp = parseTimeToSeconds(String(data.ramp_up || '0s'));
     const durationValue = String(data.duration ?? '').trim();
-    const duration = durationValue ? parseTimeToSeconds(durationValue) : Math.max(60, rampUp);
-    if (rampUp > 0) {
-      const rampEnd = Math.min(rampUp, duration);
-      points.push({ time: 0, users: 0 }, { time: rampEnd, users: users * (rampEnd / rampUp) });
-      if (rampEnd < duration) {
-        points.push({ time: duration, users });
-      }
-    } else {
-      points.push({ time: 0, users }, { time: duration, users });
-    }
+    const duration = durationValue ? parseTimeToSeconds(durationValue) : 60;
+    points.push({ time: 0, users }, { time: duration, users });
   } else if (loadType === 'linear') {
     points.push(
       { time: 0, users: parseInt(String(data.start_users || '1'), 10) || 1 },
@@ -1025,13 +1016,7 @@ function getTimeRanges(data: LoadData, loadType: LoadType, maxTime: number) {
     }));
   }
   if (loadType === 'constant') {
-    const rampUp = Math.max(0, parseTimeToSeconds(String(data.ramp_up || '0s')));
-    return rampUp > 0
-      ? [
-          { key: 'rampUp', label: 'Ramp Up', start: 0, end: Math.min(rampUp, maxTime) },
-          { key: 'steady', label: 'Steady', start: Math.min(rampUp, maxTime), end: maxTime },
-        ].filter(range => range.end > range.start)
-      : [{ key: 'steady', label: 'Steady', start: 0, end: maxTime }];
+    return [{ key: 'steady', label: 'Steady', start: 0, end: maxTime }];
   }
   if (loadType === 'linear') {
     return [{ key: 'ramp', label: 'Ramp', start: 0, end: maxTime }];
@@ -1069,8 +1054,7 @@ function getTransitionMarkers(data: LoadData, loadType: LoadType, maxTime: numbe
     return markers;
   }
   if (loadType === 'constant') {
-    const rampUp = Math.max(0, parseTimeToSeconds(String(data.ramp_up || '0s')));
-    return rampUp > 0 && rampUp < maxTime ? [{ key: 'ramp-up', time: rampUp, label: formatTimeLabel(rampUp) }] : [];
+    return [];
   }
   if (loadType === 'linear') {
     return [];

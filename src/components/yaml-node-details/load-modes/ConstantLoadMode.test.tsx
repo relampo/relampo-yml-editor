@@ -15,12 +15,12 @@ describe('ConstantLoadMode', () => {
       />,
     );
 
-    for (const label of ['Virtual Users', 'Duration', 'Iterations', 'Ramp Up']) {
+    for (const label of ['Virtual Users', 'Duration', 'Iterations']) {
       const input = screen.getByLabelText(label);
       expect(input).not.toHaveAttribute('placeholder');
       expect(input).toHaveAccessibleDescription();
     }
-    expect(screen.getAllByText(/Default unit: seconds/i)).toHaveLength(2);
+    expect(screen.getAllByText(/Default unit: seconds/i)).toHaveLength(1);
   });
 
   it('allows millisecond values long enough to represent at least one hour', () => {
@@ -33,11 +33,9 @@ describe('ConstantLoadMode', () => {
     );
 
     expect(screen.getByLabelText('Duration')).toHaveAttribute('maxlength', '16');
-    expect(screen.getByLabelText('Ramp Up')).toHaveAttribute('maxlength', '16');
     fireEvent.change(screen.getByLabelText('Duration'), { target: { value: '3600000ms' } });
-    fireEvent.change(screen.getByLabelText('Ramp Up'), { target: { value: '3600000ms' } });
     expect(onChange).toHaveBeenCalledWith('duration', '3600000ms');
-    expect(onChange).toHaveBeenCalledWith('ramp_up', '3600000ms');
+    expect(screen.queryByLabelText('Ramp Up')).not.toBeInTheDocument();
   });
 
   it('disables finite stop fields during an explicit manual-stop run', () => {

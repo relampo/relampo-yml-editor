@@ -179,6 +179,9 @@ function scenarioNodeToObject(node: YAMLNode): any {
   for (const child of node.children) {
     if (child.type === 'load') {
       scenario.load = normalizeLoadDataForYaml(toLoadData(child.data as Record<string, unknown> | undefined));
+      if (child.data?.__loadProfiles && typeof child.data.__loadProfiles === 'object') {
+        scenario['x-studio-load-profiles'] = child.data.__loadProfiles;
+      }
     } else if (child.type === 'cookies') {
       scenario.cookies = child.data;
     } else if (child.type === 'cache_manager') {

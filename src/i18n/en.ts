@@ -32,6 +32,7 @@ export const enTranslations = {
     usersHelp: 'Number of concurrent virtual users.',
     durationHelp: 'Default unit: seconds. Examples: 500ms, 5s, 5m.',
     iterationsHelp: 'Optional limit for how many times each virtual user repeats the scenario.',
+    selectedLoadModel: 'Selected load model',
     loadPattern: 'Load Pattern',
     constant: 'Constant',
     linear: 'Linear',

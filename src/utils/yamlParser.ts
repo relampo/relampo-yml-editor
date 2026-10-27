@@ -207,7 +207,9 @@ function convertScenarioToNode(scenario: any, index: number, path: any[]): YAMLN
       id: `${scenarioId}_load`,
       type: 'load',
       name: `Load: ${getLoadTypeLabel(scenario.load.type || 'constant')}`,
-      data: normalizeLoadDataForYaml(scenario.load),
+      data: { ...normalizeLoadDataForYaml(scenario.load),
+        ...(isPlainRecord(scenario['x-studio-load-profiles']) ? { __loadProfiles: scenario['x-studio-load-profiles'] } : {}),
+      },
       path: [...path, 'load'],
     });
   }

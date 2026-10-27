@@ -87,8 +87,7 @@ describe('RLP-768 segment reordering', () => {
         const { current, messages } = mount([previous, rps, moved]);
         drag(3, 2);
         expect(current().data!.segments).toEqual([previous, moved, rps]);
-        const start = previous.target_vus ? 50 : 40;
-        expect(messages()).toEqual(moved.target_vus ? [`Segment 2 Transition must be Ramp down from ${start} VUs to 20 VUs.`] : []);
+        expect(messages()).toEqual([]);
       });
     }
   }
@@ -102,7 +101,6 @@ describe('RLP-768 segment reordering', () => {
     drag(3, 2);
     expect(messages()).toEqual([
       'Segment 2 Transition must be Ramp down from 50 VUs to 40 VUs.',
-      'Segment 4 Transition must be Ramp up from 20 VUs to 40 VUs.',
     ]);
     expect(screen.getByLabelText('Transition for segment 2')).toHaveValue('ramp_up');
     expect(screen.getByLabelText('Transition for segment 4')).toHaveValue('constant');
@@ -115,8 +113,8 @@ describe('RLP-768 segment reordering', () => {
       const { current, messages } = mount([vus, b, inserted, d]);
       drag(3, 2);
       expect(current().data!.segments).toEqual([vus, inserted, b, d]);
-      expect(messages()).toEqual(['Segment 4 Transition must be Ramp up from 20 VUs to 40 VUs.']);
-      fireEvent.change(screen.getByLabelText('Transition for segment 3'), { target: { value: 'constant' } });
+      expect(messages()).toEqual([]);
+      fireEvent.change(screen.getByLabelText('Transition for segment 3'), { target: { value: 'ramp_up' } });
       expect(messages()).toContain('Segment 3 Transition must be Ramp down from 40 VUs to 20 VUs.');
     });
   }

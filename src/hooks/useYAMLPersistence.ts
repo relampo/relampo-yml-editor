@@ -1,3 +1,5 @@
+import { parseYAMLToTree } from '../utils/yamlParser';
+import { localizeYAMLSemanticError, validateYAMLSemantics } from '../utils/yamlSemanticValidation';
 import { logStatsigEvent } from '../utils/analytics';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import yaml from 'js-yaml';
@@ -212,6 +214,8 @@ export function useYAMLPersistence({
     let sourceYaml: string;
     try {
       sourceYaml = getPersistableYaml();
+      const phaseIssue = validateYAMLSemantics(parseYAMLToTree(sourceYaml)).find(issue => issue.code === 'load_phase_duration');
+      if (phaseIssue) throw new Error(localizeYAMLSemanticError(phaseIssue.message, language));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error generating YAML');
       return;

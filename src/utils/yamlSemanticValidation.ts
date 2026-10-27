@@ -12,6 +12,7 @@ import { normalizeBalancedExecutionMode } from './balancedController';
 interface YAMLSemanticIssue {
   nodeId: string;
   message: string;
+  code?: 'load_phase_duration';
 }
 
 const UNSUPPORTED_STAGES_MESSAGE =
@@ -22,6 +23,8 @@ const UNSUPPORTED_THROUGHPUT_SEGMENTS_MESSAGE =
   'Throughput load does not support segments. Remove segments before running.';
 
 export function localizeYAMLSemanticError(message: string, language: string): string {
+  if (language === 'es' && message === 'Ramp Up + Ramp Down cannot exceed Duration.') return 'Ramp Up + Ramp Down no puede superar la duración total.';
+  if (language === 'es' && message === 'Intent Warm-up + Ramp Up + Ramp Down cannot exceed Duration.') return 'Warm-up + Ramp Up + Ramp Down no puede superar la duración total de Intent.';
   if (language === 'es' && message === UNSUPPORTED_STAGES_MESSAGE) return UNSUPPORTED_STAGES_MESSAGE_ES;
   if (language !== 'es' && message === UNSUPPORTED_STAGES_MESSAGE_ES) return UNSUPPORTED_STAGES_MESSAGE;
   return message;
@@ -93,6 +96,15 @@ export function validateYAMLSemantics(tree: YAMLNode | null): YAMLSemanticIssue[
 
     if (node.type === 'load' && normalizeLoadType(node.data?.type) === 'throughput') {
       validateThroughputLoadNode(node, issues);
+    }
+
+    if (node.type === 'load' && normalizeLoadType(node.data?.type) === 'ramp_up_down') {
+      const duration = parseTimeToSeconds(String(node.data?.duration ?? ''));
+      const up = parseTimeToSeconds(String(node.data?.ramp_up ?? ''));
+      const down = parseTimeToSeconds(String(node.data?.ramp_down ?? ''));
+      if (duration > 0 && up + down > duration) {
+        issues.push({ nodeId: node.id, code: 'load_phase_duration', message: 'Ramp Up + Ramp Down cannot exceed Duration.' });
+      }
     }
 
     if (node.type === 'load' && normalizeLoadType(node.data?.type) === 'intent') {
@@ -235,14 +247,17 @@ function validateIntentLoadNode(node: YAMLNode, issues: YAMLSemanticIssue[]) {
   if (hasDuration && duration <= 0) {
     issues.push({ nodeId: node.id, message: 'Intent load requires Duration greater than 0.' });
   }
-  if (hasWarmup && (warmup <= 0 || (duration > 0 && warmup >= duration))) {
-    issues.push({ nodeId: node.id, message: 'Intent Warmup must be shorter than Duration.' });
+  if (hasWarmup && (!isValidDuration(data.warmup) || warmup < 0)) {
+    issues.push({ nodeId: node.id, message: 'Intent Warmup cannot be negative.' });
   }
-  if (hasRampUp && rampUp <= 0) {
-    issues.push({ nodeId: node.id, message: 'Intent Ramp Up must be greater than 0.' });
+  if (hasRampUp && (!isValidDuration(data.ramp_up) || rampUp < 0)) {
+    issues.push({ nodeId: node.id, message: 'Intent Ramp Up cannot be negative.' });
   }
-  if (hasRampDown && rampDown <= 0) {
-    issues.push({ nodeId: node.id, message: 'Intent Ramp Down must be greater than 0.' });
+  if (hasRampDown && (!isValidDuration(data.ramp_down) || rampDown < 0)) {
+    issues.push({ nodeId: node.id, message: 'Intent Ramp Down cannot be negative.' });
+  }
+  if (duration > 0 && warmup + rampUp + rampDown > duration) {
+    issues.push({ nodeId: node.id, code: 'load_phase_duration', message: 'Intent Warm-up + Ramp Up + Ramp Down cannot exceed Duration.' });
   }
   if (hasWindow && window <= 0) {
     issues.push({ nodeId: node.id, message: 'Intent Window must be greater than 0.' });
@@ -338,7 +353,9 @@ function validateSegmentsLoadNode(node: YAMLNode, issues: YAMLSemanticIssue[]) {
   }
 
   durationSummary.segmentDurationValues.forEach((duration, index) => {
-    if (duration === '' || !isValidDuration(duration) || parseTimeToSeconds(duration) <= 0) {
+    const terminal = segments[index];
+    const terminalZero = index > 0 && index === segments.length - 1 && terminal?.transition === 'constant' && valueText(terminal?.target_vus) === '0' && valueText(terminal?.target_rps) === '';
+    if (duration === '' || !isValidDuration(duration) || (parseTimeToSeconds(duration) <= 0 && !terminalZero)) {
       issues.push({ nodeId: node.id, message: `Segment ${index + 1} must define a positive Duration.` });
     }
   });
@@ -407,7 +424,7 @@ function validateSegmentsLoadNode(node: YAMLNode, issues: YAMLSemanticIssue[]) {
     const startVus = getSegmentStartVUs(segments, index);
     if (hasTargetVus && !hasTargetRps && Number.isInteger(targetVus) && targetVus >= 0 && startVus !== undefined && ['constant', 'ramp_up', 'ramp_down'].includes(transition)) {
       const required = getSegmentRequiredTransition(startVus, targetVus);
-      if (transition !== required) {
+      if (transition !== 'constant' && transition !== required) {
         const label = { constant: 'Constant', ramp_up: 'Ramp up', ramp_down: 'Ramp down' }[required];
         issues.push({ nodeId: node.id, message: `Segment ${index + 1} Transition must be ${label} from ${startVus} VUs to ${targetVus} VUs.` });
       }

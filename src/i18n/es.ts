@@ -32,6 +32,7 @@ export const esTranslations = {
     usersHelp: 'Número de usuarios virtuales simultáneos.',
     durationHelp: 'Unidad predeterminada: segundos. Ejemplos: 500ms, 5s, 5m.',
     iterationsHelp: 'Límite opcional de repeticiones del escenario por usuario virtual.',
+    selectedLoadModel: 'Modelo de carga seleccionado',
     loadPattern: 'Patrón de carga',
     constant: 'Constante',
     linear: 'Lineal',

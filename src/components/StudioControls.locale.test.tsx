@@ -22,7 +22,7 @@ describe('Studio controls language', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Reemplazar todo' }));
     expect(screen.getByText('2 reemplazos')).toBeVisible();
     expect(screen.getByText('Perfil constante')).toBeVisible();
-    for (const label of ['Usuarios virtuales', 'Duración', 'Iteraciones', 'Incremento gradual']) {
+    for (const label of ['Usuarios virtuales', 'Duración', 'Iteraciones']) {
       expect(screen.getByLabelText(label)).toHaveAccessibleDescription();
     }
     expect(screen.getByRole('checkbox', { name: /Ejecutar hasta detener manualmente/ })).toBeVisible();
