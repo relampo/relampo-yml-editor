@@ -684,3 +684,39 @@ describe('syncRedirectSourceFollowRedirects', () => {
     expect(findNodeById(result, 'source')?.data!.follow_redirects).toBe(false);
   });
 });
+
+it('RLP-755 preserves all 24 editable matches across save and reload while excluding eight responses', () => {
+  const tree = parseYAMLToTree(`test: {name: replacement acceptance}
+variables: {value: plain}
+scenarios:
+  - name: flow
+    steps:
+${Array.from({length: 8}, (_, i) => `      - request:
+          name: token ${i}
+          method: POST
+          url: /items/${i}
+          headers: {X-Value: token}
+          body: token
+          response: {status: 200, body: token}
+`).join('')}`)!;
+  expect(getReplaceableMatchNodeIds(tree, 'token', true)).toHaveLength(24);
+  for (const index of [undefined, ...Array.from({length: 24}, (_, i) => i)]) {
+    const { result } = replaceTextInEnabledRequestsAtMatch(tree, 'token', 'authValue', index, true);
+    const expected = index === undefined ? 24 : 1;
+    expect(result.replacements).toBe(expected);
+    const yaml = treeToYAML(result.tree);
+    const reloaded = parseYAMLToTree(yaml)!;
+    expect(getReplaceableMatchNodeIds(reloaded, 'authValue', true)).toHaveLength(expected);
+    expect(getReplaceableMatchNodeIds(reloaded, 'token', true)).toHaveLength(24 - expected);
+    let responses = 0;
+    const checkResponses = (node: YAMLNode) => {
+      if (node.type === 'request') {
+        expect(node.data?.response?.body).toBe('token');
+        responses += 1;
+      }
+      node.children?.forEach(checkResponses);
+    };
+    checkResponses(reloaded);
+    expect(responses).toBe(8);
+  }
+});
