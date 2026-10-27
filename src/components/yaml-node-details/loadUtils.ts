@@ -275,13 +275,13 @@ export function isValidDuration(value: unknown): boolean {
   return text === '' || (/^(\d+(?:\.\d+)?)(ms|s|m|h)?$/.test(text) && Number.isFinite(parseTimeToSeconds(text)));
 }
 
-function areDurationsEqual(leftSeconds: number, rightSeconds: number): boolean {
+export function areDurationsEqual(leftSeconds: number, rightSeconds: number): boolean {
   const leftNanoseconds = Math.round(leftSeconds * 1_000_000_000);
   const rightNanoseconds = Math.round(rightSeconds * 1_000_000_000);
   return Number.isSafeInteger(leftNanoseconds) && Number.isSafeInteger(rightNanoseconds) && leftNanoseconds === rightNanoseconds;
 }
 
-function sumDurationSeconds(seconds: number[]): number {
+export function sumDurationSeconds(seconds: number[]): number {
   if (seconds.some(value => !Number.isFinite(value))) {
     return seconds.reduce((total, value) => total + value, 0);
   }
@@ -313,6 +313,12 @@ export interface SegmentDurationSummary {
   matches: boolean;
 }
 
+export function isTerminalZeroSegment(segments: LoadSegmentData[], index: number): boolean {
+  const segment = segments[index];
+  return index > 0 && index === segments.length - 1 && segment?.transition === 'constant' &&
+    String(segment.target_vus ?? '').trim() === '0' && String(segment.target_rps ?? '').trim() === '';
+}
+
 export function getSegmentDurationSummary(rootDuration: unknown, segments: LoadSegmentData[]): SegmentDurationSummary {
   const rootDurationValue = String(rootDuration ?? '').trim();
   const rootSeconds = parseTimeToSeconds(rootDurationValue);
@@ -321,8 +327,7 @@ export function getSegmentDurationSummary(rootDuration: unknown, segments: LoadS
   const hasSegmentDurations = explicitDurationCount > 0;
   const allSegmentDurationsValid = segmentDurationValues.every(
     (value, index) => value !== '' && isValidDuration(value) && (parseTimeToSeconds(value) > 0 ||
-      (index > 0 && index === segments.length - 1 && segments[index].transition === 'constant' &&
-        String(segments[index].target_vus ?? '') === '0' && String(segments[index].target_rps ?? '') === '')),
+      isTerminalZeroSegment(segments, index)),
   );
   const hasMixedDurations = hasSegmentDurations && explicitDurationCount !== segments.length;
   const rootDurationValid =

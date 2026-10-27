@@ -729,3 +729,20 @@ it('RLP-807 accepts constant VU steps and a zero-duration terminal stop', () => 
 `)!;
   expect(validateYAMLSemantics(tree)).toEqual([]);
 });
+
+it.each(['ramp_up_down', 'intent'])('RLP-804 RLP-805 accepts exact millisecond equality for %s', type => {
+  const phases = type === 'intent'
+    ? { warmup: '100ms', ramp_up: '100ms', ramp_down: '100ms', target_unit: 'rps', target_value: 2, min_vus: 1, max_vus: 5 }
+    : { users: 2, ramp_up: '100ms', ramp_down: '200ms' };
+  for (const [duration, invalid] of [['299ms', true], ['300ms', false], ['301ms', false]] as const) {
+    const issues = validateYAMLSemantics({ id: 'load', name: 'Load', type: 'load', data: { type, duration, ...phases } });
+    expect(issues.some(issue => issue.code === 'load_phase_duration')).toBe(invalid);
+  }
+});
+
+it.each(['ramp_up_down', 'intent'])('RLP-804 RLP-805 accepts exact fractional-minute equality for %s', type => {
+  const phases = type === 'intent'
+    ? { warmup: '0.1m', ramp_up: '2m', ramp_down: '2m', target_unit: 'rps', target_value: 2, min_vus: 1, max_vus: 5 }
+    : { users: 2, ramp_up: '0.1m', ramp_down: '4m' };
+  expect(validateYAMLSemantics({ id: 'load', name: 'Load', type: 'load', data: { type, duration: '4.1m', ...phases } })).toEqual([]);
+});

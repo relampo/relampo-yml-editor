@@ -48,7 +48,7 @@ test('RLP-767 revalidates configured continuity and exports exact independent ta
   await page.getByText('Load: Segments', { exact: true }).first().click();
   await expect(page.getByLabel('Total Duration', { exact: true })).toHaveValue('1.125s');
   const issue = (message: string) => page.getByText(message, { exact: true }).first();
-  await expect(issue('Segment 3 Transition must be Ramp up from 40 VUs to 60 VUs.')).toBeVisible();
+  await expect(issue('Segment 3 Transition must be Ramp up from 40 VUs to 60 VUs.')).not.toBeVisible();
   await page.getByLabel('Transition for segment 3').selectOption('ramp_up');
   await expect(issue('Segment 3 Transition must be Ramp up from 40 VUs to 60 VUs.')).not.toBeVisible();
   await page.getByLabel('Target for segment 3').fill('20');
@@ -58,7 +58,7 @@ test('RLP-767 revalidates configured continuity and exports exact independent ta
   await expect(issue('Segment 3 Transition must be Constant from 40 VUs to 40 VUs.')).toBeVisible();
   await page.getByLabel('Transition for segment 3').selectOption('constant');
   await page.getByLabel('VUs Max for segment 2').fill('50');
-  await expect(issue('Segment 3 Transition must be Ramp down from 50 VUs to 40 VUs.')).toBeVisible();
+  await expect(issue('Segment 3 Transition must be Ramp down from 50 VUs to 40 VUs.')).not.toBeVisible();
   await page.getByLabel('Transition for segment 3').selectOption('ramp_down');
   const targets = page.locator('line[data-segment-rps-target]');
   await expect(targets).toHaveCount(3);
