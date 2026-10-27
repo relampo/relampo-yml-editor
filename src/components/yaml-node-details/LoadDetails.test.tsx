@@ -314,7 +314,7 @@ it.each([undefined, '2m'])('RLP-806 restores an imported profile with root durat
   const saved = treeToYAML(tree);
   expect(saved).not.toContain('__segmentsProfile');
   tree = parseYAMLToTree(saved)!;
-  expect(normalizeLoadDataForYaml(loadNode().data!)).toEqual(initialData);
+  expect(normalizeLoadDataForYaml({ ...loadNode().data! })).toEqual(initialData);
   expect(validateYAMLSemantics(tree)).toEqual([]);
 });
 

@@ -208,7 +208,7 @@ function convertScenarioToNode(scenario: any, index: number, path: any[]): YAMLN
       type: 'load',
       name: `Load: ${getLoadTypeLabel(scenario.load.type || 'constant')}`,
       data: { ...normalizeLoadDataForYaml(scenario.load),
-        ...(isPlainRecord(scenario['x-studio-load-profiles']) ? { __loadProfiles: scenario['x-studio-load-profiles'] } : {}),
+        ...(isPlainRecord(scenario['x-studio-load-profiles']) ? { __loadProfiles: Object.fromEntries(Object.entries(scenario['x-studio-load-profiles']).filter((entry): entry is [string, Record<string, unknown>] => isPlainRecord(entry[1]))) } : {}),
       },
       path: [...path, 'load'],
     });

@@ -5,6 +5,7 @@ import {
   loadColors,
   normalizeLoadSegments,
   getSegmentStartVUs,
+  getSegmentDurationSummary,
   parseTimeToSeconds,
   type LoadData,
   type LoadSegmentData,
@@ -1097,7 +1098,7 @@ function getSegmentVisualizationEntries(data: LoadData) {
   }
 
   const explicitDurations = segments.map(segment => parseTimeToSeconds(String(segment.duration ?? '').trim()));
-  const hasAllDurations = explicitDurations.every(duration => duration > 0);
+  const hasAllDurations = getSegmentDurationSummary(data.duration, segments).allSegmentDurationsValid;
   const entries: Array<{ name: string; start: number; end: number; value: number; startValue: number; targetLabel: string; targetRps: number; minVus: number }> = [];
   let elapsed = 0;
   for (let index = 0; index < segments.length; index += 1) {
@@ -1109,7 +1110,7 @@ function getSegmentVisualizationEntries(data: LoadData) {
     elapsed = end;
     const isVURamp = Object.hasOwn(segment, 'target_vus') && ['ramp_up', 'ramp_down'].includes(String(segment.transition));
     const startValue = isVURamp ? (getSegmentStartVUs(segments, index) ?? (segment.transition === 'ramp_down' ? value : 0)) : value;
-    if (end > start) {
+    if (hasAllDurations) {
       entries.push({
         name: String(segment.name ?? '').trim(),
         start,

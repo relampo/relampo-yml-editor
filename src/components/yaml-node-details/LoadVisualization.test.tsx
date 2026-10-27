@@ -144,3 +144,15 @@ describe('LoadVisualization', () => {
     expect(screen.getByText(/vus-block.*25 VUs/i)).toBeInTheDocument();
   });
 });
+
+it('RLP-807 plots Constant steps and the terminal zero at the same final time', () => {
+  const { container } = renderWithLanguage(<LoadVisualization loadType="segments" data={{ type: 'segments', segments: [
+    {name: 'five', duration: '1m', transition: 'constant', target_vus: 5},
+    {name: 'ten', duration: '1m', transition: 'constant', target_vus: 10},
+    {name: 'stop', duration: '0s', transition: 'constant', target_vus: 0},
+  ] }} />);
+  const points = container.querySelector('polyline[stroke-width="3"]')?.getAttribute('points');
+  expect(points).toContain('210,90 210,10');
+  expect(points).toContain('380,10 380,170');
+  expect(screen.getByText(/Total:\s*2m/)).toBeInTheDocument();
+});
