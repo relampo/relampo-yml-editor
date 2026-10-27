@@ -1183,7 +1183,7 @@ function DebugErrorPolicyInspector({
             ? 'Timeout'
             : (event.status ?? 0) >= 400
               ? `HTTP ${event.status}`
-              : decision.key === 'on_error' ? 'Other error' : decision.key || 'Unknown'}
+              : decision.key === 'on_connection_error' ? 'Connection error' : decision.key === 'on_error' ? 'Other error' : decision.key || 'Unknown'}
         />
         <DebugLine
           icon={<ShieldCheck className="h-4 w-4 text-amber-300" />}
