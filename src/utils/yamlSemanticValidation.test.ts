@@ -746,3 +746,11 @@ it.each(['ramp_up_down', 'intent'])('RLP-804 RLP-805 accepts exact fractional-mi
     : { users: 2, ramp_up: '0.1m', ramp_down: '4m' };
   expect(validateYAMLSemantics({ id: 'load', name: 'Load', type: 'load', data: { type, duration: '4.1m', ...phases } })).toEqual([]);
 });
+
+it.each(['0', '00', '0.0', '-0', ' 0 '])('RLP-807 accepts equivalent terminal zero %s', target_vus => {
+  const node: YAMLNode = { id: 'load', name: 'Load', type: 'load', data: { type: 'segments', segments: [
+    {name: 'hold', transition: 'constant', target_vus: 1, duration: '1s'},
+    {name: 'stop', transition: 'constant', target_vus, duration: '0s'},
+  ] } };
+  expect(validateYAMLSemantics(node)).toEqual([]);
+});

@@ -45,13 +45,16 @@ export function LoadDetails({ node, onNodeUpdate }: NodeDetailProps) {
   const handleChange = (field: string, value: LoadDataValue) => {
     if (field === 'type') {
       const selectedType = normalizeLoadType(value);
+      if (selectedType === loadType) return;
       const profiles = data.__loadProfiles && typeof data.__loadProfiles === 'object'
         ? data.__loadProfiles as Record<string, LoadData> : {};
       const saved = profiles[selectedType] ?? (selectedType === 'segments' ? data.__segmentsProfile : undefined);
       const restoring = !!saved && typeof saved === 'object';
+      const inactiveProfiles = { ...profiles, [loadType]: loadData };
+      delete inactiveProfiles[selectedType];
       updateData({
         ...buildLoadDataForType(selectedType, restoring ? toLoadData({ ...saved }) : loadData, { applyDefaults: !restoring }),
-        __loadProfiles: { ...profiles, [loadType]: loadData },
+        __loadProfiles: inactiveProfiles,
         __name: `Load: ${getLoadTypeLabel(selectedType)}`,
       });
       return;

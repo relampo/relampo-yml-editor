@@ -101,3 +101,21 @@ scenarios:
     expect(getReplaceableMatchNodeIds(result.tree, '{{token}}', true)).toHaveLength(6);
   });
 });
+
+it('RLP-802 replaces an imported inactive profile only once and exports the replacement', () => {
+  const tree = parseYAMLToTree(`scenarios:
+  - name: profiles
+    load: {type: constant, users: 1, iterations: 1}
+    x-studio-load-profiles:
+      segments:
+        type: segments
+        segments: [{name: '{{token}}', duration: 1s, target_vus: 1, transition: constant}]
+    steps: [{get: /health}]
+`)!;
+  expect(getReplaceableMatchNodeIds(tree, '{{token}}', true)).toHaveLength(1);
+  const result = replaceTextInEnabledRequestsAtMatch(tree, '{{token}}', '{{updated}}', 0, true).result;
+  expect(result.replacements).toBe(1);
+  const saved = treeToYAML(result.tree);
+  expect(saved).toContain('{{updated}}');
+  expect(saved).not.toContain('{{token}}');
+});
