@@ -56,10 +56,10 @@ for (const [slot, version] of Object.entries(slots)) {
       ]);
     });
 
-    if (version === '1.0.11') {
+    if (version === '1.0.14') {
       it('pins component grammar and preserves scoped round-trip fixture presence', async () => {
         const manifest = JSON.parse(await readFile(join(bundleRoot, 'contract.json'), 'utf8')) as Manifest;
-        expect(manifest.backend_sha).toBe('9dc90a3a3da78a78f6411fdf153a9bf3dd2a1c91');
+        expect(manifest.backend_sha).toBe('15c2d4d7a54e49c430174ea61ea770264a926a5b');
         expect(manifest.known_fields.http_component_defaults).toEqual([...HTTP_COMPONENT_FIELDS]);
         expect(manifest.known_fields.sql_component_defaults).toEqual([...SQL_COMPONENT_FIELDS]);
         const fixture = manifest.fixtures.find(item => item.kind === 'roundtrip')!;

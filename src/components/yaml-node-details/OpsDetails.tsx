@@ -428,6 +428,7 @@ const errorPolicyRules = [
   { key: 'on_4xx', label: 'On 4xx', icon: AlertTriangle },
   { key: 'on_5xx', label: 'On 5xx', icon: ServerCrash },
   { key: 'on_timeout', label: 'On Timeout', icon: Clock3 },
+  { key: 'on_connection_error', label: 'On Connection Error', icon: AlertTriangle },
   { key: 'on_error', label: 'Other Errors', icon: AlertTriangle },
 ] as const;
 

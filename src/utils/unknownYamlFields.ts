@@ -25,7 +25,13 @@ const knownFields = currentKnownFields();
 // contract omits these fields because execution ignores them, but the editor
 // supports them as preserved document data rather than forward-compatibility
 // fields that need a warning.
-const TEST_KNOWN_FIELDS = new Set([...(knownFields.test || []), 'recorded_at', 'recorded_from']);
+const SCENARIO_KNOWN_FIELDS = new Set([...(knownFields.scenario || []), 'x-studio-load-profiles']);
+
+const TEST_KNOWN_FIELDS = new Set([
+  ...(knownFields.test || []),
+  'recorded_at',
+  'recorded_from',
+]);
 
 function formatPath(parts: Array<string | number>): string {
   return parts.reduce<string>((path, part) => {
@@ -60,7 +66,7 @@ function dataScope(
     case 'test':
       return { supported: TEST_KNOWN_FIELDS, prefix: ['test'] };
     case 'scenario':
-      return { scope: 'scenario', prefix: path };
+      return { supported: SCENARIO_KNOWN_FIELDS, prefix: path };
     case 'sql':
       return { scope: 'sql', prefix: path };
     case 'http_defaults':

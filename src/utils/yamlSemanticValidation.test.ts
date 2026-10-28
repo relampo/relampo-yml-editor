@@ -167,8 +167,7 @@ describe('validateYAMLSemantics', () => {
       'Intent target value must be greater than 0.',
       'Intent Min VUs must be less than Max VUs.',
       'Intent load requires Duration greater than 0.',
-      'Intent Ramp Up must be greater than 0.',
-      'Intent Ramp Down must be greater than 0.',
+      'Intent Ramp Up cannot be negative.',
       'Intent Window must be greater than 0.',
       'Intent p95 latency limit must be greater than 0.',
       'Intent error rate limit must be between 0 and 100.',
@@ -705,4 +704,53 @@ describe('validateYAMLSemantics', () => {
 
     expect(validateYAMLSemantics(tree)).toEqual([]);
   });
+});
+
+it.each(['ramp_up_down', 'intent'])('RLP-804 RLP-805 bounds the total phases for %s', type => {
+  for (const duration of ['29s', '30s', '31s']) {
+    const data = type === 'intent'
+      ? { type, duration, target_unit: 'rps', target_value: '2', min_vus: '1', max_vus: '5', warmup: '10s', ramp_up: '10s', ramp_down: '10s' }
+      : { type, duration, users: '2', ramp_up: '10s', ramp_down: '20s' };
+    const issues = validateYAMLSemantics({ id: 'load', type: 'load', name: 'Load', data });
+    expect(issues.length > 0).toBe(duration === '29s');
+  }
+});
+
+it('RLP-807 accepts constant VU steps and a zero-duration terminal stop', () => {
+  const tree = parseYAMLToTree(`scenarios:
+  - name: steps
+    load:
+      type: segments
+      segments:
+        - {name: first, transition: constant, target_vus: 5, duration: 1m}
+        - {name: step, transition: constant, target_vus: 10, duration: 1m}
+        - {name: stop, transition: constant, target_vus: 0, duration: 0s}
+    steps: [{get: /}]
+`)!;
+  expect(validateYAMLSemantics(tree)).toEqual([]);
+});
+
+it.each(['ramp_up_down', 'intent'])('RLP-804 RLP-805 accepts exact millisecond equality for %s', type => {
+  const phases = type === 'intent'
+    ? { warmup: '100ms', ramp_up: '100ms', ramp_down: '100ms', target_unit: 'rps', target_value: 2, min_vus: 1, max_vus: 5 }
+    : { users: 2, ramp_up: '100ms', ramp_down: '200ms' };
+  for (const [duration, invalid] of [['299ms', true], ['300ms', false], ['301ms', false]] as const) {
+    const issues = validateYAMLSemantics({ id: 'load', name: 'Load', type: 'load', data: { type, duration, ...phases } });
+    expect(issues.some(issue => issue.code === 'load_phase_duration')).toBe(invalid);
+  }
+});
+
+it.each(['ramp_up_down', 'intent'])('RLP-804 RLP-805 accepts exact fractional-minute equality for %s', type => {
+  const phases = type === 'intent'
+    ? { warmup: '0.1m', ramp_up: '2m', ramp_down: '2m', target_unit: 'rps', target_value: 2, min_vus: 1, max_vus: 5 }
+    : { users: 2, ramp_up: '0.1m', ramp_down: '4m' };
+  expect(validateYAMLSemantics({ id: 'load', name: 'Load', type: 'load', data: { type, duration: '4.1m', ...phases } })).toEqual([]);
+});
+
+it.each(['0', '00', '0.0', '-0', ' 0 '])('RLP-807 accepts equivalent terminal zero %s', target_vus => {
+  const node: YAMLNode = { id: 'load', name: 'Load', type: 'load', data: { type: 'segments', segments: [
+    {name: 'hold', transition: 'constant', target_vus: 1, duration: '1s'},
+    {name: 'stop', transition: 'constant', target_vus, duration: '0s'},
+  ] } };
+  expect(validateYAMLSemantics(node)).toEqual([]);
 });

@@ -1,5 +1,5 @@
 import { useLanguage } from '../../contexts/LanguageContext';
-import { Crosshair, Gauge, ListTree, Mountain, TrendingUp, Users } from 'lucide-react';
+import { Check, Crosshair, Gauge, ListTree, Mountain, TrendingUp, Users } from 'lucide-react';
 import { useId } from 'react';
 import { LoadVisualization } from './LoadVisualization';
 import {
@@ -45,8 +45,16 @@ export function LoadDetails({ node, onNodeUpdate }: NodeDetailProps) {
   const handleChange = (field: string, value: LoadDataValue) => {
     if (field === 'type') {
       const selectedType = normalizeLoadType(value);
+      if (selectedType === loadType) return;
+      const profiles = data.__loadProfiles && typeof data.__loadProfiles === 'object'
+        ? data.__loadProfiles as Record<string, LoadData> : {};
+      const saved = profiles[selectedType] ?? (selectedType === 'segments' ? data.__segmentsProfile : undefined);
+      const restoring = !!saved && typeof saved === 'object';
+      const inactiveProfiles = { ...profiles, [loadType]: loadData };
+      delete inactiveProfiles[selectedType];
       updateData({
-        ...buildLoadDataForType(selectedType, loadData),
+        ...buildLoadDataForType(selectedType, restoring ? toLoadData({ ...saved }) : loadData, { applyDefaults: !restoring }),
+        __loadProfiles: inactiveProfiles,
         __name: `Load: ${getLoadTypeLabel(selectedType)}`,
       });
       return;
@@ -96,13 +104,15 @@ export function LoadDetails({ node, onNodeUpdate }: NodeDetailProps) {
                 className={`flex min-w-30 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-all duration-200 ${isActive ? 'border-current text-white shadow-sm' : 'border-white/5 bg-white/2 text-zinc-400 hover:border-white/10 hover:bg-white/5 hover:text-zinc-100'}`}
                 style={isActive ? selectedLoadButtonStyle[option.type] : undefined}
               >
-                <Icon className="h-3.5 w-3.5" />
+                {isActive ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : <Icon className="h-3.5 w-3.5" aria-hidden="true" />}
                 <span>{t(`studioControls.${option.type}`)}</span>
               </button>
             );
           })}
         </div>
       </div>
+
+      <p className="text-sm text-amber-300">{t('studioControls.selectedLoadModel')}: {getLoadTypeLabel(loadType)}</p>
 
       <LoadModePanel
         data={loadData}

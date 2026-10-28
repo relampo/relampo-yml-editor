@@ -1,19 +1,3 @@
-component_configuration_version: 1
-defaults:
-  think_time: {duration: 1ms, enabled: false}
-  http:
-    headers: {X-Contract: root}
-    auth: {type: none}
-    timeout: 2s
-    redirect_automatically: false
-    retrieve_embedded_resources: false
-    cookies: false
-    cache: false
-    error_policy: {on_error: continue}
-    assertions: [{type: status, value: 200}]
-  sql:
-    error_policy: {on_error: continue, on_timeout: stop}
-    assertions: [{type: duration, value: {min: 0, max: 1000}}]
 test:
   scenario_mode: sequential
   name: full-contract
@@ -43,15 +27,6 @@ metrics:
   percentiles: [50, 95, 99]
 scenarios:
   - name: supported
-    defaults:
-      think_time: 0ms
-      http:
-        headers: {X-Contract: scenario}
-        timeout: 1s
-        follow_redirects: false
-        assertions: []
-      sql:
-        assertions: [{type: rows_returned, value: {min: 0, max: 10}}]
     data_source:
       type: csv
       file: scenario-users.csv
@@ -73,17 +48,12 @@ scenarios:
       on_4xx: continue
       on_5xx: stop
       on_timeout: continue
+      on_connection_error: stop_user
     steps:
       - get: /short
       - post:
           url: /short-post
           enabled: false
-          auth: {type: none}
-          follow_redirects: false
-          redirect_automatically: false
-          retrieve_embedded_resources: false
-          assertions: []
-          think_time: {enabled: false}
           body_raw: payload
       - put: /short-put
       - delete: /short-delete
@@ -93,7 +63,6 @@ scenarios:
       - request:
           request_id: 7
           name: Full request
-          auth: {type: none}
           method: POST
           url: /full
           enabled: true
@@ -183,38 +152,11 @@ scenarios:
           think_time: 1ms
       - group:
           name: Group
-          defaults:
-            think_time: {duration: 1ms, enabled: true}
-            http:
-              headers: {X-Contract: container}
-              auth: {type: none}
-              follow_redirects: false
-              assertions: []
-            sql:
-              assertions: []
-            data_source:
-              type: csv
-              file: scoped-users.csv
-              mode: shared
-              strategy: sequential
-              on_exhausted: recycle
-              enabled: true
-              bind: {user: scoped_user}
           enabled: true
           steps:
             - get: /group
       - controller:
           name: Controller
-          defaults:
-            think_time: {duration: 1ms, enabled: true}
-            http:
-              headers: {X-Contract: container}
-              auth: {type: none}
-              follow_redirects: false
-              assertions: []
-            sql:
-              assertions: []
-            data_source: {enabled: false}
           enabled: true
           steps:
             - get: /controller
@@ -223,43 +165,16 @@ scenarios:
             value: 200
       - transaction:
           name: Transaction
-          defaults:
-            think_time: {duration: 1ms, enabled: true}
-            http:
-              headers: {X-Contract: container}
-              auth: {type: none}
-              follow_redirects: false
-              assertions: []
-            sql:
-              assertions: []
           enabled: true
           steps:
             - get: /transaction
       - parallel:
           name: Parallel
-          defaults:
-            think_time: {duration: 1ms, enabled: true}
-            http:
-              headers: {X-Contract: container}
-              auth: {type: none}
-              follow_redirects: false
-              assertions: []
-            sql:
-              assertions: []
           enabled: true
           steps:
             - get: /parallel
       - balanced:
           name: Balanced
-          defaults:
-            think_time: {duration: 1ms, enabled: true}
-            http:
-              headers: {X-Contract: container}
-              auth: {type: none}
-              follow_redirects: false
-              assertions: []
-            sql:
-              assertions: []
           type: total
           mode: virtual_users
           enabled: true
@@ -273,37 +188,12 @@ scenarios:
         steps:
           - get: /loop
       - retry:
-          defaults:
-            http: {timeout: 500ms, assertions: []}
-            sql: {error_policy: {on_error: stop}}
           attempts: 2
           backoff: 1ms
           steps:
             - get: /retry
-      - if:
-          condition: '{{run_branch}}'
-          defaults:
-            http: {headers: {X-Contract: if}}
-          steps:
-            - get: /if-defaults
-      - loop:
-          count: 1
-          defaults:
-            think_time: {enabled: false}
-            http: {cache: false, cookies: false}
-          steps:
-            - get: /loop-defaults
       - one_time:
           name: Setup
-          defaults:
-            think_time: {duration: 1ms, enabled: true}
-            http:
-              headers: {X-Contract: container}
-              auth: {type: none}
-              follow_redirects: false
-              assertions: []
-            sql:
-              assertions: []
           enabled: true
           steps:
             - get: /setup
@@ -327,12 +217,6 @@ scenarios:
             user: app
             password: secret
           allow_writes: false
-          assertions:
-            - type: rows_returned
-              value: {min: 0, max: 1}
-            - type: duration
-              max_ms: 1000
-          think_time: {enabled: false}
   - name: segments
     load:
       type: segments

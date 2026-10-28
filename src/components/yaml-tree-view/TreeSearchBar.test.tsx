@@ -61,6 +61,11 @@ describe('TreeSearchBar replace controls', () => {
     expect(screen.getByRole('button', { name: 'Replace selected' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Replace all' })).toBeDisabled();
     expect(screen.getByText('1 replacement')).toHaveClass('text-yellow-400');
+    fireEvent.click(screen.getByRole('button', { name: 'Next replace match' }));
+    expect(screen.getByRole('button', { name: 'Replace selected' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Replace all' })).toBeEnabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Replace selected' }));
+    expect(onReplace).toHaveBeenLastCalledWith('replacement', 2);
   });
 
   it('disables both actions after Replace all and re-enables them when the replacement changes', () => {

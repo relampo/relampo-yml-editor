@@ -1,3 +1,4 @@
+import { normalizeLoadDataForYaml } from './loadUtils';
 import { fireEvent, render, screen } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
@@ -5,6 +6,7 @@ import { LanguageProvider } from '../../contexts/LanguageContext';
 import { LoadDetails } from './LoadDetails';
 import type { YAMLNode } from '../../types/yaml';
 import { applyNodeUpdateToTree } from '../../utils/nodeUpdate';
+import { parseYAMLToTree, treeToYAML } from '../../utils/yamlParser';
 import { validateYAMLSemantics } from '../../utils/yamlSemanticValidation';
 
 function renderWithLanguage(ui: ReactElement) {
@@ -255,4 +257,98 @@ describe('LoadDetails', () => {
 
     expect(screen.getByText('Load Pattern Visualization')).toBeInTheDocument();
   });
+});
+
+it('RLP-806 restores edited segments after switching models and reopening saved YAML', () => {
+  let node: YAMLNode = {
+    id: 'load-persist', type: 'load', name: 'Load: Segments', data: {
+      type: 'segments', iterations: '3', segments: [
+        { name: 'baseline', duration: '1m', transition: 'constant', target_vus: '5' },
+        { name: 'checkout', duration: '2m', transition: 'constant', target_vus: '25' },
+        { name: 'recovery', duration: '1m', transition: 'ramp_down', target_vus: '5' },
+      ],
+    },
+  };
+  const onNodeUpdate = (id: string, data: Record<string, unknown>) => { node = applyNodeUpdateToTree(node, id, data); };
+  const view = renderWithLanguage(<LoadDetails node={node} onNodeUpdate={onNodeUpdate} />);
+  const refresh = () => view.rerender(<LanguageProvider><LoadDetails node={node} onNodeUpdate={onNodeUpdate} /></LanguageProvider>);
+  fireEvent.change(screen.getByLabelText('Transition for segment 2'), { target: { value: 'ramp_up' } });
+  refresh();
+  fireEvent.change(screen.getByLabelText('Duration for segment 2'), { target: { value: '3m' } });
+  refresh();
+  const expected = node.data!.segments;
+  fireEvent.click(screen.getByRole('button', { name: 'Linear' }));
+  refresh();
+  expect(node.data).not.toHaveProperty('segments');
+  fireEvent.click(screen.getByRole('button', { name: 'Segments' }));
+  refresh();
+  expect(node.data!.segments).toEqual(expected);
+  expect(node.data!.duration).toBe('300s');
+  expect(node.data!.iterations).toBe('3');
+  expect(validateYAMLSemantics(node)).toEqual([]);
+  const tree = parseYAMLToTree('scenarios:\n  - name: saved\n    load:\n      type: constant\n      users: 1\n    steps: []\n')!;
+  const load = tree.children!.find(child => child.type === 'scenarios')!.children![0].children!.find(child => child.type === 'load')!;
+  const saved = treeToYAML(applyNodeUpdateToTree(tree, load.id, { ...node.data }));
+  expect(saved).not.toContain('__segmentsProfile');
+  const reopened = parseYAMLToTree(saved)!;
+  const reopenedLoad = reopened.children!.find(child => child.type === 'scenarios')!.children![0].children!.find(child => child.type === 'load')!;
+  expect(reopenedLoad.data!.segments).toEqual(expected);
+});
+
+it.each([undefined, '2m'])('RLP-806 restores an imported profile with root duration %s before any segment edit', duration => {
+  const source = `scenarios:\n  - name: imported\n    load:\n      type: segments\n${duration ? `      duration: ${duration}\n` : ''}      segments:\n        - name: baseline\n          duration: 1m\n          target_vus: 5\n          transition: constant\n        - name: hold\n          duration: 1m\n          target_vus: 5\n          transition: constant\n    steps: []\n`;
+  let tree = parseYAMLToTree(source)!;
+  const loadNode = () => tree.children!.find(child => child.type === 'scenarios')!.children![0].children!.find(child => child.type === 'load')!;
+  const initialData = loadNode().data;
+  const onNodeUpdate = (id: string, data: Record<string, unknown>) => { tree = applyNodeUpdateToTree(tree, id, data); };
+  const view = renderWithLanguage(<LoadDetails node={loadNode()} onNodeUpdate={onNodeUpdate} />);
+  expect(validateYAMLSemantics(tree)).toEqual([]);
+  // Switch immediately after import: a segment edit would derive the root duration.
+  fireEvent.click(screen.getByRole('button', { name: 'Linear' }));
+  view.rerender(<LanguageProvider><LoadDetails node={loadNode()} onNodeUpdate={onNodeUpdate} /></LanguageProvider>);
+  fireEvent.click(screen.getByRole('button', { name: 'Segments' }));
+  view.rerender(<LanguageProvider><LoadDetails node={loadNode()} onNodeUpdate={onNodeUpdate} /></LanguageProvider>);
+  expect(loadNode().data!.duration).toBe(duration);
+  expect(loadNode().data!.segments).toEqual(initialData!.segments);
+  expect(validateYAMLSemantics(tree)).toEqual([]);
+  const saved = treeToYAML(tree);
+  expect(saved).not.toContain('__segmentsProfile');
+  tree = parseYAMLToTree(saved)!;
+  expect(normalizeLoadDataForYaml({ ...loadNode().data! })).toEqual(initialData);
+  expect(validateYAMLSemantics(tree)).toEqual([]);
+});
+
+it('RLP-802 saves the selected model and restores inactive model settings after YAML import', () => {
+  let tree = parseYAMLToTree('scenarios:\n  - name: selected\n    load: {type: constant, users: 7, iterations: 3}\n    steps: [{get: /}]\n')!;
+  const load = () => tree.children!.find(n => n.type === 'scenarios')!.children![0].children!.find(n => n.type === 'load')!;
+  const update = (id: string, data: Record<string, unknown>) => { tree = applyNodeUpdateToTree(tree, id, data); };
+  const view = renderWithLanguage(<LoadDetails node={load()} onNodeUpdate={update} />);
+  const refresh = () => view.rerender(<LanguageProvider><LoadDetails node={load()} onNodeUpdate={update} /></LanguageProvider>);
+  fireEvent.click(screen.getByRole('button', { name: 'Linear' })); refresh();
+  const active = load().data;
+  tree = parseYAMLToTree(treeToYAML(tree))!; refresh();
+  expect(screen.getByRole('button', { name: 'Linear' })).toHaveAttribute('aria-pressed', 'true');
+  expect(screen.getAllByRole('button', { pressed: true })).toHaveLength(1);
+  expect(load().data?.type).toBe('ramp');
+  fireEvent.click(screen.getByRole('button', { name: 'Constant' })); refresh();
+  expect(load().data?.users).toBe(7);
+  expect(load().data?.iterations).toBe(3);
+  expect(load().data?.duration).toBeUndefined();
+  fireEvent.click(screen.getByRole('button', { name: 'Linear' })); refresh();
+  expect(load().data?.duration).toBe(active?.duration);
+  expect(load().data?.end_users).toBe(active?.end_users);
+});
+
+it('RLP-802 reselecting the active model keeps its latest edits', () => {
+  let node: YAMLNode = { id: 'load', type: 'load', name: 'Load', data: { type: 'constant', users: 7, iterations: 1 } };
+  const update = (id: string, data: Record<string, unknown>) => { node = applyNodeUpdateToTree(node, id, data); };
+  const view = renderWithLanguage(<LoadDetails node={node} onNodeUpdate={update} />);
+  const refresh = () => view.rerender(<LanguageProvider><LoadDetails node={node} onNodeUpdate={update} /></LanguageProvider>);
+  fireEvent.click(screen.getByRole('button', { name: 'Linear' })); refresh();
+  fireEvent.click(screen.getByRole('button', { name: 'Constant' })); refresh();
+  fireEvent.change(screen.getByLabelText('Virtual Users'), { target: { value: '9' } }); refresh();
+  fireEvent.click(screen.getByRole('button', { name: 'Constant' })); refresh();
+  expect(screen.getByLabelText('Virtual Users')).toHaveValue(9);
+  expect(node.data?.users).toBe('9');
+  expect(node.data?.__loadProfiles).not.toHaveProperty('constant');
 });

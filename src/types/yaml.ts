@@ -24,6 +24,8 @@ export interface YAMLNodeData {
   __lockedType?: string;
   __name?: string;
   __scalarIf?: boolean;
+  __segmentsProfile?: YAMLNodeData;
+  __loadProfiles?: Record<string, Record<string, unknown>>;
   __scalarLoop?: boolean;
   __scalarRetry?: boolean;
   __stepsInController?: boolean;
@@ -115,6 +117,7 @@ export interface YAMLNodeData {
   on_4xx?: string;
   on_5xx?: string;
   on_timeout?: string;
+  on_connection_error?: string;
   on_error?: string;
   options?: StringMap;
   p95_max_ms?: YAMLInputValue;

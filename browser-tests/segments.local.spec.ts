@@ -100,3 +100,72 @@ test('RLP-765 edits segment targets, transitions, bounds and total duration in C
   expect(output).toContain('duration: 220s');
   expect(errors).toEqual([]);
 });
+
+test('RLP-806 preserves segment edits through model changes, save, reload and reimport', async ({ page }) => {
+  await page.route('**/api/studio/info', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ studio: false }) }));
+  await page.goto('/');
+  await page.locator('input[type="file"]').setInputFiles({ name: 'persist.yaml', mimeType: 'text/yaml', buffer: Buffer.from(segmentYaml) });
+  await page.getByText('Load: Segments', { exact: true }).first().click();
+  await page.getByLabel('Target for segment 2', { exact: true }).fill('7');
+  await page.getByLabel('Duration for segment 2', { exact: true }).fill('40s');
+  await page.getByRole('button', { name: 'Linear', exact: true }).click();
+  await page.getByRole('button', { name: 'Segments', exact: true }).click();
+  await expect(page.getByLabel('Target for segment 2', { exact: true })).toHaveValue('7');
+  await expect(page.getByLabel('Duration for segment 2', { exact: true })).toHaveValue('40s');
+  await expect(page.getByLabel('Transition for segment 2', { exact: true })).toHaveValue('ramp_up');
+  await page.keyboard.press('ControlOrMeta+s');
+  await expect.poll(() => page.evaluate(() => new Promise<string>((resolve, reject) => {
+    const request = indexedDB.open('relampo-yaml-editor');
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => {
+      const db = request.result;
+      const read = db.transaction('drafts').objectStore('drafts').get('active');
+      read.onsuccess = () => { db.close(); resolve(read.result?.yaml || ''); };
+      read.onerror = () => { db.close(); reject(read.error); };
+    };
+  }))).toContain('duration: 40s');
+  await page.reload();
+  await page.getByText('Load: Segments', { exact: true }).first().click();
+  await expect(page.getByLabel('Target for segment 2', { exact: true })).toHaveValue('7');
+  await expect(page.getByLabel('Total Duration', { exact: true })).toHaveValue('220s');
+  const downloaded = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await page.getByRole('menuitem', { name: /Save with responses/ }).click();
+  const output = await readFile(await (await downloaded).path(), 'utf8');
+  expect(output).not.toContain('__segmentsProfile');
+  const parsed = load(output) as { scenarios: Array<{ load: { segments: Array<Record<string, unknown>> } }> };
+  expect(parsed.scenarios[0].load.segments).toEqual([
+    { name: 'pause', duration: '1m', target_vus: 0, transition: 'constant' },
+    { name: 'ramp', duration: '40s', target_vus: '7', transition: 'ramp_up' },
+    { name: 'recovery', duration: '2m', target_vus: 0, transition: 'ramp_down' },
+  ]);
+  await page.locator('input[type="file"]').setInputFiles({ name: 'saved.yaml', mimeType: 'text/yaml', buffer: Buffer.from(output) });
+  await page.getByText('Load: Segments', { exact: true }).first().click();
+  await expect(page.getByLabel('Duration for segment 2', { exact: true })).toHaveValue('40s');
+});
+
+test('RLP-806 switches an imported profile without root duration before editing any segment', async ({ page }) => {
+  await page.route('**/api/studio/info', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ studio: false }) }));
+  await page.goto('/');
+  await page.locator('input[type="file"]').setInputFiles({ name: 'no-root-duration.yaml', mimeType: 'text/yaml', buffer: Buffer.from(segmentYaml) });
+  await page.getByText('Load: Segments', { exact: true }).first().click();
+  await expect(page.getByLabel('Total Duration', { exact: true })).toHaveValue('200s');
+  // No segment field is edited before switching models.
+  await page.getByRole('button', { name: 'Linear', exact: true }).click();
+  await page.getByRole('button', { name: 'Segments', exact: true }).click();
+  await expect(page.getByLabel('Total Duration', { exact: true })).toHaveValue('200s');
+  await expect(page.getByText(/Segments Duration total must equal load Duration/)).toHaveCount(0);
+  const downloaded = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await page.getByRole('menuitem', { name: /Save with responses/ }).click();
+  const output = await readFile(await (await downloaded).path(), 'utf8');
+  const parsed = load(output) as { scenarios: Array<{ load: Record<string, unknown> }> };
+  const original = load(segmentYaml) as typeof parsed;
+  expect(parsed.scenarios[0].load).toEqual(original.scenarios[0].load);
+  expect(parsed.scenarios[0].load).not.toHaveProperty('duration');
+  expect(output).not.toContain('__segmentsProfile');
+  await page.locator('input[type="file"]').setInputFiles({ name: 'saved.yaml', mimeType: 'text/yaml', buffer: Buffer.from(output) });
+  await page.getByText('Load: Segments', { exact: true }).first().click();
+  await expect(page.getByLabel('Total Duration', { exact: true })).toHaveValue('200s');
+  await expect(page.getByText(/Segments Duration total must equal load Duration/)).toHaveCount(0);
+});

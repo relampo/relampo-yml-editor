@@ -413,7 +413,9 @@ describe('RLP-689 scopes, origin and validation', () => {
   it('preserves per-key defaults policies and existing local request fallback with origins', () => {
     const input = {
       component_configuration_version: 1,
-      defaults: { http: { error_policy: { on_timeout: 'stop_user', on_4xx: 'stop_user' } } },
+      defaults: {
+        http: { error_policy: { on_timeout: 'stop_user', on_4xx: 'stop_user', on_connection_error: 'stop_user' } },
+      },
       scenarios: [
         {
           steps: [
@@ -432,6 +434,7 @@ describe('RLP-689 scopes, origin and validation', () => {
     const effective = effectiveComponentValues(tree, node, 'http').error_policy;
     expect(effective.value).toEqual({
       on_timeout: 'stop_user',
+      on_connection_error: 'stop_user',
       on_4xx: 'stop_user',
       on_error: 'continue',
       on_5xx: 'continue',
@@ -443,6 +446,19 @@ describe('RLP-689 scopes, origin and validation', () => {
     expect((effectiveComponentValues(updated, find(updated, 'request'), 'http').error_policy.value as any).on_4xx).toBe(
       'continue',
     );
+  });
+  it('validates connection actions in adopted HTTP policies', () => {
+    for (const [protocol, action] of [
+      ['http', 'invalid'],
+      ['sql', 'continue'],
+    ]) {
+      const result = inspectComponentConfiguration({
+        component_configuration_version: 1,
+        defaults: { [protocol]: { error_policy: { on_connection_error: action } } },
+        scenarios: [{ steps: [{ get: '/' }] }],
+      });
+      expect(result.errors.some(issue => issue.path.includes('on_connection_error'))).toBe(true);
+    }
   });
   it('rejects known illegal scopes after YAML aliases and merges are expanded', () => {
     const yaml = `component_configuration_version: 1

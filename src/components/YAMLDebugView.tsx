@@ -46,7 +46,7 @@ import { DebugSection } from './debugSection';
 import { buildSearchRegex, findMatchRanges, type SearchMode } from './debugSearch';
 import { createStoredRunStore, fingerprint, type StoredRun } from '../utils/studioRunStore';
 
-type DetailTab = 'overview' | 'request' | 'response' | 'assertions' | 'variables' | 'builtins' | 'logs';
+type DetailTab = 'overview' | 'request' | 'response' | 'assertions' | 'variables' | 'builtins' | 'spark' | 'logs';
 
 const REQUEST_DETAIL_TABS: DetailTab[] = [
   'overview',
@@ -55,6 +55,7 @@ const REQUEST_DETAIL_TABS: DetailTab[] = [
   'assertions',
   'variables',
   'builtins',
+  'spark',
   'logs',
 ];
 const DETAIL_TAB_LABELS: Record<DetailTab, string> = {
@@ -64,6 +65,7 @@ const DETAIL_TAB_LABELS: Record<DetailTab, string> = {
   assertions: 'Assertions',
   variables: 'Variables',
   builtins: 'Built-ins',
+  spark: 'Spark',
   logs: 'Logs',
 };
 
@@ -1147,11 +1149,12 @@ function DebugInspectorContent({
       return <DebugVariablesInspector entry={entry} variableSnapshot={variableSnapshot} />;
     case 'builtins':
       return <DebugBuiltinsInspector event={entry.event} />;
+    case 'spark':
+      return <DebugSparkInspector logs={entry.sparkLogs ?? []} />;
     case 'logs':
       return (
         <DebugLogsInspector
           event={entry.event}
-          sparkLogs={entry.sparkLogs ?? []}
           redirectedInfo={redirectedInfo}
           requestTargets={requestTargets}
         />
@@ -1160,70 +1163,9 @@ function DebugInspectorContent({
       return (
         <DebugOverviewInspector
           event={entry.event}
-          skippedRequestEvents={entry.skippedRequestEvents ?? []}
         />
       );
   }
-}
-
-function DebugErrorPolicyInspector({
-  event,
-  skippedRequestEvents,
-}: {
-  event: EngineEvent;
-  skippedRequestEvents: EngineEvent[];
-}) {
-  const decision = event.error_policy;
-  if (!decision) return null;
-  const skippedCount = skippedRequestEvents.reduce((count, skipped) => count + (skipped.skipped?.count ?? 0), 0);
-  const skippedReasons = [...new Set(skippedRequestEvents.map(skipped => skipped.skipped?.reason).filter(Boolean))];
-
-  return (
-    <div className="space-y-3">
-      <div className="rounded border border-amber-400/25 bg-amber-400/5 p-4" aria-label="Error policy decision">
-        <DebugLine
-          icon={<XCircle className="h-4 w-4 text-red-300" />}
-          title="Error type"
-          value={decision.key === 'on_timeout'
-            ? 'Timeout'
-            : (event.status ?? 0) >= 400
-              ? `HTTP ${event.status}`
-              : decision.key === 'on_error' ? 'Other error' : decision.key || 'Unknown'}
-        />
-        <DebugLine
-          icon={<ShieldCheck className="h-4 w-4 text-amber-300" />}
-          title="Policy"
-          value={`${decision.key || 'unknown'} → ${decision.action || 'unknown'}`}
-        />
-        <DebugLine
-          icon={<TerminalSquare className="h-4 w-4 text-zinc-300" />}
-          title="Iteration"
-          value={event.iteration === undefined ? '—' : String(event.iteration)}
-        />
-        <DebugLine
-          icon={<XCircle className="h-4 w-4 text-red-300" />}
-          title="Original error"
-          value={decision.original_error || event.err || '—'}
-        />
-        <DebugLine
-          icon={<TerminalSquare className="h-4 w-4 text-zinc-300" />}
-          title="Step path"
-          value={event.step_path || '—'}
-        />
-        {skippedRequestEvents.length > 0 && (
-          <DebugLine
-            icon={<TerminalSquare className="h-4 w-4 text-zinc-300" />}
-            title="Skipped requests"
-            value={
-              skippedCount > 0
-                ? `${skippedCount}${skippedReasons.length > 0 ? ` · ${skippedReasons.join(', ')}` : ''}`
-                : `${skippedRequestEvents.length} skipped events`
-            }
-          />
-        )}
-      </div>
-    </div>
-  );
 }
 
 function DebugRequestInspector({ event }: { event: EngineEvent }) {
@@ -1425,12 +1367,10 @@ function formatBuiltinValue(value: unknown): string {
 
 function DebugLogsInspector({
   event,
-  sparkLogs,
   redirectedInfo,
   requestTargets,
 }: {
   event: EngineEvent;
-  sparkLogs: EngineEvent[];
   redirectedInfo?: RedirectedRequestInfo | null;
   requestTargets: YAMLNode[];
 }) {
@@ -1483,11 +1423,6 @@ function DebugLogsInspector({
           {event.method} {absoluteDebugUrl(event.path || redirectedInfo.matchedLocation, event.path)}
         </p>
       )}
-      {sparkLogs.map((log, index) => (
-        <p key={index} className="text-amber-300">
-          [{formatEventTime(log.ts)}] Spark {log.spark_phase || 'unknown'}: {log.name}
-        </p>
-      ))}
       {event.err && (
         <p className="text-red-300">
           [{time}] {event.err}
@@ -1497,12 +1432,23 @@ function DebugLogsInspector({
   );
 }
 
+function DebugSparkInspector({ logs }: { logs: EngineEvent[] }) {
+  if (logs.length === 0) return <p className="text-sm text-zinc-500">No Spark output for this request.</p>;
+  return (
+    <div className="border border-white/10 bg-[#050505] p-4 font-mono text-xs leading-6 whitespace-pre-wrap break-words">
+      {logs.map((log, index) => (
+        <p key={index} className="text-amber-300">
+          [{formatEventTime(log.ts)}] Spark {log.spark_phase || 'unknown'}: {log.name}
+        </p>
+      ))}
+    </div>
+  );
+}
+
 function DebugOverviewInspector({
   event,
-  skippedRequestEvents,
 }: {
   event: EngineEvent;
-  skippedRequestEvents: EngineEvent[];
 }) {
   return (
     <div className="space-y-3">
@@ -1530,19 +1476,20 @@ function DebugOverviewInspector({
         />
         <DebugLine
           icon={
-            event.err ? (
-              <XCircle className="h-4 w-4 text-red-300" />
+            entryStatus(event) === 'failed' ? (
+              <XCircle role="img" aria-label="Failed result" className="h-4 w-4 text-red-300" />
             ) : (
               <ShieldCheck className="h-4 w-4 text-emerald-300" />
             )
           }
           title="Result"
-          value={event.builtin ? 'Built-in evaluation failed. See Built-ins.' : event.err || (event.status ? `HTTP ${event.status}` : 'Completed')}
+          value={event.builtin ? 'Built-in evaluation failed. See Built-ins.' : event.error_policy
+            ? event.error_policy.key === 'on_timeout' ? 'Timeout'
+              : event.status >= 400 ? `HTTP ${event.status}`
+                : event.error_policy.key === 'on_connection_error' ? 'Connection error' : 'Other error'
+            : event.err || (event.status ? `HTTP ${event.status}` : 'Completed')}
         />
       </div>
-      {event.error_policy && (
-        <DebugErrorPolicyInspector event={event} skippedRequestEvents={skippedRequestEvents} />
-      )}
     </div>
   );
 }

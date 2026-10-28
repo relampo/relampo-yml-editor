@@ -1,0 +1,69 @@
+component_configuration_version: 1
+defaults:
+  future_defaults: keep-me
+  think_time: {enabled: false}
+  http:
+    auth: {type: none}
+    follow_redirects: false
+    redirect_automatically: false
+    retrieve_embedded_resources: false
+    cache: false
+    cookies: false
+    assertions: []
+    future_http: keep-me
+  sql: {assertions: [], future_sql: keep-me}
+test:
+  name: contract-roundtrip
+  future_test:
+    enabled: true
+future_root:
+  owner: backend
+scenarios:
+  - name: smoke
+    data_source: {type: csv, file: scenario-users.csv, variable_names: [user]}
+    future_scenario: keep-me
+    defaults:
+      http: {headers: {X-Contract: scenario}, assertions: []}
+    steps:
+      - group:
+          name: checks
+          defaults:
+            data_source: {enabled: false, future_data_source: keep-me}
+            http: {auth: {type: none}, assertions: [], future_http: keep-me}
+            sql: {assertions: []}
+          future_group:
+            mode: experimental
+          steps:
+            - request:
+                method: GET
+                url: /health
+                auth: {type: none}
+                follow_redirects: false
+                retrieve_embedded_resources: false
+                cookie_override: disabled
+                cache_override: disabled
+                think_time: {enabled: false}
+                future_request: keep-me
+                assertions:
+                  - type: status
+                    value: 200
+                    future_assertion: keep-me
+                extractors:
+                  - type: regex
+                    var: token
+                    pattern: token=(.*)
+                    future_extractor: keep-me
+            - post:
+                url: /empty
+                enabled: false
+                auth: {type: none}
+                assertions: []
+                follow_redirects: false
+            - sql:
+                dialect: postgres
+                kind: query
+                connection: {host: 127.0.0.1, database: app, user: app, password: secret}
+                query: SELECT 1
+                assertions: []
+                think_time: {enabled: false}
+                future_sql_request: keep-me

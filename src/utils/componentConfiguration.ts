@@ -103,7 +103,7 @@ const DATA_FIELDS = new Set([
   'enabled',
 ]);
 const TIMER_FIELDS = new Set(['duration', 'min', 'max', 'mean', 'std_dev', 'distribution', 'enabled']);
-const POLICY_FIELDS = new Set(['on_error', 'on_timeout', 'on_4xx', 'on_5xx', 'enabled']);
+const POLICY_FIELDS = new Set(['on_error', 'on_timeout', 'on_4xx', 'on_5xx', 'on_connection_error', 'enabled']);
 const ASSERTION_FIELDS = new Set(['type', 'value', 'name', 'path', 'max_ms', 'size']);
 const HTTP_ASSERTION_TYPES = new Set([
   'jsonpath',
@@ -375,7 +375,7 @@ export function inspectComponentConfiguration(script: unknown): {
       unknown(value, POLICY_FIELDS, path);
       if ('enabled' in value && typeof value.enabled !== 'boolean') error(`${path}.enabled`, 'Expected a boolean.');
       for (const [key, action] of Object.entries(value)) {
-        if (protocol === 'sql' && ['on_4xx', 'on_5xx'].includes(key))
+        if (protocol === 'sql' && ['on_4xx', 'on_5xx', 'on_connection_error'].includes(key))
           error(`${path}.${key}`, 'HTTP status policy cannot apply to SQL.');
         if (
           POLICY_FIELDS.has(key) &&
@@ -701,7 +701,9 @@ export function effectiveComponentValues(
       assign(
         'error_policy',
         Object.fromEntries(
-          ['on_error', 'on_timeout', ...(protocol === 'http' ? ['on_4xx', 'on_5xx'] : [])].map(key => [key, fallback]),
+          ['on_error', 'on_timeout', ...(protocol === 'http' ? ['on_4xx', 'on_5xx', 'on_connection_error'] : [])].map(
+            key => [key, fallback],
+          ),
         ),
         typeof legacy === 'string' && legacy ? legacyOrigin : origin,
       );
@@ -740,7 +742,7 @@ export function effectiveComponentValues(
     const parentPolicy = effective.error_policy;
     if (configurationRecord(parentPolicy?.value) && typeof parentPolicy.value.on_error === 'string') {
       const fallback = parentPolicy.value.on_error;
-      for (const key of ['on_timeout', ...(protocol === 'http' ? ['on_4xx', 'on_5xx'] : [])])
+      for (const key of ['on_timeout', ...(protocol === 'http' ? ['on_4xx', 'on_5xx', 'on_connection_error'] : [])])
         if (!(key in parentPolicy.value))
           assign('error_policy', { [key]: fallback }, parentPolicy.origins?.on_error || parentPolicy.origin);
     }

@@ -1,6 +1,6 @@
 # Component configuration
 
-The editor supports component configuration version 1 with backend contract 1.0.11.
+The editor supports component configuration version 1 with backend contract 1.0.14.
 The backend must advertise each required feature before the editor enables its controls or starts Run or Debug.
 
 Use **Adopt version 1** in the test details to add `component_configuration_version: 1` at script root.

@@ -1,5 +1,2 @@
-component_configuration_version: 1
-defaults:
-  http: {auth: {type: none}, assertions: [], follow_redirects: false}
 test:
   name: contract-invalid

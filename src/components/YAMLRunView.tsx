@@ -1,4 +1,5 @@
 import { componentCapabilityError, type ComponentCapabilities } from '../utils/componentConfiguration';
+import { nativeSelectClassName } from './ui/select';
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type ReactNode, type RefObject } from 'react';
 import {
   Activity,
@@ -471,7 +472,7 @@ export function YAMLLoadRunSession({
             )}
             {summary?.scenarios && (
               <label className="flex gap-3 text-sm text-zinc-300">Result scope
-                <select aria-label="Result scope" className="bg-zinc-900" value={resultScope} onChange={event => setResultScope(event.target.value)}>
+                <select aria-label="Result scope" className={nativeSelectClassName} value={resultScope} onChange={event => setResultScope(event.target.value)}>
                   <option value="">Global</option>
                   {summary.scenarios.map(scenario => <option key={scenario.name} value={scenario.name}>{scenario.name}</option>)}
                 </select>
