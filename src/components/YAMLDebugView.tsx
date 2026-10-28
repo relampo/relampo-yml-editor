@@ -1,3 +1,4 @@
+import { componentCapabilityError, type ComponentCapabilities } from '../utils/componentConfiguration';
 import {
   useCallback,
   useEffect,
@@ -231,6 +232,7 @@ interface YAMLDebugSessionProps {
   flushPendingEdits?: () => string;
   documentReady: boolean;
   multiScenarioDebugEnabled?: boolean;
+  componentCapabilities?: ComponentCapabilities;
   validationErrors: string[];
   redirectedRequestMap?: Record<string, RedirectedRequestInfo>;
   onSelectNode: (node: YAMLNode | null) => void;
@@ -415,11 +417,14 @@ export function YAMLDebugSession({
   flushPendingEdits,
   documentReady,
   multiScenarioDebugEnabled = false,
+  componentCapabilities,
   validationErrors,
   redirectedRequestMap = EMPTY_REDIRECTED_REQUEST_MAP,
   onSelectNode,
   onEditNode,
 }: YAMLDebugSessionProps) {
+  const componentError = componentCapabilityError(yamlCode, componentCapabilities);
+  validationErrors = componentError ? [...validationErrors, componentError] : validationErrors;
   const [runState, dispatchRunState] = useReducer(runStateReducer, initialRunState);
   const { entryEvents, isRunning, runCompleted, runError } = runState;
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -573,7 +578,7 @@ export function YAMLDebugSession({
     setDetailTab('overview');
     dispatchRunState({ type: 'run_started' });
     try {
-      const runId = await startDebugRun(scriptAtStart, { vus: debugVUs, ...(selectedName ? { scenarioName: selectedName } : {}) });
+      const runId = await startDebugRun(scriptAtStart, { vus: debugVUs, componentCapabilities, ...(selectedName ? { scenarioName: selectedName } : {}) });
       if (token === startTokenRef.current) {
         runStore.store({ id: runId, fp: fingerprint(scriptAtStart), ...(selectedName ? { scenarioName: selectedName } : {}) });
         subscribe(runId, false);

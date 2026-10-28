@@ -1,3 +1,5 @@
+import { ComponentConfigurationDetails } from './yaml-node-details/ComponentConfigurationDetails';
+import type { ComponentCapabilities } from '../utils/componentConfiguration';
 import { Eye, EyeOff, FileText } from 'lucide-react';
 import { useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -38,6 +40,8 @@ import { HighlightText } from './ui/HighlightedInput';
 
 interface YAMLNodeDetailsProps {
   node: YAMLNode | null;
+  tree?: YAMLNode | null;
+  componentCapabilities?: ComponentCapabilities;
   baseUrl?: string;
   hosts?: string[];
   redirectedInfo?: RedirectedRequestInfo | null;
@@ -57,6 +61,8 @@ const NON_TOGGLEABLE_NODE_TYPES = ['root', 'test', 'scenarios', 'steps'];
 
 export function YAMLNodeDetails({
   node,
+  tree,
+  componentCapabilities,
   baseUrl = '',
   hosts = [],
   redirectSourceInfo = null,
@@ -163,6 +169,7 @@ export function YAMLNodeDetails({
           </div>
         )}
 
+        {tree && <ComponentConfigurationDetails tree={tree} node={node} capabilities={componentCapabilities} onNodeUpdate={onNodeUpdate} />}
         <NodeDetailsContent
           node={node}
           nodeName={nodeName}

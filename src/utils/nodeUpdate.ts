@@ -1,3 +1,4 @@
+import { authoredNodeData } from './yamlAuthoredData';
 import { buildRequestUrl } from '../components/fields/requestUrl';
 import type { YAMLNode } from '../types/yaml';
 import { getRequestNodeHost, getUpdatedRequestNodePresentation, isHttpRequestNodeType } from './requestNodeDisplay';
@@ -13,7 +14,37 @@ type BatchNodeUpdate = {
 };
 
 function buildUpdatedNode(node: YAMLNode, updatedData: NodeUpdateData): YAMLNode {
-  const { __name, __batchChildUpdates, ...cleanData } = updatedData;
+  const { __name, __batchChildUpdates, __componentRoot, __componentFields, ...cleanData } = updatedData;
+  if (__componentRoot && typeof __componentRoot === 'object') {
+    const unknownData = { ...node.unknownData, ...(__componentRoot as YAMLNode['unknownData']) };
+    for (const key of Object.keys(unknownData)) if (unknownData[key] === undefined) delete unknownData[key];
+    return { ...node, unknownData };
+  }
+  if (__componentFields && typeof __componentFields === 'object') {
+    const patch = __componentFields as Record<string, unknown>;
+    const authored = { ...authoredNodeData(node), ...patch } as Record<string, unknown>;
+    const data = { ...node.data, ...patch } as Record<string, unknown>;
+    for (const key of Object.keys(patch))
+      if (patch[key] === undefined) {
+        delete authored[key];
+        delete data[key];
+      }
+    const childFields: Record<string, string> = {
+      headers: 'headers',
+      assertion: 'assertions',
+      think_time: 'think_time',
+      error_policy: 'error_policy',
+    };
+    return {
+      ...node,
+      data: data as YAMLNode['data'],
+      authoredData: authored as YAMLNode['data'],
+      initialData: structuredClone(data) as YAMLNode['data'],
+      componentEdits: [...new Set([...(node.componentEdits || []), ...Object.keys(patch)])],
+      children: node.children?.filter(child => !(childFields[child.type] in patch)),
+    };
+  }
+  if (__name !== undefined && (isHttpRequestNodeType(node.type) || node.type === 'sql')) cleanData.name = __name;
   const requestPresentation = isHttpRequestNodeType(node.type)
     ? getUpdatedRequestNodePresentation({
         nodeType: node.type,

@@ -1,3 +1,4 @@
+import { componentCapabilityError, type ComponentCapabilities } from './componentConfiguration';
 import { trackStudioRunStarted, trackStudioRunCompleted } from './analytics';
 // Client for the relampo studio load-run API: a full `relampo run` load test
 // (the scenario's real load config) driven from the editor's Run view. Unlike
@@ -286,7 +287,9 @@ export function hasMultipleRunScenarios(yaml: string): boolean {
   }
 }
 
-export async function startLoadRun(yaml: string): Promise<string> {
+export async function startLoadRun(yaml: string, componentCapabilities?: ComponentCapabilities): Promise<string> {
+  const compatibilityError = componentCapabilityError(yaml, componentCapabilities);
+  if (compatibilityError) throw new Error(compatibilityError);
   const response = await fetch(`${apiBase()}/api/run`, {
     method: 'POST',
     headers: studioAuthHeaders({ 'Content-Type': 'application/json' }),
