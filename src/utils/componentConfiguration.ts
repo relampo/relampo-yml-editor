@@ -172,7 +172,7 @@ function numericCriterion(value: unknown): boolean {
     Number(value) >= 0
   );
 }
-function featureFor(protocol: string, field: string): ComponentFeature {
+export function componentFeatureFor(protocol: string, field: string): ComponentFeature {
   if (field === 'data_source') return 'scoped_data_source';
   if (field === 'think_time') return 'think_time';
   if (field === 'error_policy') return 'error_policy';
@@ -420,10 +420,10 @@ export function inspectComponentConfiguration(script: unknown): {
                 error(`${path}[${index}].value`, 'Minimum cannot exceed maximum.');
             } else if (!numericCriterion(assertion.value))
               error(`${path}[${index}].value`, 'Expected a non-negative numeric equality value.');
-          } else if (criterion !== 'duration' || typeof assertion.max_ms !== 'number')
+          } else if (criterion !== 'duration' || !numericCriterion(assertion.max_ms))
             error(`${path}[${index}].value`, 'Expected a numeric value or min/max bounds.');
-          if (assertion.max_ms !== undefined && typeof assertion.max_ms !== 'number')
-            error(`${path}[${index}].max_ms`, 'Duration uses milliseconds as a number.');
+          if (assertion.max_ms !== undefined && !numericCriterion(assertion.max_ms))
+            error(`${path}[${index}].max_ms`, 'Duration uses non-negative milliseconds or a variable.');
         }
         if (protocol === 'http') {
           if (!HTTP_ASSERTION_TYPES.has(criterion))
@@ -455,7 +455,7 @@ export function inspectComponentConfiguration(script: unknown): {
     const defaults = record.defaults;
     for (const [key, value] of Object.entries(defaults)) {
       if (COMMON_FIELDS.includes(key)) {
-        required.add(featureFor('', key));
+        required.add(componentFeatureFor('', key));
         validateValue(key, value, `${defaultsPath}.${key}`, '');
         if (key in record) error(`${defaultsPath}.${key}`, `Conflicts with ${path ? path + '.' : ''}${key}.`);
       } else if (key === 'http' || key === 'sql') {
@@ -468,7 +468,7 @@ export function inspectComponentConfiguration(script: unknown): {
         for (const [field, setting] of Object.entries(value)) {
           const fieldPath = `${defaultsPath}.${key}.${field}`;
           if (supported.has(field)) {
-            required.add(featureFor(key, field));
+            required.add(componentFeatureFor(key, field));
             validateValue(field, setting, fieldPath, key);
             const legacyKey = field === 'cache' ? 'cache_manager' : field;
             if (field === 'error_policy') {

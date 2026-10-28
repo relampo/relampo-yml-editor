@@ -447,6 +447,32 @@ describe('RLP-689 scopes, origin and validation', () => {
       'continue',
     );
   });
+  it.each([1000, '1000', '{{limit}}', '$' + '{limit}'])('accepts SQL duration max_ms %s', max_ms => {
+    const script = {
+      component_configuration_version: 1,
+      defaults: { sql: { assertions: [{ type: 'duration', max_ms }] } },
+      scenarios: [{ steps: [{ sql: { kind: 'query', query: 'SELECT 1' } }] }],
+    };
+    expect(inspectComponentConfiguration(script).errors).toEqual([]);
+    expect(roundtrip(script).defaults.sql.assertions).toEqual(script.defaults.sql.assertions);
+    const local = {
+      component_configuration_version: 1,
+      scenarios: [
+        { steps: [{ sql: { kind: 'query', query: 'SELECT 1', assertions: script.defaults.sql.assertions } }] },
+      ],
+    };
+    expect(inspectComponentConfiguration(local).errors).toEqual([]);
+    expect(roundtrip(local).scenarios[0].steps[0].sql.assertions).toEqual(script.defaults.sql.assertions);
+  });
+  it.each([-1, '-1', 'invalid', Infinity, true, null])('rejects invalid SQL duration max_ms %s', max_ms => {
+    expect(
+      inspectComponentConfiguration({
+        component_configuration_version: 1,
+        defaults: { sql: { assertions: [{ type: 'duration', max_ms }] } },
+        scenarios: [{ steps: [{ get: '/' }] }],
+      }).errors.length,
+    ).toBeGreaterThan(0);
+  });
   it('validates connection actions in adopted HTTP policies', () => {
     for (const [protocol, action] of [
       ['http', 'invalid'],

@@ -3,6 +3,7 @@ import type { YAMLNode } from '../../types/yaml';
 import { useLanguage } from '../../contexts/LanguageContext';
 import {
   authoredComponentData,
+  componentFeatureFor,
   configurationRecord,
   effectiveComponentValues,
   HTTP_COMPONENT_FIELDS,
@@ -10,7 +11,6 @@ import {
   SQL_COMPONENT_FIELDS,
   STABLE_CONTAINERS,
   type ComponentCapabilities,
-  type ComponentFeature,
   type EffectiveComponentValue,
 } from '../../utils/componentConfiguration';
 
@@ -23,14 +23,6 @@ interface Props {
 const HTTP_TYPES = new Set(['request', 'get', 'post', 'put', 'delete', 'patch', 'head', 'options']);
 const inputClass =
   'w-full rounded border border-white/15 bg-zinc-900 px-2 py-1 text-sm text-zinc-200 disabled:opacity-50';
-function featureFor(field: string, protocol: string): ComponentFeature {
-  if (field === 'data_source') return 'scoped_data_source';
-  if (field === 'think_time') return 'think_time';
-  if (field === 'error_policy') return 'error_policy';
-  if (field === 'assertions') return protocol === 'sql' ? 'sql_assertions' : 'http_assertions';
-  if (field === 'cookies' || field === 'cache') return 'http_state_usage';
-  return 'http_defaults';
-}
 function disabledValue(field: string): unknown {
   if (field === 'auth') return { type: 'none' };
   if (field === 'assertions') return [];
@@ -78,7 +70,7 @@ function ConfigurationField({
   onChange: (value: unknown) => void;
   spanish: boolean;
 }) {
-  const [buffer, setBuffer] = useState(JSON.stringify(value, null, 2) || '');
+  const [buffer, setBuffer] = useState(() => JSON.stringify(value, null, 2) || '');
   const [tracked, setTracked] = useState(value);
   const [error, setError] = useState('');
   if (JSON.stringify(tracked) !== JSON.stringify(value)) {
@@ -234,7 +226,7 @@ export function ComponentConfigurationDetails({ tree, node, capabilities, onNode
             adopted &&
             capabilities?.version === 1 &&
             capabilities.features.includes('http_defaults') &&
-            capabilities.features.includes(featureFor(field, protocol)) &&
+            capabilities.features.includes(componentFeatureFor(protocol, field)) &&
             Boolean(onNodeUpdate);
           return (
             <ConfigurationField

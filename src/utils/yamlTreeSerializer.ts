@@ -19,6 +19,19 @@ import {
   normalizeSQLForYaml,
 } from './yamlParserHelpers';
 
+const REQUEST_CHILD_FIELDS = [
+  'spark',
+  'extractors',
+  'assertions',
+  'extract',
+  'assert',
+  'files',
+  'headers',
+  'data_source',
+  'think_time',
+  'error_policy',
+];
+
 const HTTP_METHODS = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
 
 // A Spark node's before/after timing lives in its node type (spark_before /
@@ -541,19 +554,7 @@ export function requestNodeToObject(node: YAMLNode, methodFallback?: string): an
     request.request.name = node.name;
   }
 
-  for (const field of [
-    'spark',
-    'extractors',
-    'assertions',
-    'extract',
-    'assert',
-    'files',
-    'headers',
-    'data_source',
-    'think_time',
-    'error_policy',
-  ])
-    if (!node.componentEdits?.includes(field)) delete request.request[field];
+  for (const field of REQUEST_CHILD_FIELDS) if (!node.componentEdits?.includes(field)) delete request.request[field];
 
   if (node.data?.enabled === false) {
     request.request.enabled = false;
@@ -647,18 +648,7 @@ export function requestNodeToObject(node: YAMLNode, methodFallback?: string): an
     }
   }
 
-  for (const key of [
-    'spark',
-    'extractors',
-    'assertions',
-    'extract',
-    'assert',
-    'files',
-    'headers',
-    'data_source',
-    'think_time',
-    'error_policy',
-  ]) {
+  for (const key of REQUEST_CHILD_FIELDS) {
     const original = requestData[key];
     const childType =
       { assertions: 'assertion', extractors: 'extractor', files: 'file', spark: 'spark_before' }[key] || key;
