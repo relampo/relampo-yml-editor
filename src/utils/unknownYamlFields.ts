@@ -21,6 +21,10 @@ function currentKnownFields(): Record<string, ReadonlySet<string>> {
 
 const knownFields = currentKnownFields();
 
+// Recorder fields are preserved document data, beyond the runtime contract.
+knownFields.cookies = new Set([...(knownFields.cookies || []), 'mode']);
+knownFields.response = new Set([...(knownFields.response || []), 'body']);
+
 // Recorder output includes provenance metadata at test scope. The runtime
 // contract omits these fields because execution ignores them, but the editor
 // supports them as preserved document data rather than forward-compatibility
