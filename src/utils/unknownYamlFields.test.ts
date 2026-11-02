@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { parseYAMLToTree } from './yamlParser';
+import { load } from 'js-yaml';
+import { parseYAMLToTree, treeToYAML } from './yamlParser';
 import { collectUnknownFieldPaths } from './unknownYamlFields';
 
 describe('unknown YAML field warnings', () => {
@@ -36,6 +37,61 @@ scenarios:
 `)!;
 
     expect(collectUnknownFieldPaths(tree)).toEqual([]);
+  });
+
+  it('recognizes recorder cookies and response bodies and preserves them on save', () => {
+    const yaml = `
+test:
+  name: recorded document
+scenarios:
+  - name: smoke
+    cookies:
+      mode: auto
+    steps:
+      - group:
+          name: recorded group
+          steps:
+            - request:
+                method: GET
+                url: /health
+                response:
+                  status: 200
+                  body: '<html>recorded response</html>'
+            - request:
+                method: GET
+                url: /account
+                response:
+                  status: 200
+                  body: {future_payload: {mode: custom}}
+`;
+    const tree = parseYAMLToTree(yaml)!;
+
+    expect(collectUnknownFieldPaths(tree)).toEqual([]);
+    expect(load(treeToYAML(tree))).toEqual(load(yaml));
+    expect(collectUnknownFieldPaths(parseYAMLToTree(treeToYAML(tree)))).toEqual([]);
+  });
+
+  it('still reports unknown siblings of recorder fields', () => {
+    const tree = parseYAMLToTree(`
+scenarios:
+  - name: smoke
+    cookies:
+      mode: auto
+      future_cookie: true
+    steps:
+      - request:
+          method: GET
+          url: /health
+          response:
+            status: 200
+            body: recorded response
+            future_response: true
+`)!;
+
+    expect(collectUnknownFieldPaths(tree)).toEqual([
+      'scenarios[0].cookies.future_cookie',
+      'scenarios[0].steps[0].request.response.future_response',
+    ]);
   });
 
   it('reports paths without blocking forward-compatible documents', () => {
