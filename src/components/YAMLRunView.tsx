@@ -1453,7 +1453,6 @@ function RunSummaryPanel({
   const requests = summary.requests ?? [];
   const durationSeconds = summary.duration / 1e9;
   const completed = summary.overview?.completed_transactions ?? (summary.transactions?.every(tx => tx.completed != null) ? summary.transactions.reduce((total, tx) => total + (tx.completed ?? 0), 0) : undefined);
-  const incomplete = summary.overview?.incomplete_transactions ?? (summary.transactions?.every(tx => tx.incomplete != null) ? summary.transactions.reduce((total, tx) => total + (tx.incomplete ?? 0), 0) : undefined);
   const tps = summary.overview ? summary.overview.tps : durationSeconds > 0 && completed != null ? completed / durationSeconds : null;
   const tpsNotApplicable = summary.overview ? summary.overview.tps_status === 'not_applicable' : durationSeconds > 0 && summary.transactions_configured === false;
   const executedVUs = summary.executed_vus ?? 0;
@@ -1522,30 +1521,6 @@ function RunSummaryPanel({
             value={metric.value}
             tone={metric.tone}
           />
-        ))}
-      </div>
-
-      <div className="space-y-2 border-t border-white/10 px-4 py-3 text-xs text-zinc-400">
-        <p>{summary.test_name} · {summary.metadata?.execution_mode ?? 'Local'} · {(scenarioResult && summary.start_time.startsWith('0001-01-01') ? '' : summary.start_time) || 'Start unavailable'} → {(scenarioResult && summary.end_time.startsWith('0001-01-01') ? '' : summary.end_time) || 'End unavailable'}</p>
-        <p>RPS and TPS are execution averages. Charts show rates for each measured interval.</p>
-        {summary.expected_nodes != null && <p>Nodes: {summary.received_nodes?.length ?? 0}/{summary.expected_nodes}. Missing: {summary.missing_nodes?.join(', ') || 'None'}.</p>}
-        {summary.report_schema_version == null && summary.transactions?.some(tx => tx.completed == null) && <p>Legacy transaction rate: {formatSummaryRate(durationSeconds > 0 ? summary.transactions.reduce((total, tx) => total + tx.count, 0) / durationSeconds : null)} TPS. Completion counts are unavailable.</p>}
-        <div className="flex flex-wrap gap-4">
-          <p><span>Completed transactions</span>: {completed?.toLocaleString() ?? 'Unavailable'}</p>
-          <p><span>Incomplete transactions</span>: {incomplete?.toLocaleString() ?? 'Unavailable'}</p>
-        </div>
-        {summary.node_resources?.map(resource => (
-          <div key={resource.node} className="flex flex-wrap gap-4 border-t border-white/5 pt-2">
-            <span>{resource.node}</span>
-            {resource.measurements ? <>
-              <p><span>RSS peak</span>: {resource.measurements.rss_peak_mib == null ? 'Unavailable' : `${resource.measurements.rss_peak_mib.toLocaleString()} MiB`}</p>
-              <p><span>RSS peak percent</span>: {resource.measurements.rss_peak_percent == null ? 'Unavailable' : `${resource.measurements.rss_peak_percent.toFixed(1)}%`}</p>
-              <p><span>Go heap peak</span>: {resource.measurements.go_heap_peak_mib == null ? 'Unavailable' : `${resource.measurements.go_heap_peak_mib.toLocaleString()} MiB`}</p>
-              <p><span>Memory capacity</span>: {resource.measurements.memory_capacity_mib == null ? 'Unavailable' : `${resource.measurements.memory_capacity_mib.toLocaleString()} MiB`}</p>
-              <p>CPU capacity: {resource.measurements.cpu_capacity ?? 'Unavailable'} cores</p>
-              <p>Goroutines (start / peak / end): {resource.measurements.goroutines_start ?? 'Unavailable'} / {resource.measurements.goroutines_peak ?? 'Unavailable'} / {resource.measurements.goroutines_end ?? 'Unavailable'}</p>
-            </> : <p>Legacy measurements: MEM Peak {resource.mem_peak_mb} MB, CPU Peak {resource.cpu_peak}%, Go {resource.go_peak}. Memory source and CPU scale are unknown.</p>}
-          </div>
         ))}
       </div>
 

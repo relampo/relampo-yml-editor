@@ -92,7 +92,7 @@ const baseProps = {
 };
 
 describe('YAMLLoadRunSession', () => {
-  it.each([false, true])('renders partial-node metadata and missing or zero resources (zero=%s)', async zero => {
+  it.each([false, true])('keeps summary cards without the duplicate details block (zero=%s)', async zero => {
     render(<YAMLLoadRunSession {...baseProps} />);
     fireEvent.click(screen.getByRole('button', { name: 'Run load test' }));
     await waitFor(() => expect(runApiMock.handlers).toHaveLength(1));
@@ -106,15 +106,20 @@ describe('YAMLLoadRunSession', () => {
       } : {} }],
     }) }));
     expect(screen.getByText('Run summary — partial')).toBeInTheDocument();
-    expect(screen.getByText('Nodes: 1/2. Missing: node-2.')).toBeInTheDocument();
-    expect(screen.getByText(/Studio load run · Distributed · Start unavailable → End unavailable/)).toBeInTheDocument();
+    expect(screen.queryByText(/Nodes: 1\/2/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Studio load run · Distributed/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/RPS and TPS are execution averages/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Completed transactions')).not.toBeInTheDocument();
+    expect(screen.queryByText('Incomplete transactions')).not.toBeInTheDocument();
     expect(screen.getByText('TPS').parentElement).toHaveTextContent('Not applicable');
     expect(screen.getByText('Failed Requests').parentElement).toHaveTextContent('0 (Unavailable)');
-    expect(screen.getByText('RSS peak percent').parentElement).toHaveTextContent(zero ? '0.0%' : 'Unavailable');
-    expect(screen.getByText('Go heap peak').parentElement).toHaveTextContent(zero ? '0 MiB' : 'Unavailable');
-    expect(screen.getByText('Memory capacity').parentElement).toHaveTextContent(zero ? '0 MiB' : 'Unavailable');
-    expect(screen.getByText(zero ? 'CPU capacity: 0 cores' : 'CPU capacity: Unavailable cores')).toBeInTheDocument();
-    expect(screen.getByText(zero ? 'Goroutines (start / peak / end): 0 / 0 / 0' : 'Goroutines (start / peak / end): Unavailable / Unavailable / Unavailable')).toBeInTheDocument();
+    expect(screen.getByText('RSS Peak').parentElement).toHaveTextContent(zero ? '0 MiB' : 'Unavailable');
+    expect(screen.getByText('Goroutines Peak').parentElement).toHaveTextContent(zero ? '0' : 'Unavailable');
+    expect(screen.queryByText('RSS peak percent')).not.toBeInTheDocument();
+    expect(screen.queryByText('Go heap peak')).not.toBeInTheDocument();
+    expect(screen.queryByText('Memory capacity')).not.toBeInTheDocument();
+    expect(screen.queryByText(/CPU capacity:/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Goroutines \(start \/ peak \/ end\)/)).not.toBeInTheDocument();
   });
 
   it('uses each highest node measurement and replaces live cards with the final summary', async () => {
@@ -142,14 +147,12 @@ describe('YAMLLoadRunSession', () => {
     { name: 'mixed legacy observations', transactions: [{ name: 'a', count: 4, failures: 1, completed: 3, incomplete: 1 }, { name: 'b', count: 3, failures: 0 }], duration: 500_000_000, tps: 'Unavailable', completed: 'Unavailable', incomplete: 'Unavailable' },
     { name: 'zero duration', transactions: [{ name: 'a', count: 4, failures: 1, completed: 3, incomplete: 1 }], duration: 0, tps: 'Unavailable', completed: '3', incomplete: '1' },
     { name: 'absent observations', transactions: undefined, duration: 500_000_000, tps: 'Unavailable', completed: 'Unavailable', incomplete: 'Unavailable' },
-  ])('keeps fallback rates honest for $name', async ({ transactions, duration, tps, completed, incomplete }) => {
+  ])('keeps fallback rates honest for $name', async ({ transactions, duration, tps }) => {
     render(<YAMLLoadRunSession {...baseProps} />);
     fireEvent.click(screen.getByRole('button', { name: 'Run load test' }));
     await waitFor(() => expect(runApiMock.handlers).toHaveLength(1));
     act(() => runApiMock.handlers[0].onDone({ status: 'completed', error: null, summary: summary({ transactions, duration }) }));
     expect(screen.getByText('TPS').parentElement?.textContent).toBe(`${tps}TPS`);
-    expect(screen.getByText('Completed transactions').parentElement?.textContent).toBe(`Completed transactions: ${completed}`);
-    expect(screen.getByText('Incomplete transactions').parentElement?.textContent).toBe(`Incomplete transactions: ${incomplete}`);
   });
 
   it('shows completed-transaction rates and explicit resource measurements from the final report', async () => {
@@ -175,10 +178,6 @@ describe('YAMLLoadRunSession', () => {
     expect(screen.getByText('RSS Peak').parentElement).toHaveTextContent('64 MiB');
     expect(screen.getByText('CPU Peak').parentElement).toHaveTextContent('0.0%');
     expect(screen.getByText('Goroutines Peak').parentElement).toHaveTextContent('8');
-    expect(screen.getByText('Completed transactions').parentElement).toHaveTextContent('2');
-    expect(screen.getByText('Incomplete transactions').parentElement).toHaveTextContent('1');
-    expect(screen.getByText('Go heap peak').parentElement).toHaveTextContent('12 MiB');
-    expect(screen.getByText('Memory capacity').parentElement).toHaveTextContent('256 MiB');
     expect(screen.getByRole('columnheader', { name: 'p50' })).toBeInTheDocument();
   });
 
@@ -299,9 +298,9 @@ describe('YAMLLoadRunSession', () => {
     expect(screen.getByText('8/10')).toBeInTheDocument();
     expect(screen.getByText('TPS')).toBeInTheDocument();
     expect(screen.getByText('TPS').parentElement).toHaveTextContent('Unavailable');
-    expect(screen.getByText(/Legacy transaction rate: 33.3 TPS/)).toBeInTheDocument();
+    expect(screen.queryByText(/Legacy transaction rate:/)).not.toBeInTheDocument();
     expect(screen.getByText('RSS Peak').parentElement).toHaveTextContent('Unavailable');
-    expect(screen.getByText(/Legacy measurements: MEM Peak 64 MB, CPU Peak 42.5%, Go 12/)).toBeInTheDocument();
+    expect(screen.queryByText(/Legacy measurements:/)).not.toBeInTheDocument();
     expect(screen.getByText('Failed Requests').parentElement).toHaveTextContent('2 (1.00%)');
     expect(within(screen.getByRole('table')).getByText('/x')).toBeInTheDocument();
     expect(within(screen.getByRole('table')).getByText('88ms')).toBeInTheDocument();
