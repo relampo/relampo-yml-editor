@@ -76,7 +76,9 @@ for (const studio of [false, true]) {
       await scenarios.click({ button: 'right' });
       await page.getByRole('button', { name: 'Scenario New load scenario' }).click();
       await expect(page.getByLabel('Name', { exact: true })).toHaveValue('New Scenario');
-      await expect(page.getByText('Choose sequential or parallel scenario scheduling for multiple scenarios.', { exact: true }).first()).toBeVisible();
+      await expect(page.getByRole('treeitem', { name: /^(?:Collapse |Expand )?Scenario authoring$/ })).toHaveAccessibleDescription(
+        /^Choose sequential or parallel scenario scheduling for multiple scenarios\. /,
+      );
       for (let copy = 0; copy < 2; copy += 1) {
         await source.click({ button: 'right' });
         await page.getByRole('button', { name: 'Duplicate', exact: true }).click();

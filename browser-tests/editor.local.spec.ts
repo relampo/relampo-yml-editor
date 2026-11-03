@@ -93,16 +93,24 @@ async function uploadYaml(page: Page, yaml: string, name = 'browser.yaml') {
   await page.locator('input[type="file"]').setInputFiles({ name, mimeType: 'text/yaml', buffer: Buffer.from(yaml) });
 }
 
-test('standalone open and upload preserves unknown fields and shows their paths', async ({ page }) => {
+test('standalone open and upload preserves unrecognized fields and shows them on their node', async ({ page }) => {
   await mockStudioInfo(page, baseYaml);
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'RELAMPO' })).toBeVisible();
 
   await uploadYaml(page, forwardYaml, 'forward.yaml');
 
-  await expect(page.getByText('This document contains unknown fields that will be preserved.')).toBeVisible();
-  await expect(page.getByText(/future_root/)).toBeVisible();
-  await expect(page.getByText(/test\.future_test/)).toBeVisible();
+  const summary = page.getByRole('status').filter({ hasText: '2 unrecognized fields' });
+  await expect(summary).toBeVisible();
+  await expect(page.getByRole('treeitem', { name: /Forward browser/ })).toHaveAccessibleDescription(
+    /Unrecognized field: future_root/,
+  );
+  await summary.getByRole('button', { name: 'Go to next' }).click();
+  const issues = page.getByRole('region', { name: 'Issues' });
+  await expect(issues.getByText('future_root', { exact: true })).toBeVisible();
+  await expect(issues.getByText('test.future_test', { exact: true })).toBeVisible();
+  await expect(issues.getByText(/keep/)).toBeVisible();
+  await page.screenshot({ path: 'output/playwright/document-issues-info.png' });
   const downloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Save' }).click();
   await page.getByRole('menuitem', { name: /Save with responses/ }).click();
@@ -110,6 +118,55 @@ test('standalone open and upload preserves unknown fields and shows their paths'
   const downloadedYaml = await readFile(await download.path(), 'utf8');
   expect(downloadedYaml).toContain('future_root:');
   expect(downloadedYaml).toContain('future_test: keep');
+});
+
+test('configuration errors link the summary and Debug to the node and cannot be closed', async ({ page }) => {
+  await mockStudioInfo(page, baseYaml);
+  await page.goto('/');
+  await uploadYaml(
+    page,
+    `test:
+  name: Error browser
+scenarios:
+  - name: smoke
+    steps:
+      - group:
+          name: Checkout
+          steps:
+            - transaction:
+                name: Pay
+                steps: []
+      - get: /other
+`,
+    'error.yaml',
+  );
+
+  const summary = page.getByRole('status');
+  await expect(summary).toHaveText(/^1 configuration error/);
+  await expect(summary).not.toContainText('unrecognized');
+  await expect(summary.getByRole('button', { name: 'Close notice' })).toHaveCount(0);
+
+  const group = page.getByRole('treeitem', { name: /Checkout/ });
+  await group.getByRole('button', { name: 'Collapse' }).click();
+  await expect(group).toHaveAccessibleDescription('Contains errors.');
+
+  await group.getByRole('button', { name: 'Expand' }).click();
+  const search = page.getByPlaceholder('Search nodes...');
+  await search.fill('other');
+  await search.press('Enter');
+  await expect(page.getByRole('treeitem', { name: /Pay/ })).toHaveCount(0);
+  await summary.getByRole('button', { name: 'Go to next' }).click();
+  await expect(search).toHaveValue('');
+  const pay = page.getByRole('treeitem', { name: /Pay/ });
+  await expect(pay).toBeVisible();
+  await expect(pay).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('region', { name: 'Issues' }).getByText('"Pay" must contain at least 1 related step.')).toBeVisible();
+  await page.screenshot({ path: 'output/playwright/document-issues-error.png' });
+
+  await page.getByRole('button', { name: 'Debug', exact: true }).click();
+  await expect(page.getByText('Fix 1 configuration error before you debug.')).toBeVisible();
+  await page.getByRole('button', { name: 'Go to first error' }).click();
+  await expect(page.getByRole('treeitem', { name: /Pay/ })).toHaveAttribute('aria-selected', 'true');
 });
 
 test('shows the full loaded YAML file name in the Recording form details', async ({ page }) => {

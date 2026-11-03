@@ -19,6 +19,7 @@ import {
   Zap,
 } from 'lucide-react';
 import type { YAMLNode } from '../types/yaml';
+import { BlockedByIssuesNotice } from './DocumentIssues';
 import { useLanguage } from '../contexts/LanguageContext';
 import {
   loadRunReportUrl,
@@ -255,6 +256,7 @@ interface YAMLLoadRunSessionProps {
   flushPendingEdits?: () => string;
   documentReady: boolean;
   validationErrors: string[];
+  onGoToFirstError?: () => void;
   multiScenarioRunEnabled?: boolean;
   componentCapabilities?: ComponentCapabilities;
 }
@@ -265,6 +267,7 @@ export function YAMLLoadRunSession({
   flushPendingEdits,
   documentReady,
   validationErrors,
+  onGoToFirstError,
   multiScenarioRunEnabled = false,
   componentCapabilities,
 }: YAMLLoadRunSessionProps) {
@@ -294,6 +297,7 @@ export function YAMLLoadRunSession({
     return duration > 0 && hasIterationBudgetController(tree);
   }, [tree, plannedLoadNode]);
   const componentError = componentCapabilityError(yamlCode, componentCapabilities);
+  const documentErrorCount = validationErrors.length;
   validationErrors = componentError ? [...validationErrors, componentError] : validationErrors;
   const hasValidationErrors = validationErrors.length > 0;
   const latest = snapshots[snapshots.length - 1] ?? null;
@@ -445,7 +449,14 @@ export function YAMLLoadRunSession({
       />
 
       {incompatibleMulti && <RunErrorBanner message={MULTI_BACKEND_MESSAGE} />}
-      {hasValidationErrors && <ValidationErrorBanner errors={validationErrors} />}
+      {hasValidationErrors && (
+        <BlockedByIssuesNotice
+          action="run"
+          errorCount={documentErrorCount}
+          onGoToFirstError={onGoToFirstError}
+          extraMessages={componentError ? [componentError] : []}
+        />
+      )}
 
       {runError && <RunErrorBanner message={runError} />}
 
@@ -573,35 +584,6 @@ function RunToolbar({
             <Square className="h-4 w-4" />
             Stop
           </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ValidationErrorBanner({ errors }: { errors: string[] }) {
-  return (
-    <div className="border-b border-red-400/20 bg-red-500/10 px-5 py-3">
-      <div className="flex items-start gap-3">
-        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-300" />
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-red-200">YAML semantic validation failed before the load run</p>
-          <p className="mt-1 text-xs text-red-200/80">
-            Fix these issues in the tree or code before running the load test.
-          </p>
-          <div className="mt-2 space-y-1">
-            {errors.slice(0, 4).map((error, index) => (
-              <p
-                key={`${error}-${index}`}
-                className="wrap-break-word font-mono text-xs text-red-100/90"
-              >
-                {error}
-              </p>
-            ))}
-            {errors.length > 4 && (
-              <p className="text-xs text-red-200/70">+{errors.length - 4} more validation issues</p>
-            )}
-          </div>
         </div>
       </div>
     </div>

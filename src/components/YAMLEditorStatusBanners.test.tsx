@@ -1,34 +1,54 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { indexDocumentIssues } from '../utils/documentIssues';
+import { parseYAMLToTree } from '../utils/yamlParser';
 import { YAMLEditorStatusBanners } from './YAMLEditorStatusBanners';
 
+const tree = parseYAMLToTree(`
+test:
+  name: doc
+  future_root: true
+scenarios:
+  - name: smoke
+    future_scenario: 1
+    steps: []
+`)!;
+
 describe('YAMLEditorStatusBanners', () => {
-  it('shows every preserved unknown field path', () => {
+  it('summarizes unrecognized fields in one line and can be closed', () => {
     render(
       <YAMLEditorStatusBanners
         error={null}
-        validationErrors={[]}
-        unknownFieldPaths={['future_root', 'scenarios[0].future_scenario']}
+        issueIndex={indexDocumentIssues(tree, [], [])}
+        onGoToIssue={vi.fn()}
         language="en"
       />,
     );
 
-    expect(screen.getByText('future_root')).toBeInTheDocument();
-    expect(screen.getByText('scenarios[0].future_scenario')).toBeInTheDocument();
+    expect(screen.getByText(/2 unrecognized fields/)).toBeInTheDocument();
+    expect(screen.queryByText('scenarios[0].future_scenario')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close notice' }));
+    expect(screen.queryByText(/2 unrecognized fields/)).not.toBeInTheDocument();
   });
 
-  it('dismisses the unknown-field warning with an accessible close button', () => {
+  it('cannot be closed while configuration errors block Debug and Run, and goes to errors first', () => {
+    const onGoToIssue = vi.fn();
+    const scenarioId = tree.children!.find(node => node.type === 'scenarios')!.children![0].id;
     render(
       <YAMLEditorStatusBanners
         error={null}
-        validationErrors={[]}
-        unknownFieldPaths={['future_root']}
-        language="en"
+        issueIndex={indexDocumentIssues(tree, ['Duration is required.'], [scenarioId])}
+        selectedNodeId={undefined}
+        onGoToIssue={onGoToIssue}
+        language="es"
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Close warning' }));
+    expect(screen.getByText(/1 error de configuración · 2 campos no reconocidos/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Cerrar aviso' })).not.toBeInTheDocument();
 
-    expect(screen.queryByText('future_root')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Ir al siguiente' }));
+    expect(onGoToIssue).toHaveBeenCalledWith(scenarioId);
   });
 });

@@ -10,6 +10,8 @@ interface UseTreeViewSelectionParams {
   selectedNodeIds: string[];
   onSelectionChange: (primaryNode: YAMLNode | null, nodeIds: string[]) => void;
   onSearchChange?: (query: string) => void;
+  /** Clears the search when it changes, so a node the editor reveals is not hidden by the filter. */
+  searchResetSignal?: number;
 }
 
 /**
@@ -23,8 +25,14 @@ export function useTreeViewSelection({
   selectedNodeIds,
   onSelectionChange,
   onSearchChange,
+  searchResetSignal = 0,
 }: UseTreeViewSelectionParams) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [seenSearchResetSignal, setSeenSearchResetSignal] = useState(searchResetSignal);
+  if (searchResetSignal !== seenSearchResetSignal) {
+    setSeenSearchResetSignal(searchResetSignal);
+    setSearchQuery('');
+  }
   const treeContainerRef = useRef<HTMLDivElement | null>(null);
   const isFiltering = searchQuery.trim().length > 0;
   const searchIndex = useMemo(

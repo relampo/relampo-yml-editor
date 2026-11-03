@@ -87,7 +87,12 @@ describe('YAMLTreeNode redirected request presentation', () => {
         depth={0}
         isSelected={false}
         selectedNodeIds={[]}
-        validationNodeIds={['disabled-load']}
+        issueMarkers={{
+          'disabled-load': {
+            severity: 'error',
+            issues: [{ id: 'configuration-0', kind: 'configuration', severity: 'error', nodeId: 'disabled-load', message: 'Duration is required.' }],
+          },
+        }}
         redirectedRequestMap={{}}
         onNodeSelect={onNodeSelect}
         onNodeToggle={vi.fn()}
@@ -100,6 +105,7 @@ describe('YAMLTreeNode redirected request presentation', () => {
     expect(treeItem).not.toHaveAttribute('aria-disabled');
     expect(treeItem).toHaveAttribute('aria-invalid', 'true');
     expect(treeItem).toHaveClass('focus-visible:ring-2');
+    expect(treeItem).toHaveAccessibleDescription('Duration is required.');
 
     fireEvent.click(treeItem);
     expect(onNodeSelect).toHaveBeenCalledWith(node, expect.anything());

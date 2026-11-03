@@ -1090,16 +1090,20 @@ describe('YAMLLoadRunSession', () => {
     expect(await screen.findByText('Run stopped — partial summary')).toBeInTheDocument();
   });
 
-  it('blocks the run and warns when there are validation errors', () => {
+  it('blocks the run and links to the first configuration error', () => {
+    const onGoToFirstError = vi.fn();
     render(
       <YAMLLoadRunSession
         {...baseProps}
         validationErrors={['load duration is invalid']}
+        onGoToFirstError={onGoToFirstError}
       />,
     );
 
     expect(screen.getByRole('button', { name: 'Run load test' })).toBeDisabled();
-    expect(screen.getByText(/validation failed before the load run/i)).toBeInTheDocument();
+    expect(screen.getByText('Fix 1 configuration error before you run.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Go to first error' }));
+    expect(onGoToFirstError).toHaveBeenCalledOnce();
   });
 
   it('blocks the run when the document is not ready', () => {

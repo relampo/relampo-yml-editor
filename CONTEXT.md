@@ -1,6 +1,6 @@
-# Debug Inspector Context
+# Relampo Editor Context
 
-This context defines the terms for values shown in a selected debug request.
+This context defines the terms the editor uses for test documents and for values shown in a selected debug request.
 
 ## Debug values
 
@@ -32,3 +32,28 @@ Both tabs remain visible when they have no rows and show an empty state.
 
 **Failed invocation**:
 The Built-ins tab shows a short failed row. The Result section shows the full error detail.
+
+## Document issues
+
+**Document issue**:
+A problem the editor finds in the test document. Every document issue is a syntax error, a configuration error, or an unrecognized field.
+_Avoid_: Validation error, warning
+
+**Syntax error**:
+A document issue where the YAML cannot be read, so the document has no tree. It always concerns the whole document.
+_Avoid_: Parse error
+
+**Configuration error**:
+A document issue where an element or the whole document has a missing or invalid value. It blocks Debug and Run.
+_Avoid_: Semantic error, validation error
+
+**Global issue**:
+A document issue whose owner is the whole document, not one step or block. "Global" is a location, not a type.
+
+**Issue severity**:
+Error for syntax errors and configuration errors, because they block Debug and Run. Info for unrecognized fields, because they block nothing.
+_Avoid_: Warning
+
+**Unrecognized field**:
+A field in the test document that the Relampo format does not define. The editor keeps it without changes, and the runtime ignores it.
+_Avoid_: Unknown field, preserved field
