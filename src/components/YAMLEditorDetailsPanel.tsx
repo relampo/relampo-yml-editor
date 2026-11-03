@@ -1,4 +1,5 @@
 import type { ComponentCapabilities } from '../utils/componentConfiguration';
+import type { DocumentIssue } from '../utils/documentIssues';
 import type { RedirectSourceInfo, RedirectedRequestInfo, YAMLNode } from '../types/yaml';
 import { YAMLDebugSession } from './YAMLDebugView';
 import { YAMLLoadRunSession } from './YAMLRunView';
@@ -19,6 +20,8 @@ type YAMLEditorDetailsPanelProps = {
   documentReady: boolean;
   selectedNode: YAMLNode | null;
   validationErrors: string[];
+  selectedNodeIssues: DocumentIssue[];
+  onGoToFirstError?: () => void;
   onDebugSelectNode: (node: YAMLNode | null) => void;
   onDebugEditNode: (node: YAMLNode) => void;
   baseUrl: string;
@@ -49,6 +52,8 @@ export function YAMLEditorDetailsPanel({
   documentReady,
   selectedNode,
   validationErrors,
+  selectedNodeIssues,
+  onGoToFirstError,
   onDebugSelectNode,
   onDebugEditNode,
   baseUrl,
@@ -90,6 +95,7 @@ export function YAMLEditorDetailsPanel({
               flushPendingEdits={flushPendingEdits}
               documentReady={documentReady}
               validationErrors={validationErrors}
+              onGoToFirstError={onGoToFirstError}
               redirectedRequestMap={redirectedRequestMap}
               onSelectNode={onDebugSelectNode}
               onEditNode={onDebugEditNode}
@@ -107,12 +113,14 @@ export function YAMLEditorDetailsPanel({
               flushPendingEdits={flushPendingEdits}
               documentReady={documentReady}
               validationErrors={validationErrors}
+              onGoToFirstError={onGoToFirstError}
             />
           </div>
         )}
         <div className={isDebugViewActive || isRunViewActive ? 'hidden' : 'h-full'}>
           <YAMLNodeDetails
             node={selectedNode}
+            issues={selectedNodeIssues}
             tree={yamlTree}
             componentCapabilities={componentCapabilities}
             baseUrl={baseUrl}

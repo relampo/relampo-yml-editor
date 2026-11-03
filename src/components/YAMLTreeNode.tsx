@@ -31,6 +31,8 @@ import {
   Waves,
   Zap,
 } from 'lucide-react';
+import { describeIssueMarker, type IssueMarker } from '../utils/documentIssues';
+import { DescendantIssueDot, IssueBadge } from './DocumentIssues';
 import type { LucideIcon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { RedirectedRequestInfo, YAMLNode, YAMLNodeType } from '../types/yaml';
@@ -65,13 +67,15 @@ function handleDragEnd() {
   setDraggedNode(null);
 }
 
+const NO_ISSUE_MARKERS: Record<string, IssueMarker> = {};
+
 interface YAMLTreeNodeProps {
   node: YAMLNode;
   depth: number;
   parentType?: YAMLNodeType;
   isSelected: boolean;
   selectedNodeIds: string[];
-  validationNodeIds?: string[];
+  issueMarkers?: Record<string, IssueMarker>;
   redirectedRequestMap: Record<string, RedirectedRequestInfo>;
   baseHost?: string;
   onNodeSelect: (node: YAMLNode, event: React.MouseEvent) => void;
@@ -90,7 +94,7 @@ export function YAMLTreeNode({
   parentType,
   isSelected,
   selectedNodeIds,
-  validationNodeIds = [],
+  issueMarkers = NO_ISSUE_MARKERS,
   redirectedRequestMap,
   baseHost = '',
   onNodeSelect,
@@ -257,7 +261,7 @@ export function YAMLTreeNode({
         depth={depth}
         isSelected={isSelected}
         dragOver={dragOver}
-        validationNodeIds={validationNodeIds}
+        issueMarkers={issueMarkers}
         redirectedRequestMap={redirectedRequestMap}
         activeReplaceMatchNodeId={activeReplaceMatchNodeId}
         onDragStart={handleDragStart}
@@ -282,7 +286,7 @@ export function YAMLTreeNode({
               parentType={node.type}
               isSelected={selectedIdSet.has(child.id)}
               selectedNodeIds={selectedNodeIds}
-              validationNodeIds={validationNodeIds}
+              issueMarkers={issueMarkers}
               redirectedRequestMap={redirectedRequestMap}
               baseHost={baseHost}
               onNodeSelect={onNodeSelect}
@@ -306,7 +310,7 @@ interface YAMLTreeNodeRowProps {
   depth: number;
   isSelected: boolean;
   dragOver: 'before' | 'after' | 'inside' | null;
-  validationNodeIds: string[];
+  issueMarkers: Record<string, IssueMarker>;
   redirectedRequestMap: Record<string, RedirectedRequestInfo>;
   activeReplaceMatchNodeId?: string | null;
   onDragStart: (event: React.DragEvent) => void;
@@ -325,7 +329,7 @@ function YAMLTreeNodeRow({
   depth,
   isSelected,
   dragOver,
-  validationNodeIds,
+  issueMarkers,
   redirectedRequestMap,
   activeReplaceMatchNodeId = null,
   onDragStart,
@@ -341,7 +345,9 @@ function YAMLTreeNodeRow({
   const hasChildren = Boolean(node.children?.length);
   const isExpanded = node.expanded ?? true;
   const isRedirectedFollowUp = Boolean(redirectedRequestMap[node.id]);
-  const hasValidationError = validationNodeIds.includes(node.id);
+  const issueMarker = issueMarkers[node.id];
+  const hasValidationError = issueMarker?.severity === 'error';
+  const issueDescription = describeIssueMarker(issueMarker, hasChildren && !isExpanded);
   const redirectedLabel = 'Redirected';
   const IconComponent = getNodeIcon(node.type);
   const color = getNodeColor(node.type, node);
@@ -372,6 +378,7 @@ function YAMLTreeNodeRow({
       aria-selected={isSelected}
       aria-current={isActiveReplaceMatch ? 'true' : undefined}
       aria-invalid={hasValidationError}
+      aria-description={issueDescription || undefined}
       aria-expanded={hasChildren ? isExpanded : undefined}
       aria-level={depth + 1}
       tabIndex={0}
@@ -445,6 +452,10 @@ function YAMLTreeNodeRow({
         </span>
       )}
       {getNodeBadge(node, { mutedMethod: isRedirectedFollowUp && node.data?.enabled === false })}
+      <IssueBadge marker={issueMarker} />
+      {hasChildren && !isExpanded && issueMarker?.descendantSeverity && (
+        <DescendantIssueDot severity={issueMarker.descendantSeverity} />
+      )}
       {hasRequestHit && (
         <span className="inline-flex h-5 items-center shrink-0 text-xs leading-none px-1.5 py-0.5 rounded bg-yellow-400/15 text-yellow-400 font-mono font-medium border border-yellow-400/30 uppercase">
           req

@@ -1,27 +1,40 @@
 import { useState } from 'react';
-import { AlertTriangle, X } from 'lucide-react';
+import { AlertCircle, Info, X } from 'lucide-react';
+import { nextIssueNodeId, type DocumentIssueIndex } from '../utils/documentIssues';
 
 interface YAMLEditorStatusBannersProps {
   error: string | null;
-  validationErrors: string[];
-  unknownFieldPaths: string[];
+  issueIndex: DocumentIssueIndex;
+  selectedNodeId?: string;
+  onGoToIssue: (nodeId: string) => void;
   language: string;
 }
 
-// Parse-error banner and semantic-validation warning banner shown below the
-// header. Validation is only shown when there is no hard parse error.
+function countLabel(count: number, es: boolean, kind: 'error' | 'info') {
+  if (kind === 'error')
+    return es
+      ? `${count} ${count === 1 ? 'error de configuración' : 'errores de configuración'}`
+      : `${count} configuration ${count === 1 ? 'error' : 'errors'}`;
+  return es
+    ? `${count} ${count === 1 ? 'campo no reconocido' : 'campos no reconocidos'}`
+    : `${count} unrecognized ${count === 1 ? 'field' : 'fields'}`;
+}
+
+// Syntax-error banner, plus a one-line summary of the document issues shown in
+// the tree. The summary can be closed only when nothing blocks Debug or Run.
 export function YAMLEditorStatusBanners({
   error,
-  validationErrors,
-  unknownFieldPaths,
+  issueIndex,
+  selectedNodeId,
+  onGoToIssue,
   language,
 }: YAMLEditorStatusBannersProps) {
-  const unknownFieldSignature = JSON.stringify(unknownFieldPaths);
-  const [dismissedUnknownFieldSignature, setDismissedUnknownFieldSignature] = useState<string | null>(null);
-  const showUnknownFieldWarning =
-    !error &&
-    unknownFieldPaths.length > 0 &&
-    dismissedUnknownFieldSignature !== unknownFieldSignature;
+  const es = language === 'es';
+  const { errorCount, infoCount, navigationOrder } = issueIndex;
+  const infoSignature = JSON.stringify(issueIndex.issues.map(issue => issue.path ?? issue.message));
+  const [dismissedSignature, setDismissedSignature] = useState<string | null>(null);
+  const showSummary = !error && navigationOrder.length > 0 && (errorCount > 0 || dismissedSignature !== infoSignature);
+  const hasErrors = errorCount > 0;
 
   return (
     <>
@@ -31,46 +44,49 @@ export function YAMLEditorStatusBanners({
         </div>
       )}
 
-      {!error && validationErrors.length > 0 && (
-        <div className="alert-warning px-6 py-3 border-b-0 shrink-0 flex items-start gap-2.5">
-          <AlertTriangle className="alert-warning-icon w-4 h-4 mt-0.5 shrink-0" />
-          <div className="min-w-0">
-            <p className="text-sm font-medium">
-              {language === 'es'
-                ? 'Problemas de validación semántica detectados.'
-                : 'Semantic validation issues detected.'}
-            </p>
-            <p className="mt-0.5 text-xs opacity-80">
-              {validationErrors[0]}
-              {validationErrors.length > 1 ? ` (+${validationErrors.length - 1})` : ''}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {showUnknownFieldWarning && (
-        <div className="alert-warning px-6 py-3 border-b-0 shrink-0 flex items-start gap-2.5">
-          <AlertTriangle className="alert-warning-icon w-4 h-4 mt-0.5 shrink-0" />
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium">
-              {language === 'es'
-                ? 'Este documento contiene campos desconocidos que se conservarán.'
-                : 'This document contains unknown fields that will be preserved.'}
-            </p>
-            <ul className="mt-0.5 text-xs opacity-80 list-disc list-inside">
-              {unknownFieldPaths.map(path => (
-                <li key={path}>{path}</li>
-              ))}
-            </ul>
-          </div>
+      {showSummary && (
+        <div
+          role="status"
+          className={`px-6 py-2 shrink-0 flex items-center gap-2.5 border-b ${
+            hasErrors ? 'bg-red-500/10 border-red-500/20' : 'bg-sky-400/5 border-sky-400/15'
+          }`}
+        >
+          {hasErrors ? (
+            <AlertCircle aria-hidden="true" className="w-4 h-4 shrink-0 text-red-300" />
+          ) : (
+            <Info aria-hidden="true" className="w-4 h-4 shrink-0 text-sky-300" />
+          )}
+          <p className="min-w-0 flex-1 text-sm text-zinc-200">
+            {[errorCount && countLabel(errorCount, es, 'error'), infoCount && countLabel(infoCount, es, 'info')]
+              .filter(Boolean)
+              .join(' · ')}
+            {infoCount > 0 && (
+              <span className="text-zinc-400">
+                {' — '}
+                {es ? 'los campos no reconocidos se guardan sin cambios.' : 'unrecognized fields are saved without changes.'}
+              </span>
+            )}
+          </p>
           <button
             type="button"
-            onClick={() => setDismissedUnknownFieldSignature(unknownFieldSignature)}
-            aria-label={language === 'es' ? 'Cerrar advertencia' : 'Close warning'}
-            className="ml-auto flex min-h-8 min-w-8 shrink-0 items-center justify-center rounded text-zinc-400 transition-colors hover:bg-white/10 hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/70"
+            onClick={() => {
+              const nodeId = nextIssueNodeId(navigationOrder, selectedNodeId);
+              if (nodeId) onGoToIssue(nodeId);
+            }}
+            className="shrink-0 rounded border border-white/15 px-2 py-1 text-xs font-medium text-zinc-200 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/70"
           >
-            <X aria-hidden="true" className="h-4 w-4" />
+            {es ? 'Ir al siguiente' : 'Go to next'}
           </button>
+          {!hasErrors && (
+            <button
+              type="button"
+              onClick={() => setDismissedSignature(infoSignature)}
+              aria-label={es ? 'Cerrar aviso' : 'Close notice'}
+              className="flex min-h-8 min-w-8 shrink-0 items-center justify-center rounded text-zinc-400 transition-colors hover:bg-white/10 hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/70"
+            >
+              <X aria-hidden="true" className="h-4 w-4" />
+            </button>
+          )}
         </div>
       )}
     </>

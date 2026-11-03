@@ -1,5 +1,6 @@
-import { inspectTreeComponentConfiguration, STABLE_CONTAINERS } from './componentConfiguration';
+import { inspectComponentConfiguration, STABLE_CONTAINERS } from './componentConfiguration';
 import { authoredNodeData } from './yamlAuthoredData';
+import { treeToObject } from './yamlTreeSerializer';
 import slots from '../contracts/backend/slots.json';
 import type { YAMLNode } from '../types/yaml';
 
@@ -130,9 +131,44 @@ function dataScope(
   }
 }
 
+export interface UnrecognizedField {
+  path: string;
+  value: unknown;
+}
+
+// ponytail: splits on "." and "[n]", so a YAML key that itself contains a dot
+// resolves to undefined (no value preview). Quote-aware paths would fix it.
+export function valueAtPath(document: unknown, path: string): unknown {
+  let value = document;
+  for (const [, key, index] of path.matchAll(/([^.[\]]+)|\[(\d+)\]/g)) {
+    if (!value || typeof value !== 'object') return undefined;
+    value = (value as Record<string, unknown>)[index ?? key];
+  }
+  return value;
+}
+
+/** The deepest tree node whose YAML path contains `path` (the root when none does), and `path` relative to it. */
+export function nearestNode(tree: YAMLNode, path: string): { node: YAMLNode; relativePath: string } {
+  let best = { node: tree, nodePath: '' };
+  const visit = (node: YAMLNode) => {
+    const nodePath = node.path ? formatPath(node.path) : '';
+    const contains =
+      nodePath === '' || path === nodePath || path.startsWith(`${nodePath}.`) || path.startsWith(`${nodePath}[`);
+    if (node.path && contains && nodePath.length > best.nodePath.length) best = { node, nodePath };
+    node.children?.forEach(visit);
+  };
+  visit(tree);
+  return { node: best.node, relativePath: path.slice(best.nodePath.length).replace(/^\./, '') || path };
+}
+
 export function collectUnknownFieldPaths(tree: YAMLNode | null): string[] {
+  return collectUnrecognizedFields(tree).map(field => field.path);
+}
+
+export function collectUnrecognizedFields(tree: YAMLNode | null): UnrecognizedField[] {
   if (!tree) return [];
-  const paths = new Set<string>(inspectTreeComponentConfiguration(tree).warnings.map(issue => issue.path));
+  const document = treeToObject(tree);
+  const paths = new Set<string>(inspectComponentConfiguration(document).warnings.map(issue => issue.path));
   const adopted = tree.unknownData?.component_configuration_version === 1;
   if (!adopted && tree.children?.some(node => node.type === 'error_policy')) paths.add('error_policy');
 
@@ -180,5 +216,5 @@ export function collectUnknownFieldPaths(tree: YAMLNode | null): string[] {
   };
 
   visit(tree);
-  return [...paths].sort();
+  return [...paths].sort().map(path => ({ path, value: valueAtPath(document, path) }));
 }

@@ -6,14 +6,15 @@ import { useYAMLPersistence } from '../hooks/useYAMLPersistence';
 import { logStatsigEvent } from '../utils/analytics';
 import { applyNodeUpdateToTree, removeRequestHost, renameRequestHost } from '../utils/nodeUpdate';
 import { getDocumentMetrics } from '../utils/yamlDocumentLimits';
-import { collectUnknownFieldPaths } from '../utils/unknownYamlFields';
+import { indexDocumentIssues } from '../utils/documentIssues';
 import { YAMLEditorHeader } from './YAMLEditorHeader';
 import { YAMLEditorNewDocumentDialog } from './YAMLEditorNewDocumentDialog';
 import { YAMLEditorBusyOverlay } from './YAMLEditorBusyOverlay';
 import { YAMLEditorDragOverlay } from './YAMLEditorDragOverlay';
 import { YAMLEditorStatusBanners } from './YAMLEditorStatusBanners';
 import { YAMLEditorMainLayout } from './YAMLEditorMainLayout';
-import { syncRedirectSourceFollowRedirects, updateNodeEnabled } from './yaml-tree-view/treeOperations';
+import { expandAncestorsInTree, syncRedirectSourceFollowRedirects, updateNodeEnabled } from './yaml-tree-view/treeOperations';
+import { findNodeById } from './yamlEditorHelpers';
 import { autoRebalanceBalancedControllers } from '../utils/balancedController';
 import { useHttpDefaultsInfo, useRedirectMaps, useTreeSelection } from './useYamlEditorDerived';
 import { useYamlDocumentLifecycle } from './yaml-editor/useYamlDocumentLifecycle';
@@ -175,13 +176,32 @@ export function YAMLEditor() {
   });
 
   const documentMetrics = useMemo(() => getDocumentMetrics(yamlCode), [yamlCode]);
-  const unknownFieldPaths = useMemo(() => collectUnknownFieldPaths(yamlTree), [yamlTree]);
+  const issueIndex = useMemo(
+    () => indexDocumentIssues(yamlTree, validationErrors, validationNodeIds, language),
+    [yamlTree, validationErrors, validationNodeIds, language],
+  );
   const isLargeFileMode = documentMetrics.large;
   const isEditorBusy = isFileLoading || isParsing;
   const documentReady = isInitialized && !isEditorBusy && !error && !isTreeOutdated;
 
   const { redirectedRequestMap, redirectSourceMap } = useRedirectMaps(yamlTree);
   const { httpDefaultsBaseUrl, scenarioHosts, httpDefaultsBaseHost } = useHttpDefaultsInfo(yamlTree);
+
+  // Clears the tree search, opens the node's collapsed ancestors, selects it,
+  // and shows the tree. A search that hides the node would drop the selection.
+  const [searchResetSignal, setSearchResetSignal] = useState(0);
+  const goToIssue = (nodeId: string) => {
+    if (!yamlTree) return;
+    setSearchResetSignal(signal => signal + 1);
+    setTreeSearchQuery('');
+    const expandedTree = expandAncestorsInTree(yamlTree, nodeId);
+    if (expandedTree !== yamlTree) handleTreeViewChange(expandedTree);
+    const node = findNodeById(expandedTree, nodeId);
+    if (!node) return;
+    handleSelectionChange(node, [nodeId]);
+    setViewMode('tree');
+  };
+  const goToFirstError = issueIndex.errorCount ? () => goToIssue(issueIndex.navigationOrder[0]) : undefined;
 
   const handleNodeUpdate = (nodeId: string, updatedData: Record<string, unknown>) => {
     if (!yamlTree) return;
@@ -274,8 +294,9 @@ export function YAMLEditor() {
 
       <YAMLEditorStatusBanners
         error={error}
-        validationErrors={validationErrors}
-        unknownFieldPaths={unknownFieldPaths}
+        issueIndex={issueIndex}
+        selectedNodeId={selectedNode?.id}
+        onGoToIssue={goToIssue}
         language={language}
       />
 
@@ -302,7 +323,9 @@ export function YAMLEditor() {
         baseUrl={httpDefaultsBaseUrl}
         hosts={scenarioHosts}
         validationErrors={validationErrors}
-        validationNodeIds={validationNodeIds}
+        issueIndex={issueIndex}
+        searchResetSignal={searchResetSignal}
+        onGoToFirstError={goToFirstError}
         treeSearchQuery={treeSearchQuery}
         documentReady={documentReady}
         dataSourceFileBrowseEnabled={dataSourceFileBrowseEnabled}

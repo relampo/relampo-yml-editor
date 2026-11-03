@@ -1,3 +1,4 @@
+import type { IssueMarker } from '../utils/documentIssues';
 import { useMemo, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import type { RedirectedRequestInfo, YAMLNode } from '../types/yaml';
@@ -22,7 +23,7 @@ interface YAMLTreeViewProps {
   tree: YAMLNode | null;
   selectedNode: YAMLNode | null;
   selectedNodeIds: string[];
-  validationNodeIds?: string[];
+  issueMarkers?: Record<string, IssueMarker>;
   redirectedRequestMap: Record<string, RedirectedRequestInfo>;
   baseHost?: string;
   onSelectionChange: (primaryNode: YAMLNode | null, nodeIds: string[]) => void;
@@ -30,15 +31,16 @@ interface YAMLTreeViewProps {
   onTreeViewChange?: (tree: YAMLNode) => void;
   onContextMenuOpened?: (metadata: { nodeType: string; selectionCount: number; hasMultiSelection: boolean }) => void;
   onSearchChange?: (query: string) => void;
+  searchResetSignal?: number;
 }
 
-const EMPTY_VALIDATION_NODE_IDS: string[] = [];
+const EMPTY_ISSUE_MARKERS: Record<string, IssueMarker> = {};
 
 export function YAMLTreeView({
   tree,
   selectedNode,
   selectedNodeIds,
-  validationNodeIds = EMPTY_VALIDATION_NODE_IDS,
+  issueMarkers = EMPTY_ISSUE_MARKERS,
   redirectedRequestMap,
   baseHost = '',
   onSelectionChange,
@@ -46,6 +48,7 @@ export function YAMLTreeView({
   onTreeViewChange,
   onContextMenuOpened,
   onSearchChange,
+  searchResetSignal,
 }: YAMLTreeViewProps) {
   const { t } = useLanguage();
   const [currentReplaceMatchIndex, setCurrentReplaceMatchIndex] = useState(0);
@@ -62,7 +65,14 @@ export function YAMLTreeView({
     allSelectedDisabled,
     transactionWrapValidation,
     treeContainerRef,
-  } = useTreeViewSelection({ tree, selectedNode, selectedNodeIds, onSelectionChange, onSearchChange });
+  } = useTreeViewSelection({
+    tree,
+    selectedNode,
+    selectedNodeIds,
+    onSelectionChange,
+    onSearchChange,
+    searchResetSignal,
+  });
   const searchMatchCount = useMemo(() => countMatchingNodes(tree, searchQuery), [searchQuery, tree]);
   const replaceableMatchNodeIds = useMemo(
     () => (tree ? getReplaceableMatchNodeIds(tree, searchQuery, true) : []),
@@ -238,6 +248,8 @@ export function YAMLTreeView({
   return (
     <div className="h-full w-full bg-[#0a0a0a] flex flex-col">
       <TreeSearchBar
+        // Remount on an outside reset so the typed draft clears with the applied query.
+        key={searchResetSignal}
         value={searchQuery}
         onChange={handleTreeSearchChange}
         onClear={handleTreeClearSearch}
@@ -279,7 +291,7 @@ export function YAMLTreeView({
             parentType={undefined}
             isSelected={activeSelectedIds.includes(tree.id)}
             selectedNodeIds={activeSelectedIds}
-            validationNodeIds={validationNodeIds}
+            issueMarkers={issueMarkers}
             redirectedRequestMap={redirectedRequestMap}
             baseHost={baseHost}
             onNodeSelect={handleNodeSelect}

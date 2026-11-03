@@ -1,3 +1,4 @@
+import type { IssueMarker } from '../utils/documentIssues';
 import type { RedirectedRequestInfo, YAMLNode } from '../types/yaml';
 import { EditorViewModeTabs, type EditorViewMode } from './EditorViewModeTabs';
 import { YAMLCodeEditor } from './YAMLCodeEditor';
@@ -15,7 +16,8 @@ interface YAMLEditorViewModeBodyProps {
   selectedNode: YAMLNode | null;
   selectedNodeIds: string[];
   redirectedRequestMap: Record<string, RedirectedRequestInfo>;
-  validationNodeIds: string[];
+  issueMarkers: Record<string, IssueMarker>;
+  searchResetSignal: number;
   baseHost: string;
   onSelectionChange: (primaryNode: YAMLNode | null, nodeIds: string[]) => void;
   onTreeChange: (newTree: YAMLNode, nextSelection?: TreeSelection) => void;
@@ -40,7 +42,8 @@ export function YAMLEditorViewModeBody({
   selectedNode,
   selectedNodeIds,
   redirectedRequestMap,
-  validationNodeIds,
+  issueMarkers,
+  searchResetSignal,
   baseHost,
   onSelectionChange,
   onTreeChange,
@@ -71,7 +74,8 @@ export function YAMLEditorViewModeBody({
             selectedNode={selectedNode}
             selectedNodeIds={selectedNodeIds}
             redirectedRequestMap={redirectedRequestMap}
-            validationNodeIds={validationNodeIds}
+            issueMarkers={issueMarkers}
+            searchResetSignal={searchResetSignal}
             baseHost={baseHost}
             onSelectionChange={onSelectionChange}
             onTreeChange={onTreeChange}
@@ -93,7 +97,8 @@ export function YAMLEditorViewModeBody({
             selectedNode={selectedNode}
             selectedNodeIds={selectedNodeIds}
             redirectedRequestMap={redirectedRequestMap}
-            validationNodeIds={validationNodeIds}
+            issueMarkers={issueMarkers}
+            searchResetSignal={searchResetSignal}
             onSelectionChange={onSelectionChange}
             onTreeChange={onTreeChange}
             onTreeViewChange={onTreeViewChange}

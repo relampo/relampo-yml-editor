@@ -1,4 +1,5 @@
 import type { ComponentCapabilities } from '../utils/componentConfiguration';
+import type { DocumentIssueIndex } from '../utils/documentIssues';
 import type { RedirectSourceInfo, RedirectedRequestInfo, YAMLNode } from '../types/yaml';
 import type { EditorViewMode } from './EditorViewModeTabs';
 import { YAMLEditorDetailsPanel } from './YAMLEditorDetailsPanel';
@@ -28,7 +29,9 @@ interface YAMLEditorMainLayoutProps {
   baseUrl: string;
   hosts: string[];
   validationErrors: string[];
-  validationNodeIds: string[];
+  issueIndex: DocumentIssueIndex;
+  searchResetSignal: number;
+  onGoToFirstError?: () => void;
   treeSearchQuery: string;
   documentReady: boolean;
   dataSourceFileBrowseEnabled: boolean;
@@ -74,7 +77,9 @@ export function YAMLEditorMainLayout({
   baseUrl,
   hosts,
   validationErrors,
-  validationNodeIds,
+  issueIndex,
+  searchResetSignal,
+  onGoToFirstError,
   treeSearchQuery,
   documentReady,
   dataSourceFileBrowseEnabled,
@@ -113,7 +118,8 @@ export function YAMLEditorMainLayout({
         onTreeViewChange={onTreeViewChange}
         onContextMenuOpened={onContextMenuOpened}
         onSearchChange={onSearchChange}
-        validationNodeIds={validationNodeIds}
+        issueMarkers={issueIndex.markers}
+        searchResetSignal={searchResetSignal}
         yamlCode={yamlCode}
         onCodeChange={onCodeChange}
         largeFileMode={largeFileMode}
@@ -151,6 +157,8 @@ export function YAMLEditorMainLayout({
         documentReady={documentReady}
         selectedNode={selectedNode}
         validationErrors={validationErrors}
+        selectedNodeIssues={selectedNode ? (issueIndex.markers[selectedNode.id]?.issues ?? []) : []}
+        onGoToFirstError={onGoToFirstError}
         onDebugSelectNode={onDebugSelectNode}
         onDebugEditNode={onDebugEditNode}
         baseUrl={baseUrl}

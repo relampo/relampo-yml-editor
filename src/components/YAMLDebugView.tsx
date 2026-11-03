@@ -43,6 +43,7 @@ import {
 import { binaryBodyDisplay, binaryBodyDownloadFromBase64 } from '../utils/binaryBody';
 import { startDebugRun, streamDebugRun, type DebugVUs, type EngineEvent } from '../utils/debugApi';
 import { DebugSection } from './debugSection';
+import { BlockedByIssuesNotice } from './DocumentIssues';
 import { buildSearchRegex, findMatchRanges, type SearchMode } from './debugSearch';
 import { createStoredRunStore, fingerprint, type StoredRun } from '../utils/studioRunStore';
 
@@ -234,6 +235,7 @@ interface YAMLDebugSessionProps {
   multiScenarioDebugEnabled?: boolean;
   componentCapabilities?: ComponentCapabilities;
   validationErrors: string[];
+  onGoToFirstError?: () => void;
   redirectedRequestMap?: Record<string, RedirectedRequestInfo>;
   onSelectNode: (node: YAMLNode | null) => void;
   onEditNode: (node: YAMLNode) => void;
@@ -419,11 +421,13 @@ export function YAMLDebugSession({
   multiScenarioDebugEnabled = false,
   componentCapabilities,
   validationErrors,
+  onGoToFirstError,
   redirectedRequestMap = EMPTY_REDIRECTED_REQUEST_MAP,
   onSelectNode,
   onEditNode,
 }: YAMLDebugSessionProps) {
   const componentError = componentCapabilityError(yamlCode, componentCapabilities);
+  const documentErrorCount = validationErrors.length;
   validationErrors = componentError ? [...validationErrors, componentError] : validationErrors;
   const [runState, dispatchRunState] = useReducer(runStateReducer, initialRunState);
   const { entryEvents, isRunning, runCompleted, runError } = runState;
@@ -661,11 +665,15 @@ export function YAMLDebugSession({
         </div>
       )}
 
-      <DebugRunAlerts
-        hasValidationErrors={hasValidationErrors}
-        validationErrors={validationErrors}
-        runError={runError}
-      />
+      {hasValidationErrors && (
+        <BlockedByIssuesNotice
+          action="debug"
+          errorCount={documentErrorCount}
+          onGoToFirstError={onGoToFirstError}
+          extraMessages={componentError ? [componentError] : []}
+        />
+      )}
+      <DebugRunAlerts runError={runError} />
 
       <DebugStatsBar
         total={requestEntries.length}
@@ -793,44 +801,9 @@ function DebugToolbar({
   );
 }
 
-function DebugRunAlerts({
-  hasValidationErrors,
-  validationErrors,
-  runError,
-}: {
-  hasValidationErrors: boolean;
-  validationErrors: string[];
-  runError: string | null;
-}) {
+function DebugRunAlerts({ runError }: { runError: string | null }) {
   return (
     <>
-      {hasValidationErrors && (
-        <div className="border-b border-red-400/20 bg-red-500/10 px-5 py-3">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-300" />
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-red-200">YAML semantic validation failed before debug</p>
-              <p className="mt-1 text-xs text-red-200/80">
-                Fix these issues in the tree or code before running the debug session.
-              </p>
-              <div className="mt-2 space-y-1">
-                {validationErrors.slice(0, 4).map((error, index) => (
-                  <p
-                    key={`${error}-${index}`}
-                    className="wrap-break-word font-mono text-xs text-red-100/90"
-                  >
-                    {error}
-                  </p>
-                ))}
-                {validationErrors.length > 4 && (
-                  <p className="text-xs text-red-200/70">+{validationErrors.length - 4} more validation issues</p>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {runError && (
         <div className="border-b border-red-400/20 bg-red-500/10 px-5 py-3">
           <div className="flex items-start gap-3">

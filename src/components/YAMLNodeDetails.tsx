@@ -1,5 +1,7 @@
 import { ComponentConfigurationDetails } from './yaml-node-details/ComponentConfigurationDetails';
 import type { ComponentCapabilities } from '../utils/componentConfiguration';
+import type { DocumentIssue } from '../utils/documentIssues';
+import { NodeIssuesSection } from './DocumentIssues';
 import { Eye, EyeOff, FileText } from 'lucide-react';
 import { useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -40,6 +42,7 @@ import { HighlightText } from './ui/HighlightedInput';
 
 interface YAMLNodeDetailsProps {
   node: YAMLNode | null;
+  issues?: DocumentIssue[];
   tree?: YAMLNode | null;
   componentCapabilities?: ComponentCapabilities;
   baseUrl?: string;
@@ -55,12 +58,14 @@ interface YAMLNodeDetailsProps {
   fileName?: string;
 }
 
+const NO_ISSUES: DocumentIssue[] = [];
 const REQUEST_NODE_TYPES = ['request', 'sql', 'get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
 // Node types that cannot be toggled on/off (mirrors the tree context menu).
 const NON_TOGGLEABLE_NODE_TYPES = ['root', 'test', 'scenarios', 'steps'];
 
 export function YAMLNodeDetails({
   node,
+  issues = NO_ISSUES,
   tree,
   componentCapabilities,
   baseUrl = '',
@@ -74,7 +79,7 @@ export function YAMLNodeDetails({
   dataSourceFileBrowseEnabled = false,
   fileName = '',
 }: YAMLNodeDetailsProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   // nodeName is a local edit buffer (not purely derived from node.name)
   // because onNodeUpdate is optional: without it, node.name never changes,
   // and the field must still be typeable. It re-syncs to the prop below
@@ -143,6 +148,7 @@ export function YAMLNodeDetails({
       </div>
 
       <div className={`flex-1 overflow-y-auto ${isCompactDetailsNode ? 'p-4' : 'p-6'}`}>
+        <NodeIssuesSection issues={issues} language={language} />
         {node.type !== 'test' && node.type !== 'data_source' && (
           <div className={isCompactDetailsNode ? 'mb-4' : 'mb-6'}>
             <label htmlFor="nodedetails-node-name" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">

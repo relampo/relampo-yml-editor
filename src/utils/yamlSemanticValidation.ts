@@ -11,6 +11,7 @@ import {
   parseTimeToSeconds,
 } from '../components/yaml-node-details/loadUtils';
 import type { YAMLNode } from '../types/yaml';
+import { nearestNode } from './unknownYamlFields';
 import { normalizeBalancedExecutionMode } from './balancedController';
 
 interface YAMLSemanticIssue {
@@ -39,7 +40,10 @@ export function validateYAMLSemantics(tree: YAMLNode | null): YAMLSemanticIssue[
     return [];
   }
 
-  const issues: YAMLSemanticIssue[] = inspectTreeComponentConfiguration(tree).errors.map(issue => ({ nodeId: tree.id, message: issue.message }));
+  const issues: YAMLSemanticIssue[] = inspectTreeComponentConfiguration(tree).errors.map(issue => ({
+    nodeId: nearestNode(tree, issue.path).node.id,
+    message: issue.message,
+  }));
   const scenarioNodes: YAMLNode[] = [];
 
   const collectScenarios = (node: YAMLNode) => {

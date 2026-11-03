@@ -142,6 +142,23 @@ export function toggleNodeInTree(tree: YAMLNode, nodeId: string): YAMLNode {
   return tree;
 }
 
+/** Expands every ancestor of `nodeId`. Returns the same tree when nothing changes. */
+export function expandAncestorsInTree(tree: YAMLNode, nodeId: string): YAMLNode {
+  const visit = (node: YAMLNode): YAMLNode | null => {
+    if (node.id === nodeId) return node;
+    for (const [index, child] of (node.children ?? []).entries()) {
+      const next = visit(child);
+      if (!next) continue;
+      if (next === child && node.expanded !== false) return node;
+      const children = [...node.children!];
+      children[index] = next;
+      return { ...node, expanded: true, children };
+    }
+    return null;
+  };
+  return visit(tree) ?? tree;
+}
+
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
