@@ -1,3 +1,4 @@
+import { useSearchNavigation } from './yaml-tree-view/SearchNavigationContext';
 import {
   AlertTriangle,
   BarChart3,
@@ -349,6 +350,7 @@ function YAMLTreeNodeRow({
   searchQuery,
   scopedHit,
 }: YAMLTreeNodeRowProps) {
+  const { match: navigationMatch } = useSearchNavigation();
   const { t } = useLanguage();
   const hasChildren = Boolean(node.children?.length);
   const isExpanded = node.expanded ?? true;
@@ -370,7 +372,7 @@ function YAMLTreeNodeRow({
   const selectionClass =
     'bg-yellow-300/12 border border-yellow-300/35 ring-1 ring-yellow-300/25 shadow-[0_0_0_1px_rgba(250,204,21,0.14)]';
   const activeReplaceClass =
-    'bg-amber-300/20 border-2 border-amber-300/80 ring-2 ring-amber-300/60 shadow-[0_0_0_2px_rgba(252,211,77,0.3)]';
+    'bg-green-300/15 border-2 border-green-300/80 ring-2 ring-green-300/60 shadow-[0_0_0_2px_rgba(134,239,172,0.3)]';
   const redirectedClass = 'bg-zinc-400/12 border border-zinc-300/30 hover:bg-zinc-400/16 ring-1 ring-zinc-300/15';
   const defaultVisual = isActiveReplaceMatch
     ? activeReplaceClass
@@ -457,6 +459,11 @@ function YAMLTreeNodeRow({
       >
         <HighlightText
           text={getNodeDisplayName(node, t)}
+          activeIndex={
+            navigationMatch?.nodeId === node.id && navigationMatch.path[0] === 'name'
+              ? navigationMatch.fieldIndex
+              : undefined
+          }
           query={scopedHit?.scope === 'responses' ? '' : searchQuery}
         />
       </span>

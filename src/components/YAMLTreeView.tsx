@@ -1,5 +1,8 @@
+import { useSearchNavigation } from './yaml-tree-view/SearchNavigationContext';
+import { buildScopedSearch } from './yaml-tree-view/search';
+import type { SearchOccurrence } from './yaml-tree-view/searchOccurrences';
 import type { IssueMarker } from '../utils/documentIssues';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import type { RedirectedRequestInfo, YAMLNode } from '../types/yaml';
 import { canContain } from '../utils/yamlDragDropRules';
@@ -49,6 +52,9 @@ export function YAMLTreeView({
 }: YAMLTreeViewProps) {
   const { t } = useLanguage();
   const [currentReplaceMatchIndex, setCurrentReplaceMatchIndex] = useState(0);
+  const [currentSearchMatchIndex, setCurrentSearchMatchIndex] = useState(0);
+  const { match: focusedSearchMatch, setMatch: setFocusedSearchMatch } = useSearchNavigation();
+  useEffect(() => () => setFocusedSearchMatch(null), [setFocusedSearchMatch]);
 
   const {
     searchQuery,
@@ -56,6 +62,7 @@ export function YAMLTreeView({
     searchScope,
     handleScopeChange,
     searchMatchNodeIds,
+    searchMatches,
     replaceableMatchNodeIds,
     handleSearchChange,
     handleClearSearch,
@@ -79,13 +86,42 @@ export function YAMLTreeView({
     replaceableMatchNodeIds[Math.min(currentReplaceMatchIndex, Math.max(replaceableMatchNodeIds.length - 1, 0))] ??
     null;
 
+  const revealSearchMatch = (match: SearchOccurrence | undefined, index: number, matches: SearchOccurrence[]) => {
+    setCurrentSearchMatchIndex(index);
+    setFocusedSearchMatch(match ?? null);
+    if (!match || !tree) return;
+    const node = findNodeById(tree, match.nodeId);
+    if (node) onSelectionChange(node, [node.id]);
+    if (match.replaceable) setCurrentReplaceMatchIndex(matches.slice(0, index).filter(item => item.replaceable).length);
+    requestAnimationFrame(() => {
+      const row = Array.from(treeContainerRef.current?.querySelectorAll<HTMLElement>('[data-node-id]') ?? []).find(
+        item => item.dataset.nodeId === match.nodeId,
+      );
+      row?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+    });
+  };
+
+  useEffect(() => {
+    setFocusedSearchMatch(null);
+  }, [searchResetSignal, setFocusedSearchMatch]);
+
+  const handleSearchNavigation = (index: number) => {
+    if (!searchMatches.length) return;
+    const next = (index + searchMatches.length) % searchMatches.length;
+    revealSearchMatch(searchMatches[next], next, searchMatches);
+  };
+
   const handleTreeSearchChange = (query: string) => {
     setCurrentReplaceMatchIndex(0);
     handleSearchChange(query);
+    const matches = buildScopedSearch(tree, query, searchScope).matches;
+    revealSearchMatch(matches[0], 0, matches);
   };
 
   const handleTreeClearSearch = () => {
     setCurrentReplaceMatchIndex(0);
+    setCurrentSearchMatchIndex(0);
+    setFocusedSearchMatch(null);
     handleClearSearch();
   };
 
@@ -103,7 +139,10 @@ export function YAMLTreeView({
   const handleReplace = (replacement: string, matchIndex?: number) => {
     if (!tree || searchScope !== 'requests') return 0;
     const result = replaceTextInEnabledRequestsAtMatch(tree, searchQuery, replacement, matchIndex, true).result;
-    if (result.replacements > 0) onTreeChange(result.tree);
+    if (result.replacements > 0) {
+      setFocusedSearchMatch(null);
+      onTreeChange(result.tree);
+    }
     return result.replacements;
   };
 
@@ -251,9 +290,16 @@ export function YAMLTreeView({
         scope={searchScope}
         onScopeChange={(scope, query) => {
           setCurrentReplaceMatchIndex(0);
+          setFocusedSearchMatch(null);
+          setCurrentSearchMatchIndex(0);
           handleScopeChange(scope, query);
         }}
         occurrenceCount={searchMatchNodeIds.length}
+        searchMatchIndex={currentSearchMatchIndex}
+        onSearchNavigate={handleSearchNavigation}
+        selectedSearchReplaceable={
+          searchMatches[Math.min(currentSearchMatchIndex, Math.max(0, searchMatches.length - 1))]?.replaceable ?? false
+        }
         value={searchQuery}
         onChange={handleTreeSearchChange}
         onClear={handleTreeClearSearch}
@@ -304,7 +350,7 @@ export function YAMLTreeView({
             onNodeMove={handleNodeMove}
             searchQuery={searchQuery}
             searchIndex={searchIndex ?? undefined}
-            activeReplaceMatchNodeId={activeReplaceMatchNodeId}
+            activeReplaceMatchNodeId={focusedSearchMatch?.nodeId ?? activeReplaceMatchNodeId}
           />
         ) : (
           <div className="flex items-center justify-center h-32">

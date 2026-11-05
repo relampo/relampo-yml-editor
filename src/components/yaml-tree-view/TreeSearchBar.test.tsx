@@ -27,8 +27,7 @@ describe('TreeSearchBar replace controls', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Replace' }));
 
-    expect(screen.getByLabelText('Find text to replace')).toHaveValue('token');
-    expect(screen.getByLabelText('Find text to replace')).toHaveAttribute('readonly');
+    expect(screen.getByLabelText('Search nodes')).toHaveValue('token');
     expect(screen.getByLabelText('Replace match position')).toHaveTextContent('1 / 17');
   });
 
@@ -167,7 +166,7 @@ describe('TreeSearchBar replace controls', () => {
     expect(onReplace).not.toHaveBeenCalled();
   });
 
-  it('keeps Replace all on a separate row below the selected control', () => {
+  it('keeps Replace all beside the selected control in the main toolbar', () => {
     render(
       <TreeSearchBar
         scope="requests"

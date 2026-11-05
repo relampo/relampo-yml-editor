@@ -1,3 +1,4 @@
+import { SearchNavigationProvider } from './yaml-tree-view/SearchNavigationProvider';
 import type { SearchScope } from './yaml-tree-view/search';
 import type { ComponentCapabilities } from '../utils/componentConfiguration';
 import type { DocumentIssueIndex } from '../utils/documentIssues';
@@ -103,80 +104,82 @@ export function YAMLEditorMainLayout({
   onToggleEnabled,
 }: YAMLEditorMainLayoutProps) {
   return (
-    <div className="flex flex-1 overflow-hidden min-h-0 min-w-0 bg-[#0a0a0a]">
-      <YAMLEditorViewModeBody
-        leftPanelWidth={leftPanelWidth}
-        activeViewMode={activeViewMode}
-        onSelectViewMode={onSelectViewMode}
-        language={language}
-        debugViewEnabled={debugViewEnabled}
-        runViewEnabled={runViewEnabled}
-        tree={yamlTree}
-        selectedNode={selectedNode}
-        selectedNodeIds={selectedNodeIds}
-        redirectedRequestMap={redirectedRequestMap}
-        baseHost={baseHost}
-        onSelectionChange={onSelectionChange}
-        onTreeChange={onTreeChange}
-        onTreeViewChange={onTreeViewChange}
-        onContextMenuOpened={onContextMenuOpened}
-        onSearchChange={onSearchChange}
-        issueMarkers={issueIndex.markers}
-        searchResetSignal={searchResetSignal}
-        yamlCode={yamlCode}
-        onCodeChange={onCodeChange}
-        largeFileMode={largeFileMode}
-      />
-
-      {/* Resize Handle */}
-      <div
-        role="separator"
-        aria-orientation="vertical"
-        aria-label={language === 'es' ? 'Cambiar tamaño del panel' : 'Resize panel'}
-        tabIndex={0}
-        onMouseDown={onResizeStart}
-        className="w-1 bg-white/5 hover:bg-yellow-400/40 shrink-0 transition-colors relative active:bg-yellow-400/60 z-20 group"
-        style={{ cursor: 'col-resize' }}
-      >
-        <div
-          className="absolute inset-y-0 -left-1 -right-1 z-20"
-          style={{ cursor: 'col-resize' }}
+    <SearchNavigationProvider>
+      <div className="flex flex-1 overflow-hidden min-h-0 min-w-0 bg-[#0a0a0a]">
+        <YAMLEditorViewModeBody
+          leftPanelWidth={leftPanelWidth}
+          activeViewMode={activeViewMode}
+          onSelectViewMode={onSelectViewMode}
+          language={language}
+          debugViewEnabled={debugViewEnabled}
+          runViewEnabled={runViewEnabled}
+          tree={yamlTree}
+          selectedNode={selectedNode}
+          selectedNodeIds={selectedNodeIds}
+          redirectedRequestMap={redirectedRequestMap}
+          baseHost={baseHost}
+          onSelectionChange={onSelectionChange}
+          onTreeChange={onTreeChange}
+          onTreeViewChange={onTreeViewChange}
+          onContextMenuOpened={onContextMenuOpened}
+          onSearchChange={onSearchChange}
+          issueMarkers={issueIndex.markers}
+          searchResetSignal={searchResetSignal}
+          yamlCode={yamlCode}
+          onCodeChange={onCodeChange}
+          largeFileMode={largeFileMode}
         />
-        <div className="absolute inset-y-0 left-1/2 -ml-px w-0.5 bg-white/20 group-hover:bg-yellow-400/80 transition-colors" />
-      </div>
 
-      <YAMLEditorDetailsPanel
-        isDebugViewActive={isDebugViewActive}
-        isRunViewActive={isRunViewActive}
-        language={language}
-        debugViewEnabled={debugViewEnabled}
-        multiScenarioDebugEnabled={multiScenarioDebugEnabled}
-        runViewEnabled={runViewEnabled}
-        multiScenarioRunEnabled={multiScenarioRunEnabled}
-        componentCapabilities={componentCapabilities}
-        yamlTree={yamlTree}
-        yamlCode={yamlCode}
-        flushPendingEdits={flushPendingEdits}
-        documentReady={documentReady}
-        selectedNode={selectedNode}
-        validationErrors={validationErrors}
-        selectedNodeIssues={selectedNode ? (issueIndex.markers[selectedNode.id]?.issues ?? []) : []}
-        onGoToFirstError={onGoToFirstError}
-        onDebugSelectNode={onDebugSelectNode}
-        onDebugEditNode={onDebugEditNode}
-        baseUrl={baseUrl}
-        hosts={hosts}
-        redirectedRequestMap={redirectedRequestMap}
-        redirectSourceMap={redirectSourceMap}
-        onNodeUpdate={onNodeUpdate}
-        onRenameHost={onRenameHost}
-        onRemoveHost={onRemoveHost}
-        onToggleEnabled={onToggleEnabled}
-        searchQuery={activeViewMode === 'tree' ? treeSearchQuery : ''}
-        searchScope={treeSearchScope}
-        dataSourceFileBrowseEnabled={dataSourceFileBrowseEnabled}
-        fileName={fileName}
-      />
-    </div>
+        {/* Resize Handle */}
+        <div
+          role="separator"
+          aria-orientation="vertical"
+          aria-label={language === 'es' ? 'Cambiar tamaño del panel' : 'Resize panel'}
+          tabIndex={0}
+          onMouseDown={onResizeStart}
+          className="w-1 bg-white/5 hover:bg-yellow-400/40 shrink-0 transition-colors relative active:bg-yellow-400/60 z-20 group"
+          style={{ cursor: 'col-resize' }}
+        >
+          <div
+            className="absolute inset-y-0 -left-1 -right-1 z-20"
+            style={{ cursor: 'col-resize' }}
+          />
+          <div className="absolute inset-y-0 left-1/2 -ml-px w-0.5 bg-white/20 group-hover:bg-yellow-400/80 transition-colors" />
+        </div>
+
+        <YAMLEditorDetailsPanel
+          isDebugViewActive={isDebugViewActive}
+          isRunViewActive={isRunViewActive}
+          language={language}
+          debugViewEnabled={debugViewEnabled}
+          multiScenarioDebugEnabled={multiScenarioDebugEnabled}
+          runViewEnabled={runViewEnabled}
+          multiScenarioRunEnabled={multiScenarioRunEnabled}
+          componentCapabilities={componentCapabilities}
+          yamlTree={yamlTree}
+          yamlCode={yamlCode}
+          flushPendingEdits={flushPendingEdits}
+          documentReady={documentReady}
+          selectedNode={selectedNode}
+          validationErrors={validationErrors}
+          selectedNodeIssues={selectedNode ? (issueIndex.markers[selectedNode.id]?.issues ?? []) : []}
+          onGoToFirstError={onGoToFirstError}
+          onDebugSelectNode={onDebugSelectNode}
+          onDebugEditNode={onDebugEditNode}
+          baseUrl={baseUrl}
+          hosts={hosts}
+          redirectedRequestMap={redirectedRequestMap}
+          redirectSourceMap={redirectSourceMap}
+          onNodeUpdate={onNodeUpdate}
+          onRenameHost={onRenameHost}
+          onRemoveHost={onRemoveHost}
+          onToggleEnabled={onToggleEnabled}
+          searchQuery={activeViewMode === 'tree' ? treeSearchQuery : ''}
+          searchScope={treeSearchScope}
+          dataSourceFileBrowseEnabled={dataSourceFileBrowseEnabled}
+          fileName={fileName}
+        />
+      </div>
+    </SearchNavigationProvider>
   );
 }

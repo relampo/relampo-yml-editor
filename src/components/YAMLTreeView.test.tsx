@@ -600,7 +600,7 @@ describe('YAMLTreeView search highlighting', () => {
     expect(screen.getByRole('treeitem', { name: /Other request/i })).toBeInTheDocument();
   });
 
-  it('preserves all selected nodes while search highlights matches', async () => {
+  it('selects the first occurrence for navigation without hiding other nodes', async () => {
     renderInteractiveTreeView({
       tree: {
         id: 'steps',
@@ -644,14 +644,14 @@ describe('YAMLTreeView search highlighting', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Search tree' }));
 
     await waitFor(() => {
-      expect(screen.getByText('2 selected')).toBeInTheDocument();
+      expect(screen.queryByText('2 selected')).not.toBeInTheDocument();
     });
 
     fireEvent.keyDown(screen.getByRole('tree'), { key: 'Delete' });
     fireEvent.click(screen.getByTitle('Close search'));
 
     expect(screen.queryByText('Alpha request')).not.toBeInTheDocument();
-    expect(screen.queryByText('Beta request')).not.toBeInTheDocument();
+    expect(screen.getByText('Beta request')).toBeInTheDocument();
   });
 
   it('preserves clipboard order when pasting multiple nodes at the root', async () => {

@@ -1,5 +1,11 @@
 export const enTranslations = {
   studioControls: {
+    searchNavigation: 'Search matches',
+    previousSearchMatch: 'Previous search match',
+    nextSearchMatch: 'Next search match',
+    searchPosition: 'Search match position',
+    matchedField: 'Matched field',
+
     searchOccurrence: 'match',
     searchNodeCount: 'node',
     searchScope: 'Search in',

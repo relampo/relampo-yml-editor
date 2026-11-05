@@ -65,7 +65,7 @@ describe('YAMLTreeView replacement', () => {
     fireEvent.click(screen.getByRole('radio', { name: 'Requests' }));
     fireEvent.click(screen.getByRole('button', { name: 'Search tree' }));
     fireEvent.click(screen.getByRole('button', { name: 'Replace' }));
-    expect(screen.getByLabelText('Find text to replace')).toHaveValue('token');
+    expect(screen.getByLabelText('Search nodes')).toHaveValue('token');
     fireEvent.change(screen.getByLabelText('Replacement text'), { target: { value: 'token1' } });
 
     expect(screen.getByLabelText('Replace match position')).toHaveTextContent('1 / 1');
@@ -277,12 +277,12 @@ describe('YAMLTreeView replacement', () => {
     fireEvent.click(screen.getByRole('radio', { name: 'Requests' }));
     fireEvent.click(screen.getByRole('button', { name: 'Search tree' }));
     fireEvent.click(screen.getByRole('button', { name: 'Replace' }));
-    expect(screen.getByLabelText('Find text to replace')).toHaveValue('token');
+    expect(screen.getByLabelText('Search nodes')).toHaveValue('token');
 
     fireEvent.click(screen.getByTitle('Close search'));
 
     expect(screen.getByPlaceholderText('Search nodes...')).toHaveValue('');
-    expect(screen.queryByLabelText('Find text to replace')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Replacement text')).not.toBeInTheDocument();
     expect(screen.getByText('Token request')).toBeInTheDocument();
   });
 

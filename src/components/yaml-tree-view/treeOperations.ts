@@ -235,7 +235,7 @@ function replaceTextInString(
   return [nextValue, matches, replacements, replacements > 0];
 }
 
-function textMatcher(search: string, urlEncoded: boolean): RegExp | null {
+export function textMatcher(search: string, urlEncoded: boolean): RegExp | null {
   try {
     const pattern = urlEncoded
       ? `${escapeRegExp(search)}|${percentEncodedSearchPattern(search)}`

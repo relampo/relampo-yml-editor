@@ -7,6 +7,7 @@ import type { YAMLValue } from '../types/yaml';
 import { binaryBodyDisplay, binaryBodyDownload, type BinaryBodyDownload } from '../utils/binaryBody';
 import { buildSearchRegex, findMatchRanges, type SearchMode } from './debugSearch';
 import { Input } from './ui/input';
+import { useSearchNavigation } from './yaml-tree-view/SearchNavigationContext';
 
 interface YAMLResponseDetailsProps {
   response: YAMLValue;
@@ -108,8 +109,8 @@ function HeaderLine({ line, className, ranges, startIndex, currentMatchIndex, ha
         data-header-match-index={absoluteIndex}
         className={
           isActive
-            ? 'bg-yellow-300 text-black ring-2 ring-amber-500 shadow-[0_0_0_1px_rgba(245,158,11,0.45)] rounded-sm'
-            : 'bg-yellow-300/80 text-black rounded-sm'
+            ? 'bg-green-300 text-black ring-2 ring-green-500 shadow-[0_0_0_1px_rgba(34,197,94,0.45)] rounded-sm'
+            : 'bg-yellow-300/20 text-yellow-100 rounded-sm'
         }
       >
         {line.slice(r.start, r.end)}
@@ -143,8 +144,8 @@ function HighlightedText({ text, searchText, searchMode, currentMatchIndex }: Hi
         data-match-index={idx}
         className={
           isActive
-            ? 'bg-yellow-300 text-black ring-2 ring-amber-500 shadow-[0_0_0_1px_rgba(245,158,11,0.45)] rounded-sm'
-            : 'bg-yellow-300/80 text-black rounded-sm'
+            ? 'bg-green-300 text-black ring-2 ring-green-500 shadow-[0_0_0_1px_rgba(34,197,94,0.45)] rounded-sm'
+            : 'bg-yellow-300/20 text-yellow-100 rounded-sm'
         }
       >
         {text.slice(r.start, r.end)}
@@ -333,6 +334,7 @@ interface ResponseHeadersPanelProps {
 }
 
 function ResponseHeadersPanel({ headers, httpVersion, status, statusText, fallbackSearchText }: ResponseHeadersPanelProps) {
+  const { match: treeMatch } = useSearchNavigation();
   const { t } = useLanguage();
   const [headersCollapsed, setHeadersCollapsed] = useState(false);
   const [headerSearchText, setHeaderSearchText] = useState('');
@@ -366,22 +368,43 @@ function ResponseHeadersPanel({ headers, httpVersion, status, statusText, fallba
   );
   // Derived (not stored-then-synced): clamp during render instead of adjusting
   // state from an effect whenever the match count shrinks.
+  let treeHeaderIndex = -1;
+  if (treeMatch?.scope === 'responses' && treeMatch.path[0] === 'response') {
+    let lineIndex = -1;
+    let offset = treeMatch.start;
+    if (treeMatch.path[1] === 'headers') {
+      const key = String(treeMatch.path[2]);
+      lineIndex = headerEntries.findIndex(([name]) => name === key) + 1;
+      if (treeMatch.path.at(-1) !== '$key') offset += key.length + 2;
+    } else if (['status', 'status_text', 'http_version'].includes(String(treeMatch.path[1]))) {
+      lineIndex = 0;
+      offset += Math.max(0, headerStatusLine.indexOf(treeMatch.value));
+    }
+    if (lineIndex >= 0) {
+      const localIndex = headerLineMatches[lineIndex]?.findIndex(range => range.start === offset) ?? -1;
+      if (localIndex >= 0)
+        treeHeaderIndex = headerLineMatches.slice(0, lineIndex).reduce((sum, ranges) => sum + ranges.length, 0) + localIndex;
+    }
+  }
   const headerCurrentMatchIndexClamped =
-    headerTotalMatches === 0 ? 0 : Math.min(headerCurrentMatchIndex, headerTotalMatches - 1);
+    treeMatch?.scope === 'responses' && !trimmedHeaderSearch
+      ? treeHeaderIndex
+      : headerTotalMatches === 0 ? 0 : Math.min(headerCurrentMatchIndex, headerTotalMatches - 1);
 
   useEffect(() => {
-    if (!headerSearchText || headerTotalMatches === 0 || !headersContentRef.current) return;
+    if (!effectiveHeaderSearch || headerCurrentMatchIndexClamped < 0 || headerTotalMatches === 0 || !headersContentRef.current) return;
     const container = headersContentRef.current;
     const raf = requestAnimationFrame(() => {
       const activeMark = container.querySelector(
         `mark[data-header-match-index="${headerCurrentMatchIndexClamped}"]`,
       ) as HTMLElement | null;
       if (!activeMark) return;
+      if (treeMatch?.scope === 'responses' && !trimmedHeaderSearch) activeMark.scrollIntoView({ block: 'center', inline: 'nearest' });
       const targetTop = Math.max(0, activeMark.offsetTop - container.clientHeight / 2 + activeMark.offsetHeight / 2);
       container.scrollTop = targetTop;
     });
     return () => cancelAnimationFrame(raf);
-  }, [headerSearchText, headerTotalMatches, headerCurrentMatchIndexClamped, headerLines, headersCollapsed]);
+  }, [effectiveHeaderSearch, headerTotalMatches, headerCurrentMatchIndexClamped, headerLines, headersCollapsed, treeMatch, trimmedHeaderSearch]);
 
   const handleHeaderPrevious = () => {
     if (headerTotalMatches === 0) return;
@@ -701,6 +724,7 @@ function offsetToPosition(text: string, offset: number) {
 }
 
 function MonacoResponseBodyEditor({ value, searchText, searchMode, currentMatchIndex }: MonacoResponseBodyEditorProps) {
+  const [editorReady, setEditorReady] = useState(false);
   const editorRef = useRef<MonacoEditorNS.IStandaloneCodeEditor | null>(null);
   const decorationsRef = useRef<MonacoEditorNS.IEditorDecorationsCollection | null>(null);
 
@@ -733,7 +757,7 @@ function MonacoResponseBodyEditor({ value, searchText, searchMode, currentMatchI
       };
     });
     decorationsRef.current.set(decorations);
-  }, [value, searchText, matchRanges, currentMatchIndex]);
+  }, [value, searchText, matchRanges, currentMatchIndex, editorReady]);
 
   useEffect(() => {
     const editor = editorRef.current;
@@ -748,10 +772,11 @@ function MonacoResponseBodyEditor({ value, searchText, searchMode, currentMatchI
       endLineNumber: end.lineNumber,
       endColumn: end.column,
     };
+    editor.getDomNode()?.scrollIntoView({ block: 'center', inline: 'nearest' });
     editor.setSelection(range);
     editor.revealRangeInCenterIfOutsideViewport(range);
     editor.revealRangeInCenter(range);
-  }, [value, searchText, matchRanges, currentMatchIndex]);
+  }, [value, searchText, matchRanges, currentMatchIndex, editorReady]);
 
   return (
     <div className="h-full w-full">
@@ -762,6 +787,7 @@ function MonacoResponseBodyEditor({ value, searchText, searchMode, currentMatchI
         onMount={(editor: MonacoEditorNS.IStandaloneCodeEditor) => {
           editorRef.current = editor;
           decorationsRef.current = editor.createDecorationsCollection([]);
+          setEditorReady(true);
         }}
         theme="vs-dark"
         options={{
@@ -785,10 +811,10 @@ function MonacoResponseBodyEditor({ value, searchText, searchMode, currentMatchI
           border-radius: 2px;
         }
         .relampo-find-current {
-          background-color: rgba(253, 224, 71, 1);
+          background-color: #86efac;
           color: #000000;
-          outline: 2px solid rgba(245, 158, 11, 1);
-          box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.45);
+          outline: 2px solid #22c55e;
+          box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.45);
           border-radius: 2px;
         }
       `}</style>

@@ -1,3 +1,4 @@
+import { useSearchNavigation } from './yaml-tree-view/SearchNavigationContext';
 import type { SearchScope } from './yaml-tree-view/search';
 import { ChevronDown, ChevronUp, Search } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -70,15 +71,13 @@ export function YAMLRequestDetails({
 }: YAMLRequestDetailsProps) {
   const { t } = useLanguage();
   const data = node.data || {};
+  const { match: navigationMatch } = useSearchNavigation();
+  const activeSearchMatch = navigationMatch?.nodeId === node.id ? navigationMatch : null;
   const [formData, setFormData] = useState(data);
   const [activeTab, setActiveTab] = useState<Tab>('request');
   const scopeTab = searchScope === 'responses' ? 'response' : 'request';
   const [seenTreeSearch, setSeenTreeSearch] = useState('');
-  const treeSearchKey = `${searchScope ?? ''}:${searchQuery}`;
-  if (treeSearchKey !== seenTreeSearch) {
-    setSeenTreeSearch(treeSearchKey);
-    if (searchScope && searchQuery.trim()) setActiveTab(scopeTab);
-  }
+  const treeSearchKey = `${searchScope ?? ''}:${searchQuery}:${activeSearchMatch?.id ?? ''}`;
   const [requestSearch, setRequestSearch] = useState('');
   const [responseSearch, setResponseSearch] = useState('');
   const [requestSearchMode, setRequestSearchMode] = useState<SearchMode>('text');
@@ -86,6 +85,11 @@ export function YAMLRequestDetails({
   const [requestReplace, setRequestReplace] = useState('');
   const [responseReplace, setResponseReplace] = useState('');
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
+  if (treeSearchKey !== seenTreeSearch) {
+    setSeenTreeSearch(treeSearchKey);
+    if (activeSearchMatch) setCurrentMatchIndex(activeSearchMatch.bodyIndex);
+    if (searchScope && searchQuery.trim()) setActiveTab(scopeTab);
+  }
   const contentRef = useRef<HTMLDivElement>(null);
   // When the recorded follow-up (redirect target) is disabled, the redirect
   // linkage no longer applies, so the source request's redirect options behave
@@ -170,6 +174,17 @@ export function YAMLRequestDetails({
     setPrevSearchText(searchText);
     setCurrentMatchIndex(0);
   }
+  const activeBodyMatch =
+    activeSearchMatch &&
+    (activeSearchMatch.path[0] === 'body' ||
+      activeSearchMatch.path[0] === 'body_raw' ||
+      (activeSearchMatch.path[0] === 'response' && activeSearchMatch.path[1] === 'body'));
+  const visibleMatchIndex =
+    activeSearchMatch && !manualSearch.trim()
+      ? activeBodyMatch
+        ? activeSearchMatch.bodyIndex
+        : -1
+      : currentMatchIndex;
   const searchMode = activeTab === 'request' ? requestSearchMode : responseSearchMode;
   const replaceValue = activeTab === 'request' ? requestReplace : responseReplace;
 
@@ -231,7 +246,7 @@ export function YAMLRequestDetails({
       >
         <fieldset
           disabled={isRequestDisabled}
-          className={`min-w-0 border-0 p-0 m-0 ${isRequestDisabled ? 'opacity-60' : ''}`}
+          className={`min-w-0 border-0 p-0 m-0 ${isRequestDisabled && !activeSearchMatch ? 'opacity-60' : ''}`}
         >
           {activeTab === 'request' ? (
             <RequestContent
@@ -249,7 +264,7 @@ export function YAMLRequestDetails({
               searchInputValue={requestSearch}
               searchMode={searchMode}
               replaceValue={replaceValue}
-              currentMatchIndex={currentMatchIndex}
+              currentMatchIndex={visibleMatchIndex}
               onSearchChange={handleSearchChange}
               onSearchModeChange={handleSearchModeChange}
               onReplaceValueChange={handleReplaceChange}
@@ -263,7 +278,7 @@ export function YAMLRequestDetails({
               searchInputValue={responseSearch}
               searchMode={searchMode}
               replaceValue={replaceValue}
-              currentMatchIndex={currentMatchIndex}
+              currentMatchIndex={visibleMatchIndex}
               onSearchChange={handleSearchChange}
               onSearchModeChange={handleSearchModeChange}
               onReplaceValueChange={handleReplaceChange}
@@ -831,19 +846,21 @@ function RequestContent({
   return (
     <div className="space-y-4">
       {/* Method / Protocol / Base URL / Path */}
-      <RequestUrlRow
-        requestMethod={requestMethod}
-        onMethodChange={method => onFieldChange('method', method)}
-        protocol={urlParts.protocol}
-        onProtocolChange={value => onFieldChange('url', buildRequestUrl(requestUrl, { protocol: value }))}
-        displayBaseUrl={displayBaseUrl}
-        baseUrlPlaceholder={baseUrlPlaceholder}
-        onBaseUrlChange={handleBaseUrlChange}
-        pathInputValue={pathInputValue}
-        onPathChange={handlePathChange}
-        searchText={searchText}
-        compactInputClass={compactInputClass}
-      />
+      <div data-search-field="url">
+        <RequestUrlRow
+          requestMethod={requestMethod}
+          onMethodChange={method => onFieldChange('method', method)}
+          protocol={urlParts.protocol}
+          onProtocolChange={value => onFieldChange('url', buildRequestUrl(requestUrl, { protocol: value }))}
+          displayBaseUrl={displayBaseUrl}
+          baseUrlPlaceholder={baseUrlPlaceholder}
+          onBaseUrlChange={handleBaseUrlChange}
+          pathInputValue={pathInputValue}
+          onPathChange={handlePathChange}
+          searchText={searchText}
+          compactInputClass={compactInputClass}
+        />
+      </div>
 
       <AuthConfigEditor
         auth={formData.auth as unknown as AuthConfig | undefined}
@@ -914,16 +931,18 @@ function RequestContent({
           {t('yamlEditor.requestDetails.formatBodyType')}
         </p>
       </div>
-      <BodyTypeSelector
-        body={formData.body}
-        bodyRaw={formData.body_raw}
-        contentType={contentType}
-        onBodyChange={onBodyChange}
-        searchText={searchText}
-        searchMode={searchMode}
-        currentMatchIndex={currentMatchIndex}
-        hideTypeLabel
-      />
+      <div data-search-field="body">
+        <BodyTypeSelector
+          body={formData.body}
+          bodyRaw={formData.body_raw}
+          contentType={contentType}
+          onBodyChange={onBodyChange}
+          searchText={searchText}
+          searchMode={searchMode}
+          currentMatchIndex={currentMatchIndex}
+          hideTypeLabel
+        />
+      </div>
 
       {formData.think_time && (
         <div>

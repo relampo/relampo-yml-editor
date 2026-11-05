@@ -164,6 +164,7 @@ export function useTreeViewSelection({
     searchScope,
     handleScopeChange,
     searchMatchNodeIds: scopedSearch.matchNodeIds,
+    searchMatches: scopedSearch.matches,
     replaceableMatchNodeIds: scopedSearch.replaceableMatchNodeIds,
     handleSearchChange,
     handleClearSearch,

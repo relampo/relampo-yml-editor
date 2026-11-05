@@ -1,3 +1,4 @@
+import { SearchMatchDetails } from './yaml-tree-view/SearchMatchDetails';
 import type { SearchScope } from './yaml-tree-view/search';
 import { ComponentConfigurationDetails } from './yaml-node-details/ComponentConfigurationDetails';
 import type { ComponentCapabilities } from '../utils/componentConfiguration';
@@ -123,7 +124,10 @@ export function YAMLNodeDetails({
   }
 
   return (
-    <div className="h-full bg-[#0a0a0a] flex flex-col overflow-hidden">
+    <div
+      data-node-details
+      className="h-full bg-[#0a0a0a] flex flex-col overflow-hidden"
+    >
       <div className="px-6 py-3 border-b border-white/5 bg-[#111111] shrink-0">
         <div className={`flex gap-2 ${isRequestNode ? 'items-start' : 'items-center'}`}>
           <div className={`w-1 rounded-full bg-yellow-400 ${isRequestNode ? 'h-6 mt-0.5' : 'h-4'}`} />
@@ -159,6 +163,7 @@ export function YAMLNodeDetails({
       </div>
 
       <div className={`flex-1 overflow-y-auto ${isCompactDetailsNode ? 'p-4' : 'p-6'}`}>
+        <SearchMatchDetails nodeId={node.id} />
         <NodeIssuesSection
           issues={issues}
           language={language}

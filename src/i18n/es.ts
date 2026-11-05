@@ -1,5 +1,11 @@
 export const esTranslations = {
   studioControls: {
+    searchNavigation: 'Coincidencias de búsqueda',
+    previousSearchMatch: 'Coincidencia anterior',
+    nextSearchMatch: 'Coincidencia siguiente',
+    searchPosition: 'Posición de la coincidencia',
+    matchedField: 'Campo encontrado',
+
     searchOccurrence: 'coincidencia',
     searchNodeCount: 'nodo',
     searchScope: 'Buscar en',

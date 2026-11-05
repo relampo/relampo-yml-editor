@@ -1,5 +1,5 @@
 import type { YAMLNode, YAMLNodeType } from '../../types/yaml';
-import { childOwnedDataKeys, getReplaceableMatchNodeIds } from './treeOperations';
+import { nodeSearchOccurrences, type SearchOccurrence } from './searchOccurrences';
 
 export type SearchScope = 'requests' | 'responses';
 
@@ -194,47 +194,16 @@ function serializeSearchValue(value: unknown): string {
   return '';
 }
 
-/** Scoped searches use the same canonical values and order as replacement. */
+/** Build occurrence locations once, preserving the same order as replacement. */
 export function buildScopedSearch(tree: YAMLNode | null, query: string, scope: SearchScope | null) {
-  const matchNodeIds: string[] = [];
-  const index = new Map<string, SearchNodeState & { requestMatch: boolean; responseMatch: boolean }>();
-  if (!tree || !scope || !query.trim()) return { index, matchNodeIds, replaceableMatchNodeIds: [] as string[] };
-  if (scope === 'requests') matchNodeIds.push(...getReplaceableMatchNodeIds(tree, query.trim(), true));
-  const replaceableMatchNodeIds = [...matchNodeIds];
-  const matchingRequests = new Set(matchNodeIds);
-  const needle = query.trim().toLowerCase();
-  const count = (value: unknown): number => {
-    if (value == null) return 0;
-    if (Array.isArray(value)) return value.reduce((total, item) => total + count(item), 0);
-    if (typeof value === 'object')
-      return Object.entries(value).reduce((total, [key, item]) => total + count(key) + count(item), 0);
-    const text = String(value).toLowerCase();
-    let total = 0;
-    for (let offset = 0; (offset = text.indexOf(needle, offset)) !== -1; offset += needle.length) total++;
-    return total;
-  };
+  const matches: SearchOccurrence[] = [];
+  const index = new Map<string, SearchNodeState>();
+  if (!tree || !scope || !query.trim())
+    return { index, matches, matchNodeIds: [] as string[], replaceableMatchNodeIds: [] as string[] };
   const visit = (node: YAMLNode): boolean => {
-    const responseCount =
-      scope === 'responses' && REQUEST_LIKE_NODE_TYPES.includes(node.type)
-        ? count(node.data?.response) + count((node.data as Record<string, unknown> | undefined)?.response_preview)
-        : 0;
-    if (responseCount) matchNodeIds.push(...Array.from({ length: responseCount }, () => node.id));
-    let requestMatch = matchingRequests.has(node.id);
-    if (scope === 'requests' && !requestMatch) {
-      const excluded = childOwnedDataKeys(node);
-      if (REQUEST_LIKE_NODE_TYPES.includes(node.type)) {
-        excluded.add('response');
-        excluded.add('response_preview');
-      }
-      const ownedData = Object.fromEntries(
-        Object.entries(node.data ?? {}).filter(([key]) => !excluded.has(key) && !key.startsWith('__')),
-      );
-      if (nodeNameOrPathMatches(node, needle) || serializeSearchValue(ownedData).includes(needle)) {
-        requestMatch = true;
-        matchNodeIds.push(...Array.from({ length: Math.max(1, count(ownedData)) }, () => node.id));
-      }
-    }
-    const directMatch = scope === 'requests' ? requestMatch : responseCount > 0;
+    const own = nodeSearchOccurrences(node, query.trim(), scope);
+    matches.push(...own);
+    const directMatch = own.length > 0;
     const children = node.children?.map(visit) ?? [];
     const subtreeMatch = directMatch || children.some(Boolean);
     index.set(node.id, {
@@ -246,11 +215,16 @@ export function buildScopedSearch(tree: YAMLNode | null, query: string, scope: S
         scope === 'requests' &&
         directMatch &&
         REQUEST_LIKE_NODE_TYPES.includes(node.type) &&
-        serializeSearchValue(getNodeRequestSearchPayload(node)).includes(needle),
+        serializeSearchValue(getNodeRequestSearchPayload(node)).includes(query.trim().toLowerCase()),
       responseMatch: scope === 'responses' && directMatch,
     });
     return subtreeMatch;
   };
   visit(tree);
-  return { index, matchNodeIds, replaceableMatchNodeIds };
+  return {
+    index,
+    matches,
+    matchNodeIds: matches.map(match => match.nodeId),
+    replaceableMatchNodeIds: matches.filter(match => match.replaceable).map(match => match.nodeId),
+  };
 }
