@@ -1,5 +1,5 @@
 import { parseYAMLToTree, treeToYAML } from '../utils/yamlParser';
-import { addNodeToTree } from './yaml-tree-view/treeOperations';
+import { addNodeToTree, insertNodesAfterTarget } from './yaml-tree-view/treeOperations';
 import { createNodeByType } from './yaml-tree-view/nodeFactory';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render as rtlRender, screen, waitFor, within } from '@testing-library/react';
@@ -1184,4 +1184,24 @@ it.each([undefined, false])('preserves pasted Load settings and drafts (selected
   const loads = tree.children!.find(node => node.type === 'scenarios')!.children![0].children!.filter(node => node.type === 'load');
   expect(loads).toEqual([pasted]);
   expect(treeToYAML(tree)).toContain('end_users: 99');
+});
+
+
+it('names only the scenarios that fall back when another scenario has a selected model', () => {
+  const yamlCode = 'scenarios:\n  - name: checkout\n    load: {type: constant, users: 100, duration: 1m}\n    steps: [{get: /a}]\n  - name: browse $&\n    steps: [{get: /b}]\n';
+  render(<YAMLLoadRunSession {...baseProps} tree={parseYAMLToTree(yamlCode)} yamlCode={yamlCode} multiScenarioRunEnabled />);
+  expect(screen.getByText('No load model selected in: browse $&. These scenarios will use Constant with 1 user and 1 iteration.')).toBeVisible();
+  expect(screen.queryByText('No load model selected. Run will use Constant with 1 user and 1 iteration.')).not.toBeInTheDocument();
+});
+
+
+it('replaces the unselected Load when a Load is pasted after a sibling (keyboard paste)', () => {
+  const tree = parseYAMLToTree('scenarios:\n  - name: target\n    steps: [{get: /health}]\n')!;
+  const scenario = tree.children!.find(node => node.type === 'scenarios')!.children![0];
+  const pasted: YAMLNode = { ...createNodeByType('load'), data: { type: 'constant', users: 37, iterations: 4 } };
+  for (const target of scenario.children!) {
+    const result = insertNodesAfterTarget(tree, target.id, [pasted]);
+    const loads = result.children!.find(node => node.type === 'scenarios')!.children![0].children!.filter(node => node.type === 'load');
+    expect(loads).toEqual([pasted]);
+  }
 });

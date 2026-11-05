@@ -567,12 +567,18 @@ function prepareScenarioForInsertion(node: YAMLNode, siblings: YAMLNode[]): YAML
   return { ...node, name, data: { ...node.data, name } };
 }
 
+// A scenario without `load` gets an unselected placeholder Load; a new Load
+// replaces it so the scenario never ends up with two Load nodes.
+function findFallbackLoad(parent: YAMLNode, children: YAMLNode[], newNode: YAMLNode): YAMLNode | undefined {
+  if (parent.type !== 'scenario' || newNode.type !== 'load') return undefined;
+  return children.find(child => child.type === 'load' && child.data?.__loadSelected === false);
+}
+
 export function addNodeToTree(tree: YAMLNode, parentId: string, newNode: YAMLNode, reuseFallbackLoad = false): YAMLNode {
   if (tree.id === parentId) {
     const children = tree.children || [];
     if (newNode.type === 'scenario' && tree.type !== 'scenarios') return tree;
-    const fallbackLoad = tree.type === 'scenario' && newNode.type === 'load'
-      ? children.find(child => child.type === 'load' && child.data?.__loadSelected === false) : undefined;
+    const fallbackLoad = findFallbackLoad(tree, children, newNode);
     if (fallbackLoad) {
       return {
         ...tree,
@@ -654,8 +660,15 @@ export function insertNodesAfterTarget(tree: YAMLNode, targetId: string, newNode
   if (index !== -1) {
     if (!newNodes.every(node => canContain(tree.type, node.type))) return tree;
     const newChildren = [...tree.children];
-    newNodes.forEach((node, offset) => {
-      newChildren.splice(index + 1 + offset, 0, prepareScenarioForInsertion(node, newChildren));
+    let position = index + 1;
+    newNodes.forEach(node => {
+      const fallbackLoad = findFallbackLoad(tree, newChildren, node);
+      if (fallbackLoad) {
+        newChildren[newChildren.indexOf(fallbackLoad)] = node;
+        return;
+      }
+      newChildren.splice(position, 0, prepareScenarioForInsertion(node, newChildren));
+      position += 1;
     });
     return { ...tree, children: newChildren };
   }

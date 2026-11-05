@@ -36,6 +36,7 @@ export const esTranslations = {
     loadSelectionHelp: 'Selecciona un modelo de carga (solo uno puede estar activo).',
     selectLoadModel: 'Usar en la ejecución',
     noLoadSelection: 'No hay un modelo de carga seleccionado. Se usará Constante con 1 usuario y 1 iteración.',
+    noLoadSelectionScenarios: 'No hay un modelo de carga seleccionado en: {names}. Estos escenarios usarán Constante con 1 usuario y 1 iteración.',
     loadDescriptions: {
       constant: 'Mantiene un número fijo de usuarios durante la prueba.',
       linear: 'Aumenta los usuarios de forma lineal.',

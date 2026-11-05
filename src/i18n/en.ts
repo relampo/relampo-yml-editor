@@ -36,6 +36,7 @@ export const enTranslations = {
     loadSelectionHelp: 'Select one load model (only one can be active).',
     selectLoadModel: 'Use for execution',
     noLoadSelection: 'No load model selected. Run will use Constant with 1 user and 1 iteration.',
+    noLoadSelectionScenarios: 'No load model selected in: {names}. These scenarios will use Constant with 1 user and 1 iteration.',
     loadDescriptions: {
       constant: 'Keep a fixed number of users during the test.',
       linear: 'Increase users linearly over time.',
