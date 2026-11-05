@@ -715,6 +715,54 @@ function displayVariableValue(value: string): string {
   }
 }
 
+function structuredBody(value: unknown): unknown {
+  if (typeof value !== 'string') return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    if (!value.includes('=')) return value;
+    const fields = new URLSearchParams(value);
+    return Object.fromEntries(
+      [...new Set(fields.keys())].map(name => {
+        const values = fields.getAll(name);
+        return [name, values.length === 1 ? values[0] : values];
+      }),
+    );
+  }
+}
+
+function builtinBodyRows(
+  node: YAMLNode,
+  variables: Record<string, string>,
+  context: VariableValueContext,
+): Array<[string, string]> {
+  const rows: Array<[string, string]> = [];
+  const visit = (template: unknown, captured: unknown, path: string[]) => {
+    if (typeof template === 'string') {
+      const hasBuiltin = [...template.matchAll(/\{\{([^{}]*)/g)].some(
+        ([, expression]) => isBuiltinExpression(expression.trim()) && !Object.hasOwn(variables, expression.trim()),
+      );
+      if (path.length && hasBuiltin) {
+        const value = typeof captured === 'string' ? captured : JSON.stringify(captured);
+        rows.push([`Body.${path.join('.')} (REQ)`, value ?? context.missingValueLabel ?? MISSING_VARIABLE_VALUE]);
+      }
+      return;
+    }
+    if (template && typeof template === 'object') {
+      Object.entries(template).forEach(([key, field]) => {
+        const value =
+          captured && typeof captured === 'object' && Object.hasOwn(captured, key)
+            ? (captured as Record<string, unknown>)[key]
+            : undefined;
+        visit(field, value, [...path, key]);
+      });
+    }
+  };
+  // ponytail: Decode JSON and URL-encoded fields; multipart needs a body parser.
+  visit(structuredBody(node.data?.body ?? node.data?.body_raw), structuredBody(context.requestBody), []);
+  return rows;
+}
+
 export function variableRowsForRequestNode(
   node: YAMLNode | null,
   variables: Record<string, string>,
@@ -732,7 +780,7 @@ export function variableRowsForRequestNode(
   const extracted = responseExtractorValues(node, context);
   const sent = resolvedRequestUrlVariables(node, context);
   const missingValue = context.missingValueLabel ?? MISSING_VARIABLE_VALUE;
-  return [...roles].map<[string, string]>(([name, variableRoles]) => {
+  const rows = [...roles].map<[string, string]>(([name, variableRoles]) => {
     const declaredValue = context.declaredBuiltinValues?.[name];
     const capturedValue = variables[name];
     const resolvedValue =
@@ -750,4 +798,5 @@ export function variableRowsForRequestNode(
       resolvedValue === undefined ? missingValue : displayVariableValue(resolvedValue),
     ];
   });
+  return [...rows, ...builtinBodyRows(node, variables, context)];
 }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  collectDebugEventTargets,
   debugEventRequestNumber,
   matchDebugEventTarget,
   requestVariableNames,
@@ -7,6 +8,7 @@ import {
   variableRowsForRequestNode,
 } from './debugRequests';
 import { yamlMapData, type YAMLNode } from '../types/yaml';
+import { parseYAMLToTree } from '../utils/yamlParser';
 
 type EventInput = Parameters<typeof matchDebugEventTarget>[0] & { request_id?: number };
 const event = (overrides: Partial<EventInput>): EventInput => ({ method: 'GET', name: 'evt', path: '/', ...overrides });
@@ -847,6 +849,47 @@ describe('skippedRedirectHops — recorded chain longer than the live run (RLP-6
 });
 
 describe('RLP-758 distinct declared variables and built-ins', () => {
+ it.each([
+   [{ password: '{{_randomInt(1,10)}}' }, 'password=5', [['Body.password (REQ)', '5']]],
+   ['password={{_randomInt(1,10)}}', 'password=5', [['Body.password (REQ)', '5']]],
+   ['{"password":"{{_randomInt(1,10)}}"}', '{"password":5}', [['Body.password (REQ)', '5']]],
+   [{ password: 'prefix-{{_randomInt(1,10)}}' }, 'password=prefix-5', [['Body.password (REQ)', 'prefix-5']]],
+   [{ password: '{{_randomInt(1,10)}}' }, 'password=a%2520b%2Bc', [['Body.password (REQ)', 'a%20b+c']]],
+   [
+     { payload: { items: ['{{_randomInt(0,0)}}', '{{_randomBoolean()}}'] } },
+     '{"payload":{"items":[0,false]}}',
+     [
+       ['Body.payload.items.0 (REQ)', '0'],
+       ['Body.payload.items.1 (REQ)', 'false'],
+     ],
+   ],
+   [{ password: '{{_randomInt(1,10)}}' }, undefined, [['Body.password (REQ)', 'Not captured']]],
+   [{ password: '{{_randomInt(1,10)}}' }, '{"other":5}', [['Body.password (REQ)', 'Not captured']]],
+ ])('shows built-in body fields from the captured request: %j', (body, requestBody, expected) => {
+   const node: YAMLNode = { id: 'login', type: 'request', name: 'login', data: { body } };
+   expect(variableRowsForRequestNode(node, { unrelated: '5' }, { requestBody, builtinValues: [5] })).toEqual(expected);
+ });
+
+ it('keeps a body field separate from a declared variable with the same name', () => {
+   const tree = parseYAMLToTree(`variables: {password: original}
+scenarios:
+ - name: login
+   steps:
+    - request:
+        method: POST
+        url: /login
+        headers: {Authorization: '{{password}}'}
+        body: {password: '{{_randomInt(1,10)}}', literal: fixed}
+`);
+   const [node] = collectDebugEventTargets(tree);
+   expect(
+     variableRowsForRequestNode(node, { password: 'original' }, { requestBody: 'password=5&literal=fixed' }),
+   ).toEqual([
+     ['password (REQ)', 'original'],
+     ['Body.password (REQ)', '5'],
+   ]);
+ });
+
  it('keeps the declared variable value independently of raw expression and token', () => {
   const node: YAMLNode = { id:'product',type:'request',name:'GET /product',data:{url:'/product'},children:[] };
   expect(variableRowsForRequestNode(node,{product:'{{_randomInt(37,37)}}',token:'separate-test-token'},{declaredBuiltinValues:{product:'37'}})).toEqual([['product (VAR)','37']]);
