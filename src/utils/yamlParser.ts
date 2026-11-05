@@ -205,18 +205,17 @@ function convertScenarioToNode(scenario: any, index: number, path: any[]): YAMLN
     path,
   };
 
-  // Load
-  if (scenario.load) {
-    scenarioNode.children!.push({
-      id: `${scenarioId}_load`,
-      type: 'load',
-      name: `Load: ${getLoadTypeLabel(scenario.load.type || 'constant')}`,
-      data: { ...normalizeLoadDataForYaml(scenario.load),
-        ...(isPlainRecord(scenario['x-studio-load-profiles']) ? { __loadProfiles: Object.fromEntries(Object.entries(scenario['x-studio-load-profiles']).filter((entry): entry is [string, Record<string, unknown>] => isPlainRecord(entry[1]))) } : {}),
-      },
-      path: [...path, 'load'],
-    });
-  }
+  // An absent load keeps the engine fallback and still offers a selection control.
+  scenarioNode.children!.push({
+    id: `${scenarioId}_load`,
+    type: 'load',
+    name: `Load: ${getLoadTypeLabel(scenario.load?.type || 'constant')}`,
+    data: { ...normalizeLoadDataForYaml(scenario.load || { type: 'constant', users: 1, iterations: 1 }),
+      ...(!scenario.load ? { __loadSelected: false } : {}),
+      ...(isPlainRecord(scenario['x-studio-load-profiles']) ? { __loadProfiles: Object.fromEntries(Object.entries(scenario['x-studio-load-profiles']).filter((entry): entry is [string, Record<string, unknown>] => isPlainRecord(entry[1]))) } : {}),
+    },
+    path: [...path, 'load'],
+  });
 
   // Cookies
   if (scenario.cookies) {

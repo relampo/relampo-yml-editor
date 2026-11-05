@@ -567,10 +567,19 @@ function prepareScenarioForInsertion(node: YAMLNode, siblings: YAMLNode[]): YAML
   return { ...node, name, data: { ...node.data, name } };
 }
 
-export function addNodeToTree(tree: YAMLNode, parentId: string, newNode: YAMLNode): YAMLNode {
+export function addNodeToTree(tree: YAMLNode, parentId: string, newNode: YAMLNode, reuseFallbackLoad = false): YAMLNode {
   if (tree.id === parentId) {
     const children = tree.children || [];
     if (newNode.type === 'scenario' && tree.type !== 'scenarios') return tree;
+    const fallbackLoad = tree.type === 'scenario' && newNode.type === 'load'
+      ? children.find(child => child.type === 'load' && child.data?.__loadSelected === false) : undefined;
+    if (fallbackLoad) {
+      return {
+        ...tree,
+        children: children.map(child => child === fallbackLoad ? (reuseFallbackLoad ? { ...child, id: newNode.id } : newNode) : child),
+        expanded: true,
+      };
+    }
     const insertedNode = prepareScenarioForInsertion(newNode, children);
 
     return {
@@ -583,7 +592,7 @@ export function addNodeToTree(tree: YAMLNode, parentId: string, newNode: YAMLNod
   if (tree.children) {
     return {
       ...tree,
-      children: tree.children.map(child => addNodeToTree(child, parentId, newNode)),
+      children: tree.children.map(child => addNodeToTree(child, parentId, newNode, reuseFallbackLoad)),
     };
   }
 

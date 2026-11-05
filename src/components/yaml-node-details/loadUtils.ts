@@ -65,6 +65,7 @@ export function toLoadData(value: Record<string, unknown> | undefined): LoadData
   if (!value) return {};
   return Object.fromEntries(
     Object.entries(value).filter(([key, fieldValue]) => {
+      if (key.startsWith('__')) return false;
       if (typeof fieldValue === 'string' || typeof fieldValue === 'number' || typeof fieldValue === 'boolean') {
         return true;
       }

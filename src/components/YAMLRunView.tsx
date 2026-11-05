@@ -456,6 +456,11 @@ export function YAMLLoadRunSession({
         onStopRun={stopRun}
       />
 
+      {(loadNodes.length === 0 || loadNodes.some(node => node.data?.__loadSelected === false)) && (
+        <p role="status" className="border-b border-amber-400/20 bg-amber-400/5 px-4 py-3 text-sm text-amber-300">
+          {t('studioControls.noLoadSelection')}
+        </p>
+      )}
       {incompatibleMulti && <RunErrorBanner message={t('yamlEditor.runDebug.run.multiBackend')} />}
       {hasValidationErrors && (
         <BlockedByIssuesNotice

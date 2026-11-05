@@ -1,3 +1,6 @@
+import { parseYAMLToTree, treeToYAML } from '../utils/yamlParser';
+import { addNodeToTree } from './yaml-tree-view/treeOperations';
+import { createNodeByType } from './yaml-tree-view/nodeFactory';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render as rtlRender, screen, waitFor, within } from '@testing-library/react';
 import { YAMLLoadRunSession } from './YAMLRunView';
@@ -1139,4 +1142,46 @@ describe('YAMLLoadRunSession', () => {
     expect(await screen.findByText('Error generating YAML: empty parallel')).toBeInTheDocument();
     expect(runApiMock.startLoadRun).not.toHaveBeenCalled();
   });
+});
+
+
+it('warns before running without a selected model and sends the saved fallback script', async () => {
+  const yamlCode = 'scenarios:\n  - name: fallback\n    steps: [{get: /health}]\n';
+  render(<YAMLLoadRunSession {...baseProps} yamlCode={yamlCode} />);
+  expect(screen.getByText('No load model selected. Run will use Constant with 1 user and 1 iteration.')).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: 'Run load test' }));
+  await waitFor(() => expect(runApiMock.startLoadRun).toHaveBeenCalledWith(yamlCode));
+});
+
+
+it('reuses the unselected Load when Add Load Config is used and keeps Run available', () => {
+  const source = 'scenarios:\n  - name: fallback\n    x-studio-load-profiles:\n      constant: {type: constant, users: 7, iterations: 3}\n    steps: [{get: /health}]\n';
+  let tree = parseYAMLToTree(source)!;
+  const scenario = tree.children!.find(node => node.type === 'scenarios')!.children![0];
+  const initialLoad = scenario.children!.find(node => node.type === 'load')!;
+  const newLoad = createNodeByType('load');
+  tree = addNodeToTree(tree, scenario.id, newLoad, true);
+  const loads = tree.children!.find(node => node.type === 'scenarios')!.children![0].children!.filter(node => node.type === 'load');
+  expect(loads).toHaveLength(1);
+  expect(loads[0]).toEqual({ ...initialLoad, id: newLoad.id });
+  const yamlCode = treeToYAML(tree);
+  expect(yamlCode).not.toMatch(/^ {4}load:/m);
+  expect(yamlCode).toContain('users: 7');
+  render(<YAMLLoadRunSession {...baseProps} tree={tree} yamlCode={yamlCode} />);
+  expect(screen.getByRole('button', { name: 'Run load test' })).toBeEnabled();
+});
+
+
+it.each([undefined, false])('preserves pasted Load settings and drafts (selected=%s)', selected => {
+  let tree = parseYAMLToTree('scenarios:\n  - name: target\n    steps: [{get: /health}]\n')!;
+  const scenario = tree.children!.find(node => node.type === 'scenarios')!.children![0];
+  const pasted: YAMLNode = { ...createNodeByType('load'), data: {
+    type: 'constant', users: 37, iterations: 4,
+    ...(selected === false ? { __loadSelected: false } : {}),
+    __loadProfiles: { linear: { type: 'ramp', start_users: 2, end_users: 99, duration: '1m' } },
+  } };
+  tree = addNodeToTree(tree, scenario.id, pasted);
+  const loads = tree.children!.find(node => node.type === 'scenarios')!.children![0].children!.filter(node => node.type === 'load');
+  expect(loads).toEqual([pasted]);
+  expect(treeToYAML(tree)).toContain('end_users: 99');
 });
