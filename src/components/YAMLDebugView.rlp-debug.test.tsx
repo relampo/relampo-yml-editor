@@ -5,6 +5,7 @@ import { DebugSection } from './debugSection';
 import { YAMLDebugSession } from './YAMLDebugView';
 import type { YAMLNode } from '../types/yaml';
 import type { EngineEvent } from '../utils/debugApi';
+import { parseYAMLToTree } from '../utils/yamlParser';
 
 const render = (ui: Parameters<typeof rtlRender>[0], options?: Parameters<typeof rtlRender>[1]) =>
   rtlRender(ui, { wrapper: LanguageProvider, ...options });
@@ -1083,6 +1084,57 @@ describe('YAMLDebugSession RLP debug fixes', () => {
     expect(falseRow?.children[1]).toHaveTextContent(/^false$/);
     expect(screen.getByText('Body.id')).toBeInTheDocument();
     expect(screen.queryByText('Resolved')).toBeNull();
+  });
+
+  it('shows a built-in form field in Variables and its invocation in Built-ins (RLP-758)', async () => {
+    const yamlCode = `test: {name: login}
+scenarios:
+ - name: login
+   steps:
+    - request:
+        name: login
+        method: POST
+        url: /login
+        headers: {Content-Type: application/x-www-form-urlencoded}
+        body: {password: '{{_randomInt(1,10)}}', email: '{{user}}'}
+`;
+    render(
+      <YAMLDebugSession
+        tree={parseYAMLToTree(yamlCode)}
+        yamlCode={yamlCode}
+        documentReady
+        validationErrors={[]}
+        onSelectNode={vi.fn()}
+        onEditNode={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
+    act(() => {
+      debugApiMock.handlers[0].onEvent(
+        event({
+          name: 'login',
+          method: 'POST',
+          path: '/login',
+          request_id: 1,
+          request_body: 'password=5&email=test%40example.com',
+          variables: { user: 'test@example.com' },
+          builtin_invocations: [{ expression: '{{_randomInt(1,10)}}', value: 5, status: 'resolved', origin: 'Body' }],
+        }),
+      );
+      debugApiMock.handlers[0].onDone(null);
+    });
+    fireEvent.click((await screen.findByText('#1')).closest('button')!);
+    fireEvent.click(screen.getByRole('button', { name: 'variables' }));
+    expect(screen.getByText('Body.password (REQ)')).toBeInTheDocument();
+    expect(screen.getByText('5', { exact: true })).toBeInTheDocument();
+    expect(screen.getByText('user (REQ)')).toBeInTheDocument();
+    expect(screen.getByText('test@example.com')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Built-ins' }));
+    const invocations = screen.getByLabelText('Built-in invocations');
+    expect(within(invocations).getByText('{{_randomInt(1,10)}}')).toBeInTheDocument();
+    expect(within(invocations).getByText('5', { exact: true })).toBeInTheDocument();
+    expect(within(invocations).getByText('Body', { exact: true })).toBeInTheDocument();
   });
 
   it('shows an empty state in the Built-ins tab when the request has no trace rows', async () => {
