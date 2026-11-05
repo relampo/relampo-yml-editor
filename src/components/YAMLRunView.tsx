@@ -21,6 +21,7 @@ import {
 import type { YAMLNode } from '../types/yaml';
 import { BlockedByIssuesNotice } from './DocumentIssues';
 import { useLanguage } from '../contexts/LanguageContext';
+import { localizeYAMLSemanticError } from '../utils/yamlSemanticValidation';
 import {
   loadRunReportUrl,
   hasMultipleRunScenarios,
@@ -106,8 +107,8 @@ function formatDurationNs(nanoseconds: number): string {
   return `${minutes}m ${seconds.toString().padStart(2, '0')}s`;
 }
 
-function formatSummaryRate(value: number | null | undefined): string {
-  return value == null || !Number.isFinite(value) ? 'Unavailable' : formatRps(value);
+function formatSummaryRate(value: number | null | undefined, unavailable: string): string {
+  return value == null || !Number.isFinite(value) ? unavailable : formatRps(value);
 }
 
 function summaryConfiguredVUs(summary: RunSummary): number {
@@ -125,12 +126,13 @@ function maxNodeMeasurement(summary: RunSummary, field: keyof RunNodeMeasurement
   return peak;
 }
 
-const STATUS_LABELS: Record<RunStatus, string> = {
-  running: 'Running',
-  completed: 'Completed',
-  stopped: 'Stopped',
-  errored: 'Failed',
-};
+function runStatusLabel(status: RunStatus, t: (key: string) => string): string {
+  return t(`yamlEditor.runDebug.run.status.${status}`);
+}
+
+function isRunStatus(value: unknown): value is RunStatus {
+  return value === 'running' || value === 'completed' || value === 'stopped' || value === 'errored';
+}
 
 function statusTone(status: RunStatus): string {
   switch (status) {
@@ -176,8 +178,8 @@ type LoadRunAction =
   | { type: 'state_changed'; status: RunStatus }
   | { type: 'metrics_received'; snapshot: RunMetricsSnapshot }
   | { type: 'log_received'; lines: RunLogLine[] }
-  | { type: 'run_done'; status: RunStatus; summary: RunSummary | null; error: string | null }
-  | { type: 'connection_error'; quiet: boolean }
+  | { type: 'run_done'; status: RunStatus; summary: RunSummary | null; error: string | null; fallbackError: string }
+  | { type: 'connection_error'; quiet: boolean; message: string }
   | { type: 'stop_requested' };
 
 function loadRunReducer(state: LoadRunState, action: LoadRunAction): LoadRunState {
@@ -233,20 +235,18 @@ function loadRunReducer(state: LoadRunState, action: LoadRunAction): LoadRunStat
         isStopping: false,
         runStatus: action.status,
         summary: action.summary,
-        runError: action.status === 'errored' ? (action.error ?? 'Load run failed.') : null,
+        runError: action.status === 'errored' ? (action.error ?? action.fallbackError) : null,
       };
     case 'connection_error':
       return action.quiet
         ? { ...state, isRunning: false, isStopping: false, snapshots: [], logs: [], runStatus: null }
-        : { ...state, isRunning: false, isStopping: false, runError: 'Lost connection to the studio server.' };
+        : { ...state, isRunning: false, isStopping: false, runError: action.message };
     case 'stop_requested':
       return { ...state, isStopping: true };
     default:
       return state;
   }
 }
-
-const MULTI_BACKEND_MESSAGE = 'This Studio backend does not support multiple scenarios. Update Relampo to run this script.';
 
 interface YAMLLoadRunSessionProps {
   tree: YAMLNode | null;
@@ -271,6 +271,7 @@ export function YAMLLoadRunSession({
   multiScenarioRunEnabled = false,
   componentCapabilities,
 }: YAMLLoadRunSessionProps) {
+  const { t, language } = useLanguage();
   const [runState, dispatch] = useReducer(loadRunReducer, initialLoadRunState);
   const { snapshots, isRunning, isStopping, runError, runStatus, summary, logs } = runState;
 
@@ -296,7 +297,8 @@ export function YAMLLoadRunSession({
     const duration = parseTimeToSeconds(String(plannedLoadNode.data?.duration ?? '').trim());
     return duration > 0 && hasIterationBudgetController(tree);
   }, [tree, plannedLoadNode]);
-  const componentError = componentCapabilityError(yamlCode, componentCapabilities);
+  const rawComponentError = componentCapabilityError(yamlCode, componentCapabilities);
+  const componentError = rawComponentError && localizeYAMLSemanticError(rawComponentError, language);
   const documentErrorCount = validationErrors.length;
   validationErrors = componentError ? [...validationErrors, componentError] : validationErrors;
   const hasValidationErrors = validationErrors.length > 0;
@@ -325,7 +327,13 @@ export function YAMLLoadRunSession({
         dispatch({ type: 'log_received', lines });
       },
       onDone: done => {
-        dispatch({ type: 'run_done', status: done.status, summary: done.summary, error: done.error });
+        dispatch({
+          type: 'run_done',
+          status: done.status,
+          summary: done.summary,
+          error: done.error,
+          fallbackError: t('yamlEditor.runDebug.run.runFailed'),
+        });
       },
       onConnectionError: () => {
         if (quiet) {
@@ -333,10 +341,10 @@ export function YAMLLoadRunSession({
           storedRunRef.current = null;
           activeRunIdRef.current = null;
         }
-        dispatch({ type: 'connection_error', quiet });
+        dispatch({ type: 'connection_error', quiet, message: t('yamlEditor.runDebug.connectionLost') });
       },
     });
-  }, []);
+  }, [t]);
 
   useEffect(() => () => stopStreamRef.current?.(), []);
 
@@ -378,7 +386,7 @@ export function YAMLLoadRunSession({
     }
     if (!scriptAtStart.trim()) return;
     if (!multiScenarioRunEnabled && hasMultipleRunScenarios(scriptAtStart)) {
-      dispatch({ type: 'flush_failed', error: MULTI_BACKEND_MESSAGE });
+      dispatch({ type: 'flush_failed', error: t('yamlEditor.runDebug.run.multiBackend') });
       return;
     }
     setResultScope('');
@@ -448,7 +456,7 @@ export function YAMLLoadRunSession({
         onStopRun={stopRun}
       />
 
-      {incompatibleMulti && <RunErrorBanner message={MULTI_BACKEND_MESSAGE} />}
+      {incompatibleMulti && <RunErrorBanner message={t('yamlEditor.runDebug.run.multiBackend')} />}
       {hasValidationErrors && (
         <BlockedByIssuesNotice
           action="run"
@@ -465,16 +473,14 @@ export function YAMLLoadRunSession({
       <div className="min-h-0 flex-1 overflow-y-auto p-4">
         {!hasRunActivity ? (
           <div className="flex h-full items-center justify-center px-8 text-center text-sm text-zinc-500">
-            {isRunning
-              ? 'Running… waiting for the first engine events.'
-              : "Press Run load test to execute the scenario's full load profile."}
+            {isRunning ? t('yamlEditor.runDebug.run.waiting') : t('yamlEditor.runDebug.run.idle')}
           </div>
         ) : (
           <div className="space-y-4">
             <MetricsCharts snapshots={summary?.history ?? snapshots} />
             {latest?.scenarios && (
-              <table aria-label="Scenario progress" className="w-full text-left text-xs text-zinc-300">
-                <thead><tr><th>Scenario</th><th>State</th><th>Executed VUs</th><th>Requests</th><th>Failures</th></tr></thead>
+              <table aria-label={t('yamlEditor.runDebug.run.scenarioProgress')} className="w-full text-left text-xs text-zinc-300">
+                <thead><tr><th>{t('yamlEditor.runDebug.run.scenario')}</th><th>{t('yamlEditor.runDebug.run.state')}</th><th>{t('yamlEditor.runDebug.run.executedVus')}</th><th>{t('yamlEditor.runDebug.run.requests')}</th><th>{t('yamlEditor.runDebug.run.failures')}</th></tr></thead>
                 <tbody>{latest.scenarios.map(scenario => <tr key={scenario.name}>
                   <td>{scenario.name}</td><td>{scenario.status}</td><td>{scenario.executed_vus}</td>
                   <td>{scenario.total_requests}</td><td>{scenario.total_failures}</td>
@@ -482,14 +488,14 @@ export function YAMLLoadRunSession({
               </table>
             )}
             {summary?.scenarios && (
-              <label className="flex gap-3 text-sm text-zinc-300">Result scope
-                <select aria-label="Result scope" className={nativeSelectClassName} value={resultScope} onChange={event => setResultScope(event.target.value)}>
-                  <option value="">Global</option>
+              <label className="flex gap-3 text-sm text-zinc-300">{t('yamlEditor.runDebug.run.resultScope')}
+                <select aria-label={t('yamlEditor.runDebug.run.resultScope')} className={nativeSelectClassName} value={resultScope} onChange={event => setResultScope(event.target.value)}>
+                  <option value="">{t('yamlEditor.runDebug.run.global')}</option>
                   {summary.scenarios.map(scenario => <option key={scenario.name} value={scenario.name}>{scenario.name}</option>)}
                 </select>
               </label>
             )}
-            {selectedResult && <p className="text-sm text-zinc-300">{selectedResult.name}: {selectedResult.outcome}. Evidence: {selectedResult.complete ? 'Complete' : 'Partial'}.{selectedResult.error && ` ${selectedResult.error}`}</p>}
+            {selectedResult && <p className="text-sm text-zinc-300">{t('yamlEditor.runDebug.run.scenarioOutcome').replace('{name}', selectedResult.name).replace('{outcome}', selectedResult.outcome).replace('{evidence}', selectedResult.complete ? t('yamlEditor.runDebug.run.evidenceComplete') : t('yamlEditor.runDebug.run.evidencePartial'))}{selectedResult.error && ` ${selectedResult.error}`}</p>}
 
             {!isMultiScenario && plannedLoadNode && plannedLoadType !== 'intent' && plannedLoadType !== 'segments' && (
               <PlannedLoadProfilePanel
@@ -553,17 +559,18 @@ function RunToolbar({
   onStartRun: () => void;
   onStopRun: () => void;
 }) {
+  const { t } = useLanguage();
   return (
     <div className="border-b border-white/5 px-5 py-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">Load test session</p>
-          <h2 className="mt-1 text-base font-semibold text-zinc-100">{multiScenario ? 'Run all scenarios' : "Run the scenario's full load profile"}</h2>
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">{t('yamlEditor.runDebug.run.session')}</p>
+          <h2 className="mt-1 text-base font-semibold text-zinc-100">{multiScenario ? t('yamlEditor.runDebug.run.titleAll') : t('yamlEditor.runDebug.run.titleSingle')}</h2>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {runStatus && (
             <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${statusTone(runStatus)}`}>
-              {isStopping ? 'Stopping…' : STATUS_LABELS[runStatus]}
+              {isStopping ? t('yamlEditor.runDebug.run.stopping') : runStatusLabel(runStatus, t)}
             </span>
           )}
           <button
@@ -573,7 +580,7 @@ function RunToolbar({
             className="inline-flex h-9 items-center gap-2 rounded border border-yellow-400/40 bg-yellow-400 px-3 text-sm font-semibold text-black transition-colors hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Play className="h-4 w-4" />
-            Run load test
+            {t('yamlEditor.runDebug.run.runButton')}
           </button>
           <button
             type="button"
@@ -582,7 +589,7 @@ function RunToolbar({
             className="inline-flex h-9 items-center gap-2 rounded border border-white/10 bg-white/3 px-3 text-sm text-zinc-300 transition-colors hover:bg-white/6 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <Square className="h-4 w-4" />
-            Stop
+            {t('yamlEditor.runDebug.stop')}
           </button>
         </div>
       </div>
@@ -591,12 +598,13 @@ function RunToolbar({
 }
 
 function RunErrorBanner({ message }: { message: string }) {
+  const { t } = useLanguage();
   return (
     <div className="border-b border-red-400/20 bg-red-500/10 px-5 py-3">
       <div className="flex items-start gap-3">
         <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-300" />
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-red-200">Load run error</p>
+          <p className="text-sm font-semibold text-red-200">{t('yamlEditor.runDebug.run.errorTitle')}</p>
           <p className="mt-1 wrap-break-word font-mono text-xs text-red-100/90">{message}</p>
         </div>
       </div>
@@ -606,37 +614,39 @@ function RunErrorBanner({ message }: { message: string }) {
 
 // The six live stat cards (req/s, p95, avg, error rate, VUs, requests).
 function StatsRow({ latest, errorRate, noObservations = false }: { latest: RunMetricsSnapshot | null; errorRate: string; noObservations?: boolean }) {
+  const { t } = useLanguage();
+  const unavailable = t('yamlEditor.runDebug.unavailable');
   return (
     <div className="grid grid-cols-2 border-b border-white/5 bg-[#0a0a0a] sm:grid-cols-3 lg:grid-cols-6">
       <StatCell
         icon={<Zap className="h-4 w-4 text-yellow-300" />}
-        label="Req/s"
+        label={t('yamlEditor.runDebug.run.stats.reqPerSec')}
         value={latest ? formatRps(latest.rps) : '—'}
       />
       <StatCell
         icon={<Gauge className="h-4 w-4 text-blue-300" />}
-        label="p95"
-        value={noObservations ? 'Unavailable' : latest ? formatMs(latest.p95_latency) : '—'}
+        label={t('yamlEditor.runDebug.run.stats.p95')}
+        value={noObservations ? unavailable : latest ? formatMs(latest.p95_latency) : '—'}
       />
       <StatCell
         icon={<Activity className="h-4 w-4 text-emerald-300" />}
-        label="Avg"
-        value={noObservations ? 'Unavailable' : latest ? formatMs(latest.avg_latency) : '—'}
+        label={t('yamlEditor.runDebug.run.stats.avg')}
+        value={noObservations ? unavailable : latest ? formatMs(latest.avg_latency) : '—'}
       />
       <StatCell
         icon={<OctagonX className="h-4 w-4 text-red-300" />}
-        label="Error rate"
+        label={t('yamlEditor.runDebug.run.stats.errorRate')}
         value={errorRate}
         tone={latest && latest.total_failures > 0 ? 'text-red-300' : 'text-zinc-100'}
       />
       <StatCell
         icon={<Users className="h-4 w-4 text-zinc-300" />}
-        label="VUs"
+        label={t('yamlEditor.runDebug.run.stats.vus')}
         value={latest ? String(latest.active_users) : '—'}
       />
       <StatCell
         icon={<CheckCircle2 className="h-4 w-4 text-zinc-300" />}
-        label="Requests"
+        label={t('yamlEditor.runDebug.run.stats.requests')}
         value={latest ? latest.total_requests.toLocaleString() : '—'}
       />
     </div>
@@ -645,24 +655,25 @@ function StatsRow({ latest, errorRate, noObservations = false }: { latest: RunMe
 
 // Throughput / p95 latency / active VUs sparkline row.
 function MetricsCharts({ snapshots }: { snapshots: Pick<RunMetricsSnapshot, 'rps' | 'p95_latency' | 'active_users'>[] }) {
+  const { t } = useLanguage();
   return (
     <div className="grid gap-3 lg:grid-cols-3">
       <Sparkline
-        title="Throughput (interval)"
+        title={t('yamlEditor.runDebug.run.charts.throughput')}
         unit="req/s"
         color="#fde047"
         values={snapshots.map(s => s.rps)}
         format={formatRps}
       />
       <Sparkline
-        title="Latency p95"
+        title={t('yamlEditor.runDebug.run.charts.latencyP95')}
         unit="ms"
         color="#60a5fa"
         values={snapshots.map(s => s.p95_latency)}
         format={v => (v < 10 ? v.toFixed(1) : String(Math.round(v)))}
       />
       <Sparkline
-        title="Active VUs"
+        title={t('yamlEditor.runDebug.run.charts.activeVus')}
         unit="VUs"
         color="#a3a3a3"
         values={snapshots.map(s => s.active_users)}
@@ -687,24 +698,21 @@ function PlannedLoadProfilePanel({
   isRunning: boolean;
   elapsedMs: number;
 }) {
+  const { t } = useLanguage();
   return (
     <div className="border border-white/10 bg-[#111111] p-4">
       <div className="mb-3 flex items-center justify-between">
-        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">Planned load profile</p>
+        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">{t('yamlEditor.runDebug.run.planned.title')}</p>
         {scenarioCount > 1 && (
           <span className="rounded border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 text-[10px] font-semibold text-amber-300">
-            {scenarioCount} scenarios — showing the first
+            {t('yamlEditor.runDebug.run.planned.multiScenario').replace('{count}', String(scenarioCount))}
           </span>
         )}
       </div>
       {iterationBudgetCapsDuration && (
         <div className="mb-3 flex items-start gap-2 rounded border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-[11px] text-amber-200">
           <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          <span>
-            This scenario uses a Balanced Controller in Iterations mode. The run stops when the first configured limit —
-            Duration or Iterations — is reached, so the run and its live metrics may stop before the duration shown
-            below elapses.
-          </span>
+          <span>{t('yamlEditor.runDebug.run.planned.iterationNotice')}</span>
         </div>
       )}
       <LoadVisualization
@@ -1363,6 +1371,7 @@ function logLineText(line: RunLogLine): string {
 // A live-tailing log feed of engine events (one panel, capped client-side and
 // server-side). Auto-scrolls to the newest line via the parent's scroll ref.
 function LiveLogPanel({ logs, scrollRef }: { logs: RunLogLine[]; scrollRef: RefObject<HTMLDivElement | null> }) {
+  const { t } = useLanguage();
   const [collapsed, setCollapsed] = useState(false);
   const firstSequence = logs[0]?.seq;
   const lastSequence = logs[logs.length - 1]?.seq;
@@ -1383,10 +1392,12 @@ function LiveLogPanel({ logs, scrollRef }: { logs: RunLogLine[]; scrollRef: RefO
           <ChevronDown className="h-4 w-4 text-zinc-500" />
         )}
         <Terminal className="h-4 w-4 text-emerald-300" />
-        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">Live logs</p>
+        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">{t('yamlEditor.runDebug.run.logs.title')}</p>
         <span className="ml-auto font-mono text-[10px] text-zinc-600">
-          {logs.length.toLocaleString()} {hasOmittedPrefix ? 'latest ' : ''}
-          {logs.length === 1 ? 'line' : 'lines'}
+          {logs.length.toLocaleString()}{' '}
+          {t(
+            `yamlEditor.runDebug.run.logs.${hasOmittedPrefix ? 'latestLine' : 'line'}${logs.length === 1 ? 'One' : 'Many'}`,
+          )}
         </span>
       </button>
       {/* The notice sits outside the scrolling body: that body is auto-scrolled
@@ -1394,7 +1405,9 @@ function LiveLogPanel({ logs, scrollRef }: { logs: RunLogLine[]; scrollRef: RefO
           view exactly when there is something to say. */}
       {!collapsed && hasOmittedPrefix && lastSequence != null && (
         <p className="border-b border-amber-400/20 px-3 py-2 font-mono text-xs text-amber-200/80">
-          Showing log lines {firstSequence + 1}–{lastSequence + 1}; earlier lines are not displayed.
+          {t('yamlEditor.runDebug.run.logs.omitted')
+            .replace('{from}', String(firstSequence + 1))
+            .replace('{to}', String(lastSequence + 1))}
         </p>
       )}
       {!collapsed && (
@@ -1403,7 +1416,7 @@ function LiveLogPanel({ logs, scrollRef }: { logs: RunLogLine[]; scrollRef: RefO
           className="max-h-64 overflow-y-auto p-3 font-mono text-xs leading-5"
         >
           {logs.length === 0 ? (
-            <p className="text-zinc-600">Waiting for engine events…</p>
+            <p className="text-zinc-600">{t('yamlEditor.runDebug.run.logs.waiting')}</p>
           ) : (
             logs.map(line => (
               <div
@@ -1432,6 +1445,8 @@ function RunSummaryPanel({
   reportUrl?: string;
   scenarioResult?: boolean;
 }) {
+  const { t } = useLanguage();
+  const unavailable = t('yamlEditor.runDebug.unavailable');
   const requests = summary.requests ?? [];
   const durationSeconds = summary.duration / 1e9;
   const completed = summary.overview?.completed_transactions ?? (summary.transactions?.every(tx => tx.completed != null) ? summary.transactions.reduce((total, tx) => total + (tx.completed ?? 0), 0) : undefined);
@@ -1441,31 +1456,31 @@ function RunSummaryPanel({
   const configuredVUs = Math.max(summaryConfiguredVUs(summary), executedVUs);
   const measured = (field: keyof RunNodeMeasurements, unit: string, digits = 0): string => {
     const peak = maxNodeMeasurement(summary, field);
-    if (!peak) return 'Unavailable';
+    if (!peak) return unavailable;
     const node = (summary.node_resources?.length ?? 0) > 1 ? ` (${peak.node})` : '';
     return `${peak.value.toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits })}${unit}${node}`;
   };
   const failurePercent = summary.overview ? summary.overview.failure_percent : summary.total_requests > 0 ? summary.total_failures * 100 / summary.total_requests : null;
   const metrics = [
-    { label: 'Status', value: summary.status === 'failed' ? 'Failed' : STATUS_LABELS[(summary.status || status) as RunStatus] ?? 'Unavailable' },
-    ...(summary.complete === undefined ? [] : [{ label: 'Evidence', value: summary.complete ? 'Complete' : 'Partial' }]),
+    { label: t('yamlEditor.runDebug.run.summary.status'), value: summary.status === 'failed' ? runStatusLabel('errored', t) : isRunStatus(summary.status || status) ? runStatusLabel((summary.status || status) as RunStatus, t) : unavailable },
+    ...(summary.complete === undefined ? [] : [{ label: t('yamlEditor.runDebug.run.summary.evidence'), value: summary.complete ? t('yamlEditor.runDebug.run.evidenceComplete') : t('yamlEditor.runDebug.run.evidencePartial') }]),
     ...(summary.scenarios ? [
-      { label: 'Total elapsed', value: formatDurationNs(summary.total_elapsed ?? summary.duration) },
-      { label: 'Workload duration', value: formatDurationNs(summary.workload_duration ?? summary.duration) },
+      { label: t('yamlEditor.runDebug.run.summary.totalElapsed'), value: formatDurationNs(summary.total_elapsed ?? summary.duration) },
+      { label: t('yamlEditor.runDebug.run.summary.workloadDuration'), value: formatDurationNs(summary.workload_duration ?? summary.duration) },
     ] : []),
     ...(scenarioResult || summary.request_latency || summary.scenarios || summary.requests.some(request => request.scenario_name) ? [
-      { label: 'Request p95', value: summary.request_latency ? formatMs(summary.request_latency.p95_ms) : 'Unavailable' },
-      { label: 'Transaction p95', value: summary.transaction_latency ? formatMs(summary.transaction_latency.p95_ms) : 'Unavailable' },
+      { label: t('yamlEditor.runDebug.run.summary.requestP95'), value: summary.request_latency ? formatMs(summary.request_latency.p95_ms) : unavailable },
+      { label: t('yamlEditor.runDebug.run.summary.transactionP95'), value: summary.transaction_latency ? formatMs(summary.transaction_latency.p95_ms) : unavailable },
     ] : []),
-    { label: 'Duration', value: formatDurationNs(summary.duration) },
-    { label: 'VUs (exec/conf)', value: `${executedVUs}/${configuredVUs}` },
-    { label: 'Total Requests', value: summary.total_requests.toLocaleString() },
-    { label: 'Failed Requests', value: `${summary.total_failures.toLocaleString()} (${failurePercent == null ? 'Unavailable' : `${failurePercent.toFixed(2)}%`})`, tone: summary.total_failures > 0 ? 'text-red-300' : undefined },
-    { label: 'RPS', value: formatSummaryRate(summary.overview ? summary.overview.rps : durationSeconds > 0 ? summary.total_requests / durationSeconds : null) },
-    { label: 'TPS', value: tpsNotApplicable ? 'Not applicable' : formatSummaryRate(tps) },
-    { label: 'RSS Peak', value: measured('rss_peak_mib', ' MiB') },
-    { label: 'CPU Peak', value: measured('cpu_percent_peak', '%', 1) },
-    { label: 'Goroutines Peak', value: measured('goroutines_peak', '') },
+    { label: t('yamlEditor.runDebug.run.summary.duration'), value: formatDurationNs(summary.duration) },
+    { label: t('yamlEditor.runDebug.run.summary.vusExecConf'), value: `${executedVUs}/${configuredVUs}` },
+    { label: t('yamlEditor.runDebug.run.summary.totalRequests'), value: summary.total_requests.toLocaleString() },
+    { label: t('yamlEditor.runDebug.run.summary.failedRequests'), value: `${summary.total_failures.toLocaleString()} (${failurePercent == null ? unavailable : `${failurePercent.toFixed(2)}%`})`, tone: summary.total_failures > 0 ? 'text-red-300' : undefined },
+    { label: t('yamlEditor.runDebug.run.summary.rps'), value: formatSummaryRate(summary.overview ? summary.overview.rps : durationSeconds > 0 ? summary.total_requests / durationSeconds : null, unavailable) },
+    { label: t('yamlEditor.runDebug.run.summary.tps'), value: tpsNotApplicable ? t('yamlEditor.runDebug.run.summary.notApplicable') : formatSummaryRate(tps, unavailable) },
+    { label: t('yamlEditor.runDebug.run.summary.rssPeak'), value: measured('rss_peak_mib', ' MiB') },
+    { label: t('yamlEditor.runDebug.run.summary.cpuPeak'), value: measured('cpu_percent_peak', '%', 1) },
+    { label: t('yamlEditor.runDebug.run.summary.goroutinesPeak'), value: measured('goroutines_peak', '') },
   ];
   return (
     <div className="border border-white/10 bg-[#111111]">
@@ -1480,7 +1495,11 @@ function RunSummaryPanel({
           <CheckCircle2 className="h-4 w-4 text-emerald-300" />
         )}
         <p className="text-sm font-semibold text-zinc-100">
-          {status === 'stopped' && summary.complete === undefined && !scenarioResult ? 'Run stopped — partial summary' : summary.partial ? 'Run summary — partial' : 'Run summary'}
+          {status === 'stopped' && summary.complete === undefined && !scenarioResult
+            ? t('yamlEditor.runDebug.run.summary.titleStopped')
+            : summary.partial
+              ? t('yamlEditor.runDebug.run.summary.titlePartial')
+              : t('yamlEditor.runDebug.run.summary.title')}
         </p>
         {reportUrl && (
           <a
@@ -1490,7 +1509,7 @@ function RunSummaryPanel({
             className="ml-auto inline-flex items-center gap-1.5 rounded border border-yellow-400/40 bg-yellow-400/10 px-2.5 py-1 text-xs font-semibold text-yellow-300 transition-colors hover:bg-yellow-400/20"
           >
             <ExternalLink className="h-3.5 w-3.5" />
-            Open full report
+            {t('yamlEditor.runDebug.run.summary.openReport')}
           </a>
         )}
       </div>
@@ -1511,10 +1530,10 @@ function RunSummaryPanel({
           <table className="w-full min-w-150 text-left text-xs">
             <thead>
               <tr className="border-b border-white/5 text-[10px] font-bold uppercase tracking-[0.12em] text-zinc-500">
-                <th className="px-4 py-2">Request</th>
-                <th className="px-3 py-2 text-right">Count</th>
-                <th className="px-3 py-2 text-right">Fail</th>
-                <th className="px-3 py-2 text-right">Avg</th>
+                <th className="px-4 py-2">{t('yamlEditor.runDebug.run.summary.request')}</th>
+                <th className="px-3 py-2 text-right">{t('yamlEditor.runDebug.run.summary.count')}</th>
+                <th className="px-3 py-2 text-right">{t('yamlEditor.runDebug.run.summary.fail')}</th>
+                <th className="px-3 py-2 text-right">{t('yamlEditor.runDebug.run.summary.avg')}</th>
                 <th className="px-3 py-2 text-right">p50</th>
                 <th className="px-3 py-2 text-right">p90</th>
                 <th className="px-3 py-2 text-right">p95</th>
@@ -1548,7 +1567,7 @@ function RunSummaryPanel({
                     {request.failures.toLocaleString()}
                   </td>
                   <td className="px-3 py-2 text-right font-mono text-zinc-300">{formatMs(request.avg_ms)}</td>
-                  <td className="px-3 py-2 text-right font-mono text-zinc-300">{request.p50_ms == null ? 'Unavailable' : formatMs(request.p50_ms)}</td>
+                  <td className="px-3 py-2 text-right font-mono text-zinc-300">{request.p50_ms == null ? unavailable : formatMs(request.p50_ms)}</td>
                   <td className="px-3 py-2 text-right font-mono text-zinc-300">{formatMs(request.p90_ms)}</td>
                   <td className="px-3 py-2 text-right font-mono text-zinc-300">{formatMs(request.p95_ms)}</td>
                   <td className="px-3 py-2 text-right font-mono text-zinc-300">

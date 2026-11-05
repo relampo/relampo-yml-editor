@@ -512,6 +512,8 @@ export type VariableValueContext = {
   responseBody?: string;
   responseHeaders?: Record<string, string>;
   statusLine?: string;
+  // Text shown for a variable with no captured value (defaults to English).
+  missingValueLabel?: string;
 };
 
 // Classifies every variable a request touches by role. A correlation variable
@@ -729,6 +731,7 @@ export function variableRowsForRequestNode(
   const roles = requestVariableRoles(node, variables, context);
   const extracted = responseExtractorValues(node, context);
   const sent = resolvedRequestUrlVariables(node, context);
+  const missingValue = context.missingValueLabel ?? MISSING_VARIABLE_VALUE;
   return [...roles].map<[string, string]>(([name, variableRoles]) => {
     const declaredValue = context.declaredBuiltinValues?.[name];
     const capturedValue = variables[name];
@@ -741,10 +744,10 @@ export function variableRowsForRequestNode(
           ? sent.get(name)
           : Object.prototype.hasOwnProperty.call(variables, name)
             ? variables[name]
-            : MISSING_VARIABLE_VALUE;
+            : missingValue;
     return [
       variableRowLabel(name, variableRoles),
-      resolvedValue === undefined ? MISSING_VARIABLE_VALUE : displayVariableValue(resolvedValue),
+      resolvedValue === undefined ? missingValue : displayVariableValue(resolvedValue),
     ];
   });
 }

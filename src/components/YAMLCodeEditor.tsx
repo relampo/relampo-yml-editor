@@ -1,6 +1,7 @@
 import Editor, { Monaco } from '@monaco-editor/react';
 import { ChevronDown, ChevronUp, Search, X } from 'lucide-react';
 import type { editor as MonacoEditorNS, languages as MonacoLanguagesNS } from 'monaco-editor';
+import { useLanguage } from '../contexts/LanguageContext';
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps } from 'react';
 
 interface YAMLCodeEditorProps {
@@ -115,6 +116,7 @@ function SearchToolbar({
   onNext,
   onClear,
 }: SearchToolbarProps) {
+  const { t } = useLanguage();
   return (
     <div className="shrink-0 px-3 pt-3 pb-2 bg-[#0a0a0a]">
       <div
@@ -130,8 +132,8 @@ function SearchToolbar({
           <Search className="w-4 h-4 text-zinc-500 shrink-0" />
           <input
             type="text"
-            placeholder="Search in YAML..."
-            aria-label="Search in YAML"
+            placeholder={t('yamlEditor.requestDetails.searchInYaml')}
+            aria-label={t('yamlEditor.requestDetails.searchInYamlLabel')}
             value={searchQuery}
             onChange={e => onSearchQueryChange(e.target.value)}
             className="flex-1 bg-transparent border-none text-sm text-zinc-300 placeholder-zinc-500 outline-none font-sans selection:bg-blue-500/40 selection:text-blue-100"
@@ -147,7 +149,7 @@ function SearchToolbar({
             onClick={onPrev}
             disabled={totalMatches === 0}
             className="p-1.5 bg-[#0a0a0a] border border-white/10 rounded text-zinc-500 hover:border-yellow-400 hover:text-yellow-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
-            title="Previous"
+            title={t('yamlEditor.requestDetails.previous')}
           >
             <ChevronUp className="w-4 h-4" />
           </button>
@@ -156,7 +158,7 @@ function SearchToolbar({
             onClick={onNext}
             disabled={totalMatches === 0}
             className="p-1.5 bg-[#0a0a0a] border border-white/10 rounded text-zinc-500 hover:border-yellow-400 hover:text-yellow-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
-            title="Next"
+            title={t('yamlEditor.requestDetails.next')}
           >
             <ChevronDown className="w-4 h-4" />
           </button>
@@ -164,7 +166,7 @@ function SearchToolbar({
             type="button"
             onClick={onClear}
             className="p-1.5 bg-[#0a0a0a] border border-white/10 rounded text-zinc-500 hover:border-yellow-400 hover:text-yellow-400 transition-colors flex items-center justify-center"
-            title="Clear search"
+            title={t('yamlEditor.requestDetails.clearSearch')}
           >
             <X className="w-4 h-4" />
           </button>

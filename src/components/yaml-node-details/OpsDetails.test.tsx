@@ -1,8 +1,11 @@
 import { useState } from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render as rtlRender, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import type { YAMLNode } from '../../types/yaml';
+import { LanguageProvider } from '../../contexts/LanguageContext';
 import { CookiesDetails } from './OpsDetails';
+
+const render = (ui: React.ReactElement) => rtlRender(ui, { wrapper: LanguageProvider });
 
 function ControlledCookies({ node }: { node: YAMLNode }) {
   const [currentNode, setCurrentNode] = useState(node);

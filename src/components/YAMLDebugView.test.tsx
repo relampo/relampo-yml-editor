@@ -1,10 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render as rtlRender, screen, waitFor, within } from '@testing-library/react';
+import { LanguageProvider } from '../contexts/LanguageContext';
 import { collectDebugEventTargets, collectRequests, matchDebugEventTarget } from './debugRequests';
 import { DebugSection } from './debugSection';
 import { YAMLDebugSession } from './YAMLDebugView';
 import type { YAMLNode } from '../types/yaml';
 import type { EngineEvent } from '../utils/debugApi';
+
+const render = (ui: Parameters<typeof rtlRender>[0], options?: Parameters<typeof rtlRender>[1]) =>
+  rtlRender(ui, { wrapper: LanguageProvider, ...options });
 
 const debugApiMock = vi.hoisted(() => {
   const handlers: Array<{

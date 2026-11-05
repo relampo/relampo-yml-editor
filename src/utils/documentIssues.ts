@@ -130,11 +130,15 @@ export const DESCENDANT_ISSUE_LABEL: Record<IssueSeverity, string> = {
  * Text for the tree row's `aria-description`. The badge and dot are
  * hidden from assistive technology, so the row name stays the node name.
  */
-export function describeIssueMarker(marker: IssueMarker | undefined, collapsed: boolean): string {
+export function describeIssueMarker(
+  marker: IssueMarker | undefined,
+  collapsed: boolean,
+  descendantLabels: Record<IssueSeverity, string> = DESCENDANT_ISSUE_LABEL,
+): string {
   if (!marker) return '';
   return [
     ...marker.issues.map(issue => issue.message),
-    ...(collapsed && marker.descendantSeverity ? [DESCENDANT_ISSUE_LABEL[marker.descendantSeverity]] : []),
+    ...(collapsed && marker.descendantSeverity ? [descendantLabels[marker.descendantSeverity]] : []),
   ]
     .map(text => (/[.!?]$/.test(text) ? text : `${text}.`))
     .join(' ');

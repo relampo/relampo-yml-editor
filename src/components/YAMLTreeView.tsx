@@ -266,7 +266,7 @@ export function YAMLTreeView({
           hasActionableSelection={effectiveSelectedIds.length > 0}
           allSelectedDisabled={allSelectedDisabled}
           canCreateTransaction={Boolean(transactionWrapValidation?.valid)}
-          validationMessage={getTransactionValidationMessage(transactionWrapValidation?.reason)}
+          validationMessage={getTransactionValidationMessage(transactionWrapValidation?.reason, t)}
           onCreateTransaction={handleCreateTransaction}
           onDuplicate={handleBulkDuplicate}
           onToggleEnabled={handleBulkToggleEnabled}
@@ -278,7 +278,7 @@ export function YAMLTreeView({
       <div
         ref={treeContainerRef}
         role="tree"
-        aria-label="YAML tree"
+        aria-label={t('yamlEditor.shell.tree.ariaLabel')}
         className="flex-1 overflow-y-auto px-3 pb-3 outline-none"
         tabIndex={0}
         onKeyDown={handleTreeKeyDown}
@@ -304,7 +304,7 @@ export function YAMLTreeView({
           />
         ) : (
           <div className="flex items-center justify-center h-32">
-            <p className="text-sm text-zinc-500">No YAML loaded</p>
+            <p className="text-sm text-zinc-500">{t('yamlEditor.shell.tree.noYaml')}</p>
           </div>
         )}
       </div>

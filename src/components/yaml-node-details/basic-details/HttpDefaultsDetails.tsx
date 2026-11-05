@@ -2,6 +2,7 @@ import { Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import type { StringMap } from '../../../types/shared';
 import type { AuthConfig, HttpDefaults } from '../../../types/yaml';
+import { useLanguage } from '../../../contexts/LanguageContext';
 import { EditableList } from '../../EditableList';
 import { Input } from '../../ui/input';
 import { AuthConfigEditor } from '../SharedFields';
@@ -19,6 +20,7 @@ export function HttpDefaultsDetails({ node, onNodeUpdate, hosts = [], onRenameHo
   onRenameHost?: (oldHost: string, newHost: string) => void;
   onRemoveHost?: (host: string) => void;
 }) {
+  const { t } = useLanguage();
   const { data, updateData } = createNodeDataUpdater(node, onNodeUpdate);
   const defaults = data as Partial<HttpDefaults>;
   const headers = (defaults.headers || {}) as StringMap;
@@ -91,13 +93,13 @@ export function HttpDefaultsDetails({ node, onNodeUpdate, hosts = [], onRenameHo
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">Configuration</p>
+        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">{t('yamlEditor.common.configuration')}</p>
         <EditableList
-          title="Fields"
+          title={t('yamlEditor.nodeDetails.http.fields')}
           items={allFields}
           onUpdate={handleMainFieldsUpdate}
           keyPlaceholder="field_name"
-          valuePlaceholder="value"
+          valuePlaceholder={t('yamlEditor.nodeDetails.ph.value')}
           enableCheckboxes={false}
           enableBulkActions={false}
           variant="minimal"
@@ -131,8 +133,8 @@ export function HttpDefaultsDetails({ node, onNodeUpdate, hosts = [], onRenameHo
                       <button
                         type="button"
                         onClick={() => onRemoveHost(originalHost)}
-                        aria-label={`Remove ${key}`}
-                        title={`Remove ${key}`}
+                        aria-label={t('yamlEditor.nodeDetails.http.remove').replace('{name}', key)}
+                        title={t('yamlEditor.nodeDetails.http.remove').replace('{name}', key)}
                         className="p-2 h-9 text-zinc-500 hover:text-red-400 bg-white/5 hover:bg-white/10 rounded shrink-0 transition-colors"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -149,11 +151,11 @@ export function HttpDefaultsDetails({ node, onNodeUpdate, hosts = [], onRenameHo
 
       <div>
         <EditableList
-          title="HTTP Headers"
+          title={t('yamlEditor.nodeDetails.basic.httpHeaders')}
           items={headers}
           onUpdate={handleHeadersUpdate}
           keyPlaceholder="Header-Name"
-          valuePlaceholder="value"
+          valuePlaceholder={t('yamlEditor.nodeDetails.ph.value')}
           enableCheckboxes={false}
           enableBulkActions={false}
           variant="minimal"
@@ -172,6 +174,7 @@ export function HttpDefaultsDetails({ node, onNodeUpdate, hosts = [], onRenameHo
 }
 
 function SecondaryHostField({ value, onCommit }: { value: string; onCommit: (value: string) => void }) {
+  const { t } = useLanguage();
   const [localValue, setLocalValue] = useState(value);
   const [trackedValue, setTrackedValue] = useState(value);
   if (value !== trackedValue) {
@@ -182,7 +185,7 @@ function SecondaryHostField({ value, onCommit }: { value: string; onCommit: (val
   return (
     <div className="w-0 flex-1 min-w-0 overflow-x-auto scrollbar-none">
       <Input
-        aria-label="Secondary host"
+        aria-label={t('yamlEditor.nodeDetails.http.secondaryHost')}
         value={localValue}
         onChange={event => setLocalValue(event.target.value)}
         onBlur={() => {

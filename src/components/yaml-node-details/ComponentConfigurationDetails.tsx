@@ -60,7 +60,6 @@ function ConfigurationField({
   effective,
   available,
   onChange,
-  spanish,
 }: {
   field: string;
   protocol: string;
@@ -68,8 +67,8 @@ function ConfigurationField({
   effective?: EffectiveComponentValue;
   available: boolean;
   onChange: (value: unknown) => void;
-  spanish: boolean;
 }) {
+  const { t } = useLanguage();
   const [buffer, setBuffer] = useState(() => JSON.stringify(value, null, 2) || '');
   const [tracked, setTracked] = useState(value);
   const [error, setError] = useState('');
@@ -90,7 +89,7 @@ function ConfigurationField({
       </label>
       <select
         id={`component-${label}`}
-        aria-label={`${label} mode`}
+        aria-label={t('yamlEditor.nodeDetails.cc.modeAria').replace('{label}', label)}
         className={inputClass}
         value={mode}
         disabled={!available}
@@ -104,18 +103,18 @@ function ConfigurationField({
           )
         }
       >
-        <option value="inherit">{spanish ? 'Heredar' : 'Inherit'}</option>
+        <option value="inherit">{t('yamlEditor.nodeDetails.cc.inherit')}</option>
         <option value="local">Local</option>
-        {disabledValue(field) !== undefined && <option value="disable">{spanish ? 'Desactivar' : 'Disable'}</option>}
+        {disabledValue(field) !== undefined && <option value="disable">{t('yamlEditor.common.disable')}</option>}
       </select>
       <p className="text-xs text-zinc-400">
-        {spanish ? 'Escrito' : 'Authored'}:{' '}
-        <code>{value === undefined ? (spanish ? 'ausente' : 'absent') : JSON.stringify(value)}</code>
+        {t('yamlEditor.nodeDetails.cc.authored')}:{' '}
+        <code>{value === undefined ? t('yamlEditor.nodeDetails.cc.absent') : JSON.stringify(value)}</code>
       </p>
       {mode === 'local' &&
         (typeof value === 'boolean' ? (
           <select
-            aria-label={`${label} value`}
+            aria-label={t('yamlEditor.nodeDetails.cc.valueAria').replace('{label}', label)}
             className={inputClass}
             value={String(value)}
             disabled={!available}
@@ -126,7 +125,7 @@ function ConfigurationField({
           </select>
         ) : typeof value === 'string' ? (
           <input
-            aria-label={`${label} value`}
+            aria-label={t('yamlEditor.nodeDetails.cc.valueAria').replace('{label}', label)}
             className={inputClass}
             value={value}
             disabled={!available}
@@ -134,7 +133,7 @@ function ConfigurationField({
           />
         ) : (
           <textarea
-            aria-label={`${label} value`}
+            aria-label={t('yamlEditor.nodeDetails.cc.valueAria').replace('{label}', label)}
             className={`${inputClass} font-mono`}
             rows={4}
             value={buffer}
@@ -145,7 +144,7 @@ function ConfigurationField({
                 onChange(JSON.parse(buffer));
                 setError('');
               } catch {
-                setError(spanish ? 'JSON inválido. Corrige el valor.' : 'Invalid JSON. Correct the value.');
+                setError(t('yamlEditor.nodeDetails.cc.invalidJson'));
               }
             }}
           />
@@ -159,12 +158,12 @@ function ConfigurationField({
         </p>
       )}
       <p className="text-xs text-zinc-400">
-        {spanish ? 'Efectivo' : 'Effective'}:{' '}
-        <code>{effective ? JSON.stringify(effective.value) : spanish ? 'sin configurar' : 'not configured'}</code>
+        {t('yamlEditor.nodeDetails.cc.effective')}:{' '}
+        <code>{effective ? JSON.stringify(effective.value) : t('yamlEditor.nodeDetails.cc.notConfigured')}</code>
       </p>
       {effective && (
         <p className="text-xs text-zinc-500">
-          {spanish ? 'Origen' : 'Origin'}:{' '}
+          {t('yamlEditor.nodeDetails.cc.origin')}:{' '}
           {effective.origins
             ? Object.entries(effective.origins)
                 .map(([key, origin]) => `${key}: ${origin}`)
@@ -174,7 +173,7 @@ function ConfigurationField({
       )}
       {!available && (
         <p className="text-xs text-amber-300">
-          {spanish ? 'Esta función requiere soporte del backend.' : 'This feature requires backend support.'}
+          {t('yamlEditor.nodeDetails.cc.needsBackend')}
         </p>
       )}
     </div>
@@ -182,8 +181,7 @@ function ConfigurationField({
 }
 
 export function ComponentConfigurationDetails({ tree, node, capabilities, onNodeUpdate }: Props) {
-  const { language } = useLanguage();
-  const spanish = language === 'es';
+  const { t } = useLanguage();
   const root = node.id === tree.id;
   const owner =
     node.data?.__assertionsWrapper !== true &&
@@ -236,7 +234,6 @@ export function ComponentConfigurationDetails({ tree, node, capabilities, onNode
               value={block[field]}
               effective={effective[field]}
               available={available}
-              spanish={spanish}
               onChange={value =>
                 sampler
                   ? onNodeUpdate?.(node.id, {
@@ -261,17 +258,17 @@ export function ComponentConfigurationDetails({ tree, node, capabilities, onNode
   };
   return (
     <section
-      aria-label="Component configuration"
+      aria-label={t('yamlEditor.nodeDetails.cc.title')}
       className="mt-6 space-y-4 border-t border-white/10 pt-4"
     >
       <h3 className="text-sm font-semibold text-yellow-300">
-        {spanish ? 'Configuración de componentes' : 'Component configuration'}
+        {t('yamlEditor.nodeDetails.cc.title')}
       </h3>
       {root && (
         <label className="flex items-center gap-2 text-sm text-zinc-300">
           <input
             type="checkbox"
-            aria-label="Adopt component configuration version 1"
+            aria-label={t('yamlEditor.nodeDetails.cc.adoptAria')}
             checked={adopted}
             disabled={capabilities?.version !== 1 || !capabilities.features.includes('http_defaults') || !onNodeUpdate}
             onChange={event =>
@@ -280,28 +277,22 @@ export function ComponentConfigurationDetails({ tree, node, capabilities, onNode
               })
             }
           />
-          {spanish ? 'Adoptar versión 1' : 'Adopt version 1'}
+          {t('yamlEditor.nodeDetails.cc.adopt')}
         </label>
       )}
       {root && !adopted && (
         <p className="text-xs text-amber-300">
-          {spanish
-            ? 'La versión 1 activa request.auth y valida sus ámbitos de configuración.'
-            : 'Version 1 activates request.auth and validates component scopes.'}
+          {t('yamlEditor.nodeDetails.cc.v1Info')}
         </p>
       )}
       {!adopted ? (
         <p className="text-xs text-zinc-400">
-          {spanish
-            ? 'El documento conserva el comportamiento anterior. Adopta la versión 1 desde el test.'
-            : 'This document keeps legacy behavior. Adopt version 1 from the test.'}
+          {t('yamlEditor.nodeDetails.cc.legacy')}
         </p>
       ) : (
         <>
           <p className="text-xs text-zinc-400">
-            {spanish
-              ? 'Mostrar valores heredados no cambia el YAML.'
-              : 'Displaying inherited values does not change YAML.'}
+            {t('yamlEditor.nodeDetails.cc.inheritedNote')}
           </p>
           {owner && rows('', ['data_source', 'think_time'])}
           {(owner || HTTP_TYPES.has(node.type)) && rows('http', HTTP_COMPONENT_FIELDS)}

@@ -22,7 +22,7 @@ export function EditorViewModeTabs({
   const tabs: Array<{ mode: EditorViewMode; icon: ReactNode; label: string }> = [
     { mode: 'tree', icon: <GitBranch className="w-4 h-4" />, label: language === 'es' ? 'Árbol' : 'Tree' },
     { mode: 'code', icon: <Code2 className="w-4 h-4" />, label: language === 'es' ? 'Código' : 'Code' },
-    ...(debugViewEnabled ? [{ mode: 'debug' as const, icon: <Bug className="w-4 h-4" />, label: 'Debug' }] : []),
+    ...(debugViewEnabled ? [{ mode: 'debug' as const, icon: <Bug className="w-4 h-4" />, label: language === 'es' ? 'Depuración' : 'Debug' }] : []),
     ...(runViewEnabled ? [{ mode: 'run' as const, icon: <Gauge className="w-4 h-4" />, label: language === 'es' ? 'Carga' : 'Run' }] : []),
   ];
 

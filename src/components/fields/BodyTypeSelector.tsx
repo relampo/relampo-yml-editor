@@ -2,6 +2,7 @@ import Editor from '@monaco-editor/react';
 import { AlertCircle, CheckCircle, Plus, Trash2 } from 'lucide-react';
 import type { editor as MonacoEditorNS } from 'monaco-editor';
 import { JSX, RefObject, useEffect, useMemo, useRef, useState } from 'react';
+import { useLanguage } from '../../contexts/LanguageContext';
 import type { StringMap } from '../../types/shared';
 import type { YAMLValue } from '../../types/yaml';
 import { findMatchRanges, type SearchMode } from '../debugSearch';
@@ -314,11 +315,12 @@ interface FormDataFieldsProps {
 }
 
 function FormDataFields({ items, onFieldChange, onAdd, onRemove }: FormDataFieldsProps) {
+  const { t } = useLanguage();
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-          Form Data (application/x-www-form-urlencoded)
+          {t('yamlEditor.shell.body.formTitle')}
         </span>
         <button
           type="button"
@@ -326,7 +328,7 @@ function FormDataFields({ items, onFieldChange, onAdd, onRemove }: FormDataField
           className="flex items-center gap-1 px-2 py-1 text-xs text-amber-500 hover:text-amber-400 hover:bg-amber-500/10 rounded transition-colors"
         >
           <Plus className="w-3 h-3" />
-          Add Field
+          {t('yamlEditor.shell.body.addField')}
         </button>
       </div>
       <div className="space-y-2">
@@ -339,26 +341,26 @@ function FormDataFields({ items, onFieldChange, onAdd, onRemove }: FormDataField
               type="checkbox"
               checked={item.enabled}
               onChange={e => onFieldChange(index, 'enabled', e.target.checked)}
-              aria-label={item.key ? `Enable ${item.key}` : 'Enable field'}
+              aria-label={item.key ? t('yamlEditor.shell.body.enableNamed').replace('{name}', item.key) : t('yamlEditor.shell.body.enableField')}
               className="w-4 h-4 rounded border-white/10 bg-white/5 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-0"
             />
             <Input
               value={item.key}
               onChange={e => onFieldChange(index, 'key', e.target.value)}
-              placeholder="field_name"
+              placeholder={t('yamlEditor.shell.body.fieldPlaceholder')}
               className="flex-1 bg-white/5 border-white/10 text-zinc-300 text-sm font-mono"
             />
             <span className="text-zinc-600">=</span>
             <Input
               value={item.value}
               onChange={e => onFieldChange(index, 'value', e.target.value)}
-              placeholder="value"
+              placeholder={t('yamlEditor.shell.body.valuePlaceholder')}
               className="flex-1 bg-white/5 border-white/10 text-zinc-300 text-sm font-mono"
             />
             <button
               type="button"
               onClick={() => onRemove(index)}
-              aria-label={item.key ? `Remove ${item.key}` : 'Remove field'}
+              aria-label={item.key ? t('yamlEditor.shell.body.removeNamed').replace('{name}', item.key) : t('yamlEditor.shell.body.removeField')}
               className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded transition-colors"
             >
               <Trash2 className="w-4 h-4" />
@@ -370,11 +372,11 @@ function FormDataFields({ items, onFieldChange, onAdd, onRemove }: FormDataField
   );
 }
 
-const BODY_TYPE_OPTIONS: Array<{ type: BodyType; label: string }> = [
-  { type: 'none', label: 'None' },
-  { type: 'json', label: 'JSON' },
-  { type: 'form', label: 'Form Data' },
-  { type: 'raw', label: 'Raw Text' },
+const BODY_TYPE_OPTIONS: Array<{ type: BodyType; labelKey: string }> = [
+  { type: 'none', labelKey: 'yamlEditor.shell.body.typeNone' },
+  { type: 'json', labelKey: 'yamlEditor.shell.body.typeJson' },
+  { type: 'form', labelKey: 'yamlEditor.shell.body.typeForm' },
+  { type: 'raw', labelKey: 'yamlEditor.shell.body.typeRaw' },
 ];
 
 interface BodyTypeToggleProps {
@@ -385,13 +387,14 @@ interface BodyTypeToggleProps {
 }
 
 function BodyTypeToggle({ bodyType, onChange, hideLabel, error }: BodyTypeToggleProps) {
+  const { t } = useLanguage();
   return (
     <div className="mb-4">
       {!hideLabel && (
-        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">Body Type</p>
+        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">{t('yamlEditor.shell.body.typeLabel')}</p>
       )}
       <div className="flex gap-2">
-        {BODY_TYPE_OPTIONS.map(({ type, label }) => (
+        {BODY_TYPE_OPTIONS.map(({ type, labelKey }) => (
           <button
             type="button"
             key={type}
@@ -402,7 +405,7 @@ function BodyTypeToggle({ bodyType, onChange, hideLabel, error }: BodyTypeToggle
                 : 'bg-white/5 text-zinc-400 border border-white/10 hover:text-zinc-300 hover:bg-white/10'
             }`}
           >
-            {label}
+            {t(labelKey)}
           </button>
         ))}
       </div>
@@ -477,6 +480,7 @@ export function BodyTypeSelector({
   currentMatchIndex = 0,
   hideTypeLabel = false,
 }: BodyTypeSelectorProps) {
+  const { t } = useLanguage();
   const [bodyType, setBodyType] = useState<BodyType>('none');
   const [jsonValue, setJsonValue] = useState('');
   const [jsonError, setJsonError] = useState('');
@@ -544,7 +548,7 @@ export function BodyTypeSelector({
     };
 
     if (newType !== bodyType && hasCurrentBodyContent()) {
-      setTypeSwitchError('Clear current body content before changing Body Type.');
+      setTypeSwitchError(t('yamlEditor.shell.body.clearFirst'));
       return;
     }
 
@@ -589,14 +593,14 @@ export function BodyTypeSelector({
     try {
       const parsed: unknown = JSON.parse(value);
       if (!isYAMLValue(parsed)) {
-        setJsonError('Unsupported JSON value');
+        setJsonError(t('yamlEditor.shell.body.unsupportedJson'));
         onBodyChange(value, 'json');
         return;
       }
       setJsonError('');
       onBodyChange(parsed, 'json');
     } catch (error) {
-      setJsonError(error instanceof Error ? error.message : 'Invalid JSON');
+      setJsonError(error instanceof Error ? error.message : t('yamlEditor.shell.body.invalidJson'));
       onBodyChange(value, 'json');
     }
   };
@@ -677,17 +681,17 @@ export function BodyTypeSelector({
       {bodyType === 'json' && (
         <div>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">JSON Body</span>
+            <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">{t('yamlEditor.shell.body.jsonTitle')}</span>
             {jsonError ? (
               <div className="flex items-center gap-1 text-xs text-red-400">
                 <AlertCircle className="w-3 h-3" />
-                Invalid JSON
+                {t('yamlEditor.shell.body.invalidJson')}
               </div>
             ) : (
               jsonValue && (
                 <div className="flex items-center gap-1 text-xs text-green-400">
                   <CheckCircle className="w-3 h-3" />
-                  Valid JSON
+                  {t('yamlEditor.shell.body.validJson')}
                 </div>
               )
             )}
@@ -696,7 +700,7 @@ export function BodyTypeSelector({
             value={jsonValue}
             onChange={handleJsonChange}
             placeholder='{\n  "key": "value"\n}'
-            ariaLabel="JSON body"
+            ariaLabel={t('yamlEditor.shell.body.jsonAria')}
             language="json"
             useMonaco={useMonacoForJson}
             searchText={searchText}
@@ -728,13 +732,13 @@ export function BodyTypeSelector({
       {bodyType === 'raw' && (
         <div>
           <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-            Raw Body (text/plain)
+            {t('yamlEditor.shell.body.rawTitle')}
           </p>
           <TextBodyEditor
             value={rawValue}
             onChange={handleRawChange}
-            placeholder="Enter raw text content..."
-            ariaLabel="Raw body text"
+            placeholder={t('yamlEditor.shell.body.rawPlaceholder')}
+            ariaLabel={t('yamlEditor.shell.body.rawAria')}
             language="plaintext"
             useMonaco={useMonacoForRaw}
             searchText={searchText}
@@ -751,7 +755,7 @@ export function BodyTypeSelector({
 
       {bodyType === 'none' && (
         <div className="p-6 text-center text-zinc-500 text-sm border border-dashed border-white/10 rounded">
-          No body content
+          {t('yamlEditor.shell.body.noBody')}
         </div>
       )}
     </div>

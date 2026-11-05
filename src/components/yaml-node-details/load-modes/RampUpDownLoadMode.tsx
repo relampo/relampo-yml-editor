@@ -1,23 +1,25 @@
-import { LOAD_DURATION_HELP_TEXT, LoadFieldGroup, LoadGrid, LoadModeProps, LoadSection } from './shared';
-
-const RAMP_UP_DOWN_LOAD_FIELDS = [
-  { field: 'users', label: 'Virtual Users', placeholder: '50', type: 'number' },
-  { field: 'duration', label: 'Duration', placeholder: '10m', helpText: LOAD_DURATION_HELP_TEXT },
-  { field: 'iterations', label: 'Iterations', placeholder: '0', type: 'number' },
-  { field: 'ramp_up', label: 'Ramp Up', placeholder: '1m', helpText: LOAD_DURATION_HELP_TEXT },
-  { field: 'ramp_down', label: 'Ramp Down', placeholder: '1m', helpText: LOAD_DURATION_HELP_TEXT },
-] as const;
+import { useLanguage } from '../../../contexts/LanguageContext';
+import { LoadFieldGroup, LoadGrid, LoadModeProps, LoadSection } from './shared';
 
 export function RampUpDownLoadMode({ data, onChange }: LoadModeProps) {
+  const { t } = useLanguage();
+  const durationHelp = t('studioControls.durationHelp');
+  const fields = [
+    { field: 'users', label: t('studioControls.users'), placeholder: '50', type: 'number' },
+    { field: 'duration', label: t('studioControls.duration'), placeholder: '10m', helpText: durationHelp },
+    { field: 'iterations', label: t('studioControls.iterations'), placeholder: '0', type: 'number' },
+    { field: 'ramp_up', label: t('studioControls.rampUp'), placeholder: '1m', helpText: durationHelp },
+    { field: 'ramp_down', label: t('yamlEditor.nodeDetails.load.rampDown'), placeholder: '1m', helpText: durationHelp },
+  ] as const;
   return (
     <LoadSection
-      title="Ramp Up / Down"
-      description="Climb to a steady user count, hold it, then ramp the load back down."
+      title={t('yamlEditor.nodeDetails.load.rampUpDown')}
+      description={t('yamlEditor.nodeDetails.load.rampUpDownDescription')}
     >
       <LoadGrid>
         <LoadFieldGroup
           data={data}
-          fields={RAMP_UP_DOWN_LOAD_FIELDS}
+          fields={fields}
           onChange={onChange}
         />
       </LoadGrid>

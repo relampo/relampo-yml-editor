@@ -1,6 +1,7 @@
 import { AlertCircle, Info } from 'lucide-react';
+import { useLanguage } from '../contexts/LanguageContext';
 import type { DocumentIssue, IssueMarker, IssueSeverity } from '../utils/documentIssues';
-import { DESCENDANT_ISSUE_LABEL, previewIssueValue } from '../utils/documentIssues';
+import { previewIssueValue } from '../utils/documentIssues';
 
 const SEVERITY_STYLE: Record<IssueSeverity, { icon: typeof Info; badge: string; dot: string; text: string }> = {
   error: {
@@ -35,10 +36,11 @@ export function IssueBadge({ marker }: { marker?: IssueMarker }) {
 
 /** Dot on a collapsed node that has issues inside it. */
 export function DescendantIssueDot({ severity }: { severity: IssueSeverity }) {
+  const { t } = useLanguage();
   return (
     <span
       aria-hidden="true"
-      title={DESCENDANT_ISSUE_LABEL[severity]}
+      title={severity === 'error' ? t('yamlEditor.shell.tree.containsErrors') : t('yamlEditor.shell.tree.containsUnrecognized')}
       className={`h-1.5 w-1.5 shrink-0 rounded-full ${SEVERITY_STYLE[severity].dot}`}
     />
   );
@@ -109,14 +111,16 @@ export function BlockedByIssuesNotice({
   onGoToFirstError?: () => void;
   extraMessages?: string[];
 }) {
+  const { t } = useLanguage();
+  const blocked = (key: string) => t(`yamlEditor.shell.blocked.${key}`);
   return (
     <div className="border-b border-red-400/20 bg-red-500/10 px-5 py-3">
       <div className="flex items-center gap-3">
         <AlertCircle aria-hidden="true" className="h-4 w-4 shrink-0 text-red-300" />
         <p className="flex-1 text-sm font-semibold text-red-200">
           {errorCount > 0
-            ? `Fix ${errorCount} configuration ${errorCount === 1 ? 'error' : 'errors'} before you ${action}.`
-            : `This ${action === 'debug' ? 'debug session' : 'load test'} cannot start.`}
+            ? blocked(`${errorCount === 1 ? 'fixOne' : 'fixMany'}_${action}`).replace('{count}', String(errorCount))
+            : blocked(`cannotStart_${action}`)}
         </p>
         {errorCount > 0 && onGoToFirstError && (
           <button
@@ -124,7 +128,7 @@ export function BlockedByIssuesNotice({
             onClick={onGoToFirstError}
             className="shrink-0 rounded border border-red-300/40 px-2 py-1 text-xs font-medium text-red-100 hover:bg-red-400/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300/70"
           >
-            Go to first error
+            {blocked('goToFirstError')}
           </button>
         )}
       </div>

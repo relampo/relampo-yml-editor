@@ -31,6 +31,7 @@ import {
   Waves,
   Zap,
 } from 'lucide-react';
+import { useLanguage } from '../contexts/LanguageContext';
 import { describeIssueMarker, type IssueMarker } from '../utils/documentIssues';
 import { DescendantIssueDot, IssueBadge } from './DocumentIssues';
 import type { LucideIcon } from 'lucide-react';
@@ -38,6 +39,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { RedirectedRequestInfo, YAMLNode, YAMLNodeType } from '../types/yaml';
 import { canContain, canDrop } from '../utils/yamlDragDropRules';
 import { HighlightText } from './ui/HighlightedInput';
+import { getNodeDisplayName } from './yaml-tree-view/nodeDisplayName';
 import {
   getNodeSearchHitFlags,
   nodeMatchExpandsDescendants,
@@ -342,13 +344,17 @@ function YAMLTreeNodeRow({
   onContextMenu,
   searchQuery,
 }: YAMLTreeNodeRowProps) {
+  const { t } = useLanguage();
   const hasChildren = Boolean(node.children?.length);
   const isExpanded = node.expanded ?? true;
   const isRedirectedFollowUp = Boolean(redirectedRequestMap[node.id]);
   const issueMarker = issueMarkers[node.id];
   const hasValidationError = issueMarker?.severity === 'error';
-  const issueDescription = describeIssueMarker(issueMarker, hasChildren && !isExpanded);
-  const redirectedLabel = 'Redirected';
+  const issueDescription = describeIssueMarker(issueMarker, hasChildren && !isExpanded, {
+    error: t('yamlEditor.shell.tree.containsErrors'),
+    info: t('yamlEditor.shell.tree.containsUnrecognized'),
+  });
+  const redirectedLabel = t('yamlEditor.shell.tree.redirected');
   const IconComponent = getNodeIcon(node.type);
   const color = getNodeColor(node.type, node);
   const searchHitFlags = getNodeSearchHitFlags(node, searchQuery);
@@ -422,7 +428,7 @@ function YAMLTreeNodeRow({
             event.stopPropagation();
             onNodeToggle(node.id);
           }}
-          aria-label={isExpanded ? 'Collapse' : 'Expand'}
+          aria-label={isExpanded ? t('yamlEditor.shell.tree.collapse') : t('yamlEditor.shell.tree.expand')}
           className="shrink-0 w-4 h-4 flex items-center justify-center text-zinc-500 hover:text-zinc-300"
         >
           {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
@@ -442,7 +448,7 @@ function YAMLTreeNodeRow({
           node.data?.enabled === false ? 'text-zinc-400' : isRedirectedFollowUp ? 'text-zinc-100' : 'text-zinc-300'
         }`}
       >
-        <HighlightText text={node.name} query={searchQuery} />
+        <HighlightText text={getNodeDisplayName(node, t)} query={searchQuery} />
       </span>
 
       {/* Badge with extra info */}
@@ -451,19 +457,19 @@ function YAMLTreeNodeRow({
           {redirectedLabel}
         </span>
       )}
-      {getNodeBadge(node, { mutedMethod: isRedirectedFollowUp && node.data?.enabled === false })}
+      {getNodeBadge(node, t, { mutedMethod: isRedirectedFollowUp && node.data?.enabled === false })}
       <IssueBadge marker={issueMarker} />
       {hasChildren && !isExpanded && issueMarker?.descendantSeverity && (
         <DescendantIssueDot severity={issueMarker.descendantSeverity} />
       )}
       {hasRequestHit && (
         <span className="inline-flex h-5 items-center shrink-0 text-xs leading-none px-1.5 py-0.5 rounded bg-yellow-400/15 text-yellow-400 font-mono font-medium border border-yellow-400/30 uppercase">
-          req
+          {t('yamlEditor.shell.tree.hitRequest')}
         </span>
       )}
       {hasResponseHit && (
         <span className="inline-flex h-5 items-center shrink-0 text-xs leading-none px-1.5 py-0.5 rounded bg-yellow-400/15 text-yellow-400 font-mono font-medium border border-yellow-400/30 uppercase">
-          res
+          {t('yamlEditor.shell.tree.hitResponse')}
         </span>
       )}
     </div>
@@ -608,14 +614,14 @@ function getNodeColor(type: YAMLNodeType, node?: YAMLNode): string {
   }
 }
 
-function getNodeBadge(node: YAMLNode, options: { mutedMethod?: boolean } = {}): React.ReactNode {
+function getNodeBadge(node: YAMLNode, t: (key: string) => string, options: { mutedMethod?: boolean } = {}): React.ReactNode {
   const { mutedMethod = false } = options;
   const httpMethods = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
 
   if (node.data?.enabled === false) {
     return (
       <span className="text-xs px-1.5 py-0.5 rounded bg-zinc-700/30 text-zinc-400 font-mono font-medium border border-zinc-600/30 uppercase">
-        disabled
+        {t('yamlEditor.shell.tree.badgeDisabled')}
       </span>
     );
   }
@@ -669,7 +675,7 @@ function getNodeBadge(node: YAMLNode, options: { mutedMethod?: boolean } = {}): 
   if (node.type === 'one_time') {
     return (
       <span className="text-xs px-1.5 py-0.5 rounded bg-white/10 text-white font-mono font-medium border border-white/15">
-        once
+        {t('yamlEditor.shell.tree.badgeOnce')}
       </span>
     );
   }
@@ -689,7 +695,7 @@ function getNodeBadge(node: YAMLNode, options: { mutedMethod?: boolean } = {}): 
   if (node.type === 'spark_before') {
     return (
       <span className="text-xs px-1.5 py-0.5 rounded bg-purple-400/15 text-purple-400 font-mono font-medium border border-purple-400/30">
-        before
+        {t('yamlEditor.shell.tree.badgeBefore')}
       </span>
     );
   }
@@ -697,7 +703,7 @@ function getNodeBadge(node: YAMLNode, options: { mutedMethod?: boolean } = {}): 
   if (node.type === 'spark_after') {
     return (
       <span className="text-xs px-1.5 py-0.5 rounded bg-violet-400/15 text-violet-400 font-mono font-medium border border-violet-400/30">
-        after
+        {t('yamlEditor.shell.tree.badgeAfter')}
       </span>
     );
   }

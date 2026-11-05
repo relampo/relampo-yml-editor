@@ -65,11 +65,11 @@ export function MobileBlockOverlay() {
 
       <div className="relative w-full max-w-md rounded-2xl border border-white/10 bg-[#111111]/95 p-8 text-center shadow-2xl shadow-black/60 backdrop-blur-sm animate-[fadeInUp_400ms_ease-out]">
         <div className="mx-auto mb-6 flex items-center justify-center gap-3">
-          <DeviceTile icon={<Smartphone className="h-6 w-6" />} disabled label="Phone" />
+          <DeviceTile icon={<Smartphone className="h-6 w-6" />} disabled label={t('yamlEditor.shell.layout.phone')} />
           <span className="text-white/30">→</span>
           <DeviceTile icon={<Tablet className="h-7 w-7" />} highlight label="iPad" />
           <span className="text-white/30">→</span>
-          <DeviceTile icon={<Monitor className="h-7 w-7" />} highlight label="Desktop" />
+          <DeviceTile icon={<Monitor className="h-7 w-7" />} highlight label={t('yamlEditor.shell.layout.desktop')} />
         </div>
 
         <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-yellow-300/30 bg-yellow-300/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-yellow-300">

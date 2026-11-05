@@ -1,3 +1,4 @@
+import { useLanguage } from '../../../contexts/LanguageContext';
 import { FileField } from '../SharedFields';
 import { createNodeDataUpdater } from '../nodeDetailHelpers';
 import type { NodeDetailProps } from '../types';
@@ -20,6 +21,7 @@ const commonMimeTypes = [
 ];
 
 export function FileDetails({ node, onNodeUpdate }: NodeDetailProps) {
+  const { t } = useLanguage();
   const { data, updateData, updateField } = createNodeDataUpdater(node, onNodeUpdate);
   const pathValue = String(data.path || '').trim();
   const mimeValue = String(data.mime || data.mime_type || '').trim();
@@ -50,7 +52,7 @@ export function FileDetails({ node, onNodeUpdate }: NodeDetailProps) {
       <div className="grid grid-cols-2 gap-3 mb-4">
         <div className="min-w-0">
           <FileField
-            label="File Path"
+            label={t('yamlEditor.nodeDetails.file.path')}
             value={data.path || ''}
             field="path"
             onChange={handleChange}
@@ -63,7 +65,7 @@ export function FileDetails({ node, onNodeUpdate }: NodeDetailProps) {
             htmlFor="file-detail-mime"
             className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
           >
-            MIME Type
+            {t('yamlEditor.nodeDetails.file.mimeType')}
           </label>
           <select
             id="file-detail-mime"
@@ -95,18 +97,18 @@ export function FileDetails({ node, onNodeUpdate }: NodeDetailProps) {
               </option>
             )}
           </select>
-          <div className="mt-1 text-xs text-zinc-500">Common: application/pdf, image/jpeg, text/csv</div>
+          <div className="mt-1 text-xs text-zinc-500">{t('yamlEditor.nodeDetails.file.commonTypes')}</div>
         </div>
       </div>
 
       {!pathValue && (
         <div className="mb-4 p-3 bg-red-400/8 border border-red-400/25 rounded text-xs text-red-300">
-          Required: path
+          {t('yamlEditor.nodeDetails.file.requiredPath')}
         </div>
       )}
 
       <div className="p-3 bg-amber-400/5 border border-amber-400/20 rounded text-xs text-zinc-400">
-        📎 This file will be uploaded as multipart/form-data
+        {t('yamlEditor.nodeDetails.file.uploadInfo')}
       </div>
     </>
   );

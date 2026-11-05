@@ -10,6 +10,7 @@ import {
   Tag,
   TextSearch,
 } from 'lucide-react';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { HighlightedInput } from '../ui/HighlightedInput';
 import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
@@ -17,15 +18,15 @@ import { createNodeDataUpdater } from './nodeDetailHelpers';
 import type { NodeDetailProps } from './types';
 
 const assertionTypes = [
-  { value: 'status', label: 'Status', icon: CheckCircle2 },
-  { value: 'status_in', label: 'Status in', icon: CheckCircle2 },
-  { value: 'contains', label: 'Contains', icon: Search },
-  { value: 'not_contains', label: 'Not contains', icon: SearchX },
-  { value: 'regex', label: 'Regex', icon: TextSearch },
-  { value: 'response_time', label: 'Response time', icon: Clock3 },
-  { value: 'response_size', label: 'Response size', icon: Binary },
-  { value: 'header', label: 'Header', icon: Tag },
-  { value: 'json', label: 'Jsonpath', icon: Braces },
+  { value: 'status', labelKey: 'assert_status', icon: CheckCircle2 },
+  { value: 'status_in', labelKey: 'assert_status_in', icon: CheckCircle2 },
+  { value: 'contains', labelKey: 'assert_contains', icon: Search },
+  { value: 'not_contains', labelKey: 'assert_not_contains', icon: SearchX },
+  { value: 'regex', labelKey: 'assert_regex', icon: TextSearch },
+  { value: 'response_time', labelKey: 'assert_response_time', icon: Clock3 },
+  { value: 'response_size', labelKey: 'assert_response_size', icon: Binary },
+  { value: 'header', labelKey: 'assert_header', icon: Tag },
+  { value: 'json', labelKey: 'assert_json', icon: Braces },
 ] as const;
 
 const assertionTypeButtonStyle: Record<string, React.CSSProperties> = {
@@ -86,6 +87,7 @@ const assertionTypeButtonStyle: Record<string, React.CSSProperties> = {
 };
 
 export function AssertionDetails({ node, onNodeUpdate, searchQuery = '' }: NodeDetailProps) {
+  const { t } = useLanguage();
   const { data, updateData, updateField } = createNodeDataUpdater(node, onNodeUpdate);
   const assertionType = data.type || 'status';
 
@@ -101,7 +103,7 @@ export function AssertionDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
     <>
       <div className="mb-4">
         <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
-          Assertion Type
+          {t('yamlEditor.nodeDetails.validation.assertionType')}
         </div>
         <div className="flex flex-wrap items-center gap-1">
           {assertionTypes.map(type => {
@@ -118,7 +120,7 @@ export function AssertionDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
               >
                 <span className="inline-flex items-center gap-1.5">
                   <Icon className="h-3.5 w-3.5" />
-                  <span>{type.label}</span>
+                  <span>{t(`yamlEditor.nodeDetails.validation.assert_${type.value}`)}</span>
                 </span>
               </button>
             );
@@ -129,7 +131,7 @@ export function AssertionDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
       {(assertionType === 'status' || assertionType === 'status_in') && (
         <div className="mb-4 grid grid-cols-1 gap-3 items-end">
           <label htmlFor="validation-status-code" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-            {assertionType === 'status' ? 'Expected Status Code' : 'Expected Status Codes (comma separated)'}
+            {assertionType === 'status' ? t('yamlEditor.nodeDetails.validation.statusCode') : t('yamlEditor.nodeDetails.validation.statusCodes')}
           </label>
           <HighlightedInput
             id="validation-status-code"
@@ -146,13 +148,13 @@ export function AssertionDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
         <div className="mb-4 grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_auto] gap-3 items-end">
           <div>
             <label htmlFor="validation-contains-text" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              Text to {assertionType === 'contains' ? 'Find' : 'Not Find'}
+              {assertionType === 'contains' ? t('yamlEditor.nodeDetails.validation.textToFind') : t('yamlEditor.nodeDetails.validation.textToNotFind')}
             </label>
             <HighlightedInput
               id="validation-contains-text"
               value={data.value !== undefined ? String(data.value) : ''}
               onChange={event => handleChange('value', event.target.value)}
-              placeholder="Expected text in response..."
+              placeholder={t('yamlEditor.nodeDetails.validation.expectedText')}
               searchText={searchQuery}
               className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono focus:border-white/30 transition-colors"
             />
@@ -165,7 +167,7 @@ export function AssertionDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
                 onChange={event => handleChange('ignore_case', event.target.checked)}
                 className="w-4 h-4 rounded border-white/10 bg-white/5 text-green-500"
               />
-              <span className="text-sm text-zinc-300">Ignore case</span>
+              <span className="text-sm text-zinc-300">{t('yamlEditor.nodeDetails.validation.ignoreCase')}</span>
             </label>
           </div>
         </div>
@@ -175,7 +177,7 @@ export function AssertionDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
         <div className="mb-4 flex items-end gap-3">
           <div className="flex-1 min-w-0">
             <label htmlFor="validation-regex-pattern" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              Regular Expression Pattern
+              {t('yamlEditor.nodeDetails.validation.regexPattern')}
             </label>
             <HighlightedInput
               id="validation-regex-pattern"
@@ -188,7 +190,7 @@ export function AssertionDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
           </div>
           <div className="w-37.5 shrink-0">
             <label htmlFor="validation-match-number" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              Match Number
+              {t('yamlEditor.nodeDetails.validation.matchNumber')}
             </label>
             <Input
               id="validation-match-number"
@@ -213,7 +215,7 @@ export function AssertionDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
       {assertionType === 'response_time' && (
         <SimpleNumberField
           id="validation-max-response-time"
-          label="Max Response Time (ms)"
+          label={t('yamlEditor.nodeDetails.validation.maxResponseTime')}
           value={data.max_ms !== undefined ? data.max_ms : ''}
           placeholder="2000"
           onChange={value => handleChange('max_ms', parseInt(value, 10) || 0)}
@@ -223,7 +225,7 @@ export function AssertionDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
       {assertionType === 'response_size' && (
         <SimpleNumberField
           id="validation-expected-size"
-          label="Expected Size (bytes)"
+          label={t('yamlEditor.nodeDetails.validation.expectedSize')}
           value={data.size !== undefined ? data.size : ''}
           placeholder="1024"
           onChange={value => handleChange('size', parseInt(value, 10) || 0)}
@@ -234,7 +236,7 @@ export function AssertionDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
         <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-3 items-end">
           <TextField
             id="validation-header-name"
-            label="Header Name"
+            label={t('yamlEditor.nodeDetails.validation.headerName')}
             value={data.name || ''}
             placeholder="Content-Type, Authorization..."
             onChange={value => handleChange('name', value)}
@@ -242,7 +244,7 @@ export function AssertionDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
           />
           <TextField
             id="validation-header-value"
-            label="Expected Header Value"
+            label={t('yamlEditor.nodeDetails.validation.expectedHeaderValue')}
             value={data.value !== undefined ? String(data.value) : ''}
             placeholder="application/json"
             onChange={value => handleChange('value', value)}
@@ -255,7 +257,7 @@ export function AssertionDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
         <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-3 items-end">
           <TextField
             id="validation-jsonpath-expression"
-            label="JSONPath Expression"
+            label={t('yamlEditor.nodeDetails.validation.jsonpathExpression')}
             value={data.path || ''}
             placeholder="$.data.id"
             onChange={value => handleChange('path', value)}
@@ -263,7 +265,7 @@ export function AssertionDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
           />
           <TextField
             id="validation-json-expected-value"
-            label="Expected Value"
+            label={t('yamlEditor.nodeDetails.validation.expectedValue')}
             value={data.value !== undefined ? String(data.value) : ''}
             placeholder="123"
             onChange={value => handleChange('value', value)}
@@ -276,10 +278,10 @@ export function AssertionDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
 }
 
 const extractorTypes = [
-  { value: 'regex', label: 'Regex', icon: TextSearch },
-  { value: 'jsonpath', label: 'Jsonpath', icon: Braces },
-  { value: 'xpath', label: 'Xpath', icon: Brackets },
-  { value: 'boundary', label: 'Boundary', icon: BetweenHorizontalStart },
+  { value: 'regex', labelKey: 'extract_regex', icon: TextSearch },
+  { value: 'jsonpath', labelKey: 'extract_jsonpath', icon: Braces },
+  { value: 'xpath', labelKey: 'extract_xpath', icon: Brackets },
+  { value: 'boundary', labelKey: 'extract_boundary', icon: BetweenHorizontalStart },
 ] as const;
 
 const extractorTypeButtonStyle: Record<string, React.CSSProperties> = {
@@ -310,6 +312,7 @@ const extractorTypeButtonStyle: Record<string, React.CSSProperties> = {
 };
 
 export function ExtractorDetails({ node, onNodeUpdate, searchQuery = '' }: NodeDetailProps) {
+  const { t } = useLanguage();
   const { data, updateData, updateField } = createNodeDataUpdater(node, onNodeUpdate);
   const extractorType = data.type || 'regex';
   const extractorVariableName = data.var ?? data.variable ?? '';
@@ -374,7 +377,7 @@ export function ExtractorDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
     <>
       <div className="mb-4">
         <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
-          Extractor Type
+          {t('yamlEditor.nodeDetails.validation.extractorType')}
         </div>
         <div className="flex flex-wrap items-center gap-1">
           {extractorTypes.map(type => {
@@ -391,7 +394,7 @@ export function ExtractorDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
               >
                 <span className="inline-flex items-center gap-1.5">
                   <Icon className="h-3.5 w-3.5" />
-                  <span>{type.label}</span>
+                  <span>{t(`yamlEditor.nodeDetails.validation.extract_${type.value}`)}</span>
                 </span>
               </button>
             );
@@ -401,7 +404,7 @@ export function ExtractorDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
 
       <div className="mb-4">
         <label htmlFor="validation-variable-name" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-          Variable Name *
+          {t('yamlEditor.nodeDetails.validation.variableName')}
         </label>
         <Input
           id="validation-variable-name"
@@ -417,7 +420,7 @@ export function ExtractorDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
         <>
           <ExtractorSourceAndPattern
             source={extractorSource}
-            label="Regular Expression Pattern *"
+            label={t('yamlEditor.nodeDetails.validation.regexPatternRequired')}
             value={data.pattern || ''}
             placeholder="token=([a-zA-Z0-9_-]+)"
             searchQuery={searchQuery}
@@ -425,14 +428,12 @@ export function ExtractorDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
             onValueChange={value => handleChange('pattern', value)}
           />
           <div className="mb-4 -mt-1 text-xs text-zinc-500">
-            Variable: {'{{'}
-            {extractorVariableName || 'VAR'}
-            {'}'} | Use capture groups () in pattern
+            {t('yamlEditor.nodeDetails.validation.variableHint').replace('{name}', extractorVariableName || 'VAR')}
           </div>
           <div className="mb-4 grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
             <SimpleNumberField
               id="validation-capture-group"
-              label="Capture Group"
+              label={t('yamlEditor.nodeDetails.validation.captureGroup')}
               value={data.group !== undefined ? data.group : 1}
               placeholder="1"
               onChange={value => handleChange('group', parseInt(value, 10) || 1)}
@@ -441,7 +442,7 @@ export function ExtractorDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
             />
             <div>
               <label htmlFor="validation-capture-mode" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-                Capture Mode
+                {t('yamlEditor.nodeDetails.validation.captureMode')}
               </label>
               <Select
                 value={data.capture_mode || 'first'}
@@ -451,16 +452,16 @@ export function ExtractorDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="border-white/10 bg-[#111111]">
-                  <SelectItem value="first">first match</SelectItem>
-                  <SelectItem value="all">all matches</SelectItem>
-                  <SelectItem value="index">specific match index</SelectItem>
-                  <SelectItem value="random">random match</SelectItem>
+                  <SelectItem value="first">{t('yamlEditor.nodeDetails.validation.firstMatch')}</SelectItem>
+                  <SelectItem value="all">{t('yamlEditor.nodeDetails.validation.allMatches')}</SelectItem>
+                  <SelectItem value="index">{t('yamlEditor.nodeDetails.validation.specificMatch')}</SelectItem>
+                  <SelectItem value="random">{t('yamlEditor.nodeDetails.validation.randomMatch')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <TextField
               id="validation-regex-default-value"
-              label="Default Value (if not found)"
+              label={t('yamlEditor.nodeDetails.validation.defaultValue')}
               value={data.default || ''}
               placeholder="NOT_FOUND"
               onChange={value => handleChange('default', value)}
@@ -469,14 +470,14 @@ export function ExtractorDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
           {String(data.capture_mode || 'first') === 'index' && (
             <SimpleNumberField
               id="validation-match-index"
-              label="Match Index"
+              label={t('yamlEditor.nodeDetails.validation.matchIndex')}
               value={data.capture_index !== undefined ? data.capture_index : '2'}
               placeholder="2"
               onChange={value => handleChange('capture_index', value)}
               min={1}
             />
           )}
-          <div className="mb-4 mt-1 text-xs text-zinc-500">Group 1 = first (...) in your regex</div>
+          <div className="mb-4 mt-1 text-xs text-zinc-500">{t('yamlEditor.nodeDetails.validation.groupHint')}</div>
         </>
       )}
 
@@ -484,14 +485,14 @@ export function ExtractorDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
         <>
           <ExtractorSourceAndPattern
             source={extractorSource}
-            label="JSONPath Expression *"
+            label={t('yamlEditor.nodeDetails.validation.jsonpathRequired')}
             value={data.expression || data.pattern || ''}
             placeholder="$.data.id"
             searchQuery={searchQuery}
             onSourceChange={value => handleChange('from', value)}
             onValueChange={value => handleChange('expression', value)}
           />
-          <div className="mb-4 -mt-1 text-xs text-zinc-500">Examples: $.users[0].name, $.data[*].id, $..price</div>
+          <div className="mb-4 -mt-1 text-xs text-zinc-500">{t('yamlEditor.nodeDetails.validation.jsonpathExamples')}</div>
         </>
       )}
 
@@ -499,25 +500,25 @@ export function ExtractorDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
         <>
           <ExtractorSourceAndPattern
             source={extractorSource}
-            label="XPath Expression *"
+            label={t('yamlEditor.nodeDetails.validation.xpathRequired')}
             value={data.expression || data.pattern || ''}
             placeholder="//div[@class='title']/text()"
             searchQuery={searchQuery}
             onSourceChange={value => handleChange('from', value)}
             onValueChange={value => handleChange('expression', value)}
           />
-          <div className="mb-4 -mt-1 text-xs text-zinc-500">Extract data from XML/HTML using XPath</div>
+          <div className="mb-4 -mt-1 text-xs text-zinc-500">{t('yamlEditor.nodeDetails.validation.xpathHelp')}</div>
           <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-3 items-end">
             <TextField
               id="validation-xpath-namespace"
-              label="Namespace (optional)"
+              label={t('yamlEditor.nodeDetails.validation.namespace')}
               value={data.namespace || ''}
               placeholder="xmlns:ns=http://example.com"
               onChange={value => handleChange('namespace', value)}
             />
             <TextField
               id="validation-xpath-default-value"
-              label="Default Value (if not found)"
+              label={t('yamlEditor.nodeDetails.validation.defaultValue')}
               value={data.default || ''}
               placeholder="NOT_FOUND"
               onChange={value => handleChange('default', value)}
@@ -534,7 +535,7 @@ export function ExtractorDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
           />
           <div className="min-w-0 flex-1">
             <label htmlFor="validation-left-boundary" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              Left Boundary *
+              {t('yamlEditor.nodeDetails.validation.leftBoundary')}
             </label>
             <HighlightedInput
               id="validation-left-boundary"
@@ -548,7 +549,7 @@ export function ExtractorDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
           </div>
           <div className="min-w-0 flex-1">
             <label htmlFor="validation-right-boundary" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              Right Boundary *
+              {t('yamlEditor.nodeDetails.validation.rightBoundary')}
             </label>
             <HighlightedInput
               id="validation-right-boundary"
@@ -566,7 +567,7 @@ export function ExtractorDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
       {extractorType !== 'regex' && extractorType !== 'xpath' && (
         <TextField
           id="validation-extractor-default-value"
-          label="Default Value (if not found)"
+          label={t('yamlEditor.nodeDetails.validation.defaultValue')}
           value={data.default || ''}
           placeholder="NOT_FOUND"
           onChange={value => handleChange('default', value)}
@@ -616,19 +617,20 @@ function ExtractorSourceAndPattern({
 }
 
 function ExtractorSourceSelect({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const { t } = useLanguage();
   return (
     <div className="w-55 shrink-0">
-      <label htmlFor="validation-extractor-from" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Extractor From</label>
+      <label htmlFor="validation-extractor-from" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{t('yamlEditor.nodeDetails.validation.extractorFrom')}</label>
       <Select value={value} onValueChange={onChange}>
         <SelectTrigger id="validation-extractor-from" className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono h-9">
           <SelectValue />
         </SelectTrigger>
         <SelectContent className="border-white/10 bg-[#111111]">
-          <SelectItem value="body">Response Body</SelectItem>
-          <SelectItem value="headers">Response Headers</SelectItem>
-          <SelectItem value="status_line">Response Status Line</SelectItem>
-          <SelectItem value="request_url">Request URL</SelectItem>
-          <SelectItem value="request_headers">Request Headers</SelectItem>
+          <SelectItem value="body">{t('yamlEditor.nodeDetails.validation.fromBody')}</SelectItem>
+          <SelectItem value="headers">{t('yamlEditor.nodeDetails.validation.fromHeaders')}</SelectItem>
+          <SelectItem value="status_line">{t('yamlEditor.nodeDetails.validation.fromStatusLine')}</SelectItem>
+          <SelectItem value="request_url">{t('yamlEditor.nodeDetails.validation.fromRequestUrl')}</SelectItem>
+          <SelectItem value="request_headers">{t('yamlEditor.nodeDetails.validation.fromRequestHeaders')}</SelectItem>
         </SelectContent>
       </Select>
     </div>

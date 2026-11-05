@@ -1,6 +1,9 @@
-import { render, screen } from '@testing-library/react';
+import { render as rtlRender, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+import { LanguageProvider } from '../../contexts/LanguageContext';
 import { ThinkTimeDetails } from './FlowDetails';
+
+const render = (ui: React.ReactElement) => rtlRender(ui, { wrapper: LanguageProvider });
 
 const node = (distribution: string) => ({
   id: 'think-time',

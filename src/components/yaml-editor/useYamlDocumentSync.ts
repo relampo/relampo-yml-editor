@@ -182,7 +182,7 @@ export function useYamlDocumentSync({
       setIsTreeOutdated(false);
     } catch (err) {
       if (activeParseRequestIdRef.current !== requestId) return;
-      setError(err instanceof Error ? err.message : 'Error parsing YAML');
+      setError(err instanceof Error ? err.message : language === 'es' ? 'Error al parsear YAML' : 'Error parsing YAML');
       setValidationErrors([]);
       setValidationNodeIds?.([]);
       setIsTreeOutdated(true);
@@ -200,7 +200,7 @@ export function useYamlDocumentSync({
       setError(null);
       setIsTreeOutdated(false);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Error generating YAML';
+      const message = err instanceof Error ? err.message : language === 'es' ? 'Error al generar YAML' : 'Error generating YAML';
       if (message.includes(EMPTY_PARALLEL_ERROR)) {
         setError(null);
         setIsTreeOutdated(true);
@@ -277,7 +277,7 @@ export function useYamlDocumentSync({
       setIsTreeOutdated(false);
       return code;
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Error generating YAML';
+      const message = error instanceof Error ? error.message : language === 'es' ? 'Error al generar YAML' : 'Error generating YAML';
       setError(message);
       setIsTreeOutdated(true);
       throw new Error(message);
@@ -337,7 +337,7 @@ export function useYamlDocumentSync({
 
     const newTree = parseYAMLToTree(NEW_DOCUMENT_YAML, 'relampo-script');
     if (!newTree) {
-      setError('Could not create the new document baseline');
+      setError(language === 'es' ? 'No se pudo crear el documento nuevo' : 'Could not create the new document baseline');
       return;
     }
     const newYaml = treeToYAML(newTree);

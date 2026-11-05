@@ -1,4 +1,5 @@
 import { AlertTriangle, BetweenHorizontalStart, Binary, Box, Clock3, GitFork, Hourglass, Info, Layers, List, Play } from 'lucide-react';
+import { useLanguage } from '../../contexts/LanguageContext';
 import type { RetryEditorConfig } from '../../types/shared';
 import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
@@ -7,13 +8,14 @@ import { createNodeDataUpdater } from './nodeDetailHelpers';
 import type { NodeDetailProps } from './types';
 
 export function IfDetails({ node, onNodeUpdate }: NodeDetailProps) {
+  const { t } = useLanguage();
   const { data, updateField } = createNodeDataUpdater(node, onNodeUpdate);
 
   return (
     <div className="space-y-6">
       <div>
         <label htmlFor="flow-condition" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-          Condition Expression
+          {t('yamlEditor.nodeDetails.flow.condition')}
         </label>
         <Textarea
           id="flow-condition"
@@ -22,19 +24,19 @@ export function IfDetails({ node, onNodeUpdate }: NodeDetailProps) {
           placeholder="${'{'}status${'}'} === 200\n${'{'}user_id${'}'} != null\n${'{'}count${'}'} > 10"
           className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono min-h-25"
         />
-        <div className="mt-1 text-xs text-zinc-500">Steps will only execute if this condition evaluates to true</div>
+        <div className="mt-1 text-xs text-zinc-500">{t('yamlEditor.nodeDetails.flow.conditionHelp')}</div>
       </div>
 
       <div className="rounded-l-md rounded-r-2xl border border-white/10 bg-white/[0.04] px-5 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] border-l-4 border-l-yellow-400">
         <div className="text-xs font-bold uppercase tracking-[0.2em] text-white mb-4">
-          Conditional Steps
+          {t('yamlEditor.nodeDetails.flow.conditionalSteps')}
         </div>
         <div className="flex items-center gap-4">
           <Box className="w-10 h-10 text-yellow-400 shrink-0" />
           <div className="border-l border-white/10 pl-4">
             <div className="text-3xl font-black font-mono text-white">{node.children?.length || 0}</div>
             <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
-              Steps inside this controller that will run if the condition is true
+              {t('yamlEditor.nodeDetails.flow.conditionalStepsHelp')}
             </p>
           </div>
         </div>
@@ -44,6 +46,7 @@ export function IfDetails({ node, onNodeUpdate }: NodeDetailProps) {
 }
 
 export function LoopDetails({ node, onNodeUpdate }: NodeDetailProps) {
+  const { t } = useLanguage();
   const { data, updateField } = createNodeDataUpdater(node, onNodeUpdate);
   const loopCount = Number(data.count) || 1;
   const stepsCount = node.children?.length || 0;
@@ -51,7 +54,7 @@ export function LoopDetails({ node, onNodeUpdate }: NodeDetailProps) {
   return (
     <div className="space-y-6">
       <div>
-        <label htmlFor="flow-loop-count" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Loop Count</label>
+        <label htmlFor="flow-loop-count" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{t('yamlEditor.nodeDetails.flow.loopCount')}</label>
         <Input
           id="flow-loop-count"
           type="number"
@@ -61,13 +64,13 @@ export function LoopDetails({ node, onNodeUpdate }: NodeDetailProps) {
           className="w-full h-9.5 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
         />
         <div className="mt-1 text-xs text-zinc-500">
-          Number of times to repeat the steps, or use variable ${'{'}loops${'}'}
+          {t('yamlEditor.nodeDetails.flow.loopCountHelp')}
         </div>
       </div>
 
       <div>
         <label htmlFor="flow-break-condition" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-          Break Condition (optional)
+          {t('yamlEditor.nodeDetails.flow.breakCondition')}
         </label>
         <Input
           id="flow-break-condition"
@@ -76,16 +79,16 @@ export function LoopDetails({ node, onNodeUpdate }: NodeDetailProps) {
           placeholder="${'{'}error${'}'} || ${'{'}stop${'}'}"
           className="w-full h-9.5 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
         />
-        <div className="mt-1 text-xs text-zinc-500">Exit loop early if condition is true</div>
+        <div className="mt-1 text-xs text-zinc-500">{t('yamlEditor.nodeDetails.flow.breakHelp')}</div>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <div className="p-3 bg-white/5 border border-white/10 rounded">
-          <div className="text-xs font-semibold text-yellow-400 uppercase tracking-wider mb-1">Steps Inside</div>
+          <div className="text-xs font-semibold text-yellow-400 uppercase tracking-wider mb-1">{t('yamlEditor.nodeDetails.flow.stepsInside')}</div>
           <div className="text-2xl font-bold text-zinc-300 font-mono">{stepsCount}</div>
         </div>
         <div className="p-3 bg-white/5 border border-white/10 rounded">
-          <div className="text-xs font-semibold text-yellow-400 uppercase tracking-wider mb-1">Total Iterations</div>
+          <div className="text-xs font-semibold text-yellow-400 uppercase tracking-wider mb-1">{t('yamlEditor.nodeDetails.flow.totalIterations')}</div>
           <div className="text-2xl font-bold text-zinc-300 font-mono">{loopCount * stepsCount}</div>
         </div>
       </div>
@@ -94,6 +97,7 @@ export function LoopDetails({ node, onNodeUpdate }: NodeDetailProps) {
 }
 
 export function RetryDetails({ node, onNodeUpdate }: NodeDetailProps) {
+  const { t } = useLanguage();
   const { data, updateField } = createNodeDataUpdater(node, onNodeUpdate);
   const retryData = data as RetryEditorConfig;
   const backoffType = retryData.backoff === 'fixed' ? 'constant' : retryData.backoff || 'constant';
@@ -101,7 +105,7 @@ export function RetryDetails({ node, onNodeUpdate }: NodeDetailProps) {
   return (
     <div className="space-y-6">
       <div>
-        <label htmlFor="flow-max-attempts" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Max Attempts</label>
+        <label htmlFor="flow-max-attempts" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{t('yamlEditor.nodeDetails.flow.maxAttempts')}</label>
         <Input
           id="flow-max-attempts"
           type="number"
@@ -114,26 +118,26 @@ export function RetryDetails({ node, onNodeUpdate }: NodeDetailProps) {
 
       <div>
         <label htmlFor="flow-backoff-strategy" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-          Backoff Strategy
+          {t('yamlEditor.nodeDetails.flow.backoffStrategy')}
         </label>
         <Select
           value={backoffType}
           onValueChange={value => updateField('backoff', value)}
         >
           <SelectTrigger id="flow-backoff-strategy" className="w-full h-9.5 px-3 py-2 bg-yellow-400/10 text-yellow-400 border border-yellow-400/20 rounded text-sm font-mono">
-            <SelectValue placeholder="Select strategy" />
+            <SelectValue placeholder={t('yamlEditor.nodeDetails.flow.selectStrategy')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="constant">constant (same delay)</SelectItem>
-            <SelectItem value="linear">linear (incremental)</SelectItem>
-            <SelectItem value="exponential">exponential (2x each time)</SelectItem>
+            <SelectItem value="constant">{t('yamlEditor.nodeDetails.flow.backoffConstant')}</SelectItem>
+            <SelectItem value="linear">{t('yamlEditor.nodeDetails.flow.backoffLinear')}</SelectItem>
+            <SelectItem value="exponential">{t('yamlEditor.nodeDetails.flow.backoffExponential')}</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       {backoffType === 'constant' && (
         <div>
-          <label htmlFor="flow-delay" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Delay</label>
+          <label htmlFor="flow-delay" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{t('yamlEditor.nodeDetails.flow.delay')}</label>
           <Input
             id="flow-delay"
             value={retryData.initial_delay || retryData.delay || ''}
@@ -141,7 +145,7 @@ export function RetryDetails({ node, onNodeUpdate }: NodeDetailProps) {
             placeholder="1s"
             className="w-full h-9.5 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
           />
-          <div className="mt-1 text-xs text-zinc-500">Same delay between all retry attempts</div>
+          <div className="mt-1 text-xs text-zinc-500">{t('yamlEditor.nodeDetails.flow.delayHelp')}</div>
         </div>
       )}
 
@@ -149,7 +153,7 @@ export function RetryDetails({ node, onNodeUpdate }: NodeDetailProps) {
         <>
           <div className="mb-4">
             <label htmlFor="flow-initial-delay-linear" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              Initial Delay
+              {t('yamlEditor.nodeDetails.flow.initialDelay')}
             </label>
             <Input
               id="flow-initial-delay-linear"
@@ -160,7 +164,7 @@ export function RetryDetails({ node, onNodeUpdate }: NodeDetailProps) {
             />
           </div>
           <div className="mb-4">
-            <label htmlFor="flow-increment" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Increment</label>
+            <label htmlFor="flow-increment" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{t('yamlEditor.nodeDetails.flow.increment')}</label>
             <Input
               id="flow-increment"
               value={retryData.increment || ''}
@@ -168,7 +172,7 @@ export function RetryDetails({ node, onNodeUpdate }: NodeDetailProps) {
               placeholder="1s"
               className="w-full h-9.5 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
             />
-            <div className="mt-1 text-xs text-zinc-500">Delay increases by this amount each retry (1s, 2s, 3s...)</div>
+            <div className="mt-1 text-xs text-zinc-500">{t('yamlEditor.nodeDetails.flow.incrementHelp')}</div>
           </div>
         </>
       )}
@@ -177,7 +181,7 @@ export function RetryDetails({ node, onNodeUpdate }: NodeDetailProps) {
         <>
           <div className="mb-4">
             <label htmlFor="flow-initial-delay-exponential" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              Initial Delay
+              {t('yamlEditor.nodeDetails.flow.initialDelay')}
             </label>
             <Input
               id="flow-initial-delay-exponential"
@@ -189,7 +193,7 @@ export function RetryDetails({ node, onNodeUpdate }: NodeDetailProps) {
           </div>
           <div className="mb-4">
             <label htmlFor="flow-multiplier" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              Multiplier
+              {t('yamlEditor.nodeDetails.flow.multiplier')}
             </label>
             <Input
               id="flow-multiplier"
@@ -199,11 +203,11 @@ export function RetryDetails({ node, onNodeUpdate }: NodeDetailProps) {
               placeholder="2"
               className="w-full h-9.5 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
             />
-            <div className="mt-1 text-xs text-zinc-500">Delay multiplied each retry (1s, 2s, 4s, 8s...)</div>
+            <div className="mt-1 text-xs text-zinc-500">{t('yamlEditor.nodeDetails.flow.multiplierHelp')}</div>
           </div>
           <div className="mb-4">
             <label htmlFor="flow-max-delay" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              Max Delay (optional)
+              {t('yamlEditor.nodeDetails.flow.maxDelay')}
             </label>
             <Input
               id="flow-max-delay"
@@ -212,13 +216,13 @@ export function RetryDetails({ node, onNodeUpdate }: NodeDetailProps) {
               placeholder="30s"
               className="w-full h-9.5 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
             />
-            <div className="mt-1 text-xs text-zinc-500">Cap maximum delay to prevent very long waits</div>
+            <div className="mt-1 text-xs text-zinc-500">{t('yamlEditor.nodeDetails.flow.maxDelayHelp')}</div>
           </div>
         </>
       )}
 
       <div className="p-3 bg-white/5 border border-white/10 rounded">
-        <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1">Steps to Retry</div>
+        <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1">{t('yamlEditor.nodeDetails.flow.stepsToRetry')}</div>
         <div className="text-2xl font-bold text-zinc-300 font-mono">{node.children?.length || 0}</div>
       </div>
     </div>
@@ -226,6 +230,7 @@ export function RetryDetails({ node, onNodeUpdate }: NodeDetailProps) {
 }
 
 export function OneTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
+  const { t } = useLanguage();
   const { data, updateField } = createNodeDataUpdater(node, onNodeUpdate);
   const stepsCount = node.children?.length || 0;
 
@@ -234,17 +239,17 @@ export function OneTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
 
       <div>
         <label htmlFor="flow-purpose" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-          Purpose (optional)
+          {t('yamlEditor.nodeDetails.flow.purpose')}
         </label>
         <Textarea
           id="flow-purpose"
           value={data.description || ''}
           onChange={event => updateField('description', event.target.value)}
-          placeholder="Initialize session tokens, shared IDs, warm caches, bootstrap environment..."
+          placeholder={t('yamlEditor.nodeDetails.flow.purposePlaceholder')}
           className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 min-h-25"
         />
         <div className="mt-1 text-xs text-zinc-500">
-          Document what this initialization block prepares for the rest of the scenario.
+          {t('yamlEditor.nodeDetails.flow.purposeHelp')}
         </div>
       </div>
 
@@ -254,9 +259,9 @@ export function OneTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
             <List className="h-6 w-6 text-yellow-400" />
           </div>
           <div>
-            <div className="text-xs font-semibold uppercase tracking-wider text-yellow-400">Init Steps</div>
+            <div className="text-xs font-semibold uppercase tracking-wider text-yellow-400">{t('yamlEditor.nodeDetails.flow.initSteps')}</div>
             <div className="text-2xl font-bold font-mono text-white">{stepsCount}</div>
-            <div className="text-xs text-zinc-500 mt-1">Number of steps to run during initialization.</div>
+            <div className="text-xs text-zinc-500 mt-1">{t('yamlEditor.nodeDetails.flow.initStepsHelp')}</div>
           </div>
         </div>
         <div className="rounded border border-white/10 bg-white/5 p-3 flex items-start gap-3">
@@ -264,9 +269,9 @@ export function OneTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
             <Play className="h-6 w-6 text-yellow-400" />
           </div>
           <div>
-            <div className="text-xs font-semibold uppercase tracking-wider text-yellow-400">Execution</div>
+            <div className="text-xs font-semibold uppercase tracking-wider text-yellow-400">{t('yamlEditor.nodeDetails.flow.execution')}</div>
             <div className="text-2xl font-bold font-mono text-white">1x</div>
-            <div className="text-xs text-zinc-500 mt-1">This controller will execute exactly once.</div>
+            <div className="text-xs text-zinc-500 mt-1">{t('yamlEditor.nodeDetails.flow.executionHelp')}</div>
           </div>
         </div>
       </div>
@@ -275,8 +280,7 @@ export function OneTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
         <div className="alert-info rounded-md p-3 text-[13px] flex items-start gap-2">
           <Info className="alert-info-icon w-4 h-4 mt-0.5 shrink-0" />
           <span>
-            Add at least one initialization step inside this controller so it produces the shared state required by the
-            scenario.
+            {t('yamlEditor.nodeDetails.flow.initEmpty')}
           </span>
         </div>
       )}
@@ -285,6 +289,7 @@ export function OneTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
 }
 
 export function ParallelDetails({ node }: NodeDetailProps) {
+  const { t } = useLanguage();
   const stepsCount = node.children?.length || 0;
   const isEmpty = stepsCount === 0;
 
@@ -300,10 +305,10 @@ export function ParallelDetails({ node }: NodeDetailProps) {
           </div>
           <div className="space-y-2">
             <div className="text-xs font-bold uppercase tracking-[0.2em] text-yellow-400">
-              Execution Model
+              {t('yamlEditor.nodeDetails.flow.executionModel')}
             </div>
             <p className="text-sm leading-6" style={{ color: '#f8fafc' }}>
-              All child steps start together and this controller finishes only when every child step completes.
+              {t('yamlEditor.nodeDetails.flow.executionModelHelp')}
             </p>
           </div>
         </div>
@@ -317,7 +322,7 @@ export function ParallelDetails({ node }: NodeDetailProps) {
             </div>
             <div>
               <div className="text-xs font-bold uppercase tracking-[0.2em] text-yellow-400">
-                Parallel Steps
+                {t('yamlEditor.nodeDetails.flow.parallelSteps')}
               </div>
               <div
                 className="text-3xl font-black font-mono mt-1"
@@ -335,13 +340,13 @@ export function ParallelDetails({ node }: NodeDetailProps) {
             </div>
             <div>
               <div className="text-xs font-bold uppercase tracking-[0.2em] text-yellow-400">
-                Completion
+                {t('yamlEditor.nodeDetails.flow.completion')}
               </div>
               <div
                 className="text-base font-semibold mt-1"
                 style={{ color: isEmpty ? '#fde68a' : '#f8fafc' }}
               >
-                {isEmpty ? 'Blocked' : 'Waits for all'}
+                {isEmpty ? t('yamlEditor.nodeDetails.flow.blocked') : t('yamlEditor.nodeDetails.flow.waitsForAll')}
               </div>
             </div>
           </div>
@@ -354,13 +359,13 @@ export function ParallelDetails({ node }: NodeDetailProps) {
             className="mb-2 text-xs font-bold uppercase tracking-[0.2em]"
             style={{ color: '#fde68a' }}
           >
-            Validation
+            {t('yamlEditor.nodeDetails.flow.validation')}
           </div>
           <p
             className="text-sm leading-6"
             style={{ color: '#fffbeb' }}
           >
-            A parallel controller cannot be saved without at least one child step.
+            {t('yamlEditor.nodeDetails.flow.parallelEmpty')}
           </p>
         </div>
       )}
@@ -369,12 +374,13 @@ export function ParallelDetails({ node }: NodeDetailProps) {
 }
 
 const thinkTimeModes = [
-  { value: 'fixed', label: 'Fixed', icon: Clock3 },
-  { value: 'range', label: 'Range', icon: BetweenHorizontalStart },
-  { value: 'distribution', label: 'Distribution', icon: Binary },
+  { value: 'fixed', labelKey: 'fixed', icon: Clock3 },
+  { value: 'range', labelKey: 'range', icon: BetweenHorizontalStart },
+  { value: 'distribution', labelKey: 'distribution', icon: Binary },
 ] as const;
 
 export function ThinkTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
+  const { t } = useLanguage();
   const { data, updateField, updateData } = createNodeDataUpdater(node, onNodeUpdate);
   const hasFixed = data.duration !== undefined && String(data.duration).trim() !== '';
   const hasDistributionHints =
@@ -427,7 +433,7 @@ export function ThinkTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
     <div className="space-y-6">
       <div
         role="tablist"
-        aria-label="Think time mode"
+        aria-label={t('yamlEditor.nodeDetails.flow.thinkTimeMode')}
         className="flex items-center border-b border-white/5 bg-[#111111] shrink-0 rounded-t-md"
       >
         {thinkTimeModes.map(modeItem => {
@@ -448,7 +454,7 @@ export function ThinkTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
               }`}
             >
               <Icon className="h-4 w-4" />
-              {modeItem.label}
+              {t(`yamlEditor.nodeDetails.flow.${modeItem.labelKey}`)}
             </button>
           );
         })}
@@ -459,7 +465,7 @@ export function ThinkTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label htmlFor="flow-duration" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-                Duration
+                {t('studioControls.duration')}
               </label>
               <Input
                 id="flow-duration"
@@ -470,14 +476,14 @@ export function ThinkTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
               />
             </div>
           </div>
-          <div className="mt-1 text-xs text-zinc-500">Examples: 1s, 500ms, 2m (seconds, milliseconds, minutes)</div>
+          <div className="mt-1 text-xs text-zinc-500">{t('yamlEditor.nodeDetails.flow.durationExamples')}</div>
         </>
       ) : mode === 'range' ? (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label htmlFor="flow-minimum-duration-range" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-                Minimum Duration
+                {t('yamlEditor.nodeDetails.flow.minDuration')}
               </label>
               <Input
                 id="flow-minimum-duration-range"
@@ -489,7 +495,7 @@ export function ThinkTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
             </div>
             <div>
               <label htmlFor="flow-maximum-duration-range" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-                Maximum Duration
+                {t('yamlEditor.nodeDetails.flow.maxDuration')}
               </label>
               <Input
                 id="flow-maximum-duration-range"
@@ -502,14 +508,14 @@ export function ThinkTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
           </div>
           <div className="p-3 bg-yellow-400/5 border border-yellow-400/20 rounded text-xs text-zinc-400">
             <AlertTriangle className="inline-block h-3 w-3 mr-1" />
-            Random delay is chosen between min and max on each execution.
+            {t('yamlEditor.nodeDetails.flow.rangeHelp')}
           </div>
         </>
       ) : (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label htmlFor="flow-mean" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Mean</label>
+              <label htmlFor="flow-mean" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{t('yamlEditor.nodeDetails.flow.mean')}</label>
               <Input
                 id="flow-mean"
                 value={String(data.mean || '')}
@@ -520,7 +526,7 @@ export function ThinkTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
               />
             </div>
             <div>
-              <label htmlFor="flow-std-dev" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Std Dev</label>
+              <label htmlFor="flow-std-dev" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{t('yamlEditor.nodeDetails.flow.stdDev')}</label>
               <Input
                 id="flow-std-dev"
                 value={String(data.std_dev || '')}
@@ -534,7 +540,7 @@ export function ThinkTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label htmlFor="flow-minimum-duration-distribution" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-                Minimum Duration
+                {t('yamlEditor.nodeDetails.flow.minDuration')}
               </label>
               <Input
                 id="flow-minimum-duration-distribution"
@@ -546,7 +552,7 @@ export function ThinkTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
             </div>
             <div>
               <label htmlFor="flow-maximum-duration-distribution" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-                Maximum Duration
+                {t('yamlEditor.nodeDetails.flow.maxDuration')}
               </label>
               <Input
                 id="flow-maximum-duration-distribution"
@@ -560,14 +566,14 @@ export function ThinkTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label htmlFor="flow-distribution" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-                Distribution
+                {t('yamlEditor.nodeDetails.flow.distribution')}
               </label>
               <Select
                 value={String(data.distribution || 'normal')}
                 onValueChange={value => updateField('distribution', value)}
               >
                 <SelectTrigger id="flow-distribution" className="w-full h-9.5 px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono">
-                  <SelectValue placeholder="Select distribution" />
+                  <SelectValue placeholder={t('yamlEditor.nodeDetails.flow.selectDistribution')} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="normal">normal</SelectItem>
@@ -578,8 +584,7 @@ export function ThinkTimeDetails({ node, onNodeUpdate }: NodeDetailProps) {
           </div>
           <div className="p-3 bg-yellow-400/5 border border-yellow-400/20 rounded text-xs text-zinc-400">
             <AlertTriangle className="inline-block h-3 w-3 mr-1" />
-            Normal samples around mean/std_dev; uniform samples directly between min and max. Both respect the min/max
-            guardrails.
+            {t('yamlEditor.nodeDetails.flow.distributionHelp')}
           </div>
         </>
       )}

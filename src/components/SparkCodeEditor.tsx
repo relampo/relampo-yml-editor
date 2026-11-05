@@ -45,7 +45,7 @@ export function SparkCodeEditor({ value, onChange, minHeight = '250px' }: SparkC
       if (!value.trim()) {
         setValidationResult({
           isValid: false,
-          message: 'Empty script - add your JavaScript code',
+          message: t('yamlEditor.requestDetails.sparkEmptyScript'),
         });
         setIsValidating(false);
         return;
@@ -72,7 +72,7 @@ export function SparkCodeEditor({ value, onChange, minHeight = '250px' }: SparkC
           } else {
             setValidationResult({
               isValid: true,
-              message: 'Syntax OK - No errors found!',
+              message: t('yamlEditor.requestDetails.sparkSyntaxOk'),
             });
           }
           setIsValidating(false);
@@ -85,7 +85,7 @@ export function SparkCodeEditor({ value, onChange, minHeight = '250px' }: SparkC
       // check until the editor has mounted.
       setValidationResult({
         isValid: false,
-        message: 'Editor still loading — try again in a moment',
+        message: t('yamlEditor.requestDetails.sparkEditorLoading'),
       });
       setIsValidating(false);
     }, 200);
@@ -106,7 +106,7 @@ export function SparkCodeEditor({ value, onChange, minHeight = '250px' }: SparkC
         {/* Toolbar */}
         <div className="flex items-center justify-between px-3 py-2 bg-[#1e1e1e] border-b border-white/10">
           <div className="flex items-center gap-2 text-xs text-zinc-500">
-            <span className="text-zinc-400">{lineCount} lines</span>
+            <span className="text-zinc-400">{t('yamlEditor.requestDetails.lineCount').replace('{count}', String(lineCount))}</span>
           </div>
 
           {/* Validate Button */}
@@ -168,7 +168,7 @@ export function SparkCodeEditor({ value, onChange, minHeight = '250px' }: SparkC
             <>
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span className="flex-1">{validationResult.message}</span>
-              {validationResult.line && <span className="text-red-300 font-mono">Line {validationResult.line}</span>}
+              {validationResult.line && <span className="text-red-300 font-mono">{t('yamlEditor.requestDetails.sparkLine').replace('{line}', String(validationResult.line))}</span>}
             </>
           )}
         </div>
@@ -184,7 +184,7 @@ export function SparkCodeEditor({ value, onChange, minHeight = '250px' }: SparkC
           </div>
           <div>
             <code className="text-cyan-400">response</code>
-            <span className="text-zinc-400"> - Response object (after)</span>
+            <span className="text-zinc-400"> - {t('yamlEditor.requestDetails.sparkResponseObject')}</span>
           </div>
           <div>
             <code className="text-pink-400">vars.set("name", value)</code>
@@ -192,19 +192,19 @@ export function SparkCodeEditor({ value, onChange, minHeight = '250px' }: SparkC
           </div>
           <div>
             <code className="text-pink-400">response.status</code>
-            <span className="text-zinc-400"> - HTTP status code</span>
+            <span className="text-zinc-400"> - {t('yamlEditor.requestDetails.sparkHttpStatus')}</span>
           </div>
           <div>
             <code className="text-pink-400">response.body</code>
-            <span className="text-zinc-400"> - Response body</span>
+            <span className="text-zinc-400"> - {t('yamlEditor.requestDetails.sparkResponseBody')}</span>
           </div>
           <div>
             <code className="text-pink-400">response.latency_ms</code>
-            <span className="text-zinc-400"> - Response latency</span>
+            <span className="text-zinc-400"> - {t('yamlEditor.requestDetails.sparkResponseLatency')}</span>
           </div>
           <div>
             <code className="text-yellow-300">console.log()</code>
-            <span className="text-zinc-400"> - Print to console</span>
+            <span className="text-zinc-400"> - {t('yamlEditor.requestDetails.sparkPrintConsole')}</span>
           </div>
         </div>
       </div>

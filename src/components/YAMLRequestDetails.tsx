@@ -1,5 +1,6 @@
 import { ChevronDown, ChevronUp, Search } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { useLanguage } from '../contexts/LanguageContext';
 import type { AuthConfig, RedirectSourceInfo, YAMLNode, YAMLNodeData, YAMLValue } from '../types/yaml';
 import { BodyTypeSelector, type BodyType } from './fields/BodyTypeSelector';
 import { MethodDropdown } from './fields/MethodDropdown';
@@ -64,6 +65,7 @@ export function YAMLRequestDetails({
   onNodeUpdate,
   searchQuery = '',
 }: YAMLRequestDetailsProps) {
+  const { t } = useLanguage();
   const data = node.data || {};
   const [formData, setFormData] = useState(data);
   const [activeTab, setActiveTab] = useState<Tab>('request');
@@ -195,7 +197,7 @@ export function YAMLRequestDetails({
               : 'text-zinc-400 hover:text-zinc-300 hover:bg-white/5'
           }`}
         >
-          Request
+          {t('yamlEditor.requestDetails.tabRequest')}
         </button>
         {formData.response && (
           <button
@@ -207,7 +209,7 @@ export function YAMLRequestDetails({
                 : 'text-zinc-400 hover:text-zinc-300 hover:bg-white/5'
             }`}
           >
-            Response
+            {t('yamlEditor.requestDetails.tabResponse')}
           </button>
         )}
       </div>
@@ -312,6 +314,7 @@ function RequestUrlRow({
   searchText,
   compactInputClass,
 }: RequestUrlRowProps) {
+  const { t } = useLanguage();
   return (
     <div>
       <div className="grid grid-cols-12 gap-3 items-end">
@@ -320,7 +323,7 @@ function RequestUrlRow({
             htmlFor="req-method"
             className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
           >
-            Method
+            {t('yamlEditor.requestDetails.method')}
           </label>
           <MethodDropdown
             id="req-method"
@@ -334,7 +337,7 @@ function RequestUrlRow({
             htmlFor="req-protocol"
             className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
           >
-            Protocol
+            {t('yamlEditor.requestDetails.protocol')}
           </label>
           <Select
             value={protocol}
@@ -354,7 +357,7 @@ function RequestUrlRow({
             htmlFor="req-base-url"
             className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
           >
-            Base URL
+            {t('yamlEditor.requestDetails.baseUrl')}
           </label>
           <HighlightedInput
             id="req-base-url"
@@ -371,7 +374,7 @@ function RequestUrlRow({
             htmlFor="req-path"
             className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
           >
-            Path
+            {t('yamlEditor.requestDetails.path')}
           </label>
           <HighlightedInput
             id="req-path"
@@ -421,10 +424,11 @@ function RequestBodySearchToolbar({
   onNext,
   regexInvalid,
 }: RequestBodySearchToolbarProps) {
+  const { t } = useLanguage();
   return (
     <div>
       <div className="flex items-center gap-2 mb-2">
-        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Request Body</p>
+        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">{t('yamlEditor.requestDetails.requestBody')}</p>
       </div>
       <div className="p-3 border border-white/10 rounded bg-[#0a0a0a]">
         <div className="flex items-center gap-2 flex-wrap">
@@ -433,7 +437,7 @@ function RequestBodySearchToolbar({
             <Input
               value={searchInputValue}
               onChange={e => onSearchChange(e.target.value)}
-              placeholder="Search in request body..."
+              placeholder={t('yamlEditor.requestDetails.searchRequestBody')}
               className="pl-9 pr-3 bg-white/5 border-white/10 text-zinc-300 text-sm focus-visible:border-yellow-400/60 focus-visible:ring-yellow-400/30"
             />
           </div>
@@ -447,7 +451,7 @@ function RequestBodySearchToolbar({
                   : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              Text
+              {t('yamlEditor.requestDetails.searchModeText')}
             </button>
             <button
               type="button"
@@ -458,13 +462,13 @@ function RequestBodySearchToolbar({
                   : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              Regex
+              {t('yamlEditor.requestDetails.searchModeRegex')}
             </button>
           </div>
           <Input
             value={replaceValue}
             onChange={e => onReplaceValueChange(e.target.value)}
-            placeholder="Replace"
+            placeholder={t('yamlEditor.requestDetails.replacePlaceholder')}
             className="w-[18ch] bg-white/5 border-white/10 text-zinc-300 text-sm"
           />
           <button
@@ -473,7 +477,7 @@ function RequestBodySearchToolbar({
             disabled={totalMatches === 0}
             className="px-2 py-1.5 text-xs rounded border border-white/10 text-zinc-300 disabled:opacity-40"
           >
-            Replace
+            {t('yamlEditor.requestDetails.replace')}
           </button>
           <button
             type="button"
@@ -481,7 +485,7 @@ function RequestBodySearchToolbar({
             disabled={totalMatches === 0}
             className="px-2 py-1.5 text-xs rounded border border-white/10 text-zinc-300 disabled:opacity-40"
           >
-            Replace All
+            {t('yamlEditor.requestDetails.replaceAll')}
           </button>
           {searchText && (
             <div className="flex items-center gap-1">
@@ -493,7 +497,7 @@ function RequestBodySearchToolbar({
                 onClick={onPrevious}
                 disabled={totalMatches === 0}
                 className="p-1.5 hover:bg-white/10 rounded border border-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                title="Previous match"
+                title={t('yamlEditor.requestDetails.previousMatch')}
               >
                 <ChevronUp className="w-4 h-4 text-zinc-400" />
               </button>
@@ -502,14 +506,14 @@ function RequestBodySearchToolbar({
                 onClick={onNext}
                 disabled={totalMatches === 0}
                 className="p-1.5 hover:bg-white/10 rounded border border-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                title="Next match"
+                title={t('yamlEditor.requestDetails.nextMatch')}
               >
                 <ChevronDown className="w-4 h-4 text-zinc-400" />
               </button>
             </div>
           )}
         </div>
-        {regexInvalid && <div className="mt-2 text-xs text-red-400">Invalid regex pattern</div>}
+        {regexInvalid && <div className="mt-2 text-xs text-red-400">{t('yamlEditor.requestDetails.invalidRegex')}</div>}
       </div>
     </div>
   );
@@ -542,6 +546,7 @@ function RequestAdvancedOptionsRow({
   targetRps,
   onTargetRpsChange,
 }: RequestAdvancedOptionsRowProps) {
+  const { t } = useLanguage();
   return (
     <div>
       <div className="grid grid-cols-5 gap-3 items-start w-full">
@@ -550,7 +555,7 @@ function RequestAdvancedOptionsRow({
             htmlFor="req-timeout"
             className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
           >
-            Timeout
+            {t('yamlEditor.requestDetails.timeout')}
           </label>
           <Input
             id="req-timeout"
@@ -565,7 +570,7 @@ function RequestAdvancedOptionsRow({
             htmlFor="req-cookie-override"
             className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
           >
-            Cookie Override
+            {t('yamlEditor.requestDetails.cookieOverride')}
           </label>
           <Select
             value={cookieOverride}
@@ -575,9 +580,9 @@ function RequestAdvancedOptionsRow({
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="border-white/10 use-accent-yellow">
-              <SelectItem value="inherit">inherit</SelectItem>
-              <SelectItem value="enabled">enabled</SelectItem>
-              <SelectItem value="disabled">disabled</SelectItem>
+              <SelectItem value="inherit">{t('yamlEditor.requestDetails.optionInherit')}</SelectItem>
+              <SelectItem value="enabled">{t('yamlEditor.requestDetails.optionEnabled')}</SelectItem>
+              <SelectItem value="disabled">{t('yamlEditor.requestDetails.optionDisabled')}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -586,7 +591,7 @@ function RequestAdvancedOptionsRow({
             htmlFor="req-cache-override"
             className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
           >
-            Cache Override
+            {t('yamlEditor.requestDetails.cacheOverride')}
           </label>
           <Select
             value={cacheOverride}
@@ -596,9 +601,9 @@ function RequestAdvancedOptionsRow({
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="border-white/10 use-accent-yellow">
-              <SelectItem value="inherit">inherit</SelectItem>
-              <SelectItem value="enabled">enabled</SelectItem>
-              <SelectItem value="disabled">disabled</SelectItem>
+              <SelectItem value="inherit">{t('yamlEditor.requestDetails.optionInherit')}</SelectItem>
+              <SelectItem value="enabled">{t('yamlEditor.requestDetails.optionEnabled')}</SelectItem>
+              <SelectItem value="disabled">{t('yamlEditor.requestDetails.optionDisabled')}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -607,7 +612,7 @@ function RequestAdvancedOptionsRow({
             htmlFor="req-throughput"
             className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
           >
-            Throughput (Request)
+            {t('yamlEditor.requestDetails.throughputRequest')}
           </label>
           <Select
             value={throughputEnabled ? 'enabled' : 'disabled'}
@@ -617,8 +622,8 @@ function RequestAdvancedOptionsRow({
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="border-white/10">
-              <SelectItem value="enabled">enabled</SelectItem>
-              <SelectItem value="disabled">disabled</SelectItem>
+              <SelectItem value="enabled">{t('yamlEditor.requestDetails.optionEnabled')}</SelectItem>
+              <SelectItem value="disabled">{t('yamlEditor.requestDetails.optionDisabled')}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -627,7 +632,7 @@ function RequestAdvancedOptionsRow({
             htmlFor="req-target-rps"
             className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
           >
-            Target RPS
+            {t('yamlEditor.requestDetails.targetRps')}
           </label>
           <Input
             id="req-target-rps"
@@ -640,7 +645,7 @@ function RequestAdvancedOptionsRow({
             className="w-full h-9.5 bg-white/5 border border-white/10 text-zinc-300 text-sm font-mono"
           />
           <div className="mt-1 text-xs text-zinc-500">
-            Approx: {((targetRps || 0) * 60).toFixed(0)} req/min
+            {t('yamlEditor.requestDetails.approxPerMinute').replace('{value}', ((targetRps || 0) * 60).toFixed(0))}
           </div>
         </div>
       </div>
@@ -669,6 +674,7 @@ function RequestContent({
   onReplaceValueChange,
   onNavigate,
 }: RequestContentProps) {
+  const { t } = useLanguage();
   const compactInputClass =
     'w-[14ch] max-w-full h-9.5 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono';
 
@@ -816,7 +822,7 @@ function RequestContent({
               checked={formData.retrieve_embedded_resources === true}
               onChange={e => onFieldChange('retrieve_embedded_resources', e.target.checked)}
             />
-            <span>Retrieve all Embedded Resources</span>
+            <span>{t('yamlEditor.requestDetails.retrieveEmbeddedResources')}</span>
           </label>
           <label className="inline-flex items-center gap-2 text-sm text-zinc-300 cursor-pointer">
             <input
@@ -825,7 +831,7 @@ function RequestContent({
               checked={effectiveRedirectAutomatically}
               onChange={e => onFieldChange('redirect_automatically', e.target.checked)}
             />
-            <span>Redirect Automatically</span>
+            <span>{t('yamlEditor.requestDetails.redirectAutomatically')}</span>
           </label>
           <label className="inline-flex items-center gap-2 text-sm text-zinc-300 cursor-pointer">
             <input
@@ -834,12 +840,12 @@ function RequestContent({
               checked={effectiveFollowRedirects}
               onChange={e => onFieldChange('follow_redirects', e.target.checked)}
             />
-            <span>Follow Redirects</span>
+            <span>{t('yamlEditor.requestDetails.followRedirects')}</span>
           </label>
         </div>
         {hasRecordedRedirectFollowUp && (
           <div className="mt-2 text-xs text-zinc-500">
-            This request is part of a recorded redirect chain.
+            {t('yamlEditor.requestDetails.recordedRedirectChain')}
           </div>
         )}
       </div>
@@ -868,7 +874,7 @@ function RequestContent({
         regexInvalid={regexInvalid}
       />
       <div className="flex items-center gap-2 mb-2 mt-3">
-        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Format / Body Type</p>
+        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">{t('yamlEditor.requestDetails.formatBodyType')}</p>
       </div>
       <BodyTypeSelector
         body={formData.body}
@@ -884,7 +890,7 @@ function RequestContent({
       {formData.think_time && (
         <div>
           <div className="flex items-center gap-2 mb-2">
-            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">⏱ Think Time</p>
+            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">{t('yamlEditor.requestDetails.thinkTime')}</p>
           </div>
           <div className="px-3 py-2 bg-cyan-400/5 border border-cyan-400/20 rounded text-sm font-mono text-cyan-400">
             {String(formData.think_time)}

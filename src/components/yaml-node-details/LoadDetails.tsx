@@ -112,7 +112,7 @@ export function LoadDetails({ node, onNodeUpdate }: NodeDetailProps) {
         </div>
       </div>
 
-      <p className="text-sm text-amber-300">{t('studioControls.selectedLoadModel')}: {getLoadTypeLabel(loadType)}</p>
+      <p className="text-sm text-amber-300">{t('studioControls.selectedLoadModel')}: {t(`yamlEditor.nodeDetails.load.type_${loadType}`)}</p>
 
       <LoadModePanel
         data={loadData}

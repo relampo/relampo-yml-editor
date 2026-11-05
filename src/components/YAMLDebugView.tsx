@@ -46,6 +46,8 @@ import { DebugSection } from './debugSection';
 import { BlockedByIssuesNotice } from './DocumentIssues';
 import { buildSearchRegex, findMatchRanges, type SearchMode } from './debugSearch';
 import { createStoredRunStore, fingerprint, type StoredRun } from '../utils/studioRunStore';
+import { useLanguage } from '../contexts/LanguageContext';
+import { localizeYAMLSemanticError } from '../utils/yamlSemanticValidation';
 
 type DetailTab = 'overview' | 'request' | 'response' | 'assertions' | 'variables' | 'builtins' | 'spark' | 'logs';
 
@@ -59,16 +61,6 @@ const REQUEST_DETAIL_TABS: DetailTab[] = [
   'spark',
   'logs',
 ];
-const DETAIL_TAB_LABELS: Record<DetailTab, string> = {
-  overview: 'Overview',
-  request: 'Request',
-  response: 'Response',
-  assertions: 'Assertions',
-  variables: 'Variables',
-  builtins: 'Built-ins',
-  spark: 'Spark',
-  logs: 'Logs',
-};
 
 // The last debug run is parked in sessionStorage so a page reload can re-attach
 // and let the backend replay the run's history.
@@ -269,7 +261,7 @@ type RunAction =
   | { type: 'reattach_started' }
   | { type: 'event_received'; event: EngineEvent }
   | { type: 'run_done'; error: string | null }
-  | { type: 'connection_error'; quiet: boolean }
+  | { type: 'connection_error'; quiet: boolean; message: string }
   | { type: 'run_start_failed'; message: string }
   | { type: 'run_stopped' };
 
@@ -358,7 +350,7 @@ function runStateReducer(state: RunState, action: RunAction): RunState {
     case 'connection_error':
       return action.quiet
         ? { ...state, isRunning: false, runCompleted: false, entryEvents: [], pendingSparkLogs: [] }
-        : { ...state, isRunning: false, runCompleted: false, runError: 'Lost connection to the studio server.' };
+        : { ...state, isRunning: false, runCompleted: false, runError: action.message };
     case 'run_start_failed':
       return { ...state, isRunning: false, runCompleted: false, runError: action.message };
     case 'run_stopped':
@@ -426,7 +418,9 @@ export function YAMLDebugSession({
   onSelectNode,
   onEditNode,
 }: YAMLDebugSessionProps) {
-  const componentError = componentCapabilityError(yamlCode, componentCapabilities);
+  const { t, language } = useLanguage();
+  const rawComponentError = componentCapabilityError(yamlCode, componentCapabilities);
+  const componentError = rawComponentError && localizeYAMLSemanticError(rawComponentError, language);
   const documentErrorCount = validationErrors.length;
   validationErrors = componentError ? [...validationErrors, componentError] : validationErrors;
   const [runState, dispatchRunState] = useReducer(runStateReducer, initialRunState);
@@ -496,10 +490,10 @@ export function YAMLDebugSession({
       },
       onConnectionError: () => {
         if (quiet) runStore.clear();
-        dispatchRunState({ type: 'connection_error', quiet });
+        dispatchRunState({ type: 'connection_error', quiet, message: t('yamlEditor.runDebug.connectionLost') });
       },
     });
-  }, []);
+  }, [t]);
 
   useEffect(() => () => stopStreamRef.current?.(), []);
 
@@ -571,7 +565,7 @@ export function YAMLDebugSession({
     const snapshotScenarios = scenarioNodes(snapshotTree);
     const selectedName = snapshotScenarios.length > 1 ? scenarioName : undefined;
     if (snapshotScenarios.length > 1 && (!multiScenarioDebugEnabled || !snapshotScenarios.some(node => node.data?.name === selectedName))) {
-      dispatchRunState({ type: 'run_start_failed', message: 'Select a scenario from the current script before Debug.' });
+      dispatchRunState({ type: 'run_start_failed', message: t('yamlEditor.runDebug.debug.selectScenarioError') });
       return;
     }
     setRunDebugEventTargets(selectedName ? targetsForScenario(snapshotTree, selectedName) : currentDebugEventTargets);
@@ -654,14 +648,14 @@ export function YAMLDebugSession({
         <div className="border-b border-white/5 px-5 py-3 text-sm text-zinc-300">
           {multiScenarioDebugEnabled ? (
             <label className="flex items-center gap-3">
-              Debug scenario
-              <select aria-label="Debug scenario" value={scenarioName} onChange={event => setScenarioName(event.target.value)} disabled={isRunning}
+              {t('yamlEditor.runDebug.debug.scenarioLabel')}
+              <select aria-label={t('yamlEditor.runDebug.debug.scenarioLabel')} value={scenarioName} onChange={event => setScenarioName(event.target.value)} disabled={isRunning}
                 className="rounded border border-white/20 bg-[#161616] px-3 py-2">
-                <option value="">Select a scenario</option>
+                <option value="">{t('yamlEditor.runDebug.debug.selectScenario')}</option>
                 {scenarios.map(node => <option key={node.id} value={String(node.data?.name ?? '')}>{node.name}</option>)}
               </select>
             </label>
-          ) : <p>This Relampo backend does not support scenario selection for Debug.</p>}
+          ) : <p>{t('yamlEditor.runDebug.debug.scenarioUnsupported')}</p>}
         </div>
       )}
 
@@ -731,12 +725,13 @@ function DebugToolbar({
   onDebugVUsChange: (vus: DebugVUs) => void;
   selectionBlocked: boolean;
 }) {
+  const { t } = useLanguage();
   return (
     <div className="border-b border-white/5 px-5 py-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">Debug session</p>
-          <h2 className="mt-1 text-base font-semibold text-zinc-100">Run the current YAML with request visibility</h2>
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">{t('yamlEditor.runDebug.debug.session')}</p>
+          <h2 className="mt-1 text-base font-semibold text-zinc-100">{t('yamlEditor.runDebug.debug.title')}</h2>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button
@@ -746,7 +741,7 @@ function DebugToolbar({
             className="inline-flex h-9 items-center gap-2 rounded border border-yellow-400/40 bg-yellow-400 px-3 text-sm font-semibold text-black transition-colors hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Play className="h-4 w-4" />
-            Run Debug
+            {t('yamlEditor.runDebug.debug.runButton')}
           </button>
           <button
             type="button"
@@ -755,20 +750,20 @@ function DebugToolbar({
             className="inline-flex h-9 items-center gap-2 rounded border border-white/10 bg-white/3 px-3 text-sm text-zinc-300 transition-colors hover:bg-white/6 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <Square className="h-4 w-4" />
-            Stop
+            {t('yamlEditor.runDebug.stop')}
           </button>
           <button
             type="button"
             onClick={onRun}
             disabled={!documentReady || isRunning || hasValidationErrors || !yamlCode.trim() || selectionBlocked}
             className="inline-flex h-9 w-9 items-center justify-center rounded border border-white/10 bg-white/3 text-zinc-300 transition-colors hover:bg-white/6 disabled:opacity-40"
-            aria-label="Re-run debug"
-            title="Re-run debug"
+            aria-label={t('yamlEditor.runDebug.debug.rerun')}
+            title={t('yamlEditor.runDebug.debug.rerun')}
           >
             <RotateCcw className="h-4 w-4" />
           </button>
           <fieldset className="m-0 inline-flex h-9 min-w-0 items-center rounded border border-white/10 bg-[#161616] p-0 text-xs text-zinc-400">
-            <legend className="sr-only">Debug VUs</legend>
+            <legend className="sr-only">{t('yamlEditor.runDebug.debug.vusLegend')}</legend>
             <span
               aria-hidden="true"
               className="inline-flex h-full items-center gap-1.5 border-r border-white/10 px-2"
@@ -790,7 +785,7 @@ function DebugToolbar({
                     selected ? 'bg-yellow-400 text-black' : 'text-zinc-300 hover:bg-white/6 hover:text-zinc-100'
                   } disabled:cursor-not-allowed disabled:opacity-50`}
                 >
-                  {vus} {vus === 1 ? 'VU' : 'VUs'}
+                  {vus} {vus === 1 ? t('yamlEditor.runDebug.debug.vuOne') : t('yamlEditor.runDebug.debug.vuMany')}
                 </button>
               );
             })}
@@ -802,6 +797,7 @@ function DebugToolbar({
 }
 
 function DebugRunAlerts({ runError }: { runError: string | null }) {
+  const { t } = useLanguage();
   return (
     <>
       {runError && (
@@ -809,7 +805,7 @@ function DebugRunAlerts({ runError }: { runError: string | null }) {
           <div className="flex items-start gap-3">
             <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-300" />
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-red-200">Debug run failed</p>
+              <p className="text-sm font-semibold text-red-200">{t('yamlEditor.runDebug.debug.runFailed')}</p>
               <p className="mt-1 wrap-break-word font-mono text-xs text-red-100/90">{runError}</p>
             </div>
           </div>
@@ -834,16 +830,17 @@ function DebugStatsBar({
   activeFilter: DebugTimelineFilter;
   onFilterChange: (filter: DebugTimelineFilter) => void;
 }) {
+  const { t } = useLanguage();
   const stats: Array<{
     filter: DebugTimelineFilter;
     label: string;
     value: number;
     tone: string;
   }> = [
-    { filter: 'requests', label: 'Requests', value: total, tone: 'text-zinc-100' },
-    { filter: 'passed', label: 'Passed', value: passed, tone: 'text-emerald-300' },
-    { filter: 'failed', label: 'Failed', value: failed, tone: 'text-red-300' },
-    { filter: 'redirects', label: 'Redirects', value: redirects, tone: 'text-blue-300' },
+    { filter: 'requests', label: t('yamlEditor.runDebug.debug.stats.requests'), value: total, tone: 'text-zinc-100' },
+    { filter: 'passed', label: t('yamlEditor.runDebug.debug.stats.passed'), value: passed, tone: 'text-emerald-300' },
+    { filter: 'failed', label: t('yamlEditor.runDebug.debug.stats.failed'), value: failed, tone: 'text-red-300' },
+    { filter: 'redirects', label: t('yamlEditor.runDebug.debug.stats.redirects'), value: redirects, tone: 'text-blue-300' },
   ];
 
   return (
@@ -856,7 +853,7 @@ function DebugStatsBar({
             type="button"
             onClick={() => onFilterChange(filter)}
             aria-pressed={active}
-            aria-label={`${label}: ${value}. Filter execution timeline.`}
+            aria-label={t('yamlEditor.runDebug.debug.stats.filterAria').replace('{label}', label).replace('{value}', String(value))}
             className={`relative border-r border-white/5 px-5 py-3 text-left transition-colors last:border-r-0 hover:bg-white/[0.03] focus:z-10 focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/60 ${
               active ? 'bg-yellow-400/[0.04]' : ''
             }`}
@@ -895,24 +892,25 @@ function DebugTimelinePanel({
   onEntryKeyDown: (event: KeyboardEvent<HTMLButtonElement>, entry: DebugEntry) => void;
   timelineButtonRefs: MutableRefObject<Map<string, HTMLButtonElement>>;
 }) {
+  const { t } = useLanguage();
   return (
     <div
       className="min-h-0 border-r border-white/5"
       role="region"
-      aria-label="Execution timeline"
+      aria-label={t('yamlEditor.runDebug.debug.timeline.title')}
     >
       <div className="flex h-full min-h-0 flex-col">
         <div className="border-b border-white/5 px-4 py-2.5">
-          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">Execution timeline</p>
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">{t('yamlEditor.runDebug.debug.timeline.title')}</p>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-2">
           {timelineEntries.length === 0 ? (
             <div className="flex h-full items-center justify-center px-8 text-center text-sm text-zinc-500">
               {isRunning
-                ? 'Running... waiting for the first engine event.'
+                ? t('yamlEditor.runDebug.debug.timeline.running')
                 : isFiltered
-                  ? 'No requests match this filter.'
-                  : 'Press Run Debug to execute this YAML against the engine.'}
+                  ? t('yamlEditor.runDebug.debug.timeline.filtered')
+                  : t('yamlEditor.runDebug.debug.timeline.idle')}
             </div>
           ) : (
             <div className="space-y-2">
@@ -946,7 +944,7 @@ function DebugTimelinePanel({
                           {requestNumber && (
                             <span
                               className="shrink-0 rounded border border-zinc-500/25 bg-white/4 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-zinc-300"
-                              title="Request ID"
+                              title={t('yamlEditor.runDebug.debug.timeline.requestId')}
                             >
                               #{requestNumber}
                             </span>
@@ -963,7 +961,7 @@ function DebugTimelinePanel({
                             <>
                               {entry.event.vu ? <span>VU{entry.event.vu}</span> : null}
                               <span className={`rounded border px-1.5 py-0.5 ${statusTone(entry.status)}`}>
-                                Skipped · redirect not followed
+                                {t('yamlEditor.runDebug.debug.timeline.skipped')}
                               </span>
                             </>
                           ) : (
@@ -1007,6 +1005,7 @@ function DebugDetailPanel({
   debugEventTargets: YAMLNode[];
   timelineEntries: DebugEntry[];
 }) {
+  const { t } = useLanguage();
   return (
     <div className="min-w-0 min-h-0 overflow-hidden">
       {activeEntry ? (
@@ -1031,26 +1030,26 @@ function DebugDetailPanel({
                     className="inline-flex h-8 items-center gap-2 rounded border border-white/10 bg-white/3 px-2.5 text-xs text-zinc-300 transition-colors hover:bg-white/6"
                   >
                     <Edit3 className="h-3.5 w-3.5" />
-                    Edit
+                    {t('yamlEditor.runDebug.debug.detail.edit')}
                   </button>
                 )}
                 <span className={`rounded-full border px-2.5 py-1 text-xs ${statusTone(activeEntry.status)}`}>
                   {activeEntry.status === 'skipped'
-                    ? 'Skipped'
+                    ? t('yamlEditor.runDebug.debug.detail.skipped')
                     : activeEntry.status === 'failed'
-                      ? 'Failed'
-                      : 'Passed'}
+                      ? t('yamlEditor.runDebug.debug.detail.failed')
+                      : t('yamlEditor.runDebug.debug.detail.passed')}
                 </span>
               </div>
             </div>
           </div>
 
-          <div aria-label="Request detail tabs" className="flex shrink-0 items-center overflow-x-auto border-b border-white/5 px-3">
+          <div aria-label={t('yamlEditor.runDebug.debug.detail.tabsLabel')} className="flex shrink-0 items-center overflow-x-auto border-b border-white/5 px-3">
             {REQUEST_DETAIL_TABS.map(tab => (
               <button
                 key={tab}
                 type="button"
-                aria-label={tab === 'builtins' ? 'Built-ins' : tab}
+                aria-label={t(`yamlEditor.runDebug.debug.tabsAria.${tab}`)}
                 onClick={() => onTabChange(tab)}
                 className={`shrink-0 px-2.5 py-2.5 text-xs font-semibold transition-colors ${
                   detailTab === tab
@@ -1058,7 +1057,7 @@ function DebugDetailPanel({
                     : 'border-b-2 border-transparent text-zinc-500 hover:text-zinc-300'
                 }`}
               >
-                {DETAIL_TAB_LABELS[tab]}
+                {t(`yamlEditor.runDebug.debug.tabs.${tab}`)}
               </button>
             ))}
           </div>
@@ -1067,11 +1066,7 @@ function DebugDetailPanel({
             {activeEntry.status === 'skipped' && (
               <div className="mb-4 flex items-start gap-2 rounded border border-white/10 bg-white/[0.03] px-3 py-2.5 text-[13px] text-zinc-400">
                 <CircleSlash className="mt-0.5 h-4 w-4 shrink-0 text-zinc-500" />
-                <span>
-                  This redirect hop was recorded but not followed in this run — the engine stopped at the redirect
-                  trust boundary (e.g. a cross-site callback), so no live request was made. It is shown to keep the
-                  recorded chain visible; there is no live request or response to inspect.
-                </span>
+                <span>{t('yamlEditor.runDebug.debug.detail.skippedNotice')}</span>
               </div>
             )}
             <DebugInspectorContent
@@ -1088,7 +1083,7 @@ function DebugDetailPanel({
         <div className="flex h-full items-center justify-center px-8 text-center">
           <div>
             <TerminalSquare className="mx-auto h-10 w-10 text-zinc-700" />
-            <p className="mt-4 text-sm text-zinc-400">Select a debug event to inspect request and response data.</p>
+            <p className="mt-4 text-sm text-zinc-400">{t('yamlEditor.runDebug.debug.detail.select')}</p>
           </div>
         </div>
       )}
@@ -1142,15 +1137,16 @@ function DebugInspectorContent({
 }
 
 function DebugRequestInspector({ event }: { event: EngineEvent }) {
+  const { t } = useLanguage();
   const [search, setSearch] = useState('');
   const [searchMode, setSearchMode] = useState<SearchMode>('text');
   const [matchIndex, setMatchIndex] = useState(0);
   const rows: Array<[string, string]> = [
-    ['URL', event.path || '<unknown>'],
-    ['Method', event.method],
+    [t('yamlEditor.runDebug.debug.request.url'), event.path || t('yamlEditor.runDebug.debug.request.unknown')],
+    [t('yamlEditor.runDebug.debug.request.method'), event.method],
     ...Object.entries(event.request_headers ?? {}),
   ];
-  const body = event.request_body || '<empty>';
+  const body = event.request_body || t('yamlEditor.runDebug.debug.request.empty');
   const searchText = [...rows.map(([label, value]) => `${label}: ${value}`), body].join('\n');
   const totalMatches = findMatchRanges(searchText, search, searchMode).length;
   return (
@@ -1158,7 +1154,7 @@ function DebugRequestInspector({ event }: { event: EngineEvent }) {
       <DebugSearchControls
         value={search}
         mode={searchMode}
-        placeholder="Search in request..."
+        placeholder={t('yamlEditor.runDebug.debug.request.search')}
         totalMatches={totalMatches}
         currentMatchIndex={matchIndex}
         onChange={value => {
@@ -1183,12 +1179,13 @@ function DebugRequestInspector({ event }: { event: EngineEvent }) {
 }
 
 function DebugResponseInspector({ event }: { event: EngineEvent }) {
+  const { t } = useLanguage();
   const [search, setSearch] = useState('');
   const [searchMode, setSearchMode] = useState<SearchMode>('text');
   const [matchIndex, setMatchIndex] = useState(0);
   const rows: Array<[string, string]> = [
-    ['Status', event.status ? String(event.status) : '—'],
-    ['Duration', formatLatency(event.latency_ms)],
+    [t('yamlEditor.runDebug.debug.response.status'), event.status ? String(event.status) : '—'],
+    [t('yamlEditor.runDebug.debug.response.duration'), formatLatency(event.latency_ms)],
     ...Object.entries(event.response_headers ?? {}),
   ];
   // Collapse a binary response body to the same notice the recorded Response
@@ -1196,7 +1193,7 @@ function DebugResponseInspector({ event }: { event: EngineEvent }) {
   // of one dumping mojibake and the other {"0":48,...}. RLP-555.
   const body = event.response_body
     ? (binaryBodyDisplay(event.response_body, event.response_headers) ?? event.response_body)
-    : '<empty>';
+    : t('yamlEditor.runDebug.debug.request.empty');
   const bodyDownload = binaryBodyDownloadFromBase64(event.response_body_base64, event.response_headers);
   const searchText = [...rows.map(([label, value]) => `${label}: ${value}`), body].join('\n');
   const totalMatches = findMatchRanges(searchText, search, searchMode).length;
@@ -1205,7 +1202,7 @@ function DebugResponseInspector({ event }: { event: EngineEvent }) {
       <DebugSearchControls
         value={search}
         mode={searchMode}
-        placeholder="Search in response..."
+        placeholder={t('yamlEditor.runDebug.debug.response.search')}
         totalMatches={totalMatches}
         currentMatchIndex={matchIndex}
         onChange={value => {
@@ -1231,10 +1228,11 @@ function DebugResponseInspector({ event }: { event: EngineEvent }) {
 }
 
 function DebugAssertionsInspector({ event }: { event: EngineEvent }) {
+  const { t } = useLanguage();
   const assertions = event.assertions ?? [];
   const diagnostics = event.extraction_diagnostics ?? [];
   if (assertions.length === 0 && diagnostics.length === 0) {
-    return <p className="text-sm text-zinc-500">No assertions were evaluated for this request.</p>;
+    return <p className="text-sm text-zinc-500">{t('yamlEditor.runDebug.debug.assertions.none')}</p>;
   }
   return (
     <div className="space-y-3">
@@ -1248,19 +1246,19 @@ function DebugAssertionsInspector({ event }: { event: EngineEvent }) {
               <XCircle className="h-4 w-4 text-red-300" />
             )
           }
-          title={assertion.Name || 'Assertion'}
-          value={assertion.Message || (assertion.Passed ? 'Passed' : 'Failed')}
+          title={assertion.Name || t('yamlEditor.runDebug.debug.assertions.assertion')}
+          value={assertion.Message || (assertion.Passed ? t('yamlEditor.runDebug.debug.assertions.passed') : t('yamlEditor.runDebug.debug.assertions.failed'))}
         />
       ))}
       {diagnostics.length > 0 && (
         <div className="space-y-3">
-          <h3 className="text-xs font-semibold text-amber-300">Extraction diagnostics</h3>
+          <h3 className="text-xs font-semibold text-amber-300">{t('yamlEditor.runDebug.debug.assertions.diagnostics')}</h3>
           {diagnostics.map(diagnostic => (
             <DebugLine
               key={`${diagnostic.Name}-${diagnostic.Message}`}
               icon={<AlertTriangle className="h-4 w-4 text-amber-300" />}
-              title={diagnostic.Name || 'Extractor'}
-              value={diagnostic.Message || 'Not captured'}
+              title={diagnostic.Name || t('yamlEditor.runDebug.debug.assertions.extractor')}
+              value={diagnostic.Message || t('yamlEditor.runDebug.debug.assertions.notCaptured')}
             />
           ))}
         </div>
@@ -1276,13 +1274,15 @@ function DebugVariablesInspector({
   entry: DebugEntry;
   variableSnapshot: Record<string, string>;
 }) {
+  const { t } = useLanguage();
   const { event } = entry;
   const variableContext = {
+    missingValueLabel: t('yamlEditor.runDebug.debug.assertions.notCaptured'),
     requestBody: event.request_body,
     requestHeaders: event.request_headers,
     requestUrl: event.path,
     builtinValues: event.builtin_invocations?.map(invocation => invocation.value),
-    declaredBuiltinValues: Object.fromEntries((event.builtin_invocations ?? []).filter(invocation => invocation.origin?.startsWith('Variables.') && invocation.status === 'resolved').map(invocation => [invocation.origin!.slice('Variables.'.length), typeof invocation.value === 'string' ? invocation.value : JSON.stringify(invocation.value) ?? 'Not captured'])),
+    declaredBuiltinValues: Object.fromEntries((event.builtin_invocations ?? []).filter(invocation => invocation.origin?.startsWith('Variables.') && invocation.status === 'resolved').map(invocation => [invocation.origin!.slice('Variables.'.length), typeof invocation.value === 'string' ? invocation.value : JSON.stringify(invocation.value) ?? t('yamlEditor.runDebug.debug.assertions.notCaptured')])),
     responseBody: event.response_body,
     responseHeaders: event.response_headers,
     statusLine: event.status ? String(event.status) : undefined,
@@ -1292,8 +1292,8 @@ function DebugVariablesInspector({
     const usedNames = requestVariableNames(entry.node, variableSnapshot);
     const message =
       entry.node && usedNames.length === 0
-        ? 'This request neither extracts nor uses any variables.'
-        : 'No variable values were captured for this request.';
+        ? t('yamlEditor.runDebug.debug.variables.noneUsed')
+        : t('yamlEditor.runDebug.debug.variables.noneCaptured');
     return <p className="text-sm text-zinc-500">{message}</p>;
   }
   return (
@@ -1302,16 +1302,17 @@ function DebugVariablesInspector({
 }
 
 function DebugBuiltinsInspector({ event }: { event: EngineEvent }) {
+  const { t } = useLanguage();
   const invocations = event.builtin_invocations ?? (event.builtin ? [{ expression: event.builtin.function, value: null, status: 'failed', origin: event.builtin.step_path, error: event.err }] : []);
   if (invocations.length === 0) {
-    return <p className="text-sm text-zinc-500">No built-in functions were called for this request.</p>;
+    return <p className="text-sm text-zinc-500">{t('yamlEditor.runDebug.debug.builtins.none')}</p>;
   }
   return (
-    <div className="overflow-hidden rounded border border-white/10 bg-[#050505]" aria-label="Built-in invocations">
+    <div className="overflow-hidden rounded border border-white/10 bg-[#050505]" aria-label={t('yamlEditor.runDebug.debug.builtins.aria')}>
       <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.8fr)] gap-3 border-b border-white/10 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
-        <span>Expression</span>
-        <span>Value</span>
-        <span>Origin</span>
+        <span>{t('yamlEditor.runDebug.debug.builtins.expression')}</span>
+        <span>{t('yamlEditor.common.value')}</span>
+        <span>{t('yamlEditor.runDebug.debug.builtins.origin')}</span>
       </div>
       {invocations.map((invocation, index) => (
         <div
@@ -1320,7 +1321,7 @@ function DebugBuiltinsInspector({ event }: { event: EngineEvent }) {
         >
           <code className="break-all text-yellow-200">{invocation.expression}</code>
           <span className={`break-all ${invocation.status === 'failed' ? 'text-red-300' : 'text-zinc-200'}`}>
-            <span>{invocation.status === 'failed' ? 'Failed' : formatBuiltinValue(invocation.value)}</span>
+            <span>{invocation.status === 'failed' ? t('yamlEditor.runDebug.debug.builtins.failed') : formatBuiltinValue(invocation.value)}</span>
             {invocation.status === 'failed' && (invocation.error || (event.builtin?.function && invocation.expression?.includes(event.builtin.function) && event.err)) && <span className="mt-1 block text-red-300">{invocation.error || event.err}</span>}
           </span>
           <span className="break-all text-zinc-400">{invocation.origin || '—'}</span>
@@ -1347,12 +1348,13 @@ function DebugLogsInspector({
   redirectedInfo?: RedirectedRequestInfo | null;
   requestTargets: YAMLNode[];
 }) {
+  const { t } = useLanguage();
   const time = formatEventTime(event.ts);
   const redirectHops = event.redirects ?? [];
   const sourceLogLabel = redirectedInfo ? redirectSourceLogLabel(redirectedInfo, requestTargets, event.path) : '';
   return (
     <div className="max-w-full overflow-hidden border border-white/10 bg-[#050505] p-4 font-mono text-xs leading-6 text-zinc-300 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
-      <p className="text-emerald-300 break-words">[{time}] debug session received request event</p>
+      <p className="text-emerald-300 break-words">[{time}] {t('yamlEditor.runDebug.debug.logs.received')}</p>
       <p className="text-blue-300 break-all">
         [{time}] {event.method} {event.path || event.name} - {event.status || '—'} ({formatLatency(event.latency_ms)})
       </p>
@@ -1362,8 +1364,10 @@ function DebugLogsInspector({
         // followed 302s no longer reads as if the request itself were a 302.
         // RLP-585 #7.
         <p className="text-zinc-400 break-words">
-          [{time}] followed {redirectHops.length} redirect{redirectHops.length === 1 ? '' : 's'} before this{' '}
-          {event.status || ''} response:
+          [{time}]{' '}
+          {t(`yamlEditor.runDebug.debug.logs.followed${redirectHops.length === 1 ? 'One' : 'Many'}`)
+            .replace('{count}', String(redirectHops.length))
+            .replace('{status}', String(event.status || ''))}
         </p>
       )}
       {redirectHops.map((hop, index) => {
@@ -1381,7 +1385,7 @@ function DebugLogsInspector({
             key={`${hop.status}-${hop.method ?? ''}-${hop.url ?? ''}-${hop.location ?? hop.target_url ?? ''}`}
             className="pl-6 text-zinc-400 break-all"
           >
-            ↳ hop {index + 1}: {hop.status || '—'} {hop.method ? `${hop.method} ` : ''}
+            ↳ {t('yamlEditor.runDebug.debug.logs.hop').replace('{index}', String(index + 1))}: {hop.status || '—'} {hop.method ? `${hop.method} ` : ''}
             {sourceUrl} → {targetStatus || '—'} {targetMethod ? `${targetMethod} ` : ''}
             {targetUrl}
           </p>
@@ -1392,7 +1396,7 @@ function DebugLogsInspector({
           Intermediate 302 children (no hop chain yet) still show it. */}
       {redirectedInfo && redirectHops.length === 0 && (
         <p className="text-zinc-400 break-all">
-          [{time}] redirected request: {sourceLogLabel || redirectedInfo.sourceRequestLabel} → {event.status || '—'}{' '}
+          [{time}] {t('yamlEditor.runDebug.debug.logs.redirected')} {sourceLogLabel || redirectedInfo.sourceRequestLabel} → {event.status || '—'}{' '}
           {event.method} {absoluteDebugUrl(event.path || redirectedInfo.matchedLocation, event.path)}
         </p>
       )}
@@ -1406,12 +1410,16 @@ function DebugLogsInspector({
 }
 
 function DebugSparkInspector({ logs }: { logs: EngineEvent[] }) {
-  if (logs.length === 0) return <p className="text-sm text-zinc-500">No Spark output for this request.</p>;
+  const { t } = useLanguage();
+  if (logs.length === 0) return <p className="text-sm text-zinc-500">{t('yamlEditor.runDebug.debug.spark.none')}</p>;
   return (
     <div className="border border-white/10 bg-[#050505] p-4 font-mono text-xs leading-6 whitespace-pre-wrap break-words">
       {logs.map((log, index) => (
         <p key={index} className="text-amber-300">
-          [{formatEventTime(log.ts)}] Spark {log.spark_phase || 'unknown'}: {log.name}
+          [{formatEventTime(log.ts)}]{' '}
+          {t('yamlEditor.runDebug.debug.spark.line')
+            .replace('{phase}', log.spark_phase || t('yamlEditor.runDebug.debug.spark.unknownPhase'))
+            .replace('{name}', log.name)}
         </p>
       ))}
     </div>
@@ -1423,12 +1431,13 @@ function DebugOverviewInspector({
 }: {
   event: EngineEvent;
 }) {
+  const { t } = useLanguage();
   return (
     <div className="space-y-3">
       <div className="grid gap-3 md:grid-cols-2">
         <DebugLine
           icon={<Eye className="h-4 w-4 text-yellow-300" />}
-          title="Step"
+          title={t('yamlEditor.runDebug.debug.overview.step')}
           // Show what the run actually sent, sourced from the event like the
           // timeline and the header above — not the recorded node name, which
           // bakes in the capture-time value of any correlated placeholder. When an
@@ -1439,28 +1448,28 @@ function DebugOverviewInspector({
         />
         <DebugLine
           icon={<Clock3 className="h-4 w-4 text-zinc-300" />}
-          title="Latency"
+          title={t('yamlEditor.runDebug.debug.overview.latency')}
           value={formatLatency(event.latency_ms)}
         />
         <DebugLine
           icon={<TerminalSquare className="h-4 w-4 text-zinc-300" />}
-          title="VU"
-          value={event.vu ? `Virtual user ${event.vu}` : '—'}
+          title={t('yamlEditor.runDebug.debug.overview.vu')}
+          value={event.vu ? t('yamlEditor.runDebug.debug.overview.virtualUser').replace('{value}', String(event.vu)) : '—'}
         />
         <DebugLine
           icon={
             entryStatus(event) === 'failed' ? (
-              <XCircle role="img" aria-label="Failed result" className="h-4 w-4 text-red-300" />
+              <XCircle role="img" aria-label={t('yamlEditor.runDebug.debug.overview.failedResult')} className="h-4 w-4 text-red-300" />
             ) : (
               <ShieldCheck className="h-4 w-4 text-emerald-300" />
             )
           }
-          title="Result"
-          value={event.builtin ? 'Built-in evaluation failed. See Built-ins.' : event.error_policy
-            ? event.error_policy.key === 'on_timeout' ? 'Timeout'
+          title={t('yamlEditor.runDebug.debug.overview.result')}
+          value={event.builtin ? t('yamlEditor.runDebug.debug.overview.builtinFailed') : event.error_policy
+            ? event.error_policy.key === 'on_timeout' ? t('yamlEditor.runDebug.debug.overview.timeout')
               : event.status >= 400 ? `HTTP ${event.status}`
-                : event.error_policy.key === 'on_connection_error' ? 'Connection error' : 'Other error'
-            : event.err || (event.status ? `HTTP ${event.status}` : 'Completed')}
+                : event.error_policy.key === 'on_connection_error' ? t('yamlEditor.runDebug.debug.overview.connectionError') : t('yamlEditor.runDebug.debug.overview.otherError')
+            : event.err || (event.status ? `HTTP ${event.status}` : t('yamlEditor.runDebug.debug.overview.completed'))}
         />
       </div>
     </div>
@@ -1606,6 +1615,7 @@ function DebugSearchControls({
   onModeChange: (mode: SearchMode) => void;
   onNavigate: (index: number) => void;
 }) {
+  const { t } = useLanguage();
   const regexInvalid = !!value && mode === 'regex' && !buildSearchRegex(value);
   const displayIndex = value && totalMatches > 0 ? currentMatchIndex + 1 : 0;
 
@@ -1636,12 +1646,12 @@ function DebugSearchControls({
               mode === option ? 'bg-yellow-400 text-black' : 'text-zinc-400 hover:text-zinc-200'
             }`}
           >
-            {option}
+            {t(`yamlEditor.runDebug.debug.search.${option}`)}
           </button>
         ))}
       </div>
       <span className={`text-xs ${regexInvalid ? 'text-red-300' : 'text-zinc-500'}`}>
-        {regexInvalid ? 'Invalid regex' : value ? `${displayIndex}/${totalMatches}` : '0/0'}
+        {regexInvalid ? t('yamlEditor.runDebug.debug.search.invalidRegex') : value ? `${displayIndex}/${totalMatches}` : '0/0'}
       </span>
       <button
         type="button"
@@ -1649,7 +1659,7 @@ function DebugSearchControls({
         disabled={!value || totalMatches === 0 || regexInvalid}
         className="h-8 rounded border border-white/10 bg-white/3 px-2 text-xs text-zinc-300 disabled:cursor-not-allowed disabled:opacity-40"
       >
-        Prev
+        {t('yamlEditor.runDebug.debug.search.prev')}
       </button>
       <button
         type="button"
@@ -1657,7 +1667,7 @@ function DebugSearchControls({
         disabled={!value || totalMatches === 0 || regexInvalid}
         className="h-8 rounded border border-white/10 bg-white/3 px-2 text-xs text-zinc-300 disabled:cursor-not-allowed disabled:opacity-40"
       >
-        Next
+        {t('yamlEditor.runDebug.debug.search.next')}
       </button>
     </div>
   );

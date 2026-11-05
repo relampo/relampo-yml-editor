@@ -53,20 +53,20 @@ export function buildParentMap(tree: YAMLNode | null): Map<string, string | null
   return map;
 }
 
-export function getTransactionValidationMessage(reason: string | undefined): string | null {
+export function getTransactionValidationMessage(reason: string | undefined, t: (key: string) => string): string | null {
   switch (reason) {
     case 'minimum_selection':
-      return 'Select at least 2 sibling steps';
+      return t('yamlEditor.shell.tree.txMinimumSelection');
     case 'same_parent':
-      return 'Selection must share the same parent';
+      return t('yamlEditor.shell.tree.txSameParent');
     case 'contiguous':
-      return 'Selection must be contiguous in the current order';
+      return t('yamlEditor.shell.tree.txContiguous');
     case 'supported_parent':
-      return 'Selection must be inside a compatible steps container';
+      return t('yamlEditor.shell.tree.txSupportedParent');
     case 'supported_child':
-      return 'Only step elements can be wrapped in a transaction';
+      return t('yamlEditor.shell.tree.txSupportedChild');
     default:
-      return 'Selection is not valid for transaction grouping';
+      return t('yamlEditor.shell.tree.txInvalid');
   }
 }
 
