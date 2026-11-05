@@ -98,7 +98,7 @@ export function useTreeMutations({
       if (!canAddNodeToTarget(target, nodeType)) return currentTree;
 
       const newNode = createNodeByType(nodeType, { balancedName: t('yamlEditor.balanced.name') });
-      return addNodeToTree(currentTree, targetId, newNode);
+      return addNodeToTree(currentTree, targetId, newNode, true);
     }, tree);
     commitInsertedTree(updatedTree);
     handleCloseContextMenu();

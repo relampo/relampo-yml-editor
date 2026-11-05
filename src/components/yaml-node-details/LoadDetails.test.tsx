@@ -1,5 +1,5 @@
 import { selectOption } from '../../test/selectOption';
-import { normalizeLoadDataForYaml } from './loadUtils';
+import { normalizeLoadDataForYaml, toLoadData } from './loadUtils';
 import { fireEvent, render, screen } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
@@ -27,7 +27,7 @@ describe('LoadDetails', () => {
     };
     renderWithLanguage(<LoadDetails node={node} onNodeUpdate={onNodeUpdate} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Segments' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Use for execution: Segments' }));
 
     expect(node.name).toBe('Load: Segments');
     expect(node.data?.type).toBe('segments');
@@ -54,7 +54,7 @@ describe('LoadDetails', () => {
     view.rerender(
       <LanguageProvider><LoadDetails node={node} onNodeUpdate={onNodeUpdate} /></LanguageProvider>,
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Throughput' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Use for execution: Throughput' }));
 
     expect(node.name).toBe('Load: Throughput');
     expect(node.data).toMatchObject({ type: 'throughput', duration: '60s', target_rps: '20' });
@@ -72,7 +72,7 @@ describe('LoadDetails', () => {
     };
     const view = renderWithLanguage(<LoadDetails node={node} onNodeUpdate={onNodeUpdate} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Segments' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Use for execution: Segments' }));
     view.rerender(<LanguageProvider><LoadDetails node={node} onNodeUpdate={onNodeUpdate} /></LanguageProvider>);
 
     expect(node.data).toMatchObject({ type: 'segments', duration: '3600s' });
@@ -148,7 +148,7 @@ describe('LoadDetails', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Throughput' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Use for execution: Throughput' }));
 
     expect(screen.getByRole('button', { name: 'Intent' })).toBeInTheDocument();
 
@@ -278,10 +278,10 @@ it('RLP-806 restores edited segments after switching models and reopening saved 
   fireEvent.change(screen.getByLabelText('Duration for segment 2'), { target: { value: '3m' } });
   refresh();
   const expected = node.data!.segments;
-  fireEvent.click(screen.getByRole('button', { name: 'Linear' }));
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Use for execution: Linear' }));
   refresh();
   expect(node.data).not.toHaveProperty('segments');
-  fireEvent.click(screen.getByRole('button', { name: 'Segments' }));
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Use for execution: Segments' }));
   refresh();
   expect(node.data!.segments).toEqual(expected);
   expect(node.data!.duration).toBe('300s');
@@ -305,9 +305,9 @@ it.each([undefined, '2m'])('RLP-806 restores an imported profile with root durat
   const view = renderWithLanguage(<LoadDetails node={loadNode()} onNodeUpdate={onNodeUpdate} />);
   expect(validateYAMLSemantics(tree)).toEqual([]);
   // Switch immediately after import: a segment edit would derive the root duration.
-  fireEvent.click(screen.getByRole('button', { name: 'Linear' }));
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Use for execution: Linear' }));
   view.rerender(<LanguageProvider><LoadDetails node={loadNode()} onNodeUpdate={onNodeUpdate} /></LanguageProvider>);
-  fireEvent.click(screen.getByRole('button', { name: 'Segments' }));
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Use for execution: Segments' }));
   view.rerender(<LanguageProvider><LoadDetails node={loadNode()} onNodeUpdate={onNodeUpdate} /></LanguageProvider>);
   expect(loadNode().data!.duration).toBe(duration);
   expect(loadNode().data!.segments).toEqual(initialData!.segments);
@@ -315,7 +315,7 @@ it.each([undefined, '2m'])('RLP-806 restores an imported profile with root durat
   const saved = treeToYAML(tree);
   expect(saved).not.toContain('__segmentsProfile');
   tree = parseYAMLToTree(saved)!;
-  expect(normalizeLoadDataForYaml({ ...loadNode().data! })).toEqual(initialData);
+  expect(normalizeLoadDataForYaml(toLoadData(loadNode().data as Record<string, unknown>))).toEqual(initialData);
   expect(validateYAMLSemantics(tree)).toEqual([]);
 });
 
@@ -325,17 +325,17 @@ it('RLP-802 saves the selected model and restores inactive model settings after 
   const update = (id: string, data: Record<string, unknown>) => { tree = applyNodeUpdateToTree(tree, id, data); };
   const view = renderWithLanguage(<LoadDetails node={load()} onNodeUpdate={update} />);
   const refresh = () => view.rerender(<LanguageProvider><LoadDetails node={load()} onNodeUpdate={update} /></LanguageProvider>);
-  fireEvent.click(screen.getByRole('button', { name: 'Linear' })); refresh();
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Use for execution: Linear' })); refresh();
   const active = load().data;
   tree = parseYAMLToTree(treeToYAML(tree))!; refresh();
   expect(screen.getByRole('button', { name: 'Linear' })).toHaveAttribute('aria-pressed', 'true');
   expect(screen.getAllByRole('button', { pressed: true })).toHaveLength(1);
   expect(load().data?.type).toBe('ramp');
-  fireEvent.click(screen.getByRole('button', { name: 'Constant' })); refresh();
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Use for execution: Constant' })); refresh();
   expect(load().data?.users).toBe(7);
   expect(load().data?.iterations).toBe(3);
   expect(load().data?.duration).toBeUndefined();
-  fireEvent.click(screen.getByRole('button', { name: 'Linear' })); refresh();
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Use for execution: Linear' })); refresh();
   expect(load().data?.duration).toBe(active?.duration);
   expect(load().data?.end_users).toBe(active?.end_users);
 });
@@ -345,11 +345,66 @@ it('RLP-802 reselecting the active model keeps its latest edits', () => {
   const update = (id: string, data: Record<string, unknown>) => { node = applyNodeUpdateToTree(node, id, data); };
   const view = renderWithLanguage(<LoadDetails node={node} onNodeUpdate={update} />);
   const refresh = () => view.rerender(<LanguageProvider><LoadDetails node={node} onNodeUpdate={update} /></LanguageProvider>);
-  fireEvent.click(screen.getByRole('button', { name: 'Linear' })); refresh();
-  fireEvent.click(screen.getByRole('button', { name: 'Constant' })); refresh();
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Use for execution: Linear' })); refresh();
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Use for execution: Constant' })); refresh();
   fireEvent.change(screen.getByLabelText('Virtual Users'), { target: { value: '9' } }); refresh();
   fireEvent.click(screen.getByRole('button', { name: 'Constant' })); refresh();
   expect(screen.getByLabelText('Virtual Users')).toHaveValue(9);
   expect(node.data?.users).toBe('9');
   expect(node.data?.__loadProfiles).not.toHaveProperty('constant');
+});
+
+
+it('browses and edits inactive models without changing the executable model', () => {
+  let tree = parseYAMLToTree('scenarios:\n  - name: selected\n    load: {type: constant, users: 7, iterations: 3}\n    steps: [{get: /}]\n')!;
+  const load = () => tree.children!.find(n => n.type === 'scenarios')!.children![0].children!.find(n => n.type === 'load')!;
+  const update = (id: string, data: Record<string, unknown>) => { tree = applyNodeUpdateToTree(tree, id, data); };
+  const view = renderWithLanguage(<LoadDetails node={load()} onNodeUpdate={update} />);
+  const refresh = () => view.rerender(<LanguageProvider><LoadDetails node={load()} onNodeUpdate={update} /></LanguageProvider>);
+  fireEvent.click(screen.getByRole('button', { name: 'Linear' }));
+  expect(screen.getByRole('checkbox', { name: 'Use for execution: Constant' })).toBeChecked();
+  expect(screen.getByRole('checkbox', { name: 'Use for execution: Linear' })).not.toBeChecked();
+  fireEvent.change(screen.getByLabelText('End Users'), { target: { value: '42' } }); refresh();
+  expect(load().data).toMatchObject({ type: 'constant', users: 7, iterations: 3 });
+  expect(treeToYAML(tree)).toContain('end_users:');
+  tree = parseYAMLToTree(treeToYAML(tree))!; refresh();
+  expect(screen.getByLabelText('End Users')).toHaveValue(42);
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Use for execution: Linear' })); refresh();
+  expect(screen.getByRole('checkbox', { name: 'Use for execution: Constant' })).not.toBeChecked();
+  expect(screen.getAllByRole('checkbox', { checked: true })).toHaveLength(1);
+  expect(load().data).toMatchObject({ type: 'linear', end_users: '42' });
+  expect(treeToYAML(tree)).not.toContain('__load');
+});
+
+it('clears the selection, preserves all drafts, and reloads the legacy fallback', () => {
+  let tree = parseYAMLToTree('scenarios:\n  - name: selected\n    load: {type: constant, users: 7, iterations: 3}\n    steps: [{get: /}]\n')!;
+  const load = () => tree.children!.find(n => n.type === 'scenarios')!.children![0].children!.find(n => n.type === 'load')!;
+  const update = (id: string, data: Record<string, unknown>) => { tree = applyNodeUpdateToTree(tree, id, data); };
+  const view = renderWithLanguage(<LoadDetails node={load()} onNodeUpdate={update} />);
+  const refresh = () => view.rerender(<LanguageProvider><LoadDetails node={load()} onNodeUpdate={update} /></LanguageProvider>);
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Use for execution: Constant' })); refresh();
+  expect(screen.queryAllByRole('checkbox', { checked: true })).toHaveLength(0);
+  expect(screen.getByText('No load model selected. Run will use Constant with 1 user and 1 iteration.')).toBeVisible();
+  expect(load().data).toMatchObject({ type: 'constant', users: 1, iterations: 1, __loadSelected: false });
+  const saved = treeToYAML(tree);
+  expect(saved).not.toMatch(/^ {4}load:/m);
+  tree = parseYAMLToTree(saved)!; refresh();
+  expect(screen.getByRole('checkbox', { name: 'Use for execution: Constant' })).not.toBeChecked();
+  expect(screen.getByLabelText('Virtual Users')).toHaveValue(7);
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Use for execution: Constant' })); refresh();
+  expect(load().data).toMatchObject({ users: 7, iterations: 3 });
+  expect(validateYAMLSemantics(tree)).toEqual([]);
+});
+
+it('does not select an imported scenario without load when its default form is edited', () => {
+  let tree = parseYAMLToTree('scenarios:\n  - name: legacy\n    steps: [{get: /}]\n')!;
+  const load = () => tree.children!.find(n => n.type === 'scenarios')!.children![0].children!.find(n => n.type === 'load')!;
+  const update = (id: string, data: Record<string, unknown>) => { tree = applyNodeUpdateToTree(tree, id, data); };
+  const view = renderWithLanguage(<LoadDetails node={load()} onNodeUpdate={update} />);
+  expect(screen.getByRole('checkbox', { name: 'Use for execution: Constant' })).not.toBeChecked();
+  fireEvent.change(screen.getByLabelText('Virtual Users'), { target: { value: '9' } });
+  view.rerender(<LanguageProvider><LoadDetails node={load()} onNodeUpdate={update} /></LanguageProvider>);
+  expect(load().data).toMatchObject({ users: 1, iterations: 1, __loadSelected: false });
+  expect(screen.getByLabelText('Virtual Users')).toHaveValue(9);
+  expect(treeToYAML(tree)).not.toMatch(/^ {4}load:/m);
 });

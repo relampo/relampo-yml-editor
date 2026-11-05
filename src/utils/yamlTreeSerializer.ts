@@ -182,6 +182,7 @@ export function treeToObject(tree: YAMLNode): any {
 function scenarioNodeToObject(node: YAMLNode): any {
   const scenario: any = { ...(node.data || {}) };
   delete scenario.load;
+  delete scenario['x-studio-load-profiles'];
   delete scenario.cookies;
   delete scenario.cache_manager;
   delete scenario.error_policy;
@@ -193,7 +194,9 @@ function scenarioNodeToObject(node: YAMLNode): any {
 
   for (const child of node.children) {
     if (child.type === 'load') {
-      scenario.load = normalizeLoadDataForYaml(toLoadData(child.data as Record<string, unknown> | undefined));
+      if (child.data?.__loadSelected !== false) {
+        scenario.load = normalizeLoadDataForYaml(toLoadData(child.data as Record<string, unknown> | undefined));
+      }
       if (child.data?.__loadProfiles && typeof child.data.__loadProfiles === 'object') {
         scenario['x-studio-load-profiles'] = child.data.__loadProfiles;
       }

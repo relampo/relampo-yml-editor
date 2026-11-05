@@ -25,6 +25,7 @@ export interface YAMLNodeData {
   __name?: string;
   __scalarIf?: boolean;
   __segmentsProfile?: YAMLNodeData;
+  __loadSelected?: boolean;
   __loadProfiles?: Record<string, Record<string, unknown>>;
   __scalarLoop?: boolean;
   __scalarRetry?: boolean;
