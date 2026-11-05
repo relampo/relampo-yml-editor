@@ -1,4 +1,5 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { selectOption } from '../../../test/selectOption';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
 import { LanguageProvider } from '../../../contexts/LanguageContext';
@@ -22,50 +23,59 @@ function mountSegments(segments: NonNullable<YAMLNode['data']>['segments']) {
 const vus = { name: 'pause', duration: '1m', transition: 'constant', target_vus: '0' };
 
 describe('Segments form RLP-765', () => {
-  it('RLP-766 preserves an invalid imported first Ramp down until corrected', () => {
+  it('RLP-766 preserves an invalid imported first Ramp down until corrected', async () => {
     const current = mountSegments([{ ...vus, target_vus: '20', transition: 'ramp_down' }]);
     const transition = screen.getByLabelText('Transition for segment 1');
-    expect(transition).toHaveValue('ramp_down');
-    expect(within(transition).getByRole('option', { name: /Ramp down/ })).toBeDisabled();
+    expect(transition).toHaveTextContent('Ramp down');
+    fireEvent.keyDown(transition, { key: 'Enter' });
+    expect(await screen.findByRole('option', { name: /Ramp down/ })).toHaveAttribute('aria-disabled', 'true');
+    fireEvent.keyDown(screen.getByRole('listbox'), { key: 'Escape' });
     expect(validateYAMLSemantics(current()).map(issue => issue.message)).toEqual(['Segment 1 cannot use Ramp down as the first segment.']);
-    fireEvent.change(transition, { target: { value: 'constant' } });
+    await selectOption(transition.getAttribute('aria-label')!, 'Constant');
     expect(validateYAMLSemantics(current())).toEqual([]);
     expect(current().data!.segments![0].target_vus).toBe('20');
   });
 
-  it('RLP-766 permits Ramp down after a preceding VU segment', () => {
+  it('RLP-766 permits Ramp down after a preceding VU segment', async () => {
     const current = mountSegments([{ ...vus, target_vus: '20' }, vus]);
     const transition = screen.getByLabelText('Transition for segment 2');
-    expect(within(transition).getByRole('option', { name: 'Ramp down' })).toBeEnabled();
-    fireEvent.change(transition, { target: { value: 'ramp_down' } });
+    fireEvent.keyDown(transition, { key: 'Enter' });
+    expect(await screen.findByRole('option', { name: 'Ramp down' })).not.toHaveAttribute('aria-disabled');
+    fireEvent.keyDown(screen.getByRole('listbox'), { key: 'Escape' });
+    await selectOption(transition.getAttribute('aria-label')!, 'Ramp down');
     expect(current().data!.segments![1].transition).toBe('ramp_down');
     expect(validateYAMLSemantics(current())).toEqual([]);
   });
-  it('keeps Min/Max disabled for VUs and permits only Constant/Ramp up initially', () => {
+  it('keeps Min/Max disabled for VUs and permits only Constant/Ramp up initially', async () => {
     const current = mountSegments([vus]);
+    expect(screen.getByLabelText('Target type for segment 1')).toHaveAttribute('data-slot', 'select-trigger');
+    expect(screen.getByLabelText('Transition for segment 1')).toHaveAttribute('data-slot', 'select-trigger');
     expect(screen.getByLabelText('VUs Min for segment 1')).toBeDisabled();
     expect(screen.getByLabelText('VUs Max for segment 1')).toBeDisabled();
     const transition = screen.getByLabelText('Transition for segment 1');
-    expect(within(transition).getAllByRole('option').map(option => option.textContent)).toEqual(['Select transition', 'Constant', 'Ramp up']);
+    fireEvent.keyDown(transition, { key: 'Enter' });
+    expect((await screen.findAllByRole('option')).map(option => option.textContent)).toEqual(['Constant', 'Ramp up']);
+    fireEvent.keyDown(screen.getByRole('listbox'), { key: 'Escape' });
     expect(validateYAMLSemantics(current())).toEqual([]);
-    fireEvent.change(transition, { target: { value: 'ramp_up' } });
+    await selectOption(transition.getAttribute('aria-label')!, 'Ramp up');
     expect(current().data!.segments![0].transition).toBe('ramp_up');
   });
 
-  it('restricts RPS to Constant, enables required bounds and clears a previous VU ramp', () => {
+  it('restricts RPS to Constant, enables required bounds and clears a previous VU ramp', async () => {
     const current = mountSegments([{ ...vus, target_vus: '5', transition: 'ramp_down' }]);
-    fireEvent.change(screen.getByLabelText('Target type for segment 1'), { target: { value: 'rps' } });
+    await selectOption('Target type for segment 1', 'RPS');
     const transition = screen.getByLabelText('Transition for segment 1');
-    expect(within(transition).queryByRole('option', { name: 'Ramp up' })).not.toBeInTheDocument();
-    expect(within(transition).queryByRole('option', { name: 'Ramp down' })).not.toBeInTheDocument();
-    expect(transition).toHaveValue('constant');
+    fireEvent.keyDown(transition, { key: 'Enter' });
+    expect((await screen.findAllByRole('option')).map(option => option.textContent)).toEqual(['Constant']);
+    fireEvent.keyDown(screen.getByRole('listbox'), { key: 'Escape' });
+    expect(transition).toHaveTextContent('Constant');
     for (const field of ['VUs Min', 'VUs Max']) {
       expect(screen.getByLabelText(`${field} for segment 1`)).toBeEnabled();
       expect(screen.getByLabelText(`${field} for segment 1`)).toBeRequired();
     }
     expect(current().data!.segments![0]).toMatchObject({ target_rps: '5', min_vus: '0', max_vus: '100', transition: 'constant' });
     expect(validateYAMLSemantics(current())).toEqual([]);
-    fireEvent.change(screen.getByLabelText('Target type for segment 1'), { target: { value: 'vus' } });
+    await selectOption('Target type for segment 1', 'VUs');
     expect(current().data!.segments![0]).not.toHaveProperty('target_rps');
     expect(current().data!.segments![0]).not.toHaveProperty('min_vus');
     expect(current().data!.segments![0]).not.toHaveProperty('max_vus');
@@ -74,7 +84,7 @@ describe('Segments form RLP-765', () => {
   it('keeps VU type while clearing the target and blocks missing mandatory fields', () => {
     const current = mountSegments([vus]);
     fireEvent.change(screen.getByLabelText('Target for segment 1'), { target: { value: '' } });
-    expect(screen.getByLabelText('Target type for segment 1')).toHaveValue('vus');
+    expect(screen.getByLabelText('Target type for segment 1')).toHaveTextContent('VUs');
     expect(validateYAMLSemantics(current())).toEqual([{ nodeId: 'load', message: 'Segment 1 must define exactly one target: Target RPS or Target VUs.' }]);
     fireEvent.change(screen.getByLabelText('Name for segment 1'), { target: { value: '' } });
     fireEvent.change(screen.getByLabelText('Duration for segment 1'), { target: { value: '' } });
@@ -82,7 +92,7 @@ describe('Segments form RLP-765', () => {
     expect(validateYAMLSemantics(current()).map(issue => issue.message)).toContain('Segment 1 must define a positive Duration.');
   });
 
-  it('derives a read-only total from segment edits, addition and removal', () => {
+  it('derives a read-only total from segment edits, addition and removal', async () => {
     const current = mountSegments([vus, { ...vus, name: 'ramp', duration: '20s', target_vus: '2', transition: 'ramp_up' }, { ...vus, name: 'end', duration: '2m', transition: 'ramp_down' }]);
     expect(screen.getByLabelText('Total Duration')).toHaveValue('200s');
     expect(screen.getByLabelText('Total Duration')).toHaveAttribute('readonly');
@@ -95,7 +105,7 @@ describe('Segments form RLP-765', () => {
     expect(current().data!.duration).toBe('240s');
     expect(validateYAMLSemantics(current()).map(issue => issue.message)).toEqual(['Segment 2 Transition must be Constant from 0 VUs to 0 VUs.']);
     expect(current().data!.segments!.map(segment => segment.name)).toEqual(['pause', 'end', 'new_segment']);
-    fireEvent.change(screen.getByLabelText('Transition for segment 2'), { target: { value: 'constant' } });
+    await selectOption('Transition for segment 2', 'Constant');
     expect(validateYAMLSemantics(current())).toEqual([]);
   });
 

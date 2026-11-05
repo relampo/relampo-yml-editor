@@ -33,15 +33,22 @@ for (const transition of ['constant', 'ramp_up']) {
     await page.locator('input[type="file"]').setInputFiles({ name: 'invalid-initial-ramp.yaml', mimeType: 'text/yaml', buffer: Buffer.from(invalidYaml) });
     await page.getByText('Load: Segments', { exact: true }).first().click();
     const first = page.getByLabel('Transition for segment 1');
-    await expect(first).toHaveValue('ramp_down');
-    await expect(first.locator('option[value="ramp_down"]')).toBeDisabled();
+    await expect(first).toHaveText('Ramp down (invalid for first segment)');
+    await first.click();
+    await expect(page.getByRole('option', { name: /Ramp down/ })).toBeDisabled();
+    await page.keyboard.press('Escape');
     const issue = page.getByText('Segment 1 cannot use Ramp down as the first segment.', { exact: true }).first();
     await expect(issue).toBeVisible();
-    await first.selectOption(transition);
-    await expect(first).toHaveValue(transition);
-    await expect(first.locator('option')).toHaveText(['Select transition', 'Constant', 'Ramp up']);
+    await first.click();
+    await page.getByRole('option', { name: transition === 'constant' ? 'Constant' : 'Ramp up', exact: true }).click();
+    await expect(first).toHaveText(transition === 'constant' ? 'Constant' : 'Ramp up');
+    await first.click();
+    await expect(page.getByRole('option')).toHaveText(['Constant', 'Ramp up']);
+    await page.keyboard.press('Escape');
     await expect(issue).not.toBeVisible();
-    await expect(page.getByLabel('Transition for segment 3').locator('option[value="ramp_down"]')).toBeEnabled();
+    await page.getByLabel('Transition for segment 3').click();
+    await expect(page.getByRole('option', { name: 'Ramp down', exact: true })).toBeEnabled();
+    await page.keyboard.press('Escape');
     await page.screenshot({ path: testInfo.outputPath(`first-${transition}.png`), fullPage: true });
     const downloadPromise = page.waitForEvent('download');
     await page.getByRole('button', { name: 'Save' }).click();
@@ -67,11 +74,16 @@ test('RLP-765 edits segment targets, transitions, bounds and total duration in C
   await expect(page.getByLabel('VUs Min for segment 1')).toBeDisabled();
   await expect(page.getByLabel('VUs Max for segment 1')).toBeDisabled();
   await expect(page.getByLabel('Target for segment 1')).toHaveValue('0');
-  await expect(page.getByLabel('Transition for segment 2').locator('option')).toHaveText(['Select transition', 'Constant', 'Ramp up', 'Ramp down']);
+  await page.getByLabel('Transition for segment 2').click();
+  await expect(page.getByRole('option')).toHaveText(['Constant', 'Ramp up', 'Ramp down']);
+  await page.keyboard.press('Escape');
 
-  await page.getByLabel('Target type for segment 2').selectOption('rps');
-  await expect(page.getByLabel('Transition for segment 2')).toHaveValue('constant');
-  await expect(page.getByLabel('Transition for segment 2').locator('option')).toHaveText(['Select transition', 'Constant']);
+  await page.getByLabel('Target type for segment 2').click();
+  await page.getByRole('option', { name: 'RPS', exact: true }).click();
+  await expect(page.getByLabel('Transition for segment 2')).toHaveText('Constant');
+  await page.getByLabel('Transition for segment 2').click();
+  await expect(page.getByRole('option')).toHaveText(['Constant']);
+  await page.keyboard.press('Escape');
   await expect(page.getByLabel('VUs Min for segment 2')).toBeEnabled();
   await expect(page.getByLabel('VUs Max for segment 2')).toBeEnabled();
   await page.getByLabel('VUs Min for segment 2').fill('2');
@@ -112,7 +124,7 @@ test('RLP-806 preserves segment edits through model changes, save, reload and re
   await page.getByRole('button', { name: 'Segments', exact: true }).click();
   await expect(page.getByLabel('Target for segment 2', { exact: true })).toHaveValue('7');
   await expect(page.getByLabel('Duration for segment 2', { exact: true })).toHaveValue('40s');
-  await expect(page.getByLabel('Transition for segment 2', { exact: true })).toHaveValue('ramp_up');
+  await expect(page.getByLabel('Transition for segment 2', { exact: true })).toHaveText('Ramp up');
   await page.keyboard.press('ControlOrMeta+s');
   await expect.poll(() => page.evaluate(() => new Promise<string>((resolve, reject) => {
     const request = indexedDB.open('relampo-yaml-editor');
@@ -168,4 +180,56 @@ test('RLP-806 switches an imported profile without root duration before editing 
   await page.getByText('Load: Segments', { exact: true }).first().click();
   await expect(page.getByLabel('Total Duration', { exact: true })).toHaveValue('200s');
   await expect(page.getByText(/Segments Duration total must equal load Duration/)).toHaveCount(0);
+});
+
+test('RLP-803 uses shared dropdowns for segment fields and exact scenario results', async ({ page }, testInfo) => {
+  const yaml = segmentYaml.replace('  name: Segments browser\n', '  name: Dropdown proof\n  scenario_mode: sequential\n').replace('  - name: segments\n', '  - name: scenario:global\n') + `  - name: global
+    load: {type: constant, users: 1, iterations: 1}
+    steps: [{get: /health}]
+`;
+  const result = (name: string, count: number) => ({ test_name: name, status: 'completed', start_time: '', end_time: '', duration: 1e9, total_requests: count, total_failures: 0, requests: [], history: [] });
+  const summary = { ...result('all', 3), complete: true, scenarios: [
+    { name: 'scenario:global', outcome: 'completed', complete: true, result: result('scenario:global', 1) },
+    { name: 'global', outcome: 'completed', complete: true, result: result('global', 2) },
+  ] };
+  await page.route('**/api/studio/info', route => route.fulfill({ json: {
+    studio: true, initialScript: { name: 'dropdowns.yaml', yaml }, capabilities: { loadRun: true, multiScenarioRun: true },
+  } }));
+  await page.route('**/api/run', route => route.fulfill({ json: { id: 'dropdowns' } }));
+  await page.route('**/api/run/dropdowns/events**', route => route.fulfill({ contentType: 'text/event-stream', body: `event: done\ndata: ${JSON.stringify({ status: 'completed', summary })}\n\n` }));
+  await page.goto('/');
+  await page.getByText('Load: Segments', { exact: true }).first().click();
+  const target = page.getByRole('combobox', { name: 'Target type for segment 2' });
+  const transition = page.getByRole('combobox', { name: 'Transition for segment 2' });
+  await expect(target).toHaveAttribute('data-slot', 'select-trigger');
+  await expect(transition).toHaveAttribute('data-slot', 'select-trigger');
+  await target.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('listbox')).toHaveAttribute('data-slot', 'select-content');
+  await page.screenshot({ path: testInfo.outputPath('target-menu.png'), fullPage: true });
+  await page.keyboard.press('Escape');
+  await expect(target).toBeFocused();
+  await transition.click();
+  await page.screenshot({ path: testInfo.outputPath('transition-menu.png'), fullPage: true });
+  await page.getByRole('option', { name: 'Constant', exact: true }).click();
+  await expect(transition).toHaveText('Constant');
+
+  await page.getByRole('button', { name: 'Run', exact: true }).click();
+  await page.getByRole('button', { name: 'Run load test', exact: true }).click();
+  const scope = page.getByRole('combobox', { name: 'Result scope', exact: true });
+  await expect(scope).toHaveAttribute('data-slot', 'select-trigger');
+  await expect(scope).toHaveText('Global');
+  const count = page.getByText('Total Requests', { exact: true }).locator('..');
+  await expect(count).toContainText('3');
+  await scope.click();
+  await expect(page.getByRole('option')).toHaveText(['Global', 'scenario:global', 'global']);
+  await page.screenshot({ path: testInfo.outputPath('result-scope-menu.png'), fullPage: true });
+  await page.getByRole('option', { name: 'global', exact: true }).click();
+  await expect(count).toContainText('2');
+  await scope.click();
+  await page.getByRole('option', { name: 'scenario:global', exact: true }).click();
+  await expect(count).toContainText('1');
+  await scope.click();
+  await page.getByRole('option', { name: 'Global', exact: true }).click();
+  await expect(count).toContainText('3');
 });
