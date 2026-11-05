@@ -1188,9 +1188,9 @@ it.each([undefined, false])('preserves pasted Load settings and drafts (selected
 
 
 it('names only the scenarios that fall back when another scenario has a selected model', () => {
-  const yamlCode = 'scenarios:\n  - name: checkout\n    load: {type: constant, users: 100, duration: 1m}\n    steps: [{get: /a}]\n  - name: browse\n    steps: [{get: /b}]\n';
+  const yamlCode = 'scenarios:\n  - name: checkout\n    load: {type: constant, users: 100, duration: 1m}\n    steps: [{get: /a}]\n  - name: browse $&\n    steps: [{get: /b}]\n';
   render(<YAMLLoadRunSession {...baseProps} tree={parseYAMLToTree(yamlCode)} yamlCode={yamlCode} multiScenarioRunEnabled />);
-  expect(screen.getByText('No load model selected in: browse. These scenarios will use Constant with 1 user and 1 iteration.')).toBeVisible();
+  expect(screen.getByText('No load model selected in: browse $&. These scenarios will use Constant with 1 user and 1 iteration.')).toBeVisible();
   expect(screen.queryByText('No load model selected. Run will use Constant with 1 user and 1 iteration.')).not.toBeInTheDocument();
 });
 

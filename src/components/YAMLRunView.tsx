@@ -472,7 +472,7 @@ export function YAMLLoadRunSession({
         <p role="status" className="border-b border-amber-400/20 bg-amber-400/5 px-4 py-3 text-sm text-amber-300">
           {usesOnlyFallbackLoad
             ? t('studioControls.noLoadSelection')
-            : t('studioControls.noLoadSelectionScenarios').replace('{names}', fallbackScenarioNames.join(', '))}
+            : t('studioControls.noLoadSelectionScenarios').replace('{names}', () => fallbackScenarioNames.join(', '))}
         </p>
       )}
       {incompatibleMulti && <RunErrorBanner message={t('yamlEditor.runDebug.run.multiBackend')} />}
