@@ -1,5 +1,15 @@
 export const enTranslations = {
   studioControls: {
+    searchOccurrence: 'match',
+    searchNodeCount: 'node',
+    searchScope: 'Search in',
+    searchScopeRequired: 'Select where to search: Requests or Responses.',
+    requestScopeHelp: 'Requests and editable configuration; excludes recorded responses.',
+    responseScopeHelp: 'Recorded responses are read-only. Select Requests to replace.',
+    searchOccurrences: 'matches',
+    searchNodesCount: 'nodes',
+    replaceableCount: 'replaceable',
+
     searchNodes: 'Search nodes...',
     searchNodesLabel: 'Search nodes',
     search: 'Search',
@@ -36,7 +46,8 @@ export const enTranslations = {
     loadSelectionHelp: 'Select one load model (only one can be active).',
     selectLoadModel: 'Use for execution',
     noLoadSelection: 'No load model selected. Run will use Constant with 1 user and 1 iteration.',
-    noLoadSelectionScenarios: 'No load model selected in: {names}. These scenarios will use Constant with 1 user and 1 iteration.',
+    noLoadSelectionScenarios:
+      'No load model selected in: {names}. These scenarios will use Constant with 1 user and 1 iteration.',
     loadDescriptions: {
       constant: 'Keep a fixed number of users during the test.',
       linear: 'Increase users linearly over time.',
@@ -53,7 +64,8 @@ export const enTranslations = {
     intent: 'Intent',
     segments: 'Segments',
     manualStop: 'Run until manually stopped',
-    manualStopHelp: 'Explicitly runs until Stop or Ctrl+C, subject to the active license duration limit. Duration and iterations are cleared.',
+    manualStopHelp:
+      'Explicitly runs until Stop or Ctrl+C, subject to the active license duration limit. Duration and iterations are cleared.',
   },
 
   // Navigation
@@ -1203,7 +1215,7 @@ export const enTranslations = {
         hintVariables: 'Contains variables - will be resolved at runtime',
         hintProtocol: 'Protocol typo? Use "http://" or "https://"',
         hintSpaces: 'URL contains spaces',
-        hintInvalid: 'This doesn\'t look like a valid URL',
+        hintInvalid: "This doesn't look like a valid URL",
         hintFormat: 'URL format may be incorrect',
       },
       body: {

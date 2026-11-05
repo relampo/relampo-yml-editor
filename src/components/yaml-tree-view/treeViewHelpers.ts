@@ -18,7 +18,7 @@ export function computeVisibleNodes(
 ): YAMLNode[] {
   if (!tree) return [];
   const out: YAMLNode[] = [];
-  const searchIndex = searchQuery.trim() ? providedSearchIndex ?? buildSearchIndex(tree, searchQuery) : null;
+  const searchIndex = searchQuery.trim() ? (providedSearchIndex ?? buildSearchIndex(tree, searchQuery)) : null;
   const walk = (node: YAMLNode, ancestorMatches: boolean) => {
     out.push(node);
     const expanded = node.expanded ?? true;
@@ -30,9 +30,10 @@ export function computeVisibleNodes(
       Boolean(searchQuery.trim()) &&
       (passAncestor || node.children?.some(child => searchIndex?.get(child.id)?.subtreeMatch));
     if (node.children && node.children.length > 0 && (expanded || showChildrenWhileSearching)) {
-      const children = searchQuery.trim()
-        ? node.children.filter(child => passAncestor || searchIndex?.get(child.id)?.subtreeMatch)
-        : node.children;
+      const children =
+        searchQuery.trim() && !indexedState?.scope
+          ? node.children.filter(child => passAncestor || searchIndex?.get(child.id)?.subtreeMatch)
+          : node.children;
       children.forEach(child => walk(child, passAncestor));
     }
   };

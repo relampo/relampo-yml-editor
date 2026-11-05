@@ -1,3 +1,4 @@
+import { replacementNodeData, updatedValidationLabel } from './replacementNodePresentation';
 import { canContain, canDrop } from '../../utils/yamlDragDropRules';
 import type { RedirectedRequestInfo, YAMLNode, YAMLNodeData } from '../../types/yaml';
 import type { StringMap } from '../../types/shared';
@@ -256,10 +257,7 @@ function countTextInValue(value: unknown, search: string, urlEncoded = false): n
   }
 
   if (value && typeof value === 'object') {
-    return Object.entries(value).reduce(
-      (count, [, item]) => count + countTextInValue(item, search, urlEncoded),
-      0,
-    );
+    return Object.entries(value).reduce((count, [, item]) => count + countTextInValue(item, search, urlEncoded), 0);
   }
 
   return 0;
@@ -371,11 +369,15 @@ function replaceRequestData(
 
 // The serializer owns these values through child nodes. Skip stale parent copies,
 // so replacement counts describe the YAML that will actually be saved.
-function childOwnedDataKeys(node: YAMLNode): Set<string> {
+export function childOwnedDataKeys(node: YAMLNode): Set<string> {
   const keys = new Set<string>();
   if (node.children?.length) keys.add('steps');
   for (const child of node.children ?? []) {
-    if (['load', 'cookies', 'cache_manager', 'error_policy', 'headers', 'steps', 'think_time', 'data_source'].includes(child.type))
+    if (
+      ['load', 'cookies', 'cache_manager', 'error_policy', 'headers', 'steps', 'think_time', 'data_source'].includes(
+        child.type,
+      )
+    )
       keys.add(child.type);
     if (node.type === 'scenario' && child.type === 'load') keys.add('x-studio-load-profiles');
     if (child.type === 'file') keys.add('files');
@@ -431,7 +433,7 @@ export function getReplaceableMatchNodeIds(tree: YAMLNode, search: string, whole
       const headersCountedByChild =
         REQUEST_TYPES.has(node.type) && (node.children?.some(child => child.type === 'headers') ?? false);
       const nodeMatches = countRequestData(
-        node.data,
+        replacementNodeData(node, wholeDocument),
         search,
         headersCountedByChild,
         replacementExcludedKeys(node, wholeDocument),
@@ -479,6 +481,7 @@ export function replaceTextInEnabledRequestsAtMatch(
     const enabled = inheritedEnabled && node.data?.enabled !== false;
     const hasHeadersChild =
       REQUEST_TYPES.has(node.type) && (node.children?.some(child => child.type === 'headers') ?? false);
+    const sourceData = replacementNodeData(node, wholeDocument);
     let nextData = node.data;
     let matches = 0;
     let replacements = 0;
@@ -488,7 +491,7 @@ export function replaceTextInEnabledRequestsAtMatch(
       // Only a request node duplicates its headers into a child; a `headers`
       // node has none, so it always owns its own tally.
       const [replacedData, dataMatches, dataReplacements, dataChanged] = replaceRequestData(
-        node.data,
+        sourceData,
         search,
         replacement,
         hasHeadersChild,
@@ -522,7 +525,7 @@ export function replaceTextInEnabledRequestsAtMatch(
 
     if (!changed) return [node, matches, replacements, false];
 
-    const currentDataName = node.data?.name;
+    const currentDataName = sourceData?.name;
     const projectedRequestName =
       typeof currentDataName === 'string' && node.name === currentDataName && typeof nextData?.name === 'string'
         ? nextData.name
@@ -539,7 +542,7 @@ export function replaceTextInEnabledRequestsAtMatch(
         ? nextData.__name
         : node.name === currentDataName && typeof nextData?.name === 'string'
           ? nextData.name
-          : node.name;
+          : (updatedValidationLabel(node, nextData) ?? node.name);
 
     return [
       {
@@ -574,7 +577,12 @@ function findFallbackLoad(parent: YAMLNode, children: YAMLNode[], newNode: YAMLN
   return children.find(child => child.type === 'load' && child.data?.__loadSelected === false);
 }
 
-export function addNodeToTree(tree: YAMLNode, parentId: string, newNode: YAMLNode, reuseFallbackLoad = false): YAMLNode {
+export function addNodeToTree(
+  tree: YAMLNode,
+  parentId: string,
+  newNode: YAMLNode,
+  reuseFallbackLoad = false,
+): YAMLNode {
   if (tree.id === parentId) {
     const children = tree.children || [];
     if (newNode.type === 'scenario' && tree.type !== 'scenarios') return tree;
@@ -582,7 +590,9 @@ export function addNodeToTree(tree: YAMLNode, parentId: string, newNode: YAMLNod
     if (fallbackLoad) {
       return {
         ...tree,
-        children: children.map(child => child === fallbackLoad ? (reuseFallbackLoad ? { ...child, id: newNode.id } : newNode) : child),
+        children: children.map(child =>
+          child === fallbackLoad ? (reuseFallbackLoad ? { ...child, id: newNode.id } : newNode) : child,
+        ),
         expanded: true,
       };
     }
@@ -708,7 +718,8 @@ export function cloneNodeWithNewIds(node: YAMLNode, copySuffix?: string): YAMLNo
     return {
       ...source,
       id: newId,
-      name: copySuffix && (node.type !== 'scenario' || source === node) ? `${source.name} (${copySuffix})` : source.name,
+      name:
+        copySuffix && (node.type !== 'scenario' || source === node) ? `${source.name} (${copySuffix})` : source.name,
       ...(data ? { data } : {}),
       ...(source.unknownData ? { unknownData: structuredClone(source.unknownData) } : {}),
       children: source.children?.map(clone),

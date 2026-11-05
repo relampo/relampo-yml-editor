@@ -62,6 +62,7 @@ describe('YAMLTreeView replacement', () => {
     });
 
     fireEvent.change(screen.getByPlaceholderText('Search nodes...'), { target: { value: 'token' } });
+    fireEvent.click(screen.getByRole('radio', { name: 'Requests' }));
     fireEvent.click(screen.getByRole('button', { name: 'Search tree' }));
     fireEvent.click(screen.getByRole('button', { name: 'Replace' }));
     expect(screen.getByLabelText('Find text to replace')).toHaveValue('token');
@@ -104,12 +105,13 @@ describe('YAMLTreeView replacement', () => {
     });
 
     fireEvent.change(screen.getByPlaceholderText('Search nodes...'), { target: { value: 'token' } });
+    fireEvent.click(screen.getByRole('radio', { name: 'Requests' }));
     fireEvent.click(screen.getByRole('button', { name: 'Search tree' }));
     fireEvent.click(screen.getByRole('button', { name: 'Replace' }));
 
     expect(screen.getByLabelText('Replace match position')).toHaveTextContent('1 / 2');
     expect(screen.getByRole('treeitem', { name: /Request one/i })).toHaveAttribute('aria-current', 'true');
-    expect(screen.getByText('res')).toBeInTheDocument();
+    expect(screen.queryByText('res')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Next replace match' }));
 
@@ -143,15 +145,13 @@ describe('YAMLTreeView replacement', () => {
     });
 
     fireEvent.change(screen.getByPlaceholderText('Search nodes...'), { target: { value: 'token' } });
+    fireEvent.click(screen.getByRole('radio', { name: 'Responses' }));
     fireEvent.click(screen.getByRole('button', { name: 'Search tree' }));
     expect(screen.getByRole('treeitem', { name: /Response-only request/i })).toBeInTheDocument();
     expect(screen.getByText('res')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Replace' }));
-
-    expect(screen.getByLabelText('Replace match position')).toHaveTextContent('0 / 0');
-    expect(screen.getByRole('button', { name: 'Replace selected' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Replace all' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Replace' })).toBeDisabled();
+    expect(screen.queryByLabelText('Replacement text')).not.toBeInTheDocument();
   });
 
   it('keeps the executed search stable until Search is selected again', () => {
@@ -170,16 +170,18 @@ describe('YAMLTreeView replacement', () => {
 
     const searchInput = screen.getByPlaceholderText('Search nodes...');
     fireEvent.change(searchInput, { target: { value: 'token' } });
+    fireEvent.click(screen.getByRole('radio', { name: 'Requests' }));
     fireEvent.click(screen.getByRole('button', { name: 'Search tree' }));
     expect(screen.getByRole('treeitem', { name: /Token request/ })).toBeInTheDocument();
-    expect(screen.queryByRole('treeitem', { name: /Other request/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('treeitem', { name: /Other request/ })).toBeInTheDocument();
 
     fireEvent.change(searchInput, { target: { value: 'other' } });
     expect(screen.getByRole('treeitem', { name: /Token request/ })).toBeInTheDocument();
-    expect(screen.queryByRole('treeitem', { name: /Other request/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('treeitem', { name: /Other request/ })).toBeInTheDocument();
 
+    fireEvent.click(screen.getByRole('radio', { name: 'Requests' }));
     fireEvent.click(screen.getByRole('button', { name: 'Search tree' }));
-    expect(screen.queryByRole('treeitem', { name: /Token request/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('treeitem', { name: /Token request/ })).toBeInTheDocument();
     expect(screen.getByRole('treeitem', { name: /Other request/ })).toBeInTheDocument();
   });
 
@@ -191,24 +193,40 @@ describe('YAMLTreeView replacement', () => {
         name: 'Steps',
         expanded: true,
         children: [
-          { id: 'request-one', type: 'request', name: 'Token one', data: { url: '/one/token?term=other' }, children: [] },
-          { id: 'request-two', type: 'request', name: 'Token two', data: { url: '/two/token?term=other' }, children: [] },
+          {
+            id: 'request-one',
+            type: 'request',
+            name: 'Token one',
+            data: { url: '/one/token?term=other' },
+            children: [],
+          },
+          {
+            id: 'request-two',
+            type: 'request',
+            name: 'Token two',
+            data: { url: '/two/token?term=other' },
+            children: [],
+          },
         ],
       },
     });
 
     const searchInput = screen.getByPlaceholderText('Search nodes...');
     fireEvent.change(searchInput, { target: { value: 'token' } });
+    fireEvent.click(screen.getByRole('radio', { name: 'Requests' }));
     fireEvent.click(screen.getByRole('button', { name: 'Search tree' }));
     fireEvent.click(screen.getByRole('button', { name: 'Replace' }));
     fireEvent.click(screen.getByRole('button', { name: 'Next replace match' }));
 
-    expect(screen.getByLabelText('Replace match position')).toHaveTextContent('2 / 2');
+    fireEvent.click(screen.getByRole('button', { name: 'Next replace match' }));
+    expect(screen.getByLabelText('Replace match position')).toHaveTextContent('3 / 4');
     expect(screen.getByRole('treeitem', { name: /Token two/i })).toHaveAttribute('aria-current', 'true');
 
     fireEvent.change(searchInput, { target: { value: 'other' } });
+    fireEvent.click(screen.getByRole('radio', { name: 'Requests' }));
     fireEvent.click(screen.getByRole('button', { name: 'Search tree' }));
 
+    fireEvent.click(screen.getByRole('button', { name: 'Replace' }));
     expect(screen.getByLabelText('Replace match position')).toHaveTextContent('1 / 2');
     expect(screen.getByRole('treeitem', { name: /Token one/i })).toHaveAttribute('aria-current', 'true');
     expect(screen.getByRole('treeitem', { name: /Token two/i })).not.toHaveAttribute('aria-current', 'true');
@@ -234,6 +252,7 @@ describe('YAMLTreeView replacement', () => {
     });
 
     fireEvent.change(screen.getByPlaceholderText('Search nodes...'), { target: { value: 'hello world' } });
+    fireEvent.click(screen.getByRole('radio', { name: 'Requests' }));
     fireEvent.click(screen.getByRole('button', { name: 'Search tree' }));
 
     expect(screen.getByRole('treeitem', { name: /Encoded request/ })).toBeInTheDocument();
@@ -255,6 +274,7 @@ describe('YAMLTreeView replacement', () => {
     });
 
     fireEvent.change(screen.getByPlaceholderText('Search nodes...'), { target: { value: 'token' } });
+    fireEvent.click(screen.getByRole('radio', { name: 'Requests' }));
     fireEvent.click(screen.getByRole('button', { name: 'Search tree' }));
     fireEvent.click(screen.getByRole('button', { name: 'Replace' }));
     expect(screen.getByLabelText('Find text to replace')).toHaveValue('token');
@@ -283,6 +303,7 @@ describe('YAMLTreeView replacement', () => {
     });
 
     fireEvent.change(screen.getByPlaceholderText('Search nodes...'), { target: { value: 'token' } });
+    fireEvent.click(screen.getByRole('radio', { name: 'Requests' }));
     fireEvent.click(screen.getByRole('button', { name: 'Search tree' }));
     fireEvent.click(screen.getByRole('button', { name: 'Replace' }));
 
@@ -294,10 +315,26 @@ describe('YAMLTreeView replacement', () => {
 
 it('RLP-782 replaces successive requests without skipping the next remaining match', async () => {
   let latest: YAMLNode | null = null;
-  renderInteractiveTreeView({ tree: { id: 'steps', type: 'steps', name: 'Steps', expanded: true,
-    children: [1, 2, 3].map(i => ({ id: `request-${i}`, type: 'request', name: `Request ${i}`, data: { method: 'GET', url: `/needle${i}`, enabled: true }, children: [] })),
-  }, onTreeStateChange: tree => { latest = tree; } });
+  renderInteractiveTreeView({
+    tree: {
+      id: 'steps',
+      type: 'steps',
+      name: 'Steps',
+      expanded: true,
+      children: [1, 2, 3].map(i => ({
+        id: `request-${i}`,
+        type: 'request',
+        name: `Request ${i}`,
+        data: { method: 'GET', url: `/needle${i}`, enabled: true },
+        children: [],
+      })),
+    },
+    onTreeStateChange: tree => {
+      latest = tree;
+    },
+  });
   fireEvent.change(screen.getByPlaceholderText('Search nodes...'), { target: { value: 'needle' } });
+  fireEvent.click(screen.getByRole('radio', { name: 'Requests' }));
   fireEvent.click(screen.getByRole('button', { name: 'Search tree' }));
   fireEvent.click(screen.getByRole('button', { name: 'Replace' }));
   fireEvent.change(screen.getByLabelText('Replacement text'), { target: { value: 'changed' } });

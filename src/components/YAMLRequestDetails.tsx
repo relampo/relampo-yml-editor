@@ -1,3 +1,4 @@
+import type { SearchScope } from './yaml-tree-view/search';
 import { ChevronDown, ChevronUp, Search } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -23,6 +24,7 @@ interface YAMLRequestDetailsProps {
   redirectSourceInfo?: RedirectSourceInfo | null;
   onNodeUpdate?: (nodeId: string, updatedData: YAMLNodeData) => void;
   searchQuery?: string;
+  searchScope?: SearchScope | null;
 }
 
 type Tab = 'request' | 'response';
@@ -64,11 +66,19 @@ export function YAMLRequestDetails({
   redirectSourceInfo = null,
   onNodeUpdate,
   searchQuery = '',
+  searchScope,
 }: YAMLRequestDetailsProps) {
   const { t } = useLanguage();
   const data = node.data || {};
   const [formData, setFormData] = useState(data);
   const [activeTab, setActiveTab] = useState<Tab>('request');
+  const scopeTab = searchScope === 'responses' ? 'response' : 'request';
+  const [seenTreeSearch, setSeenTreeSearch] = useState('');
+  const treeSearchKey = `${searchScope ?? ''}:${searchQuery}`;
+  if (treeSearchKey !== seenTreeSearch) {
+    setSeenTreeSearch(treeSearchKey);
+    if (searchScope && searchQuery.trim()) setActiveTab(scopeTab);
+  }
   const [requestSearch, setRequestSearch] = useState('');
   const [responseSearch, setResponseSearch] = useState('');
   const [requestSearchMode, setRequestSearchMode] = useState<SearchMode>('text');
@@ -144,7 +154,8 @@ export function YAMLRequestDetails({
   // A search typed directly in the details panel always wins over the tree
   // search, so users can still search the selected body while a tree filter
   // is active.
-  const searchText = manualSearch.trim() ? manualSearch : searchQuery.trim();
+  const treeSearchText = searchScope && activeTab !== scopeTab ? '' : searchQuery.trim();
+  const searchText = manualSearch.trim() ? manualSearch : treeSearchText;
 
   // The tree search can change searchText without going through
   // handleSearchChange; keep the match cursor in range when that happens.
@@ -222,43 +233,43 @@ export function YAMLRequestDetails({
           disabled={isRequestDisabled}
           className={`min-w-0 border-0 p-0 m-0 ${isRequestDisabled ? 'opacity-60' : ''}`}
         >
-        {activeTab === 'request' ? (
-          <RequestContent
-            nodeId={node.id}
-            formData={formData}
-            baseUrl={baseUrl}
-            hasRecordedRedirectFollowUp={hasRecordedRedirectFollowUp}
-            effectiveRedirectAutomatically={effectiveRedirectAutomatically}
-            effectiveFollowRedirects={effectiveFollowRedirects}
-            requestMethod={requestMethod}
-            onFieldChange={handleFieldChange}
-            onAuthChange={handleAuthChange}
-            onBodyChange={handleBodyChange}
-            searchText={searchText}
-            searchInputValue={requestSearch}
-            searchMode={searchMode}
-            replaceValue={replaceValue}
-            currentMatchIndex={currentMatchIndex}
-            onSearchChange={handleSearchChange}
-            onSearchModeChange={handleSearchModeChange}
-            onReplaceValueChange={handleReplaceChange}
-            onNavigate={setCurrentMatchIndex}
-          />
-        ) : (
-          <YAMLResponseDetails
-            response={formData.response}
-            onResponseUpdate={updatedResponse => handleFieldChange('response', updatedResponse)}
-            searchText={searchText}
-            searchInputValue={responseSearch}
-            searchMode={searchMode}
-            replaceValue={replaceValue}
-            currentMatchIndex={currentMatchIndex}
-            onSearchChange={handleSearchChange}
-            onSearchModeChange={handleSearchModeChange}
-            onReplaceValueChange={handleReplaceChange}
-            onNavigate={setCurrentMatchIndex}
-          />
-        )}
+          {activeTab === 'request' ? (
+            <RequestContent
+              nodeId={node.id}
+              formData={formData}
+              baseUrl={baseUrl}
+              hasRecordedRedirectFollowUp={hasRecordedRedirectFollowUp}
+              effectiveRedirectAutomatically={effectiveRedirectAutomatically}
+              effectiveFollowRedirects={effectiveFollowRedirects}
+              requestMethod={requestMethod}
+              onFieldChange={handleFieldChange}
+              onAuthChange={handleAuthChange}
+              onBodyChange={handleBodyChange}
+              searchText={searchText}
+              searchInputValue={requestSearch}
+              searchMode={searchMode}
+              replaceValue={replaceValue}
+              currentMatchIndex={currentMatchIndex}
+              onSearchChange={handleSearchChange}
+              onSearchModeChange={handleSearchModeChange}
+              onReplaceValueChange={handleReplaceChange}
+              onNavigate={setCurrentMatchIndex}
+            />
+          ) : (
+            <YAMLResponseDetails
+              response={formData.response}
+              onResponseUpdate={updatedResponse => handleFieldChange('response', updatedResponse)}
+              searchText={searchText}
+              searchInputValue={responseSearch}
+              searchMode={searchMode}
+              replaceValue={replaceValue}
+              currentMatchIndex={currentMatchIndex}
+              onSearchChange={handleSearchChange}
+              onSearchModeChange={handleSearchModeChange}
+              onReplaceValueChange={handleReplaceChange}
+              onNavigate={setCurrentMatchIndex}
+            />
+          )}
         </fieldset>
       </div>
     </div>
@@ -343,12 +354,25 @@ function RequestUrlRow({
             value={protocol}
             onValueChange={onProtocolChange}
           >
-            <SelectTrigger id="req-protocol" className={`${compactInputClass} w-full`}>
+            <SelectTrigger
+              id="req-protocol"
+              className={`${compactInputClass} w-full`}
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="border-white/10 use-accent-yellow">
-              <SelectItem value="https" className="font-mono">https</SelectItem>
-              <SelectItem value="http" className="font-mono">http</SelectItem>
+              <SelectItem
+                value="https"
+                className="font-mono"
+              >
+                https
+              </SelectItem>
+              <SelectItem
+                value="http"
+                className="font-mono"
+              >
+                http
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -428,7 +452,9 @@ function RequestBodySearchToolbar({
   return (
     <div>
       <div className="flex items-center gap-2 mb-2">
-        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">{t('yamlEditor.requestDetails.requestBody')}</p>
+        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+          {t('yamlEditor.requestDetails.requestBody')}
+        </p>
       </div>
       <div className="p-3 border border-white/10 rounded bg-[#0a0a0a]">
         <div className="flex items-center gap-2 flex-wrap">
@@ -576,7 +602,10 @@ function RequestAdvancedOptionsRow({
             value={cookieOverride}
             onValueChange={onCookieOverrideChange}
           >
-            <SelectTrigger id="req-cookie-override" className={`${compactInputClass} w-full`}>
+            <SelectTrigger
+              id="req-cookie-override"
+              className={`${compactInputClass} w-full`}
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="border-white/10 use-accent-yellow">
@@ -597,7 +626,10 @@ function RequestAdvancedOptionsRow({
             value={cacheOverride}
             onValueChange={onCacheOverrideChange}
           >
-            <SelectTrigger id="req-cache-override" className={`${compactInputClass} w-full`}>
+            <SelectTrigger
+              id="req-cache-override"
+              className={`${compactInputClass} w-full`}
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="border-white/10 use-accent-yellow">
@@ -618,7 +650,10 @@ function RequestAdvancedOptionsRow({
             value={throughputEnabled ? 'enabled' : 'disabled'}
             onValueChange={onThroughputToggle}
           >
-            <SelectTrigger id="req-throughput" className={`${compactInputClass} w-full`}>
+            <SelectTrigger
+              id="req-throughput"
+              className={`${compactInputClass} w-full`}
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="border-white/10">
@@ -711,15 +746,18 @@ function RequestContent({
         return;
       }
 
-      const nextUrl = hasPathDraft ? `${urlParts.isAbsolute ? `${urlParts.protocol}://${urlParts.baseUrl}` : ''}/` : buildRequestUrl(requestUrl, { path: '' });
+      const nextUrl = hasPathDraft
+        ? `${urlParts.isAbsolute ? `${urlParts.protocol}://${urlParts.baseUrl}` : ''}/`
+        : buildRequestUrl(requestUrl, { path: '' });
       setPathDraft({ nodeId, url: nextUrl, value: '' });
       onFieldChange('url', nextUrl);
       return;
     }
 
-    const nextUrl = hasPathDraft || trimmedValue.includes('?')
-      ? `${urlParts.isAbsolute ? `${urlParts.protocol}://${urlParts.baseUrl}` : ''}${trimmedValue.startsWith('/') ? trimmedValue : `/${trimmedValue}`}`
-      : buildRequestUrl(requestUrl, { path: value });
+    const nextUrl =
+      hasPathDraft || trimmedValue.includes('?')
+        ? `${urlParts.isAbsolute ? `${urlParts.protocol}://${urlParts.baseUrl}` : ''}${trimmedValue.startsWith('/') ? trimmedValue : `/${trimmedValue}`}`
+        : buildRequestUrl(requestUrl, { path: value });
     setPathDraft({ nodeId, url: nextUrl, value });
     onFieldChange('url', nextUrl);
   };
@@ -844,9 +882,7 @@ function RequestContent({
           </label>
         </div>
         {hasRecordedRedirectFollowUp && (
-          <div className="mt-2 text-xs text-zinc-500">
-            {t('yamlEditor.requestDetails.recordedRedirectChain')}
-          </div>
+          <div className="mt-2 text-xs text-zinc-500">{t('yamlEditor.requestDetails.recordedRedirectChain')}</div>
         )}
       </div>
 
@@ -874,7 +910,9 @@ function RequestContent({
         regexInvalid={regexInvalid}
       />
       <div className="flex items-center gap-2 mb-2 mt-3">
-        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">{t('yamlEditor.requestDetails.formatBodyType')}</p>
+        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+          {t('yamlEditor.requestDetails.formatBodyType')}
+        </p>
       </div>
       <BodyTypeSelector
         body={formData.body}
@@ -890,7 +928,9 @@ function RequestContent({
       {formData.think_time && (
         <div>
           <div className="flex items-center gap-2 mb-2">
-            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">{t('yamlEditor.requestDetails.thinkTime')}</p>
+            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+              {t('yamlEditor.requestDetails.thinkTime')}
+            </p>
           </div>
           <div className="px-3 py-2 bg-cyan-400/5 border border-cyan-400/20 rounded text-sm font-mono text-cyan-400">
             {String(formData.think_time)}

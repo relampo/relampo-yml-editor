@@ -1,3 +1,4 @@
+import type { SearchScope } from './yaml-tree-view/search';
 import type { ComponentCapabilities } from '../utils/componentConfiguration';
 import type { DocumentIssueIndex } from '../utils/documentIssues';
 import type { RedirectSourceInfo, RedirectedRequestInfo, YAMLNode } from '../types/yaml';
@@ -33,6 +34,7 @@ interface YAMLEditorMainLayoutProps {
   searchResetSignal: number;
   onGoToFirstError?: () => void;
   treeSearchQuery: string;
+  treeSearchScope?: SearchScope | null;
   documentReady: boolean;
   dataSourceFileBrowseEnabled: boolean;
   fileName: string;
@@ -41,7 +43,7 @@ interface YAMLEditorMainLayoutProps {
   onTreeChange: (newTree: YAMLNode, nextSelection?: TreeSelection) => void;
   onTreeViewChange: (newTree: YAMLNode) => void;
   onContextMenuOpened: (metadata: { nodeType: string; selectionCount: number; hasMultiSelection: boolean }) => void;
-  onSearchChange: (query: string) => void;
+  onSearchChange: (query: string, scope?: SearchScope | null) => void;
   onCodeChange: (newCode: string) => void;
   flushPendingEdits: () => string;
   onDebugSelectNode: (node: YAMLNode | null) => void;
@@ -81,6 +83,7 @@ export function YAMLEditorMainLayout({
   searchResetSignal,
   onGoToFirstError,
   treeSearchQuery,
+  treeSearchScope,
   documentReady,
   dataSourceFileBrowseEnabled,
   fileName,
@@ -170,6 +173,7 @@ export function YAMLEditorMainLayout({
         onRemoveHost={onRemoveHost}
         onToggleEnabled={onToggleEnabled}
         searchQuery={activeViewMode === 'tree' ? treeSearchQuery : ''}
+        searchScope={treeSearchScope}
         dataSourceFileBrowseEnabled={dataSourceFileBrowseEnabled}
         fileName={fileName}
       />

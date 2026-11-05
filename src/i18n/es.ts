@@ -1,5 +1,15 @@
 export const esTranslations = {
   studioControls: {
+    searchOccurrence: 'coincidencia',
+    searchNodeCount: 'nodo',
+    searchScope: 'Buscar en',
+    searchScopeRequired: 'Selecciona dónde buscar: Requests o Responses.',
+    requestScopeHelp: 'Requests y configuración editable; excluye respuestas grabadas.',
+    responseScopeHelp: 'Las respuestas grabadas son de solo lectura. Selecciona Requests para reemplazar.',
+    searchOccurrences: 'coincidencias',
+    searchNodesCount: 'nodos',
+    replaceableCount: 'reemplazables',
+
     searchNodes: 'Buscar nodos...',
     searchNodesLabel: 'Buscar nodos',
     search: 'Buscar',
@@ -36,7 +46,8 @@ export const esTranslations = {
     loadSelectionHelp: 'Selecciona un modelo de carga (solo uno puede estar activo).',
     selectLoadModel: 'Usar en la ejecución',
     noLoadSelection: 'No hay un modelo de carga seleccionado. Se usará Constante con 1 usuario y 1 iteración.',
-    noLoadSelectionScenarios: 'No hay un modelo de carga seleccionado en: {names}. Estos escenarios usarán Constante con 1 usuario y 1 iteración.',
+    noLoadSelectionScenarios:
+      'No hay un modelo de carga seleccionado en: {names}. Estos escenarios usarán Constante con 1 usuario y 1 iteración.',
     loadDescriptions: {
       constant: 'Mantiene un número fijo de usuarios durante la prueba.',
       linear: 'Aumenta los usuarios de forma lineal.',
@@ -53,7 +64,8 @@ export const esTranslations = {
     intent: 'Objetivo',
     segments: 'Segmentos',
     manualStop: 'Ejecutar hasta detener manualmente',
-    manualStopHelp: 'Ejecuta hasta pulsar Detener o Ctrl+C, con el límite de duración de la licencia activa. Se borran la duración y las iteraciones.',
+    manualStopHelp:
+      'Ejecuta hasta pulsar Detener o Ctrl+C, con el límite de duración de la licencia activa. Se borran la duración y las iteraciones.',
   },
 
   // Navegación
@@ -1395,7 +1407,8 @@ export const esTranslations = {
       sqlQuery: 'Consulta',
       sqlEditor: 'Editor SQL',
       lineCount: '{count} líneas',
-      sqlWritesEnabled: 'La ejecución de escrituras está activada para esta petición. Limita bien las credenciales y el texto de la consulta.',
+      sqlWritesEnabled:
+        'La ejecución de escrituras está activada para esta petición. Limita bien las credenciales y el texto de la consulta.',
       sqlExecBlocked: 'Las peticiones exec siguen bloqueadas para escrituras, salvo que `allow_writes` esté activado.',
       sqlReadOnlyDefault: 'Esta petición está configurada por defecto para una ejecución segura de solo lectura.',
       sqlConnection: 'Conexión',

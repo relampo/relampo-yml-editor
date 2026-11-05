@@ -11,6 +11,9 @@ describe('TreeSearchBar replace controls', () => {
   it('copies the active tree search into Replace and shows its match count', () => {
     render(
       <TreeSearchBar
+        scope="requests"
+        onScopeChange={vi.fn()}
+        occurrenceCount={1}
         value="token"
         onChange={vi.fn()}
         onClear={vi.fn()}
@@ -37,6 +40,9 @@ describe('TreeSearchBar replace controls', () => {
 
       return (
         <TreeSearchBar
+          scope="requests"
+          onScopeChange={vi.fn()}
+          occurrenceCount={1}
           value="needle"
           onChange={vi.fn()}
           onClear={vi.fn()}
@@ -73,6 +79,9 @@ describe('TreeSearchBar replace controls', () => {
 
     render(
       <TreeSearchBar
+        scope="requests"
+        onScopeChange={vi.fn()}
+        occurrenceCount={1}
         value="needle"
         onChange={vi.fn()}
         onClear={vi.fn()}
@@ -102,6 +111,9 @@ describe('TreeSearchBar replace controls', () => {
 
     render(
       <TreeSearchBar
+        scope="requests"
+        onScopeChange={vi.fn()}
+        occurrenceCount={1}
         value=""
         onChange={onChange}
         onClear={vi.fn()}
@@ -134,6 +146,9 @@ describe('TreeSearchBar replace controls', () => {
 
     render(
       <TreeSearchBar
+        scope="requests"
+        onScopeChange={vi.fn()}
+        occurrenceCount={1}
         value=""
         onChange={vi.fn()}
         onClear={vi.fn()}
@@ -147,14 +162,17 @@ describe('TreeSearchBar replace controls', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Replace' }));
 
-    expect(screen.getByRole('button', { name: 'Replace selected' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Replace all' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Replace' })).toBeDisabled();
+    expect(screen.queryByLabelText('Replacement text')).not.toBeInTheDocument();
     expect(onReplace).not.toHaveBeenCalled();
   });
 
   it('keeps Replace all on a separate row below the selected control', () => {
     render(
       <TreeSearchBar
+        scope="requests"
+        onScopeChange={vi.fn()}
+        occurrenceCount={1}
         value="needle"
         onChange={vi.fn()}
         onClear={vi.fn()}
@@ -178,6 +196,9 @@ describe('TreeSearchBar replace controls', () => {
 
     render(
       <TreeSearchBar
+        scope="requests"
+        onScopeChange={vi.fn()}
+        occurrenceCount={1}
         value=""
         onChange={onChange}
         onClear={vi.fn()}
@@ -203,6 +224,9 @@ describe('TreeSearchBar replace controls', () => {
 
       return (
         <TreeSearchBar
+          scope="requests"
+          onScopeChange={vi.fn()}
+          occurrenceCount={1}
           value="needle"
           onChange={vi.fn()}
           onClear={vi.fn()}
@@ -221,5 +245,76 @@ describe('TreeSearchBar replace controls', () => {
     expect(screen.getByLabelText('Replace match position')).toHaveTextContent('2 / 3');
     fireEvent.click(screen.getByRole('button', { name: 'Previous replace match' }));
     expect(screen.getByLabelText('Replace match position')).toHaveTextContent('1 / 3');
+  });
+});
+
+describe('TreeSearchBar scope', () => {
+  it('blocks Search, Enter and Replace until a scope is explicitly chosen', () => {
+    const onChange = vi.fn();
+    const onReplace = vi.fn();
+    render(
+      <TreeSearchBar
+        scope={null}
+        onScopeChange={vi.fn()}
+        occurrenceCount={0}
+        value=""
+        onChange={onChange}
+        onClear={vi.fn()}
+        onReplace={onReplace}
+        replaceMatchCount={1}
+        currentMatchIndex={0}
+        onCurrentMatchIndexChange={vi.fn()}
+        searchMatchCount={0}
+      />,
+    );
+    const input = screen.getByLabelText('Search nodes');
+    fireEvent.change(input, { target: { value: 'needle' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(screen.getByRole('button', { name: 'Search tree' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Replace' })).toBeDisabled();
+    expect(onChange).not.toHaveBeenCalled();
+    expect(onReplace).not.toHaveBeenCalled();
+  });
+
+  it('preserves the query while switching scopes and closes replacement controls', () => {
+    const onReplace = vi.fn();
+    const onScopeChange = vi.fn();
+    function Harness() {
+      const [scope, setScope] = useState<'requests' | 'responses' | null>(null);
+      const [value, setValue] = useState('');
+      return (
+        <TreeSearchBar
+          scope={scope}
+          onScopeChange={(next, query) => {
+            setScope(next);
+            setValue(query);
+            onScopeChange(next, query);
+          }}
+          occurrenceCount={2}
+          value={value}
+          onChange={setValue}
+          onClear={() => setValue('')}
+          onReplace={onReplace}
+          replaceMatchCount={2}
+          currentMatchIndex={0}
+          onCurrentMatchIndexChange={vi.fn()}
+          searchMatchCount={1}
+        />
+      );
+    }
+    render(<Harness />);
+    fireEvent.change(screen.getByLabelText('Search nodes'), { target: { value: 'needle' } });
+    fireEvent.click(screen.getByRole('radio', { name: 'Requests' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Search tree' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Replace' }));
+    fireEvent.change(screen.getByLabelText('Replacement text'), { target: { value: 'changed' } });
+    fireEvent.click(screen.getByRole('radio', { name: 'Responses' }));
+    expect(onScopeChange).toHaveBeenLastCalledWith('responses', 'needle');
+    expect(screen.getByRole('radio', { name: 'Requests' })).not.toBeChecked();
+    expect(screen.getByRole('button', { name: 'Replace' })).toBeDisabled();
+    expect(screen.queryByLabelText('Replacement text')).not.toBeInTheDocument();
+    fireEvent.keyDown(screen.getByLabelText('Search nodes'), { key: 'Enter' });
+    expect(onReplace).not.toHaveBeenCalled();
+    expect(screen.getByLabelText('Search nodes')).toHaveValue('needle');
   });
 });

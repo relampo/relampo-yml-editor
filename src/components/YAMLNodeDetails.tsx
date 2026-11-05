@@ -1,3 +1,4 @@
+import type { SearchScope } from './yaml-tree-view/search';
 import { ComponentConfigurationDetails } from './yaml-node-details/ComponentConfigurationDetails';
 import type { ComponentCapabilities } from '../utils/componentConfiguration';
 import type { DocumentIssue } from '../utils/documentIssues';
@@ -55,6 +56,7 @@ interface YAMLNodeDetailsProps {
   onRemoveHost?: (host: string) => void;
   onToggleEnabled?: (nodeId: string, enabled: boolean) => void;
   searchQuery?: string;
+  searchScope?: SearchScope | null;
   dataSourceFileBrowseEnabled?: boolean;
   fileName?: string;
 }
@@ -77,6 +79,7 @@ export function YAMLNodeDetails({
   onRemoveHost,
   onToggleEnabled,
   searchQuery = '',
+  searchScope,
   dataSourceFileBrowseEnabled = false,
   fileName = '',
 }: YAMLNodeDetailsProps) {
@@ -127,7 +130,14 @@ export function YAMLNodeDetails({
           <h3
             className={`flex-1 ${isRequestNode ? 'text-base italic font-medium text-zinc-200 normal-case tracking-normal leading-snug whitespace-normal wrap-break-word' : 'text-xs font-semibold text-zinc-400 uppercase tracking-wider'}`}
           >
-            {isRequestNode ? <HighlightText text={node.name} query={searchQuery} /> : t('yamlEditor.details')}
+            {isRequestNode ? (
+              <HighlightText
+                text={node.name}
+                query={searchScope === 'responses' ? '' : searchQuery}
+              />
+            ) : (
+              t('yamlEditor.details')
+            )}
           </h3>
           {canToggleEnabled && (
             <button
@@ -149,10 +159,16 @@ export function YAMLNodeDetails({
       </div>
 
       <div className={`flex-1 overflow-y-auto ${isCompactDetailsNode ? 'p-4' : 'p-6'}`}>
-        <NodeIssuesSection issues={issues} language={language} />
+        <NodeIssuesSection
+          issues={issues}
+          language={language}
+        />
         {node.type !== 'test' && node.type !== 'data_source' && (
           <div className={isCompactDetailsNode ? 'mb-4' : 'mb-6'}>
-            <label htmlFor="nodedetails-node-name" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+            <label
+              htmlFor="nodedetails-node-name"
+              className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
+            >
               {t('yamlEditor.common.name')}
             </label>
             <HighlightedInput
@@ -165,18 +181,26 @@ export function YAMLNodeDetails({
               }}
               maxLength={isRequestNode ? 255 : 50}
               containerStyle={{
-                width: node.type === 'think_time' ? '100px' : `${Math.min(Math.max((nodeName || '').length + 4, 12), 48)}ch`,
+                width:
+                  node.type === 'think_time' ? '100px' : `${Math.min(Math.max((nodeName || '').length + 4, 12), 48)}ch`,
               }}
               containerClass="max-w-full shrink-0"
               className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-semibold"
               placeholder={t('yamlEditor.shell.layout.nodeNamePlaceholder')}
-              searchText={searchQuery}
+              searchText={searchScope === 'responses' ? '' : searchQuery}
               overlayClass="px-3 text-sm text-zinc-300 font-semibold"
             />
           </div>
         )}
 
-        {tree && <ComponentConfigurationDetails tree={tree} node={node} capabilities={componentCapabilities} onNodeUpdate={onNodeUpdate} />}
+        {tree && (
+          <ComponentConfigurationDetails
+            tree={tree}
+            node={node}
+            capabilities={componentCapabilities}
+            onNodeUpdate={onNodeUpdate}
+          />
+        )}
         <NodeDetailsContent
           node={node}
           nodeName={nodeName}
@@ -188,6 +212,7 @@ export function YAMLNodeDetails({
           onRenameHost={onRenameHost}
           onRemoveHost={onRemoveHost}
           searchQuery={searchQuery}
+          searchScope={searchScope}
           dataSourceFileBrowseEnabled={dataSourceFileBrowseEnabled}
           fileName={fileName}
         />
@@ -207,6 +232,7 @@ function NodeDetailsContent({
   onRenameHost,
   onRemoveHost,
   searchQuery = '',
+  searchScope,
   dataSourceFileBrowseEnabled = false,
   fileName = '',
 }: {
@@ -220,6 +246,7 @@ function NodeDetailsContent({
   onRenameHost?: (oldHost: string, newHost: string) => void;
   onRemoveHost?: (host: string) => void;
   searchQuery?: string;
+  searchScope?: SearchScope | null;
   dataSourceFileBrowseEnabled?: boolean;
   fileName?: string;
 }) {
@@ -248,7 +275,7 @@ function NodeDetailsContent({
           onNodeUpdate={onNodeUpdate}
           nodeName={nodeName}
           setNodeName={setNodeName}
-          searchQuery={searchQuery}
+          searchQuery={searchScope === 'responses' ? '' : searchQuery}
           fileBrowseEnabled={dataSourceFileBrowseEnabled}
         />
       );
@@ -316,6 +343,7 @@ function NodeDetailsContent({
           redirectSourceInfo={redirectSourceInfo}
           onNodeUpdate={onNodeUpdate}
           searchQuery={searchQuery}
+          searchScope={searchScope}
         />
       );
     case 'group':
@@ -426,7 +454,7 @@ function NodeDetailsContent({
         <AssertionDetails
           node={node}
           onNodeUpdate={onNodeUpdate}
-          searchQuery={searchQuery}
+          searchQuery={searchScope === 'responses' ? '' : searchQuery}
         />
       );
     case 'extractor':
@@ -434,7 +462,7 @@ function NodeDetailsContent({
         <ExtractorDetails
           node={node}
           onNodeUpdate={onNodeUpdate}
-          searchQuery={searchQuery}
+          searchQuery={searchScope === 'responses' ? '' : searchQuery}
         />
       );
     case 'file':
@@ -456,7 +484,7 @@ function NodeDetailsContent({
         <HeadersDetails
           node={node}
           onNodeUpdate={onNodeUpdate}
-          searchQuery={searchQuery}
+          searchQuery={searchScope === 'responses' ? '' : searchQuery}
         />
       );
     case 'step':
@@ -472,6 +500,6 @@ function NodeDetailsContent({
           node={node}
           onNodeUpdate={onNodeUpdate}
         />
-    );
+      );
   }
 }
