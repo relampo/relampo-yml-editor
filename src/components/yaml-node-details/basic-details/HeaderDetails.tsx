@@ -1,4 +1,5 @@
 import { EditableList } from '../../EditableList';
+import { useLanguage } from '../../../contexts/LanguageContext';
 import { Input } from '../../ui/input';
 import { createNodeDataUpdater } from '../nodeDetailHelpers';
 import type { NodeDetailProps } from '../types';
@@ -16,6 +17,7 @@ const commonHeaders = [
 ];
 
 export function HeaderDetails({ node, onNodeUpdate }: NodeDetailProps) {
+  const { t } = useLanguage();
   const { data, updateField } = createNodeDataUpdater(node, onNodeUpdate);
 
   return (
@@ -52,13 +54,14 @@ export function HeaderDetails({ node, onNodeUpdate }: NodeDetailProps) {
       </div>
 
       <div className="p-3 bg-slate-400/5 border border-slate-400/20 rounded text-xs text-zinc-400">
-        🏷️ This header will be sent with the HTTP request
+        {t('yamlEditor.nodeDetails.header.single')}
       </div>
     </div>
   );
 }
 
 export function HeadersDetails({ node, onNodeUpdate, searchQuery = '' }: NodeDetailProps & { searchQuery?: string }) {
+  const { t } = useLanguage();
   const data = node.data || {};
   const headers = Object.fromEntries(
     Object.entries(data).filter((entry): entry is [string, string] => typeof entry[1] === 'string'),
@@ -67,11 +70,11 @@ export function HeadersDetails({ node, onNodeUpdate, searchQuery = '' }: NodeDet
   return (
     <>
       <EditableList
-        title="HTTP Headers"
+        title={t('yamlEditor.nodeDetails.basic.httpHeaders')}
         items={headers}
         onUpdate={items => onNodeUpdate?.(node.id, items)}
         keyPlaceholder="Header-Name"
-        valuePlaceholder="Header value"
+        valuePlaceholder={t('yamlEditor.nodeDetails.header.valuePlaceholder')}
         enableCheckboxes={false}
         enableBulkActions={false}
         variant="minimal"
@@ -79,7 +82,7 @@ export function HeadersDetails({ node, onNodeUpdate, searchQuery = '' }: NodeDet
       />
 
       <div className="mt-4 p-3 bg-red-400/5 border border-red-400/20 rounded text-xs text-zinc-400">
-        🏷️ These headers will be sent with the HTTP request
+        {t('yamlEditor.nodeDetails.header.multiple')}
       </div>
     </>
   );

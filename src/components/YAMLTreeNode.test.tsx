@@ -1,7 +1,11 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render as baseRender, screen } from '@testing-library/react';
+import type { ReactElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
+import { LanguageProvider } from '../contexts/LanguageContext';
 import type { YAMLNode } from '../types/yaml';
 import { YAMLTreeNode } from './YAMLTreeNode';
+
+const render = (ui: ReactElement) => baseRender(<LanguageProvider>{ui}</LanguageProvider>);
 
 describe('YAMLTreeNode redirected request presentation', () => {
   it('restores active icon and method colors when a redirected request is enabled', () => {

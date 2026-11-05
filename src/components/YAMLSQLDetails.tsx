@@ -21,19 +21,19 @@ const DIALECT_OPTIONS = [
 ];
 
 const KIND_OPTIONS = [
-  { value: 'query', label: 'Read Query' },
-  { value: 'exec', label: 'Exec Statement' },
+  { value: 'query', labelKey: 'sqlKindQuery' },
+  { value: 'exec', labelKey: 'sqlKindExec' },
 ];
 
 const ON_ERROR_OPTIONS = [
-  { value: 'stop', label: 'Stop' },
-  { value: 'continue', label: 'Continue' },
-  { value: 'fail_iteration', label: 'Fail Iteration' },
+  { value: 'stop', labelKey: 'sqlOnErrorStop' },
+  { value: 'continue', labelKey: 'sqlOnErrorContinue' },
+  { value: 'fail_iteration', labelKey: 'sqlOnErrorFailIteration' },
 ];
 
 const BOOLEAN_OPTIONS = [
-  { value: 'true', label: 'True' },
-  { value: 'false', label: 'False' },
+  { value: 'true', labelKey: 'sqlTrue' },
+  { value: 'false', labelKey: 'sqlFalse' },
 ];
 
 const SQL_PARAMS_SYNC_UNSET = Symbol('sql-params-sync-unset');
@@ -56,13 +56,14 @@ interface SQLSelectFieldProps {
   id: string;
   label: string;
   value: string;
-  options: Array<{ value: string; label: string }>;
+  options: Array<{ value: string; label?: string; labelKey?: string }>;
   onValueChange: (value: string) => void;
   helper?: string;
   triggerClassName?: string;
 }
 
 function SQLSelectField({ id, label, value, options, onValueChange, helper, triggerClassName }: SQLSelectFieldProps) {
+  const { t } = useLanguage();
   return (
     <div>
       <label htmlFor={id} className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{label}</label>
@@ -83,7 +84,7 @@ function SQLSelectField({ id, label, value, options, onValueChange, helper, trig
               value={option.value}
               className="font-mono"
             >
-              {option.label}
+              {option.labelKey ? t(`yamlEditor.requestDetails.${option.labelKey}`) : option.label}
             </SelectItem>
           ))}
         </SelectContent>
@@ -114,11 +115,12 @@ function SQLBasicsRow({
   onKindChange,
   onDriverChange,
 }: SQLBasicsRowProps) {
+  const { t } = useLanguage();
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
       <SQLSelectField
         id="sql-database"
-        label="Database"
+        label={t('yamlEditor.requestDetails.sqlDatabase')}
         value={dialect}
         options={DIALECT_OPTIONS}
         onValueChange={onDialectChange}
@@ -127,7 +129,7 @@ function SQLBasicsRow({
 
       <SQLSelectField
         id="sql-request-mode"
-        label="Request Mode"
+        label={t('yamlEditor.requestDetails.sqlRequestMode')}
         value={kind}
         options={KIND_OPTIONS}
         onValueChange={onKindChange}
@@ -136,13 +138,13 @@ function SQLBasicsRow({
 
       <div>
         <label htmlFor="sql-driver-override" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-          Driver Override
+          {t('yamlEditor.requestDetails.sqlDriverOverride')}
         </label>
         <Input
           id="sql-driver-override"
           value={driver}
           onChange={event => onDriverChange(event.target.value)}
-          placeholder="Optional driver name"
+          placeholder={t('yamlEditor.requestDetails.sqlDriverPlaceholder')}
           className="w-full h-9.5 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
         />
       </div>
@@ -157,13 +159,14 @@ interface SQLQueryEditorProps {
 }
 
 function SQLQueryEditor({ query, onChange, helper }: SQLQueryEditorProps) {
+  const { t } = useLanguage();
   return (
     <div>
-      <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Query</div>
+      <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{t('yamlEditor.requestDetails.sqlQuery')}</div>
       <div className="overflow-hidden rounded-lg border border-white/10 bg-[#111111]">
         <div className="flex items-center justify-between border-b border-white/10 bg-[#161616] px-3 py-2">
-          <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500">SQL Editor</span>
-          <span className="text-[11px] font-mono text-zinc-500">{query.split('\n').length} lines</span>
+          <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500">{t('yamlEditor.requestDetails.sqlEditor')}</span>
+          <span className="text-[11px] font-mono text-zinc-500">{t('yamlEditor.requestDetails.lineCount').replace('{count}', String(query.split('\n').length))}</span>
         </div>
         <MonacoEditor
           height="220px"
@@ -198,24 +201,25 @@ interface SQLWriteStatusBannerProps {
 }
 
 function SQLWriteStatusBanner({ allowWrites, kind }: SQLWriteStatusBannerProps) {
+  const { t } = useLanguage();
   if (allowWrites) {
     return (
       <div className="p-3 rounded border text-xs bg-red-400/8 border-red-400/20 text-red-200">
-        Write execution is enabled for this request. Keep credentials and query text tightly scoped.
+        {t('yamlEditor.requestDetails.sqlWritesEnabled')}
       </div>
     );
   }
   if (kind === 'exec') {
     return (
       <div className="p-3 rounded border text-xs bg-yellow-400/8 border-yellow-400/20 text-yellow-200">
-        Exec requests remain blocked for writes unless `allow_writes` is enabled.
+        {t('yamlEditor.requestDetails.sqlExecBlocked')}
       </div>
     );
   }
   return (
     <div className="alert-info rounded-md p-3 text-xs flex items-start gap-2">
       <Info className="alert-info-icon w-4 h-4 mt-0.5 shrink-0" />
-      <span>This request is configured for safe read-only execution by default.</span>
+      <span>{t('yamlEditor.requestDetails.sqlReadOnlyDefault')}</span>
     </div>
   );
 }
@@ -238,9 +242,10 @@ function SQLConnectionFields({
   fields: ConnectionTextFieldSpec[];
   onFieldChange: (field: string, value: string) => void;
 }) {
+  const { t } = useLanguage();
   return (
     <div>
-      <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">Connection</p>
+      <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">{t('yamlEditor.requestDetails.sqlConnection')}</p>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {fields.map(f => (
           <div key={f.id}>
@@ -271,10 +276,10 @@ interface PoolingFieldSpec {
 }
 
 const POOLING_FIELDS: PoolingFieldSpec[] = [
-  { id: 'sql-max-open-conns', field: 'max_open_conns', label: 'Max Open Conns', placeholder: '5', numeric: true },
-  { id: 'sql-max-idle-conns', field: 'max_idle_conns', label: 'Max Idle Conns', placeholder: '2', numeric: true },
-  { id: 'sql-conn-max-lifetime', field: 'conn_max_lifetime', label: 'Conn Max Lifetime', placeholder: '5m' },
-  { id: 'sql-conn-max-idle-time', field: 'conn_max_idle_time', label: 'Conn Max Idle Time', placeholder: '1m' },
+  { id: 'sql-max-open-conns', field: 'max_open_conns', label: 'sqlMaxOpenConns', placeholder: '5', numeric: true },
+  { id: 'sql-max-idle-conns', field: 'max_idle_conns', label: 'sqlMaxIdleConns', placeholder: '2', numeric: true },
+  { id: 'sql-conn-max-lifetime', field: 'conn_max_lifetime', label: 'sqlConnMaxLifetime', placeholder: '5m' },
+  { id: 'sql-conn-max-idle-time', field: 'conn_max_idle_time', label: 'sqlConnMaxIdleTime', placeholder: '1m' },
 ];
 
 function SQLPoolingFields({
@@ -286,14 +291,15 @@ function SQLPoolingFields({
   onNumberFieldChange: (field: string, value: string) => void;
   onFieldChange: (field: string, value: string) => void;
 }) {
+  const { t } = useLanguage();
   return (
     <div>
-      <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">Pooling</p>
+      <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">{t('yamlEditor.requestDetails.sqlPooling')}</p>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {POOLING_FIELDS.map(f => (
           <div key={f.id}>
             <label htmlFor={f.id} className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              {f.label}
+              {t(`yamlEditor.requestDetails.${f.label}`)}
             </label>
             <Input
               id={f.id}
@@ -324,9 +330,10 @@ interface SQLParamsFieldProps {
 }
 
 function SQLParamsField({ value, error, onChange, onBlur, helperBefore, helperAfter }: SQLParamsFieldProps) {
+  const { t } = useLanguage();
   return (
     <div>
-      <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">Bound Parameters</p>
+      <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">{t('yamlEditor.requestDetails.sqlBoundParameters')}</p>
       <Textarea
         value={value}
         onChange={event => onChange(event.target.value)}
@@ -339,7 +346,7 @@ function SQLParamsField({ value, error, onChange, onBlur, helperBefore, helperAf
       </p>
       {error && (
         <div className="mt-2 p-3 bg-red-400/8 border border-red-400/20 rounded text-xs text-red-300">
-          Invalid params YAML: {error}
+          {t('yamlEditor.requestDetails.sqlInvalidParams').replace('{error}', error)}
         </div>
       )}
     </div>
@@ -439,7 +446,7 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
       onNodeUpdate?.(node.id, { ...data, params: parsed });
       setParamsError('');
     } catch (error) {
-      setParamsError(error instanceof Error ? error.message : 'Invalid YAML');
+      setParamsError(error instanceof Error ? error.message : t('yamlEditor.requestDetails.sqlInvalidYaml'));
     }
   };
 
@@ -451,20 +458,20 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
   };
 
   const connectionTextFields: ConnectionTextFieldSpec[] = [
-    { id: 'sql-host', field: 'host', label: 'Host', placeholder: '{{db_host}}' },
+    { id: 'sql-host', field: 'host', label: t('yamlEditor.requestDetails.sqlHost'), placeholder: '{{db_host}}' },
     {
       id: 'sql-port',
       field: 'port',
-      label: 'Port',
+      label: t('yamlEditor.requestDetails.sqlPort'),
       placeholder: data.dialect === 'mysql' ? '3306' : '5432',
       useNullishFallback: true,
     },
-    { id: 'sql-connection-database', field: 'database', label: 'Database', placeholder: 'app' },
-    { id: 'sql-user', field: 'user', label: 'User', placeholder: '{{db_user}}' },
-    { id: 'sql-password', field: 'password', label: 'Password', placeholder: '{{db_password}}', type: 'password' },
-    { id: 'sql-dsn-override', field: 'dsn', label: 'DSN Override', placeholder: 'Optional DSN/connection string' },
-    { id: 'sql-ssl-mode', field: 'ssl_mode', label: 'SSL Mode', placeholder: 'disable, require, verify-full' },
-    { id: 'sql-charset', field: 'charset', label: 'Charset', placeholder: 'utf8mb4' },
+    { id: 'sql-connection-database', field: 'database', label: t('yamlEditor.requestDetails.sqlDatabase'), placeholder: 'app' },
+    { id: 'sql-user', field: 'user', label: t('yamlEditor.requestDetails.sqlUser'), placeholder: '{{db_user}}' },
+    { id: 'sql-password', field: 'password', label: t('yamlEditor.requestDetails.sqlPassword'), placeholder: '{{db_password}}', type: 'password' },
+    { id: 'sql-dsn-override', field: 'dsn', label: t('yamlEditor.requestDetails.sqlDsnOverride'), placeholder: t('yamlEditor.requestDetails.sqlDsnPlaceholder') },
+    { id: 'sql-ssl-mode', field: 'ssl_mode', label: t('yamlEditor.requestDetails.sqlSslMode'), placeholder: 'disable, require, verify-full' },
+    { id: 'sql-charset', field: 'charset', label: t('yamlEditor.requestDetails.sqlCharset'), placeholder: 'utf8mb4' },
   ];
 
   return (
@@ -488,7 +495,7 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
-          <label htmlFor="sql-timeout" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Timeout</label>
+          <label htmlFor="sql-timeout" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{t('yamlEditor.requestDetails.timeout')}</label>
           <Input
             id="sql-timeout"
             value={data.timeout || ''}
@@ -500,7 +507,7 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
 
         <SQLSelectField
           id="sql-on-error"
-          label="On Error"
+          label={t('yamlEditor.requestDetails.sqlOnError')}
           value={data.on_error || data.error_policy?.on_error || 'stop'}
           options={ON_ERROR_OPTIONS}
           onValueChange={value => handleChange('on_error', value)}
@@ -510,7 +517,7 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <SQLSelectField
           id="sql-validate-connectivity"
-          label="Validate Connectivity"
+          label={t('yamlEditor.requestDetails.sqlValidateConnectivity')}
           value={validateConnectivity ? 'true' : 'false'}
           options={BOOLEAN_OPTIONS}
           onValueChange={value => handleConnectionChange('validate_connectivity', value === 'true')}
@@ -518,7 +525,7 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
 
         <SQLSelectField
           id="sql-allow-writes"
-          label="Allow Writes"
+          label={t('yamlEditor.requestDetails.sqlAllowWrites')}
           value={allowWrites ? 'true' : 'false'}
           options={BOOLEAN_OPTIONS}
           onValueChange={value => handleBooleanChange('allow_writes', value)}
@@ -537,7 +544,7 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
       <SQLConnectionFields connection={connection} fields={connectionTextFields} onFieldChange={handleConnectionChange} />
 
       <EditableList
-        title="Connection Options"
+        title={t('yamlEditor.requestDetails.sqlConnectionOptions')}
         items={options}
         onUpdate={handleOptionsUpdate}
         keyPlaceholder="option_name"
@@ -562,7 +569,7 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
 
       <div>
         <EditableList
-          title="Result Mapping"
+          title={t('yamlEditor.requestDetails.sqlResultMapping')}
           items={extract}
           onUpdate={handleExtractUpdate}
           keyPlaceholder="variable_name"

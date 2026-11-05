@@ -1,8 +1,8 @@
+import { useLanguage } from '../../../contexts/LanguageContext';
 import { nativeSelectClassName } from '../../ui/select';
 import { ArrowDown, ArrowUp, GripVertical, Plus, Trash2 } from 'lucide-react';
 import { useRef, useState, type DragEvent } from 'react';
 import {
-  LOAD_ITERATIONS_HELP_TEXT,
   LoadFieldGroup,
   LoadGrid,
   LoadModeProps,
@@ -16,10 +16,6 @@ import {
   type SegmentTargetType,
 } from '../loadUtils';
 
-const GLOBAL_SEGMENT_FIELDS = [
-  { field: 'iterations', label: 'Iterations', placeholder: '0', type: 'number', helpText: LOAD_ITERATIONS_HELP_TEXT },
-] as const;
-
 const DEFAULT_SEGMENT: LoadSegmentData = {
   name: 'new_segment',
   duration: '1m',
@@ -32,8 +28,19 @@ const DEFAULT_SEGMENT: LoadSegmentData = {
 const SEGMENT_DRAG_TYPE = 'application/x-relampo-load-segment';
 
 export function SegmentsLoadMode({ data, onChange }: LoadModeProps) {
+  const { t } = useLanguage();
+  const globalSegmentFields = [
+    {
+      field: 'iterations',
+      label: t('studioControls.iterations'),
+      placeholder: '0',
+      type: 'number',
+      helpText: t('studioControls.iterationsHelp'),
+    },
+  ] as const;
   const segments = normalizeSegments(data.segments);
   const durationSummary = getDurationSummary(data.duration, segments);
+  const segmentsLabel = durationSummary.segmentsLabel ?? t('yamlEditor.nodeDetails.load.incomplete');
   const rowKeysRef = useRef<string[]>([]);
   const rowKeys = syncSegmentRowKeys(rowKeysRef.current, segments.length);
   const draggedKeyRef = useRef<string | null>(null);
@@ -61,7 +68,9 @@ export function SegmentsLoadMode({ data, onChange }: LoadModeProps) {
     // Publish the entire ordered list so existing semantic validation and preview
     // recompute every predecessor relationship. Values are never corrected here.
     onChange('segments', next);
-    setMoveAnnouncement(`${moved.name || 'Segment'} moved to position ${to + 1}.`);
+    setMoveAnnouncement(
+      t('yamlEditor.nodeDetails.load.segmentMoved').replace('{name}', moved.name || t('yamlEditor.nodeDetails.load.segment')).replace('{position}', String(to + 1)),
+    );
   };
 
   const startDrag = (event: DragEvent<HTMLButtonElement>, key: string) => {
@@ -145,18 +154,18 @@ export function SegmentsLoadMode({ data, onChange }: LoadModeProps) {
 
   return (
     <LoadSection
-      title="Segments Profile"
-      description="Run consecutive segments with VU transitions or a constant RPS target and adaptive VUs within Min/Max."
+      title={t('yamlEditor.nodeDetails.load.segmentsProfile')}
+      description={t('yamlEditor.nodeDetails.load.segmentsDescription')}
     >
       <LoadGrid>
         <label className="text-sm text-zinc-400">
-          Total Duration
-          <input aria-label="Total Duration" readOnly value={durationSummary.segmentsLabel}
+          {t('yamlEditor.nodeDetails.load.totalDuration')}
+          <input aria-label={t('yamlEditor.nodeDetails.load.totalDuration')} readOnly value={segmentsLabel}
             className="mt-1 w-full rounded-md border border-white/10 bg-white/[0.03] px-3 py-2 font-mono text-zinc-200" />
         </label>
         <LoadFieldGroup
           data={data}
-          fields={GLOBAL_SEGMENT_FIELDS}
+          fields={globalSegmentFields}
           onChange={onChange}
         />
       </LoadGrid>
@@ -168,21 +177,21 @@ export function SegmentsLoadMode({ data, onChange }: LoadModeProps) {
             : 'border-red-400/25 bg-red-400/[0.05] text-red-200'
         }`}
       >
-        <span className="font-medium">Duration check</span>
+        <span className="font-medium">{t('yamlEditor.nodeDetails.load.durationCheck')}</span>
         <span className="ml-2 font-mono">
-          segments total {durationSummary.segmentsLabel}
+          {t('yamlEditor.nodeDetails.load.segmentsTotal').replace('{value}', segmentsLabel)}
         </span>
       </div>
 
       <div className="mt-5 overflow-x-auto rounded-lg border border-white/10">
         <div className="grid min-w-[872px] grid-cols-[72px_minmax(130px,1fr)_100px_95px_95px_120px_160px_40px] border-b border-white/10 bg-white/[0.03] text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
-          <div className="px-2 py-2">Order</div>
-          <div className="px-3 py-2">Name</div>
-          <div className="px-3 py-2">Duration</div>
-          <div className="px-3 py-2">Target Type</div>
-          <div className="px-3 py-2">Target</div>
-          <div className="px-3 py-2">Transition</div>
-          <div className="px-3 py-2">VUs Min / Max</div>
+          <div className="px-2 py-2">{t('yamlEditor.nodeDetails.load.order')}</div>
+          <div className="px-3 py-2">{t('yamlEditor.common.name')}</div>
+          <div className="px-3 py-2">{t('studioControls.duration')}</div>
+          <div className="px-3 py-2">{t('yamlEditor.nodeDetails.load.targetType')}</div>
+          <div className="px-3 py-2">{t('yamlEditor.nodeDetails.load.target')}</div>
+          <div className="px-3 py-2">{t('yamlEditor.nodeDetails.load.transition')}</div>
+          <div className="px-3 py-2">{t('yamlEditor.nodeDetails.load.vusMinMax')}</div>
           <div />
         </div>
         {segments.map((segment, index) => {
@@ -206,8 +215,8 @@ export function SegmentsLoadMode({ data, onChange }: LoadModeProps) {
                 type="button"
                 draggable={canReorder && segments.length > 1}
                 disabled={!canReorder || segments.length < 2}
-                aria-label={`Drag segment ${index + 1}`}
-                title="Drag to reorder, or use the move buttons"
+                aria-label={t('yamlEditor.nodeDetails.load.dragSegment').replace('{n}', String(index + 1))}
+                title={t('yamlEditor.nodeDetails.load.dragTitle')}
                 onDragStart={event => startDrag(event, rowKey)}
                 onDragEnd={clearDrag}
                 className="flex h-10 w-6 cursor-grab items-center justify-center rounded text-zinc-400 active:cursor-grabbing focus-visible:outline-2 focus-visible:outline-amber-300 disabled:opacity-30"
@@ -215,12 +224,12 @@ export function SegmentsLoadMode({ data, onChange }: LoadModeProps) {
                 <GripVertical size={16} aria-hidden="true" />
               </button>
               <div className="flex flex-col">
-                <button type="button" aria-label={`Move segment ${index + 1} up`} disabled={!canReorder || index === 0}
+                <button type="button" aria-label={t('yamlEditor.nodeDetails.load.moveUp').replace('{n}', String(index + 1))} disabled={!canReorder || index === 0}
                   onClick={() => { clearDrag(); moveSegment(rowKey, index - 1); }}
                   className="flex h-6 w-6 items-center justify-center rounded text-zinc-400 hover:text-amber-200 focus-visible:outline-2 focus-visible:outline-amber-300 disabled:opacity-30">
                   <ArrowUp size={14} aria-hidden="true" />
                 </button>
-                <button type="button" aria-label={`Move segment ${index + 1} down`} disabled={!canReorder || index === segments.length - 1}
+                <button type="button" aria-label={t('yamlEditor.nodeDetails.load.moveDown').replace('{n}', String(index + 1))} disabled={!canReorder || index === segments.length - 1}
                   onClick={() => { clearDrag(); moveSegment(rowKey, index + 1); }}
                   className="flex h-6 w-6 items-center justify-center rounded text-zinc-400 hover:text-amber-200 focus-visible:outline-2 focus-visible:outline-amber-300 disabled:opacity-30">
                   <ArrowDown size={14} aria-hidden="true" />
@@ -228,14 +237,14 @@ export function SegmentsLoadMode({ data, onChange }: LoadModeProps) {
               </div>
             </div>
             <SegmentInput
-              ariaLabel={`Name for segment ${index + 1}`}
+              ariaLabel={t('yamlEditor.nodeDetails.load.nameFor').replace('{n}', String(index + 1))}
               required
               value={segment.name}
               placeholder={`segment_${index + 1}`}
               onChange={value => updateSegment(index, 'name', value)}
             />
             <SegmentInput
-              ariaLabel={`Duration for segment ${index + 1}`}
+              ariaLabel={t('yamlEditor.nodeDetails.load.durationFor').replace('{n}', String(index + 1))}
               required
               value={segment.duration}
               placeholder="1m"
@@ -243,45 +252,45 @@ export function SegmentsLoadMode({ data, onChange }: LoadModeProps) {
             />
             <SegmentTargetTypeSelect
               value={segmentTargetType(segment)}
-              ariaLabel={`Target type for segment ${index + 1}`}
+              ariaLabel={t('yamlEditor.nodeDetails.load.targetTypeFor').replace('{n}', String(index + 1))}
               onChange={value => updateSegmentTargetType(index, value)}
             />
             <SegmentInput
-              ariaLabel={`Target for segment ${index + 1}`}
+              ariaLabel={t('yamlEditor.nodeDetails.load.targetFor').replace('{n}', String(index + 1))}
               required
               value={segment.target_rps ?? segment.target_vus}
               placeholder={segmentTargetType(segment) === 'vus' ? '50' : '5'}
               onChange={value => updateSegmentTargetValue(index, value)}
             />
             <select
-              aria-label={`Transition for segment ${index + 1}`}
+              aria-label={t('yamlEditor.nodeDetails.load.transitionFor').replace('{n}', String(index + 1))}
               required
               value={segment.transition ?? ''}
               onChange={event => updateSegment(index, 'transition', event.target.value)}
               className={nativeSelectClassName}
             >
-              <option value="" disabled>Select transition</option>
-              <option value="constant">Constant</option>
-              {segmentTargetType(segment) === 'vus' && <option value="ramp_up">Ramp up</option>}
-              {segmentTargetType(segment) === 'vus' && index > 0 && <option value="ramp_down">Ramp down</option>}
+              <option value="" disabled>{t('yamlEditor.nodeDetails.load.selectTransition')}</option>
+              <option value="constant">{t('studioControls.constant')}</option>
+              {segmentTargetType(segment) === 'vus' && <option value="ramp_up">{t('yamlEditor.nodeDetails.load.rampUpOption')}</option>}
+              {segmentTargetType(segment) === 'vus' && index > 0 && <option value="ramp_down">{t('yamlEditor.nodeDetails.load.rampDownOption')}</option>}
               {segmentTargetType(segment) === 'vus' && index === 0 && segment.transition === 'ramp_down' && (
-                <option value="ramp_down" disabled>Ramp down (invalid for first segment)</option>
+                <option value="ramp_down" disabled>{t('yamlEditor.nodeDetails.load.rampDownInvalid')}</option>
               )}
             </select>
             <div className="grid grid-cols-2 gap-1 px-2 py-2">
               <SegmentInput
-                ariaLabel={`VUs Min for segment ${index + 1}`}
+                ariaLabel={t('yamlEditor.nodeDetails.load.vusMinFor').replace('{n}', String(index + 1))}
                 required={segmentTargetType(segment) === 'rps'}
                 value={segment.min_vus}
-                placeholder="min"
+                placeholder={t('yamlEditor.nodeDetails.load.phMin')}
                 onChange={value => updateSegment(index, 'min_vus', value)}
                 disabled={segmentTargetType(segment) === 'vus'}
               />
               <SegmentInput
-                ariaLabel={`VUs Max for segment ${index + 1}`}
+                ariaLabel={t('yamlEditor.nodeDetails.load.vusMaxFor').replace('{n}', String(index + 1))}
                 required={segmentTargetType(segment) === 'rps'}
                 value={segment.max_vus}
-                placeholder="max"
+                placeholder={t('yamlEditor.nodeDetails.load.phMax')}
                 onChange={value => updateSegment(index, 'max_vus', value)}
                 disabled={segmentTargetType(segment) === 'vus'}
               />
@@ -290,7 +299,7 @@ export function SegmentsLoadMode({ data, onChange }: LoadModeProps) {
               type="button"
               onClick={() => removeSegment(index)}
               className="flex items-center justify-center text-zinc-500 transition-colors hover:text-red-300"
-              aria-label={`Remove segment ${index + 1}`}
+              aria-label={t('yamlEditor.nodeDetails.load.removeSegment').replace('{n}', String(index + 1))}
             >
               <Trash2 className="h-4 w-4" />
             </button>
@@ -299,7 +308,7 @@ export function SegmentsLoadMode({ data, onChange }: LoadModeProps) {
         })}
       </div>
 
-      <p className="mt-2 text-xs text-zinc-500">Drag a handle onto a row to move to its position, or use the arrows.</p>
+      <p className="mt-2 text-xs text-zinc-500">{t('yamlEditor.nodeDetails.load.dragHint')}</p>
       <span role="status" aria-live="polite" className="sr-only">{moveAnnouncement}</span>
 
       <button
@@ -308,7 +317,7 @@ export function SegmentsLoadMode({ data, onChange }: LoadModeProps) {
         className="mt-3 inline-flex items-center gap-2 rounded-md border border-white/10 bg-white/[0.03] px-3 py-2 text-sm font-medium text-zinc-200 transition-colors hover:border-amber-300/30 hover:text-amber-200"
       >
         <Plus className="h-4 w-4" />
-        Add Segment
+        {t('yamlEditor.nodeDetails.load.addSegment')}
       </button>
     </LoadSection>
   );
@@ -393,7 +402,7 @@ function getDurationSummary(rootDuration: LoadDataValue, segments: LoadSegmentDa
   const summary = getSegmentDurationSummary(rootDuration, segments);
   return {
     matches: summary.matches,
-    segmentsLabel: summary.allSegmentDurationsValid ? formatDuration(summary.segmentSeconds) : 'incomplete',
+    segmentsLabel: summary.allSegmentDurationsValid ? formatDuration(summary.segmentSeconds) : null,
   };
 }
 

@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render as rtlRender, screen } from '@testing-library/react';
 import { afterEach } from 'vitest';
+import { LanguageProvider } from '../../../contexts/LanguageContext';
 import { TestDetails } from './TestDetails';
 import { parseYAMLToTree, treeToYAML } from '../../../utils/yamlParser';
 import { validateYAMLSemantics } from '../../../utils/yamlSemanticValidation';
 import type { YAMLNodeData } from '../../../types/yaml';
+
+const render = (ui: React.ReactElement) => rtlRender(ui, { wrapper: LanguageProvider });
 
 afterEach(cleanup);
 

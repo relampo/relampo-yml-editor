@@ -1,9 +1,11 @@
 import { EditableField } from '../SharedFields';
 import { createNodeDataUpdater } from '../nodeDetailHelpers';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
+import { useLanguage } from '../../../contexts/LanguageContext';
 import type { NodeDetailProps } from '../types';
 
 export function MetricsDetails({ node, onNodeUpdate }: NodeDetailProps) {
+  const { t } = useLanguage();
   const { data, updateField } = createNodeDataUpdater(node, onNodeUpdate);
 
   return (
@@ -14,7 +16,7 @@ export function MetricsDetails({ node, onNodeUpdate }: NodeDetailProps) {
           htmlFor="metrics-enabled"
           className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
         >
-          Enabled
+          {t('yamlEditor.common.enabled')}
         </label>
         <Select
           value={data.enabled ? 'true' : 'false'}
@@ -34,7 +36,7 @@ export function MetricsDetails({ node, onNodeUpdate }: NodeDetailProps) {
         </Select>
       </div>
       <EditableField
-        label="Collect Interval"
+        label={t('yamlEditor.nodeDetails.metrics.collectInterval')}
         value={data.collect_interval || ''}
         field="collect_interval"
         onChange={(field, value) => updateField(field, value)}

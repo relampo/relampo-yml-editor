@@ -1,8 +1,10 @@
 import { EditableList } from '../../EditableList';
 import type { StringMap } from '../../../types/shared';
+import { useLanguage } from '../../../contexts/LanguageContext';
 import type { NodeDetailProps } from '../types';
 
 export function VariablesDetails({ node, onNodeUpdate }: NodeDetailProps) {
+  const { t } = useLanguage();
   const data = node.data || {};
   const items: StringMap = Array.isArray(data.variables)
     ? data.variables.reduce((acc: StringMap, curr: { name: string; value: string }) => {
@@ -30,11 +32,11 @@ export function VariablesDetails({ node, onNodeUpdate }: NodeDetailProps) {
 
   return (
     <EditableList
-      title="Variables"
+      title={t('yamlEditor.nodeDetails.variables.title')}
       items={items}
       onUpdate={handleUpdate}
       keyPlaceholder="variable_name"
-      valuePlaceholder="value"
+      valuePlaceholder={t('yamlEditor.nodeDetails.ph.value')}
       enableCheckboxes={false}
       enableBulkActions={false}
       variant="minimal"

@@ -1,10 +1,13 @@
 import { useState } from 'react';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render as rtlRender, screen } from '@testing-library/react';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import type { YAMLNode } from '../../types/yaml';
 import { applyNodeUpdateToTree } from '../../utils/nodeUpdate';
 import { parseYAMLToTree, treeToYAML } from '../../utils/yamlParser';
+import { LanguageProvider } from '../../contexts/LanguageContext';
 import { ErrorPolicyDetails } from './OpsDetails';
+
+const render = (ui: React.ReactElement) => rtlRender(ui, { wrapper: LanguageProvider });
 
 const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
 beforeAll(() => { HTMLElement.prototype.scrollIntoView = () => {}; });

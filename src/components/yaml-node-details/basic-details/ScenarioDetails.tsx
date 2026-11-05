@@ -1,8 +1,10 @@
+import { useLanguage } from '../../../contexts/LanguageContext';
 import { Textarea } from '../../ui/textarea';
 import { createNodeDataUpdater } from '../nodeDetailHelpers';
 import type { NamedNodeDetailProps, NodeDetailProps } from '../types';
 
 export function ScenariosContainerDetails({ node, onNodeUpdate }: NodeDetailProps) {
+  const { t } = useLanguage();
   const { data, updateField } = createNodeDataUpdater(node, onNodeUpdate);
   const scenarios = node.children || [];
 
@@ -13,13 +15,13 @@ export function ScenariosContainerDetails({ node, onNodeUpdate }: NodeDetailProp
           htmlFor="scenarios-container-description"
           className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
         >
-          Description / Comments
+          {t('yamlEditor.nodeDetails.scenario.descriptionComments')}
         </label>
         <Textarea
           id="scenarios-container-description"
           value={data.description || ''}
           onChange={event => updateField('description', event.target.value)}
-          placeholder="Add notes or description about your scenarios..."
+          placeholder={t('yamlEditor.nodeDetails.scenario.containerPlaceholder')}
           className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 min-h-25"
         />
       </div>
@@ -28,11 +30,11 @@ export function ScenariosContainerDetails({ node, onNodeUpdate }: NodeDetailProp
 
       <div>
         <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
-          Scenarios in this test
+          {t('yamlEditor.nodeDetails.scenario.inThisTest')}
         </p>
         {scenarios.length === 0 ? (
           <div className="p-6 text-center text-zinc-500 text-sm border border-dashed border-white/10 rounded">
-            No scenarios defined. Right-click on "scenarios" in the tree to add one.
+            {t('yamlEditor.nodeDetails.scenario.empty')}
           </div>
         ) : (
           <div className="space-y-2">
@@ -60,6 +62,7 @@ export function ScenariosContainerDetails({ node, onNodeUpdate }: NodeDetailProp
 }
 
 export function ScenarioDetails({ node, onNodeUpdate }: NamedNodeDetailProps) {
+  const { t } = useLanguage();
   const { data, updateField } = createNodeDataUpdater(node, onNodeUpdate);
 
   return (
@@ -68,14 +71,14 @@ export function ScenarioDetails({ node, onNodeUpdate }: NamedNodeDetailProps) {
         htmlFor="scenario-comments"
         className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
       >
-        Comments / Description
+        {t('yamlEditor.nodeDetails.scenario.commentsDescription')}
       </label>
       <Textarea
         id="scenario-comments"
         value={data.comments || ''}
         onChange={event => updateField('comments', event.target.value.slice(0, 250))}
         maxLength={250}
-        placeholder="Add notes or comments about this scenario..."
+        placeholder={t('yamlEditor.nodeDetails.scenario.commentsPlaceholder')}
         className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 min-h-20"
       />
     </div>

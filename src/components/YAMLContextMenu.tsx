@@ -171,7 +171,7 @@ export function YAMLContextMenu({
               className="w-full px-3 py-2 flex items-center gap-3 hover:bg-white/5 text-left transition-colors text-zinc-300"
             >
               <Copy className="w-4 h-4" />
-              <span className="text-sm">{t('yamlEditor.common.copy') || 'Copy'}</span>
+              <span className="text-sm">{t('yamlEditor.shell.actions.copy')}</span>
             </button>
           )}
 
@@ -185,7 +185,7 @@ export function YAMLContextMenu({
               className="w-full px-3 py-2 flex items-center gap-3 hover:bg-white/5 text-left transition-colors text-zinc-300"
             >
               <ClipboardPaste className="w-4 h-4" />
-              <span className="text-sm">Paste</span>
+              <span className="text-sm">{t('yamlEditor.shell.actions.paste')}</span>
             </button>
           )}
 

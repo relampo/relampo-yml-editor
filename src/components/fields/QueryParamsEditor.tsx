@@ -1,5 +1,6 @@
 import { AlertCircle, Info, Plus, Trash2 } from 'lucide-react';
 import { useRef, useState } from 'react';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { HighlightedInput } from '../ui/HighlightedInput';
 import { Input } from '../ui/input';
 import { buildRequestUrlWithQuery, parseRequestQueryParams, parseRequestUrl } from './requestUrl';
@@ -31,6 +32,7 @@ interface QueryParamsEditorProps {
 }
 
 export function QueryParamsEditor({ url, onUrlChange, className = '', showBaseUrl = true, searchText = '' }: QueryParamsEditorProps) {
+  const { t } = useLanguage();
   const [params, setParams] = useState<QueryParam[]>([]);
   const [baseUrl, setBaseUrl] = useState('');
   const [urlHint, setUrlHint] = useState<{
@@ -91,7 +93,7 @@ export function QueryParamsEditor({ url, onUrlChange, className = '', showBaseUr
     if (urlToValidate.includes('${')) {
       setUrlHint({
         type: 'info',
-        message: 'Contains variables - will be resolved at runtime',
+        message: t('yamlEditor.shell.query.hintVariables'),
       });
       return;
     }
@@ -104,17 +106,17 @@ export function QueryParamsEditor({ url, onUrlChange, className = '', showBaseUr
       if (urlToValidate.startsWith('htp://') || urlToValidate.startsWith('htps://')) {
         setUrlHint({
           type: 'error',
-          message: 'Protocol typo? Use "http://" or "https://"',
+          message: t('yamlEditor.shell.query.hintProtocol'),
         });
       } else if (urlToValidate.includes(' ')) {
-        setUrlHint({ type: 'warning', message: 'URL contains spaces' });
+        setUrlHint({ type: 'warning', message: t('yamlEditor.shell.query.hintSpaces') });
       } else if (!urlToValidate.includes('/') && !urlToValidate.includes('.')) {
         setUrlHint({
           type: 'warning',
-          message: "This doesn't look like a valid URL",
+          message: t('yamlEditor.shell.query.hintInvalid'),
         });
       } else {
-        setUrlHint({ type: 'warning', message: 'URL format may be incorrect' });
+        setUrlHint({ type: 'warning', message: t('yamlEditor.shell.query.hintFormat') });
       }
     }
   };
@@ -140,7 +142,7 @@ export function QueryParamsEditor({ url, onUrlChange, className = '', showBaseUr
     <div className={className}>
       {showBaseUrl && (
         <div className="mb-4">
-          <label htmlFor="queryparams-base-url" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Base URL</label>
+          <label htmlFor="queryparams-base-url" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{t('yamlEditor.shell.query.baseUrl')}</label>
           <Input
             id="queryparams-base-url"
             value={baseUrl}
@@ -179,14 +181,14 @@ export function QueryParamsEditor({ url, onUrlChange, className = '', showBaseUr
 
       <div>
         <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Query Parameters</span>
+          <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">{t('yamlEditor.shell.query.title')}</span>
           <button
             type="button"
             onClick={handleAddParam}
             className="flex items-center gap-1 px-2 py-1 text-xs text-amber-500 hover:text-amber-400 border border-yellow-400/20 bg-yellow-400/5 hover:bg-yellow-400/10 hover:border-yellow-400/35 rounded transition-colors"
           >
             <Plus className="w-3 h-3" />
-            Add
+            {t('yamlEditor.common.add')}
           </button>
         </div>
 
@@ -201,7 +203,7 @@ export function QueryParamsEditor({ url, onUrlChange, className = '', showBaseUr
                   <HighlightedInput
                     value={param.key}
                     onChange={e => handleParamChange(index, 'key', e.target.value)}
-                    placeholder="name"
+                    placeholder={t('yamlEditor.shell.query.namePlaceholder')}
                     containerClass="flex-1 min-w-0"
                     className="w-full px-2 py-1 text-xs font-mono text-yellow-400 bg-yellow-400/5 border-yellow-400/20"
                     searchText={searchText}
@@ -213,7 +215,7 @@ export function QueryParamsEditor({ url, onUrlChange, className = '', showBaseUr
                   <HighlightedInput
                     value={param.value}
                     onChange={e => handleParamChange(index, 'value', e.target.value)}
-                    placeholder="value"
+                    placeholder={t('yamlEditor.shell.query.valuePlaceholder')}
                     className="w-full px-2 py-1 text-sm font-mono text-zinc-300 bg-white/5 border-white/10"
                     searchText={searchText}
                     overlayClass="px-2 text-sm font-mono text-zinc-300"
@@ -224,7 +226,7 @@ export function QueryParamsEditor({ url, onUrlChange, className = '', showBaseUr
                 type="button"
                 onClick={() => handleRemoveParam(index)}
                 className="p-2 h-9 text-zinc-500 hover:text-red-400 bg-white/5 hover:bg-white/10 rounded shrink-0 transition-colors"
-                title="Remove parameter"
+                title={t('yamlEditor.shell.query.removeParam')}
               >
                 <Trash2 className="w-3.5 h-3.5" />
               </button>

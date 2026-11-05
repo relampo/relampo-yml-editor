@@ -1,5 +1,6 @@
 import { AlertTriangle, Clock3, Cookie, Cpu, Hand, Plus, ServerCrash, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { Input } from '../ui/input';
 import { SelectField } from './SharedFields';
 import { createNodeDataUpdater } from './nodeDetailHelpers';
@@ -16,6 +17,7 @@ function SeedCookiesEditor({
   nodeId: string;
   onChange: (cookies: any[]) => void;
 }) {
+  const { t } = useLanguage();
   // Seed cookies have no id in the YAML, so we hold stable synthetic React keys
   // in state, kept in lockstep with add/remove below. Reset when the node changes;
   // fall back to length-syncing (append/trim) if the array changes some other way.
@@ -48,7 +50,7 @@ function SeedCookiesEditor({
   return (
     <div className={`rounded border border-white/10 bg-white/5 p-3 ${disabled ? 'opacity-50' : ''}`}>
       <div className="mb-2 flex items-center justify-between">
-        <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Seed Cookies</span>
+        <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400">{t('yamlEditor.nodeDetails.ops.seedCookies')}</span>
         <button
           type="button"
           onClick={() => {
@@ -59,12 +61,12 @@ function SeedCookiesEditor({
           className="flex items-center gap-1 px-2 py-1 text-xs text-amber-500 hover:text-amber-400 border border-yellow-400/20 bg-yellow-400/5 hover:bg-yellow-400/10 hover:border-yellow-400/35 rounded transition-colors disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Plus className="w-3 h-3" />
-          Add
+          {t('yamlEditor.common.add')}
         </button>
       </div>
 
       {cookies.length === 0 ? (
-        <div className="text-xs text-zinc-500">No seed cookies configured.</div>
+        <div className="text-xs text-zinc-500">{t('yamlEditor.nodeDetails.ops.noSeedCookies')}</div>
       ) : (
         <div className="space-y-2">
           {cookies.map((cookie: any, index: number) => (
@@ -76,21 +78,21 @@ function SeedCookiesEditor({
                 value={cookie?.name || ''}
                 disabled={disabled}
                 onChange={event => updateSeedCookie(index, 'name', event.target.value)}
-                placeholder="name"
+                placeholder={t('yamlEditor.nodeDetails.ops.phName')}
                 className="col-span-3 h-8.5 bg-[#1a1a1a] border-white/10 text-zinc-300 text-xs font-mono"
               />
               <Input
                 value={cookie?.value || ''}
                 disabled={disabled}
                 onChange={event => updateSeedCookie(index, 'value', event.target.value)}
-                placeholder="value"
+                placeholder={t('yamlEditor.nodeDetails.ph.value')}
                 className="col-span-3 h-8.5 bg-[#1a1a1a] border-white/10 text-zinc-300 text-xs font-mono"
               />
               <Input
                 value={cookie?.domain || ''}
                 disabled={disabled}
                 onChange={event => updateSeedCookie(index, 'domain', event.target.value)}
-                placeholder="domain"
+                placeholder={t('yamlEditor.nodeDetails.ops.phDomain')}
                 className="col-span-3 h-8.5 bg-[#1a1a1a] border-white/10 text-zinc-300 text-xs font-mono"
               />
               <Input
@@ -108,7 +110,7 @@ function SeedCookiesEditor({
                 }}
                 disabled={disabled}
                 className="col-span-1 flex items-center justify-center rounded text-zinc-500 hover:text-zinc-300 hover:bg-white/10 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-                title="Remove cookie"
+                title={t('yamlEditor.nodeDetails.ops.removeCookie')}
               >
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
@@ -118,8 +120,7 @@ function SeedCookiesEditor({
       )}
       {invalidSeedRows.length > 0 && (
         <div className="mt-2 rounded border border-amber-400/30 bg-amber-400/10 px-2 py-1.5 text-xs text-amber-200">
-          Seed cookie validation: rows {invalidSeedRows.map((index: number) => index + 1).join(', ')} require both name
-          and domain.
+          {t('yamlEditor.nodeDetails.ops.seedValidation').replace('{rows}', invalidSeedRows.map((index: number) => index + 1).join(', '))}
         </div>
       )}
     </div>
@@ -127,6 +128,7 @@ function SeedCookiesEditor({
 }
 
 export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
+  const { t } = useLanguage();
   const { data, updateData, updateField } = createNodeDataUpdater(node, onNodeUpdate);
   const mode = String(data.mode || 'auto').toLowerCase();
   const normalizedMode = mode === 'manual' ? 'manual' : 'auto';
@@ -138,8 +140,11 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
   const effectiveClearEachIteration = persistAcrossIterations ? false : clearEachIteration;
   const summaryLine =
     normalizedMode === 'auto'
-      ? 'Auto + Standard + VU scope'
-      : `Manual + ${isIgnorePolicy ? 'Ignore Cookies' : 'Standard'} + ${String(data.jar_scope || 'vu').toUpperCase()} scope + Persist ${persistAcrossIterations ? 'ON' : 'OFF'}`;
+      ? t('yamlEditor.nodeDetails.ops.summaryAuto')
+      : t('yamlEditor.nodeDetails.ops.summaryManual')
+          .replace('{policy}', isIgnorePolicy ? t('yamlEditor.nodeDetails.ops.ignoreCookies') : t('yamlEditor.nodeDetails.ops.standard'))
+          .replace('{scope}', String(data.jar_scope || 'vu').toUpperCase())
+          .replace('{persist}', persistAcrossIterations ? t('yamlEditor.nodeDetails.ops.on') : t('yamlEditor.nodeDetails.ops.off'));
   const activePillClass =
     'rounded-full border border-yellow-400/20 bg-yellow-400/5 text-yellow-400 shadow-sm transition-all duration-200 hover:bg-yellow-400/10 hover:border-yellow-400/35';
   const inactivePillClass =
@@ -181,7 +186,7 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
   return (
     <div className="space-y-6">
       <div>
-        <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">Mode</div>
+        <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">{t('yamlEditor.nodeDetails.ops.mode')}</div>
         <div className="flex flex-wrap items-center gap-1">
           <button
             type="button"
@@ -191,7 +196,7 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
             <span className="inline-flex items-center gap-1.5">
               <Cookie className="h-3.5 w-3.5" />
               <Cpu className="h-3.5 w-3.5" />
-              <span>Auto (Recommended)</span>
+              <span>{t('yamlEditor.nodeDetails.ops.autoRecommended')}</span>
             </span>
           </button>
           <button
@@ -202,7 +207,7 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
             <span className="inline-flex items-center gap-1.5">
               <Cookie className="h-3.5 w-3.5" />
               <Hand className="h-3.5 w-3.5" />
-              <span>Manual</span>
+              <span>{t('yamlEditor.nodeDetails.ops.manual')}</span>
             </span>
           </button>
         </div>
@@ -211,33 +216,33 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
 
       {normalizedMode === 'auto' ? (
         <div className="rounded border border-yellow-400/20 bg-yellow-400/5 px-3 py-2 text-xs text-zinc-300">
-          Auto applies the recommended cookie behavior automatically.
+          {t('yamlEditor.nodeDetails.ops.autoHelp')}
         </div>
       ) : (
         <>
           <div className="mb-4">
-            <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Policy</div>
+            <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{t('yamlEditor.nodeDetails.ops.policy')}</div>
             <div className="flex flex-wrap items-center gap-1">
               <button
                 type="button"
                 onClick={() => handlePolicyChange('standard')}
                 className={`px-3 py-1.5 text-sm font-medium ${!isIgnorePolicy ? activePillClass : inactivePillClass}`}
               >
-                Standard
+                {t('yamlEditor.nodeDetails.ops.standard')}
               </button>
               <button
                 type="button"
                 onClick={() => handlePolicyChange('ignore_cookies')}
                 className={`px-3 py-1.5 text-sm font-medium ${isIgnorePolicy ? activePillClass : inactivePillClass}`}
               >
-                Ignore Cookies
+                {t('yamlEditor.nodeDetails.ops.ignoreCookies')}
               </button>
             </div>
           </div>
 
           <div className="mb-2">
             <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-              Quick Presets
+              {t('yamlEditor.nodeDetails.ops.quickPresets')}
             </div>
             <div className="flex flex-wrap items-center gap-1">
               <button
@@ -254,7 +259,7 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
                 }
                 className="px-3 py-1.5 text-sm font-medium rounded-full border border-transparent text-zinc-400 hover:text-zinc-100 hover:bg-white/6 transition-colors duration-200"
               >
-                Default
+                {t('yamlEditor.nodeDetails.ops.presetDefault')}
               </button>
               <button
                 type="button"
@@ -267,7 +272,7 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
                 }
                 className="px-3 py-1.5 text-sm font-medium rounded-full border border-transparent text-zinc-400 hover:text-zinc-100 hover:bg-white/6 transition-colors duration-200"
               >
-                Stateless
+                {t('yamlEditor.nodeDetails.ops.presetStateless')}
               </button>
               <button
                 type="button"
@@ -283,20 +288,20 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
                 }
                 className="px-3 py-1.5 text-sm font-medium rounded-full border border-transparent text-zinc-400 hover:text-zinc-100 hover:bg-white/6 transition-colors duration-200"
               >
-                Clean Iteration
+                {t('yamlEditor.nodeDetails.ops.presetCleanIteration')}
               </button>
             </div>
           </div>
 
           {isIgnorePolicy && (
             <div className="rounded border border-yellow-400/20 bg-yellow-400/5 px-3 py-2 text-xs text-zinc-300">
-              Ignore Cookies is active: persistence, jar scope and seed cookies are disabled.
+              {t('yamlEditor.nodeDetails.ops.ignoreActive')}
             </div>
           )}
 
           <div className={`grid grid-cols-3 gap-4 ${isIgnorePolicy ? 'opacity-50' : ''}`}>
             <SelectField
-              label="Persist Across Iterations"
+              label={t('yamlEditor.nodeDetails.ops.persistAcross')}
               value={persistAcrossIterations ? 'true' : 'false'}
               field="persist_across_iterations"
               onChange={(_, value) => handleChange('persist_across_iterations', value === 'true')}
@@ -308,7 +313,7 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
               noMargin
             />
             <SelectField
-              label="Clear Each Iteration"
+              label={t('yamlEditor.nodeDetails.ops.clearEach')}
               value={effectiveClearEachIteration ? 'true' : 'false'}
               field="clear_each_iteration"
               onChange={(_, value) => handleChange('clear_each_iteration', value === 'true')}
@@ -320,7 +325,7 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
               noMargin
             />
             <SelectField
-              label="Jar Scope"
+              label={t('yamlEditor.nodeDetails.ops.jarScope')}
               value={data.jar_scope || 'vu'}
               field="jar_scope"
               onChange={handleChange}
@@ -348,6 +353,7 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
 }
 
 export function CacheManagerDetails({ node, onNodeUpdate }: NodeDetailProps) {
+  const { t } = useLanguage();
   const { data, updateField } = createNodeDataUpdater(node, onNodeUpdate);
   const enabled = data.enabled !== false;
   const clearEachIteration = data.clear_each_iteration !== false;
@@ -356,11 +362,11 @@ export function CacheManagerDetails({ node, onNodeUpdate }: NodeDetailProps) {
   return (
     <div className="space-y-6">
       <div>
-        <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">Cache</div>
+        <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">{t('yamlEditor.nodeDetails.ops.cache')}</div>
         <div className="flex flex-wrap items-center gap-1">
           <TogglePill
             active={enabled}
-            label="Enabled"
+            label={t('yamlEditor.common.enabled')}
             onClick={() => updateField('enabled', true)}
             activeStyle={{
               backgroundColor: 'rgba(250, 204, 21, 0.10)',
@@ -371,7 +377,7 @@ export function CacheManagerDetails({ node, onNodeUpdate }: NodeDetailProps) {
           />
           <TogglePill
             active={!enabled}
-            label="Disabled"
+            label={t('yamlEditor.common.disabled')}
             onClick={() => updateField('enabled', false)}
             activeStyle={{
               backgroundColor: 'rgba(250, 204, 21, 0.10)',
@@ -387,7 +393,7 @@ export function CacheManagerDetails({ node, onNodeUpdate }: NodeDetailProps) {
       <div className={!enabled ? 'opacity-60' : ''}>
         <div className="grid grid-cols-2 gap-4 mb-5">
           <SelectField
-            label="Clear Each Iteration"
+            label={t('yamlEditor.nodeDetails.ops.clearEach')}
             value={clearEachIteration ? 'true' : 'false'}
             field="clear_each_iteration"
             options={[
@@ -403,7 +409,7 @@ export function CacheManagerDetails({ node, onNodeUpdate }: NodeDetailProps) {
               htmlFor="ops-max-elements"
               className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
             >
-              Max Elements
+              {t('yamlEditor.nodeDetails.ops.maxElements')}
             </label>
             <Input
               id="ops-max-elements"
@@ -417,7 +423,10 @@ export function CacheManagerDetails({ node, onNodeUpdate }: NodeDetailProps) {
         </div>
 
         <div className="rounded border border-white/10 bg-black/20 px-3 py-2 text-xs text-zinc-300">
-          {`Cache ${enabled ? 'ON' : 'OFF'} + ClearEachIteration ${clearEachIteration ? 'ON' : 'OFF'} + MaxElements ${maxElements}`}
+          {t('yamlEditor.nodeDetails.ops.cacheSummary')
+            .replace('{cache}', enabled ? t('yamlEditor.nodeDetails.ops.on') : t('yamlEditor.nodeDetails.ops.off'))
+            .replace('{clear}', clearEachIteration ? t('yamlEditor.nodeDetails.ops.on') : t('yamlEditor.nodeDetails.ops.off'))
+            .replace('{max}', maxElements)}
         </div>
       </div>
     </div>
@@ -425,15 +434,18 @@ export function CacheManagerDetails({ node, onNodeUpdate }: NodeDetailProps) {
 }
 
 const errorPolicyRules = [
-  { key: 'on_4xx', label: 'On 4xx', icon: AlertTriangle },
-  { key: 'on_5xx', label: 'On 5xx', icon: ServerCrash },
-  { key: 'on_timeout', label: 'On Timeout', icon: Clock3 },
-  { key: 'on_connection_error', label: 'On Connection Error', icon: AlertTriangle },
-  { key: 'on_error', label: 'Other Errors', icon: AlertTriangle },
+  { key: 'on_4xx', labelKey: 'rule_on_4xx', icon: AlertTriangle },
+  { key: 'on_5xx', labelKey: 'rule_on_5xx', icon: ServerCrash },
+  { key: 'on_timeout', labelKey: 'rule_on_timeout', icon: Clock3 },
+  { key: 'on_connection_error', labelKey: 'rule_on_connection_error', icon: AlertTriangle },
+  { key: 'on_error', labelKey: 'rule_on_error', icon: AlertTriangle },
 ] as const;
 
 export function ErrorPolicyDetails({ node, onNodeUpdate }: NodeDetailProps) {
+  const { t } = useLanguage();
   const { data, updateData } = createNodeDataUpdater(node, onNodeUpdate);
+  const ruleLabel = (key: typeof errorPolicyRules[number]['key']) =>
+    t(`yamlEditor.nodeDetails.ops.rule_${key}`);
   const activeRules = errorPolicyRules.filter(({ key }) => String(data[key] || '').trim()).map(({ key }) => key);
   const currentValueForRule = (rule: typeof errorPolicyRules[number]['key']) => {
     const value = String(data[rule] || 'continue');
@@ -451,9 +463,9 @@ export function ErrorPolicyDetails({ node, onNodeUpdate }: NodeDetailProps) {
   return (
     <div className="space-y-6">
       <div>
-        <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">Rules</div>
+        <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">{t('yamlEditor.nodeDetails.ops.rules')}</div>
         <div className="flex flex-wrap items-center gap-1">
-          {errorPolicyRules.map(({ key, label, icon: Icon }) => (
+          {errorPolicyRules.map(({ key, icon: Icon }) => (
             <button
               key={key}
               type="button"
@@ -463,7 +475,7 @@ export function ErrorPolicyDetails({ node, onNodeUpdate }: NodeDetailProps) {
             >
               <span className="inline-flex items-center gap-1.5">
                 <Icon className="h-3.5 w-3.5" />
-                <span>{label}</span>
+                <span>{ruleLabel(key)}</span>
               </span>
             </button>
           ))}
@@ -471,17 +483,17 @@ export function ErrorPolicyDetails({ node, onNodeUpdate }: NodeDetailProps) {
       </div>
       <div className="h-px bg-white/10" />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {errorPolicyRules.map(({ key, label }) => (
+        {errorPolicyRules.map(({ key }) => (
           <div key={key} className={activeRules.includes(key) ? '' : 'opacity-50'}>
             <SelectField
-              label={`${label} Action`}
+              label={t('yamlEditor.nodeDetails.ops.ruleAction').replace('{rule}', ruleLabel(key))}
               value={currentValueForRule(key)}
               field={key}
               onChange={(_, value) => updateData({ ...data, [key]: value })}
               options={[
-                { label: 'Continue', value: 'continue' },
-                { label: 'Next iteration (same user)', value: 'next_iteration' },
-                { label: 'Stop this user', value: 'stop_user' },
+                { label: t('yamlEditor.nodeDetails.ops.actionContinue'), value: 'continue' },
+                { label: t('yamlEditor.nodeDetails.ops.actionNextIteration'), value: 'next_iteration' },
+                { label: t('yamlEditor.nodeDetails.ops.actionStopUser'), value: 'stop_user' },
               ]}
               disabled={!activeRules.includes(key)}
               noMargin
@@ -490,9 +502,9 @@ export function ErrorPolicyDetails({ node, onNodeUpdate }: NodeDetailProps) {
         ))}
       </div>
       <div className="rounded border border-white/10 bg-black/20 px-3 py-2 text-xs text-zinc-300 space-y-2">
-        <p>Continue runs the next step. Next iteration skips the remaining steps and starts another iteration of the same virtual user. Stop this user ends only the failing virtual user.</p>
-        <p>Other Errors covers connection, TLS, assertion and correlation failures. It also applies when no specific rule is set.</p>
-        {data.enabled === false && <p>This policy is disabled in YAML. Set enabled to true to apply its rules.</p>}
+        <p>{t('yamlEditor.nodeDetails.ops.policyHelp1')}</p>
+        <p>{t('yamlEditor.nodeDetails.ops.policyHelp2')}</p>
+        {data.enabled === false && <p>{t('yamlEditor.nodeDetails.ops.policyDisabled')}</p>}
       </div>
     </div>
   );

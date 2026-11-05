@@ -89,10 +89,6 @@ export function LoadField({
   );
 }
 
-export const LOAD_DURATION_HELP_TEXT = 'Default unit: seconds. Examples: 500ms, 5s, 5m.';
-export const LOAD_USERS_HELP_TEXT = 'Number of concurrent virtual users.';
-export const LOAD_ITERATIONS_HELP_TEXT = 'Optional limit for how many times each virtual user repeats the scenario.';
-
 interface LoadFieldConfig {
   field: string;
   label: string;

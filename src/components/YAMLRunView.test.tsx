@@ -1,9 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render as rtlRender, screen, waitFor, within } from '@testing-library/react';
 import { YAMLLoadRunSession } from './YAMLRunView';
 import type { RunLogLine, RunMetricsSnapshot, RunStreamHandlers, RunSummary } from '../utils/runApi';
 import type { YAMLNode } from '../types/yaml';
 import { LanguageProvider } from '../contexts/LanguageContext';
+
+const render = (ui: Parameters<typeof rtlRender>[0], options?: Parameters<typeof rtlRender>[1]) =>
+  rtlRender(ui, { wrapper: LanguageProvider, ...options });
 
 const runApiMock = vi.hoisted(() => {
   const handlers: RunStreamHandlers[] = [];

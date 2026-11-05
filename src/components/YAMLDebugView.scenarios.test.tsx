@@ -1,9 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react';
+import { LanguageProvider } from '../contexts/LanguageContext';
 import { YAMLDebugSession } from './YAMLDebugView';
 import { parseYAMLToTree } from '../utils/yamlParser';
 import { fingerprint } from '../utils/studioRunStore';
 import type { EngineEvent } from '../utils/debugApi';
+
+const render = (ui: Parameters<typeof rtlRender>[0], options?: Parameters<typeof rtlRender>[1]) =>
+  rtlRender(ui, { wrapper: LanguageProvider, ...options });
 
 const api = vi.hoisted(() => ({
   start: vi.fn(async () => 'selected-run'),

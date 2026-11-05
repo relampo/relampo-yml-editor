@@ -73,7 +73,9 @@ export function YAMLEditorDetailsPanel({
       <div className="flex items-center border-b border-white/5 bg-[#111111] shrink-0 px-6 py-3">
         <span className="text-sm font-bold tracking-tight uppercase text-zinc-400">
           {isDebugViewActive
-            ? 'Debug Session'
+            ? language === 'es'
+              ? 'Sesión de depuración'
+              : 'Debug Session'
             : isRunViewActive
               ? language === 'es'
                 ? 'Prueba de carga'

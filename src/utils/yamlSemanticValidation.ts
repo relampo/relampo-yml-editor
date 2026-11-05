@@ -13,6 +13,7 @@ import {
 import type { YAMLNode } from '../types/yaml';
 import { nearestNode } from './unknownYamlFields';
 import { normalizeBalancedExecutionMode } from './balancedController';
+import { translateValidationMessageEs } from './validationMessagesEs';
 
 interface YAMLSemanticIssue {
   nodeId: string;
@@ -28,10 +29,8 @@ const UNSUPPORTED_THROUGHPUT_SEGMENTS_MESSAGE =
   'Throughput load does not support segments. Remove segments before running.';
 
 export function localizeYAMLSemanticError(message: string, language: string): string {
-  if (language === 'es' && message === 'Ramp Up + Ramp Down cannot exceed Duration.') return 'Ramp Up + Ramp Down no puede superar la duración total.';
-  if (language === 'es' && message === 'Intent Warm-up + Ramp Up + Ramp Down cannot exceed Duration.') return 'Warm-up + Ramp Up + Ramp Down no puede superar la duración total de Intent.';
-  if (language === 'es' && message === UNSUPPORTED_STAGES_MESSAGE) return UNSUPPORTED_STAGES_MESSAGE_ES;
-  if (language !== 'es' && message === UNSUPPORTED_STAGES_MESSAGE_ES) return UNSUPPORTED_STAGES_MESSAGE;
+  if (language === 'es') return translateValidationMessageEs(message);
+  if (message === UNSUPPORTED_STAGES_MESSAGE_ES) return UNSUPPORTED_STAGES_MESSAGE;
   return message;
 }
 

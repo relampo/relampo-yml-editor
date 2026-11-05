@@ -1,8 +1,12 @@
 import { useState } from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render as baseRender, screen } from '@testing-library/react';
+import type { ReactElement } from 'react';
+import { LanguageProvider } from '../contexts/LanguageContext';
 import { describe, expect, it, vi } from 'vitest';
 import type { YAMLNode } from '../types/yaml';
 import { YAMLRequestDetails } from './YAMLRequestDetails';
+
+const render = (ui: ReactElement) => baseRender(ui, { wrapper: LanguageProvider });
 
 describe('YAMLRequestDetails', () => {
   function ControlledRequest({ node }: { node: YAMLNode }) {

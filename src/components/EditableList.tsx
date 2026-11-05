@@ -2,6 +2,7 @@ import { Check, CheckCircle2, Circle, Edit2, Plus, Trash2, X } from 'lucide-reac
 import { useEffect, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import type { StringMap } from '../types/shared';
+import { useLanguage } from '../contexts/LanguageContext';
 import { HighlightedInput } from './ui/HighlightedInput';
 import { Input } from './ui/input';
 
@@ -64,6 +65,7 @@ function EditableListToolbar({
   onBulkDelete,
   onAdd,
 }: EditableListToolbarProps) {
+  const { t } = useLanguage();
   return (
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-3">
@@ -75,7 +77,7 @@ function EditableListToolbar({
             onClick={onSelectAll}
             className="text-xs text-zinc-400 hover:text-zinc-300 transition-colors"
           >
-            {allSelected ? 'Deselect All' : 'Select All'}
+            {allSelected ? t('yamlEditor.shell.editableList.deselectAll') : t('yamlEditor.shell.editableList.selectAll')}
           </button>
         )}
       </div>
@@ -88,7 +90,7 @@ function EditableListToolbar({
             className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-red-400 bg-red-400/10 hover:bg-red-400/20 border border-red-400/20 rounded transition-colors"
           >
             <Trash2 className="w-3 h-3" />
-            Delete ({selectedCount})
+            {t('yamlEditor.shell.editableList.deleteCount').replace('{count}', String(selectedCount))}
           </button>
         )}
 
@@ -98,7 +100,7 @@ function EditableListToolbar({
           className={addButtonClass}
         >
           <Plus className="w-3 h-3" />
-          Add
+          {t('yamlEditor.common.add')}
         </button>
       </div>
     </div>
@@ -148,6 +150,7 @@ function EditableListRow({
   onEditKey,
   onEditValue,
 }: EditableListRowProps) {
+  const { t } = useLanguage();
   return (
     <div className={getItemStyles(variant, selectedKeys.has(item.originalKey))}>
       <div className="flex items-center gap-3 w-full min-w-0">
@@ -156,7 +159,7 @@ function EditableListRow({
             type="button"
             onClick={() => onCheckToggle(item.key)}
             className="text-purple-400 hover:text-purple-300 transition-colors shrink-0"
-            title={selectedKeys.has(item.key) ? 'Deselect' : 'Select'}
+            title={selectedKeys.has(item.key) ? t('yamlEditor.shell.editableList.deselect') : t('yamlEditor.shell.editableList.select')}
           >
             {selectedKeys.has(item.key) ? <CheckCircle2 className="w-5 h-5" /> : <Circle className="w-5 h-5" />}
           </button>
@@ -217,7 +220,7 @@ function EditableListRow({
               type="button"
               onClick={() => onDelete(item.originalKey)}
               className="p-2 h-9 text-zinc-500 hover:text-red-400 bg-white/5 hover:bg-white/10 rounded shrink-0 transition-colors"
-              title="Remove"
+              title={t('yamlEditor.common.remove')}
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -256,7 +259,7 @@ function EditableListRow({
                       onKeyChange(item.originalKey, item.key);
                     }}
                     className="p-1.5 bg-green-500/20 hover:bg-green-500/30 text-green-400 hover:text-green-300 rounded-md transition-colors"
-                    title="Save"
+                    title={t('yamlEditor.shell.actions.save')}
                   >
                     <Check className="w-4 h-4" />
                   </button>
@@ -266,7 +269,7 @@ function EditableListRow({
                       onResetKey(item.originalKey);
                     }}
                     className="p-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 hover:text-red-300 rounded-md transition-colors"
-                    title="Cancel"
+                    title={t('yamlEditor.cancel')}
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -279,7 +282,7 @@ function EditableListRow({
                     type="button"
                     onClick={() => onEditKey(item.originalKey)}
                     className="text-xs font-mono text-purple-400 font-bold bg-purple-400/10 hover:bg-purple-400/20 px-2 py-1 rounded transition-colors cursor-pointer truncate w-full"
-                    title="Click to edit name"
+                    title={t('yamlEditor.shell.editableList.clickToEditName')}
                   >
                     {item.key}
                   </button>
@@ -312,7 +315,7 @@ function EditableListRow({
                         type="button"
                         onClick={onValueSave}
                         className="p-1.5 bg-green-500/20 hover:bg-green-500/30 text-green-400 hover:text-green-300 rounded-md transition-colors"
-                        title="Save"
+                        title={t('yamlEditor.shell.actions.save')}
                       >
                         <Check className="w-4 h-4" />
                       </button>
@@ -320,7 +323,7 @@ function EditableListRow({
                         type="button"
                         onClick={() => onEditValue(null)}
                         className="p-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 hover:text-red-300 rounded-md transition-colors"
-                        title="Cancel"
+                        title={t('yamlEditor.cancel')}
                       >
                         <X className="w-4 h-4" />
                       </button>
@@ -330,7 +333,7 @@ function EditableListRow({
                   <div className="flex-1 min-w-0 flex items-center justify-between group">
                     <div className="flex-1 min-w-0 px-3 py-1.5 bg-white/5 border border-white/10 rounded overflow-x-auto scrollbar-none">
                       <span className="text-sm font-mono text-zinc-200 whitespace-nowrap block">
-                        {item.value || <span className="text-zinc-600 italic">empty</span>}
+                        {item.value || <span className="text-zinc-600 italic">{t('yamlEditor.shell.editableList.emptyValue')}</span>}
                       </span>
                     </div>
                     <div className="flex items-center gap-1 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -343,7 +346,7 @@ function EditableListRow({
                           })
                         }
                         className="p-1.5 text-blue-400 hover:bg-blue-400/20 hover:text-blue-300 rounded-md transition-colors"
-                        title="Edit value"
+                        title={t('yamlEditor.shell.editableList.editValue')}
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
@@ -351,7 +354,7 @@ function EditableListRow({
                         type="button"
                         onClick={() => onDelete(item.originalKey)}
                         className="p-1.5 text-red-400 hover:bg-red-400/20 hover:text-red-300 rounded-md transition-colors"
-                        title="Delete"
+                        title={t('yamlEditor.common.delete')}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -371,14 +374,15 @@ export function EditableList({
   title,
   items,
   onUpdate,
-  keyPlaceholder = 'Name',
-  valuePlaceholder = 'Value',
+  keyPlaceholder,
+  valuePlaceholder,
   enableCheckboxes = true,
   enableBulkActions = true,
   onBulkDelete,
   variant = 'default',
   searchText = '',
 }: EditableListProps) {
+  const { t } = useLanguage();
   const [localItems, setLocalItems] = useState<EditableListItem[]>([]);
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
   const [editingKey, setEditingKey] = useState<string | null>(null);
@@ -503,8 +507,8 @@ export function EditableList({
             key={item.originalKey}
             item={item}
             variant={variant}
-            keyPlaceholder={keyPlaceholder}
-            valuePlaceholder={valuePlaceholder}
+            keyPlaceholder={keyPlaceholder ?? t('yamlEditor.common.name')}
+            valuePlaceholder={valuePlaceholder ?? t('yamlEditor.common.value')}
             searchText={searchText}
             enableCheckboxes={enableCheckboxes}
             selectedKeys={selectedKeys}
@@ -525,7 +529,7 @@ export function EditableList({
 
         {Object.keys(items).length === 0 && (
           <div className="p-6 text-center text-zinc-500 text-sm border border-dashed border-white/10 rounded">
-            No {title.toLowerCase()} defined. Click "Add" to create one.
+            {t('yamlEditor.shell.editableList.empty').replace('{title}', title.toLowerCase())}
           </div>
         )}
       </div>

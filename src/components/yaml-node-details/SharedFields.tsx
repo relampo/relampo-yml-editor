@@ -138,7 +138,7 @@ export function FileField({
   uploadFile,
   accept,
 }: FileFieldProps) {
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -166,7 +166,7 @@ export function FileField({
         const path = await uploadFile(file);
         onChange(field, path);
       } catch (error) {
-        setUploadError(error instanceof Error ? error.message : 'File upload failed');
+        setUploadError(error instanceof Error ? error.message : t('yamlEditor.nodeDetails.shared.uploadFailed'));
       } finally {
         setIsUploading(false);
         event.target.value = '';
@@ -197,18 +197,14 @@ export function FileField({
           title={
             isBrowseDisabled
               ? !browseEnabled
-                ? language === 'es'
-                  ? 'Disponible solo cuando ejecutas Relampo Studio localmente'
-                  : 'Available only when running Relampo Studio locally'
-                : language === 'es'
-                  ? 'No hay un selector de archivos con ruta local disponible'
-                  : 'No path-capable file picker is available'
+                ? t('yamlEditor.nodeDetails.shared.browseUnavailable')
+                : t('yamlEditor.nodeDetails.shared.noPathPicker')
               : undefined
           }
           className="px-3 py-2 bg-yellow-400/10 border border-yellow-400/30 rounded text-yellow-400 hover:bg-yellow-400/20 text-sm font-medium transition-colors flex items-center gap-2 shrink-0 h-9.5 disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/5 disabled:text-zinc-500 disabled:hover:bg-white/5"
         >
           <Upload className="w-4 h-4" />
-          {isUploading ? (language === 'es' ? 'Subiendo...' : 'Uploading...') : t('yamlEditor.common.browse')}
+          {isUploading ? t('yamlEditor.nodeDetails.shared.uploading') : t('yamlEditor.common.browse')}
         </button>
         <input
           ref={fileInputRef}
@@ -227,18 +223,7 @@ export function FileField({
         >
           <Info className="alert-info-icon w-4 h-4 mt-0.5 shrink-0" />
           <span>
-            {language === 'es' ? (
-              <>
-                La selección de archivos de datos solo está disponible cuando ejecutas Relampo Studio localmente. En el
-                editor web no podemos acceder a archivos locales; escribe una ruta relativa o nombre de archivo que exista
-                donde correrá relampo run.
-              </>
-            ) : (
-              <>
-                Data source file browsing is only available when running Relampo Studio locally. In the web editor, local
-                files are not accessible; enter a relative path or file name that exists where relampo run will execute.
-              </>
-            )}
+            {t('yamlEditor.nodeDetails.shared.dataSourceHint')}
           </span>
         </div>
       )}
@@ -310,8 +295,16 @@ interface AuthConfigEditorProps {
 }
 
 export function AuthConfigEditor({ auth, onChange, scopeLabel }: AuthConfigEditorProps) {
+  const { t } = useLanguage();
   const value = normalizeAuthEditorValue(auth);
   const authId = useId();
+  const scopeKeys: Record<string, string> = {
+    Global: 'scopeGlobal',
+    Group: 'scopeGroup',
+    Transaction: 'scopeTransaction',
+    Request: 'scopeRequest',
+  };
+  const scopeText = scopeKeys[scopeLabel] ? t(`yamlEditor.nodeDetails.auth.${scopeKeys[scopeLabel]}`) : scopeLabel;
 
   const handleTypeChange = (type: string) => {
     const nextType = type as EditableAuthType;
@@ -343,7 +336,7 @@ export function AuthConfigEditor({ auth, onChange, scopeLabel }: AuthConfigEdito
     <div className="space-y-4">
       <div>
         <label htmlFor={`${authId}-type`} className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-          {scopeLabel} Authentication
+          {t('yamlEditor.nodeDetails.auth.title').replace('{scope}', scopeText)}
         </label>
         <Select
           value={value.type}
@@ -353,17 +346,17 @@ export function AuthConfigEditor({ auth, onChange, scopeLabel }: AuthConfigEdito
             <SelectValue />
           </SelectTrigger>
           <SelectContent className="border-white/10">
-            <SelectItem value="none" className="font-mono">None</SelectItem>
+            <SelectItem value="none" className="font-mono">{t('yamlEditor.nodeDetails.auth.none')}</SelectItem>
             <SelectItem value="bearer" className="font-mono">Bearer</SelectItem>
-            <SelectItem value="api_key" className="font-mono">API Key</SelectItem>
-            <SelectItem value="basic" className="font-mono">Basic Auth</SelectItem>
+            <SelectItem value="api_key" className="font-mono">{t('yamlEditor.nodeDetails.auth.apiKey')}</SelectItem>
+            <SelectItem value="basic" className="font-mono">{t('yamlEditor.nodeDetails.auth.basicAuth')}</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       {value.type === 'bearer' && (
         <div>
-          <label htmlFor={`${authId}-token`} className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Token</label>
+          <label htmlFor={`${authId}-token`} className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{t('yamlEditor.nodeDetails.shared.token')}</label>
           <Input
             id={`${authId}-token`}
             type="password"
@@ -378,7 +371,7 @@ export function AuthConfigEditor({ auth, onChange, scopeLabel }: AuthConfigEdito
       {value.type === 'api_key' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
-            <label htmlFor={`${authId}-key-name`} className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Key Name</label>
+            <label htmlFor={`${authId}-key-name`} className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{t('yamlEditor.nodeDetails.auth.keyName')}</label>
             <Input
               id={`${authId}-key-name`}
               value={value.name || ''}
@@ -388,7 +381,7 @@ export function AuthConfigEditor({ auth, onChange, scopeLabel }: AuthConfigEdito
             />
           </div>
           <div>
-            <label htmlFor={`${authId}-send-in`} className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Send In</label>
+            <label htmlFor={`${authId}-send-in`} className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{t('yamlEditor.nodeDetails.auth.sendIn')}</label>
             <Select
               value={value.in || 'header'}
               onValueChange={value => handleFieldChange('in', value)}
@@ -397,13 +390,13 @@ export function AuthConfigEditor({ auth, onChange, scopeLabel }: AuthConfigEdito
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="border-white/10">
-                <SelectItem value="header" className="font-mono">Header</SelectItem>
-                <SelectItem value="query" className="font-mono">Query Param</SelectItem>
+                <SelectItem value="header" className="font-mono">{t('yamlEditor.nodeDetails.auth.header')}</SelectItem>
+                <SelectItem value="query" className="font-mono">{t('yamlEditor.nodeDetails.auth.queryParam')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div className="md:col-span-2">
-            <label htmlFor={`${authId}-key-value`} className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Key Value</label>
+            <label htmlFor={`${authId}-key-value`} className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{t('yamlEditor.nodeDetails.auth.keyValue')}</label>
             <Input
               id={`${authId}-key-value`}
               type="password"
@@ -419,7 +412,7 @@ export function AuthConfigEditor({ auth, onChange, scopeLabel }: AuthConfigEdito
       {value.type === 'basic' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
-            <label htmlFor={`${authId}-username`} className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Username</label>
+            <label htmlFor={`${authId}-username`} className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{t('yamlEditor.nodeDetails.auth.username')}</label>
             <Input
               id={`${authId}-username`}
               value={value.username || ''}
@@ -429,7 +422,7 @@ export function AuthConfigEditor({ auth, onChange, scopeLabel }: AuthConfigEdito
             />
           </div>
           <div>
-            <label htmlFor={`${authId}-password`} className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Password</label>
+            <label htmlFor={`${authId}-password`} className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{t('yamlEditor.nodeDetails.auth.password')}</label>
             <Input
               id={`${authId}-password`}
               type="password"
@@ -444,7 +437,7 @@ export function AuthConfigEditor({ auth, onChange, scopeLabel }: AuthConfigEdito
 
       {value.type !== 'none' && (
         <div className="text-xs text-zinc-500">
-          Secrets stay masked in the editor and serialize into the YAML `auth` block.
+          {t('yamlEditor.nodeDetails.auth.secretsNote')}
         </div>
       )}
     </div>

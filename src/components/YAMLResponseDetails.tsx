@@ -2,6 +2,7 @@ import Editor from '@monaco-editor/react';
 import { ChevronDown, ChevronUp, Download, Search } from 'lucide-react';
 import type { editor as MonacoEditorNS } from 'monaco-editor';
 import { JSX, RefObject, useEffect, useMemo, useRef, useState } from 'react';
+import { useLanguage } from '../contexts/LanguageContext';
 import type { YAMLValue } from '../types/yaml';
 import { binaryBodyDisplay, binaryBodyDownload, type BinaryBodyDownload } from '../utils/binaryBody';
 import { buildSearchRegex, findMatchRanges, type SearchMode } from './debugSearch';
@@ -189,6 +190,7 @@ function SearchBar({
   invalidRegex,
   containerClassName,
 }: SearchBarProps) {
+  const { t } = useLanguage();
   return (
     <div className={containerClassName}>
       <div className="flex items-center gap-2 flex-wrap">
@@ -211,7 +213,7 @@ function SearchBar({
                 : 'text-zinc-400 hover:text-zinc-200'
             }`}
           >
-            Text
+            {t('yamlEditor.requestDetails.searchModeText')}
           </button>
           <button
             type="button"
@@ -222,7 +224,7 @@ function SearchBar({
                 : 'text-zinc-400 hover:text-zinc-200'
             }`}
           >
-            Regex
+            {t('yamlEditor.requestDetails.searchModeRegex')}
           </button>
         </div>
         {hasSearch && (
@@ -235,7 +237,7 @@ function SearchBar({
               onClick={onPrevious}
               disabled={totalMatches === 0}
               className="p-1.5 hover:bg-white/10 rounded border border-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              title="Previous match"
+              title={t('yamlEditor.requestDetails.previousMatch')}
             >
               <ChevronUp className="w-4 h-4 text-zinc-400" />
             </button>
@@ -244,14 +246,14 @@ function SearchBar({
               onClick={onNext}
               disabled={totalMatches === 0}
               className="p-1.5 hover:bg-white/10 rounded border border-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              title="Next match"
+              title={t('yamlEditor.requestDetails.nextMatch')}
             >
               <ChevronDown className="w-4 h-4 text-zinc-400" />
             </button>
           </div>
         )}
       </div>
-      {invalidRegex && <div className="mt-2 text-xs text-red-400">Invalid regex pattern</div>}
+      {invalidRegex && <div className="mt-2 text-xs text-red-400">{t('yamlEditor.requestDetails.invalidRegex')}</div>}
     </div>
   );
 }
@@ -273,6 +275,7 @@ function RawHeadersList({
   currentMatchIndex,
   hasSearch,
 }: RawHeadersListProps) {
+  const { t } = useLanguage();
   const [statusRanges, ...entryRanges] = headerLineMatches;
   let globalMatchIndex = statusRanges?.length ?? 0;
   const entryData = headerEntries.map(([key, value], idx) => {
@@ -285,7 +288,7 @@ function RawHeadersList({
   return (
     <div className="mt-2 rounded-md border border-white/10 bg-black/30 overflow-hidden">
       <div className="px-3 py-2 border-b border-white/10 bg-white/3">
-        <span className="text-[11px] uppercase tracking-wider text-zinc-500 font-semibold">Raw HTTP Headers</span>
+        <span className="text-[11px] uppercase tracking-wider text-zinc-500 font-semibold">{t('yamlEditor.requestDetails.rawHttpHeaders')}</span>
       </div>
       <div ref={containerRef} className="max-h-65 overflow-auto px-3 py-2 font-mono text-xs leading-6">
         <div className="text-zinc-100">
@@ -312,7 +315,7 @@ function RawHeadersList({
             </div>
           ))
         ) : (
-          <div className="text-zinc-500 italic">No headers captured</div>
+          <div className="text-zinc-500 italic">{t('yamlEditor.requestDetails.noHeadersCaptured')}</div>
         )}
       </div>
     </div>
@@ -330,6 +333,7 @@ interface ResponseHeadersPanelProps {
 }
 
 function ResponseHeadersPanel({ headers, httpVersion, status, statusText, fallbackSearchText }: ResponseHeadersPanelProps) {
+  const { t } = useLanguage();
   const [headersCollapsed, setHeadersCollapsed] = useState(false);
   const [headerSearchText, setHeaderSearchText] = useState('');
   const [headerSearchMode, setHeaderSearchMode] = useState<SearchMode>('text');
@@ -399,8 +403,8 @@ function ResponseHeadersPanel({ headers, httpVersion, status, statusText, fallba
         onClick={() => setHeadersCollapsed(prev => !prev)}
         className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-white/5 transition-colors"
       >
-        <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Response Headers</span>
-        <span className="text-xs text-zinc-400">{headersCollapsed ? 'Show' : 'Hide'}</span>
+        <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">{t('yamlEditor.requestDetails.responseHeaders')}</span>
+        <span className="text-xs text-zinc-400">{headersCollapsed ? t('yamlEditor.requestDetails.show') : t('yamlEditor.requestDetails.hide')}</span>
       </button>
       {!headersCollapsed && (
         <div className="p-3 pt-0">
@@ -410,7 +414,7 @@ function ResponseHeadersPanel({ headers, httpVersion, status, statusText, fallba
             hasSearch={!!headerSearchText}
             mode={headerSearchMode}
             onModeChange={setHeaderSearchMode}
-            placeholder="Search in headers..."
+            placeholder={t('yamlEditor.requestDetails.searchInHeaders')}
             totalMatches={headerTotalMatches}
             currentMatchIndex={headerCurrentMatchIndexClamped}
             onPrevious={handleHeaderPrevious}
@@ -455,6 +459,7 @@ function ResponseBodyPanel({
   onSearchModeChange,
   onNavigate,
 }: ResponseBodyPanelProps) {
+  const { t } = useLanguage();
   const responseBodyRef = useRef<HTMLPreElement | null>(null);
   const responseBodyTextareaRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -531,10 +536,10 @@ function ResponseBodyPanel({
   return (
     <div>
       <div className="flex items-center gap-2 mb-2">
-        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Response Body</p>
+        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">{t('yamlEditor.requestDetails.responseBody')}</p>
         {searchText && totalMatches > 0 && (
           <span className="text-xs text-yellow-400 flex items-center gap-1">
-            <span>✓</span> {totalMatches} match(es)
+            <span>✓</span> {t('yamlEditor.requestDetails.matchCount').replace('{count}', String(totalMatches))}
           </span>
         )}
         {binaryDownload && (
@@ -542,11 +547,11 @@ function ResponseBodyPanel({
             type="button"
             onClick={downloadResponseBody}
             className="ml-auto inline-flex h-7 items-center gap-1 rounded border border-white/10 bg-white/5 px-2 text-xs font-medium text-zinc-300 hover:border-sky-400/40 hover:bg-sky-400/10 hover:text-sky-100"
-            title="Download exact recorded response bytes"
-            aria-label="Download response body bytes"
+            title={t('yamlEditor.requestDetails.downloadBodyTitle')}
+            aria-label={t('yamlEditor.requestDetails.downloadBodyLabel')}
           >
             <Download className="h-3.5 w-3.5" aria-hidden="true" />
-            <span>Download body</span>
+            <span>{t('yamlEditor.requestDetails.downloadBody')}</span>
           </button>
         )}
       </div>
@@ -556,7 +561,7 @@ function ResponseBodyPanel({
         hasSearch={!!searchText}
         mode={searchMode}
         onModeChange={mode => onSearchModeChange?.(mode)}
-        placeholder="Search in response body..."
+        placeholder={t('yamlEditor.requestDetails.searchInResponseBody')}
         showIcon
         totalMatches={totalMatches}
         currentMatchIndex={currentMatchIndex}
@@ -599,8 +604,8 @@ function ResponseBodyPanel({
               value={bodyText}
               readOnly
               onScroll={syncBodyScroll}
-              placeholder="Response body..."
-              aria-label="Response body"
+              placeholder={t('yamlEditor.requestDetails.responseBodyPlaceholder')}
+              aria-label={t('yamlEditor.requestDetails.responseBodyLabel')}
               style={{ height: '100%', minHeight: '100%' }}
               className="relative w-full h-full bg-transparent border-0 text-transparent caret-transparent text-sm font-mono resize-none overflow-y-auto overflow-x-auto selection:bg-yellow-200/40 outline-none p-3"
             />
@@ -609,8 +614,8 @@ function ResponseBodyPanel({
           <textarea
             value={bodyText}
             readOnly
-            placeholder="Response body..."
-            aria-label="Response body"
+            placeholder={t('yamlEditor.requestDetails.responseBodyPlaceholder')}
+            aria-label={t('yamlEditor.requestDetails.responseBodyLabel')}
             style={{ height: BODY_FIXED_HEIGHT, minHeight: BODY_FIXED_HEIGHT }}
             className="w-full bg-white/5 border border-white/10 rounded text-zinc-300 text-sm font-mono h-75 resize-none overflow-y-auto overflow-x-auto outline-none p-3"
           />
@@ -630,6 +635,7 @@ export function YAMLResponseDetails({
   onSearchModeChange,
   onNavigate,
 }: YAMLResponseDetailsProps) {
+  const { t } = useLanguage();
   const formData = isResponseRecord(response) ? response : {};
 
   const bodyText = useMemo(
@@ -642,7 +648,7 @@ export function YAMLResponseDetails({
   );
 
   if (!response) {
-    return <div className="text-sm text-zinc-500 italic">No response data recorded</div>;
+    return <div className="text-sm text-zinc-500 italic">{t('yamlEditor.requestDetails.noResponseData')}</div>;
   }
 
   return (

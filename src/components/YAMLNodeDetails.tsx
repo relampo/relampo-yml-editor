@@ -5,6 +5,7 @@ import { NodeIssuesSection } from './DocumentIssues';
 import { Eye, EyeOff, FileText } from 'lucide-react';
 import { useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { getNodeDisplayName } from './yaml-tree-view/nodeDisplayName';
 import type { RedirectSourceInfo, RedirectedRequestInfo, YAMLNode } from '../types/yaml';
 import { YAMLRequestDetails } from './YAMLRequestDetails';
 import { YAMLSQLDetails } from './YAMLSQLDetails';
@@ -156,7 +157,7 @@ export function YAMLNodeDetails({
             </label>
             <HighlightedInput
               id="nodedetails-node-name"
-              value={nodeName}
+              value={nodeName === node.name ? getNodeDisplayName(node, t) : nodeName}
               onChange={event => {
                 const nextName = event.target.value;
                 setNodeName(nextName);
@@ -168,7 +169,7 @@ export function YAMLNodeDetails({
               }}
               containerClass="max-w-full shrink-0"
               className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-semibold"
-              placeholder="Node name"
+              placeholder={t('yamlEditor.shell.layout.nodeNamePlaceholder')}
               searchText={searchQuery}
               overlayClass="px-3 text-sm text-zinc-300 font-semibold"
             />

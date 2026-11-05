@@ -1,22 +1,23 @@
-import { LOAD_DURATION_HELP_TEXT, LoadFieldGroup, LoadGrid, LoadModeProps, LoadSection } from './shared';
-
-const RAMP_LOAD_FIELDS = [
-  { field: 'start_users', label: 'Start Users', placeholder: '1', type: 'number' },
-  { field: 'end_users', label: 'End Users', placeholder: '100', type: 'number' },
-  { field: 'duration', label: 'Duration', placeholder: '10m', helpText: LOAD_DURATION_HELP_TEXT },
-  { field: 'iterations', label: 'Iterations', placeholder: '0', type: 'number' },
-] as const;
+import { useLanguage } from '../../../contexts/LanguageContext';
+import { LoadFieldGroup, LoadGrid, LoadModeProps, LoadSection } from './shared';
 
 export function RampLoadMode({ data, onChange }: LoadModeProps) {
+  const { t } = useLanguage();
+  const fields = [
+    { field: 'start_users', label: t('yamlEditor.nodeDetails.load.startUsers'), placeholder: '1', type: 'number' },
+    { field: 'end_users', label: t('yamlEditor.nodeDetails.load.endUsers'), placeholder: '100', type: 'number' },
+    { field: 'duration', label: t('studioControls.duration'), placeholder: '10m', helpText: t('studioControls.durationHelp') },
+    { field: 'iterations', label: t('studioControls.iterations'), placeholder: '0', type: 'number' },
+  ] as const;
   return (
     <LoadSection
-      title="Linear Ramp"
-      description="Move from the starting user count to the ending user count over the configured duration."
+      title={t('yamlEditor.nodeDetails.load.linearRamp')}
+      description={t('yamlEditor.nodeDetails.load.linearRampDescription')}
     >
       <LoadGrid>
         <LoadFieldGroup
           data={data}
-          fields={RAMP_LOAD_FIELDS}
+          fields={fields}
           onChange={onChange}
         />
       </LoadGrid>

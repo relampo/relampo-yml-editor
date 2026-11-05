@@ -21,6 +21,36 @@ describe('localizeYAMLSemanticError', () => {
   });
 });
 
+describe('localizeYAMLSemanticError messages', () => {
+  it.each([
+    ['Ramp Up + Ramp Down cannot exceed Duration.', 'Incremento gradual + Reducción gradual no puede superar la Duración.'],
+    ['Segment 3 Target RPS must be greater than 0.', 'RPS objetivo del Segmento 3 debe ser mayor que 0.'],
+    [
+      'Segment 2 Transition must be Ramp up from 5 VUs to 10 VUs.',
+      'La Transición del Segmento 2 debe ser Incremento gradual de 5 VUs a 10 VUs.',
+    ],
+    [
+      'Segments Duration total must equal load Duration (1m). Current segments total is 30s.',
+      'La Duración total de los segmentos debe ser igual a la Duración de la carga (1m). El total actual de los segmentos es 30s.',
+    ],
+    ['Intent p95 latency limit must be greater than 0.', 'El límite de latencia p95 de la carga por objetivo debe ser mayor que 0.'],
+    ['Choose sequential or parallel scenario scheduling for multiple scenarios.', 'Elige la programación secuencial o paralela para varios escenarios.'],
+    ['scenarios[0].timer: Expected a literal timer duration.', 'scenarios[0].timer: Se esperaba una duración literal del temporizador.'],
+  ])('translates "%s" only for Spanish', (message, spanish) => {
+    expect(localizeYAMLSemanticError(message, 'es')).toBe(spanish);
+    expect(localizeYAMLSemanticError(message, 'en')).toBe(message);
+  });
+
+  it('translates every message the validator reports for a segments load', () => {
+    const tree = parseYAMLToTree(
+      'scenarios:\n  - name: A\n    steps: []\n    load:\n      type: segments\n      segments:\n        - name: s1\n          transition: ramp_down\n          duration: 10s\n          target_vus: 5\n',
+    );
+    const messages = validateYAMLSemantics(tree).map(issue => issue.message);
+    expect(messages.length).toBeGreaterThan(0);
+    for (const message of messages) expect(localizeYAMLSemanticError(message, 'es')).not.toBe(message);
+  });
+});
+
 describe('validateYAMLSemantics', () => {
   it('accepts valid throughput load nodes with VU capacity', () => {
     const tree: YAMLNode = {

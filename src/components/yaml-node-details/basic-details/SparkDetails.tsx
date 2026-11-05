@@ -1,13 +1,15 @@
+import { useLanguage } from '../../../contexts/LanguageContext';
 import { SparkCodeEditor } from '../../SparkCodeEditor';
 import type { NodeDetailProps } from '../types';
 
 export function SparkDetails({ node, onNodeUpdate }: NodeDetailProps) {
+  const { t } = useLanguage();
   const data = node.data || {};
 
   return (
     <div className="mb-4">
       <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
-        {'</>'} Spark Script (JavaScript)
+        {'</>'} {t('yamlEditor.requestDetails.sparkScriptTitle')}
       </p>
       <SparkCodeEditor
         value={data.script || ''}

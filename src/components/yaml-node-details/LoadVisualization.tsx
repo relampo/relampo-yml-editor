@@ -91,11 +91,11 @@ export function LoadVisualization({ data, loadType, progressSeconds }: LoadVisua
         />
         {loadType === 'segments' && (
           <div className="mt-2 text-[11px] text-zinc-400">
-            <p>VU capacity · RPS Target (dashed) · RPS VUs Min/Max (shaded)</p>
-            <ol className="mt-1 space-y-1" aria-label="Configured load segments">
+            <p>{t('yamlEditor.runDebug.visualization.segmentsLegend')}</p>
+            <ol className="mt-1 space-y-1" aria-label={t('yamlEditor.runDebug.visualization.segmentsAria')}>
               {getSegmentVisualizationEntries(data).map((entry, index) => (
                 <li key={index}>
-                  {index + 1}. {entry.name} · {entry.targetLabel} · {formatTimeLabel(entry.start)}–{formatTimeLabel(entry.end)}
+                  {index + 1}. {entry.name} · {segmentTargetLabel(entry, t)} · {formatTimeLabel(entry.start)}–{formatTimeLabel(entry.end)}
                   {entry.targetRps > 0 && ` · ${entry.minVus}–${entry.value} VUs`}
                 </li>
               ))}
@@ -301,7 +301,7 @@ function computeLoadVisualizationModel(
     label: !hasFiniteDuration && index === 4 ? '∞' : formatTimeLabel((maxTime / 4) * index),
   }));
 
-  const timeRanges = getTimeRanges(effectiveData, loadType, totalTime).map(range => ({
+  const timeRanges = getTimeRanges(effectiveData, loadType, totalTime, t).map(range => ({
     ...range,
     label: range.key.startsWith('segment-') ? range.label : t(`yamlEditor.loadVisualization.ranges.${range.key}`),
   }));
@@ -344,13 +344,13 @@ function computeLoadVisualizationModel(
   const angledRangeLabels = verticalRanges.map(range => {
     let from = firstChartPoint;
     let to = secondChartPoint;
-    if (range.label === 'Ramp Down' && chartPoints.length >= 4) {
+    if (range.key === 'rampDown' && chartPoints.length >= 4) {
       from = chartPoints[2];
       to = chartPoints[3];
-    } else if (range.label === 'Ramp Down' && chartPoints.length >= 2) {
+    } else if (range.key === 'rampDown' && chartPoints.length >= 2) {
       from = chartPoints[chartPoints.length - 2];
       to = chartPoints[chartPoints.length - 1];
-    } else if (range.label === 'Ramp' && chartPoints.length >= 2) {
+    } else if (range.key === 'ramp' && chartPoints.length >= 2) {
       from = chartPoints[0];
       to = chartPoints[1];
     }
@@ -1007,11 +1007,11 @@ function getVisualizationPoints(data: LoadData, loadType: LoadType) {
   return points;
 }
 
-function getTimeRanges(data: LoadData, loadType: LoadType, maxTime: number) {
+function getTimeRanges(data: LoadData, loadType: LoadType, maxTime: number, t: (key: string) => string) {
   if (loadType === 'segments') {
     return getSegmentVisualizationEntries(data).map((segment, index) => ({
       key: `segment-${index}`,
-      label: [segment.name, segment.targetLabel].filter(Boolean).join(' · ') || `S${index + 1}`,
+      label: [segment.name, segmentTargetLabel(segment, t)].filter(Boolean).join(' · ') || `S${index + 1}`,
       start: segment.start,
       end: segment.end,
     }));
@@ -1099,12 +1099,12 @@ function getSegmentVisualizationEntries(data: LoadData) {
 
   const explicitDurations = segments.map(segment => parseTimeToSeconds(String(segment.duration ?? '').trim()));
   const hasAllDurations = getSegmentDurationSummary(data.duration, segments).allSegmentDurationsValid;
-  const entries: Array<{ name: string; start: number; end: number; value: number; startValue: number; targetLabel: string; targetRps: number; minVus: number }> = [];
+  const entries: Array<{ name: string; start: number; end: number; value: number; startValue: number; targetVus?: number; maxVus: number; targetRpsValue: number; targetRps: number; minVus: number }> = [];
   let elapsed = 0;
   for (let index = 0; index < segments.length; index += 1) {
     const segment = segments[index];
     const duration = hasAllDurations ? explicitDurations[index] : 0;
-    const { value, targetLabel } = segmentDisplayValue(segment);
+    const { value, targetVus } = segmentDisplayValue(segment);
     const start = elapsed;
     const end = elapsed + duration;
     elapsed = end;
@@ -1117,7 +1117,9 @@ function getSegmentVisualizationEntries(data: LoadData) {
         end,
         value,
         startValue,
-        targetLabel,
+        targetVus,
+        maxVus: positiveNumber(segment.max_vus),
+        targetRpsValue: positiveNumber(segment.target_rps),
         targetRps: Object.hasOwn(segment, 'target_vus') ? 0 : positiveNumber(segment.target_rps),
         minVus: positiveNumber(segment.min_vus),
       });
@@ -1130,17 +1132,24 @@ function normalizeVisualizationSegments(value: LoadData['segments']): LoadSegmen
   return normalizeLoadSegments(value);
 }
 
-function segmentDisplayValue(segment: LoadSegmentData): { value: number; targetLabel: string } {
-  const targetVus = positiveNumber(segment.target_vus);
+function segmentDisplayValue(segment: LoadSegmentData): { value: number; targetVus?: number } {
   if (Object.hasOwn(segment, 'target_vus')) {
-    return { value: targetVus, targetLabel: `${targetVus} VUs` };
+    const targetVus = positiveNumber(segment.target_vus);
+    return { value: targetVus, targetVus };
   }
-  const targetRps = positiveNumber(segment.target_rps);
-  const maxVus = positiveNumber(segment.max_vus);
-  return {
-    value: maxVus,
-    targetLabel: maxVus > 0 ? `${targetRps} RPS (max ${maxVus} VUs)` : `${targetRps} RPS`,
-  };
+  return { value: positiveNumber(segment.max_vus) };
+}
+
+function segmentTargetLabel(
+  entry: { targetVus?: number; maxVus: number; targetRpsValue: number },
+  t: (key: string) => string,
+): string {
+  if (entry.targetVus !== undefined) return `${entry.targetVus} VUs`;
+  return entry.maxVus > 0
+    ? t('yamlEditor.runDebug.visualization.rpsWithMaxVus')
+        .replace('{rps}', String(entry.targetRpsValue))
+        .replace('{vus}', String(entry.maxVus))
+    : `${entry.targetRpsValue} RPS`;
 }
 
 function positiveNumber(value: unknown): number {

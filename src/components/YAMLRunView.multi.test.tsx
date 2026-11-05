@@ -1,8 +1,12 @@
 import { nativeSelectClassName } from './ui/select';
 import { afterEach, expect, it, vi } from 'vitest';
-import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render as rtlRender, screen, waitFor, within } from '@testing-library/react';
+import { LanguageProvider } from '../contexts/LanguageContext';
 import { YAMLLoadRunSession } from './YAMLRunView';
 import { parseYAMLToTree } from '../utils/yamlParser';
+
+const render = (ui: Parameters<typeof rtlRender>[0], options?: Parameters<typeof rtlRender>[1]) =>
+  rtlRender(ui, { wrapper: LanguageProvider, ...options });
 
 class ServerStream {
   static instance: ServerStream;

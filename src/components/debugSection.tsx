@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Download } from 'lucide-react';
 import { findMatchRanges, type SearchMode } from './debugSearch';
 import type { BinaryBodyDownload } from '../utils/binaryBody';
+import { useLanguage } from '../contexts/LanguageContext';
 
 export function DebugSection({
   rows,
@@ -23,6 +24,7 @@ export function DebugSection({
   // fully readable rather than being clipped. RLP-585 #6.
   wrapLabels?: boolean;
 }) {
+  const { t } = useLanguage();
   const fullSearchText = [
     ...rows.map(([label, value]) => `${label}: ${value}`),
     ...(body !== undefined ? [body] : []),
@@ -69,17 +71,17 @@ export function DebugSection({
       {body !== undefined && (
         <div>
           <div className="mb-2 flex items-center gap-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">Body</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">{t('yamlEditor.runDebug.debug.section.body')}</p>
             {bodyDownload && (
               <button
                 type="button"
                 onClick={downloadBody}
                 className="ml-auto inline-flex h-7 items-center gap-1 rounded border border-white/10 bg-white/5 px-2 text-xs font-medium text-zinc-300 hover:border-sky-400/40 hover:bg-sky-400/10 hover:text-sky-100"
-                title="Download exact response bytes"
-                aria-label="Download response body bytes"
+                title={t('yamlEditor.runDebug.debug.section.downloadTitle')}
+                aria-label={t('yamlEditor.runDebug.debug.section.downloadAria')}
               >
                 <Download className="h-3.5 w-3.5" aria-hidden="true" />
-                <span>Download body</span>
+                <span>{t('yamlEditor.runDebug.debug.section.downloadBody')}</span>
               </button>
             )}
           </div>
@@ -114,6 +116,7 @@ function DebugMetadataDetails({
   currentMatchIndex: number;
   hasActiveSearch: boolean;
 }) {
+  const { t } = useLanguage();
   // `open` is otherwise fully user-controlled via the native <details>
   // onToggle below. The only prop-driven adjustment is: when a search
   // becomes active (false -> true transition), force it open so matches are
@@ -135,7 +138,7 @@ function DebugMetadataDetails({
       onToggle={event => setOpen(event.currentTarget.open)}
     >
       <summary className="cursor-pointer select-none px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500 hover:text-zinc-300">
-        Metadata and headers ({rows.length})
+        {t('yamlEditor.runDebug.debug.section.metadata').replace('{count}', String(rows.length))}
       </summary>
       <DebugRowsTable
         rows={rows}

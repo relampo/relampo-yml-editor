@@ -1,6 +1,10 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render as baseRender, screen } from '@testing-library/react';
+import type { ReactElement } from 'react';
+import { LanguageProvider } from '../contexts/LanguageContext';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { YAMLResponseDetails } from './YAMLResponseDetails';
+
+const render = (ui: ReactElement) => baseRender(ui, { wrapper: LanguageProvider });
 
 afterEach(() => {
   vi.restoreAllMocks();

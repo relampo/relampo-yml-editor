@@ -152,7 +152,7 @@ export function YAMLEditorHeader({
             <label
               className="toggle-switch"
               htmlFor="langToggle"
-              aria-label="Language toggle"
+              aria-label={language === 'es' ? 'Cambiar idioma' : 'Language toggle'}
               style={{
                 position: 'relative',
                 display: 'inline-block',

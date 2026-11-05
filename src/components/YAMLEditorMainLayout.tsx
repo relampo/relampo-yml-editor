@@ -129,7 +129,7 @@ export function YAMLEditorMainLayout({
       <div
         role="separator"
         aria-orientation="vertical"
-        aria-label="Resize panel"
+        aria-label={language === 'es' ? 'Cambiar tamaño del panel' : 'Resize panel'}
         tabIndex={0}
         onMouseDown={onResizeStart}
         className="w-1 bg-white/5 hover:bg-yellow-400/40 shrink-0 transition-colors relative active:bg-yellow-400/60 z-20 group"

@@ -19,20 +19,8 @@ type EditorDataSource = Partial<Omit<DataSource, 'type' | 'mode'>> & {
   mode?: NonNullable<DataSource['mode']> | 'per_worker';
 };
 
-function dataSourceModeDescription(mode: EditorDataSource['mode'], language: 'en' | 'es'): string {
-  const descriptions = {
-    en: {
-      shared: 'A global cursor; rows are consumed only once.',
-      per_worker: 'Fixed 1:1 mapping: VU i -> row (i-1) % total. Same row, no cursor advance.',
-      per_vu: 'Each VU cycles through the list from the beginning.',
-    },
-    es: {
-      shared: 'Un cursor global; filas consumidas una sola vez.',
-      per_worker: 'Mapeo fijo 1:1: VU i -> fila (i-1) % total. Misma fila, sin avance.',
-      per_vu: 'Cada VU cicla sobre la lista desde el inicio.',
-    },
-  };
-  return descriptions[language][mode === 'shared' || mode === 'per_worker' ? mode : 'per_vu'];
+function dataSourceModeDescription(mode: EditorDataSource['mode'], t: (key: string) => string): string {
+  return t(`yamlEditor.nodeDetails.ds.mode_${mode === 'shared' || mode === 'per_worker' ? mode : 'per_vu'}`);
 }
 
 export function DataSourceDetails({
@@ -48,7 +36,7 @@ export function DataSourceDetails({
   const bind = (sourceData.bind || {}) as StringMap;
   const showDiagnosis = false;
   const sourcePath = String(sourceData.file || sourceData.path || '');
-  const { language } = useLanguage();
+  const { t } = useLanguage();
   const latestSourceData = useRef(sourceData);
   const [previewRevision, setPreviewRevision] = useState(0);
 
@@ -74,7 +62,7 @@ export function DataSourceDetails({
             htmlFor="ds-basic-name"
             className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
           >
-            Name
+            {t('yamlEditor.common.name')}
           </label>
           <Input
             id="ds-basic-name"
@@ -86,7 +74,7 @@ export function DataSourceDetails({
             }}
             maxLength={50}
             className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-semibold h-9.5"
-            placeholder="Name"
+            placeholder={t('yamlEditor.common.name')}
           />
         </div>
       </div>
@@ -94,7 +82,7 @@ export function DataSourceDetails({
       <div className="grid grid-cols-1 gap-4 md:grid-cols-[120px_1fr] md:items-start">
         <div>
           <SelectField
-            label="Type"
+            label={t('yamlEditor.nodeDetails.ds.type')}
             value={sourceData.type || 'csv'}
             field="type"
             options={[
@@ -108,7 +96,7 @@ export function DataSourceDetails({
 
         <div>
           <FileField
-            label="File"
+            label={t('yamlEditor.nodeDetails.ds.file')}
             value={sourcePath}
             field="file"
             onChange={(_, value) => updateDataSourcePath(String(value))}
@@ -134,7 +122,7 @@ export function DataSourceDetails({
           htmlFor="ds-basic-var-names"
           className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
         >
-          Variable Names (comma-separated)
+          {t('yamlEditor.nodeDetails.ds.variableNames')}
         </label>
         <HighlightedInput
           id="ds-basic-var-names"
@@ -144,37 +132,37 @@ export function DataSourceDetails({
           placeholder="var1, var2, var3"
           searchText={searchQuery}
         />
-        <p className="text-[10px] text-zinc-500 mt-1 italic">Define variable names separated by commas manually.</p>
+        <p className="text-[10px] text-zinc-500 mt-1 italic">{t('yamlEditor.nodeDetails.ds.variableNamesHint')}</p>
       </div>
 
       <div className="flex gap-4">
         <div className="w-30 shrink-0">
           <SelectField
-            label="Mode"
+            label={t('yamlEditor.nodeDetails.ds.mode')}
             value={sourceData.mode || 'per_vu'}
             field="mode"
             options={[
-              { label: 'Per VU', value: 'per_vu' },
-              { label: 'Shared', value: 'shared' },
-              { label: 'Per Worker', value: 'per_worker' },
+              { label: t('yamlEditor.nodeDetails.ds.perVu'), value: 'per_vu' },
+              { label: t('yamlEditor.nodeDetails.ds.shared'), value: 'shared' },
+              { label: t('yamlEditor.nodeDetails.ds.perWorker'), value: 'per_worker' },
             ]}
             onChange={(field, value) => updateField(field, value)}
             noMargin
           />
           <p className="text-[10px] text-zinc-400 mt-1 italic">
-            {dataSourceModeDescription(sourceData.mode, language)}
+            {dataSourceModeDescription(sourceData.mode, t)}
           </p>
         </div>
 
         <div className="w-30 shrink-0">
           {sourceData.mode !== 'per_worker' && (
             <SelectField
-              label="On Exhausted"
+              label={t('yamlEditor.nodeDetails.ds.onExhausted')}
               value={sourceData.on_exhausted || 'recycle'}
               field="on_exhausted"
               options={[
-                { label: 'Recycle', value: 'recycle' },
-                { label: 'Stop', value: 'stop' },
+                { label: t('yamlEditor.nodeDetails.ds.recycle'), value: 'recycle' },
+                { label: t('yamlEditor.nodeDetails.ds.stop'), value: 'stop' },
               ]}
               onChange={(field, value) => updateField(field, value)}
               noMargin
@@ -187,9 +175,9 @@ export function DataSourceDetails({
         <>
           <div className="h-px bg-white/10 my-4" />
           <div className="mb-4">
-            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">Column Bindings</p>
+            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">{t('yamlEditor.nodeDetails.ds.columnBindings')}</p>
             <EditableList
-              title="Bind"
+              title={t('yamlEditor.nodeDetails.ds.bind')}
               items={bind}
               onUpdate={handleBindUpdate}
               keyPlaceholder="csv_column"
@@ -228,7 +216,7 @@ type PreviewState =
   | { status: 'idle' }
   | { status: 'loading' }
   | { status: 'ready'; lines: string[]; truncated: boolean }
-  | { status: 'error'; message: string };
+  | { status: 'error'; message: string | null };
 
 function DataSourcePreviewPanel({
   enabled,
@@ -243,6 +231,7 @@ function DataSourcePreviewPanel({
   variableNames: string;
   revision: number;
 }) {
+  const { t } = useLanguage();
   const trimmedPath = path.trim();
   const [state, setState] = useState<PreviewState>({ status: 'idle' });
   const latestPreviewPath = useRef(trimmedPath);
@@ -266,7 +255,7 @@ function DataSourcePreviewPanel({
       })
       .catch(error => {
         if (controller.signal.aborted) return;
-        setState({ status: 'error', message: error instanceof Error ? error.message : 'Preview unavailable' });
+        setState({ status: 'error', message: error instanceof Error ? error.message : null });
       });
     return () => controller.abort();
   }, [enabled, trimmedPath, revision]);
@@ -287,12 +276,13 @@ function DataSourcePreviewPanel({
       <div className="flex min-h-10 items-center justify-between gap-3 border-b border-white/10 px-3 py-2">
         <div className="flex items-center gap-2">
           <Table2 className="h-4 w-4 text-yellow-300" />
-          <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Data Preview</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">{t('yamlEditor.nodeDetails.ds.dataPreview')}</p>
         </div>
         {state.status === 'ready' && (
           <p className="text-[10px] font-medium text-zinc-500">
-            {rows.length} {rows.length === 1 ? 'row' : 'rows'}
-            {state.truncated ? ' shown' : ''}
+            {t(
+              `yamlEditor.nodeDetails.ds.${rows.length === 1 ? 'row' : 'rows'}${state.truncated ? 'Shown' : ''}`,
+            ).replace('{count}', String(rows.length))}
           </p>
         )}
       </div>
@@ -300,26 +290,26 @@ function DataSourcePreviewPanel({
       {!enabled && (
         <div className="flex items-start gap-2 px-3 py-3 text-xs text-zinc-500">
           <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-zinc-500" />
-          <p>Preview is available when running Relampo Studio locally.</p>
+          <p>{t('yamlEditor.nodeDetails.ds.previewLocalOnly')}</p>
         </div>
       )}
 
       {enabled && state.status === 'loading' && (
         <div className="flex items-center gap-2 px-3 py-3 text-xs text-zinc-400">
           <Loader2 className="h-3.5 w-3.5 animate-spin text-yellow-300" />
-          <p>Loading preview...</p>
+          <p>{t('yamlEditor.nodeDetails.ds.loadingPreview')}</p>
         </div>
       )}
 
       {enabled && state.status === 'error' && (
         <div className="flex items-start gap-2 px-3 py-3 text-xs text-red-300">
           <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          <p>{state.message}</p>
+          <p>{state.message ?? t('yamlEditor.nodeDetails.ds.previewUnavailable')}</p>
         </div>
       )}
 
       {enabled && state.status === 'ready' && rows.length === 0 && (
-        <div className="px-3 py-3 text-xs text-zinc-500">No rows found.</div>
+        <div className="px-3 py-3 text-xs text-zinc-500">{t('yamlEditor.nodeDetails.ds.noRows')}</div>
       )}
 
       {enabled && state.status === 'ready' && rows.length > 0 && (
@@ -350,7 +340,7 @@ function DataSourcePreviewPanel({
                       className="truncate px-3 py-2 align-top font-mono text-[11px] text-zinc-300"
                       title={row[columnIndex] || ''}
                     >
-                      {row[columnIndex] || <span className="text-zinc-600">empty</span>}
+                      {row[columnIndex] || <span className="text-zinc-600">{t('yamlEditor.nodeDetails.ds.empty')}</span>}
                     </td>
                   ))}
                 </tr>
@@ -359,7 +349,7 @@ function DataSourcePreviewPanel({
           </table>
           {state.truncated && (
             <div className="border-t border-white/10 px-3 py-2 text-[10px] text-zinc-500">
-              Showing the first {rows.length} rows.
+              {t('yamlEditor.nodeDetails.ds.showingFirst').replace('{count}', String(rows.length))}
             </div>
           )}
         </div>
