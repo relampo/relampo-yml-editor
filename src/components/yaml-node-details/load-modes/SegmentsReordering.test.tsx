@@ -1,4 +1,5 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { selectOption } from '../../../test/selectOption';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { useState } from 'react';
 import { load } from 'js-yaml';
 import { describe, expect, it } from 'vitest';
@@ -63,19 +64,21 @@ describe('RLP-768 segment reordering', () => {
   });
 
   for (const transition of ['constant', 'ramp_up', 'ramp_down']) {
-    it(`moves VUs ${transition} first without rewriting it and validates from zero`, () => {
+    it(`moves VUs ${transition} first without rewriting it and validates from zero`, async () => {
       const moved = { ...vus, name: 'B', target_vus: '20', transition };
       const { current, messages, container } = mount([rps, moved]);
       drag(2, 1);
       expect(current().data!.segments).toEqual([moved, rps]);
-      expect(screen.getByLabelText('Transition for segment 1')).toHaveValue(transition);
+      expect(screen.getByLabelText('Transition for segment 1')).toHaveTextContent(({ constant: 'Constant', ramp_up: 'Ramp up', ramp_down: 'Ramp down' })[transition]!);
       expect(messages()).toEqual(transition === 'ramp_down' ? ['Segment 1 cannot use Ramp down as the first segment.'] : []);
       if (transition === 'ramp_up') {
         expect(container.querySelector('polyline[stroke-width="3"]')).toHaveAttribute('points', expect.stringContaining('40,170'));
       }
       if (transition === 'ramp_down') {
-        expect(within(screen.getByLabelText('Transition for segment 1')).getByRole('option', { name: /Ramp down/ })).toBeDisabled();
-        fireEvent.change(screen.getByLabelText('Transition for segment 1'), { target: { value: 'constant' } });
+        fireEvent.keyDown(screen.getByLabelText('Transition for segment 1'), { key: 'Enter' });
+        expect(await screen.findByRole('option', { name: /Ramp down/ })).toHaveAttribute('aria-disabled', 'true');
+        fireEvent.keyDown(screen.getByRole('listbox'), { key: 'Escape' });
+        await selectOption('Transition for segment 1', 'Constant');
         expect(messages()).toEqual([]);
       }
     });
@@ -102,19 +105,19 @@ describe('RLP-768 segment reordering', () => {
     expect(messages()).toEqual([
       'Segment 2 Transition must be Ramp down from 50 VUs to 40 VUs.',
     ]);
-    expect(screen.getByLabelText('Transition for segment 2')).toHaveValue('ramp_up');
-    expect(screen.getByLabelText('Transition for segment 4')).toHaveValue('constant');
+    expect(screen.getByLabelText('Transition for segment 2')).toHaveTextContent('Ramp up');
+    expect(screen.getByLabelText('Transition for segment 4')).toHaveTextContent('Constant');
   });
 
   for (const inserted of [rps, { ...vus, name: 'C', target_vus: '40', transition: 'ramp_down' }]) {
-    it(`revalidates both insertion and removal neighbors when moving ${inserted.name}`, () => {
+    it(`revalidates both insertion and removal neighbors when moving ${inserted.name}`, async () => {
       const b = { ...vus, name: 'B', target_vus: '20', transition: 'ramp_down' };
       const d = { ...vus, name: 'D', target_vus: '40' };
       const { current, messages } = mount([vus, b, inserted, d]);
       drag(3, 2);
       expect(current().data!.segments).toEqual([vus, inserted, b, d]);
       expect(messages()).toEqual([]);
-      fireEvent.change(screen.getByLabelText('Transition for segment 3'), { target: { value: 'ramp_up' } });
+      await selectOption('Transition for segment 3', 'Ramp up');
       expect(messages()).toContain('Segment 3 Transition must be Ramp down from 40 VUs to 20 VUs.');
     });
   }

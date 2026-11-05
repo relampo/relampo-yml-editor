@@ -1,6 +1,6 @@
-import { nativeSelectClassName } from './ui/select';
+import { selectOption } from '../test/selectOption';
 import { afterEach, expect, it, vi } from 'vitest';
-import { act, cleanup, fireEvent, render as rtlRender, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react';
 import { LanguageProvider } from '../contexts/LanguageContext';
 import { YAMLLoadRunSession } from './YAMLRunView';
 import { parseYAMLToTree } from '../utils/yamlParser';
@@ -72,12 +72,13 @@ it('keeps live identities and selects exact final scenario results', async () =>
   expect(screen.getByText('Evidence').parentElement).toHaveTextContent('Complete');
   expect(screen.getByText('Request p95').parentElement).toHaveTextContent('0ms');
   expect(screen.getByText('RSS Peak').parentElement).toHaveTextContent('0 MiB');
-  fireEvent.change(screen.getByRole('combobox', { name: 'Result scope' }), { target: { value: 'B' } });
+  await selectOption('Result scope', 'B');
   expect(screen.getByText('Total Requests').parentElement).toHaveTextContent('0');
   expect(screen.getByText('Request p95').parentElement).toHaveTextContent('Unavailable');
   expect(screen.getByText('RSS Peak').parentElement).toHaveTextContent('Unavailable');
-  expect(within(screen.getByRole('combobox', { name: 'Result scope' })).getByRole('option', { name: 'Global' })).toBeInTheDocument();
-  expect(screen.getByRole('combobox', { name: 'Result scope' })).toHaveAttribute('class', nativeSelectClassName);
+  await selectOption('Result scope', 'Global');
+  expect(screen.getByText('Total Requests').parentElement).toHaveTextContent('2');
+  expect(screen.getByRole('combobox', { name: 'Result scope' })).toHaveAttribute('data-slot', 'select-trigger');
 });
 
 it('shows configured users separately from users executed before local Stop', async () => {
@@ -96,8 +97,8 @@ it('shows configured users separately from users executed before local Stop', as
       result: { ...child('B'), status: 'stopped', executed_vus: 0, metadata: { configured_vus: '2' } },
     }],
   } }));
-  fireEvent.change(screen.getByRole('combobox', { name: 'Result scope' }), { target: { value: 'A' } });
+  await selectOption('Result scope', 'A');
   expect(screen.getByText('VUs (exec/conf)').parentElement).toHaveTextContent('2/100');
-  fireEvent.change(screen.getByRole('combobox', { name: 'Result scope' }), { target: { value: 'B' } });
+  await selectOption('Result scope', 'B');
   expect(screen.getByText('VUs (exec/conf)').parentElement).toHaveTextContent('0/2');
 });

@@ -1,5 +1,5 @@
 import { useLanguage } from '../../../contexts/LanguageContext';
-import { nativeSelectClassName } from '../../ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
 import { ArrowDown, ArrowUp, GripVertical, Plus, Trash2 } from 'lucide-react';
 import { useRef, useState, type DragEvent } from 'react';
 import {
@@ -262,21 +262,23 @@ export function SegmentsLoadMode({ data, onChange }: LoadModeProps) {
               placeholder={segmentTargetType(segment) === 'vus' ? '50' : '5'}
               onChange={value => updateSegmentTargetValue(index, value)}
             />
-            <select
-              aria-label={t('yamlEditor.nodeDetails.load.transitionFor').replace('{n}', String(index + 1))}
+            <Select
               required
               value={segment.transition ?? ''}
-              onChange={event => updateSegment(index, 'transition', event.target.value)}
-              className={nativeSelectClassName}
+              onValueChange={value => updateSegment(index, 'transition', value)}
             >
-              <option value="" disabled>{t('yamlEditor.nodeDetails.load.selectTransition')}</option>
-              <option value="constant">{t('studioControls.constant')}</option>
-              {segmentTargetType(segment) === 'vus' && <option value="ramp_up">{t('yamlEditor.nodeDetails.load.rampUpOption')}</option>}
-              {segmentTargetType(segment) === 'vus' && index > 0 && <option value="ramp_down">{t('yamlEditor.nodeDetails.load.rampDownOption')}</option>}
-              {segmentTargetType(segment) === 'vus' && index === 0 && segment.transition === 'ramp_down' && (
-                <option value="ramp_down" disabled>{t('yamlEditor.nodeDetails.load.rampDownInvalid')}</option>
-              )}
-            </select>
+              <SelectTrigger aria-label={t('yamlEditor.nodeDetails.load.transitionFor').replace('{n}', String(index + 1))}>
+                <SelectValue placeholder={t('yamlEditor.nodeDetails.load.selectTransition')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="constant">{t('studioControls.constant')}</SelectItem>
+                {segmentTargetType(segment) === 'vus' && <SelectItem value="ramp_up">{t('yamlEditor.nodeDetails.load.rampUpOption')}</SelectItem>}
+                {segmentTargetType(segment) === 'vus' && index > 0 && <SelectItem value="ramp_down">{t('yamlEditor.nodeDetails.load.rampDownOption')}</SelectItem>}
+                {segmentTargetType(segment) === 'vus' && index === 0 && segment.transition === 'ramp_down' && (
+                  <SelectItem value="ramp_down" disabled>{t('yamlEditor.nodeDetails.load.rampDownInvalid')}</SelectItem>
+                )}
+              </SelectContent>
+            </Select>
             <div className="grid grid-cols-2 gap-1 px-2 py-2">
               <SegmentInput
                 ariaLabel={t('yamlEditor.nodeDetails.load.vusMinFor').replace('{n}', String(index + 1))}
@@ -361,16 +363,19 @@ function SegmentTargetTypeSelect({
   onChange: (value: SegmentTargetType) => void;
 }) {
   return (
-    <select
+    <Select
       value={value}
       required
-      aria-label={ariaLabel}
-      onChange={event => onChange(event.target.value === 'vus' ? 'vus' : 'rps')}
-      className={nativeSelectClassName}
+      onValueChange={value => onChange(value === 'vus' ? 'vus' : 'rps')}
     >
-      <option value="rps">RPS</option>
-      <option value="vus">VUs</option>
-    </select>
+      <SelectTrigger aria-label={ariaLabel}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="rps">RPS</SelectItem>
+        <SelectItem value="vus">VUs</SelectItem>
+      </SelectContent>
+    </Select>
   );
 }
 

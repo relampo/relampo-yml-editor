@@ -44,8 +44,8 @@ test('RLP-768 native drag revalidates every neighbor, moves exact RPS interval a
   expect(await page.getByLabel('Name for segment 2', { exact: true }).evaluate(input => (input as HTMLInputElement & { reorderIdentity?: string }).reorderIdentity)).toBe('C');
   await expect(page.getByLabel('Name for segment 3', { exact: true })).toHaveValue('B');
   await expect(issue(page, 'Segment 4 Transition must be Ramp up from 20 VUs to 40 VUs.')).not.toBeVisible();
-  await expect(page.getByLabel('Transition for segment 4')).toHaveValue('constant');
-  await expect(page.getByLabel('Transition for segment 3')).toHaveValue('ramp_down');
+  await expect(page.getByLabel('Transition for segment 4')).toHaveText('Constant');
+  await expect(page.getByLabel('Transition for segment 3')).toHaveText('Ramp down');
   await expect(page.getByLabel('VUs Max for segment 2')).toHaveValue('40');
   await expect(page.getByLabel('Total Duration', { exact: true })).toHaveValue('1s');
   const target = page.locator('line[data-segment-rps-target="500"]');
@@ -53,10 +53,13 @@ test('RLP-768 native drag revalidates every neighbor, moves exact RPS interval a
   await expect(target).toHaveAttribute('x2', '252.5');
   await expect(target).toHaveAttribute('stroke-dasharray', '6 5');
   // A manually selected invalid transition exposes the new configured RPS predecessor.
-  await page.getByLabel('Transition for segment 3').selectOption('ramp_up');
+  await page.getByLabel('Transition for segment 3').click();
+  await page.getByRole('option', { name: 'Ramp up', exact: true }).click();
   await expect(issue(page, 'Segment 3 Transition must be Ramp down from 40 VUs to 20 VUs.')).toBeVisible();
-  await page.getByLabel('Transition for segment 3').selectOption('ramp_down');
-  await page.getByLabel('Transition for segment 4').selectOption('ramp_up');
+  await page.getByLabel('Transition for segment 3').click();
+  await page.getByRole('option', { name: 'Ramp down', exact: true }).click();
+  await page.getByLabel('Transition for segment 4').click();
+  await page.getByRole('option', { name: 'Ramp up', exact: true }).click();
   await expect(issue(page, 'Segment 4 Transition must be Ramp up from 20 VUs to 40 VUs.')).not.toBeVisible();
   const output = await save(page);
   const parsed = load(output) as { scenarios: Array<{ load: { duration: string; segments: Segment[] } }> };
@@ -77,20 +80,22 @@ test('RLP-768 native drag revalidates every neighbor, moves exact RPS interval a
 test('RLP-768 first VUs retains invalid Ramp down, allows Constant/Ramp up from zero, and first RPS keeps its bounds', async ({ page }) => {
   const errors = await openSegments(page, [a, b, c]);
   await drag(page, 2, 1);
-  await expect(page.getByLabel('Transition for segment 1')).toHaveValue('ramp_down');
+  await expect(page.getByLabel('Transition for segment 1')).toHaveText('Ramp down (invalid for first segment)');
   await expect(issue(page, 'Segment 1 cannot use Ramp down as the first segment.')).toBeVisible();
-  await page.getByLabel('Transition for segment 1').selectOption('constant');
+  await page.getByLabel('Transition for segment 1').click();
+  await page.getByRole('option', { name: 'Constant', exact: true }).click();
   await expect(issue(page, 'Segment 1 cannot use Ramp down as the first segment.')).not.toBeVisible();
-  await page.getByLabel('Transition for segment 1').selectOption('ramp_up');
+  await page.getByLabel('Transition for segment 1').click();
+  await page.getByRole('option', { name: 'Ramp up', exact: true }).click();
   await expect(page.locator('polyline[stroke-width="3"]')).toHaveAttribute('points', /^40,170 /);
   await drag(page, 3, 1);
-  await expect(page.getByLabel('Target type for segment 1')).toHaveValue('rps');
+  await expect(page.getByLabel('Target type for segment 1')).toHaveText('RPS');
   await expect(page.getByLabel('Target for segment 1')).toHaveValue('500');
   await expect(page.getByLabel('VUs Min for segment 1')).toHaveValue('10');
   await expect(page.getByLabel('VUs Max for segment 1')).toHaveValue('40');
-  await expect(page.getByLabel('Transition for segment 1')).toHaveValue('constant');
+  await expect(page.getByLabel('Transition for segment 1')).toHaveText('Constant');
   await expect(issue(page, 'Segment 2 Transition must be Ramp down from 40 VUs to 20 VUs.')).toBeVisible();
-  await expect(page.getByLabel('Transition for segment 2')).toHaveValue('ramp_up');
+  await expect(page.getByLabel('Transition for segment 2')).toHaveText('Ramp up');
   await expect(page.getByLabel('Total Duration', { exact: true })).toHaveValue('875ms');
   expect(errors).toEqual([]);
 });

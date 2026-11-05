@@ -1,5 +1,5 @@
 import { componentCapabilityError, type ComponentCapabilities } from '../utils/componentConfiguration';
-import { nativeSelectClassName } from './ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type ReactNode, type RefObject } from 'react';
 import {
   Activity,
@@ -488,12 +488,16 @@ export function YAMLLoadRunSession({
               </table>
             )}
             {summary?.scenarios && (
-              <label className="flex gap-3 text-sm text-zinc-300">{t('yamlEditor.runDebug.run.resultScope')}
-                <select aria-label={t('yamlEditor.runDebug.run.resultScope')} className={nativeSelectClassName} value={resultScope} onChange={event => setResultScope(event.target.value)}>
-                  <option value="">{t('yamlEditor.runDebug.run.global')}</option>
-                  {summary.scenarios.map(scenario => <option key={scenario.name} value={scenario.name}>{scenario.name}</option>)}
-                </select>
-              </label>
+              <div className="flex items-center gap-3 text-sm text-zinc-300">
+                <label htmlFor="result-scope">{t('yamlEditor.runDebug.run.resultScope')}</label>
+                <Select value={resultScope ? `scenario:${resultScope}` : 'global'} onValueChange={value => setResultScope(value === 'global' ? '' : value.slice('scenario:'.length))}>
+                  <SelectTrigger id="result-scope"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="global">{t('yamlEditor.runDebug.run.global')}</SelectItem>
+                    {summary.scenarios.map(scenario => <SelectItem key={scenario.name} value={`scenario:${scenario.name}`}>{scenario.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
             )}
             {selectedResult && <p className="text-sm text-zinc-300">{t('yamlEditor.runDebug.run.scenarioOutcome').replace('{name}', selectedResult.name).replace('{outcome}', selectedResult.outcome).replace('{evidence}', selectedResult.complete ? t('yamlEditor.runDebug.run.evidenceComplete') : t('yamlEditor.runDebug.run.evidencePartial'))}{selectedResult.error && ` ${selectedResult.error}`}</p>}
 

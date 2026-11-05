@@ -1,3 +1,4 @@
+import { selectOption } from '../../test/selectOption';
 import { normalizeLoadDataForYaml } from './loadUtils';
 import { fireEvent, render, screen } from '@testing-library/react';
 import type { ReactElement } from 'react';
@@ -259,7 +260,7 @@ describe('LoadDetails', () => {
   });
 });
 
-it('RLP-806 restores edited segments after switching models and reopening saved YAML', () => {
+it('RLP-806 restores edited segments after switching models and reopening saved YAML', async () => {
   let node: YAMLNode = {
     id: 'load-persist', type: 'load', name: 'Load: Segments', data: {
       type: 'segments', iterations: '3', segments: [
@@ -272,7 +273,7 @@ it('RLP-806 restores edited segments after switching models and reopening saved 
   const onNodeUpdate = (id: string, data: Record<string, unknown>) => { node = applyNodeUpdateToTree(node, id, data); };
   const view = renderWithLanguage(<LoadDetails node={node} onNodeUpdate={onNodeUpdate} />);
   const refresh = () => view.rerender(<LanguageProvider><LoadDetails node={node} onNodeUpdate={onNodeUpdate} /></LanguageProvider>);
-  fireEvent.change(screen.getByLabelText('Transition for segment 2'), { target: { value: 'ramp_up' } });
+  await selectOption('Transition for segment 2', 'Ramp up');
   refresh();
   fireEvent.change(screen.getByLabelText('Duration for segment 2'), { target: { value: '3m' } });
   refresh();
