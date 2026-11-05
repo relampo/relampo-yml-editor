@@ -69,6 +69,16 @@ function collectLoadNodes(node: YAMLNode | null): YAMLNode[] {
   return found;
 }
 
+// Names the scenarios whose Load is an unselected placeholder: Run executes
+// them with the engine fallback (Constant, 1 user, 1 iteration).
+function collectFallbackScenarioNames(node: YAMLNode | null): string[] {
+  if (!node) return [];
+  if (node.type === 'scenario') {
+    return node.children?.some(child => child.type === 'load' && child.data?.__loadSelected === false) ? [node.name] : [];
+  }
+  return node.children?.flatMap(collectFallbackScenarioNames) ?? [];
+}
+
 // A Balanced Controller in Iterations mode ends the run once its iteration
 // budget is consumed, so a configured Duration is only an upper bound: the run
 // (and its live metrics) can stop well before the duration elapses. Detecting
@@ -286,6 +296,8 @@ export function YAMLLoadRunSession({
   }
 
   const loadNodes = useMemo(() => collectLoadNodes(tree), [tree]);
+  const fallbackScenarioNames = useMemo(() => collectFallbackScenarioNames(tree), [tree]);
+  const usesOnlyFallbackLoad = loadNodes.every(node => node.data?.__loadSelected === false);
   const runRequestTargets = useMemo(() => collectDebugEventTargets(tree), [tree]);
   const isMultiScenario = loadNodes.length > 1 || hasMultipleRunScenarios(yamlCode);
   const incompatibleMulti = isMultiScenario && !multiScenarioRunEnabled;
@@ -456,9 +468,11 @@ export function YAMLLoadRunSession({
         onStopRun={stopRun}
       />
 
-      {(loadNodes.length === 0 || loadNodes.some(node => node.data?.__loadSelected === false)) && (
+      {(usesOnlyFallbackLoad || fallbackScenarioNames.length > 0) && (
         <p role="status" className="border-b border-amber-400/20 bg-amber-400/5 px-4 py-3 text-sm text-amber-300">
-          {t('studioControls.noLoadSelection')}
+          {usesOnlyFallbackLoad
+            ? t('studioControls.noLoadSelection')
+            : t('studioControls.noLoadSelectionScenarios').replace('{names}', fallbackScenarioNames.join(', '))}
         </p>
       )}
       {incompatibleMulti && <RunErrorBanner message={t('yamlEditor.runDebug.run.multiBackend')} />}
