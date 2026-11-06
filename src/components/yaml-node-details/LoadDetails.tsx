@@ -1,5 +1,5 @@
 import { useLanguage } from '../../contexts/LanguageContext';
-import { Crosshair, Gauge, ListTree, Mountain, TrendingUp, Users } from 'lucide-react';
+import { Check, Crosshair, Gauge, ListTree, Mountain, TrendingUp, Users } from 'lucide-react';
 import { useId, useState } from 'react';
 import { LoadVisualization } from './LoadVisualization';
 import {
@@ -41,17 +41,19 @@ export function LoadDetails({ node, onNodeUpdate }: NodeDetailProps) {
   const activeData = toLoadData(data as Record<string, unknown>);
   const activeType = normalizeLoadType(activeData.type);
   const hasSelection = data.__loadSelected !== false;
+  const activeModelId = useId();
   const [preview, setPreview] = useState({ nodeId: node.id, type: activeType });
   const loadType = preview.nodeId === node.id ? preview.type : activeType;
+  const isActivePreview = hasSelection && loadType === activeType;
   const profiles = data.__loadProfiles && typeof data.__loadProfiles === 'object'
     ? data.__loadProfiles as Record<string, LoadData> : {};
   const saved = profiles[loadType] ?? (loadType === 'segments' ? data.__segmentsProfile : undefined);
-  const loadData = hasSelection && loadType === activeType ? activeData
+  const loadData = isActivePreview ? activeData
     : saved && typeof saved === 'object' ? toLoadData(saved)
     : buildLoadDataForType(loadType, activeData);
 
   const saveProfile = (nextData: LoadData) => {
-    if (hasSelection && loadType === activeType) {
+    if (isActivePreview) {
       updateData({ ...nextData, __loadProfiles: profiles });
     } else {
       updateData({ ...data, __loadProfiles: { ...profiles, [loadType]: nextData } });
@@ -110,24 +112,18 @@ export function LoadDetails({ node, onNodeUpdate }: NodeDetailProps) {
             const Icon = option.icon;
             const isSelected = hasSelection && activeType === option.type;
             return (
-              <div key={option.type} className={`relative flex rounded-xl border bg-white/[0.02] ${isSelected ? 'border-yellow-400 bg-yellow-400/[0.04] ring-1 ring-yellow-400' : 'border-white/10'}`}>
-                <input
-                  type="checkbox"
-                  aria-label={`${t('studioControls.selectLoadModel')}: ${t(`studioControls.${option.type}`)}`}
-                  checked={isSelected}
-                  onChange={event => selectProfile(option.type, event.target.checked)}
-                  className="absolute left-3 top-3 z-10 h-5 w-5 cursor-pointer appearance-none rounded-full border border-zinc-500 bg-[#111] checked:border-yellow-400 checked:bg-yellow-400 checked:shadow-[inset_0_0_0_5px_#111] forced-colors:appearance-auto focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-yellow-400"
-                />
+              <div key={option.type} className={`relative flex rounded-xl border bg-white/[0.02] ${isSelected ? 'border-yellow-400 bg-yellow-400/[0.04] ring-1 ring-yellow-400' : loadType === option.type ? 'border-zinc-400' : 'border-white/10'}`}>
+                {isSelected && <Check className="pointer-events-none absolute right-2 top-2 h-4 w-4 text-yellow-400" aria-hidden="true" />}
                 <button
                   type="button"
                   aria-pressed={loadType === option.type}
+                  aria-describedby={isSelected ? activeModelId : undefined}
                   onClick={() => setPreview({ nodeId: node.id, type: option.type })}
-                  className="flex w-full flex-col items-center gap-3 rounded-xl px-3 pb-4 pt-5 text-center text-sm hover:bg-white/5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-yellow-400"
+                  className="flex w-full flex-col items-center gap-3 rounded-xl px-3 py-5 text-center text-sm hover:bg-white/5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-yellow-400"
                   aria-label={t(`studioControls.${option.type}`)}
                 >
                   <Icon className={`h-6 w-6 ${isSelected ? 'text-yellow-400' : 'text-zinc-200'}`} aria-hidden="true" />
                   <span className="font-semibold text-zinc-100">{t(`studioControls.${option.type}`)}</span>
-                  <span className="text-xs leading-relaxed text-zinc-400">{t(`studioControls.loadDescriptions.${option.type}`)}</span>
                 </button>
               </div>
             );
@@ -135,9 +131,18 @@ export function LoadDetails({ node, onNodeUpdate }: NodeDetailProps) {
         </div>
       </fieldset>
 
-      <p aria-live="polite" className="text-sm text-amber-300">
-        {hasSelection ? `${t('studioControls.selectedLoadModel')}: ${t(`yamlEditor.nodeDetails.load.type_${activeType}`)}` : t('studioControls.noLoadSelection')}
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p id={activeModelId} aria-live="polite" className="text-sm text-amber-300">
+          {hasSelection ? `${t('studioControls.selectedLoadModel')}: ${t(`studioControls.${activeType}`)}` : t('studioControls.noLoadSelection')}
+        </p>
+        <button
+          type="button"
+          onClick={() => selectProfile(loadType, !isActivePreview)}
+          className={`rounded-lg border px-4 py-2 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-yellow-400 ${isActivePreview ? 'border-white/15 text-zinc-300 hover:bg-white/5' : 'border-yellow-400 bg-yellow-400 text-black hover:bg-yellow-300'}`}
+        >
+          {t(isActivePreview ? 'studioControls.deactivateLoadModel' : 'studioControls.activateLoadModel')}
+        </button>
+      </div>
 
       <LoadModePanel
         data={loadData}

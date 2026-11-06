@@ -170,7 +170,6 @@ export function collectUnrecognizedFields(tree: YAMLNode | null): UnrecognizedFi
   const document = treeToObject(tree);
   const paths = new Set<string>(inspectComponentConfiguration(document).warnings.map(issue => issue.path));
   const adopted = tree.unknownData?.component_configuration_version === 1;
-  if (!adopted && tree.children?.some(node => node.type === 'error_policy')) paths.add('error_policy');
 
   const visit = (node: YAMLNode, parent?: YAMLNode) => {
     for (const key of Object.keys(node.unknownData || {}))
@@ -208,8 +207,11 @@ export function collectUnrecognizedFields(tree: YAMLNode | null): UnrecognizedFi
       ]) {
         const value = data[field];
         if (!value || typeof value !== 'object' || Array.isArray(value) || !knownFields[nestedScope]) continue;
-        for (const key of Object.keys(value))
+        for (const key of Object.keys(value)) {
+          // Earlier editor exports are migrated to sql.validate_connectivity on save.
+          if (node.type === 'sql' && field === 'connection' && key === 'validate_connectivity') continue;
           if (!knownFields[nestedScope].has(key)) paths.add(formatPath([...scope.prefix, field, key]));
+        }
       }
     }
     node.children?.forEach(child => visit(child, node));

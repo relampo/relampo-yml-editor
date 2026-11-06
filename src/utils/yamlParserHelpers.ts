@@ -141,11 +141,7 @@ function normalizeSQLConnection(
   }
   delete connection.sslmode;
 
-  const validateConnectivity =
-    sql.validate_connectivity !== undefined ? sql.validate_connectivity : sql.validate_connection;
-  if (connection.validate_connectivity === undefined && validateConnectivity !== undefined) {
-    connection.validate_connectivity = validateConnectivity === true;
-  }
+  delete connection.validate_connectivity;
 
   if (connection.max_open_conns === undefined && typeof sql.max_open_conns === 'number') {
     connection.max_open_conns = sql.max_open_conns;
@@ -318,6 +314,7 @@ export function normalizeSQLForEditor(step: PlainRecord | undefined): SQLLike {
 
   return {
     ...sql,
+    validate_connectivity: sql.validate_connectivity ?? sql.validate_connection ?? sql.connection?.validate_connectivity,
     dialect: typeof sql.dialect === 'string' && sql.dialect.trim() !== '' ? sql.dialect : 'postgres',
     kind: inferSQLKind(sql),
     driver: typeof sql.driver === 'string' ? sql.driver : '',
@@ -341,6 +338,7 @@ export function normalizeSQLForYaml(step: PlainRecord | undefined, preservePrese
 
   const normalized: SQLLike = {
     ...sql,
+    validate_connectivity: sql.validate_connectivity ?? sql.validate_connection ?? sql.connection?.validate_connectivity,
     kind: inferSQLKind(sql),
     allow_writes: sql.allow_writes === true || sql.allow_write === true,
     on_error: typeof sql.on_error === 'string' ? sql.on_error : undefined,
@@ -349,7 +347,6 @@ export function normalizeSQLForYaml(step: PlainRecord | undefined, preservePrese
 
   delete normalized.allow_write;
   delete normalized.validate_connection;
-  delete normalized.validate_connectivity;
   delete normalized.max_open_conns;
   delete normalized.max_idle_conns;
   delete normalized.conn_max_lifetime;
@@ -358,7 +355,7 @@ export function normalizeSQLForYaml(step: PlainRecord | undefined, preservePrese
   if (preservePresence) {
     if (!('allow_writes' in sql) && !('allow_write' in sql)) delete normalized.allow_writes;
     if ('on_error' in sql) normalized.on_error = sql.on_error;
-    if ('connection' in sql && !connection) normalized.connection = sql.connection;
+    if ('connection' in sql && !connection) normalized.connection = isPlainObject(sql.connection) ? {} : sql.connection;
   }
 
   Object.keys(normalized).forEach(key => {

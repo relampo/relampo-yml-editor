@@ -461,7 +461,7 @@ scenarios:
     expect(step.data!.kind).toBe('query');
     expect(step.data!.connection!.database).toBe('app');
     expect(step.data!.connection!.ssl_mode).toBe('disable');
-    expect(step.data!.connection!.validate_connectivity).toBe(true);
+    expect(step.data!.validate_connectivity).toBe(true);
     expect(step.data!.connection!.max_open_conns).toBe(6);
     expect(step.data!.params).toEqual(['active']);
   });
@@ -574,7 +574,7 @@ scenarios:
 
     expect(postgresCreate.data!.kind).toBe('exec');
     expect(postgresCreate.data!.allow_writes).toBe(true);
-    expect(postgresCreate.data!.connection!.validate_connectivity).toBe(true);
+    expect(postgresCreate.data!.validate_connectivity).toBe(true);
     expect(postgresCreate.data!.connection!.max_open_conns).toBe(5);
     expect(postgresCreate.data!.on_error).toBe('continue');
 
@@ -587,7 +587,7 @@ scenarios:
 
     expect(mysqlCreate.data!.dialect).toBe('mysql');
     expect(mysqlCreate.data!.connection!.port).toBe('{{mysql_port}}');
-    expect(mysqlCreate.data!.connection!.validate_connectivity).toBe(true);
+    expect(mysqlCreate.data!.validate_connectivity).toBe(true);
     expect(mysqlCount.data!.extract).toEqual({
       user_count: "jsonpath('$[0].count')",
     });

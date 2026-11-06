@@ -535,16 +535,47 @@ scenarios:
       }).errors,
     ).toEqual([]);
   });
-  it('keeps ignored root policy visible as a legacy warning and forbids its adoption', () => {
+  it('accepts a root policy and inherits it with explicit per-key precedence', () => {
     const input = { error_policy: { on_error: 'stop' }, scenarios: [{ steps: [{ get: '/' }] }] };
     const tree = parseYAMLToTree(dump(input))!;
-    expect(collectUnknownFieldPaths(tree)).toContain('error_policy');
+    expect(collectUnknownFieldPaths(tree)).not.toContain('error_policy');
     expect(roundtrip(input).error_policy).toEqual(input.error_policy);
     const adopted = parseYAMLToTree(dump({ ...input, component_configuration_version: 1 }))!;
-    expect(inspectComponentConfiguration({ ...input, component_configuration_version: 1 }).errors[0].path).toBe(
-      'error_policy',
-    );
-    expect(effectiveComponentValues(adopted, find(adopted, 'get'), 'http')).not.toHaveProperty('error_policy');
+    expect(inspectComponentConfiguration({ ...input, component_configuration_version: 1 }).errors).toEqual([]);
+    expect(effectiveComponentValues(adopted, find(adopted, 'get'), 'http').error_policy.value).toMatchObject({ on_error: 'stop' });
+    expect(componentCapabilityError(dump(input), capabilities)).toBeNull();
+    expect(componentCapabilityError(dump(input), { version: 1, features: ['error_policy'] })).toContain('global error policies');
+  });
+  it.each(['request', 'sql'])('shows global origins and scenario overrides for %s', type => {
+    const input = {
+      component_configuration_version: 1,
+      test: { name: 'Global plan' },
+      error_policy: { on_error: 'stop', on_timeout: 'stop' },
+      scenarios: [{ name: 'Scenario', error_policy: { on_error: 'continue' }, steps: [{ [type]: { url: '/', query: 'SELECT 1' } }] }],
+    };
+    const tree = parseYAMLToTree(dump(input))!;
+    const policy = effectiveComponentValues(tree, find(tree, type), type === 'sql' ? 'sql' : 'http').error_policy;
+    expect(policy.value).toMatchObject({ on_error: 'continue', on_timeout: 'stop' });
+    expect(policy.origins).toMatchObject({ on_error: 'Scenario: error_policy', on_timeout: 'Global plan: error_policy' });
+  });
+  it.each([0, 1])('validates effective SQL policies after overrides with adoption %s', version => {
+    for (const action of ['stop_user', 'next_iteration']) {
+      for (const [scenario, local, valid] of [
+        [{}, {}, false],
+        [{ on_error: 'continue' }, {}, true],
+        [{}, { on_error: 'continue' }, true],
+        [{}, { on_timeout: 'continue' }, false],
+      ] as const) {
+        const input = {
+          ...(version ? { component_configuration_version: version } : {}),
+          error_policy: { on_error: action },
+          scenarios: [{ error_policy: scenario, steps: [{ sql: { kind: 'query', query: 'SELECT 1', error_policy: local } }] }],
+        };
+        const errors = inspectComponentConfiguration(input).errors;
+        expect(errors.length === 0).toBe(valid);
+        if (!valid) expect(errors[0].message).toContain('SQL supports continue or stop');
+      }
+    }
   });
   it('adds structural scope errors to normal editor validation', () => {
     const tree = parseYAMLToTree(dump({ component_configuration_version: 2, scenarios: [] }))!;
@@ -564,6 +595,7 @@ describe('RLP-689 capabilities before dispatch', () => {
   it('requires every authored feature, including disabled declarations and SQL locals', () => {
     const input = {
       component_configuration_version: 1,
+      error_policy: { on_4xx: 'continue' },
       defaults: {
         data_source: { enabled: false },
         think_time: { enabled: false },
@@ -579,7 +611,7 @@ describe('RLP-689 capabilities before dispatch', () => {
           version: 1,
           features: COMPONENT_FEATURES.filter(item => item !== feature),
         }),
-      ).toContain(feature);
+      ).toContain(feature === 'global_error_policy' ? 'global error policies' : feature);
   });
   it('normalizes advertised features without accepting an unsupported version', () => {
     expect(parseComponentCapabilities({ version: 1, features: ['http_defaults', 'future_feature'] })).toEqual({

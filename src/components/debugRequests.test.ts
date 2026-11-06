@@ -849,6 +849,33 @@ describe('skippedRedirectHops — recorded chain longer than the live run (RLP-6
 });
 
 describe('RLP-758 distinct declared variables and built-ins', () => {
+ it('matches recorded form-list built-ins to captured field names, including repeated fields', () => {
+   const tree = parseYAMLToTree(`scenarios:
+  - steps:
+      - request:
+          method: POST
+          url: /login
+          headers: {Content-Type: application/x-www-form-urlencoded}
+          body:
+            - securityToken: '{{token}}'
+            - email_address: '{{user}}'
+            - password: '{{_randomInt(1,5)}}'
+            - repeated: '{{_randomInt(1,5)}}'
+            - repeated: 'prefix-{{_randomInt(1,5)}}'
+`);
+   const [node] = collectDebugEventTargets(tree);
+   expect(variableRowsForRequestNode(node, { token: 'synthetic', user: 'synthetic' }, {
+     requestBody: 'securityToken=synthetic&email_address=synthetic&password=3&repeated=2&repeated=prefix-4',
+     builtinValues: [99],
+   })).toEqual([
+     ['token (REQ)', 'synthetic'],
+     ['user (REQ)', 'synthetic'],
+     ['Body.password (REQ)', '3'],
+     ['Body.repeated.0 (REQ)', '2'],
+     ['Body.repeated.1 (REQ)', 'prefix-4'],
+   ]);
+ });
+
  it.each([
    [{ password: '{{_randomInt(1,10)}}' }, 'password=5', [['Body.password (REQ)', '5']]],
    ['password={{_randomInt(1,10)}}', 'password=5', [['Body.password (REQ)', '5']]],

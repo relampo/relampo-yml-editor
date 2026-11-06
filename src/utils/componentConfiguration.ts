@@ -6,6 +6,7 @@ import { requestNodeToObject, treeToObject } from './yamlTreeSerializer';
 export const COMPONENT_FEATURES = [
   'http_defaults',
   'error_policy',
+  'global_error_policy',
   'scoped_data_source',
   'think_time',
   'http_assertions',
@@ -499,7 +500,21 @@ export function inspectComponentConfiguration(script: unknown): {
     'assertions' in record.defaults.sql
       ? record.defaults.sql.assertions
       : previous;
-  const walkSteps = (steps: unknown, path: string, inheritedSQL: unknown) => {
+  const mergeSQLPolicy = (previous: Record<string, string>, value: unknown): Record<string, string> => {
+    if (!configurationRecord(value) || value.enabled === false) return previous;
+    const next = { ...previous };
+    for (const key of ['on_error', 'on_timeout']) {
+      const action = value[key];
+      if (typeof action === 'string' && action.trim()) next[key] = action.trim().toLowerCase();
+    }
+    return next;
+  };
+  const scopeSQLPolicy = (record: Record<string, unknown>, previous: Record<string, string>, ownPolicy: boolean) => {
+    const defaults = adopted && configurationRecord(record.defaults) && configurationRecord(record.defaults.sql)
+      ? record.defaults.sql : {};
+    return mergeSQLPolicy(ownPolicy ? mergeSQLPolicy(previous, record.error_policy) : previous, defaults.error_policy);
+  };
+  const walkSteps = (steps: unknown, path: string, inheritedSQL: unknown, inheritedPolicy: Record<string, string>) => {
     if (!Array.isArray(steps)) return;
     steps.forEach((step, index) => {
       if (!configurationRecord(step)) return;
@@ -530,8 +545,9 @@ export function inspectComponentConfiguration(script: unknown): {
               payload.steps ?? step.steps,
               `${payloadPath}.steps`,
               inheritedSQLAssertions(payload, inheritedSQL),
+              scopeSQLPolicy(payload, inheritedPolicy, false),
             );
-          } else walkSteps(step.steps, `${stepPath}.steps`, inheritedSQL);
+          } else walkSteps(step.steps, `${stepPath}.steps`, inheritedSQL, inheritedPolicy);
           continue;
         }
         if (!configurationRecord(payload)) continue;
@@ -567,6 +583,13 @@ export function inspectComponentConfiguration(script: unknown): {
             for (const field of ['auth', 'headers', 'assertions'])
               if (field in payload) validateValue(field, payload[field], `${payloadPath}.${field}`, 'http');
           if (kind === 'sql') {
+            const localPolicy = mergeSQLPolicy({}, payload.error_policy);
+            const localOnError = typeof payload.on_error === 'string' ? payload.on_error.trim().toLowerCase() : '';
+            for (const key of ['on_error', 'on_timeout']) {
+              const action = localPolicy[key] || (key === 'on_error' ? localOnError : '') || localPolicy.on_error || inheritedPolicy[key] || inheritedPolicy.on_error || 'continue';
+              if (!['continue', 'stop'].includes(action))
+                error(`${payloadPath}.error_policy.${key}`, 'SQL supports continue or stop after policy inheritance.');
+            }
             if (!adopted && ('assertions' in payload || 'think_time' in payload))
               error(payloadPath, 'SQL assertions and think_time require component_configuration_version: 1.');
             if (adopted) {
@@ -612,14 +635,19 @@ export function inspectComponentConfiguration(script: unknown): {
           }
         } else if (EXPERIMENTAL.has(kind) || ['think_time', 'data_source', 'assertions', 'assertion'].includes(kind)) {
           owner(payload, payloadPath, false);
-          walkSteps(payload.steps, `${payloadPath}.steps`, inheritedSQL);
+          walkSteps(payload.steps, `${payloadPath}.steps`, inheritedSQL, inheritedPolicy);
         }
       }
     });
   };
-  knownPlacement(script, '', new Set(['data_source']));
+  knownPlacement(script, '', new Set(['data_source', 'error_policy']));
+  if ('error_policy' in script) {
+    required.add('global_error_policy');
+    validateValue('error_policy', script.error_policy, 'error_policy', 'http');
+  }
   owner(script, '', true);
   const rootSQL = inheritedSQLAssertions(script, undefined);
+  const rootPolicy = scopeSQLPolicy(script, {}, true);
   if (Array.isArray(script.scenarios))
     script.scenarios.forEach((scenario, index) => {
       if (!configurationRecord(scenario)) return;
@@ -633,7 +661,7 @@ export function inspectComponentConfiguration(script: unknown): {
           for (const field of ['auth', 'headers', 'assertions'])
             if (field in request) validateValue(field, request[field], `${path}.requests[${index}].${field}`, 'http');
         });
-      walkSteps(scenario.steps, `${path}.steps`, inheritedSQLAssertions(scenario, rootSQL));
+      walkSteps(scenario.steps, `${path}.steps`, inheritedSQLAssertions(scenario, rootSQL), scopeSQLPolicy(scenario, rootPolicy, true));
     });
   return { errors, warnings, required: [...required].sort() };
 }
@@ -647,6 +675,8 @@ export function componentCapabilityError(yaml: string, capabilities?: ComponentC
   }
   const inspection = inspectComponentConfiguration(script);
   if (inspection.errors.length) return inspection.errors[0].message;
+  if (inspection.required.includes('global_error_policy') && !capabilities?.features.includes('global_error_policy'))
+    return 'This backend does not support global error policies. Update Relampo before running.';
   if (!configurationRecord(script) || script.component_configuration_version !== 1) return null;
   if (capabilities?.version !== 1)
     return 'This backend does not support component configuration version 1. Update Relampo before running.';
@@ -726,7 +756,7 @@ export function effectiveComponentValues(
       assign('auth', legacyData.auth, `${ancestor.name}: auth`);
     const legacyPolicy =
       ancestor.children?.find(child => child.type === 'error_policy')?.data ?? legacyData?.error_policy;
-    if (ancestor.type === 'scenario' && legacyPolicy !== undefined)
+    if ((ancestor.id === tree.id || ancestor.type === 'scenario') && legacyPolicy !== undefined)
       assign('error_policy', legacyPolicy, `${ancestor.name}: error_policy`);
     const defaults = nodeDefaults(tree, ancestor);
     for (const field of COMMON_FIELDS)

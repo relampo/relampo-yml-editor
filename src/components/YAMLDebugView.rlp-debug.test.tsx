@@ -1096,7 +1096,10 @@ scenarios:
         method: POST
         url: /login
         headers: {Content-Type: application/x-www-form-urlencoded}
-        body: {password: '{{_randomInt(1,10)}}', email: '{{user}}'}
+        body:
+          - token: fixed
+          - email: '{{user}}'
+          - password: '{{_randomInt(1,10)}}'
 `;
     render(
       <YAMLDebugSession
