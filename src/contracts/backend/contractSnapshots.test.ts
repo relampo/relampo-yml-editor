@@ -96,6 +96,21 @@ for (const [slot, version] of Object.entries(slots)) {
       });
     }
 
+    if (version === '1.0.15') {
+      it('pins the global policy contract and preserves its supported root field', async () => {
+        const manifest = JSON.parse(await readFile(join(bundleRoot, 'contract.json'), 'utf8')) as Manifest;
+        expect(manifest.backend_sha).toBe('e33ae4bed53b99a0a84c5b94801ff80adce80f7a');
+        expect(manifest.known_fields.root).toContain('error_policy');
+        const fixture = manifest.fixtures.find(item => item.kind === 'valid')!;
+        const yaml = await readFile(join(bundleRoot, fixture.path), 'utf8');
+        const tree = parseYAMLToTree(yaml)!;
+        const saved = jsyaml.load(treeToYAML(tree)) as Record<string, unknown>;
+        expect(saved.error_policy).toEqual({ on_4xx: 'continue' });
+        expect(inspectComponentConfiguration(saved).errors).toEqual([]);
+        expect(collectUnknownFieldPaths(tree)).not.toContain('error_policy');
+      });
+    }
+
     it('parses valid and forward fixtures offline', async () => {
       const manifest = JSON.parse(await readFile(join(bundleRoot, 'contract.json'), 'utf8')) as Manifest;
       for (const fixture of manifest.fixtures.filter(item => item.kind === 'valid' || item.kind === 'forward')) {

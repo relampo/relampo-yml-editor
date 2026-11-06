@@ -1,0 +1,27 @@
+component_configuration_version: 1
+defaults:
+  future_defaults: keep-me
+  http:
+    future_http: {enabled: false}
+    auth: {type: none, future_auth: keep-me}
+    assertions: []
+  sql:
+    assertions:
+      - type: duration
+        value: {max: 1000, future_precision: '{{ _missingFunction() }}'}
+        future_assertion: keep-me
+  data_source: {enabled: false, future_data_source: keep-me}
+test:
+  name: contract-forward
+  future_test:
+    enabled: true
+future_root:
+  owner: backend
+scenarios:
+  - name: smoke
+    future_scenario: keep-me
+    steps:
+      - request:
+          method: GET
+          url: /health
+          future_request: keep-me

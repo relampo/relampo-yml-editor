@@ -170,7 +170,6 @@ export function collectUnrecognizedFields(tree: YAMLNode | null): UnrecognizedFi
   const document = treeToObject(tree);
   const paths = new Set<string>(inspectComponentConfiguration(document).warnings.map(issue => issue.path));
   const adopted = tree.unknownData?.component_configuration_version === 1;
-  if (!adopted && tree.children?.some(node => node.type === 'error_policy')) paths.add('error_policy');
 
   const visit = (node: YAMLNode, parent?: YAMLNode) => {
     for (const key of Object.keys(node.unknownData || {}))
