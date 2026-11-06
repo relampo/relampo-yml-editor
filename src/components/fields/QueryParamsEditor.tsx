@@ -31,7 +31,13 @@ interface QueryParamsEditorProps {
   searchText?: string;
 }
 
-export function QueryParamsEditor({ url, onUrlChange, className = '', showBaseUrl = true, searchText = '' }: QueryParamsEditorProps) {
+export function QueryParamsEditor({
+  url,
+  onUrlChange,
+  className = '',
+  showBaseUrl = true,
+  searchText = '',
+}: QueryParamsEditorProps) {
   const { t } = useLanguage();
   const [params, setParams] = useState<QueryParam[]>([]);
   const [baseUrl, setBaseUrl] = useState('');
@@ -139,10 +145,18 @@ export function QueryParamsEditor({ url, onUrlChange, className = '', showBaseUr
   };
 
   return (
-    <div className={className}>
+    <div
+      data-search-field="url"
+      className={className}
+    >
       {showBaseUrl && (
         <div className="mb-4">
-          <label htmlFor="queryparams-base-url" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{t('yamlEditor.shell.query.baseUrl')}</label>
+          <label
+            htmlFor="queryparams-base-url"
+            className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
+          >
+            {t('yamlEditor.shell.query.baseUrl')}
+          </label>
           <Input
             id="queryparams-base-url"
             value={baseUrl}
@@ -181,7 +195,9 @@ export function QueryParamsEditor({ url, onUrlChange, className = '', showBaseUr
 
       <div>
         <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">{t('yamlEditor.shell.query.title')}</span>
+          <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+            {t('yamlEditor.shell.query.title')}
+          </span>
           <button
             type="button"
             onClick={handleAddParam}

@@ -1,3 +1,4 @@
+import { useSearchNavigation } from './yaml-tree-view/SearchNavigationContext';
 import {
   AlertTriangle,
   BarChart3,
@@ -116,7 +117,8 @@ export function YAMLTreeNode({
   const passAncestor = searchIndex
     ? ancestorMatchesSearch || Boolean(indexedState?.expandsDescendants)
     : ancestorMatchesSearch || nodeMatchExpandsDescendants(node, searchQuery);
-  const showChildrenWhileSearching = Boolean(searchQuery.trim()) &&
+  const showChildrenWhileSearching =
+    Boolean(searchQuery.trim()) &&
     (passAncestor ||
       node.children?.some(child =>
         searchIndex ? Boolean(searchIndex.get(child.id)?.subtreeMatch) : subtreeHasMatch(child, searchQuery),
@@ -126,6 +128,7 @@ export function YAMLTreeNode({
   const visibleChildren = node.children
     ? node.children.reduce<YAMLNode[]>((acc, child) => {
         if (
+          Boolean(indexedState?.scope) ||
           !searchQuery.trim() ||
           passAncestor ||
           (searchIndex ? Boolean(searchIndex.get(child.id)?.subtreeMatch) : subtreeHasMatch(child, searchQuery))
@@ -275,6 +278,7 @@ export function YAMLTreeNode({
         onNodeToggle={onNodeToggle}
         onContextMenu={onContextMenu}
         searchQuery={searchQuery}
+        scopedHit={indexedState}
       />
 
       {/* Children */}
@@ -324,6 +328,7 @@ interface YAMLTreeNodeRowProps {
   onNodeToggle: (nodeId: string) => void;
   onContextMenu: (event: React.MouseEvent, node: YAMLNode) => void;
   searchQuery: string;
+  scopedHit?: SearchNodeState;
 }
 
 function YAMLTreeNodeRow({
@@ -343,7 +348,9 @@ function YAMLTreeNodeRow({
   onNodeToggle,
   onContextMenu,
   searchQuery,
+  scopedHit,
 }: YAMLTreeNodeRowProps) {
+  const { match: navigationMatch } = useSearchNavigation();
   const { t } = useLanguage();
   const hasChildren = Boolean(node.children?.length);
   const isExpanded = node.expanded ?? true;
@@ -358,12 +365,14 @@ function YAMLTreeNodeRow({
   const IconComponent = getNodeIcon(node.type);
   const color = getNodeColor(node.type, node);
   const searchHitFlags = getNodeSearchHitFlags(node, searchQuery);
-  const hasRequestHit = searchHitFlags.request;
-  const hasResponseHit = searchHitFlags.response;
+  const hasRequestHit = scopedHit?.requestMatch ?? searchHitFlags.request;
+  const hasResponseHit = scopedHit?.responseMatch ?? searchHitFlags.response;
   const isActiveReplaceMatch = activeReplaceMatchNodeId === node.id;
 
-  const selectionClass = 'bg-yellow-300/12 border border-yellow-300/35 ring-1 ring-yellow-300/25 shadow-[0_0_0_1px_rgba(250,204,21,0.14)]';
-  const activeReplaceClass = 'bg-amber-300/20 border-2 border-amber-300/80 ring-2 ring-amber-300/60 shadow-[0_0_0_2px_rgba(252,211,77,0.3)]';
+  const selectionClass =
+    'bg-yellow-300/12 border border-yellow-300/35 ring-1 ring-yellow-300/25 shadow-[0_0_0_1px_rgba(250,204,21,0.14)]';
+  const activeReplaceClass =
+    'bg-green-300/15 border-2 border-green-300/80 ring-2 ring-green-300/60 shadow-[0_0_0_2px_rgba(134,239,172,0.3)]';
   const redirectedClass = 'bg-zinc-400/12 border border-zinc-300/30 hover:bg-zinc-400/16 ring-1 ring-zinc-300/15';
   const defaultVisual = isActiveReplaceMatch
     ? activeReplaceClass
@@ -448,7 +457,15 @@ function YAMLTreeNodeRow({
           node.data?.enabled === false ? 'text-zinc-400' : isRedirectedFollowUp ? 'text-zinc-100' : 'text-zinc-300'
         }`}
       >
-        <HighlightText text={getNodeDisplayName(node, t)} query={searchQuery} />
+        <HighlightText
+          text={getNodeDisplayName(node, t)}
+          activeIndex={
+            navigationMatch?.nodeId === node.id && navigationMatch.path[0] === 'name'
+              ? navigationMatch.fieldIndex
+              : undefined
+          }
+          query={scopedHit?.scope === 'responses' ? '' : searchQuery}
+        />
       </span>
 
       {/* Badge with extra info */}
@@ -614,7 +631,11 @@ function getNodeColor(type: YAMLNodeType, node?: YAMLNode): string {
   }
 }
 
-function getNodeBadge(node: YAMLNode, t: (key: string) => string, options: { mutedMethod?: boolean } = {}): React.ReactNode {
+function getNodeBadge(
+  node: YAMLNode,
+  t: (key: string) => string,
+  options: { mutedMethod?: boolean } = {},
+): React.ReactNode {
   const { mutedMethod = false } = options;
   const httpMethods = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
 
@@ -682,8 +703,7 @@ function getNodeBadge(node: YAMLNode, t: (key: string) => string, options: { mut
 
   if (node.type === 'think_time') {
     const durationLabel =
-      node.data?.duration ||
-      (node.data?.min && node.data?.max ? `${node.data.min}-${node.data.max}` : node.data?.mean);
+      node.data?.duration || (node.data?.min && node.data?.max ? `${node.data.min}-${node.data.max}` : node.data?.mean);
     if (!durationLabel) return null;
     return (
       <span className="text-xs px-1.5 py-0.5 rounded bg-orange-400/15 text-orange-400 font-mono font-medium border border-orange-400/30">

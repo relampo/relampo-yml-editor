@@ -1,3 +1,4 @@
+import type { SearchScope } from './yaml-tree-view/search';
 import { useMemo, useRef, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useYAML } from '../contexts/YAMLContext';
@@ -13,7 +14,11 @@ import { YAMLEditorBusyOverlay } from './YAMLEditorBusyOverlay';
 import { YAMLEditorDragOverlay } from './YAMLEditorDragOverlay';
 import { YAMLEditorStatusBanners } from './YAMLEditorStatusBanners';
 import { YAMLEditorMainLayout } from './YAMLEditorMainLayout';
-import { expandAncestorsInTree, syncRedirectSourceFollowRedirects, updateNodeEnabled } from './yaml-tree-view/treeOperations';
+import {
+  expandAncestorsInTree,
+  syncRedirectSourceFollowRedirects,
+  updateNodeEnabled,
+} from './yaml-tree-view/treeOperations';
 import { findNodeById } from './yamlEditorHelpers';
 import { autoRebalanceBalancedControllers } from '../utils/balancedController';
 import { useHttpDefaultsInfo, useRedirectMaps, useTreeSelection } from './useYamlEditorDerived';
@@ -23,6 +28,7 @@ import { useYamlFileUpload } from './yaml-editor/useYamlFileUpload';
 import { useYamlViewMode } from './yaml-editor/useYamlViewMode';
 
 export function YAMLEditor() {
+  const [treeSearchScope, setTreeSearchScope] = useState<SearchScope | null>(null);
   const { language, setLanguage, t } = useLanguage();
   const { yamlContent, setYamlContent } = useYAML();
   const { leftPanelWidth, isResizing: _isResizing, setIsResizing } = useResizePanel(30);
@@ -147,33 +153,31 @@ export function YAMLEditor() {
     editRevisionRef,
   });
 
-  const {
-    fileInputRef,
-    isDragOver,
-    handleUpload,
-    handleFileChange,
-    handleDragOver,
-    handleDragLeave,
-    handleDrop,
-  } = useYamlFileUpload({
-    language,
-    setError,
-    setSelectedNode,
-    setSelectedNodeIds,
-    setYamlTree,
-    setYamlCode,
-    setYamlContent,
-    setViewMode,
-    fallbackRootNameRef,
-    syncCodeToTree,
-    setCurrentFileName,
-    setHasDocumentActivity,
-    setIsDirty,
-    setIsFileLoading,
-    parseDebounceRef,
-    serializeDebounceRef,
-    invalidatePendingDraft: resetForNewDocument,
-  });
+  const { fileInputRef, isDragOver, handleUpload, handleFileChange, handleDragOver, handleDragLeave, handleDrop } =
+    useYamlFileUpload({
+      language,
+      setError,
+      setSelectedNode,
+      setSelectedNodeIds,
+      setYamlTree,
+      setYamlCode,
+      setYamlContent,
+      setViewMode,
+      fallbackRootNameRef,
+      syncCodeToTree,
+      setCurrentFileName,
+      setHasDocumentActivity,
+      setIsDirty,
+      setIsFileLoading,
+      parseDebounceRef,
+      serializeDebounceRef,
+      invalidatePendingDraft: () => {
+        setSearchResetSignal(signal => signal + 1);
+        setTreeSearchQuery('');
+        setTreeSearchScope(null);
+        return resetForNewDocument();
+      },
+    });
 
   const documentMetrics = useMemo(() => getDocumentMetrics(yamlCode), [yamlCode]);
   const issueIndex = useMemo(
@@ -290,7 +294,12 @@ export function YAMLEditor() {
         onConfirm={handleNewConfirm}
       />
 
-      {isEditorBusy && <YAMLEditorBusyOverlay isFileLoading={isFileLoading} language={language} />}
+      {isEditorBusy && (
+        <YAMLEditorBusyOverlay
+          isFileLoading={isFileLoading}
+          language={language}
+        />
+      )}
 
       <YAMLEditorStatusBanners
         error={error}
@@ -327,6 +336,7 @@ export function YAMLEditor() {
         searchResetSignal={searchResetSignal}
         onGoToFirstError={goToFirstError}
         treeSearchQuery={treeSearchQuery}
+        treeSearchScope={treeSearchScope}
         documentReady={documentReady}
         dataSourceFileBrowseEnabled={dataSourceFileBrowseEnabled}
         fileName={currentFileName}
@@ -335,7 +345,10 @@ export function YAMLEditor() {
         onTreeChange={handleTreeChange}
         onTreeViewChange={handleTreeViewChange}
         onContextMenuOpened={handleTreeContextMenuOpened}
-        onSearchChange={setTreeSearchQuery}
+        onSearchChange={(query, scope) => {
+          setTreeSearchQuery(query);
+          setTreeSearchScope(scope ?? null);
+        }}
         onCodeChange={handleCodeChange}
         flushPendingEdits={flushPendingTreeSerialization}
         onDebugSelectNode={node => {

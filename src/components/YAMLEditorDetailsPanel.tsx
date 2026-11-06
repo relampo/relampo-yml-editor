@@ -1,3 +1,4 @@
+import type { SearchScope } from './yaml-tree-view/search';
 import type { ComponentCapabilities } from '../utils/componentConfiguration';
 import type { DocumentIssue } from '../utils/documentIssues';
 import type { RedirectSourceInfo, RedirectedRequestInfo, YAMLNode } from '../types/yaml';
@@ -33,6 +34,7 @@ type YAMLEditorDetailsPanelProps = {
   onRemoveHost: (host: string) => void;
   onToggleEnabled: (nodeId: string, enabled: boolean) => void;
   searchQuery: string;
+  searchScope?: SearchScope | null;
   dataSourceFileBrowseEnabled: boolean;
   fileName: string;
 };
@@ -65,6 +67,7 @@ export function YAMLEditorDetailsPanel({
   onRemoveHost,
   onToggleEnabled,
   searchQuery,
+  searchScope,
   dataSourceFileBrowseEnabled,
   fileName,
 }: YAMLEditorDetailsPanelProps) {
@@ -109,7 +112,7 @@ export function YAMLEditorDetailsPanel({
           <div className={isRunViewActive ? 'h-full' : 'hidden'}>
             <YAMLLoadRunSession
               multiScenarioRunEnabled={multiScenarioRunEnabled}
-        componentCapabilities={componentCapabilities}
+              componentCapabilities={componentCapabilities}
               tree={yamlTree}
               yamlCode={yamlCode}
               flushPendingEdits={flushPendingEdits}
@@ -134,6 +137,7 @@ export function YAMLEditorDetailsPanel({
             onRemoveHost={onRemoveHost}
             onToggleEnabled={onToggleEnabled}
             searchQuery={searchQuery}
+            searchScope={searchScope}
             dataSourceFileBrowseEnabled={dataSourceFileBrowseEnabled}
             fileName={fileName}
           />

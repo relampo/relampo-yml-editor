@@ -460,6 +460,7 @@ export function ExtractorDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
               </Select>
             </div>
             <TextField
+              searchQuery={searchQuery}
               id="validation-regex-default-value"
               label={t('yamlEditor.nodeDetails.validation.defaultValue')}
               value={data.default || ''}
@@ -510,6 +511,7 @@ export function ExtractorDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
           <div className="mb-4 -mt-1 text-xs text-zinc-500">{t('yamlEditor.nodeDetails.validation.xpathHelp')}</div>
           <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-3 items-end">
             <TextField
+              searchQuery={searchQuery}
               id="validation-xpath-namespace"
               label={t('yamlEditor.nodeDetails.validation.namespace')}
               value={data.namespace || ''}
@@ -517,6 +519,7 @@ export function ExtractorDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
               onChange={value => handleChange('namespace', value)}
             />
             <TextField
+              searchQuery={searchQuery}
               id="validation-xpath-default-value"
               label={t('yamlEditor.nodeDetails.validation.defaultValue')}
               value={data.default || ''}
@@ -566,6 +569,7 @@ export function ExtractorDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
 
       {extractorType !== 'regex' && extractorType !== 'xpath' && (
         <TextField
+          searchQuery={searchQuery}
           id="validation-extractor-default-value"
           label={t('yamlEditor.nodeDetails.validation.defaultValue')}
           value={data.default || ''}

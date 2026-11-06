@@ -129,7 +129,10 @@ describe('scenario mutation selection', () => {
     const scenarios = () => latestTree!.children!.find(node => node.type === 'scenarios')!.children!;
     renderInteractiveTreeView({
       tree: parseYAMLToTree('test: {name: Plan}\nscenarios: [{name: Source, steps: [{get: /health}]}]')!,
-      onTreeStateChange: (tree, ids) => { latestTree = tree; selectedIds = ids; },
+      onTreeStateChange: (tree, ids) => {
+        latestTree = tree;
+        selectedIds = ids;
+      },
     });
     fireEvent.contextMenu(screen.getByRole('treeitem', { name: /^Scenarios$/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Scenario New load scenario' }));
@@ -151,7 +154,9 @@ describe('scenario mutation selection', () => {
   });
 
   it('duplicates a multi-selection through the keyboard with unique names and fresh selection', async () => {
-    const tree = parseYAMLToTree('test: {name: Plan, scenario_mode: sequential}\nscenarios: [{name: A, steps: []}, {name: B, steps: []}]')!;
+    const tree = parseYAMLToTree(
+      'test: {name: Plan, scenario_mode: sequential}\nscenarios: [{name: A, steps: []}, {name: B, steps: []}]',
+    )!;
     const originalScenarios = tree.children!.find(node => node.type === 'scenarios')!.children!;
     let latestTree = tree;
     let selectedIds: string[] = [];
@@ -159,7 +164,10 @@ describe('scenario mutation selection', () => {
       tree,
       selectedNodeIds: originalScenarios.map(node => node.id),
       selectedNodeId: originalScenarios[1].id,
-      onTreeStateChange: (current, ids) => { latestTree = current; selectedIds = ids; },
+      onTreeStateChange: (current, ids) => {
+        latestTree = current;
+        selectedIds = ids;
+      },
     });
     fireEvent.keyDown(screen.getByRole('tree'), { key: 'd', ctrlKey: true });
     await waitFor(() => expect(selectedIds).toHaveLength(2));
@@ -345,7 +353,7 @@ describe('YAMLTreeView selection scrolling', () => {
   });
 });
 
-describe('YAMLTreeView search filtering', () => {
+describe('YAMLTreeView search highlighting', () => {
   it('keeps nodes visible when the search only matches request data', () => {
     renderInteractiveTreeView({
       tree: {
@@ -386,15 +394,16 @@ describe('YAMLTreeView search filtering', () => {
     fireEvent.change(screen.getByPlaceholderText('Search nodes...'), {
       target: { value: 'needle-token' },
     });
+    fireEvent.click(screen.getByRole('radio', { name: 'Requests' }));
     fireEvent.click(screen.getByRole('button', { name: 'Search tree' }));
 
     expect(screen.getByText('Matching request')).toBeInTheDocument();
     expect(screen.getByText('req')).toBeInTheDocument();
-    expect(screen.queryByText('Other request')).not.toBeInTheDocument();
-    expect(screen.getByLabelText('Search result count')).toHaveTextContent('1 result');
+    expect(screen.getByText('Other request')).toBeInTheDocument();
+    expect(screen.getByLabelText('Search result count')).toHaveTextContent('1 node');
   });
 
-  it('keeps request descendants hidden when the search only matches the request name', () => {
+  it('keeps expanded descendants visible when the search only matches the request name', () => {
     renderInteractiveTreeView({
       tree: {
         id: 'steps',
@@ -430,10 +439,11 @@ describe('YAMLTreeView search filtering', () => {
     fireEvent.change(screen.getByPlaceholderText('Search nodes...'), {
       target: { value: 'Login' },
     });
+    fireEvent.click(screen.getByRole('radio', { name: 'Requests' }));
     fireEvent.click(screen.getByRole('button', { name: 'Search tree' }));
 
     expect(screen.getByRole('treeitem', { name: /Login request/i })).toBeInTheDocument();
-    expect(screen.queryByRole('treeitem', { name: /Headers/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('treeitem', { name: /Headers/i })).toBeInTheDocument();
   });
 
   it('keeps HTTP Defaults visible when the search matches global headers', () => {
@@ -475,10 +485,11 @@ describe('YAMLTreeView search filtering', () => {
     fireEvent.change(screen.getByPlaceholderText('Search nodes...'), {
       target: { value: 'Authorization' },
     });
+    fireEvent.click(screen.getByRole('radio', { name: 'Requests' }));
     fireEvent.click(screen.getByRole('button', { name: 'Search tree' }));
 
     expect(screen.getByRole('treeitem', { name: /HTTP Defaults/i })).toBeInTheDocument();
-    expect(screen.queryByRole('treeitem', { name: /Other request/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('treeitem', { name: /Other request/i })).toBeInTheDocument();
   });
 
   it('reveals request-local extract matches even when the request starts collapsed', () => {
@@ -532,12 +543,13 @@ describe('YAMLTreeView search filtering', () => {
     fireEvent.change(screen.getByPlaceholderText('Search nodes...'), {
       target: { value: 'user_id' },
     });
+    fireEvent.click(screen.getByRole('radio', { name: 'Requests' }));
     fireEvent.click(screen.getByRole('button', { name: 'Search tree' }));
 
     expect(screen.getByRole('treeitem', { name: /Request with extract/i })).toBeInTheDocument();
     expect(screen.getByRole('treeitem', { name: /Extract: user_id/i })).toBeInTheDocument();
     expect(screen.queryByText('req')).not.toBeInTheDocument();
-    expect(screen.queryByRole('treeitem', { name: /Other request/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('treeitem', { name: /Other request/i })).toBeInTheDocument();
   });
 
   it('keeps SQL extract mappings searchable on the SQL node', () => {
@@ -580,14 +592,15 @@ describe('YAMLTreeView search filtering', () => {
     fireEvent.change(screen.getByPlaceholderText('Search nodes...'), {
       target: { value: 'user_id' },
     });
+    fireEvent.click(screen.getByRole('radio', { name: 'Requests' }));
     fireEvent.click(screen.getByRole('button', { name: 'Search tree' }));
 
     expect(screen.getByRole('treeitem', { name: /Fetch users/i })).toBeInTheDocument();
     expect(screen.getByText('req')).toBeInTheDocument();
-    expect(screen.queryByRole('treeitem', { name: /Other request/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('treeitem', { name: /Other request/i })).toBeInTheDocument();
   });
 
-  it('removes hidden selections from delete shortcuts while the tree is filtered', async () => {
+  it('selects the first occurrence for navigation without hiding other nodes', async () => {
     renderInteractiveTreeView({
       tree: {
         id: 'steps',
@@ -627,6 +640,7 @@ describe('YAMLTreeView search filtering', () => {
     fireEvent.change(searchInput, {
       target: { value: 'Alpha request' },
     });
+    fireEvent.click(screen.getByRole('radio', { name: 'Requests' }));
     fireEvent.click(screen.getByRole('button', { name: 'Search tree' }));
 
     await waitFor(() => {
@@ -823,7 +837,7 @@ describe('YAMLTreeView search filtering', () => {
     expect(pastedTree?.children?.filter(node => node.type === 'scenarios')).toHaveLength(1);
   });
 
-  it('keeps request descendants hidden when a scenario only matches through duplicated request data', () => {
+  it('finds the request owning a header match without exposing unrelated descendants', () => {
     renderInteractiveTreeView({
       tree: {
         id: 'scenarios',
@@ -900,11 +914,12 @@ describe('YAMLTreeView search filtering', () => {
     fireEvent.change(screen.getByPlaceholderText('Search nodes...'), {
       target: { value: 'needle-token' },
     });
+    fireEvent.click(screen.getByRole('radio', { name: 'Requests' }));
     fireEvent.click(screen.getByRole('button', { name: 'Search tree' }));
 
     expect(screen.getByText('Checkout flow')).toBeInTheDocument();
-    expect(screen.queryByText('Matching request')).not.toBeInTheDocument();
-    expect(screen.queryByText('Load settings')).not.toBeInTheDocument();
-    expect(screen.queryByText('Other request')).not.toBeInTheDocument();
+    expect(screen.getByText('Matching request')).toBeInTheDocument();
+    expect(screen.getByText('Load settings')).toBeInTheDocument();
+    expect(screen.getByText('Other request')).toBeInTheDocument();
   });
 });

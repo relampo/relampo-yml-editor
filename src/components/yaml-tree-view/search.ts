@@ -1,4 +1,7 @@
 import type { YAMLNode, YAMLNodeType } from '../../types/yaml';
+import { nodeSearchOccurrences, type SearchOccurrence } from './searchOccurrences';
+
+export type SearchScope = 'requests' | 'responses';
 
 const REQUEST_LIKE_NODE_TYPES: readonly YAMLNodeType[] = [
   'request',
@@ -35,6 +38,9 @@ export type SearchNodeState = {
   directMatch: boolean;
   subtreeMatch: boolean;
   expandsDescendants: boolean;
+  scope?: SearchScope;
+  requestMatch?: boolean;
+  responseMatch?: boolean;
 };
 
 /**
@@ -83,19 +89,6 @@ export function subtreeHasMatch(node: YAMLNode, searchQuery: string): boolean {
   }
 
   return false;
-}
-
-export function countMatchingNodes(tree: YAMLNode | null, searchQuery: string): number {
-  const query = searchQuery.trim();
-  if (!tree || !query) return 0;
-
-  let count = 0;
-  const visit = (node: YAMLNode) => {
-    if (nodeDirectlyMatches(node, query)) count += 1;
-    node.children?.forEach(visit);
-  };
-  visit(tree);
-  return count;
 }
 
 function nodeNameOrPathMatches(node: YAMLNode, query: string): boolean {
@@ -186,4 +179,39 @@ function serializeSearchValue(value: unknown): string {
       .join(' ');
   }
   return '';
+}
+
+/** Build occurrence locations once, preserving the same order as replacement. */
+export function buildScopedSearch(tree: YAMLNode | null, query: string, scope: SearchScope | null) {
+  const matches: SearchOccurrence[] = [];
+  const index = new Map<string, SearchNodeState>();
+  if (!tree || !scope || !query.trim())
+    return { index, matches, matchNodeIds: [] as string[], replaceableMatchNodeIds: [] as string[] };
+  const visit = (node: YAMLNode): boolean => {
+    const own = nodeSearchOccurrences(node, query.trim(), scope);
+    matches.push(...own);
+    const directMatch = own.length > 0;
+    const children = node.children?.map(visit) ?? [];
+    const subtreeMatch = directMatch || children.some(Boolean);
+    index.set(node.id, {
+      scope,
+      directMatch,
+      subtreeMatch,
+      expandsDescendants: false,
+      requestMatch:
+        scope === 'requests' &&
+        directMatch &&
+        REQUEST_LIKE_NODE_TYPES.includes(node.type) &&
+        serializeSearchValue(getNodeRequestSearchPayload(node)).includes(query.trim().toLowerCase()),
+      responseMatch: scope === 'responses' && directMatch,
+    });
+    return subtreeMatch;
+  };
+  visit(tree);
+  return {
+    index,
+    matches,
+    matchNodeIds: matches.map(match => match.nodeId),
+    replaceableMatchNodeIds: matches.filter(match => match.replaceable).map(match => match.nodeId),
+  };
 }

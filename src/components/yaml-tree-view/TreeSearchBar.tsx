@@ -1,8 +1,15 @@
+import type { SearchScope } from './search';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { ChevronDown, ChevronUp, Search, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 
 interface TreeSearchBarProps {
+  scope: SearchScope | null;
+  onScopeChange: (scope: SearchScope, query: string) => void;
+  occurrenceCount: number;
+  searchMatchIndex?: number;
+  onSearchNavigate?: (index: number) => void;
+  selectedSearchReplaceable?: boolean;
   value: string;
   onChange: (value: string) => void;
   onClear: () => void;
@@ -14,6 +21,12 @@ interface TreeSearchBarProps {
 }
 
 export function TreeSearchBar({
+  scope,
+  onScopeChange,
+  occurrenceCount,
+  searchMatchIndex = 0,
+  onSearchNavigate,
+  selectedSearchReplaceable = true,
   value,
   onChange,
   onClear,
@@ -25,20 +38,36 @@ export function TreeSearchBar({
 }: TreeSearchBarProps) {
   const { t } = useLanguage();
   const [replaceOpen, setReplaceOpen] = useState(false);
+  const [hasSearched, setHasSearched] = useState(Boolean(value.trim()));
   const [searchDraft, setSearchDraft] = useState(value);
   const [replacementText, setReplacementText] = useState('');
   const [replacementResult, setReplacementResult] = useState<number | null>(null);
-  const replaceMessage = replacementResult === null ? '' : replacementResult > 0
-    ? `${replacementResult} ${t(replacementResult === 1 ? 'studioControls.replacement' : 'studioControls.replacements')}`
-    : t('studioControls.noMatches');
+  const replaceMessage =
+    replacementResult === null
+      ? ''
+      : replacementResult > 0
+        ? `${replacementResult} ${t(replacementResult === 1 ? 'studioControls.replacement' : 'studioControls.replacements')}`
+        : t('studioControls.noMatches');
   const [replaceApplied, setReplaceApplied] = useState(false);
   const matchCountAtReplacement = useRef(0);
   const matchCount = replaceOpen ? replaceMatchCount : 0;
   const currentMatch = Math.min(currentMatchIndex, Math.max(matchCount - 1, 0));
-  const replacementDisabled = replaceApplied || !value.trim() || !replacementText || matchCount === 0;
+  const navigationCount = onSearchNavigate ? occurrenceCount : matchCount;
+  const navigationIndex = onSearchNavigate ? searchMatchIndex : currentMatch;
+  const navigate = (direction: number) => {
+    const increment = direction > 0 && replaceApplied && matchCount < matchCountAtReplacement.current ? 0 : direction;
+    setReplaceApplied(false);
+    setReplacementResult(null);
+    if (onSearchNavigate) onSearchNavigate(navigationIndex + increment);
+    else onCurrentMatchIndexChange(Math.max(0, Math.min(navigationIndex + increment, navigationCount - 1)));
+  };
+  const replacementDisabled =
+    scope !== 'requests' || !hasSearched || replaceApplied || !value.trim() || !replacementText || matchCount === 0;
 
   const applySearch = () => {
+    if (!scope) return;
     const executedQuery = searchDraft.trim();
+    setHasSearched(Boolean(executedQuery));
     setSearchDraft(executedQuery);
     setReplaceApplied(false);
     setReplacementResult(null);
@@ -47,6 +76,7 @@ export function TreeSearchBar({
   };
 
   const handleReplace = (matchIndex?: number) => {
+    if (replacementDisabled) return;
     matchCountAtReplacement.current = matchCount;
     const replacements = onReplace(replacementText, matchIndex);
     if (replacements > 0) {
@@ -56,27 +86,30 @@ export function TreeSearchBar({
   };
 
   return (
-    <div className="shrink-0 px-3 pt-3 pb-2">
-      <div className="flex items-center gap-2 p-3 bg-[#111111] border border-white/10 rounded-lg">
+    <div
+      role="search"
+      aria-label={t('studioControls.searchTree')}
+      className="shrink-0 px-3 pt-3 pb-2"
+    >
+      <div className="flex flex-wrap items-center gap-2 p-3 bg-[#111111] border border-white/10 rounded-lg">
         {/* Input container */}
-        <div className="flex-1 flex items-center gap-2 bg-[#0a0a0a] border border-white/10 rounded px-3 py-1.5">
+        <div className="min-w-0 basis-28 flex-1 flex items-center gap-2 bg-[#0a0a0a] border border-white/10 rounded px-3 py-1.5">
           <Search className="w-4 h-4 text-zinc-500 shrink-0" />
           <input
             type="text"
             placeholder={t('studioControls.searchNodes')}
             aria-label={t('studioControls.searchNodesLabel')}
             value={searchDraft}
-            onChange={e => setSearchDraft(e.target.value)}
+            onChange={e => {
+              setSearchDraft(e.target.value);
+              setHasSearched(false);
+              setReplaceOpen(false);
+            }}
             onKeyDown={e => {
               if (e.key === 'Enter') applySearch();
             }}
-            className="flex-1 bg-transparent border-none text-sm text-zinc-300 placeholder-zinc-500 outline-none"
+            className="min-w-0 flex-1 bg-transparent border-none text-sm text-zinc-300 placeholder-zinc-500 outline-none"
           />
-          {value.trim() && (
-            <span className="shrink-0 text-xs text-zinc-500" aria-label={t('studioControls.resultCount')}>
-              {searchMatchCount} {t(searchMatchCount === 1 ? 'studioControls.result' : 'studioControls.results')}
-            </span>
-          )}
         </div>
 
         {/* Close button */}
@@ -85,6 +118,7 @@ export function TreeSearchBar({
             type="button"
             onClick={() => {
               setSearchDraft('');
+              setHasSearched(false);
               setReplaceOpen(false);
               setReplacementText('');
               setReplacementResult(null);
@@ -98,33 +132,91 @@ export function TreeSearchBar({
             <X className="w-4 h-4" />
           </button>
         )}
+        <fieldset className="flex shrink-0 items-center gap-1">
+          <legend className="sr-only">{t('studioControls.searchScope')}</legend>
+          {(['requests', 'responses'] as const).map(option => (
+            <label
+              key={option}
+              className={`relative cursor-pointer rounded border px-2 py-1.5 text-xs transition-colors ${scope === option ? 'border-white bg-[#0a0a0a] text-white' : 'border-white/20 bg-[#0a0a0a] text-zinc-300 hover:border-white/50'} focus-within:ring-2 focus-within:ring-white/60`}
+            >
+              <input
+                type="radio"
+                name="tree-search-scope"
+                value={option}
+                checked={scope === option}
+                onChange={() => {
+                  setReplaceOpen(false);
+                  setHasSearched(false);
+                  setReplaceApplied(false);
+                  setReplacementResult(null);
+                  onCurrentMatchIndexChange(0);
+                  onScopeChange(option, searchDraft);
+                }}
+                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+              />
+              {option === 'requests' ? 'Requests' : 'Responses'}
+            </label>
+          ))}
+        </fieldset>
         <button
           type="button"
           onClick={applySearch}
           aria-label={t('studioControls.searchTree')}
-          className="shrink-0 px-2.5 py-1.5 bg-yellow-400/10 border border-yellow-400/30 rounded text-xs text-yellow-400 hover:bg-yellow-400/20 transition-colors"
+          disabled={!scope || !searchDraft.trim()}
+          className="shrink-0 px-2.5 py-1.5 bg-yellow-400/10 border border-yellow-400/30 rounded text-xs text-yellow-400 enabled:hover:bg-yellow-400/20 disabled:cursor-not-allowed disabled:opacity-40 transition-colors"
         >
           {t('studioControls.search')}
         </button>
+        {hasSearched && value.trim() && (onSearchNavigate || replaceOpen) && (
+          <div
+            className="flex shrink-0 items-center gap-1"
+            role="group"
+            aria-label={t('studioControls.searchNavigation')}
+          >
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              disabled={!navigationCount}
+              aria-label={t(replaceOpen ? 'studioControls.previousLabel' : 'studioControls.previousSearchMatch')}
+              className="rounded border border-white/15 p-1.5 text-zinc-300 enabled:hover:bg-yellow-400/15 disabled:opacity-40"
+            >
+              <ChevronUp className="h-4 w-4" />
+            </button>
+            <span
+              aria-live="polite"
+              aria-label={t(replaceOpen ? 'studioControls.position' : 'studioControls.searchPosition')}
+              className="shrink-0 whitespace-nowrap text-center text-xs font-mono tabular-nums text-yellow-300"
+              style={{ width: `${Math.max(11, String(navigationCount).length * 2 + 3)}ch` }}
+            >
+              {navigationCount ? Math.min(navigationIndex + 1, navigationCount) : 0} / {navigationCount}
+            </span>
+            <button
+              type="button"
+              onClick={() => navigate(1)}
+              disabled={!navigationCount}
+              aria-label={t(replaceOpen ? 'studioControls.nextLabel' : 'studioControls.nextSearchMatch')}
+              className="rounded border border-white/15 p-1.5 text-zinc-300 enabled:hover:bg-yellow-400/15 disabled:opacity-40"
+            >
+              <ChevronDown className="h-4 w-4" />
+            </button>
+          </div>
+        )}
         <button
           type="button"
-          onClick={() => setReplaceOpen(open => !open)}
-          className="shrink-0 px-2.5 py-1.5 bg-[#0a0a0a] border border-white/10 rounded text-xs text-zinc-400 hover:border-yellow-400 hover:text-yellow-400 transition-colors"
+          onClick={() => {
+            if (scope === 'requests' && hasSearched) setReplaceOpen(open => !open);
+          }}
+          disabled={scope !== 'requests' || !hasSearched || !value.trim()}
+          className="shrink-0 px-2.5 py-1.5 bg-[#0a0a0a] border border-white/10 rounded text-xs text-zinc-400 enabled:hover:border-yellow-400 enabled:hover:text-yellow-400 disabled:cursor-not-allowed disabled:opacity-40 transition-colors"
         >
           {t('studioControls.replace')}
         </button>
-      </div>
-      {replaceOpen && (
-        <div className="mt-2 p-3 bg-[#111111] border border-white/10 rounded-lg">
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              placeholder={t('studioControls.findText')}
-              aria-label={t('studioControls.findTextLabel')}
-              value={value}
-              readOnly
-              className="min-w-0 flex-1 bg-[#0a0a0a] border border-white/10 rounded px-3 py-1.5 text-sm text-zinc-300 placeholder-zinc-500 outline-none"
-            />
+        {replaceOpen && scope === 'requests' && (
+          <div
+            role="group"
+            aria-label={t('studioControls.replace')}
+            className="flex min-w-0 flex-wrap items-center gap-2"
+          >
             <input
               type="text"
               placeholder={t('studioControls.replaceWith')}
@@ -135,60 +227,38 @@ export function TreeSearchBar({
                 setReplacementResult(null);
                 setReplaceApplied(false);
               }}
-              className="min-w-0 flex-1 bg-[#0a0a0a] border border-white/10 rounded px-3 py-1.5 text-sm text-zinc-300 placeholder-zinc-500 outline-none focus:border-yellow-400/60"
+              className="w-32 min-w-20 rounded border border-white/15 bg-[#0a0a0a] px-2 py-1.5 text-sm text-zinc-200 outline-none focus:border-yellow-400/60"
             />
-            <span className="shrink-0 min-w-14 text-center text-xs font-mono text-zinc-500" aria-label={t('studioControls.position')}>
-              {matchCount > 0 ? `${currentMatch + 1} / ${matchCount}` : '0 / 0'}
-            </span>
-            <button
-              type="button"
-              onClick={() => {
-                setReplaceApplied(false);
-                setReplacementResult(null);
-                onCurrentMatchIndexChange(Math.max(currentMatch - 1, 0));
-              }}
-              disabled={matchCount === 0}
-              className="p-1.5 rounded border border-white/10 text-zinc-400 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-30"
-              title={t('studioControls.previous')}
-              aria-label={t('studioControls.previousLabel')}
-            >
-              <ChevronUp className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setReplaceApplied(false);
-                setReplacementResult(null);
-                onCurrentMatchIndexChange(Math.min(currentMatch + (replaceApplied && matchCount < matchCountAtReplacement.current ? 0 : 1), matchCount - 1));
-              }}
-              disabled={matchCount === 0}
-              className="p-1.5 rounded border border-white/10 text-zinc-400 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-30"
-              title={t('studioControls.next')}
-              aria-label={t('studioControls.nextLabel')}
-            >
-              <ChevronDown className="w-4 h-4" />
-            </button>
             <button
               type="button"
               onClick={() => handleReplace(currentMatch)}
-              disabled={replacementDisabled}
-              className="shrink-0 px-2.5 py-1.5 bg-yellow-400/10 border border-yellow-400/30 rounded text-xs text-yellow-400 enabled:hover:bg-yellow-400/20 disabled:opacity-40 disabled:cursor-not-allowed"
+              disabled={replacementDisabled || !selectedSearchReplaceable}
+              className="shrink-0 rounded border border-yellow-400/30 bg-yellow-400/10 px-2 py-1.5 text-xs text-yellow-300 disabled:opacity-40"
             >
               {t('studioControls.selected')}
             </button>
-          </div>
-          <div className="mt-2 flex items-center justify-end gap-2">
             <button
               type="button"
               onClick={() => handleReplace()}
               disabled={replacementDisabled}
-              className="shrink-0 px-2.5 py-1.5 bg-yellow-400/10 border border-yellow-400/30 rounded text-xs text-yellow-400 enabled:hover:bg-yellow-400/20 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="shrink-0 rounded border border-yellow-400/30 bg-yellow-400/10 px-2 py-1.5 text-xs text-yellow-300 disabled:opacity-40"
             >
               {t('studioControls.all')}
             </button>
-            {replaceMessage && <span className="shrink-0 text-xs text-yellow-400">{replaceMessage}</span>}
+            {replaceMessage && <span className="text-xs text-yellow-400">{replaceMessage}</span>}
           </div>
-        </div>
+        )}
+      </div>
+      {value.trim() && (
+        <span
+          className="mt-2 block text-xs text-zinc-400"
+          aria-label={t('studioControls.resultCount')}
+        >
+          {occurrenceCount}{' '}
+          {t(occurrenceCount === 1 ? 'studioControls.searchOccurrence' : 'studioControls.searchOccurrences')} ·{' '}
+          {searchMatchCount}{' '}
+          {t(searchMatchCount === 1 ? 'studioControls.searchNodeCount' : 'studioControls.searchNodesCount')}
+        </span>
       )}
     </div>
   );

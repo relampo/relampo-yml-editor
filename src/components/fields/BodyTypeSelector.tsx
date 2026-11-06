@@ -32,8 +32,8 @@ function HighlightedText({ text, searchText, searchMode, currentMatchIndex }: Hi
         data-match-index={idx}
         className={
           isActive
-            ? 'bg-yellow-300 text-black ring-2 ring-amber-500 shadow-[0_0_0_1px_rgba(245,158,11,0.45)] rounded-sm'
-            : 'bg-yellow-300/80 text-black rounded-sm'
+            ? 'bg-green-300 text-black ring-2 ring-green-500 shadow-[0_0_0_1px_rgba(34,197,94,0.45)] rounded-sm'
+            : 'bg-yellow-300/20 text-yellow-100 rounded-sm'
         }
       >
         {text.slice(r.start, r.end)}
@@ -308,13 +308,17 @@ function TextBodyEditor({
 }
 
 interface FormDataFieldsProps {
+  sourceBody: YAMLValue;
   items: FormDataItem[];
   onFieldChange: (index: number, field: 'key' | 'value' | 'enabled', value: string | boolean) => void;
   onAdd: () => void;
   onRemove: (index: number) => void;
 }
 
-function FormDataFields({ items, onFieldChange, onAdd, onRemove }: FormDataFieldsProps) {
+function FormDataFields({ items, sourceBody, onFieldChange, onAdd, onRemove }: FormDataFieldsProps) {
+  const sourcePaths = Array.isArray(sourceBody)
+    ? sourceBody.flatMap((entry, index) => isBodyRecord(entry) ? Object.keys(entry).map(key => ['body', index, key]) : [])
+    : isBodyRecord(sourceBody) ? Object.keys(sourceBody).map(key => ['body', key]) : [];
   const { t } = useLanguage();
   return (
     <div>
@@ -345,6 +349,8 @@ function FormDataFields({ items, onFieldChange, onAdd, onRemove }: FormDataField
               className="w-4 h-4 rounded border-white/10 bg-white/5 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-0"
             />
             <Input
+              data-search-form-field="key"
+              data-search-source-path={sourcePaths[index] ? JSON.stringify([...sourcePaths[index], '$key']) : undefined}
               value={item.key}
               onChange={e => onFieldChange(index, 'key', e.target.value)}
               placeholder={t('yamlEditor.shell.body.fieldPlaceholder')}
@@ -352,6 +358,8 @@ function FormDataFields({ items, onFieldChange, onAdd, onRemove }: FormDataField
             />
             <span className="text-zinc-600">=</span>
             <Input
+              data-search-form-field="value"
+              data-search-source-path={sourcePaths[index] ? JSON.stringify(sourcePaths[index]) : undefined}
               value={item.value}
               onChange={e => onFieldChange(index, 'value', e.target.value)}
               placeholder={t('yamlEditor.shell.body.valuePlaceholder')}
@@ -722,6 +730,7 @@ export function BodyTypeSelector({
 
       {bodyType === 'form' && (
         <FormDataFields
+          sourceBody={body}
           items={formData}
           onFieldChange={handleFormDataChange}
           onAdd={handleAddFormDataItem}
@@ -879,10 +888,10 @@ function MonacoBodyEditor({
           border-radius: 2px;
         }
         .relampo-find-current {
-          background-color: rgba(253, 224, 71, 1);
+          background-color: #86efac;
           color: #000000;
-          outline: 2px solid rgba(245, 158, 11, 1);
-          box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.45);
+          outline: 2px solid #22c55e;
+          box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.45);
           border-radius: 2px;
         }
       `}</style>

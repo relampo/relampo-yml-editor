@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { YAMLNode } from '../../types/yaml';
-import { buildSearchIndex } from './search';
+import { buildScopedSearch, type SearchScope } from './search';
 import { getTransactionWrapValidation } from './treeOperations';
 import { buildParentMap, computeVisibleNodes } from './treeViewHelpers';
 
@@ -9,7 +9,7 @@ interface UseTreeViewSelectionParams {
   selectedNode: YAMLNode | null;
   selectedNodeIds: string[];
   onSelectionChange: (primaryNode: YAMLNode | null, nodeIds: string[]) => void;
-  onSearchChange?: (query: string) => void;
+  onSearchChange?: (query: string, scope?: SearchScope | null) => void;
   /** Clears the search when it changes, so a node the editor reveals is not hidden by the filter. */
   searchResetSignal?: number;
 }
@@ -28,17 +28,20 @@ export function useTreeViewSelection({
   searchResetSignal = 0,
 }: UseTreeViewSelectionParams) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchScope, setSearchScope] = useState<SearchScope | null>(null);
   const [seenSearchResetSignal, setSeenSearchResetSignal] = useState(searchResetSignal);
   if (searchResetSignal !== seenSearchResetSignal) {
     setSeenSearchResetSignal(searchResetSignal);
     setSearchQuery('');
+    setSearchScope(null);
   }
   const treeContainerRef = useRef<HTMLDivElement | null>(null);
-  const isFiltering = searchQuery.trim().length > 0;
-  const searchIndex = useMemo(
-    () => (tree && isFiltering ? buildSearchIndex(tree, searchQuery) : null),
-    [isFiltering, searchQuery, tree],
+  const isFiltering = searchQuery.trim().length > 0 && searchScope === null;
+  const scopedSearch = useMemo(
+    () => buildScopedSearch(tree, searchQuery, searchScope),
+    [tree, searchQuery, searchScope],
   );
+  const searchIndex = searchQuery.trim() ? scopedSearch.index : null;
 
   // The parent owns a mirror of this query (it feeds the details panel's
   // highlighting), but the query itself is local state that dies with this
@@ -57,12 +60,18 @@ export function useTreeViewSelection({
   // (not from an effect watching it).
   const handleSearchChange = (value: string) => {
     setSearchQuery(value);
-    onSearchChange?.(value);
+    onSearchChange?.(value, searchScope);
+  };
+
+  const handleScopeChange = (scope: SearchScope, query: string) => {
+    setSearchScope(scope);
+    setSearchQuery(query.trim());
+    onSearchChange?.(query.trim(), scope);
   };
 
   const handleClearSearch = () => {
     setSearchQuery('');
-    onSearchChange?.('');
+    onSearchChange?.('', searchScope);
   };
 
   const visibleNodes = useMemo(
@@ -78,10 +87,7 @@ export function useTreeViewSelection({
     return map;
   }, [visibleNodes]);
 
-  const visibleSelectedIds = useMemo(
-    () => selectedNodeIds.filter(id => nodeById.has(id)),
-    [selectedNodeIds, nodeById],
-  );
+  const visibleSelectedIds = useMemo(() => selectedNodeIds.filter(id => nodeById.has(id)), [selectedNodeIds, nodeById]);
 
   const activeSelectedIds = isFiltering ? visibleSelectedIds : selectedNodeIds;
 
@@ -129,12 +135,12 @@ export function useTreeViewSelection({
     const nextPrimary =
       selectedNode && nodeById.has(selectedNode.id)
         ? selectedNode
-        : visibleSelectedIds
+        : (visibleSelectedIds
             .flatMap(id => {
               const node = nodeById.get(id);
               return node ? [node] : [];
             })
-            .at(-1) ?? null;
+            .at(-1) ?? null);
 
     onSelectionChange(nextPrimary, visibleSelectedIds);
   }, [isFiltering, nodeById, onSelectionChange, selectedNode, selectedNodeIds.length, visibleSelectedIds]);
@@ -155,6 +161,11 @@ export function useTreeViewSelection({
   return {
     searchQuery,
     searchIndex,
+    searchScope,
+    handleScopeChange,
+    searchMatchNodeIds: scopedSearch.matchNodeIds,
+    searchMatches: scopedSearch.matches,
+    replaceableMatchNodeIds: scopedSearch.replaceableMatchNodeIds,
     handleSearchChange,
     handleClearSearch,
     isFiltering,

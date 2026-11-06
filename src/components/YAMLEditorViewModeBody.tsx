@@ -1,3 +1,4 @@
+import type { SearchScope } from './yaml-tree-view/search';
 import type { IssueMarker } from '../utils/documentIssues';
 import type { RedirectedRequestInfo, YAMLNode } from '../types/yaml';
 import { EditorViewModeTabs, type EditorViewMode } from './EditorViewModeTabs';
@@ -23,7 +24,7 @@ interface YAMLEditorViewModeBodyProps {
   onTreeChange: (newTree: YAMLNode, nextSelection?: TreeSelection) => void;
   onTreeViewChange: (newTree: YAMLNode) => void;
   onContextMenuOpened: (metadata: { nodeType: string; selectionCount: number; hasMultiSelection: boolean }) => void;
-  onSearchChange: (query: string) => void;
+  onSearchChange: (query: string, scope?: SearchScope | null) => void;
   yamlCode: string;
   onCodeChange: (newCode: string) => void;
   largeFileMode: boolean;
