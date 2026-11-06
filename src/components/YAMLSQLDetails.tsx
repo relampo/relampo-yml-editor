@@ -364,7 +364,7 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
       : {};
   const kind = data.kind || 'query';
   const allowWrites = data.allow_writes === true || data.allow_write === true;
-  const validateConnectivity = connection.validate_connectivity === true;
+  const validateConnectivity = data.validate_connectivity === true;
   const [paramsText, setParamsText] = useState('');
   const [paramsError, setParamsError] = useState('');
 
@@ -520,7 +520,7 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
           label={t('yamlEditor.requestDetails.sqlValidateConnectivity')}
           value={validateConnectivity ? 'true' : 'false'}
           options={BOOLEAN_OPTIONS}
-          onValueChange={value => handleConnectionChange('validate_connectivity', value === 'true')}
+          onValueChange={value => handleChange('validate_connectivity', value === 'true')}
         />
 
         <SQLSelectField

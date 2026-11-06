@@ -208,8 +208,11 @@ export function collectUnrecognizedFields(tree: YAMLNode | null): UnrecognizedFi
       ]) {
         const value = data[field];
         if (!value || typeof value !== 'object' || Array.isArray(value) || !knownFields[nestedScope]) continue;
-        for (const key of Object.keys(value))
+        for (const key of Object.keys(value)) {
+          // Earlier editor exports are migrated to sql.validate_connectivity on save.
+          if (node.type === 'sql' && field === 'connection' && key === 'validate_connectivity') continue;
           if (!knownFields[nestedScope].has(key)) paths.add(formatPath([...scope.prefix, field, key]));
+        }
       }
     }
     node.children?.forEach(child => visit(child, node));
