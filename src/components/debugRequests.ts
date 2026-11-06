@@ -758,8 +758,18 @@ function builtinBodyRows(
       });
     }
   };
+  let template = node.data?.body ?? node.data?.body_raw;
+  const contentType = [...Object.entries(context.requestHeaders ?? {}), ...Object.entries(node.data?.headers ?? {})]
+    .find(([name]) => name.toLowerCase() === 'content-type')?.[1];
+  if (Array.isArray(template) && typeof contentType === 'string' && contentType.toLowerCase().startsWith('application/x-www-form-urlencoded')) {
+    const fields = new URLSearchParams();
+    for (const item of template)
+      if (item && typeof item === 'object')
+        for (const [name, value] of Object.entries(item)) fields.append(name, String(value ?? ''));
+    template = fields.toString();
+  }
   // ponytail: Decode JSON and URL-encoded fields; multipart needs a body parser.
-  visit(structuredBody(node.data?.body ?? node.data?.body_raw), structuredBody(context.requestBody), []);
+  visit(structuredBody(template), structuredBody(context.requestBody), []);
   return rows;
 }
 
