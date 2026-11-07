@@ -16,6 +16,7 @@ import {
   Layers,
   Paperclip,
   Play,
+  PlugZap,
   Repeat,
   RotateCcw,
   Scale,
@@ -33,6 +34,7 @@ export type YAMLAddableNodeType =
   | 'scenario'
   | 'request'
   | 'sql'
+  | 'websocket'
   | 'group'
   | 'transaction'
   | 'parallel'
@@ -256,6 +258,13 @@ export function getAddableItems(
         color: 'text-emerald-400',
       },
       {
+        type: 'websocket',
+        label: 'WebSocket',
+        description: 'Connect, send and wait for live messages',
+        icon: <PlugZap className={iconClass} />,
+        color: 'text-violet-400',
+      },
+      {
         type: 'sql',
         label: t('yamlEditor.shell.addable.sqlRequest'),
         description: t('yamlEditor.shell.addable.sqlRequestDesc'),
@@ -336,6 +345,13 @@ export function getAddableItems(
         description: t('yamlEditor.shell.addable.httpRequestDesc'),
         icon: <Globe className={iconClass} />,
         color: 'text-emerald-400',
+      },
+      {
+        type: 'websocket',
+        label: 'WebSocket',
+        description: 'Connect, send and wait for live messages',
+        icon: <PlugZap className={iconClass} />,
+        color: 'text-violet-400',
       },
       {
         type: 'sql',

@@ -73,7 +73,7 @@ const LOGIC_CONTROLLERS: YAMLNodeType[] = [
 const HTTP_SAMPLERS: YAMLNodeType[] = ['request', 'get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
 
 const SQL_SAMPLERS: YAMLNodeType[] = ['sql'];
-const GRPC_SAMPLERS: YAMLNodeType[] = ['grpc'];
+const GRPC_SAMPLERS: YAMLNodeType[] = ['grpc', 'websocket'];
 
 /** Pre-Processors - execute before sampler */
 const PRE_PROCESSORS: YAMLNodeType[] = ['spark_before'];
@@ -180,6 +180,7 @@ const containmentRules: Partial<Record<YAMLNodeType, YAMLNodeType[]>> = {
   // SQL steps are leaf executable steps
   sql: [],
   grpc: [],
+  websocket: [],
 
   // Logic Controllers - can contain steps and other controllers
   group: STEP_ELEMENTS,

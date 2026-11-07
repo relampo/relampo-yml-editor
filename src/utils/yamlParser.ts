@@ -222,9 +222,18 @@ function convertScenarioToNode(scenario: any, index: number, path: any[]): YAMLN
     id: `${scenarioId}_load`,
     type: 'load',
     name: `Load: ${getLoadTypeLabel(scenario.load?.type || 'constant')}`,
-    data: { ...normalizeLoadDataForYaml(scenario.load || { type: 'constant', users: 1, iterations: 1 }),
+    data: {
+      ...normalizeLoadDataForYaml(scenario.load || { type: 'constant', users: 1, iterations: 1 }),
       ...(!scenario.load ? { __loadSelected: false } : {}),
-      ...(isPlainRecord(scenario['x-studio-load-profiles']) ? { __loadProfiles: Object.fromEntries(Object.entries(scenario['x-studio-load-profiles']).filter((entry): entry is [string, Record<string, unknown>] => isPlainRecord(entry[1]))) } : {}),
+      ...(isPlainRecord(scenario['x-studio-load-profiles'])
+        ? {
+            __loadProfiles: Object.fromEntries(
+              Object.entries(scenario['x-studio-load-profiles']).filter(
+                (entry): entry is [string, Record<string, unknown>] => isPlainRecord(entry[1]),
+              ),
+            ),
+          }
+        : {}),
     },
     path: [...path, 'load'],
   });
@@ -316,6 +325,20 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
     const node = createRequestNode(stepId, 'request', step.request, path, isEnabled);
     node.unknownData = unknownFields(step, new Set(['request', 'enabled']));
     return node;
+  }
+
+  if (isPlainRecord(step.websocket)) {
+    const data = asYAMLNodeData(step.websocket);
+    return {
+      id: stepId,
+      type: 'websocket',
+      name: String(data.name || (data.action ? `WebSocket ${data.action}` : 'WebSocket conversation')),
+      data,
+      path,
+      children: [],
+      expanded: false,
+      unknownData: unknownFields(step, new Set(['websocket'])),
+    };
   }
 
   if (isPlainRecord(step.grpc)) {

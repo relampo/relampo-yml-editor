@@ -22,6 +22,7 @@ import {
   Layers,
   List,
   Network,
+  PlugZap,
   Package,
   Paperclip,
   Play,
@@ -511,6 +512,7 @@ function getNodeIcon(type: YAMLNodeType): LucideIcon {
     request: Globe,
     sql: Database,
     grpc: Network,
+    websocket: PlugZap,
     get: Globe,
     post: Globe,
     put: Globe,
@@ -584,6 +586,8 @@ function getNodeColor(type: YAMLNodeType, node?: YAMLNode): string {
     case 'head':
     case 'options':
       return 'text-emerald-400';
+    case 'websocket':
+      return 'text-violet-400';
     case 'grpc':
     case 'grpc_defaults':
       return 'text-cyan-400';
@@ -649,6 +653,14 @@ function getNodeBadge(
     return (
       <span className="text-xs px-1.5 py-0.5 rounded bg-zinc-700/30 text-zinc-400 font-mono font-medium border border-zinc-600/30 uppercase">
         {t('yamlEditor.shell.tree.badgeDisabled')}
+      </span>
+    );
+  }
+
+  if (node.type === 'websocket') {
+    return (
+      <span className="inline-flex h-5 items-center text-xs px-1.5 py-0.5 rounded bg-violet-400/15 text-violet-300 font-mono border border-violet-400/30">
+        WS
       </span>
     );
   }

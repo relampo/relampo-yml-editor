@@ -146,7 +146,7 @@ export interface YAMLNodeData {
   response?: YAMLResponseData;
   right_boundary?: string;
   run_until_stopped?: boolean;
-	 scenario_mode?: ScenarioMode;
+  scenario_mode?: ScenarioMode;
   script?: string;
   ssl_mode?: string;
   spark?: YAMLNodeData[];
@@ -210,6 +210,7 @@ export type YAMLNodeType =
   | 'request'
   | 'sql'
   | 'grpc'
+  | 'websocket'
   | 'get'
   | 'post'
   | 'put'

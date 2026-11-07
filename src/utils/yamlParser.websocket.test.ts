@@ -24,15 +24,15 @@ scenarios:
         receive: {match: {jsonpath: $.type, equals: subscribed}, unmatched: keep}
 `;
 describe('WebSocket conversation authoring', () => {
- it('imports native conversations and persistent actions without losing recording evidence', () => {
-  const tree = parseYAMLToTree(source)!;
-  const requests = collectRequests(tree);
-  expect(requests.map(n => n.type)).toEqual(['websocket', 'websocket', 'websocket']);
-  expect(requests[0].data?.future_field).toBe('preserve');
-  expect(load(treeToYAML(tree))).toEqual(load(source));
- });
- it('creates a conversation and allows it in a multiprotocol flow', () => {
-  expect(createNodeByType('websocket').type).toBe('websocket');
-  expect(canContain('steps','websocket')).toBe(true);
- });
+  it('imports native conversations and persistent actions without losing recording evidence', () => {
+    const tree = parseYAMLToTree(source)!;
+    const requests = collectRequests(tree);
+    expect(requests.map(n => n.type)).toEqual(['websocket', 'websocket', 'websocket']);
+    expect((requests[0].data as Record<string, unknown>)?.future_field).toBe('preserve');
+    expect(load(treeToYAML(tree))).toEqual(load(source));
+  });
+  it('creates a conversation and allows it in a multiprotocol flow', () => {
+    expect(createNodeByType('websocket').type).toBe('websocket');
+    expect(canContain('steps', 'websocket')).toBe(true);
+  });
 });

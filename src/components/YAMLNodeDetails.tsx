@@ -9,6 +9,7 @@ import { useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { getNodeDisplayName } from './yaml-tree-view/nodeDisplayName';
 import type { RedirectSourceInfo, RedirectedRequestInfo, YAMLNode } from '../types/yaml';
+import { YAMLWebSocketDetails } from './YAMLWebSocketDetails';
 import { YAMLGRPCDetails } from './YAMLGRPCDetails';
 import { YAMLRequestDetails } from './YAMLRequestDetails';
 import { YAMLSQLDetails } from './YAMLSQLDetails';
@@ -64,7 +65,19 @@ interface YAMLNodeDetailsProps {
 }
 
 const NO_ISSUES: DocumentIssue[] = [];
-const REQUEST_NODE_TYPES = ['request', 'sql', 'grpc', 'get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
+const REQUEST_NODE_TYPES = [
+  'request',
+  'sql',
+  'grpc',
+  'websocket',
+  'get',
+  'post',
+  'put',
+  'delete',
+  'patch',
+  'head',
+  'options',
+];
 // Node types that cannot be toggled on/off (mirrors the tree context menu).
 const NON_TOGGLEABLE_NODE_TYPES = ['root', 'test', 'scenarios', 'steps', 'grpc_defaults'];
 
@@ -325,9 +338,21 @@ function NodeDetailsContent({
           onNodeUpdate={onNodeUpdate}
         />
       );
+    case 'websocket':
+      return (
+        <YAMLWebSocketDetails
+          node={node}
+          onNodeUpdate={onNodeUpdate}
+        />
+      );
     case 'grpc_defaults':
     case 'grpc':
-      return <YAMLGRPCDetails node={node} onNodeUpdate={onNodeUpdate} />;
+      return (
+        <YAMLGRPCDetails
+          node={node}
+          onNodeUpdate={onNodeUpdate}
+        />
+      );
     case 'request':
     case 'sql':
     case 'get':
