@@ -1,3 +1,4 @@
+import type { WebSocketEventMetrics } from '../components/WebSocketMetrics';
 import { componentCapabilityError, parseComponentCapabilities, type ComponentCapabilities } from './componentConfiguration';
 import { trackStudioRunStarted, trackStudioRunCompleted, setAnalyticsVersion, initializeAnalytics } from './analytics';
 // Client for the relampo studio debug-run API (RLP-507 Phase 1).
@@ -56,7 +57,7 @@ interface EngineRedirectHop {
 }
 
 // Mirrors pkg/engine.Event JSON serialization.
-export interface EngineEvent {
+export interface EngineEvent extends WebSocketEventMetrics {
   ts: string;
   started_at?: string;
   name: string;

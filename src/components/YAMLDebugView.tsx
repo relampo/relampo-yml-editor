@@ -1,3 +1,4 @@
+import { WebSocketMetrics } from './WebSocketMetrics';
 import { componentCapabilityError, type ComponentCapabilities } from '../utils/componentConfiguration';
 import {
   useCallback,
@@ -1434,6 +1435,7 @@ function DebugOverviewInspector({
   const { t } = useLanguage();
   return (
     <div className="space-y-3">
+      {event.protocol === 'websocket' && <WebSocketMetrics event={event} />}
       <div className="grid gap-3 md:grid-cols-2">
         <DebugLine
           icon={<Eye className="h-4 w-4 text-yellow-300" />}
