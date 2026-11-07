@@ -1,0 +1,38 @@
+import { describe, it, expect } from 'vitest';
+import { load } from 'js-yaml';
+import { parseYAMLToTree, treeToYAML } from './yamlParser';
+import { collectRequests } from '../components/debugRequests';
+import { canContain } from './yamlDragDropRules';
+import { createNodeByType } from '../components/yaml-tree-view/nodeFactory';
+const source = `test: {name: Live auctions}
+scenarios:
+ - name: Buyer
+   steps:
+    - websocket:
+        name: Recorded conversation
+        url: wss://example.com/ws
+        future_field: preserve
+        actions:
+         - send: {type: text, data: '{"action":"subscribe"}'}
+         - receive:
+             type: text
+             response: {data: '{"type":"subscribed"}', size_bytes: 21, time_ms: 5}
+    - websocket: {action: connect, connection: feed, url: wss://example.com/ws}
+    - websocket:
+        action: receive
+        connection: feed
+        receive: {match: {jsonpath: $.type, equals: subscribed}, unmatched: keep}
+`;
+describe('WebSocket conversation authoring', () => {
+ it('imports native conversations and persistent actions without losing recording evidence', () => {
+  const tree = parseYAMLToTree(source)!;
+  const requests = collectRequests(tree);
+  expect(requests.map(n => n.type)).toEqual(['websocket', 'websocket', 'websocket']);
+  expect(requests[0].data?.future_field).toBe('preserve');
+  expect(load(treeToYAML(tree))).toEqual(load(source));
+ });
+ it('creates a conversation and allows it in a multiprotocol flow', () => {
+  expect(createNodeByType('websocket').type).toBe('websocket');
+  expect(canContain('steps','websocket')).toBe(true);
+ });
+});
