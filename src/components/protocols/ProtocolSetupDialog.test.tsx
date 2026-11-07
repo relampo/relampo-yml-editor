@@ -16,9 +16,24 @@ describe('protocol setup window', () => {
       />,
     );
     fireEvent.change(screen.getByLabelText('URL'), { target: { value: 'https://api.test/health' } });
+    fireEvent.change(screen.getByLabelText('Name (optional)'), { target: { value: 'Create order' } });
+    fireEvent.change(screen.getByLabelText('Method'), { target: { value: 'POST' } });
+    fireEvent.change(screen.getByLabelText('Request body (optional)'), { target: { value: '{"item":"{{item}}"}' } });
+    fireEvent.click(screen.getByText('Headers and authentication'));
+    fireEvent.change(screen.getByLabelText('Headers (JSON)'), {
+      target: { value: '{"Authorization":"Bearer {{token}}"}' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Add to Studio' }));
     expect(add).toHaveBeenCalledWith(
-      expect.objectContaining({ request: expect.objectContaining({ method: 'GET', url: 'https://api.test/health' }) }),
+      expect.objectContaining({
+        request: expect.objectContaining({
+          name: 'Create order',
+          method: 'POST',
+          url: 'https://api.test/health',
+          body: '{"item":"{{item}}"}',
+          headers: { Authorization: 'Bearer {{token}}' },
+        }),
+      }),
     );
     expect(close).toHaveBeenCalledWith(false);
   });
