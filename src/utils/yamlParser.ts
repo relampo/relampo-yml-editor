@@ -42,6 +42,7 @@ const ROOT_FIELDS = new Set([
   'data_source',
   'error_policy',
   'http_defaults',
+  'grpc_defaults',
   'scenarios',
   'metrics',
 ]);
@@ -157,6 +158,17 @@ function convertToTree(obj: any, _: string[] = [], defaultRootName?: string): YA
         auth: normalizeAuthForEditor(obj.http_defaults.auth) ?? obj.http_defaults.auth,
       },
       path: ['http_defaults'],
+    });
+  }
+
+  if (obj.grpc_defaults !== undefined) {
+    if (!isPlainRecord(obj.grpc_defaults)) throw new Error('grpc_defaults must be a mapping');
+    root.children!.push({
+      id: `${rootId}_grpc_defaults`,
+      type: 'grpc_defaults',
+      name: 'gRPC Defaults',
+      data: asYAMLNodeData(obj.grpc_defaults),
+      path: ['grpc_defaults'],
     });
   }
 
@@ -304,6 +316,20 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
     const node = createRequestNode(stepId, 'request', step.request, path, isEnabled);
     node.unknownData = unknownFields(step, new Set(['request', 'enabled']));
     return node;
+  }
+
+  if (isPlainRecord(step.grpc)) {
+    const grpc = asYAMLNodeData(step.grpc);
+    return {
+      id: stepId,
+      type: 'grpc',
+      name: typeof grpc.name === 'string' && grpc.name ? grpc.name : String(grpc.method || 'gRPC Request'),
+      data: { ...grpc, ...(step.enabled !== undefined && grpc.enabled === undefined ? { enabled: isEnabled } : {}) },
+      path,
+      children: [],
+      expanded: false,
+      unknownData: unknownFields(step, new Set(['grpc', 'enabled'])),
+    };
   }
 
   if (step.sql) {

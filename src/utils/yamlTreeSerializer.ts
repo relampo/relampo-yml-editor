@@ -165,6 +165,8 @@ export function treeToObject(tree: YAMLNode): any {
         ...(auth ? { auth } : {}),
       };
       if (!obj.http_defaults.auth) delete obj.http_defaults.auth;
+    } else if (child.type === 'grpc_defaults') {
+      obj.grpc_defaults = { ...child.data };
     } else if (child.type === 'scenarios') {
       obj.scenarios = child.children?.map(scenarioNodeToObject) || [];
     } else if (child.type === 'metrics') {
@@ -237,6 +239,13 @@ function stepNodeToObject(node: YAMLNode): any {
 
   if (node.type === 'request') {
     return requestNodeToObject(node);
+  }
+
+  if (node.type === 'grpc') {
+    const grpc = sanitizeBalancedNodeData(node.data) || {};
+    const autoName = grpc?.name || grpc?.method || 'gRPC Request';
+    if (node.name && node.name !== autoName) grpc.name = node.name;
+    return { ...(node.unknownData || {}), grpc };
   }
 
   if (node.type === 'sql') {

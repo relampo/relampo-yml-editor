@@ -47,6 +47,7 @@ const ROOT_LEVEL_ELEMENTS: YAMLNodeType[] = [
   'variables',
   'data_source',
   'http_defaults',
+  'grpc_defaults',
   'scenarios',
   'metrics',
   'error_policy',
@@ -72,6 +73,7 @@ const LOGIC_CONTROLLERS: YAMLNodeType[] = [
 const HTTP_SAMPLERS: YAMLNodeType[] = ['request', 'get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
 
 const SQL_SAMPLERS: YAMLNodeType[] = ['sql'];
+const GRPC_SAMPLERS: YAMLNodeType[] = ['grpc'];
 
 /** Pre-Processors - execute before sampler */
 const PRE_PROCESSORS: YAMLNodeType[] = ['spark_before'];
@@ -89,6 +91,7 @@ const TIMERS: YAMLNodeType[] = ['think_time'];
 const STEP_ELEMENTS: YAMLNodeType[] = [
   ...HTTP_SAMPLERS,
   ...SQL_SAMPLERS,
+  ...GRPC_SAMPLERS,
   ...LOGIC_CONTROLLERS,
   ...TIMERS,
   'data_source',
@@ -99,6 +102,7 @@ const STEP_ELEMENTS: YAMLNodeType[] = [
 const BALANCED_CHILD_ELEMENTS: YAMLNodeType[] = [
   ...HTTP_SAMPLERS,
   ...SQL_SAMPLERS,
+  ...GRPC_SAMPLERS,
   'group',
   'transaction',
   'parallel',
@@ -145,6 +149,7 @@ const containmentRules: Partial<Record<YAMLNodeType, YAMLNodeType[]>> = {
   variables: [],
   data_source: [],
   http_defaults: [],
+  grpc_defaults: [],
   metrics: [],
 
   // Scenarios container
@@ -174,6 +179,7 @@ const containmentRules: Partial<Record<YAMLNodeType, YAMLNodeType[]>> = {
 
   // SQL steps are leaf executable steps
   sql: [],
+  grpc: [],
 
   // Logic Controllers - can contain steps and other controllers
   group: STEP_ELEMENTS,

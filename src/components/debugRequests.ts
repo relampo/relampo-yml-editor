@@ -16,7 +16,7 @@ export type DebugEventLike = {
   vu?: number;
 };
 
-const REQUEST_TYPES = new Set(['request', 'get', 'post', 'put', 'delete', 'patch', 'head', 'options']);
+const REQUEST_TYPES = new Set(['grpc', 'request', 'get', 'post', 'put', 'delete', 'patch', 'head', 'options']);
 const DEBUG_EVENT_TYPES = new Set([...REQUEST_TYPES, 'think_time']);
 
 function getRequestPath(node: YAMLNode): string {

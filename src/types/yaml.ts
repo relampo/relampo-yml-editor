@@ -108,6 +108,13 @@ export interface YAMLNodeData {
   mean?: YAMLInputValue;
   metric?: string;
   method?: string;
+  metadata?: YAMLValue;
+  message?: YAMLValue;
+  payload_base64?: string;
+  protoset?: string;
+  reflection?: boolean;
+  expected_status?: string;
+  connection_scope?: string;
   mime?: string;
   mime_type?: string;
   min?: YAMLInputValue;
@@ -193,6 +200,7 @@ export type YAMLNodeType =
   | 'variables'
   | 'data_source'
   | 'http_defaults'
+  | 'grpc_defaults'
   | 'scenarios'
   | 'scenario'
   | 'metrics'
@@ -201,6 +209,7 @@ export type YAMLNodeType =
   | 'step'
   | 'request'
   | 'sql'
+  | 'grpc'
   | 'get'
   | 'post'
   | 'put'

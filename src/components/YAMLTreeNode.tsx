@@ -21,6 +21,7 @@ import {
   HardDrive,
   Layers,
   List,
+  Network,
   Package,
   Paperclip,
   Play,
@@ -500,6 +501,7 @@ function getNodeIcon(type: YAMLNodeType): LucideIcon {
     variables: Braces,
     data_source: Database,
     http_defaults: Settings,
+    grpc_defaults: Settings,
     scenarios: List,
     scenario: Zap,
     metrics: BarChart3,
@@ -508,6 +510,7 @@ function getNodeIcon(type: YAMLNodeType): LucideIcon {
     step: Code,
     request: Globe,
     sql: Database,
+    grpc: Network,
     get: Globe,
     post: Globe,
     put: Globe,
@@ -581,6 +584,9 @@ function getNodeColor(type: YAMLNodeType, node?: YAMLNode): string {
     case 'head':
     case 'options':
       return 'text-emerald-400';
+    case 'grpc':
+    case 'grpc_defaults':
+      return 'text-cyan-400';
     case 'sql':
       return 'text-teal-400';
     case 'group':
@@ -643,6 +649,14 @@ function getNodeBadge(
     return (
       <span className="text-xs px-1.5 py-0.5 rounded bg-zinc-700/30 text-zinc-400 font-mono font-medium border border-zinc-600/30 uppercase">
         {t('yamlEditor.shell.tree.badgeDisabled')}
+      </span>
+    );
+  }
+
+  if (node.type === 'grpc') {
+    return (
+      <span className="inline-flex h-5 items-center text-xs px-1.5 py-0.5 rounded bg-cyan-400/15 text-cyan-300 font-mono border border-cyan-400/30">
+        gRPC
       </span>
     );
   }
