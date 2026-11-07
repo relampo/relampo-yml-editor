@@ -188,7 +188,7 @@ function Payload({ value, onChange, index }: { value: Data; onChange: (v: Data) 
                 return;
               }
             }
-            if (!binary && /^[\s]*[\[{]/.test(draft)) {
+            if (!binary && /^\s*[[{]/.test(draft)) {
               try {
                 JSON.parse(draft);
               } catch {
@@ -227,6 +227,12 @@ function Payload({ value, onChange, index }: { value: Data; onChange: (v: Data) 
           Insert variable
         </button>
       </div>
+      <Field
+        label={`Track response as ${index}`}
+        value={value.correlation}
+        placeholder="offer"
+        onChange={correlation => onChange({ ...value, correlation })}
+      />
       <Field
         label={`Delay before ${index}`}
         value={value.delay_before}
@@ -321,6 +327,35 @@ function Receive({ value, onChange, index }: { value: Data; onChange: (v: Data) 
         ]}
         onChange={unmatched => onChange({ ...value, unmatched })}
       />
+      <Choice
+        label={`Receive format ${index}`}
+        value={String(value.type || 'any')}
+        choices={[
+          ['any', 'Any message'],
+          ['text', 'Text / JSON'],
+          ['binary', 'Binary'],
+        ]}
+        onChange={type => onChange({ ...value, type })}
+      />
+      <label className="flex gap-2 text-xs">
+        <input
+          type="checkbox"
+          aria-label={`Optional event ${index}`}
+          checked={value.optional === true}
+          onChange={e => onChange({ ...value, optional: e.target.checked })}
+        />
+        Optional event: continue if it does not arrive before the timeout
+      </label>
+      <Field
+        label={`Response to tracked send ${index}`}
+        value={value.correlation}
+        placeholder="offer"
+        onChange={correlation => onChange({ ...value, correlation })}
+      />
+      <p className="text-xs opacity-70">
+        For response timing, use the same tracking name on send and receive, and match a request ID to identify the
+        response.
+      </p>
       <Field
         label={`Receive timeout ${index}`}
         value={value.timeout}
@@ -680,7 +715,7 @@ export function YAMLWebSocketDetails({ node, onNodeUpdate }: NodeDetailProps) {
                         )
                       }
                     >
-                      Ignore this recorded message during replay
+                      Remove this receive step
                     </button>
                   )}
                 </li>
