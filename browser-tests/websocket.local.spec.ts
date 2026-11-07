@@ -54,5 +54,15 @@ test('QA imports a recording, configures matching and extraction, and exports ex
     match: { jsonpath: '$.type', equals: 'subscribed' },
     extractors: [{ type: 'jsonpath', expression: '$.id', var: 'subscription_id' }],
   });
+  await page.getByRole('button', { name: 'Keep connection across scenario steps' }).click();
+  await expect(page.getByLabel('Connection mode')).toHaveValue('connect');
+  const secondPending = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await page.getByRole('menuitem', { name: /Save with responses/ }).click();
+  const second = await secondPending;
+  const split = yaml.load(await readFile(await second.path(), 'utf8')) as {
+    scenarios: { steps: { websocket: Record<string, unknown> }[] }[];
+  };
+  expect(split.scenarios[0].steps.map(step => step.websocket.action)).toEqual(['connect', 'send', 'receive', 'close']);
   expect(errors).toEqual([]);
 });

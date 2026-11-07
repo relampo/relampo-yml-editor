@@ -54,6 +54,7 @@ interface YAMLNodeDetailsProps {
   hosts?: string[];
   redirectedInfo?: RedirectedRequestInfo | null;
   redirectSourceInfo?: RedirectSourceInfo | null;
+  onSplitWebSocket?: (nodeId:string)=>void;
   onNodeUpdate?: (nodeId: string, updatedData: any) => void;
   onRenameHost?: (oldHost: string, newHost: string) => void;
   onRemoveHost?: (host: string) => void;
@@ -90,6 +91,7 @@ export function YAMLNodeDetails({
   hosts = [],
   redirectSourceInfo = null,
   onNodeUpdate,
+  onSplitWebSocket,
   onRenameHost,
   onRemoveHost,
   onToggleEnabled,
@@ -221,6 +223,7 @@ export function YAMLNodeDetails({
           />
         )}
         <NodeDetailsContent
+          onSplitWebSocket={onSplitWebSocket}
           node={node}
           nodeName={nodeName}
           setNodeName={setNodeName}
@@ -248,6 +251,7 @@ function NodeDetailsContent({
   hosts,
   redirectSourceInfo,
   onNodeUpdate,
+  onSplitWebSocket,
   onRenameHost,
   onRemoveHost,
   searchQuery = '',
@@ -261,6 +265,7 @@ function NodeDetailsContent({
   baseUrl: string;
   hosts: string[];
   redirectSourceInfo: RedirectSourceInfo | null;
+  onSplitWebSocket?:(nodeId:string)=>void;
   onNodeUpdate?: (nodeId: string, updatedData: any) => void;
   onRenameHost?: (oldHost: string, newHost: string) => void;
   onRemoveHost?: (host: string) => void;
@@ -343,6 +348,7 @@ function NodeDetailsContent({
         <YAMLWebSocketDetails
           node={node}
           onNodeUpdate={onNodeUpdate}
+          onSplit={onSplitWebSocket?()=>onSplitWebSocket(node.id):undefined}
         />
       );
     case 'grpc_defaults':

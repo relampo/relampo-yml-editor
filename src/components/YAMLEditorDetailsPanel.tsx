@@ -1,3 +1,4 @@
+import { splitWebSocketConversation } from '../utils/websocketConversation';
 import type { SearchScope } from './yaml-tree-view/search';
 import type { ComponentCapabilities } from '../utils/componentConfiguration';
 import type { DocumentIssue } from '../utils/documentIssues';
@@ -7,6 +8,7 @@ import { YAMLLoadRunSession } from './YAMLRunView';
 import { YAMLNodeDetails } from './YAMLNodeDetails';
 
 type YAMLEditorDetailsPanelProps = {
+ onTreeChange?:(tree:YAMLNode)=>void;
   isDebugViewActive: boolean;
   isRunViewActive: boolean;
   language: string;
@@ -63,6 +65,7 @@ export function YAMLEditorDetailsPanel({
   redirectedRequestMap,
   redirectSourceMap,
   onNodeUpdate,
+  onTreeChange,
   onRenameHost,
   onRemoveHost,
   onToggleEnabled,
@@ -133,6 +136,7 @@ export function YAMLEditorDetailsPanel({
             redirectedInfo={selectedNode ? (redirectedRequestMap[selectedNode.id] ?? null) : null}
             redirectSourceInfo={selectedNode ? (redirectSourceMap[selectedNode.id] ?? null) : null}
             onNodeUpdate={onNodeUpdate}
+            onSplitWebSocket={yamlTree&&onTreeChange?(nodeId)=>onTreeChange(splitWebSocketConversation(yamlTree,nodeId)):undefined}
             onRenameHost={onRenameHost}
             onRemoveHost={onRemoveHost}
             onToggleEnabled={onToggleEnabled}

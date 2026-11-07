@@ -364,6 +364,31 @@ function Receive({ value, onChange, index }: { value: Data; onChange: (v: Data) 
       />
       <fieldset className="space-y-2">
         <legend className="text-xs">Save values as variables</legend>
+        {Object.keys(sample)
+          .slice(0, 12)
+          .filter(key => !['object', 'undefined'].includes(typeof sample[key]))
+          .map(key => (
+            <button
+              key={key}
+              type="button"
+              className="text-xs text-violet-400 mr-3"
+              onClick={() =>
+                onChange({
+                  ...value,
+                  extractors: [
+                    ...extractors,
+                    {
+                      type: 'jsonpath',
+                      expression: '$[' + JSON.stringify(key) + ']',
+                      var: key.replace(/[^a-zA-Z0-9_]/g, '_'),
+                    },
+                  ],
+                })
+              }
+            >
+              Save {key} as variable
+            </button>
+          ))}
         {extractors.map((ex, i) => (
           <div
             key={i}
@@ -391,6 +416,13 @@ function Receive({ value, onChange, index }: { value: Data; onChange: (v: Data) 
                 })
               }
             />
+            <button
+              type="button"
+              className="text-xs text-violet-400"
+              onClick={() => onChange({ ...value, extractors: extractors.filter((_, j) => j !== i) })}
+            >
+              Remove extraction
+            </button>
           </div>
         ))}
         <button
@@ -430,6 +462,13 @@ function Receive({ value, onChange, index }: { value: Data; onChange: (v: Data) 
                 })
               }
             />
+            <button
+              type="button"
+              className="text-xs text-violet-400"
+              onClick={() => onChange({ ...value, assertions: assertions.filter((_, j) => j !== i) })}
+            >
+              Remove check
+            </button>
           </div>
         ))}
         <button
@@ -446,7 +485,7 @@ function Receive({ value, onChange, index }: { value: Data; onChange: (v: Data) 
     </div>
   );
 }
-export function YAMLWebSocketDetails({ node, onNodeUpdate }: NodeDetailProps) {
+export function YAMLWebSocketDetails({ node, onNodeUpdate, onSplit }: NodeDetailProps & { onSplit?: () => void }) {
   const data = (node.data || {}) as unknown as Data;
   const update = (next: Data) => onNodeUpdate?.(node.id, next);
   const set = (key: string, value: unknown) => update({ ...data, [key]: value });
@@ -469,6 +508,15 @@ export function YAMLWebSocketDetails({ node, onNodeUpdate }: NodeDetailProps) {
           {mode === 'conversation' ? 'Conversation' : mode}
         </span>
       </div>
+      {mode === 'conversation' && onSplit && (
+        <button
+          type="button"
+          className="text-violet-400 text-xs rounded border border-violet-400/30 px-3 py-2"
+          onClick={onSplit}
+        >
+          Keep connection across scenario steps
+        </button>
+      )}
       <Choice
         label="Connection mode"
         value={mode}

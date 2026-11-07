@@ -148,6 +148,7 @@ export function YAMLEditorMainLayout({
         </div>
 
         <YAMLEditorDetailsPanel
+          onTreeChange={onTreeChange}
           isDebugViewActive={isDebugViewActive}
           isRunViewActive={isRunViewActive}
           language={language}
