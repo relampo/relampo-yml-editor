@@ -36,3 +36,8 @@ describe('WebSocket conversation authoring', () => {
     expect(canContain('steps', 'websocket')).toBe(true);
   });
 });
+
+it('persists a WebSocket rename made in the scenario tree',()=>{
+ const tree=parseYAMLToTree(source)!;const node=collectRequests(tree)[0];node.name='Renamed conversation';
+ expect(treeToYAML(tree)).toContain('name: Renamed conversation');
+});
