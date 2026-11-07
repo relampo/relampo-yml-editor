@@ -42,7 +42,9 @@ export function ProtocolMenu({
     },
   ] as const;
   return (
-    <DropdownMenu>
+    // A selected item opens a modal dialog. Keep the menu non-modal so its
+    // closing animation cannot restore a stale pointer lock over that dialog.
+    <DropdownMenu modal={false}>
       <DropdownMenuTrigger className="inline-flex h-8 items-center justify-center gap-2 rounded-md border border-white/15 bg-white/5 px-3 text-sm font-semibold text-zinc-200 shadow-sm transition-colors hover:border-white/25 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-yellow-400/40">
         <Layers className="h-4 w-4" />
         Other Protocols
