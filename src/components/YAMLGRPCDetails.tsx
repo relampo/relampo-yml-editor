@@ -1,3 +1,4 @@
+import { GRPCChecksEditor } from './grpc/GRPCChecksEditor';
 import { GRPCStreamEditor, GRPCRecordedConversation } from './grpc/GRPCStreamEditor';
 import { GRPCMessageForm } from './grpc/GRPCMessageForm';
 import { useGRPCSchema } from '../contexts/GRPCSchemaContext';
@@ -196,6 +197,12 @@ export function YAMLGRPCDetails({ node, onNodeUpdate }: NodeDetailProps) {
               onCommit={value => update('message', value)}
             />
           )}
+          <GRPCChecksEditor
+            extractors={data.extractors}
+            assertions={data.assertions}
+            onExtractorsChange={value => update('extractors', value)}
+            onAssertionsChange={value => update('assertions', value)}
+          />
           <JsonField
             key={node.id + '-extractors'}
             label="Extractors (JSON)"

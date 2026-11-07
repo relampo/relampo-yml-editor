@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Network, Upload, Radio, Search } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../ui/dialog';
+import { GRPCCorrelationReview } from './GRPCCorrelationReview';
 import { GRPCMessageForm } from './GRPCMessageForm';
 import { GRPCStreamEditor } from './GRPCStreamEditor';
 import {
@@ -618,6 +619,11 @@ export function GRPCWorkbench({
           )}
           {generated && (
             <section className="space-y-3 rounded border border-cyan-400/20 p-4">
+              <GRPCCorrelationReview
+                key={generated.id}
+                project={generated}
+                onChange={setGenerated}
+              />
               {generated.warnings.map(warning => (
                 <p
                   key={warning}

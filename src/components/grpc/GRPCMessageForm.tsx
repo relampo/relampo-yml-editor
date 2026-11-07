@@ -71,6 +71,14 @@ function Scalar({
         onChange(text);
         return;
       }
+      if (!['float', 'double'].includes(field.type)) {
+        const value = Number(text);
+        const unsigned = field.type.startsWith('u') || field.type.startsWith('fixed');
+        if (value < (unsigned ? 0 : -2147483648) || value > (unsigned ? 4294967295 : 2147483647)) {
+          setError('Integer is outside the 32-bit range');
+          return;
+        }
+      }
       onChange(Number(text));
       return;
     }
@@ -359,7 +367,7 @@ export function FreeJSON({
   value: YAMLValue | undefined;
   onChange: (value: YAMLValue) => void;
 }) {
-  const serialized = JSON.stringify(value ?? {}, null, 2);
+  const serialized = JSON.stringify(value === undefined ? {} : value, null, 2);
   const [draft, setDraft] = useState(serialized);
   const [error, setError] = useState('');
   useEffect(() => {
