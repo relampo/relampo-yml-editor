@@ -15,6 +15,9 @@ export interface YAMLResponseData {
 }
 
 export interface YAMLNodeData {
+  stream?: YAMLValue;
+  plaintext?: boolean;
+  tls?: YAMLValue;
   __allowTypeSelection?: boolean;
   __assertionsWrapper?: boolean;
   __controller?: boolean;
@@ -146,7 +149,7 @@ export interface YAMLNodeData {
   response?: YAMLResponseData;
   right_boundary?: string;
   run_until_stopped?: boolean;
-	 scenario_mode?: ScenarioMode;
+  scenario_mode?: ScenarioMode;
   script?: string;
   ssl_mode?: string;
   spark?: YAMLNodeData[];

@@ -1,3 +1,6 @@
+import { GRPCStreamEditor, GRPCRecordedConversation } from './grpc/GRPCStreamEditor';
+import { GRPCMessageForm } from './grpc/GRPCMessageForm';
+import { useGRPCSchema } from '../contexts/GRPCSchemaContext';
 import { useEffect, useState } from 'react';
 import type { YAMLNodeData, YAMLValue } from '../types/yaml';
 import type { NodeDetailProps } from './yaml-node-details/types';
@@ -6,14 +9,16 @@ function JsonField({
   label,
   value,
   array = false,
+  anyValue = false,
   onCommit,
 }: {
   label: string;
   value: unknown;
   array?: boolean;
+  anyValue?: boolean;
   onCommit: (value: YAMLValue) => void;
 }) {
-  const serialized = JSON.stringify(value ?? (array ? [] : {}), null, 2);
+  const serialized = JSON.stringify(value === undefined ? (array ? [] : {}) : value, null, 2);
   const [draft, setDraft] = useState(serialized);
   const [error, setError] = useState('');
   useEffect(() => {
@@ -35,7 +40,9 @@ function JsonField({
           try {
             const parsed: YAMLValue = JSON.parse(draft);
             if (
-              array ? !Array.isArray(parsed) : parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)
+              array
+                ? !Array.isArray(parsed)
+                : !anyValue && (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed))
             ) {
               throw new Error(array ? 'Expected a JSON array' : 'Expected a JSON object');
             }
@@ -60,6 +67,8 @@ function JsonField({
 export function YAMLGRPCDetails({ node, onNodeUpdate }: NodeDetailProps) {
   const [tab, setTab] = useState<'request' | 'response'>('request');
   const data = node.data || {};
+  const { catalog } = useGRPCSchema();
+  const method = catalog?.services.flatMap(service => service.methods).find(method => method.path === data.method);
   const update = (field: string, value: YAMLValue) => onNodeUpdate?.(node.id, { ...data, [field]: value });
   const field = (label: string, key: keyof YAMLNodeData, placeholder = '') => (
     <label className="block space-y-2 text-xs text-zinc-400">
@@ -80,6 +89,14 @@ export function YAMLGRPCDetails({ node, onNodeUpdate }: NodeDetailProps) {
         {field('Target', 'target', 'host:port')}
         {field('Protoset', 'protoset', './api/service.protoset')}
         {field('Timeout', 'timeout', '30s')}
+        <label className="flex gap-2 text-xs text-zinc-300">
+          <input
+            type="checkbox"
+            checked={data.plaintext === true}
+            onChange={event => update('plaintext', event.target.checked)}
+          />
+          Plaintext connection (explicit opt-in)
+        </label>
         <label className="block space-y-2 text-xs text-zinc-400">
           <span>Connection scope</span>
           <select
@@ -113,7 +130,7 @@ export function YAMLGRPCDetails({ node, onNodeUpdate }: NodeDetailProps) {
     <section className="space-y-5">
       <div className="flex items-center justify-between">
         <h4 className="text-sm font-semibold text-cyan-300">gRPC Request</h4>
-        <span className="text-xs text-zinc-500">Unary · Protobuf</span>
+        <span className="text-xs text-zinc-500">{data.stream ? 'Streaming' : 'Unary'} · Protobuf</span>
       </div>
       <div className="flex gap-3 border-b border-white/10 pb-2">
         <button
@@ -142,6 +159,26 @@ export function YAMLGRPCDetails({ node, onNodeUpdate }: NodeDetailProps) {
             {field('Timeout', 'timeout', '30s')}
             {field('Expected status', 'expected_status', 'OK')}
           </div>
+          {catalog &&
+            method &&
+            !data.payload_base64 &&
+            (!data.stream || (data.stream as Record<string, YAMLValue>).type === 'server_streaming') && (
+              <GRPCMessageForm
+                catalog={catalog}
+                messageType={method.input}
+                value={data.message}
+                onChange={message => update('message', message)}
+              />
+            )}
+          {data.stream && (
+            <GRPCStreamEditor
+              catalog={catalog}
+              inputType={method?.input}
+              template={method?.template}
+              value={data.stream}
+              onChange={stream => update('stream', stream)}
+            />
+          )}
           <JsonField
             key={node.id + '-metadata'}
             label="Metadata (JSON)"
@@ -154,6 +191,7 @@ export function YAMLGRPCDetails({ node, onNodeUpdate }: NodeDetailProps) {
             <JsonField
               key={node.id + '-message'}
               label="Message (JSON)"
+              anyValue
               value={data.message}
               onCommit={value => update('message', value)}
             />
@@ -174,15 +212,18 @@ export function YAMLGRPCDetails({ node, onNodeUpdate }: NodeDetailProps) {
           />
         </div>
       ) : (
-        <label className="block space-y-2 text-xs text-zinc-400">
-          <span>Recorded response</span>
-          <textarea
-            aria-label="Recorded response"
-            readOnly
-            value={JSON.stringify(data.response ?? {}, null, 2)}
-            className="w-full min-h-72 p-3 rounded border border-white/10 bg-black/30 text-zinc-200 font-mono text-xs"
-          />
-        </label>
+        <div className="space-y-4">
+          <GRPCRecordedConversation messages={(data.response as Record<string, YAMLValue> | undefined)?.messages} />
+          <label className="block space-y-2 text-xs text-zinc-400">
+            <span>Recorded response</span>
+            <textarea
+              aria-label="Recorded response"
+              readOnly
+              value={JSON.stringify(data.response ?? {}, null, 2)}
+              className="w-full min-h-72 p-3 rounded border border-white/10 bg-black/30 text-zinc-200 font-mono text-xs"
+            />
+          </label>
+        </div>
       )}
     </section>
   );

@@ -1,3 +1,5 @@
+import { GRPCWorkbench } from './grpc/GRPCWorkbench';
+import { appendGRPCScenario } from '../utils/grpcProject';
 import type { SearchScope } from './yaml-tree-view/search';
 import { useMemo, useRef, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -28,6 +30,7 @@ import { useYamlFileUpload } from './yaml-editor/useYamlFileUpload';
 import { useYamlViewMode } from './yaml-editor/useYamlViewMode';
 
 export function YAMLEditor() {
+  const [grpcOpen, setGrpcOpen] = useState(false);
   const [treeSearchScope, setTreeSearchScope] = useState<SearchScope | null>(null);
   const { language, setLanguage, t } = useLanguage();
   const { yamlContent, setYamlContent } = useYAML();
@@ -103,6 +106,7 @@ export function YAMLEditor() {
     multiScenarioRunEnabled,
     componentCapabilities,
     dataSourceFileBrowseEnabled,
+    grpcAuthoringEnabled,
     defaultViewMode,
   } = useYamlDocumentLifecycle({
     language,
@@ -275,6 +279,7 @@ export function YAMLEditor() {
       {isDragOver && <YAMLEditorDragOverlay language={language} />}
 
       <YAMLEditorHeader
+        onGRPC={grpcAuthoringEnabled ? () => setGrpcOpen(true) : undefined}
         language={language}
         setLanguage={setLanguage}
         t={t}
@@ -286,6 +291,17 @@ export function YAMLEditor() {
         onFileChange={handleFileChange}
       />
 
+      {grpcAuthoringEnabled && (
+        <GRPCWorkbench
+          open={grpcOpen}
+          onOpenChange={setGrpcOpen}
+          onAdd={generated => {
+            const merged = appendGRPCScenario(retrieveYamlForSaving(), generated);
+            handleCodeChange(merged);
+            setViewMode('tree');
+          }}
+        />
+      )}
       <YAMLEditorNewDocumentDialog
         open={isNewDialogOpen}
         onOpenChange={setIsNewDialogOpen}

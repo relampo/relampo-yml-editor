@@ -1,4 +1,8 @@
-import { componentCapabilityError, parseComponentCapabilities, type ComponentCapabilities } from './componentConfiguration';
+import {
+  componentCapabilityError,
+  parseComponentCapabilities,
+  type ComponentCapabilities,
+} from './componentConfiguration';
 import { trackStudioRunStarted, trackStudioRunCompleted, setAnalyticsVersion, initializeAnalytics } from './analytics';
 // Client for the relampo studio debug-run API (RLP-507 Phase 1).
 // When the editor is served by `relampo studio` the API lives on the same
@@ -30,7 +34,7 @@ export interface BuiltinInvocation {
   value: unknown;
   status: string;
   origin?: string;
-    error?: string;
+  error?: string;
 }
 
 export interface ErrorPolicyDecision {
@@ -152,6 +156,8 @@ interface StudioInitialScript {
 // Optional studio features the backend advertises so the editor only shows UI
 // it supports. Absent on older studio builds, so every flag defaults to false.
 interface StudioCapabilities {
+  grpcAuthoring?: boolean;
+  grpcStreaming?: boolean;
   componentConfiguration?: ComponentCapabilities;
   // loadRun unlocks the Run (load test) view backed by POST /api/run.
   loadRun?: boolean;
@@ -207,6 +213,8 @@ export async function probeStudio(): Promise<StudioInfo | null> {
         ? {
             ...(componentConfiguration ? { componentConfiguration } : {}),
             loadRun: body.capabilities.loadRun === true,
+            ...(body.capabilities.grpcAuthoring === true ? { grpcAuthoring: true } : {}),
+            ...(body.capabilities.grpcStreaming === true ? { grpcStreaming: true } : {}),
             dataSourceFiles: body.capabilities.dataSourceFiles === true,
             debug: body.capabilities.debug === true,
             multiScenarioDebug: body.capabilities.multiScenarioDebug === true,
@@ -295,7 +303,10 @@ export async function uploadSupportedStudioDataSourceFile<F>(
   return body;
 }
 
-export async function previewStudioDataSourceFile(path: string, signal?: AbortSignal): Promise<StudioDataSourcePreview> {
+export async function previewStudioDataSourceFile(
+  path: string,
+  signal?: AbortSignal,
+): Promise<StudioDataSourcePreview> {
   const params = new URLSearchParams({ path });
   const response = await fetchAgent(`${apiBase()}/api/studio/data-source-preview?${params.toString()}`, { signal });
   if (!response.ok) {

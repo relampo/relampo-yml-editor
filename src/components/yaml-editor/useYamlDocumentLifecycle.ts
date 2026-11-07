@@ -59,6 +59,7 @@ export function useYamlDocumentLifecycle({
   const [debugViewEnabled, setDebugViewEnabled] = useState(DEBUG_VIEW_FORCED);
   const [runViewEnabled, setRunViewEnabled] = useState(RUN_VIEW_FORCED);
   const [multiScenarioRunEnabled, setMultiScenarioRunEnabled] = useState(false);
+  const [grpcAuthoringEnabled, setGrpcAuthoringEnabled] = useState(false);
   const [dataSourceFileBrowseEnabled, setDataSourceFileBrowseEnabled] = useState(false);
   const [defaultViewMode, setDefaultViewMode] = useState<EditorViewMode | undefined>();
 
@@ -113,6 +114,7 @@ export function useYamlDocumentLifecycle({
         setMultiScenarioDebugEnabled(studioInfo.capabilities?.multiScenarioDebug === true);
         setMultiScenarioRunEnabled(studioInfo.capabilities?.multiScenarioRun === true);
         setDataSourceFileBrowseEnabled(studioInfo.capabilities?.dataSourceFiles === true);
+        setGrpcAuthoringEnabled(studioInfo.capabilities?.grpcAuthoring === true);
         if (!DEBUG_VIEW_FORCED && studioInfo.capabilities?.debug === true) setDebugViewEnabled(true);
         if (!RUN_VIEW_FORCED && studioInfo.capabilities?.loadRun) setRunViewEnabled(true);
         setDefaultViewMode(studioInfo.defaultView);
@@ -194,6 +196,7 @@ export function useYamlDocumentLifecycle({
     runViewEnabled,
     multiScenarioRunEnabled,
     dataSourceFileBrowseEnabled,
+    grpcAuthoringEnabled,
     defaultViewMode,
   };
 }

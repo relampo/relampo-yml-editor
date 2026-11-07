@@ -1,5 +1,5 @@
 import { UsageMetricsConsent } from './UsageMetricsConsent';
-import { ChevronDown, FilePlus, Save, Upload } from 'lucide-react';
+import { ChevronDown, FilePlus, Save, Upload, Network } from 'lucide-react';
 import { Button } from './ui/button';
 import {
   DropdownMenu,
@@ -11,6 +11,7 @@ import {
 } from './ui/dropdown-menu';
 
 interface YAMLEditorHeaderProps {
+  onGRPC?: () => void;
   language: string;
   setLanguage: (lang: 'en' | 'es') => void;
   t: (key: string) => string;
@@ -24,6 +25,7 @@ interface YAMLEditorHeaderProps {
 
 export function YAMLEditorHeader({
   language,
+  onGRPC,
   setLanguage,
   t,
   isDocumentEmpty,
@@ -68,6 +70,17 @@ export function YAMLEditorHeader({
           <UsageMetricsConsent language={language} />
           {/* Action Buttons */}
           <div className="flex items-center gap-2">
+            {onGRPC && (
+              <Button
+                onClick={onGRPC}
+                variant="outline"
+                size="sm"
+                className="border-cyan-400/30 bg-cyan-400/5 text-cyan-300"
+              >
+                <Network className="mr-2 h-4 w-4" />
+                gRPC
+              </Button>
+            )}
             {!isDocumentEmpty && (
               <Button
                 onClick={onNew}

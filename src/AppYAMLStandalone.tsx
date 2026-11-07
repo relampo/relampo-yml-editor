@@ -1,3 +1,4 @@
+import { GRPCSchemaProvider } from './contexts/GRPCSchemaContext';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { YAMLProvider } from './contexts/YAMLContext';
 import { YAMLEditor } from './components/YAMLEditor';
@@ -11,7 +12,9 @@ export default function AppYAMLStandalone() {
     <LanguageProvider>
       <YAMLProvider>
         <div className="h-screen w-screen overflow-hidden bg-[#0a0a0a]">
-          <YAMLEditor />
+          <GRPCSchemaProvider>
+            <YAMLEditor />
+          </GRPCSchemaProvider>
         </div>
         <MobileBlockOverlay />
       </YAMLProvider>
