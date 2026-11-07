@@ -33,6 +33,16 @@ describe('Studio gRPC workflow', () => {
         throw Error(path);
       });
   });
+  it('returns directly to Studio without adding or discarding a draft', () => {
+    const close=vi.fn(), go=vi.fn(), add=vi.fn();
+    render(<GRPCWorkbench open onOpenChange={close} onGoToStudio={go} onAdd={add} />);
+    fireEvent.change(screen.getByLabelText('Server address'),{target:{value:'draft.example:443'}});
+    fireEvent.click(screen.getByRole('button',{name:'Go to Studio',exact:true}));
+    expect(close).toHaveBeenCalledWith(false);
+    expect(go).toHaveBeenCalledTimes(1);
+    expect(add).not.toHaveBeenCalled();
+    expect(screen.getByLabelText('Server address')).toHaveValue('draft.example:443');
+  });
   it('discovers a contract, edits a method and adds generated YAML', async () => {
     const add = vi.fn();
     render(

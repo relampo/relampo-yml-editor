@@ -1,13 +1,14 @@
-import { createRef } from 'react';
+import { createRef, type ComponentProps } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { YAMLEditorHeader } from './YAMLEditorHeader';
 
-function renderHeader() {
+function renderHeader(extra: Partial<ComponentProps<typeof YAMLEditorHeader>> = {}) {
   const onDownload = vi.fn();
 
   render(
     <YAMLEditorHeader
+      {...extra}
       language="en"
       setLanguage={vi.fn()}
       t={(key: string) =>
@@ -49,5 +50,27 @@ describe('YAMLEditorHeader', () => {
     expect(onDownload).toHaveBeenCalledTimes(2);
     expect(onDownload).toHaveBeenNthCalledWith(1, true);
     expect(onDownload).toHaveBeenCalledWith(false);
+  });
+});
+
+describe('protocol dropdown', () => {
+  it('groups gRPC, WebSocket and HTTPS and dispatches the chosen protocol', () => {
+    const select = vi.fn();
+    renderHeader({ onSelectProtocol: select, grpcEnabled: true });
+    expect(screen.queryByRole('button', {name:'gRPC',exact:true})).not.toBeInTheDocument();
+    for (const [label, protocol] of [['gRPC','grpc'],['WebSocket','websocket'],['HTTPS','https']]) {
+      fireEvent.pointerDown(screen.getByRole('button',{name:'Other Protocols'}),{button:0});
+      expect(screen.getAllByRole('menuitem')).toHaveLength(3);
+      fireEvent.click(screen.getByRole('menuitem',{name:label,exact:true}));
+      expect(select).toHaveBeenLastCalledWith(protocol);
+    }
+  });
+  it('keeps gRPC unavailable when the connected Studio does not support authoring', () => {
+    const select=vi.fn();
+    renderHeader({onSelectProtocol:select,grpcEnabled:false});
+    fireEvent.pointerDown(screen.getByRole('button',{name:'Other Protocols'}),{button:0});
+    expect(screen.getByRole('menuitem',{name:'gRPC',exact:true})).toHaveAttribute('aria-disabled','true');
+    fireEvent.click(screen.getByRole('menuitem',{name:'gRPC',exact:true}));
+    expect(select).not.toHaveBeenCalled();
   });
 });
