@@ -242,7 +242,10 @@ function stepNodeToObject(node: YAMLNode): any {
   }
 
   if (node.type === 'websocket') {
-    return { ...(node.unknownData || {}), websocket: sanitizeBalancedNodeData(node.data) || {} };
+    const websocket = sanitizeBalancedNodeData(node.data) || {};
+    const autoName = websocket.name || (websocket.action ? `WebSocket ${websocket.action}` : 'WebSocket conversation');
+    if (node.name && node.name !== autoName) websocket.name = node.name;
+    return { ...(node.unknownData || {}), websocket };
   }
 
   if (node.type === 'grpc') {

@@ -46,3 +46,18 @@ describe('WebSocket visual conversation', () => {
     );
   });
 });
+
+it('keeps invalid JSON drafts out of executable YAML', () => {
+  const update = vi.fn();
+  render(
+    <YAMLWebSocketDetails
+      node={node}
+      onNodeUpdate={update}
+    />,
+  );
+  const payload = screen.getByLabelText('Message payload 1');
+  fireEvent.change(payload, { target: { value: '{broken' } });
+  fireEvent.blur(payload);
+  expect(update).not.toHaveBeenCalled();
+  expect(screen.getByRole('alert')).toHaveTextContent('Check JSON syntax');
+});

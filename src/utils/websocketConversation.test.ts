@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { it, expect } from 'vitest';
 import { load } from 'js-yaml';
 import { parseYAMLToTree, treeToYAML } from './yamlParser';
 import { splitWebSocketConversation } from './websocketConversation';

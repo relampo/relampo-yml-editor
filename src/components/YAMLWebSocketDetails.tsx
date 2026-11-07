@@ -182,7 +182,7 @@ function Payload({ value, onChange, index }: { value: Data; onChange: (v: Data) 
           onBlur={() => {
             if (binary) {
               try {
-                atob(draft);
+                if (btoa(atob(draft)) !== draft) throw new Error('Use canonical padded base64');
               } catch {
                 setError('Enter valid base64');
                 return;

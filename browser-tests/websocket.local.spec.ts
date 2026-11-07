@@ -54,6 +54,7 @@ test('QA imports a recording, configures matching and extraction, and exports ex
     match: { jsonpath: '$.type', equals: 'subscribed' },
     extractors: [{ type: 'jsonpath', expression: '$.id', var: 'subscription_id' }],
   });
+  if (process.env.WS_REVIEW_SCREENSHOT) await page.screenshot({path:process.env.WS_REVIEW_SCREENSHOT,fullPage:true});
   await page.getByRole('button', { name: 'Keep connection across scenario steps' }).click();
   await expect(page.getByLabel('Connection mode')).toHaveValue('connect');
   const secondPending = page.waitForEvent('download');
