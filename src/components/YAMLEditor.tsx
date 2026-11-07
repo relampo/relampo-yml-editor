@@ -1,4 +1,6 @@
 import { GRPCWorkbench } from './grpc/GRPCWorkbench';
+import { ProtocolSetupDialog } from './protocols/ProtocolSetupDialog';
+import { appendProtocolSteps, type StudioProtocol } from '../utils/protocolProject';
 import { appendGRPCScenario } from '../utils/grpcProject';
 import type { SearchScope } from './yaml-tree-view/search';
 import { useMemo, useRef, useState } from 'react';
@@ -30,7 +32,7 @@ import { useYamlFileUpload } from './yaml-editor/useYamlFileUpload';
 import { useYamlViewMode } from './yaml-editor/useYamlViewMode';
 
 export function YAMLEditor() {
-  const [grpcOpen, setGrpcOpen] = useState(false);
+  const [activeProtocol, setActiveProtocol] = useState<StudioProtocol | null>(null);
   const [treeSearchScope, setTreeSearchScope] = useState<SearchScope | null>(null);
   const { language, setLanguage, t } = useLanguage();
   const { yamlContent, setYamlContent } = useYAML();
@@ -279,7 +281,8 @@ export function YAMLEditor() {
       {isDragOver && <YAMLEditorDragOverlay language={language} />}
 
       <YAMLEditorHeader
-        onGRPC={grpcAuthoringEnabled ? () => setGrpcOpen(true) : undefined}
+        onSelectProtocol={setActiveProtocol}
+        grpcEnabled={grpcAuthoringEnabled}
         language={language}
         setLanguage={setLanguage}
         t={t}
@@ -293,12 +296,32 @@ export function YAMLEditor() {
 
       {grpcAuthoringEnabled && (
         <GRPCWorkbench
-          open={grpcOpen}
-          onOpenChange={setGrpcOpen}
+          open={activeProtocol === 'grpc'}
+          onOpenChange={open => {
+            if (!open) setActiveProtocol(null);
+          }}
+          language={language}
+          onGoToStudio={() => setViewMode('tree')}
           onAdd={generated => {
             const merged = appendGRPCScenario(retrieveYamlForSaving(), generated);
             handleCodeChange(merged);
             setViewMode('tree');
+          }}
+        />
+      )}
+      {(activeProtocol === 'https' || activeProtocol === 'websocket') && (
+        <ProtocolSetupDialog
+          key={activeProtocol}
+          open
+          protocol={activeProtocol}
+          language={language}
+          onOpenChange={open => {
+            if (!open) setActiveProtocol(null);
+          }}
+          onGoToStudio={() => setViewMode('tree')}
+          onAdd={step => {
+            handleCodeChange(appendProtocolSteps(retrieveYamlForSaving(), [step]));
+            setViewMode(activeProtocol === 'websocket' ? 'code' : 'tree');
           }}
         />
       )}

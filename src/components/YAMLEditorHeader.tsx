@@ -1,5 +1,7 @@
 import { UsageMetricsConsent } from './UsageMetricsConsent';
-import { ChevronDown, FilePlus, Save, Upload, Network } from 'lucide-react';
+import { ChevronDown, FilePlus, Save, Upload } from 'lucide-react';
+import { ProtocolMenu } from './protocols/ProtocolMenu';
+import type { StudioProtocol } from '../utils/protocolProject';
 import { Button } from './ui/button';
 import {
   DropdownMenu,
@@ -11,7 +13,8 @@ import {
 } from './ui/dropdown-menu';
 
 interface YAMLEditorHeaderProps {
-  onGRPC?: () => void;
+  onSelectProtocol?: (protocol: StudioProtocol) => void;
+  grpcEnabled?: boolean;
   language: string;
   setLanguage: (lang: 'en' | 'es') => void;
   t: (key: string) => string;
@@ -25,7 +28,8 @@ interface YAMLEditorHeaderProps {
 
 export function YAMLEditorHeader({
   language,
-  onGRPC,
+  onSelectProtocol,
+  grpcEnabled = false,
   setLanguage,
   t,
   isDocumentEmpty,
@@ -70,16 +74,12 @@ export function YAMLEditorHeader({
           <UsageMetricsConsent language={language} />
           {/* Action Buttons */}
           <div className="flex items-center gap-2">
-            {onGRPC && (
-              <Button
-                onClick={onGRPC}
-                variant="outline"
-                size="sm"
-                className="border-cyan-400/30 bg-cyan-400/5 text-cyan-300"
-              >
-                <Network className="mr-2 h-4 w-4" />
-                gRPC
-              </Button>
+            {onSelectProtocol && (
+              <ProtocolMenu
+                language={language}
+                grpcEnabled={grpcEnabled}
+                onSelect={onSelectProtocol}
+              />
             )}
             {!isDocumentEmpty && (
               <Button

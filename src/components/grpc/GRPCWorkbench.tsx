@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Network, Upload, Radio, Search } from 'lucide-react';
+import { Network, Upload, Radio, Search, ArrowLeft } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../ui/dialog';
 import { GRPCCorrelationReview } from './GRPCCorrelationReview';
 import { GRPCMessageForm } from './GRPCMessageForm';
@@ -31,10 +31,14 @@ export function GRPCWorkbench({
   open,
   onOpenChange,
   onAdd,
+  onGoToStudio,
+  language = 'en',
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onAdd: (yaml: string) => void;
+  onGoToStudio?: () => void;
+  language?: string;
 }) {
   const { setCatalog } = useGRPCSchema();
   const [mode, setMode] = useState<'discover' | 'import' | 'record'>('discover');
@@ -668,6 +672,31 @@ export function GRPCWorkbench({
             </section>
           )}
         </div>
+        <footer className="flex shrink-0 items-center justify-between gap-4 border-t border-white/10 pt-4">
+          <p className="text-xs text-zinc-500">
+            {recording.active
+              ? language === 'es'
+                ? 'La grabación continúa en segundo plano.'
+                : 'Recording continues in the background.'
+              : language === 'es'
+                ? 'Tu escenario sigue disponible en Studio.'
+                : 'Your scenario stays available in Studio.'}
+          </p>
+          <button
+            type="button"
+            className={
+              button + ' inline-flex shrink-0 items-center gap-2 border-yellow-400/30 bg-yellow-400/10 text-yellow-300'
+            }
+            onClick={() => {
+              abortRef.current?.abort();
+              onOpenChange(false);
+              onGoToStudio?.();
+            }}
+          >
+            <ArrowLeft className="h-4 w-4" />
+            {language === 'es' ? 'Ir a Studio' : 'Go to Studio'}
+          </button>
+        </footer>
       </DialogContent>
     </Dialog>
   );

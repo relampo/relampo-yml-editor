@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { GRPCWorkbench } from './GRPCWorkbench';
 import * as api from '../../utils/grpcApi';
 vi.mock('../../utils/grpcApi', () => ({ grpcRequest: vi.fn(), grpcBundleURL: () => '/bundle' }));
@@ -33,11 +33,22 @@ describe('Studio gRPC workflow', () => {
         throw Error(path);
       });
   });
-  it('returns directly to Studio without adding or discarding a draft', () => {
-    const close=vi.fn(), go=vi.fn(), add=vi.fn();
-    render(<GRPCWorkbench open onOpenChange={close} onGoToStudio={go} onAdd={add} />);
-    fireEvent.change(screen.getByLabelText('Server address'),{target:{value:'draft.example:443'}});
-    fireEvent.click(screen.getByRole('button',{name:'Go to Studio',exact:true}));
+  it('returns directly to Studio without adding or discarding a draft', async () => {
+    const close = vi.fn(),
+      go = vi.fn(),
+      add = vi.fn();
+    await act(async () => {
+      render(
+        <GRPCWorkbench
+          open
+          onOpenChange={close}
+          onGoToStudio={go}
+          onAdd={add}
+        />,
+      );
+    });
+    fireEvent.change(screen.getByLabelText('Server address'), { target: { value: 'draft.example:443' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Go to Studio' }));
     expect(close).toHaveBeenCalledWith(false);
     expect(go).toHaveBeenCalledTimes(1);
     expect(add).not.toHaveBeenCalled();

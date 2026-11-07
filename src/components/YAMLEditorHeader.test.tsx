@@ -16,7 +16,8 @@ function renderHeader(extra: Partial<ComponentProps<typeof YAMLEditorHeader>> = 
           'yamlEditor.newDocument': 'New',
           'yamlEditor.uploadYaml': 'Upload YAML',
           'yamlEditor.saveYaml': 'Save',
-        })[key] ?? key}
+        })[key] ?? key
+      }
       isDocumentEmpty={false}
       onNew={vi.fn()}
       onUpload={vi.fn()}
@@ -57,20 +58,24 @@ describe('protocol dropdown', () => {
   it('groups gRPC, WebSocket and HTTPS and dispatches the chosen protocol', () => {
     const select = vi.fn();
     renderHeader({ onSelectProtocol: select, grpcEnabled: true });
-    expect(screen.queryByRole('button', {name:'gRPC',exact:true})).not.toBeInTheDocument();
-    for (const [label, protocol] of [['gRPC','grpc'],['WebSocket','websocket'],['HTTPS','https']]) {
-      fireEvent.pointerDown(screen.getByRole('button',{name:'Other Protocols'}),{button:0});
+    expect(screen.queryByRole('button', { name: 'gRPC' })).not.toBeInTheDocument();
+    for (const [label, protocol] of [
+      ['gRPC', 'grpc'],
+      ['WebSocket', 'websocket'],
+      ['HTTPS', 'https'],
+    ]) {
+      fireEvent.pointerDown(screen.getByRole('button', { name: 'Other Protocols' }), { button: 0 });
       expect(screen.getAllByRole('menuitem')).toHaveLength(3);
-      fireEvent.click(screen.getByRole('menuitem',{name:label,exact:true}));
+      fireEvent.click(screen.getByRole('menuitem', { name: label }));
       expect(select).toHaveBeenLastCalledWith(protocol);
     }
   });
   it('keeps gRPC unavailable when the connected Studio does not support authoring', () => {
-    const select=vi.fn();
-    renderHeader({onSelectProtocol:select,grpcEnabled:false});
-    fireEvent.pointerDown(screen.getByRole('button',{name:'Other Protocols'}),{button:0});
-    expect(screen.getByRole('menuitem',{name:'gRPC',exact:true})).toHaveAttribute('aria-disabled','true');
-    fireEvent.click(screen.getByRole('menuitem',{name:'gRPC',exact:true}));
+    const select = vi.fn();
+    renderHeader({ onSelectProtocol: select, grpcEnabled: false });
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Other Protocols' }), { button: 0 });
+    expect(screen.getByRole('menuitem', { name: 'gRPC' })).toHaveAttribute('aria-disabled', 'true');
+    fireEvent.click(screen.getByRole('menuitem', { name: 'gRPC' }));
     expect(select).not.toHaveBeenCalled();
   });
 });
