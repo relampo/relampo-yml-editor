@@ -104,7 +104,9 @@ function filterTimelineEntries(entries: DebugEntry[], filter: DebugTimelineFilte
 // ERROR_POLICY and SKIPPED pass through so the reducer can attach them to their
 // request instead of creating extra request cards.
 function isTimelineEvent(event: EngineEvent): boolean {
-  const method = String(event.method ?? '').trim().toUpperCase();
+  const method = String(event.method ?? '')
+    .trim()
+    .toUpperCase();
   // Think Time affects pacing, not request execution.
   return Boolean(method) && method !== 'INFO' && method !== 'SYSTEM' && method !== 'THINK_TIME' && !event.embedded;
 }
@@ -147,8 +149,10 @@ function isErrorPolicyForRequest(request: EngineEvent, policy: EngineEvent): boo
 // Consume matching messages once, so repeated steps cannot inherit old logs.
 function isSparkForRequest(request: EngineEvent, spark: EngineEvent): boolean {
   if (!isRequestEvent(request) || request.vu !== spark.vu) return false;
-  if (request.iteration !== undefined && spark.iteration !== undefined && request.iteration !== spark.iteration) return false;
-  if (request.request_id !== undefined && spark.request_id !== undefined && request.request_id !== spark.request_id) return false;
+  if (request.iteration !== undefined && spark.iteration !== undefined && request.iteration !== spark.iteration)
+    return false;
+  if (request.request_id !== undefined && spark.request_id !== undefined && request.request_id !== spark.request_id)
+    return false;
   if (request.step_path && spark.step_path && request.step_path !== spark.step_path) return false;
   return Boolean(
     (spark.step_path && spark.step_path === request.step_path) ||
@@ -172,7 +176,11 @@ function isSkippedEventForPolicy(request: EngineEvent, skipped: EngineEvent): bo
   if (request.iteration !== undefined && skipped.iteration !== undefined && request.iteration !== skipped.iteration) {
     return false;
   }
-  if (request.request_id !== undefined && skipped.request_id !== undefined && request.request_id !== skipped.request_id) {
+  if (
+    request.request_id !== undefined &&
+    skipped.request_id !== undefined &&
+    request.request_id !== skipped.request_id
+  ) {
     return false;
   }
   if (request.step_path && skipped.step_path && !isRelatedStepPath(request.step_path, skipped.step_path)) return false;
@@ -238,7 +246,9 @@ function scenarioNodes(tree: YAMLNode | null): YAMLNode[] {
 }
 
 function targetsForScenario(tree: YAMLNode | null, scenarioName?: string): YAMLNode[] {
-  return collectDebugEventTargets(scenarioName ? scenarioNodes(tree).find(node => node.data?.name === scenarioName) ?? null : tree);
+  return collectDebugEventTargets(
+    scenarioName ? (scenarioNodes(tree).find(node => node.data?.name === scenarioName) ?? null) : tree,
+  );
 }
 
 const EMPTY_REDIRECTED_REQUEST_MAP: Record<string, RedirectedRequestInfo> = {};
@@ -265,7 +275,13 @@ type RunAction =
   | { type: 'run_start_failed'; message: string }
   | { type: 'run_stopped' };
 
-const initialRunState: RunState = { entryEvents: [], pendingSparkLogs: [], isRunning: false, runCompleted: false, runError: null };
+const initialRunState: RunState = {
+  entryEvents: [],
+  pendingSparkLogs: [],
+  isRunning: false,
+  runCompleted: false,
+  runError: null,
+};
 
 function runStateReducer(state: RunState, action: RunAction): RunState {
   switch (action.type) {
@@ -430,12 +446,16 @@ export function YAMLDebugSession({
   const [scenarioName, setScenarioName] = useState('');
   const scenarios = useMemo(() => scenarioNodes(tree), [tree]);
   const isMultiScenario = scenarios.length > 1;
-  const selectionBlocked = isMultiScenario && (!multiScenarioDebugEnabled || !scenarios.some(node => node.data?.name === scenarioName));
+  const selectionBlocked =
+    isMultiScenario && (!multiScenarioDebugEnabled || !scenarios.some(node => node.data?.name === scenarioName));
   const [debugVUs, setDebugVUs] = useState<DebugVUs>(1);
   const [timelineFilter, setTimelineFilter] = useState<DebugTimelineFilter>('requests');
   const timelineButtonRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
 
-  const currentDebugEventTargets = useMemo(() => targetsForScenario(tree, isMultiScenario ? scenarioName : undefined), [tree, isMultiScenario, scenarioName]);
+  const currentDebugEventTargets = useMemo(
+    () => targetsForScenario(tree, isMultiScenario ? scenarioName : undefined),
+    [tree, isMultiScenario, scenarioName],
+  );
   // A completed run belongs to the script snapshot that started it. Keep its
   // request targets stable so later Tree edits cannot remap old timeline rows
   // to different recorded request numbers after the run. RLP-442.
@@ -457,7 +477,7 @@ export function YAMLDebugSession({
   // them back as read-only "skipped" placeholders right after their chain's last
   // real row, so the timeline stays faithful to the recorded chain. RLP-607.
   const timelineEntries = useMemo<DebugEntry[]>(
-    () => runCompleted ? buildTimelineEntries(entries, debugEventTargets) : entries,
+    () => (runCompleted ? buildTimelineEntries(entries, debugEventTargets) : entries),
     [debugEventTargets, entries, runCompleted],
   );
   const filteredTimelineEntries = useMemo(
@@ -478,22 +498,25 @@ export function YAMLDebugSession({
   // the full event history on connect). `quiet` suppresses the error banner
   // for auto re-attach: a stored run that no longer exists (server restarted)
   // should clear silently rather than alarm the user.
-  const subscribe = useCallback((runId: string, quiet: boolean) => {
-    stopStreamRef.current?.();
-    stopStreamRef.current = streamDebugRun(runId, {
-      onEvent: event => {
-        if (!isTimelineEvent(event)) return;
-        dispatchRunState({ type: 'event_received', event });
-      },
-      onDone: error => {
-        dispatchRunState({ type: 'run_done', error });
-      },
-      onConnectionError: () => {
-        if (quiet) runStore.clear();
-        dispatchRunState({ type: 'connection_error', quiet, message: t('yamlEditor.runDebug.connectionLost') });
-      },
-    });
-  }, [t]);
+  const subscribe = useCallback(
+    (runId: string, quiet: boolean) => {
+      stopStreamRef.current?.();
+      stopStreamRef.current = streamDebugRun(runId, {
+        onEvent: event => {
+          if (!isTimelineEvent(event)) return;
+          dispatchRunState({ type: 'event_received', event });
+        },
+        onDone: error => {
+          dispatchRunState({ type: 'run_done', error });
+        },
+        onConnectionError: () => {
+          if (quiet) runStore.clear();
+          dispatchRunState({ type: 'connection_error', quiet, message: t('yamlEditor.runDebug.connectionLost') });
+        },
+      });
+    },
+    [t],
+  );
 
   useEffect(() => () => stopStreamRef.current?.(), []);
 
@@ -513,7 +536,10 @@ export function YAMLDebugSession({
         return;
       }
       reattachedRef.current = true;
-      if (isMultiScenario && (!multiScenarioDebugEnabled || !scenarios.some(node => node.data?.name === storedRun.scenarioName))) {
+      if (
+        isMultiScenario &&
+        (!multiScenarioDebugEnabled || !scenarios.some(node => node.data?.name === storedRun.scenarioName))
+      ) {
         runStore.clear();
         storedRunRef.current = null;
         return;
@@ -564,7 +590,10 @@ export function YAMLDebugSession({
     }
     const snapshotScenarios = scenarioNodes(snapshotTree);
     const selectedName = snapshotScenarios.length > 1 ? scenarioName : undefined;
-    if (snapshotScenarios.length > 1 && (!multiScenarioDebugEnabled || !snapshotScenarios.some(node => node.data?.name === selectedName))) {
+    if (
+      snapshotScenarios.length > 1 &&
+      (!multiScenarioDebugEnabled || !snapshotScenarios.some(node => node.data?.name === selectedName))
+    ) {
       dispatchRunState({ type: 'run_start_failed', message: t('yamlEditor.runDebug.debug.selectScenarioError') });
       return;
     }
@@ -576,9 +605,17 @@ export function YAMLDebugSession({
     setDetailTab('overview');
     dispatchRunState({ type: 'run_started' });
     try {
-      const runId = await startDebugRun(scriptAtStart, { vus: debugVUs, componentCapabilities, ...(selectedName ? { scenarioName: selectedName } : {}) });
+      const runId = await startDebugRun(scriptAtStart, {
+        vus: debugVUs,
+        componentCapabilities,
+        ...(selectedName ? { scenarioName: selectedName } : {}),
+      });
       if (token === startTokenRef.current) {
-        runStore.store({ id: runId, fp: fingerprint(scriptAtStart), ...(selectedName ? { scenarioName: selectedName } : {}) });
+        runStore.store({
+          id: runId,
+          fp: fingerprint(scriptAtStart),
+          ...(selectedName ? { scenarioName: selectedName } : {}),
+        });
         subscribe(runId, false);
       }
     } catch (error) {
@@ -649,13 +686,27 @@ export function YAMLDebugSession({
           {multiScenarioDebugEnabled ? (
             <label className="flex items-center gap-3">
               {t('yamlEditor.runDebug.debug.scenarioLabel')}
-              <select aria-label={t('yamlEditor.runDebug.debug.scenarioLabel')} value={scenarioName} onChange={event => setScenarioName(event.target.value)} disabled={isRunning}
-                className="rounded border border-white/20 bg-[#161616] px-3 py-2">
+              <select
+                aria-label={t('yamlEditor.runDebug.debug.scenarioLabel')}
+                value={scenarioName}
+                onChange={event => setScenarioName(event.target.value)}
+                disabled={isRunning}
+                className="rounded border border-white/20 bg-[#161616] px-3 py-2"
+              >
                 <option value="">{t('yamlEditor.runDebug.debug.selectScenario')}</option>
-                {scenarios.map(node => <option key={node.id} value={String(node.data?.name ?? '')}>{node.name}</option>)}
+                {scenarios.map(node => (
+                  <option
+                    key={node.id}
+                    value={String(node.data?.name ?? '')}
+                  >
+                    {node.name}
+                  </option>
+                ))}
               </select>
             </label>
-          ) : <p>{t('yamlEditor.runDebug.debug.scenarioUnsupported')}</p>}
+          ) : (
+            <p>{t('yamlEditor.runDebug.debug.scenarioUnsupported')}</p>
+          )}
         </div>
       )}
 
@@ -730,7 +781,9 @@ function DebugToolbar({
     <div className="border-b border-white/5 px-5 py-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">{t('yamlEditor.runDebug.debug.session')}</p>
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">
+            {t('yamlEditor.runDebug.debug.session')}
+          </p>
           <h2 className="mt-1 text-base font-semibold text-zinc-100">{t('yamlEditor.runDebug.debug.title')}</h2>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -840,7 +893,12 @@ function DebugStatsBar({
     { filter: 'requests', label: t('yamlEditor.runDebug.debug.stats.requests'), value: total, tone: 'text-zinc-100' },
     { filter: 'passed', label: t('yamlEditor.runDebug.debug.stats.passed'), value: passed, tone: 'text-emerald-300' },
     { filter: 'failed', label: t('yamlEditor.runDebug.debug.stats.failed'), value: failed, tone: 'text-red-300' },
-    { filter: 'redirects', label: t('yamlEditor.runDebug.debug.stats.redirects'), value: redirects, tone: 'text-blue-300' },
+    {
+      filter: 'redirects',
+      label: t('yamlEditor.runDebug.debug.stats.redirects'),
+      value: redirects,
+      tone: 'text-blue-300',
+    },
   ];
 
   return (
@@ -853,7 +911,9 @@ function DebugStatsBar({
             type="button"
             onClick={() => onFilterChange(filter)}
             aria-pressed={active}
-            aria-label={t('yamlEditor.runDebug.debug.stats.filterAria').replace('{label}', label).replace('{value}', String(value))}
+            aria-label={t('yamlEditor.runDebug.debug.stats.filterAria')
+              .replace('{label}', label)
+              .replace('{value}', String(value))}
             className={`relative border-r border-white/5 px-5 py-3 text-left transition-colors last:border-r-0 hover:bg-white/[0.03] focus:z-10 focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/60 ${
               active ? 'bg-yellow-400/[0.04]' : ''
             }`}
@@ -901,7 +961,9 @@ function DebugTimelinePanel({
     >
       <div className="flex h-full min-h-0 flex-col">
         <div className="border-b border-white/5 px-4 py-2.5">
-          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">{t('yamlEditor.runDebug.debug.timeline.title')}</p>
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">
+            {t('yamlEditor.runDebug.debug.timeline.title')}
+          </p>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-2">
           {timelineEntries.length === 0 ? (
@@ -952,9 +1014,7 @@ function DebugTimelinePanel({
                           <span className="rounded border border-blue-400/25 bg-blue-400/10 px-1.5 py-0.5 text-[10px] font-semibold text-blue-300">
                             {entry.event.method}
                           </span>
-                          <span className="truncate text-sm text-zinc-100">
-                            {entry.event.path || entry.event.name}
-                          </span>
+                          <span className="truncate text-sm text-zinc-100">{entry.event.path || entry.event.name}</span>
                         </div>
                         <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] text-zinc-500">
                           {entry.status === 'skipped' ? (
@@ -970,7 +1030,9 @@ function DebugTimelinePanel({
                               {entry.event.vu ? <span>VU{entry.event.vu}</span> : null}
                               <span>{formatLatency(entry.event.latency_ms)}</span>
                               <span className={`rounded border px-1.5 py-0.5 ${statusTone(entry.status)}`}>
-                                {entry.event.status || '—'}
+                                {entry.event.protocol === 'grpc'
+                                  ? (entry.event.protocol_status ?? String(entry.event.status))
+                                  : entry.event.status || '—'}
                               </span>
                             </>
                           )}
@@ -1044,7 +1106,10 @@ function DebugDetailPanel({
             </div>
           </div>
 
-          <div aria-label={t('yamlEditor.runDebug.debug.detail.tabsLabel')} className="flex shrink-0 items-center overflow-x-auto border-b border-white/5 px-3">
+          <div
+            aria-label={t('yamlEditor.runDebug.debug.detail.tabsLabel')}
+            className="flex shrink-0 items-center overflow-x-auto border-b border-white/5 px-3"
+          >
             {REQUEST_DETAIL_TABS.map(tab => (
               <button
                 key={tab}
@@ -1114,7 +1179,12 @@ function DebugInspectorContent({
     case 'assertions':
       return <DebugAssertionsInspector event={entry.event} />;
     case 'variables':
-      return <DebugVariablesInspector entry={entry} variableSnapshot={variableSnapshot} />;
+      return (
+        <DebugVariablesInspector
+          entry={entry}
+          variableSnapshot={variableSnapshot}
+        />
+      );
     case 'builtins':
       return <DebugBuiltinsInspector event={entry.event} />;
     case 'spark':
@@ -1128,11 +1198,7 @@ function DebugInspectorContent({
         />
       );
     default:
-      return (
-        <DebugOverviewInspector
-          event={entry.event}
-        />
-      );
+      return <DebugOverviewInspector event={entry.event} />;
   }
 }
 
@@ -1184,7 +1250,14 @@ function DebugResponseInspector({ event }: { event: EngineEvent }) {
   const [searchMode, setSearchMode] = useState<SearchMode>('text');
   const [matchIndex, setMatchIndex] = useState(0);
   const rows: Array<[string, string]> = [
-    [t('yamlEditor.runDebug.debug.response.status'), event.status ? String(event.status) : '—'],
+    [
+      t('yamlEditor.runDebug.debug.response.status'),
+      event.protocol === 'grpc'
+        ? (event.protocol_status ?? String(event.status))
+        : event.status
+          ? String(event.status)
+          : '—',
+    ],
     [t('yamlEditor.runDebug.debug.response.duration'), formatLatency(event.latency_ms)],
     ...Object.entries(event.response_headers ?? {}),
   ];
@@ -1247,12 +1320,19 @@ function DebugAssertionsInspector({ event }: { event: EngineEvent }) {
             )
           }
           title={assertion.Name || t('yamlEditor.runDebug.debug.assertions.assertion')}
-          value={assertion.Message || (assertion.Passed ? t('yamlEditor.runDebug.debug.assertions.passed') : t('yamlEditor.runDebug.debug.assertions.failed'))}
+          value={
+            assertion.Message ||
+            (assertion.Passed
+              ? t('yamlEditor.runDebug.debug.assertions.passed')
+              : t('yamlEditor.runDebug.debug.assertions.failed'))
+          }
         />
       ))}
       {diagnostics.length > 0 && (
         <div className="space-y-3">
-          <h3 className="text-xs font-semibold text-amber-300">{t('yamlEditor.runDebug.debug.assertions.diagnostics')}</h3>
+          <h3 className="text-xs font-semibold text-amber-300">
+            {t('yamlEditor.runDebug.debug.assertions.diagnostics')}
+          </h3>
           {diagnostics.map(diagnostic => (
             <DebugLine
               key={`${diagnostic.Name}-${diagnostic.Message}`}
@@ -1282,7 +1362,16 @@ function DebugVariablesInspector({
     requestHeaders: event.request_headers,
     requestUrl: event.path,
     builtinValues: event.builtin_invocations?.map(invocation => invocation.value),
-    declaredBuiltinValues: Object.fromEntries((event.builtin_invocations ?? []).filter(invocation => invocation.origin?.startsWith('Variables.') && invocation.status === 'resolved').map(invocation => [invocation.origin!.slice('Variables.'.length), typeof invocation.value === 'string' ? invocation.value : JSON.stringify(invocation.value) ?? t('yamlEditor.runDebug.debug.assertions.notCaptured')])),
+    declaredBuiltinValues: Object.fromEntries(
+      (event.builtin_invocations ?? [])
+        .filter(invocation => invocation.origin?.startsWith('Variables.') && invocation.status === 'resolved')
+        .map(invocation => [
+          invocation.origin!.slice('Variables.'.length),
+          typeof invocation.value === 'string'
+            ? invocation.value
+            : (JSON.stringify(invocation.value) ?? t('yamlEditor.runDebug.debug.assertions.notCaptured')),
+        ]),
+    ),
     responseBody: event.response_body,
     responseHeaders: event.response_headers,
     statusLine: event.status ? String(event.status) : undefined,
@@ -1297,18 +1386,36 @@ function DebugVariablesInspector({
     return <p className="text-sm text-zinc-500">{message}</p>;
   }
   return (
-    <DebugSection rows={variables} wrapLabels />
+    <DebugSection
+      rows={variables}
+      wrapLabels
+    />
   );
 }
 
 function DebugBuiltinsInspector({ event }: { event: EngineEvent }) {
   const { t } = useLanguage();
-  const invocations = event.builtin_invocations ?? (event.builtin ? [{ expression: event.builtin.function, value: null, status: 'failed', origin: event.builtin.step_path, error: event.err }] : []);
+  const invocations =
+    event.builtin_invocations ??
+    (event.builtin
+      ? [
+          {
+            expression: event.builtin.function,
+            value: null,
+            status: 'failed',
+            origin: event.builtin.step_path,
+            error: event.err,
+          },
+        ]
+      : []);
   if (invocations.length === 0) {
     return <p className="text-sm text-zinc-500">{t('yamlEditor.runDebug.debug.builtins.none')}</p>;
   }
   return (
-    <div className="overflow-hidden rounded border border-white/10 bg-[#050505]" aria-label={t('yamlEditor.runDebug.debug.builtins.aria')}>
+    <div
+      className="overflow-hidden rounded border border-white/10 bg-[#050505]"
+      aria-label={t('yamlEditor.runDebug.debug.builtins.aria')}
+    >
       <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.8fr)] gap-3 border-b border-white/10 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
         <span>{t('yamlEditor.runDebug.debug.builtins.expression')}</span>
         <span>{t('yamlEditor.common.value')}</span>
@@ -1321,8 +1428,16 @@ function DebugBuiltinsInspector({ event }: { event: EngineEvent }) {
         >
           <code className="break-all text-yellow-200">{invocation.expression}</code>
           <span className={`break-all ${invocation.status === 'failed' ? 'text-red-300' : 'text-zinc-200'}`}>
-            <span>{invocation.status === 'failed' ? t('yamlEditor.runDebug.debug.builtins.failed') : formatBuiltinValue(invocation.value)}</span>
-            {invocation.status === 'failed' && (invocation.error || (event.builtin?.function && invocation.expression?.includes(event.builtin.function) && event.err)) && <span className="mt-1 block text-red-300">{invocation.error || event.err}</span>}
+            <span>
+              {invocation.status === 'failed'
+                ? t('yamlEditor.runDebug.debug.builtins.failed')
+                : formatBuiltinValue(invocation.value)}
+            </span>
+            {invocation.status === 'failed' &&
+              (invocation.error ||
+                (event.builtin?.function && invocation.expression?.includes(event.builtin.function) && event.err)) && (
+                <span className="mt-1 block text-red-300">{invocation.error || event.err}</span>
+              )}
           </span>
           <span className="break-all text-zinc-400">{invocation.origin || '—'}</span>
         </div>
@@ -1354,9 +1469,13 @@ function DebugLogsInspector({
   const sourceLogLabel = redirectedInfo ? redirectSourceLogLabel(redirectedInfo, requestTargets, event.path) : '';
   return (
     <div className="max-w-full overflow-hidden border border-white/10 bg-[#050505] p-4 font-mono text-xs leading-6 text-zinc-300 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
-      <p className="text-emerald-300 break-words">[{time}] {t('yamlEditor.runDebug.debug.logs.received')}</p>
+      <p className="text-emerald-300 break-words">
+        [{time}] {t('yamlEditor.runDebug.debug.logs.received')}
+      </p>
       <p className="text-blue-300 break-all">
-        [{time}] {event.method} {event.path || event.name} - {event.status || '—'} ({formatLatency(event.latency_ms)})
+        [{time}] {event.method} {event.path || event.name} -{' '}
+        {event.protocol === 'grpc' ? (event.protocol_status ?? String(event.status)) : event.status || '—'} (
+        {formatLatency(event.latency_ms)})
       </p>
       {redirectHops.length > 0 && (
         // These rows are the redirect chain that led to the response above —
@@ -1385,7 +1504,8 @@ function DebugLogsInspector({
             key={`${hop.status}-${hop.method ?? ''}-${hop.url ?? ''}-${hop.location ?? hop.target_url ?? ''}`}
             className="pl-6 text-zinc-400 break-all"
           >
-            ↳ {t('yamlEditor.runDebug.debug.logs.hop').replace('{index}', String(index + 1))}: {hop.status || '—'} {hop.method ? `${hop.method} ` : ''}
+            ↳ {t('yamlEditor.runDebug.debug.logs.hop').replace('{index}', String(index + 1))}: {hop.status || '—'}{' '}
+            {hop.method ? `${hop.method} ` : ''}
             {sourceUrl} → {targetStatus || '—'} {targetMethod ? `${targetMethod} ` : ''}
             {targetUrl}
           </p>
@@ -1396,7 +1516,9 @@ function DebugLogsInspector({
           Intermediate 302 children (no hop chain yet) still show it. */}
       {redirectedInfo && redirectHops.length === 0 && (
         <p className="text-zinc-400 break-all">
-          [{time}] {t('yamlEditor.runDebug.debug.logs.redirected')} {sourceLogLabel || redirectedInfo.sourceRequestLabel} → {event.status || '—'}{' '}
+          [{time}] {t('yamlEditor.runDebug.debug.logs.redirected')}{' '}
+          {sourceLogLabel || redirectedInfo.sourceRequestLabel} →{' '}
+          {event.protocol === 'grpc' ? (event.protocol_status ?? String(event.status)) : event.status || '—'}{' '}
           {event.method} {absoluteDebugUrl(event.path || redirectedInfo.matchedLocation, event.path)}
         </p>
       )}
@@ -1415,7 +1537,10 @@ function DebugSparkInspector({ logs }: { logs: EngineEvent[] }) {
   return (
     <div className="border border-white/10 bg-[#050505] p-4 font-mono text-xs leading-6 whitespace-pre-wrap break-words">
       {logs.map((log, index) => (
-        <p key={index} className="text-amber-300">
+        <p
+          key={index}
+          className="text-amber-300"
+        >
           [{formatEventTime(log.ts)}]{' '}
           {t('yamlEditor.runDebug.debug.spark.line')
             .replace('{phase}', log.spark_phase || t('yamlEditor.runDebug.debug.spark.unknownPhase'))
@@ -1426,11 +1551,7 @@ function DebugSparkInspector({ logs }: { logs: EngineEvent[] }) {
   );
 }
 
-function DebugOverviewInspector({
-  event,
-}: {
-  event: EngineEvent;
-}) {
+function DebugOverviewInspector({ event }: { event: EngineEvent }) {
   const { t } = useLanguage();
   return (
     <div className="space-y-3">
@@ -1454,22 +1575,37 @@ function DebugOverviewInspector({
         <DebugLine
           icon={<TerminalSquare className="h-4 w-4 text-zinc-300" />}
           title={t('yamlEditor.runDebug.debug.overview.vu')}
-          value={event.vu ? t('yamlEditor.runDebug.debug.overview.virtualUser').replace('{value}', String(event.vu)) : '—'}
+          value={
+            event.vu ? t('yamlEditor.runDebug.debug.overview.virtualUser').replace('{value}', String(event.vu)) : '—'
+          }
         />
         <DebugLine
           icon={
             entryStatus(event) === 'failed' ? (
-              <XCircle role="img" aria-label={t('yamlEditor.runDebug.debug.overview.failedResult')} className="h-4 w-4 text-red-300" />
+              <XCircle
+                role="img"
+                aria-label={t('yamlEditor.runDebug.debug.overview.failedResult')}
+                className="h-4 w-4 text-red-300"
+              />
             ) : (
               <ShieldCheck className="h-4 w-4 text-emerald-300" />
             )
           }
           title={t('yamlEditor.runDebug.debug.overview.result')}
-          value={event.builtin ? t('yamlEditor.runDebug.debug.overview.builtinFailed') : event.error_policy
-            ? event.error_policy.key === 'on_timeout' ? t('yamlEditor.runDebug.debug.overview.timeout')
-              : event.status >= 400 ? `HTTP ${event.status}`
-                : event.error_policy.key === 'on_connection_error' ? t('yamlEditor.runDebug.debug.overview.connectionError') : t('yamlEditor.runDebug.debug.overview.otherError')
-            : event.err || (event.status ? `HTTP ${event.status}` : t('yamlEditor.runDebug.debug.overview.completed'))}
+          value={
+            event.builtin
+              ? t('yamlEditor.runDebug.debug.overview.builtinFailed')
+              : event.error_policy
+                ? event.error_policy.key === 'on_timeout'
+                  ? t('yamlEditor.runDebug.debug.overview.timeout')
+                  : event.status >= 400
+                    ? `HTTP ${event.status}`
+                    : event.error_policy.key === 'on_connection_error'
+                      ? t('yamlEditor.runDebug.debug.overview.connectionError')
+                      : t('yamlEditor.runDebug.debug.overview.otherError')
+                : event.err ||
+                  (event.status ? `HTTP ${event.status}` : t('yamlEditor.runDebug.debug.overview.completed'))
+          }
         />
       </div>
     </div>
@@ -1539,7 +1675,9 @@ function debugVariableSnapshot(activeEntry: DebugEntry, entries: DebugEntry[]): 
     if (isParent(candidate)) break;
     // The runtime evaluates redirect extractors at the final response. Bring
     // their values back to their owner, without changing values sent by REQ.
-    const captures = Object.fromEntries(Object.entries(candidate.event.variables ?? {}).filter(([name]) => extractedNames.has(name)));
+    const captures = Object.fromEntries(
+      Object.entries(candidate.event.variables ?? {}).filter(([name]) => extractedNames.has(name)),
+    );
     mergeCapturedVariables(captures, true);
     clearFailedCaptures(candidate.event);
   }
@@ -1549,7 +1687,9 @@ function debugVariableSnapshot(activeEntry: DebugEntry, entries: DebugEntry[]): 
 }
 
 function isMissingDebugVariableValue(value: string | undefined): boolean {
-  const normalized = String(value ?? '').trim().toLowerCase();
+  const normalized = String(value ?? '')
+    .trim()
+    .toLowerCase();
   return normalized === '' || normalized === 'not captured' || normalized.includes('value not found');
 }
 
@@ -1651,7 +1791,11 @@ function DebugSearchControls({
         ))}
       </div>
       <span className={`text-xs ${regexInvalid ? 'text-red-300' : 'text-zinc-500'}`}>
-        {regexInvalid ? t('yamlEditor.runDebug.debug.search.invalidRegex') : value ? `${displayIndex}/${totalMatches}` : '0/0'}
+        {regexInvalid
+          ? t('yamlEditor.runDebug.debug.search.invalidRegex')
+          : value
+            ? `${displayIndex}/${totalMatches}`
+            : '0/0'}
       </span>
       <button
         type="button"

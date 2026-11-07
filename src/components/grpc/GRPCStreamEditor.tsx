@@ -75,6 +75,34 @@ export function GRPCStreamEditor({
         {text('Minimum received messages', 'min_messages', '0')}
         {text('Stop after received messages', 'max_messages', 'Optional')}
       </div>
+      <fieldset className="space-y-2 rounded border border-white/10 p-3">
+        <legend className="px-1 text-xs text-cyan-300">Message latency (optional)</legend>
+        <p className="text-xs text-zinc-400">
+          Match a unique request ID in outgoing and incoming messages. Leave empty for independent streams.
+        </p>
+        {(['sent_path', 'received_path'] as const).map(key => (
+          <label
+            key={key}
+            className="block text-xs text-zinc-400"
+          >
+            {key === 'sent_path' ? 'Outgoing request ID JSONPath' : 'Incoming request ID JSONPath'}
+            <input
+              aria-label={key === 'sent_path' ? 'Outgoing request ID JSONPath' : 'Incoming request ID JSONPath'}
+              className={input}
+              placeholder="$.requestId"
+              value={String(object(config.latency_correlation)[key] ?? '')}
+              onChange={event => {
+                const next = { ...object(config.latency_correlation), [key]: event.target.value };
+                if (!next.sent_path && !next.received_path) {
+                  const rest = { ...config };
+                  delete rest.latency_correlation;
+                  onChange(rest);
+                } else update('latency_correlation', next);
+              }}
+            />
+          </label>
+        ))}
+      </fieldset>
       <label className="flex gap-2 text-xs text-zinc-300">
         <input
           type="checkbox"

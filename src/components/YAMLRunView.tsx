@@ -1,3 +1,4 @@
+import { GRPCRequestMetrics } from './grpc/GRPCRequestMetrics';
 import { componentCapabilityError, type ComponentCapabilities } from '../utils/componentConfiguration';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type ReactNode, type RefObject } from 'react';
@@ -74,7 +75,9 @@ function collectLoadNodes(node: YAMLNode | null): YAMLNode[] {
 function collectFallbackScenarioNames(node: YAMLNode | null): string[] {
   if (!node) return [];
   if (node.type === 'scenario') {
-    return node.children?.some(child => child.type === 'load' && child.data?.__loadSelected === false) ? [node.name] : [];
+    return node.children?.some(child => child.type === 'load' && child.data?.__loadSelected === false)
+      ? [node.name]
+      : [];
   }
   return node.children?.flatMap(collectFallbackScenarioNames) ?? [];
 }
@@ -127,7 +130,10 @@ function summaryConfiguredVUs(summary: RunSummary): number {
   return summary.executed_vus ?? 0;
 }
 
-function maxNodeMeasurement(summary: RunSummary, field: keyof RunNodeMeasurements): { value: number; node: string } | null {
+function maxNodeMeasurement(
+  summary: RunSummary,
+  field: keyof RunNodeMeasurements,
+): { value: number; node: string } | null {
   let peak: { value: number; node: string } | null = null;
   for (const resource of summary.node_resources ?? []) {
     const value = resource.measurements?.[field];
@@ -325,38 +331,41 @@ export function YAMLLoadRunSession({
   // re-attaching to a stored run after a reload. `quiet` suppresses the error
   // banner for auto re-attach: a stored run that no longer exists (server
   // restarted) should clear silently rather than alarm the user.
-  const subscribe = useCallback((runId: string, quiet: boolean) => {
-    stopStreamRef.current?.();
-    activeRunIdRef.current = runId;
-    stopStreamRef.current = streamLoadRun(runId, {
-      onState: state => {
-        dispatch({ type: 'state_changed', status: state.status });
-      },
-      onMetrics: snapshot => {
-        dispatch({ type: 'metrics_received', snapshot });
-      },
-      onLog: lines => {
-        dispatch({ type: 'log_received', lines });
-      },
-      onDone: done => {
-        dispatch({
-          type: 'run_done',
-          status: done.status,
-          summary: done.summary,
-          error: done.error,
-          fallbackError: t('yamlEditor.runDebug.run.runFailed'),
-        });
-      },
-      onConnectionError: () => {
-        if (quiet) {
-          runStore.clear();
-          storedRunRef.current = null;
-          activeRunIdRef.current = null;
-        }
-        dispatch({ type: 'connection_error', quiet, message: t('yamlEditor.runDebug.connectionLost') });
-      },
-    });
-  }, [t]);
+  const subscribe = useCallback(
+    (runId: string, quiet: boolean) => {
+      stopStreamRef.current?.();
+      activeRunIdRef.current = runId;
+      stopStreamRef.current = streamLoadRun(runId, {
+        onState: state => {
+          dispatch({ type: 'state_changed', status: state.status });
+        },
+        onMetrics: snapshot => {
+          dispatch({ type: 'metrics_received', snapshot });
+        },
+        onLog: lines => {
+          dispatch({ type: 'log_received', lines });
+        },
+        onDone: done => {
+          dispatch({
+            type: 'run_done',
+            status: done.status,
+            summary: done.summary,
+            error: done.error,
+            fallbackError: t('yamlEditor.runDebug.run.runFailed'),
+          });
+        },
+        onConnectionError: () => {
+          if (quiet) {
+            runStore.clear();
+            storedRunRef.current = null;
+            activeRunIdRef.current = null;
+          }
+          dispatch({ type: 'connection_error', quiet, message: t('yamlEditor.runDebug.connectionLost') });
+        },
+      });
+    },
+    [t],
+  );
 
   useEffect(() => () => stopStreamRef.current?.(), []);
 
@@ -469,7 +478,10 @@ export function YAMLLoadRunSession({
       />
 
       {(usesOnlyFallbackLoad || fallbackScenarioNames.length > 0) && (
-        <p role="status" className="border-b border-amber-400/20 bg-amber-400/5 px-4 py-3 text-sm text-amber-300">
+        <p
+          role="status"
+          className="border-b border-amber-400/20 bg-amber-400/5 px-4 py-3 text-sm text-amber-300"
+        >
           {usesOnlyFallbackLoad
             ? t('studioControls.noLoadSelection')
             : t('studioControls.noLoadSelectionScenarios').replace('{names}', () => fallbackScenarioNames.join(', '))}
@@ -487,7 +499,13 @@ export function YAMLLoadRunSession({
 
       {runError && <RunErrorBanner message={runError} />}
 
-      {!summary && <StatsRow latest={latest} errorRate={errorRate} noObservations={isMultiScenario && latest?.total_requests === 0} />}
+      {!summary && (
+        <StatsRow
+          latest={latest}
+          errorRate={errorRate}
+          noObservations={isMultiScenario && latest?.total_requests === 0}
+        />
+      )}
 
       <div className="min-h-0 flex-1 overflow-y-auto p-4">
         {!hasRunActivity ? (
@@ -498,27 +516,70 @@ export function YAMLLoadRunSession({
           <div className="space-y-4">
             <MetricsCharts snapshots={summary?.history ?? snapshots} />
             {latest?.scenarios && (
-              <table aria-label={t('yamlEditor.runDebug.run.scenarioProgress')} className="w-full text-left text-xs text-zinc-300">
-                <thead><tr><th>{t('yamlEditor.runDebug.run.scenario')}</th><th>{t('yamlEditor.runDebug.run.state')}</th><th>{t('yamlEditor.runDebug.run.executedVus')}</th><th>{t('yamlEditor.runDebug.run.requests')}</th><th>{t('yamlEditor.runDebug.run.failures')}</th></tr></thead>
-                <tbody>{latest.scenarios.map(scenario => <tr key={scenario.name}>
-                  <td>{scenario.name}</td><td>{scenario.status}</td><td>{scenario.executed_vus}</td>
-                  <td>{scenario.total_requests}</td><td>{scenario.total_failures}</td>
-                </tr>)}</tbody>
+              <table
+                aria-label={t('yamlEditor.runDebug.run.scenarioProgress')}
+                className="w-full text-left text-xs text-zinc-300"
+              >
+                <thead>
+                  <tr>
+                    <th>{t('yamlEditor.runDebug.run.scenario')}</th>
+                    <th>{t('yamlEditor.runDebug.run.state')}</th>
+                    <th>{t('yamlEditor.runDebug.run.executedVus')}</th>
+                    <th>{t('yamlEditor.runDebug.run.requests')}</th>
+                    <th>{t('yamlEditor.runDebug.run.failures')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {latest.scenarios.map(scenario => (
+                    <tr key={scenario.name}>
+                      <td>{scenario.name}</td>
+                      <td>{scenario.status}</td>
+                      <td>{scenario.executed_vus}</td>
+                      <td>{scenario.total_requests}</td>
+                      <td>{scenario.total_failures}</td>
+                    </tr>
+                  ))}
+                </tbody>
               </table>
             )}
             {summary?.scenarios && (
               <div className="flex items-center gap-3 text-sm text-zinc-300">
                 <label htmlFor="result-scope">{t('yamlEditor.runDebug.run.resultScope')}</label>
-                <Select value={resultScope ? `scenario:${resultScope}` : 'global'} onValueChange={value => setResultScope(value === 'global' ? '' : value.slice('scenario:'.length))}>
-                  <SelectTrigger id="result-scope"><SelectValue /></SelectTrigger>
+                <Select
+                  value={resultScope ? `scenario:${resultScope}` : 'global'}
+                  onValueChange={value => setResultScope(value === 'global' ? '' : value.slice('scenario:'.length))}
+                >
+                  <SelectTrigger id="result-scope">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="global">{t('yamlEditor.runDebug.run.global')}</SelectItem>
-                    {summary.scenarios.map(scenario => <SelectItem key={scenario.name} value={`scenario:${scenario.name}`}>{scenario.name}</SelectItem>)}
+                    {summary.scenarios.map(scenario => (
+                      <SelectItem
+                        key={scenario.name}
+                        value={`scenario:${scenario.name}`}
+                      >
+                        {scenario.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
             )}
-            {selectedResult && <p className="text-sm text-zinc-300">{t('yamlEditor.runDebug.run.scenarioOutcome').replace('{name}', selectedResult.name).replace('{outcome}', selectedResult.outcome).replace('{evidence}', selectedResult.complete ? t('yamlEditor.runDebug.run.evidenceComplete') : t('yamlEditor.runDebug.run.evidencePartial'))}{selectedResult.error && ` ${selectedResult.error}`}</p>}
+            {selectedResult && (
+              <p className="text-sm text-zinc-300">
+                {t('yamlEditor.runDebug.run.scenarioOutcome')
+                  .replace('{name}', selectedResult.name)
+                  .replace('{outcome}', selectedResult.outcome)
+                  .replace(
+                    '{evidence}',
+                    selectedResult.complete
+                      ? t('yamlEditor.runDebug.run.evidenceComplete')
+                      : t('yamlEditor.runDebug.run.evidencePartial'),
+                  )}
+                {selectedResult.error && ` ${selectedResult.error}`}
+              </p>
+            )}
 
             {!isMultiScenario && plannedLoadNode && plannedLoadType !== 'intent' && plannedLoadType !== 'segments' && (
               <PlannedLoadProfilePanel
@@ -543,7 +604,13 @@ export function YAMLLoadRunSession({
             {visibleSummary && (
               <RunSummaryPanel
                 summary={visibleSummary}
-                status={selectedResult ? selectedResult.outcome === 'failed' ? 'errored' : selectedResult.outcome : runStatus}
+                status={
+                  selectedResult
+                    ? selectedResult.outcome === 'failed'
+                      ? 'errored'
+                      : selectedResult.outcome
+                    : runStatus
+                }
                 scenarioResult={selectedResult != null}
                 reportUrl={summary && activeRunIdRef.current ? loadRunReportUrl(activeRunIdRef.current) : undefined}
               />
@@ -587,8 +654,12 @@ function RunToolbar({
     <div className="border-b border-white/5 px-5 py-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">{t('yamlEditor.runDebug.run.session')}</p>
-          <h2 className="mt-1 text-base font-semibold text-zinc-100">{multiScenario ? t('yamlEditor.runDebug.run.titleAll') : t('yamlEditor.runDebug.run.titleSingle')}</h2>
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">
+            {t('yamlEditor.runDebug.run.session')}
+          </p>
+          <h2 className="mt-1 text-base font-semibold text-zinc-100">
+            {multiScenario ? t('yamlEditor.runDebug.run.titleAll') : t('yamlEditor.runDebug.run.titleSingle')}
+          </h2>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {runStatus && (
@@ -636,7 +707,15 @@ function RunErrorBanner({ message }: { message: string }) {
 }
 
 // The six live stat cards (req/s, p95, avg, error rate, VUs, requests).
-function StatsRow({ latest, errorRate, noObservations = false }: { latest: RunMetricsSnapshot | null; errorRate: string; noObservations?: boolean }) {
+function StatsRow({
+  latest,
+  errorRate,
+  noObservations = false,
+}: {
+  latest: RunMetricsSnapshot | null;
+  errorRate: string;
+  noObservations?: boolean;
+}) {
   const { t } = useLanguage();
   const unavailable = t('yamlEditor.runDebug.unavailable');
   return (
@@ -672,12 +751,45 @@ function StatsRow({ latest, errorRate, noObservations = false }: { latest: RunMe
         label={t('yamlEditor.runDebug.run.stats.requests')}
         value={latest ? latest.total_requests.toLocaleString() : '—'}
       />
+      {(latest?.active_streams != null || latest?.requests?.some(request => request.stream_type)) && (
+        <>
+          <StatCell
+            icon={<Activity className="h-4 w-4 text-cyan-300" />}
+            label="Active streams"
+            value={String(latest.active_streams ?? 0)}
+          />
+          <StatCell
+            icon={<Activity className="h-4 w-4 text-cyan-300" />}
+            label="Peak streams"
+            value={String(latest.peak_active_streams ?? 0)}
+          />
+          <StatCell
+            icon={<Zap className="h-4 w-4 text-cyan-300" />}
+            label="New streams/s"
+            value={formatRps(latest.streams_created_per_sec ?? 0)}
+          />
+          <StatCell
+            icon={<Zap className="h-4 w-4 text-cyan-300" />}
+            label="Messages sent/s"
+            value={formatRps(latest.messages_sent_per_sec ?? 0)}
+          />
+          <StatCell
+            icon={<Zap className="h-4 w-4 text-cyan-300" />}
+            label="Messages received/s"
+            value={formatRps(latest.messages_received_per_sec ?? 0)}
+          />
+        </>
+      )}
     </div>
   );
 }
 
 // Throughput / p95 latency / active VUs sparkline row.
-function MetricsCharts({ snapshots }: { snapshots: Pick<RunMetricsSnapshot, 'rps' | 'p95_latency' | 'active_users'>[] }) {
+function MetricsCharts({
+  snapshots,
+}: {
+  snapshots: Pick<RunMetricsSnapshot, 'rps' | 'p95_latency' | 'active_users'>[];
+}) {
   const { t } = useLanguage();
   return (
     <div className="grid gap-3 lg:grid-cols-3">
@@ -725,7 +837,9 @@ function PlannedLoadProfilePanel({
   return (
     <div className="border border-white/10 bg-[#111111] p-4">
       <div className="mb-3 flex items-center justify-between">
-        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">{t('yamlEditor.runDebug.run.planned.title')}</p>
+        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">
+          {t('yamlEditor.runDebug.run.planned.title')}
+        </p>
         {scenarioCount > 1 && (
           <span className="rounded border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 text-[10px] font-semibold text-amber-300">
             {t('yamlEditor.runDebug.run.planned.multiScenario').replace('{count}', String(scenarioCount))}
@@ -1415,7 +1529,9 @@ function LiveLogPanel({ logs, scrollRef }: { logs: RunLogLine[]; scrollRef: RefO
           <ChevronDown className="h-4 w-4 text-zinc-500" />
         )}
         <Terminal className="h-4 w-4 text-emerald-300" />
-        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">{t('yamlEditor.runDebug.run.logs.title')}</p>
+        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">
+          {t('yamlEditor.runDebug.run.logs.title')}
+        </p>
         <span className="ml-auto font-mono text-[10px] text-zinc-600">
           {logs.length.toLocaleString()}{' '}
           {t(
@@ -1472,9 +1588,19 @@ function RunSummaryPanel({
   const unavailable = t('yamlEditor.runDebug.unavailable');
   const requests = summary.requests ?? [];
   const durationSeconds = summary.duration / 1e9;
-  const completed = summary.overview?.completed_transactions ?? (summary.transactions?.every(tx => tx.completed != null) ? summary.transactions.reduce((total, tx) => total + (tx.completed ?? 0), 0) : undefined);
-  const tps = summary.overview ? summary.overview.tps : durationSeconds > 0 && completed != null ? completed / durationSeconds : null;
-  const tpsNotApplicable = summary.overview ? summary.overview.tps_status === 'not_applicable' : durationSeconds > 0 && summary.transactions_configured === false;
+  const completed =
+    summary.overview?.completed_transactions ??
+    (summary.transactions?.every(tx => tx.completed != null)
+      ? summary.transactions.reduce((total, tx) => total + (tx.completed ?? 0), 0)
+      : undefined);
+  const tps = summary.overview
+    ? summary.overview.tps
+    : durationSeconds > 0 && completed != null
+      ? completed / durationSeconds
+      : null;
+  const tpsNotApplicable = summary.overview
+    ? summary.overview.tps_status === 'not_applicable'
+    : durationSeconds > 0 && summary.transactions_configured === false;
   const executedVUs = summary.executed_vus ?? 0;
   const configuredVUs = Math.max(summaryConfiguredVUs(summary), executedVUs);
   const measured = (field: keyof RunNodeMeasurements, unit: string, digits = 0): string => {
@@ -1483,24 +1609,79 @@ function RunSummaryPanel({
     const node = (summary.node_resources?.length ?? 0) > 1 ? ` (${peak.node})` : '';
     return `${peak.value.toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits })}${unit}${node}`;
   };
-  const failurePercent = summary.overview ? summary.overview.failure_percent : summary.total_requests > 0 ? summary.total_failures * 100 / summary.total_requests : null;
+  const failurePercent = summary.overview
+    ? summary.overview.failure_percent
+    : summary.total_requests > 0
+      ? (summary.total_failures * 100) / summary.total_requests
+      : null;
   const metrics = [
-    { label: t('yamlEditor.runDebug.run.summary.status'), value: summary.status === 'failed' ? runStatusLabel('errored', t) : isRunStatus(summary.status || status) ? runStatusLabel((summary.status || status) as RunStatus, t) : unavailable },
-    ...(summary.complete === undefined ? [] : [{ label: t('yamlEditor.runDebug.run.summary.evidence'), value: summary.complete ? t('yamlEditor.runDebug.run.evidenceComplete') : t('yamlEditor.runDebug.run.evidencePartial') }]),
-    ...(summary.scenarios ? [
-      { label: t('yamlEditor.runDebug.run.summary.totalElapsed'), value: formatDurationNs(summary.total_elapsed ?? summary.duration) },
-      { label: t('yamlEditor.runDebug.run.summary.workloadDuration'), value: formatDurationNs(summary.workload_duration ?? summary.duration) },
-    ] : []),
-    ...(scenarioResult || summary.request_latency || summary.scenarios || summary.requests.some(request => request.scenario_name) ? [
-      { label: t('yamlEditor.runDebug.run.summary.requestP95'), value: summary.request_latency ? formatMs(summary.request_latency.p95_ms) : unavailable },
-      { label: t('yamlEditor.runDebug.run.summary.transactionP95'), value: summary.transaction_latency ? formatMs(summary.transaction_latency.p95_ms) : unavailable },
-    ] : []),
+    {
+      label: t('yamlEditor.runDebug.run.summary.status'),
+      value:
+        summary.status === 'failed'
+          ? runStatusLabel('errored', t)
+          : isRunStatus(summary.status || status)
+            ? runStatusLabel((summary.status || status) as RunStatus, t)
+            : unavailable,
+    },
+    ...(summary.complete === undefined
+      ? []
+      : [
+          {
+            label: t('yamlEditor.runDebug.run.summary.evidence'),
+            value: summary.complete
+              ? t('yamlEditor.runDebug.run.evidenceComplete')
+              : t('yamlEditor.runDebug.run.evidencePartial'),
+          },
+        ]),
+    ...(summary.scenarios
+      ? [
+          {
+            label: t('yamlEditor.runDebug.run.summary.totalElapsed'),
+            value: formatDurationNs(summary.total_elapsed ?? summary.duration),
+          },
+          {
+            label: t('yamlEditor.runDebug.run.summary.workloadDuration'),
+            value: formatDurationNs(summary.workload_duration ?? summary.duration),
+          },
+        ]
+      : []),
+    ...(scenarioResult ||
+    summary.request_latency ||
+    summary.scenarios ||
+    summary.requests.some(request => request.scenario_name)
+      ? [
+          {
+            label: t('yamlEditor.runDebug.run.summary.requestP95'),
+            value: summary.request_latency ? formatMs(summary.request_latency.p95_ms) : unavailable,
+          },
+          {
+            label: t('yamlEditor.runDebug.run.summary.transactionP95'),
+            value: summary.transaction_latency ? formatMs(summary.transaction_latency.p95_ms) : unavailable,
+          },
+        ]
+      : []),
     { label: t('yamlEditor.runDebug.run.summary.duration'), value: formatDurationNs(summary.duration) },
     { label: t('yamlEditor.runDebug.run.summary.vusExecConf'), value: `${executedVUs}/${configuredVUs}` },
     { label: t('yamlEditor.runDebug.run.summary.totalRequests'), value: summary.total_requests.toLocaleString() },
-    { label: t('yamlEditor.runDebug.run.summary.failedRequests'), value: `${summary.total_failures.toLocaleString()} (${failurePercent == null ? unavailable : `${failurePercent.toFixed(2)}%`})`, tone: summary.total_failures > 0 ? 'text-red-300' : undefined },
-    { label: t('yamlEditor.runDebug.run.summary.rps'), value: formatSummaryRate(summary.overview ? summary.overview.rps : durationSeconds > 0 ? summary.total_requests / durationSeconds : null, unavailable) },
-    { label: t('yamlEditor.runDebug.run.summary.tps'), value: tpsNotApplicable ? t('yamlEditor.runDebug.run.summary.notApplicable') : formatSummaryRate(tps, unavailable) },
+    {
+      label: t('yamlEditor.runDebug.run.summary.failedRequests'),
+      value: `${summary.total_failures.toLocaleString()} (${failurePercent == null ? unavailable : `${failurePercent.toFixed(2)}%`})`,
+      tone: summary.total_failures > 0 ? 'text-red-300' : undefined,
+    },
+    {
+      label: t('yamlEditor.runDebug.run.summary.rps'),
+      value: formatSummaryRate(
+        summary.overview ? summary.overview.rps : durationSeconds > 0 ? summary.total_requests / durationSeconds : null,
+        unavailable,
+      ),
+    },
+    {
+      label: t('yamlEditor.runDebug.run.summary.tps'),
+      value: tpsNotApplicable
+        ? t('yamlEditor.runDebug.run.summary.notApplicable')
+        : formatSummaryRate(tps, unavailable),
+    },
     { label: t('yamlEditor.runDebug.run.summary.rssPeak'), value: measured('rss_peak_mib', ' MiB') },
     { label: t('yamlEditor.runDebug.run.summary.cpuPeak'), value: measured('cpu_percent_peak', '%', 1) },
     { label: t('yamlEditor.runDebug.run.summary.goroutinesPeak'), value: measured('goroutines_peak', '') },
@@ -1582,6 +1763,7 @@ function RunSummaryPanel({
                     </span>
                     {request.scenario_name && <span className="mr-2 text-zinc-400">{request.scenario_name}</span>}
                     {request.path || request.name}
+                    <GRPCRequestMetrics request={request} />
                   </td>
                   <td className="px-3 py-2 text-right font-mono text-zinc-300">{request.count.toLocaleString()}</td>
                   <td
@@ -1590,7 +1772,9 @@ function RunSummaryPanel({
                     {request.failures.toLocaleString()}
                   </td>
                   <td className="px-3 py-2 text-right font-mono text-zinc-300">{formatMs(request.avg_ms)}</td>
-                  <td className="px-3 py-2 text-right font-mono text-zinc-300">{request.p50_ms == null ? unavailable : formatMs(request.p50_ms)}</td>
+                  <td className="px-3 py-2 text-right font-mono text-zinc-300">
+                    {request.p50_ms == null ? unavailable : formatMs(request.p50_ms)}
+                  </td>
                   <td className="px-3 py-2 text-right font-mono text-zinc-300">{formatMs(request.p90_ms)}</td>
                   <td className="px-3 py-2 text-right font-mono text-zinc-300">{formatMs(request.p95_ms)}</td>
                   <td className="px-3 py-2 text-right font-mono text-zinc-300">
@@ -1611,7 +1795,11 @@ function buildLiveRunSummary(latest: RunMetricsSnapshot | null, requestTargets: 
   const requests = new Map<string, RunRequestStat>();
   (latest.requests ?? []).forEach(request => {
     if (request.scenario_name) {
-      const key = [request.scenario_name, request.node_id ?? '', request.request_key ?? liveRunSummaryFallbackKey(request)].join('\u0000');
+      const key = [
+        request.scenario_name,
+        request.node_id ?? '',
+        request.request_key ?? liveRunSummaryFallbackKey(request),
+      ].join('\u0000');
       addLiveRunSummaryRequest(requests, key, request);
       return;
     }

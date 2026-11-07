@@ -13,7 +13,7 @@ import {
   type GRPCMethod,
   type GRPCRecording,
 } from '../../utils/grpcApi';
-import { useGRPCSchema } from '../../contexts/GRPCSchemaContext';
+import { useGRPCSchema } from '../../hooks/useGRPCSchema';
 import type { YAMLValue } from '../../types/yaml';
 const input = 'w-full rounded border border-white/15 bg-zinc-950 p-2 text-sm text-zinc-200';
 const button =

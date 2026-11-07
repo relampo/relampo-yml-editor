@@ -43,6 +43,11 @@ export interface RunMetricsSnapshot {
   elapsed_ms: number;
   rps: number;
   active_users: number;
+  active_streams?: number;
+  peak_active_streams?: number;
+  streams_created_per_sec?: number;
+  messages_sent_per_sec?: number;
+  messages_received_per_sec?: number;
   executed_vus?: number;
   avg_latency: number;
   p95_latency: number;
@@ -80,7 +85,35 @@ export interface RunLogLine {
 // Per-logical-request roll-up. Final summaries mirror reporter.RequestStat;
 // live snapshots additionally carry runtime identity fields so the editor can
 // map resolved URLs and redirects back to their stable YAML steps.
+export interface GRPCHistogram {
+  count: number;
+  average: number;
+  p95_upper: number;
+}
+export interface GRPCStreamTiming {
+  duration_ms: GRPCHistogram;
+  first_response_ms: GRPCHistogram;
+  message_latency_ms: GRPCHistogram;
+  sent_size_bytes: GRPCHistogram;
+  received_size_bytes: GRPCHistogram;
+  unmatched_messages?: number;
+}
 export interface RunRequestStat {
+  protocol?: string;
+  protocol_status?: string;
+  stream_type?: string;
+  streams_opened?: number;
+  streams_completed?: number;
+  streams_failed?: number;
+  streams_cancelled?: number;
+  streams_timed_out?: number;
+  messages_sent?: number;
+  messages_received?: number;
+  bytes_sent?: number;
+  bytes_received?: number;
+  time_to_first_response_ms?: number;
+  grpc_timing?: GRPCStreamTiming;
+  grpc_status_counts?: Record<string, number>;
   scenario_name?: string;
   node_id?: string | number;
   request_key?: string;
@@ -110,6 +143,11 @@ interface RunHistoryPoint {
   interval_seconds?: number;
   rps: number;
   active_users: number;
+  active_streams?: number;
+  peak_active_streams?: number;
+  streams_created_per_sec?: number;
+  messages_sent_per_sec?: number;
+  messages_received_per_sec?: number;
   avg_latency: number;
   p95_latency: number;
   errors: number;
@@ -346,7 +384,8 @@ export function streamLoadRun(runId: string, handlers: RunStreamHandlers): () =>
   });
   source.addEventListener('metrics', message => {
     const metrics = stream.parse<RunMetricsSnapshot>(message, isRunMetricsSnapshot);
-    const identity = metrics?.seq === undefined ? `time:${metrics?.ts_ms ?? (metrics?.ts ?? 0) * 1000}` : `sequence:${metrics.seq}`;
+    const identity =
+      metrics?.seq === undefined ? `time:${metrics?.ts_ms ?? (metrics?.ts ?? 0) * 1000}` : `sequence:${metrics.seq}`;
     if (metrics && !seenMetricTimestamps.has(identity)) {
       seenMetricTimestamps.add(identity);
       handlers.onMetrics(metrics);
@@ -437,7 +476,8 @@ function isRunMetricsSnapshot(value: unknown): value is RunMetricsSnapshot {
     isFiniteNumber(value.total_failures) &&
     isFiniteNumber(value.errors) &&
     (value.requests === undefined || (Array.isArray(value.requests) && value.requests.every(isRunRequestStat))) &&
-    (value.intent_ticks === undefined || (Array.isArray(value.intent_ticks) && value.intent_ticks.every(isRunIntentTick))) &&
+    (value.intent_ticks === undefined ||
+      (Array.isArray(value.intent_ticks) && value.intent_ticks.every(isRunIntentTick))) &&
     (value.scenarios === undefined || (Array.isArray(value.scenarios) && value.scenarios.every(isRunScenarioProgress)))
   );
 }
@@ -492,7 +532,8 @@ function isRunIntentResult(value: unknown): value is RunIntentResult {
     (value.estimated_capacity_vus === undefined || isFiniteNumber(value.estimated_capacity_vus)) &&
     (value.estimated_capacity_rps === undefined || isFiniteNumber(value.estimated_capacity_rps)) &&
     (value.estimated_capacity_p95_ms === undefined || isFiniteNumber(value.estimated_capacity_p95_ms)) &&
-    (value.estimated_capacity_response_time_ms === undefined || isFiniteNumber(value.estimated_capacity_response_time_ms)) &&
+    (value.estimated_capacity_response_time_ms === undefined ||
+      isFiniteNumber(value.estimated_capacity_response_time_ms)) &&
     (value.violation_count === undefined || isFiniteNumber(value.violation_count)) &&
     (value.recovery_count === undefined || isFiniteNumber(value.recovery_count)) &&
     (value.stable_tick_count === undefined || isFiniteNumber(value.stable_tick_count)) &&
@@ -540,7 +581,9 @@ function isRunTransactionStat(value: unknown): value is RunTransactionStat {
     typeof value.name === 'string' &&
     isFiniteNumber(value.count) &&
     isFiniteNumber(value.failures) &&
-    ['completed', 'incomplete', 'avg_ms', 'p50_ms', 'p90_ms', 'p95_ms', 'p99_ms'].every(key => value[key] === undefined || isFiniteNumber(value[key]))
+    ['completed', 'incomplete', 'avg_ms', 'p50_ms', 'p90_ms', 'p95_ms', 'p99_ms'].every(
+      key => value[key] === undefined || isFiniteNumber(value[key]),
+    )
   );
 }
 
@@ -553,10 +596,19 @@ function isRunNodeResource(value: unknown): value is RunNodeResource {
     isFiniteNumber(value.mem_peak_mb) &&
     isFiniteNumber(value.cpu_peak) &&
     isFiniteNumber(value.go_peak) &&
-    (measurements === undefined || (isRecord(measurements) && [
-      'rss_peak_mib', 'go_heap_peak_mib', 'memory_capacity_mib', 'rss_peak_percent', 'cpu_capacity', 'cpu_percent_peak',
-      'goroutines_start', 'goroutines_peak', 'goroutines_end',
-    ].every(key => measurements[key] === undefined || isFiniteNumber(measurements[key]))))
+    (measurements === undefined ||
+      (isRecord(measurements) &&
+        [
+          'rss_peak_mib',
+          'go_heap_peak_mib',
+          'memory_capacity_mib',
+          'rss_peak_percent',
+          'cpu_capacity',
+          'cpu_percent_peak',
+          'goroutines_start',
+          'goroutines_peak',
+          'goroutines_end',
+        ].every(key => measurements[key] === undefined || isFiniteNumber(measurements[key]))))
   );
 }
 
@@ -565,24 +617,45 @@ function isRunMetadata(value: unknown): value is Record<string, string> {
 }
 
 function isRunScope(value: Record<string, unknown>): boolean {
-  return (value.scenario_name === undefined || typeof value.scenario_name === 'string') &&
-    (value.node_id === undefined || typeof value.node_id === 'string' || (isFiniteNumber(value.node_id) && Number.isInteger(value.node_id)));
+  return (
+    (value.scenario_name === undefined || typeof value.scenario_name === 'string') &&
+    (value.node_id === undefined ||
+      typeof value.node_id === 'string' ||
+      (isFiniteNumber(value.node_id) && Number.isInteger(value.node_id)))
+  );
 }
 
 function isRunScenarioProgress(value: unknown): value is RunScenarioProgress {
-  return isRecord(value) && typeof value.name === 'string' && typeof value.status === 'string' && ['pending', 'running', 'finished'].includes(String(value.status)) &&
+  return (
+    isRecord(value) &&
+    typeof value.name === 'string' &&
+    typeof value.status === 'string' &&
+    ['pending', 'running', 'finished'].includes(String(value.status)) &&
     (value.started_at === undefined || typeof value.started_at === 'string') &&
     (value.ended_at === undefined || typeof value.ended_at === 'string') &&
-    ['total_requests', 'total_failures', 'executed_vus'].every(key => isFiniteNumber(value[key]));
+    ['total_requests', 'total_failures', 'executed_vus'].every(key => isFiniteNumber(value[key]))
+  );
 }
 
 function isRunLatency(value: unknown): value is RunLatency {
-  return isRecord(value) && ['count', 'avg_ms', 'min_ms', 'max_ms', 'p50_ms', 'p90_ms', 'p95_ms', 'p99_ms'].every(key => isFiniteNumber(value[key]));
+  return (
+    isRecord(value) &&
+    ['count', 'avg_ms', 'min_ms', 'max_ms', 'p50_ms', 'p90_ms', 'p95_ms', 'p99_ms'].every(key =>
+      isFiniteNumber(value[key]),
+    )
+  );
 }
 
 function isRunScenarioResult(value: unknown): value is RunScenarioResult {
-  return isRecord(value) && typeof value.name === 'string' && typeof value.outcome === 'string' && ['completed', 'failed', 'stopped'].includes(String(value.outcome)) &&
-    typeof value.complete === 'boolean' && (value.error === undefined || typeof value.error === 'string') && isRunSummary(value.result);
+  return (
+    isRecord(value) &&
+    typeof value.name === 'string' &&
+    typeof value.outcome === 'string' &&
+    ['completed', 'failed', 'stopped'].includes(String(value.outcome)) &&
+    typeof value.complete === 'boolean' &&
+    (value.error === undefined || typeof value.error === 'string') &&
+    isRunSummary(value.result)
+  );
 }
 
 function isRunSummary(value: unknown): value is RunSummary {
@@ -605,22 +678,30 @@ function isRunSummary(value: unknown): value is RunSummary {
     (value.status === undefined || typeof value.status === 'string') &&
     (value.partial === undefined || typeof value.partial === 'boolean') &&
     (value.expected_nodes === undefined || isFiniteNumber(value.expected_nodes)) &&
-    (value.received_nodes === undefined || (Array.isArray(value.received_nodes) && value.received_nodes.every(node => typeof node === 'string'))) &&
-    (value.missing_nodes === undefined || (Array.isArray(value.missing_nodes) && value.missing_nodes.every(node => typeof node === 'string'))) &&
+    (value.received_nodes === undefined ||
+      (Array.isArray(value.received_nodes) && value.received_nodes.every(node => typeof node === 'string'))) &&
+    (value.missing_nodes === undefined ||
+      (Array.isArray(value.missing_nodes) && value.missing_nodes.every(node => typeof node === 'string'))) &&
     (value.transactions_configured === undefined || typeof value.transactions_configured === 'boolean') &&
-    (value.overview === undefined || (isRecord(value.overview) &&
-      (value.overview.rps === null || isFiniteNumber(value.overview.rps)) &&
-      (value.overview.tps === null || isFiniteNumber(value.overview.tps)) &&
-      typeof value.overview.tps_status === 'string' && ['available', 'not_applicable', 'unavailable'].includes(value.overview.tps_status) &&
-      (value.overview.failure_percent === null || isFiniteNumber(value.overview.failure_percent)) &&
-      isFiniteNumber(value.overview.completed_transactions) && isFiniteNumber(value.overview.incomplete_transactions))) &&
+    (value.overview === undefined ||
+      (isRecord(value.overview) &&
+        (value.overview.rps === null || isFiniteNumber(value.overview.rps)) &&
+        (value.overview.tps === null || isFiniteNumber(value.overview.tps)) &&
+        typeof value.overview.tps_status === 'string' &&
+        ['available', 'not_applicable', 'unavailable'].includes(value.overview.tps_status) &&
+        (value.overview.failure_percent === null || isFiniteNumber(value.overview.failure_percent)) &&
+        isFiniteNumber(value.overview.completed_transactions) &&
+        isFiniteNumber(value.overview.incomplete_transactions))) &&
     Array.isArray(value.requests) &&
     value.requests.every(isRunRequestStat) &&
-    (value.transactions === undefined || (Array.isArray(value.transactions) && value.transactions.every(isRunTransactionStat))) &&
+    (value.transactions === undefined ||
+      (Array.isArray(value.transactions) && value.transactions.every(isRunTransactionStat))) &&
     (value.history === undefined || (Array.isArray(value.history) && value.history.every(isRunHistoryPoint))) &&
-    (value.intent_ticks === undefined || (Array.isArray(value.intent_ticks) && value.intent_ticks.every(isRunIntentTick))) &&
+    (value.intent_ticks === undefined ||
+      (Array.isArray(value.intent_ticks) && value.intent_ticks.every(isRunIntentTick))) &&
     (value.intent_result === undefined || isRunIntentResult(value.intent_result)) &&
-    (value.node_resources === undefined || (Array.isArray(value.node_resources) && value.node_resources.every(isRunNodeResource))) &&
+    (value.node_resources === undefined ||
+      (Array.isArray(value.node_resources) && value.node_resources.every(isRunNodeResource))) &&
     (value.metadata === undefined || isRunMetadata(value.metadata))
   );
 }

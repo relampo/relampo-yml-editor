@@ -1,7 +1,7 @@
 import { GRPCChecksEditor } from './grpc/GRPCChecksEditor';
 import { GRPCStreamEditor, GRPCRecordedConversation } from './grpc/GRPCStreamEditor';
 import { GRPCMessageForm } from './grpc/GRPCMessageForm';
-import { useGRPCSchema } from '../contexts/GRPCSchemaContext';
+import { useGRPCSchema } from '../hooks/useGRPCSchema';
 import { useEffect, useState } from 'react';
 import type { YAMLNodeData, YAMLValue } from '../types/yaml';
 import type { NodeDetailProps } from './yaml-node-details/types';
@@ -186,17 +186,17 @@ export function YAMLGRPCDetails({ node, onNodeUpdate }: NodeDetailProps) {
             value={data.metadata}
             onCommit={value => update('metadata', value)}
           />
-          {data.payload_base64 !== undefined ? (
-            field('Payload (base64)', 'payload_base64')
-          ) : (
-            <JsonField
-              key={node.id + '-message'}
-              label="Message (JSON)"
-              anyValue
-              value={data.message}
-              onCommit={value => update('message', value)}
-            />
-          )}
+          {data.payload_base64 !== undefined
+            ? field('Payload (base64)', 'payload_base64')
+            : (!data.stream || (data.stream as Record<string, YAMLValue>).type === 'server_streaming') && (
+                <JsonField
+                  key={node.id + '-message'}
+                  label="Message (JSON)"
+                  anyValue
+                  value={data.message}
+                  onCommit={value => update('message', value)}
+                />
+              )}
           <GRPCChecksEditor
             extractors={data.extractors}
             assertions={data.assertions}

@@ -61,6 +61,11 @@ interface EngineRedirectHop {
 
 // Mirrors pkg/engine.Event JSON serialization.
 export interface EngineEvent {
+  protocol?: string;
+  protocol_status?: string;
+  stream_type?: string;
+  messages_sent?: number;
+  messages_received?: number;
   ts: string;
   started_at?: string;
   name: string;
