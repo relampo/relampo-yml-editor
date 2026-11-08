@@ -85,3 +85,23 @@ it('does not offer unsupported gRPC-Web replay or fabricate captured requests', 
   expect(screen.getByText(/gRPC-Web script generation is not available yet/i)).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: /generate.*scenario/i })).not.toBeInTheDocument();
 });
+
+it('explains that Relampo manages the recording Firefox certificate automatically', async () => {
+  vi.mocked(grpcRequest).mockResolvedValue({
+    ...initial,
+    active: true,
+    proxyAddress: '127.0.0.1:8888',
+    firefoxCertificateManaged: true,
+    firefoxCertificateReady: false,
+  });
+  render(
+    <GRPCBrowserRecorder
+      onDiscover={vi.fn()}
+      onImport={vi.fn()}
+    />,
+  );
+  expect(
+    await screen.findByText(/Relampo automatically prepares and verifies the recorder certificate/i),
+  ).toBeInTheDocument();
+  expect(screen.queryByText(/import this certificate in Firefox Settings/i)).not.toBeInTheDocument();
+});
