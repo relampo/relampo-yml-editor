@@ -54,3 +54,31 @@ export function validateSavedEditorURL(value: string): string {
     throw Error('Studio returned an invalid local editor address');
   return url.toString();
 }
+
+export function openHTTPRecordingControls(language = 'en'): Window | null {
+  const url = new URL('/recorder/http/control', window.location.origin);
+  url.searchParams.set('lang', language);
+  url.searchParams.set('waiting', '1');
+  const popup = window.open(
+    '',
+    'relampo-http-controls-' + window.location.host,
+    'popup=yes,width=460,height=650,resizable=yes,scrollbars=yes',
+  );
+  if (!popup) return null;
+  let existing = false;
+  try {
+    existing = popup.location.origin === location.origin && popup.location.pathname === '/recorder/http/control';
+  } catch {
+    /* Use the local route below. */
+  }
+  if (!existing) popup.location.replace(withStudioToken(url.toString()));
+  popup.focus();
+  return popup;
+}
+export function returnToHTTPRecorderTab(): boolean {
+  return focusNamedTab(
+    withStudioToken(new URL('/recorder/http', location.origin).toString()),
+    'relampo-http-recorder-' + location.host,
+    '/recorder/http',
+  );
+}

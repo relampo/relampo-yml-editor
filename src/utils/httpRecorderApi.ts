@@ -11,6 +11,8 @@ export interface HTTPRecordOptions {
   include: string;
   exclude: string[];
   prefix: string;
+  prefixEnabled: boolean;
+  transactionsEnabled: boolean;
   grouping: string;
   redirectMode: string;
   redirectDisabling: boolean;
@@ -26,6 +28,8 @@ export interface HTTPRecordedRow {
   status: number;
   durationMs: number;
   time: string;
+  transaction?: string;
+  transactionId?: number;
 }
 export interface HTTPRecordingState {
   active: boolean;
@@ -40,6 +44,9 @@ export interface HTTPRecordingState {
   upstreamTLSFailures?: number;
   startedAt?: string;
   prefix?: string;
+  prefixEnabled?: boolean;
+  transactionsEnabled?: boolean;
+  transaction?: { id: number; name: string };
   requests: HTTPRecordedRow[];
   totalRequests: number;
   savedPath?: string;
@@ -78,6 +85,8 @@ export const defaultHTTPRecordOptions: HTTPRecordOptions = {
   include: '',
   exclude: [],
   prefix: '',
+  prefixEnabled: false,
+  transactionsEnabled: false,
   grouping: 'none',
   redirectMode: 'jmeter',
   redirectDisabling: true,

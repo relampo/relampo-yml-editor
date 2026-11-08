@@ -6,11 +6,13 @@ export function HTTPRecorderRequests({
   total,
   responses,
   language,
+  transactionsEnabled = false,
 }: {
   rows: HTTPRecordedRow[];
   total: number;
   responses: boolean;
   language: string;
+  transactionsEnabled?: boolean;
 }) {
   const [search, setSearch] = useState(''),
     [method, setMethod] = useState(''),
@@ -112,6 +114,7 @@ export function HTTPRecorderRequests({
             <tr>
               <th className="p-3">#</th>
               <th className="p-3">Prefix</th>
+              {transactionsEnabled && <th className="p-3">{text('Transaction', 'Transacción')}</th>}
               <th className="p-3">{text('Method', 'Método')}</th>
               <th className="p-3">URL</th>
               <th className="p-3">{text('Status', 'Estado')}</th>
@@ -126,6 +129,7 @@ export function HTTPRecorderRequests({
               >
                 <td className="p-3 font-mono text-yellow-400">{String(row.id + 1).padStart(2, '0')}</td>
                 <td className="p-3">{row.name.split(' - ' + row.method + ' ')[0] || '—'}</td>
+                {transactionsEnabled && <td className="p-3 text-violet-300">{row.transaction || '—'}</td>}
                 <td className="p-3 font-mono text-emerald-300">{row.method}</td>
                 <td className="max-w-xl truncate p-3">
                   <button

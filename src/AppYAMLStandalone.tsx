@@ -1,3 +1,4 @@
+import { HTTPRecorderControlPage } from './components/recorder/HTTPRecorderControlPage';
 import { HTTPRecorderPage } from './components/recorder/HTTPRecorderPage';
 import { GRPCRecorderPage } from './components/grpc/GRPCRecorderPage';
 import { GRPCSchemaProvider } from './contexts/GRPCSchemaContext';
@@ -17,6 +18,8 @@ export default function AppYAMLStandalone() {
           <GRPCSchemaProvider>
             {window.location.pathname.replace(/\/$/, '') === '/recorder/grpc' ? (
               <GRPCRecorderPage />
+            ) : window.location.pathname.replace(/\/$/, '') === '/recorder/http/control' ? (
+              <HTTPRecorderControlPage />
             ) : window.location.pathname.replace(/\/$/, '') === '/recorder/http' ? (
               <HTTPRecorderPage />
             ) : (
@@ -24,7 +27,7 @@ export default function AppYAMLStandalone() {
             )}
           </GRPCSchemaProvider>
         </div>
-        <MobileBlockOverlay />
+        {window.location.pathname.replace(/\/$/, '') !== '/recorder/http/control' && <MobileBlockOverlay />}
       </YAMLProvider>
     </LanguageProvider>
   );

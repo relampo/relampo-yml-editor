@@ -21,7 +21,7 @@ export function HTTPRecorderSettings({
   }, [disabled]);
   const es = language === 'es',
     text = (en: string, spanish: string) => (es ? spanish : en);
-  const field = (label: string, key: 'include' | 'name' | 'baseUrls', help?: string) => (
+  const field = (label: string, key: 'include' | 'name' | 'baseUrls' | 'applicationUrl', help?: string) => (
     <label className="block space-y-1 text-xs text-zinc-400">
       {label}
       <input
@@ -59,27 +59,16 @@ export function HTTPRecorderSettings({
         disabled={disabled}
         className="grid gap-5 border-t border-white/10 p-4 md:grid-cols-2"
       >
-        <label className="block space-y-1 text-xs text-zinc-400">
-          {text('Proxy port (0 = automatic)', 'Puerto del proxy (0 = automático)')}
-          <input
-            aria-label="Proxy port"
-            className={recorderInput}
-            type="number"
-            min="0"
-            max="65535"
-            value={options.port}
-            onChange={e => onChange({ port: Number(e.target.value) })}
-          />
-        </label>
         {field(text('Test name (optional)', 'Nombre del test (opcional)'), 'name')}
-        {field(
-          text('Base URLs / domains to capture', 'URLs base / dominios que se grabarán'),
-          'baseUrls',
-          text(
-            'Comma-separated URLs. Leave empty for CLI-style automatic base URL detection and all proxied domains.',
-            'URLs separadas por coma. Vacío: detectar URL base y capturar todos los dominios, como la CLI.',
-          ),
-        )}
+        {field(text('Application URL (start page)', 'URL de inicio en Firefox'), 'applicationUrl')}
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={options.openFirefox}
+            onChange={e => onChange({ openFirefox: e.target.checked })}
+          />
+          {text('Configure and open Firefox automatically', 'Configurar y abrir Firefox automáticamente')}
+        </label>
         {field(text('Include URL containing', 'Incluir URL que contenga'), 'include')}
         <label className="block space-y-1 text-xs text-zinc-400">
           {text('Exclude URL patterns (one per line)', 'Excluir patrones de URL (uno por línea)')}
@@ -93,9 +82,10 @@ export function HTTPRecorderSettings({
         </label>
         <div className="space-y-3">
           <label className="block space-y-1 text-xs text-zinc-400">
-            {text('Grouping', 'Agrupación')}
+            {text('Automatic grouping', 'Agrupación automática')}
             <select
               aria-label="Grouping"
+              disabled={options.transactionsEnabled}
               className={recorderInput}
               value={options.grouping}
               onChange={e => onChange({ grouping: e.target.value })}

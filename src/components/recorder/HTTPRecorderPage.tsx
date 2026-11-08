@@ -1,8 +1,9 @@
+import { HTTPRecorderSetup } from './HTTPRecorderSetup';
 import { HTTPDynamicReview } from './HTTPDynamicReview';
 import { useEffect, useState } from 'react';
-import { CircleDot, ExternalLink, Play, Square, Tag } from 'lucide-react';
+import { CircleDot, ExternalLink, Play, Square, ExternalLink as ControlsIcon } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { validateSavedEditorURL } from '../../utils/recorderTabs';
+import { validateSavedEditorURL, openHTTPRecordingControls } from '../../utils/recorderTabs';
 import { httpRecorderRequest } from '../../utils/httpRecorderApi';
 import { RecorderShell } from './RecorderShell';
 import { useHTTPRecorder } from './useHTTPRecorder';
@@ -13,7 +14,7 @@ export function HTTPRecorderPage() {
   const es = language === 'es',
     text = (en: string, spanish: string) => (es ? spanish : en);
   const recorder = useHTTPRecorder(),
-    { options, update, state, error, setError, busy, ready, firefoxAvailable } = recorder;
+    { options, update, state, error, setError, busy, ready, firefoxAvailable, firefoxConfigured } = recorder;
   const [opening, setOpening] = useState(false),
     [seconds, setSeconds] = useState(0);
   useEffect(() => {
@@ -33,6 +34,18 @@ export function HTTPRecorderPage() {
     const timer = setInterval(tick, 1000);
     return () => clearInterval(timer);
   }, [state.active, state.startedAt]);
+  async function startRecording() {
+    const popup = openHTTPRecordingControls(language);
+    if (!popup) {
+      setError(
+        text('Allow the recording control popup before starting.', 'Permite el popup de control antes de iniciar.'),
+      );
+      return;
+    }
+    const current = await recorder.start();
+    if (!current?.active) popup.close();
+    else if (!popup.closed) popup.focus();
+  }
   async function openSaved() {
     const editor = window.open('about:blank', '_blank');
     if (!editor) {
@@ -125,10 +138,10 @@ export function HTTPRecorderPage() {
                 !!busy ||
                 !options.applicationUrl.trim() ||
                 !options.output.trim() ||
-                (options.openFirefox && !firefoxAvailable)
+                (options.openFirefox && (!firefoxAvailable || !firefoxConfigured))
               }
               className={recorderButton + ' border-yellow-400 bg-yellow-400 text-black hover:bg-yellow-300'}
-              onClick={() => void recorder.start()}
+              onClick={() => void startRecording()}
             >
               <Play className="h-4 w-4" />
               {options.openFirefox
@@ -138,77 +151,10 @@ export function HTTPRecorderPage() {
           )}
         </div>
         {!state.active && !canRetrySave && (
-          <fieldset
-            disabled={!!busy}
-            className="grid gap-4 md:grid-cols-2"
-          >
-            <label className="block space-y-2 text-xs font-semibold text-zinc-400">
-              {text('Application URL', 'URL de la aplicación')}
-              <input
-                aria-label="Application URL"
-                type="url"
-                placeholder="https://my-app.example"
-                className={recorderInput}
-                value={options.applicationUrl}
-                onChange={e => {
-                  const applicationUrl = e.target.value;
-                  let baseUrls = options.baseUrls;
-                  try {
-                    const old = options.applicationUrl ? new URL(options.applicationUrl).origin : '';
-                    if (baseUrls === '' || baseUrls === old) baseUrls = new URL(applicationUrl).origin;
-                  } catch {
-                    /* Keep custom domains until a URL is valid. */
-                  }
-                  update({ applicationUrl, baseUrls });
-                }}
-              />
-            </label>
-            <label className="block space-y-2 text-xs font-semibold text-zinc-400">
-              {text('Output YAML file', 'Archivo YAML de salida')}
-              <input
-                aria-label="Output YAML file"
-                className={recorderInput + ' font-mono'}
-                value={options.output}
-                onChange={e => update({ output: e.target.value })}
-              />
-            </label>
-            <label className="block space-y-2 text-xs font-semibold text-zinc-400">
-              {text('Initial prefix (optional)', 'Prefix inicial (opcional)')}
-              <input
-                aria-label="Initial prefix"
-                className={recorderInput}
-                value={options.prefix}
-                placeholder="Login"
-                onChange={e => update({ prefix: e.target.value })}
-              />
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                className="accent-yellow-400"
-                type="checkbox"
-                checked={options.responses}
-                onChange={e => update({ responses: e.target.checked })}
-              />
-              {text('Capture responses for correlation', 'Capturar respuestas para correlación')}
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                className="accent-yellow-400"
-                type="checkbox"
-                checked={options.openFirefox}
-                onChange={e => update({ openFirefox: e.target.checked })}
-              />
-              {text('Configure and open Firefox automatically', 'Configurar y abrir Firefox automáticamente')}
-            </label>
-            {!firefoxAvailable && ready && options.openFirefox && (
-              <p className="text-sm text-amber-300 md:col-span-2">
-                {text(
-                  'Firefox is not installed on this computer. Install it to use automatic recording, or select another client.',
-                  'Firefox no está instalado en esta PC. Instálalo para usar la grabación automática, o selecciona otro cliente.',
-                )}
-              </p>
-            )}
-          </fieldset>
+          <HTTPRecorderSetup
+            recorder={recorder}
+            language={language}
+          />
         )}
         {state.proxyAddress && (
           <div className="flex flex-wrap items-center gap-4 text-xs text-zinc-400">
@@ -256,44 +202,17 @@ export function HTTPRecorderPage() {
           </p>
         )}
         {state.active && (
-          <form
-            className="flex flex-wrap items-end gap-3 rounded-lg border border-yellow-400/15 bg-yellow-400/5 p-4"
-            onSubmit={event => {
-              event.preventDefault();
-              void recorder.applyPrefix();
+          <button
+            type="button"
+            className={recorderButton + ' border-yellow-400/30 text-yellow-300'}
+            onClick={() => {
+              if (!openHTTPRecordingControls(language))
+                setError(text('Allow the recording control popup.', 'Permite el popup de control.'));
             }}
           >
-            <label className="block flex-1 space-y-2 text-xs text-zinc-400">
-              <span className="flex items-center gap-2">
-                <Tag className="h-4 w-4 text-yellow-400" />
-                {text('Prefix for upcoming requests', 'Prefix para los próximos requests')}
-              </span>
-              <input
-                aria-label="Prefix"
-                className={recorderInput}
-                value={options.prefix}
-                placeholder="Login / Select seats"
-                onChange={e => update({ prefix: e.target.value })}
-              />
-            </label>
-            <button
-              type="submit"
-              disabled={!!busy}
-              className={recorderButton}
-            >
-              {text('Apply prefix', 'Aplicar prefix')}
-            </button>
-            <p className="w-full text-xs text-yellow-300">
-              {text('Active prefix: ', 'Prefix activo: ')}
-              {state.prefix || '—'}
-            </p>
-            <p className="w-full text-xs text-zinc-500">
-              {text(
-                'Apply before performing the action in Firefox. Previous requests keep their prefix. Clear and apply to stop adding a prefix.',
-                'Aplica antes de realizar la acción en Firefox. Los requests anteriores conservan su prefix. Vacía y aplica para dejar de añadirlo.',
-              )}
-            </p>
-          </form>
+            <ControlsIcon className="h-4 w-4" />
+            {text('Open recording controls', 'Abrir control de grabación')}
+          </button>
         )}
         {canRetrySave && (
           <label className="block space-y-2 text-sm">
@@ -358,6 +277,7 @@ export function HTTPRecorderPage() {
           total={state.totalRequests}
           responses={state.responses ?? options.responses}
           language={language}
+          transactionsEnabled={state.transactionsEnabled}
         />
       </div>
     </RecorderShell>
