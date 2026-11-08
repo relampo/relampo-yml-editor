@@ -37,6 +37,7 @@ export interface HTTPRecordingState {
   firefoxPreparing?: boolean;
   certificateReady?: boolean;
   tlsFailures?: number;
+  upstreamTLSFailures?: number;
   startedAt?: string;
   prefix?: string;
   requests: HTTPRecordedRow[];

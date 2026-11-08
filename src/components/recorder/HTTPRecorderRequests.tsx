@@ -66,7 +66,7 @@ export function HTTPRecorderRequests({
         />
         <select
           aria-label="Method filter"
-          className={recorderInput + ' w-auto'}
+          className={recorderInput + ' w-auto!'}
           value={method}
           onChange={e => setMethod(e.target.value)}
         >
@@ -77,7 +77,7 @@ export function HTTPRecorderRequests({
         </select>
         <select
           aria-label="Status filter"
-          className={recorderInput + ' w-auto'}
+          className={recorderInput + ' w-auto!'}
           value={status}
           onChange={e => setStatus(e.target.value)}
         >
@@ -87,7 +87,7 @@ export function HTTPRecorderRequests({
         </select>
         <select
           aria-label="Domain filter"
-          className={recorderInput + ' w-auto'}
+          className={recorderInput + ' w-auto!'}
           value={domain}
           onChange={e => setDomain(e.target.value)}
         >
@@ -125,7 +125,7 @@ export function HTTPRecorderRequests({
                 className={'border-t border-white/5 hover:bg-white/5 ' + (selected === row.id ? 'bg-yellow-400/5' : '')}
               >
                 <td className="p-3 font-mono text-yellow-400">{String(row.id + 1).padStart(2, '0')}</td>
-                <td className="p-3">{row.name.split(' - ')[0] || '—'}</td>
+                <td className="p-3">{row.name.split(' - ' + row.method + ' ')[0] || '—'}</td>
                 <td className="p-3 font-mono text-emerald-300">{row.method}</td>
                 <td className="max-w-xl truncate p-3">
                   <button

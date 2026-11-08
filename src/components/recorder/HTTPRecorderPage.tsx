@@ -1,3 +1,4 @@
+import { HTTPDynamicReview } from './HTTPDynamicReview';
 import { useEffect, useState } from 'react';
 import { CircleDot, ExternalLink, Play, Square, Tag } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -78,7 +79,7 @@ export function HTTPRecorderPage() {
             )}
           </div>
         )}
-        <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-white/10 bg-[#111111] p-4">
+        <div className="sticky top-0 z-20 flex flex-wrap items-center justify-between gap-4 rounded-lg border border-white/10 bg-[#111111] p-4 shadow-lg">
           <div className="flex items-center gap-4">
             <span
               className={
@@ -243,6 +244,17 @@ export function HTTPRecorderPage() {
             )}
           </div>
         )}
+        {!!state.upstreamTLSFailures && (
+          <p
+            role="alert"
+            className="rounded-md border border-amber-400/20 bg-amber-500/5 p-3 text-sm text-amber-300"
+          >
+            {text(
+              'Relampo could not establish a trusted TLS connection to the application server. Check the server certificate and its issuing CA. Firefox recorder certificate preparation is separate.',
+              'Relampo no pudo establecer una conexión TLS de confianza con el servidor de la aplicación. Revisa el certificado del servidor y su CA emisora. La preparación del certificado del grabador en Firefox es independiente.',
+            )}
+          </p>
+        )}
         {state.active && (
           <form
             className="flex flex-wrap items-end gap-3 rounded-lg border border-yellow-400/15 bg-yellow-400/5 p-4"
@@ -334,6 +346,10 @@ export function HTTPRecorderPage() {
                 'Revisa los valores dinámicos en Studio antes de ejecutar tu flujo.',
               )}
             </p>
+            <HTTPDynamicReview
+              key={state.savedPath}
+              language={language}
+            />
           </section>
         )}
         <HTTPRecorderRequests

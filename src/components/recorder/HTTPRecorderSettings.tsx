@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import type { HTTPRecordOptions } from '../../utils/httpRecorderApi';
 export const recorderInput =
   'w-full rounded-md border border-white/15 bg-zinc-950 px-3 py-2 text-sm text-zinc-200 outline-none focus:border-yellow-400/60 disabled:opacity-50';
@@ -14,6 +15,10 @@ export function HTTPRecorderSettings({
   disabled: boolean;
   language: string;
 }) {
+  const [expanded, setExpanded] = useState(false);
+  useEffect(() => {
+    if (disabled) setExpanded(false);
+  }, [disabled]);
   const es = language === 'es',
     text = (en: string, spanish: string) => (es ? spanish : en);
   const field = (label: string, key: 'include' | 'name' | 'baseUrls', help?: string) => (
@@ -42,7 +47,11 @@ export function HTTPRecorderSettings({
     </label>
   );
   return (
-    <details className="rounded-lg border border-white/10 bg-[#111111]">
+    <details
+      open={expanded}
+      onToggle={event => setExpanded(event.currentTarget.open)}
+      className="rounded-lg border border-white/10 bg-[#111111]"
+    >
       <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-zinc-300">
         {text('Advanced settings', 'Configuración avanzada')}
       </summary>
