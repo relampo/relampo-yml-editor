@@ -1,7 +1,8 @@
 import { useId, useState, useEffect } from 'react';
 import type { GRPCCatalog, GRPCField } from '../../utils/grpcApi';
 import type { YAMLValue } from '../../types/yaml';
-const inputClass = 'w-full rounded border border-white/15 bg-zinc-950 p-2 text-sm text-zinc-200';
+const inputClass =
+  'w-full h-9.5 px-3 py-2 rounded border border-white/10 bg-white/5 text-sm text-zinc-300 font-mono normal-case tracking-normal font-normal';
 function isObject(value: YAMLValue | undefined): value is Record<string, YAMLValue> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
@@ -86,7 +87,7 @@ function Scalar({
   };
   const choices = field.type === 'bool' ? ['true', 'false'] : field.enumValues;
   return (
-    <label className="block space-y-1 text-xs text-zinc-400">
+    <label className="block space-y-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider">
       <span>
         {label}
         {field.required ? ' *' : ''} <small className="text-zinc-500">{field.type}</small>
@@ -375,7 +376,7 @@ export function FreeJSON({
     setError('');
   }, [serialized]);
   return (
-    <label className="block space-y-1 text-xs text-zinc-400">
+    <label className="block space-y-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider">
       {label}
       <textarea
         aria-label={label}

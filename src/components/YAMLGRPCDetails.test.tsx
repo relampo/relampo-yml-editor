@@ -1,7 +1,10 @@
+import type { ReactElement } from 'react';
+import { LanguageProvider } from '../contexts/LanguageContext';
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render as baseRender, screen, fireEvent } from '@testing-library/react';
 import { YAMLGRPCDetails } from './YAMLGRPCDetails';
 import type { YAMLNode } from '../types/yaml';
+const render = (ui: ReactElement) => baseRender(<LanguageProvider>{ui}</LanguageProvider>);
 const node: YAMLNode = {
   id: 'rpc1',
   type: 'grpc',
@@ -16,7 +19,7 @@ const node: YAMLNode = {
 describe('gRPC request details', () => {
   it('shows the RPC method, typed message, metadata and recorded response', () => {
     render(<YAMLGRPCDetails node={node} />);
-    expect(screen.getByText('gRPC Request')).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'gRPC Request' })).toBeInTheDocument();
     expect(screen.getByLabelText('RPC method')).toHaveValue('/practice.Shop/Login');
     expect(screen.getByLabelText('Message (JSON)')).toHaveValue(JSON.stringify({ username: 'user001' }, null, 2));
     expect(screen.getByLabelText('Metadata (JSON)')).toHaveValue(JSON.stringify({ 'x-tags': ['a', 'b'] }, null, 2));
@@ -67,4 +70,13 @@ it('shows a saved contract response without presenting it as server evidence', (
   expect(screen.getByLabelText('Contract response template')).toHaveValue(JSON.stringify(contract.message, null, 2));
   expect(screen.getByText(/not an actual server response/i)).toBeInTheDocument();
   expect(screen.queryByLabelText('Recorded response')).not.toBeInTheDocument();
+});
+
+it('uses the HTTP tabs and makes disabled requests inspectable without editing', () => {
+  render(<YAMLGRPCDetails node={{ ...node, data: { ...node.data, enabled: false } }} />);
+  expect(screen.getByRole('button', { name: 'Request' })).toHaveClass('border-b-2', 'border-yellow-400');
+  expect(screen.getByLabelText('RPC method')).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: 'Response' }));
+  expect(screen.getByRole('button', { name: 'Response' })).toHaveAttribute('aria-pressed', 'true');
+  expect(screen.getByLabelText('Recorded response')).toHaveAttribute('readonly');
 });

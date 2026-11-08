@@ -1,3 +1,4 @@
+import { RequestDetailsTabs } from './RequestDetailsTabs';
 import { useSearchNavigation } from './yaml-tree-view/SearchNavigationContext';
 import type { SearchScope } from './yaml-tree-view/search';
 import { ChevronDown, ChevronUp, Search } from 'lucide-react';
@@ -69,7 +70,6 @@ export function YAMLRequestDetails({
   searchQuery = '',
   searchScope,
 }: YAMLRequestDetailsProps) {
-  const { t } = useLanguage();
   const data = node.data || {};
   const { match: navigationMatch } = useSearchNavigation();
   const activeSearchMatch = navigationMatch?.nodeId === node.id ? navigationMatch : null;
@@ -213,32 +213,11 @@ export function YAMLRequestDetails({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center border-b border-white/5 bg-[#111111] shrink-0">
-        <button
-          type="button"
-          onClick={() => handleTabChange('request')}
-          className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${
-            activeTab === 'request'
-              ? 'text-yellow-400 bg-yellow-400/10 border-b-2 border-yellow-400'
-              : 'text-zinc-400 hover:text-zinc-300 hover:bg-white/5'
-          }`}
-        >
-          {t('yamlEditor.requestDetails.tabRequest')}
-        </button>
-        {formData.response && (
-          <button
-            type="button"
-            onClick={() => handleTabChange('response')}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${
-              activeTab === 'response'
-                ? 'text-yellow-400 bg-yellow-400/10 border-b-2 border-yellow-400'
-                : 'text-zinc-400 hover:text-zinc-300 hover:bg-white/5'
-            }`}
-          >
-            {t('yamlEditor.requestDetails.tabResponse')}
-          </button>
-        )}
-      </div>
+      <RequestDetailsTabs
+        activeTab={activeTab}
+        onChange={handleTabChange}
+        showResponse={!!formData.response}
+      />
 
       <div
         ref={contentRef}

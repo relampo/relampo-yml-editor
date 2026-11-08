@@ -739,7 +739,7 @@ describe('YAMLTreeView search highlighting', () => {
 
     const treeElement = screen.getByRole('tree');
     fireEvent.keyDown(treeElement, { key: 'c', ctrlKey: true });
-    fireEvent.click(screen.getByRole('treeitem', { name: 'Target request' }));
+    fireEvent.click(screen.getByRole('treeitem', { name: /\[2\]\s*Target request/ }));
     fireEvent.keyDown(treeElement, { key: 'v', ctrlKey: true });
 
     await waitFor(() => {

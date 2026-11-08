@@ -82,6 +82,7 @@ interface YAMLTreeNodeProps {
   issueMarkers?: Record<string, IssueMarker>;
   redirectedRequestMap: Record<string, RedirectedRequestInfo>;
   baseHost?: string;
+  requestNumbers?: Map<string, number>;
   onNodeSelect: (node: YAMLNode, event: React.MouseEvent) => void;
   onNodeToggle: (nodeId: string) => void;
   onContextMenu: (event: React.MouseEvent, node: YAMLNode) => void;
@@ -101,6 +102,7 @@ export function YAMLTreeNode({
   issueMarkers = NO_ISSUE_MARKERS,
   redirectedRequestMap,
   baseHost = '',
+  requestNumbers,
   onNodeSelect,
   onNodeToggle,
   onContextMenu,
@@ -265,6 +267,7 @@ export function YAMLTreeNode({
       <YAMLTreeNodeRow
         node={node}
         depth={depth}
+        requestNumber={requestNumbers?.get(node.id)}
         isSelected={isSelected}
         dragOver={dragOver}
         issueMarkers={issueMarkers}
@@ -289,6 +292,7 @@ export function YAMLTreeNode({
             <YAMLTreeNode
               key={child.id}
               node={child}
+              requestNumbers={requestNumbers}
               depth={depth + 1}
               parentType={node.type}
               isSelected={selectedIdSet.has(child.id)}
@@ -313,6 +317,7 @@ export function YAMLTreeNode({
 }
 
 interface YAMLTreeNodeRowProps {
+  requestNumber?: number;
   node: YAMLNode;
   depth: number;
   isSelected: boolean;
@@ -333,6 +338,7 @@ interface YAMLTreeNodeRowProps {
 }
 
 function YAMLTreeNodeRow({
+  requestNumber,
   node,
   depth,
   isSelected,
@@ -420,7 +426,7 @@ function YAMLTreeNodeRow({
       onContextMenu={event => onContextMenu(event, node)}
       className={
         `relative group flex items-center gap-2 px-2 py-1.5 pr-3 rounded cursor-pointer transition-colors overflow-visible ` +
-        `${node.type === 'request' ? requestVisual : defaultVisual} ` +
+        `${node.type === 'request' || node.type === 'grpc' ? requestVisual : defaultVisual} ` +
         `${dragOver === 'before' ? 'border-t-2 border-t-yellow-400' : ''} ` +
         `${dragOver === 'after' ? 'border-b-2 border-b-yellow-400' : ''} ` +
         `${dragOver === 'inside' ? 'bg-yellow-400/5 border-yellow-400/30' : ''} ` +
@@ -452,6 +458,10 @@ function YAMLTreeNodeRow({
         <IconComponent className="w-4 h-4" />
       </div>
 
+      {requestNumber !== undefined && (
+        <span className="shrink-0 text-xs text-zinc-500 font-mono tabular-nums">[{requestNumber}] </span>
+      )}
+
       {/* Name */}
       <span
         className={`text-sm truncate flex-1 ${
@@ -459,7 +469,11 @@ function YAMLTreeNodeRow({
         }`}
       >
         <HighlightText
-          text={getNodeDisplayName(node, t)}
+          text={
+            requestNumber === undefined
+              ? getNodeDisplayName(node, t)
+              : getNodeDisplayName(node, t).replace(/^\[\d+\]\s*/, '')
+          }
           activeIndex={
             navigationMatch?.nodeId === node.id && navigationMatch.path[0] === 'name'
               ? navigationMatch.fieldIndex
