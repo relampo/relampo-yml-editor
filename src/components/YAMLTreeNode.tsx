@@ -38,7 +38,8 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { describeIssueMarker, type IssueMarker } from '../utils/documentIssues';
 import { DescendantIssueDot, IssueBadge } from './DocumentIssues';
 import type { LucideIcon } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { buildRequestNumbers, getNumberedRequestName } from './yaml-tree-view/requestNumbers';
 import type { RedirectedRequestInfo, YAMLNode, YAMLNodeType } from '../types/yaml';
 import { canContain, canDrop } from '../utils/yamlDragDropRules';
 import { HighlightText } from './ui/HighlightedInput';
@@ -72,12 +73,26 @@ function handleDragEnd() {
   setDraggedNode(null);
 }
 
+const CONTROLLER_LABELS: Partial<Record<YAMLNodeType, string>> = {
+  group: 'Group',
+  parallel: 'Parallel',
+  one_time: 'One time',
+  transaction: 'Transaction',
+  simple: 'Simple',
+  balanced: 'Balanced',
+  if: 'If',
+  loop: 'Loop',
+  retry: 'Retry',
+  on_error: 'On error',
+};
+
 const NO_ISSUE_MARKERS: Record<string, IssueMarker> = {};
 
 interface YAMLTreeNodeProps {
   node: YAMLNode;
   depth: number;
   parentType?: YAMLNodeType;
+  requestNumbers?: Map<string, number>;
   isSelected: boolean;
   selectedNodeIds: string[];
   issueMarkers?: Record<string, IssueMarker>;
@@ -97,6 +112,7 @@ export function YAMLTreeNode({
   node,
   depth,
   parentType,
+  requestNumbers,
   isSelected,
   selectedNodeIds,
   issueMarkers = NO_ISSUE_MARKERS,
@@ -111,6 +127,7 @@ export function YAMLTreeNode({
   ancestorMatchesSearch = false,
   activeReplaceMatchNodeId = null,
 }: YAMLTreeNodeProps) {
+  const numbers = useMemo(() => requestNumbers ?? buildRequestNumbers(node), [requestNumbers, node]);
   const [dragOver, setDragOver] = useState<'before' | 'after' | 'inside' | null>(null);
   const hasChildren = node.children && node.children.length > 0;
   const isExpanded = node.expanded ?? true;
@@ -266,6 +283,7 @@ export function YAMLTreeNode({
       <YAMLTreeNodeRow
         node={node}
         depth={depth}
+        requestNumber={numbers.get(node.id)}
         isSelected={isSelected}
         dragOver={dragOver}
         issueMarkers={issueMarkers}
@@ -292,6 +310,7 @@ export function YAMLTreeNode({
               node={child}
               depth={depth + 1}
               parentType={node.type}
+              requestNumbers={numbers}
               isSelected={selectedIdSet.has(child.id)}
               selectedNodeIds={selectedNodeIds}
               issueMarkers={issueMarkers}
@@ -314,6 +333,7 @@ export function YAMLTreeNode({
 }
 
 interface YAMLTreeNodeRowProps {
+  requestNumber?: number;
   node: YAMLNode;
   depth: number;
   isSelected: boolean;
@@ -334,6 +354,7 @@ interface YAMLTreeNodeRowProps {
 }
 
 function YAMLTreeNodeRow({
+  requestNumber,
   node,
   depth,
   isSelected,
@@ -460,7 +481,7 @@ function YAMLTreeNodeRow({
         }`}
       >
         <HighlightText
-          text={getNodeDisplayName(node, t)}
+          text={getNumberedRequestName(getNodeDisplayName(node, t), requestNumber)}
           activeIndex={
             navigationMatch?.nodeId === node.id && navigationMatch.path[0] === 'name'
               ? navigationMatch.fieldIndex
@@ -474,6 +495,11 @@ function YAMLTreeNodeRow({
       {isRedirectedFollowUp && (
         <span className="inline-flex h-5 items-center shrink-0 text-xs leading-none px-1.5 py-0.5 rounded bg-zinc-400/15 text-zinc-300 font-mono font-medium border border-zinc-400/30 uppercase">
           {redirectedLabel}
+        </span>
+      )}
+      {CONTROLLER_LABELS[node.type] && !node.data?.__assertionsWrapper && (
+        <span className="inline-flex h-5 items-center shrink-0 text-xs px-1.5 py-0.5 rounded bg-sky-400/15 text-sky-300 font-mono font-medium border border-sky-400/30">
+          {CONTROLLER_LABELS[node.type]}
         </span>
       )}
       {getNodeBadge(node, t, { mutedMethod: isRedirectedFollowUp && node.data?.enabled === false })}
@@ -715,14 +741,6 @@ function getNodeBadge(
     return (
       <span className="text-xs px-1.5 py-0.5 rounded bg-purple-400/15 text-purple-400 font-mono font-medium border border-purple-400/30">
         ×{node.data.count}
-      </span>
-    );
-  }
-
-  if (node.type === 'one_time') {
-    return (
-      <span className="text-xs px-1.5 py-0.5 rounded bg-white/10 text-white font-mono font-medium border border-white/15">
-        {t('yamlEditor.shell.tree.badgeOnce')}
       </span>
     );
   }

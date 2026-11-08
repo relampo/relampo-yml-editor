@@ -115,3 +115,32 @@ describe('YAMLTreeNode redirected request presentation', () => {
     expect(onNodeSelect).toHaveBeenCalledWith(node, expect.anything());
   });
 });
+
+describe('controller labels and mixed request numbering', () => {
+  it.each([
+    ['group', 'Group'], ['parallel', 'Parallel'], ['one_time', 'One time'],
+    ['transaction', 'Transaction'], ['simple', 'Simple'], ['balanced', 'Balanced'],
+    ['if', 'If'], ['loop', 'Loop'], ['retry', 'Retry'], ['on_error', 'On error'],
+  ] as const)('identifies a custom-named %s controller', (type, label) => {
+    render(<YAMLTreeNode node={{ id: 'controller', type, name: 'Custom flow' }} depth={0}
+      isSelected={false} selectedNodeIds={[]} redirectedRequestMap={{}}
+      onNodeSelect={vi.fn()} onNodeToggle={vi.fn()} onContextMenu={vi.fn()} onNodeMove={vi.fn()} />);
+    expect(screen.getByText(label)).toBeInTheDocument();
+  });
+
+  it('renders HTTP and WS in one sequence without mutating recorded names', () => {
+    const node: YAMLNode = { id: 'steps', type: 'steps', name: 'Steps', children: [
+      { id: 'http', type: 'get', name: '[8] GET /', data: { url: '/' } },
+      { id: 'parallel', type: 'parallel', name: 'Recorded concurrent traffic', children: [
+        { id: 'ws', type: 'websocket', name: 'Auction updates' },
+        { id: 'last', type: 'post', name: '[9] POST /logout' },
+      ] },
+    ] };
+    render(<YAMLTreeNode node={node} depth={0} isSelected={false} selectedNodeIds={[]} redirectedRequestMap={{}}
+      onNodeSelect={vi.fn()} onNodeToggle={vi.fn()} onContextMenu={vi.fn()} onNodeMove={vi.fn()} />);
+    expect(screen.getByText('[1] GET /')).toBeInTheDocument();
+    expect(screen.getByText('[2] Auction updates')).toBeInTheDocument();
+    expect(screen.getByText('[3] POST /logout')).toBeInTheDocument();
+    expect(node.children![0].name).toBe('[8] GET /');
+  });
+});
