@@ -83,6 +83,8 @@ it('configures Firefox, selects an output and enables separate recording control
     expect.stringContaining('popup=yes'),
   );
   expect(screen.getByRole('button', { name: 'Open recording controls' })).toBeInTheDocument();
+  const controls=vi.mocked(window.open).mock.results[0].value as Window;
+  expect(controls.focus).toHaveBeenCalledTimes(1);
 });
 it('saves when stopping and offers opening the saved script only after success', async () => {
   let state: any = { ...idle, active: true, proxyAddress: '127.0.0.1:8888' };
@@ -219,6 +221,7 @@ it('passes every configured CLI option to the recorder and opens only the saved 
   fireEvent.change(screen.getByLabelText('Exclude patterns'), { target: { value: 'png,jpg\n*.css' } });
   fireEvent.click(screen.getByLabelText('Capture responses for correlation'));
   fireEvent.click(screen.getByRole('button', { name: 'Recording options' }));
+  expect(screen.queryByLabelText('Redirect handling')).not.toBeInTheDocument();
   fireEvent.change(screen.getByLabelText('Test name (optional)'), { target: { value: 'Booking' } });
   fireEvent.change(screen.getByLabelText('Application URL (start page)'), {
     target: { value: 'https://app.test/home' },
