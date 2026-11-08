@@ -285,3 +285,25 @@ it('reports a blocked return to Studio and lets the user change the UI language'
   expect(screen.getByRole('button', { name: 'Ir a Relampo Studio' })).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'ES' }));
 });
+
+it('clears the captured list and response selection while preserving recording configuration',async()=>{
+ let state:any={active:false,proxyAddress:'127.0.0.1:8888',startedAt:'2026-11-08T10:00:00Z',savedPath:'/private/tmp/recordings/saved.yaml',totalRequests:1,requests:[{id:0,name:'Login',method:'POST',url:'https://app.test/login',status:200,durationMs:12,time:'now'}]};
+ vi.mocked(httpRecorderRequest).mockImplementation(async path=>{
+  if(path==='options')return {directory:'/private/tmp/recordings',port:8888,firefoxAvailable:true,firefoxConfigured:true,configuredPort:8888} as any;
+  if(path==='requests/0')return {request:{body:{username:'demo'}},response:{body:{eventId:12}}} as any;
+  if(path==='clear')state={...idle};
+  return state;
+ });
+ render(<LanguageProvider><HTTPRecorderPage/></LanguageProvider>);
+ await screen.findByDisplayValue('/private/tmp/recordings/recording.yaml');
+ fireEvent.change(screen.getByLabelText('Base URL'),{target:{value:'https://app.test'}});
+ fireEvent.click(screen.getByRole('button',{name:'https://app.test/login'}));
+ expect(await screen.findByText(/username/)).toBeInTheDocument();
+ fireEvent.click(screen.getByRole('button',{name:'Clear'}));
+ await waitFor(()=>expect(screen.queryByRole('button',{name:'https://app.test/login'})).not.toBeInTheDocument());
+ expect(screen.queryByText(/username/)).not.toBeInTheDocument();
+ expect(screen.queryByRole('button',{name:'Open saved script in Studio'})).not.toBeInTheDocument();
+ expect(screen.getByLabelText('Base URL')).toHaveValue('https://app.test');
+ expect(screen.getByLabelText('Output YAML file')).toHaveValue('/private/tmp/recordings/recording.yaml');
+ expect(httpRecorderRequest).toHaveBeenCalledWith('clear',{});
+});
