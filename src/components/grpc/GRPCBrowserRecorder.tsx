@@ -105,7 +105,7 @@ export function GRPCBrowserRecorder({
       : state.detected === 'grpc_native'
         ? text('Native gRPC traffic observed', 'Se observó tráfico gRPC nativo')
         : observed
-          ? text('HTTP/HTTPS traffic observed', 'Se observó tráfico HTTP/HTTPS')
+          ? text('No gRPC detected in browser traffic', 'No se detectó gRPC en el tráfico del navegador')
           : text('Waiting for browser traffic', 'Esperando tráfico del navegador');
   return (
     <section
@@ -142,6 +142,12 @@ export function GRPCBrowserRecorder({
           />
         </label>
       </div>
+      <p className="text-xs text-zinc-500">
+        {text(
+          'Filter: the host and port from Application URL, plus gRPC and gRPC-Web requests from other domains. Unrelated browser traffic is excluded from the list and counters.',
+          'Filtro: el host y puerto de Application URL, más las peticiones gRPC y gRPC-Web de otros dominios. El tráfico ajeno del navegador queda excluido de la lista y de los contadores.',
+        )}
+      </p>
       <div className="flex flex-wrap gap-3">
         {!state.active ? (
           <button
@@ -287,8 +293,8 @@ export function GRPCBrowserRecorder({
           {state.detected === 'http' && (
             <p className="text-xs text-zinc-400">
               {text(
-                'HTTP/HTTPS requests were captured. No gRPC-Web calls have been observed so far. Browser traffic does not reveal whether the server uses gRPC internally.',
-                'Se capturaron peticiones HTTP/HTTPS. Hasta ahora no se observaron llamadas gRPC-Web. El tráfico del navegador no permite saber si el servidor usa gRPC internamente.',
+                'Only HTTP/HTTPS requests have been observed so far; no gRPC-Web calls were detected. Browser traffic does not reveal whether the server uses gRPC internally. To test gRPC directly, choose Use Discovery or Import .proto below.',
+                'Hasta ahora solo se observaron peticiones HTTP/HTTPS; no se detectaron llamadas gRPC-Web. El tráfico del navegador no permite saber si el servidor usa gRPC internamente. Para probar gRPC directamente, elige Usar Discovery o Importar .proto más abajo.',
               )}
             </p>
           )}
