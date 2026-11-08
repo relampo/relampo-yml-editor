@@ -40,6 +40,8 @@ it('filters only the view and inspects the selected request and response', async
     />,
   );
   expect(screen.getByText(/latest 2 of 600/)).toBeInTheDocument();
+  expect(screen.getByRole('region',{name:'Recorded traffic'})).toBeInTheDocument();
+  expect(screen.getByRole('region',{name:'Request details'})).toBeInTheDocument();
   expect(screen.getByRole('cell', { name: '01 - Login' })).toBeInTheDocument();
   fireEvent.change(screen.getByLabelText('Search requests'), { target: { value: 'login' } });
   expect(screen.queryByRole('button', { name: 'https://api.test/events' })).not.toBeInTheDocument();

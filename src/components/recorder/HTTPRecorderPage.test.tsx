@@ -52,6 +52,8 @@ it('configures Firefox, selects an output and enables separate recording control
     </LanguageProvider>,
   );
   await screen.findByDisplayValue('/private/tmp/recordings/recording.yaml');
+  expect(screen.getByLabelText('Exclude patterns')).toHaveValue(String.raw`(?i).*\.(css|js|png|jpg|jpeg|gif|svg|ico|woff2?)(\?.*)?$`);
+  expect(screen.queryByText('Advanced settings')).not.toBeInTheDocument();
   fireEvent.change(screen.getByLabelText('Base URL'), { target: { value: 'https://app.example.test' } });
   expect(screen.getByLabelText('Proxy host')).toHaveValue('localhost');
   expect(screen.getByRole('button', { name: 'Start recording and open Firefox' })).toBeDisabled();
