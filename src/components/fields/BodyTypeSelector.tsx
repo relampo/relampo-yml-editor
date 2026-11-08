@@ -1,4 +1,5 @@
 import Editor from '@monaco-editor/react';
+import { BodyTextarea } from './BodyTextarea';
 import { AlertCircle, CheckCircle, Plus, Trash2 } from 'lucide-react';
 import type { editor as MonacoEditorNS } from 'monaco-editor';
 import { JSX, RefObject, useEffect, useMemo, useRef, useState } from 'react';
@@ -293,17 +294,7 @@ function TextBodyEditor({
   }
 
   return (
-    <textarea
-      value={value}
-      onChange={e => onChange(e.target.value)}
-      placeholder={placeholder}
-      aria-label={ariaLabel}
-      style={{
-        height: BODY_FIXED_HEIGHT,
-        minHeight: BODY_FIXED_HEIGHT,
-      }}
-      className="w-full bg-white/5 border border-white/10 rounded text-zinc-300 text-sm font-mono h-75 resize-none overflow-y-auto overflow-x-auto outline-none p-3"
-    />
+    <BodyTextarea value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} aria-label={ariaLabel} />
   );
 }
 

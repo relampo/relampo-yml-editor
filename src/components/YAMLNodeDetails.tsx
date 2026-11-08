@@ -346,6 +346,7 @@ function NodeDetailsContent({
     case 'websocket':
       return (
         <YAMLWebSocketDetails
+          key={node.id}
           node={node}
           onNodeUpdate={onNodeUpdate}
           onSplit={onSplitWebSocket?()=>onSplitWebSocket(node.id):undefined}

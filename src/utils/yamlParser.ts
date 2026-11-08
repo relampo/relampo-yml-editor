@@ -329,13 +329,18 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
 
   if (isPlainRecord(step.websocket)) {
     const data = asYAMLNodeData(step.websocket);
+    const { headers, ...connectionData } = data;
+    const hasHeaders = isPlainRecord(headers);
     return {
       id: stepId,
       type: 'websocket',
       name: String(data.name || (data.action ? `WebSocket ${data.action}` : 'WebSocket conversation')),
-      data,
+      data: hasHeaders ? connectionData : data,
       path,
-      children: [],
+      children: hasHeaders ? [{
+        id: `${stepId}_headers`, type: 'headers', name: 'Headers',
+        data: asYAMLNodeData(headers), path: [...path, 'websocket', 'headers'],
+      }] : [],
       expanded: false,
       unknownData: unknownFields(step, new Set(['websocket'])),
     };

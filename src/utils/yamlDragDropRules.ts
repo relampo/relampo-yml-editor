@@ -180,7 +180,7 @@ const containmentRules: Partial<Record<YAMLNodeType, YAMLNodeType[]>> = {
   // SQL steps are leaf executable steps
   sql: [],
   grpc: [],
-  websocket: [],
+  websocket: ['headers'],
 
   // Logic Controllers - can contain steps and other controllers
   group: STEP_ELEMENTS,

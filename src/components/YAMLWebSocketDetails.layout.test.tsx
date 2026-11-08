@@ -3,11 +3,25 @@ import { describe, expect, it, vi } from 'vitest';
 import { LanguageProvider } from '../contexts/LanguageContext';
 import type { YAMLNode } from '../types/yaml';
 import { YAMLWebSocketDetails } from './YAMLWebSocketDetails';
-const node: YAMLNode = { id: 'ws', type: 'websocket', name: 'Auction', data: {
-  url: 'wss://example.com:8443/ws?token={{token}}', timeout: '30s',
-  actions: [{ send: { data: 'ping', delay_before: '21.809s' } }, { receive: { response: { data: 'pong' } } }],
-} };
-const show = (ws = node, update = vi.fn()) => render(<LanguageProvider><YAMLWebSocketDetails node={ws} onNodeUpdate={update} /></LanguageProvider>);
+const node: YAMLNode = {
+  id: 'ws',
+  type: 'websocket',
+  name: 'Auction',
+  data: {
+    url: 'wss://example.com:8443/ws?token={{token}}',
+    timeout: '30s',
+    actions: [{ send: { data: 'ping', delay_before: '21.809s' } }, { receive: { response: { data: 'pong' } } }],
+  },
+};
+const show = (ws = node, update = vi.fn()) =>
+  render(
+    <LanguageProvider>
+      <YAMLWebSocketDetails
+        node={ws}
+        onNodeUpdate={update}
+      />
+    </LanguageProvider>,
+  );
 describe('WebSocket HTTP-style details', () => {
   it('uses address fields, tabs and a separate headers element instead of inline headers or duplicate name', () => {
     show();
@@ -26,9 +40,13 @@ describe('WebSocket HTTP-style details', () => {
     const update = vi.fn();
     show(node, update);
     fireEvent.change(screen.getByLabelText('Base URL'), { target: { value: 'other.example:9443' } });
-    expect(update).toHaveBeenLastCalledWith('ws', expect.objectContaining({
-      url: 'wss://other.example:9443/ws?token={{token}}', actions: node.data?.actions,
-    }));
+    expect(update).toHaveBeenLastCalledWith(
+      'ws',
+      expect.objectContaining({
+        url: 'wss://other.example:9443/ws?token={{token}}',
+        actions: node.data?.actions,
+      }),
+    );
   });
   it('exposes disabled fields for inspection and prevents editing', () => {
     show({ ...node, data: { ...node.data, enabled: false } });

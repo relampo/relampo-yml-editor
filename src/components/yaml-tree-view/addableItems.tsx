@@ -82,9 +82,15 @@ function filterAddableItemsByContainment(parentType: YAMLNodeType, items: Addabl
 export function getAddableItems(
   parentType: YAMLNodeType,
   t: (key: string) => string,
-  _parentNode?: Pick<YAMLNode, 'children'>,
+  _parentNode?: Pick<YAMLNode, 'children' | 'data'>,
 ): AddableItem[] {
   const iconClass = 'w-4 h-4';
+  if (parentType === 'websocket') {
+    if (_parentNode?.data?.action && _parentNode.data.action !== 'connect') return [];
+    if (_parentNode?.children?.some(child => child.type === 'headers')) return [];
+    return [{ type: 'headers', label: t('yamlEditor.shell.addable.headers'),
+      description: t('yamlEditor.shell.addable.headersDesc'), icon: <Tag className={iconClass} />, color: 'text-red-500' }];
+  }
 
   if (parentType === 'root' || parentType === 'test') {
     return [

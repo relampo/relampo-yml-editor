@@ -1,5 +1,6 @@
 import { authoredNodeData } from './yamlAuthoredData';
 import type { YAMLNode } from '../types/yaml';
+import type { StringMap } from '../types/shared';
 import { normalizeLoadDataForYaml, toLoadData } from '../components/yaml-node-details/loadUtils';
 import {
   isBalancedLoadBearingChild,
@@ -243,6 +244,8 @@ function stepNodeToObject(node: YAMLNode): any {
 
   if (node.type === 'websocket') {
     const websocket = sanitizeBalancedNodeData(node.data) || {};
+    const headers = node.children?.find(child => child.type === 'headers');
+    if (headers) websocket.headers = (headers.data || {}) as StringMap;
     const autoName = websocket.name || (websocket.action ? `WebSocket ${websocket.action}` : 'WebSocket conversation');
     if (node.name && node.name !== autoName) websocket.name = node.name;
     return { ...(node.unknownData || {}), websocket };

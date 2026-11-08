@@ -1,110 +1,14 @@
 import { useEffect, useState } from 'react';
-import { PlugZap, ArrowUpRight, ArrowDownLeft, X, Plus, Clock } from 'lucide-react';
+import { ArrowUpRight, ArrowDownLeft, X, Plus, Clock } from 'lucide-react';
+import { Field, Choice } from './yaml-node-details/WebSocketFields';
+import { BodyTextarea } from './fields/BodyTextarea';
+import { RequestUrlRow } from './fields/RequestUrlRow';
 import type { NodeDetailProps } from './yaml-node-details/types';
 
 type Data = Record<string, unknown>;
 const obj = (value: unknown): Data =>
   value && typeof value === 'object' && !Array.isArray(value) ? (value as Data) : {};
 const list = (value: unknown): Data[] => (Array.isArray(value) ? value.map(obj) : []);
-const inputClass =
-  'w-full rounded border border-violet-400/25 bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400';
-
-function Field({
-  label,
-  value,
-  onChange,
-  placeholder = '',
-}: {
-  label: string;
-  value: unknown;
-  onChange: (value: string) => void;
-  placeholder?: string;
-}) {
-  return (
-    <label className="block space-y-1 text-xs">
-      <span>{label}</span>
-      <input
-        className={inputClass}
-        aria-label={label}
-        value={String(value ?? '')}
-        placeholder={placeholder}
-        onChange={e => onChange(e.target.value)}
-      />
-    </label>
-  );
-}
-function Choice({
-  label,
-  value,
-  choices,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  choices: [string, string][];
-  onChange: (v: string) => void;
-}) {
-  return (
-    <label className="block space-y-1 text-xs">
-      <span>{label}</span>
-      <select
-        aria-label={label}
-        value={value}
-        className={inputClass}
-        onChange={e => onChange(e.target.value)}
-      >
-        {choices.map(([key, text]) => (
-          <option
-            className="bg-zinc-900 text-white"
-            key={key}
-            value={key}
-          >
-            {text}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
-}
-function MapFields({ label, value, onChange }: { label: string; value: unknown; onChange: (v: Data) => void }) {
-  const entries = Object.entries(obj(value));
-  return (
-    <fieldset className="space-y-2">
-      <legend className="text-xs font-medium">{label}</legend>
-      {entries.map(([key, v], i) => (
-        <div
-          className="flex gap-2"
-          key={i}
-        >
-          <Field
-            label={`${label} name ${i + 1}`}
-            value={key}
-            onChange={name => onChange(Object.fromEntries(entries.map(([k, v], j) => [i === j ? name : k, v])))}
-          />
-          <Field
-            label={`${label} value ${i + 1}`}
-            value={v}
-            onChange={value => onChange(Object.fromEntries(entries.map(([k, v], j) => [k, i === j ? value : v])))}
-          />
-          <button
-            type="button"
-            aria-label={`Remove ${label} ${i + 1}`}
-            onClick={() => onChange(Object.fromEntries(entries.filter((_, j) => j !== i)))}
-          >
-            <X size={14} />
-          </button>
-        </div>
-      ))}
-      <button
-        type="button"
-        className="text-xs text-violet-400"
-        onClick={() => onChange({ ...obj(value), ['Header-' + (entries.length + 1)]: '' })}
-      >
-        + Add {label.toLowerCase()}
-      </button>
-    </fieldset>
-  );
-}
 function Payload({ value, onChange, index }: { value: Data; onChange: (v: Data) => void; index: number }) {
   const binary = value.type === 'binary';
   const raw = String(value[binary ? 'data_base64' : 'data'] ?? '');
@@ -171,9 +75,8 @@ function Payload({ value, onChange, index }: { value: Data; onChange: (v: Data) 
         <span>
           {binary ? 'Base64 payload' : 'Message payload'} {index}
         </span>
-        <textarea
+        <BodyTextarea
           aria-label={`Message payload ${index}`}
-          className={inputClass + ' min-h-24 font-mono'}
           value={draft === raw ? raw : draft}
           onChange={e => {
             setDraft(e.target.value);
@@ -216,7 +119,7 @@ function Payload({ value, onChange, index }: { value: Data; onChange: (v: Data) 
         />
         <button
           type="button"
-          className="text-xs text-violet-400"
+          className="text-xs text-yellow-400"
           onClick={() => {
             if (variable) {
               const next = draft + '{{' + variable + '}}';
@@ -261,9 +164,8 @@ function Receive({ value, onChange, index }: { value: Data; onChange: (v: Data) 
       {evidence.data !== undefined && (
         <label className="block text-xs">
           Recorded message {index}
-          <textarea
+          <BodyTextarea
             aria-label={`Recorded message ${index}`}
-            className={inputClass + ' min-h-20 font-mono'}
             readOnly
             value={String(evidence.data)}
           />
@@ -311,7 +213,7 @@ function Receive({ value, onChange, index }: { value: Data; onChange: (v: Data) 
       {typeof sample.type === 'string' && (
         <button
           type="button"
-          className="text-xs text-violet-400"
+          className="text-xs text-yellow-400"
           onClick={() => onChange({ ...value, match: { jsonpath: '$.type', equals: sample.type } })}
         >
           Wait for type = {sample.type}
@@ -371,7 +273,7 @@ function Receive({ value, onChange, index }: { value: Data; onChange: (v: Data) 
             <button
               key={key}
               type="button"
-              className="text-xs text-violet-400 mr-3"
+              className="text-xs text-yellow-400 mr-3"
               onClick={() =>
                 onChange({
                   ...value,
@@ -418,7 +320,7 @@ function Receive({ value, onChange, index }: { value: Data; onChange: (v: Data) 
             />
             <button
               type="button"
-              className="text-xs text-violet-400"
+              className="text-xs text-yellow-400"
               onClick={() => onChange({ ...value, extractors: extractors.filter((_, j) => j !== i) })}
             >
               Remove extraction
@@ -427,7 +329,7 @@ function Receive({ value, onChange, index }: { value: Data; onChange: (v: Data) 
         ))}
         <button
           type="button"
-          className="text-xs text-violet-400"
+          className="text-xs text-yellow-400"
           onClick={() =>
             onChange({
               ...value,
@@ -464,7 +366,7 @@ function Receive({ value, onChange, index }: { value: Data; onChange: (v: Data) 
             />
             <button
               type="button"
-              className="text-xs text-violet-400"
+              className="text-xs text-yellow-400"
               onClick={() => onChange({ ...value, assertions: assertions.filter((_, j) => j !== i) })}
             >
               Remove check
@@ -473,7 +375,7 @@ function Receive({ value, onChange, index }: { value: Data; onChange: (v: Data) 
         ))}
         <button
           type="button"
-          className="text-xs text-violet-400"
+          className="text-xs text-yellow-400"
           onClick={() =>
             onChange({ ...value, assertions: [...assertions, { type: 'jsonpath', path: '$.type', value: '' }] })
           }
@@ -496,319 +398,446 @@ export function YAMLWebSocketDetails({ node, onNodeUpdate, onSplit }: NodeDetail
       'actions',
       actions.map((item, j) => (i === j ? action : item)),
     );
+  const [tab, setTab] = useState('conversation' === mode || 'connect' === mode ? 'connection' : 'messages');
+  const [expandedMessages, setExpandedMessages] = useState<Set<number>>(() => new Set());
+  const disabled = data.enabled === false;
+  const url = String(data.url || '');
+  // Split without URL normalization so templates, IPv6 and query escaping survive edits.
+  const address = /^(wss?):\/\/([^/?#]*)(.*)$/i.exec(url);
+  const protocol = address?.[1]?.toLowerCase() || 'wss';
+  const host = address?.[2] || '';
+  const path = address?.[3] || '/';
+  const updateAddress = (parts: { protocol?: string; host?: string; path?: string }) => {
+    const nextPath = parts.path ?? path;
+    set(
+      'url',
+      `${parts.protocol ?? protocol}://${parts.host ?? host}${nextPath.startsWith('/') ? nextPath : '/' + nextPath}`,
+    );
+  };
+  const tabs = [
+    ['connection', 'Connection'],
+    ['messages', 'Messages'],
+    ['advanced', 'Advanced'],
+  ];
   return (
     <section
-      className="space-y-5"
+      className="flex flex-col min-h-0"
       data-protocol="websocket"
     >
-      <div className="flex items-center gap-2 text-violet-400">
-        <PlugZap size={20} />
-        <h4 className="font-semibold text-sm">WebSocket conversation</h4>
-        <span className="text-xs border border-violet-400/40 rounded px-2">
-          {mode === 'conversation' ? 'Conversation' : mode}
-        </span>
-      </div>
-      {mode === 'conversation' && onSplit && (
-        <button
-          type="button"
-          className="text-violet-400 text-xs rounded border border-violet-400/30 px-3 py-2"
-          onClick={onSplit}
-        >
-          Keep connection across scenario steps
-        </button>
-      )}
-      <Choice
-        label="Connection mode"
-        value={mode}
-        choices={[
-          ['conversation', 'Complete conversation'],
-          ['connect', 'Open named connection'],
-          ['send', 'Send on named connection'],
-          ['receive', 'Wait on named connection'],
-          ['wait', 'Keep connection open'],
-          ['ping', 'Ping connection'],
-          ['reconnect', 'Reconnect'],
-          ['close', 'Close named connection'],
-        ]}
-        onChange={action => {
-          const next = { ...data };
-          delete next.actions;
-          delete next.action;
-          delete next.send;
-          delete next.receive;
-          delete next.close;
-          delete next.wait;
-          if (action === 'conversation') {
-            delete next.connection;
-            next.actions = actions.length ? actions : [{ receive: { type: 'text' } }, { close: { code: 1000 } }];
-            next.url = next.url || 'wss://example.com/ws';
-          } else {
-            next.action = action;
-            next.connection = typeof data.connection === 'string' ? data.connection : 'live_feed';
-            if (action !== 'connect') delete next.url;
-            if (action === 'send') next.send = { type: 'text', data: '{}' };
-            if (action === 'receive') next.receive = { type: 'text' };
-            if (action === 'wait') next.wait = '1s';
-            if (action === 'connect') next.url = next.url || 'wss://example.com/ws';
-          }
-          update(next);
-        }}
-      />
-      <Field
-        label="Step name"
-        value={data.name}
-        onChange={name => set('name', name)}
-      />
-      {mode !== 'conversation' && (
-        <Field
-          label="Connection name"
-          value={data.connection}
-          onChange={connection => set('connection', connection)}
-        />
-      )}
-      {(mode === 'conversation' || mode === 'connect') && (
-        <>
-          <Field
-            label="WebSocket URL"
-            value={data.url}
-            placeholder="wss://host/ws"
-            onChange={url => set('url', url)}
-          />
-          <MapFields
-            label="Headers"
-            value={data.headers}
-            onChange={headers => set('headers', headers)}
-          />
-          <Field
-            label="Subprotocols"
-            value={Array.isArray(data.subprotocols) ? data.subprotocols.join(', ') : ''}
-            onChange={v =>
-              set(
-                'subprotocols',
-                v
-                  .split(',')
-                  .map(s => s.trim())
-                  .filter(Boolean),
-              )
-            }
-          />
-          <Field
-            label="Expected subprotocol"
-            value={data.expected_subprotocol}
-            onChange={v => set('expected_subprotocol', v)}
-          />
-          <p className="text-xs opacity-70">
-            HTTP login cookies and authentication are inherited. Use header values such as {'{{token}}'} to reuse
-            extracted values.
-          </p>
-        </>
-      )}
-      <Field
-        label="Default timeout"
-        value={data.timeout}
-        placeholder="30s"
-        onChange={timeout => set('timeout', timeout)}
-      />
-      {mode === 'connect' && (
-        <details>
-          <summary className="text-xs">Buffer and reconnection</summary>
-          <div className="space-y-3 py-3">
-            <Field
-              label="Buffered messages"
-              value={data.buffer_messages ?? 64}
-              onChange={v => set('buffer_messages', Number(v))}
-            />
-            <Field
-              label="Buffer bytes"
-              value={data.buffer_bytes ?? 4194304}
-              onChange={v => set('buffer_bytes', Number(v))}
-            />
-            <Field
-              label="Reconnect attempts"
-              value={obj(data.reconnect).attempts ?? 1}
-              onChange={v => set('reconnect', { ...obj(data.reconnect), attempts: Number(v) })}
-            />
-            <Field
-              label="Reconnect backoff"
-              value={obj(data.reconnect).backoff ?? '1s'}
-              onChange={backoff => set('reconnect', { ...obj(data.reconnect), backoff })}
-            />
-          </div>
-        </details>
-      )}
-      {mode === 'send' && (
-        <Payload
-          key={node.id + 'send'}
-          value={obj(data.send)}
-          onChange={v => set('send', v)}
-          index={1}
-        />
-      )}
-      {mode === 'receive' && (
-        <Receive
-          value={obj(data.receive)}
-          onChange={v => set('receive', v)}
-          index={1}
-        />
-      )}
-      {mode === 'wait' && (
-        <Field
-          label="Wait duration"
-          value={data.wait}
-          onChange={v => set('wait', v)}
-        />
-      )}
-      {mode === 'close' && (
-        <Field
-          label="Close code"
-          value={obj(data.close).code ?? 1000}
-          onChange={v => set('close', { ...obj(data.close), code: Number(v) })}
-        />
-      )}
-      {mode === 'reconnect' && (
-        <p className="text-xs">
-          Reconnect opens the same URL. Add send steps to resubscribe using your saved sequence. Business messages are
-          never replayed automatically.
-        </p>
-      )}
-      {mode === 'conversation' && (
-        <>
-          <ol
-            className="space-y-4 border-l-2 border-violet-400/30 pl-3"
-            aria-label="Message timeline"
+      <div
+        role="tablist"
+        aria-label="WebSocket details"
+        className="flex items-center border-b border-white/5 bg-[#111111] shrink-0"
+      >
+        {tabs.map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            role="tab"
+            id={`ws-${node.id}-${key}-tab`}
+            aria-controls={`ws-${node.id}-${key}`}
+            aria-selected={tab === key}
+            onClick={() => setTab(key)}
+            className={`flex-1 px-4 py-2.5 text-sm font-medium transition-colors ${
+              tab === key
+                ? 'text-yellow-400 bg-yellow-400/10 border-b-2 border-yellow-400'
+                : 'text-zinc-400 hover:text-zinc-300 hover:bg-white/5'
+            }`}
           >
-            {actions.map((action, i) => {
-              const kind = action.send ? 'send' : action.receive ? 'receive' : 'close';
-              const value = obj(action[kind]);
-              return (
-                <li
-                  key={node.id + '-' + i + '-' + kind}
-                  className={
-                    'rounded-lg border p-3 space-y-3 ' +
-                    (kind === 'send'
-                      ? 'border-violet-400/30 mr-5'
-                      : kind === 'receive'
-                        ? 'border-sky-400/30 ml-5'
-                        : 'border-zinc-500/30')
+            {label}
+          </button>
+        ))}
+      </div>
+      <div
+        role="tabpanel"
+        id={`ws-${node.id}-connection`}
+        aria-labelledby={`ws-${node.id}-connection-tab`}
+        hidden={tab !== 'connection'}
+        className="p-6"
+      >
+        <fieldset
+          disabled={disabled}
+          className="min-w-0 border-0 p-0 m-0 space-y-5"
+        >
+          {mode === 'conversation' && onSplit && (
+            <button
+              type="button"
+              className="text-yellow-400 text-xs rounded border border-yellow-400/20 bg-yellow-400/5 px-3 py-2"
+              onClick={onSplit}
+            >
+              Keep connection across scenario steps
+            </button>
+          )}
+          <Choice
+            label="Connection mode"
+            value={mode}
+            choices={[
+              ['conversation', 'Complete conversation'],
+              ['connect', 'Open named connection'],
+              ['send', 'Send on named connection'],
+              ['receive', 'Wait on named connection'],
+              ['wait', 'Keep connection open'],
+              ['ping', 'Ping connection'],
+              ['reconnect', 'Reconnect'],
+              ['close', 'Close named connection'],
+            ]}
+            onChange={action => {
+              const next = { ...data };
+              delete next.actions;
+              delete next.action;
+              delete next.send;
+              delete next.receive;
+              delete next.close;
+              delete next.wait;
+              if (action === 'conversation') {
+                delete next.connection;
+                next.actions = actions.length ? actions : [{ receive: { type: 'text' } }, { close: { code: 1000 } }];
+                next.url = next.url || 'wss://example.com/ws';
+              } else {
+                next.action = action;
+                next.connection = typeof data.connection === 'string' ? data.connection : 'live_feed';
+                if (action !== 'connect') delete next.url;
+                if (action === 'send') next.send = { type: 'text', data: '{}' };
+                if (action === 'receive') next.receive = { type: 'text' };
+                if (action === 'wait') next.wait = '1s';
+                if (action === 'connect') next.url = next.url || 'wss://example.com/ws';
+              }
+              update(next);
+            }}
+          />
+          {mode !== 'conversation' && (
+            <Field
+              label="Connection name"
+              value={data.connection}
+              onChange={connection => set('connection', connection)}
+            />
+          )}
+          {(mode === 'conversation' || mode === 'connect') && (
+            <>
+              {!address && url ? (
+                <Field
+                  label="WebSocket URL"
+                  value={url}
+                  onChange={url => set('url', url)}
+                />
+              ) : (
+                <RequestUrlRow
+                  requestMethod="WS"
+                  onMethodChange={() => {}}
+                  methodControl={
+                    <span className="inline-flex h-9.5 items-center px-3 rounded border border-white/10 bg-white/5 text-violet-300 text-sm font-mono">
+                      WS
+                    </span>
                   }
-                >
-                  <div className="flex items-center gap-2 text-xs font-medium">
-                    {kind === 'send' ? (
-                      <ArrowUpRight size={16} />
-                    ) : kind === 'receive' ? (
-                      <ArrowDownLeft size={16} />
-                    ) : (
-                      <X size={16} />
-                    )}
-                    <span>{i + 1}. </span>
-                    <span>
-                      {kind === 'send'
-                        ? 'Client → Server'
-                        : kind === 'receive'
-                          ? 'Server → Client'
-                          : 'Close connection'}
-                    </span>
-                    <span className="opacity-60">
-                      {String(obj(value.response_preview).time_ms ?? obj(value.response).time_ms ?? '')}{' '}
-                      {value.response || value.response_preview ? 'ms recorded' : ''}
-                    </span>
-                    <button
-                      type="button"
-                      className="ml-auto"
-                      aria-label={`Remove message ${i + 1}`}
-                      onClick={() =>
-                        set(
-                          'actions',
-                          actions.filter((_, j) => j !== i),
-                        )
-                      }
-                    >
-                      <X size={14} />
-                    </button>
-                  </div>
-                  {kind === 'send' ? (
-                    <Payload
-                      value={value}
-                      onChange={v => setAction(i, { ...action, send: v })}
-                      index={i + 1}
-                    />
-                  ) : kind === 'receive' ? (
-                    <Receive
-                      value={value}
-                      onChange={v => setAction(i, { ...action, receive: v })}
-                      index={i + 1}
-                    />
-                  ) : (
-                    <>
-                      <Field
-                        label={`Close code ${i + 1}`}
-                        value={value.code ?? 1000}
-                        onChange={v => setAction(i, { ...action, close: { ...value, code: Number(v) } })}
-                      />
-                      <Field
-                        label={`Close reason ${i + 1}`}
-                        value={value.reason}
-                        onChange={reason => setAction(i, { ...action, close: { ...value, reason } })}
-                      />
-                    </>
-                  )}
-                  {kind === 'receive' && (
-                    <button
-                      type="button"
-                      className="text-xs opacity-70"
-                      onClick={() =>
-                        set(
-                          'actions',
-                          actions.filter((_, j) => j !== i),
-                        )
-                      }
-                    >
-                      Remove this receive step
-                    </button>
-                  )}
-                </li>
-              );
-            })}
-          </ol>
-          <div className="flex gap-4 text-xs text-violet-400">
-            {(['send', 'receive'] as const).map(kind => (
-              <button
-                type="button"
-                key={kind}
-                onClick={() => {
-                  const next = [...actions];
-                  const i = next.findIndex(a => a.close);
-                  next.splice(i < 0 ? next.length : i, 0, {
-                    [kind]: kind === 'send' ? { type: 'text', data: '{}' } : { type: 'text' },
-                  });
-                  set('actions', next);
-                }}
-              >
-                <Plus
-                  className="inline"
-                  size={14}
-                />{' '}
-                {kind === 'send' ? 'Send message' : 'Wait for message'}
-              </button>
-            ))}
-            {!actions.some(a => a.close) && (
-              <button
-                type="button"
-                onClick={() => set('actions', [...actions, { close: { code: 1000 } }])}
-              >
-                + Close
-              </button>
-            )}
-          </div>
-          <p className="text-xs opacity-70">
-            <Clock
-              size={12}
-              className="inline"
-            />{' '}
-            Actions run in order. Use named connections to interleave HTTP and WebSocket steps.
+                  protocolOptions={['wss', 'ws']}
+                  protocol={protocol}
+                  onProtocolChange={protocol => updateAddress({ protocol })}
+                  displayBaseUrl={host}
+                  baseUrlPlaceholder="example.com:8443"
+                  onBaseUrlChange={host => updateAddress({ host })}
+                  pathInputValue={path}
+                  onPathChange={path => updateAddress({ path })}
+                  searchText=""
+                  compactInputClass="h-9.5 bg-white/5 border border-white/10 text-zinc-300 text-sm font-mono"
+                />
+              )}
+              <p className="text-xs text-zinc-500">
+                {node.children?.some(child => child.type === 'headers')
+                  ? 'Edit handshake headers in the Headers element under this WebSocket in the tree.'
+                  : 'Use Add → Headers on this WebSocket in the tree to configure handshake headers.'}
+              </p>
+              <Field
+                label="Subprotocols"
+                value={Array.isArray(data.subprotocols) ? data.subprotocols.join(', ') : ''}
+                onChange={v =>
+                  set(
+                    'subprotocols',
+                    v
+                      .split(',')
+                      .map(s => s.trim())
+                      .filter(Boolean),
+                  )
+                }
+              />
+              <Field
+                label="Expected subprotocol"
+                value={data.expected_subprotocol}
+                onChange={v => set('expected_subprotocol', v)}
+              />
+              <p className="text-xs opacity-70">
+                HTTP login cookies and authentication are inherited. Use header values such as {'{{token}}'} to reuse
+                extracted values.
+              </p>
+            </>
+          )}
+        </fieldset>
+      </div>
+      <div
+        role="tabpanel"
+        id={`ws-${node.id}-advanced`}
+        aria-labelledby={`ws-${node.id}-advanced-tab`}
+        hidden={tab !== 'advanced'}
+        className="p-6"
+      >
+        <fieldset
+          disabled={disabled}
+          className="min-w-0 border-0 p-0 m-0 space-y-5"
+        >
+          <Field
+            label="Default timeout"
+            value={data.timeout}
+            placeholder="30s"
+            onChange={timeout => set('timeout', timeout)}
+          />
+          {mode === 'connect' && (
+            <details>
+              <summary className="text-xs">Buffer and reconnection</summary>
+              <div className="space-y-3 py-3">
+                <Field
+                  label="Buffered messages"
+                  value={data.buffer_messages ?? 64}
+                  onChange={v => set('buffer_messages', Number(v))}
+                />
+                <Field
+                  label="Buffer bytes"
+                  value={data.buffer_bytes ?? 4194304}
+                  onChange={v => set('buffer_bytes', Number(v))}
+                />
+                <Field
+                  label="Reconnect attempts"
+                  value={obj(data.reconnect).attempts ?? 1}
+                  onChange={v => set('reconnect', { ...obj(data.reconnect), attempts: Number(v) })}
+                />
+                <Field
+                  label="Reconnect backoff"
+                  value={obj(data.reconnect).backoff ?? '1s'}
+                  onChange={backoff => set('reconnect', { ...obj(data.reconnect), backoff })}
+                />
+              </div>
+            </details>
+          )}
+        </fieldset>
+      </div>
+      <div
+        role="tabpanel"
+        id={`ws-${node.id}-messages`}
+        aria-labelledby={`ws-${node.id}-messages-tab`}
+        hidden={tab !== 'messages'}
+        className="p-6 space-y-5"
+      >
+        {mode === 'connect' && (
+          <p className="text-xs text-zinc-500">
+            This step opens the connection. Use send and receive steps to exchange messages.
           </p>
-        </>
-      )}
+        )}
+        {mode === 'ping' && (
+          <p className="text-xs text-zinc-500">Sends a WebSocket ping control frame on the named connection.</p>
+        )}
+
+        <fieldset
+          disabled={disabled}
+          className="min-w-0 border-0 p-0 m-0 space-y-5"
+        >
+          {mode === 'send' && (
+            <Payload
+              key={node.id + 'send'}
+              value={obj(data.send)}
+              onChange={v => set('send', v)}
+              index={1}
+            />
+          )}
+          {mode === 'receive' && (
+            <Receive
+              value={obj(data.receive)}
+              onChange={v => set('receive', v)}
+              index={1}
+            />
+          )}
+          {mode === 'wait' && (
+            <Field
+              label="Wait duration"
+              value={data.wait}
+              onChange={v => set('wait', v)}
+            />
+          )}
+          {mode === 'close' && (
+            <Field
+              label="Close code"
+              value={obj(data.close).code ?? 1000}
+              onChange={v => set('close', { ...obj(data.close), code: Number(v) })}
+            />
+          )}
+          {mode === 'reconnect' && (
+            <p className="text-xs">
+              Reconnect opens the same URL. Add send steps to resubscribe using your saved sequence. Business messages
+              are never replayed automatically.
+            </p>
+          )}
+        </fieldset>
+        {mode === 'conversation' && (
+          <>
+            <ol
+              className="divide-y divide-white/5 border border-white/10 rounded overflow-hidden"
+              aria-label="Message timeline"
+            >
+              {actions.map((action, i) => {
+                const kind = action.send ? 'send' : action.receive ? 'receive' : 'close';
+                const value = obj(action[kind]);
+                return (
+                  <li
+                    key={node.id + '-' + i + '-' + kind}
+                    className="bg-[#111111]"
+                  >
+                    <div className="flex items-center gap-2 px-4 py-3 text-xs font-medium text-zinc-300">
+                      <button
+                        type="button"
+                        aria-label={`Edit message ${i + 1}`}
+                        aria-expanded={expandedMessages.has(i)}
+                        aria-controls={`ws-${node.id}-message-${i}`}
+                        className="flex items-center gap-2 flex-1 text-left hover:text-yellow-400"
+                        onClick={() =>
+                          setExpandedMessages(previous => {
+                            const next = new Set(previous);
+                            if (next.has(i)) next.delete(i);
+                            else next.add(i);
+                            return next;
+                          })
+                        }
+                      >
+                        <span className="text-zinc-500">{expandedMessages.has(i) ? '▾' : '▸'}</span>
+                        {kind === 'send' ? (
+                          <ArrowUpRight size={16} />
+                        ) : kind === 'receive' ? (
+                          <ArrowDownLeft size={16} />
+                        ) : (
+                          <X size={16} />
+                        )}
+                        <span>{i + 1}. </span>
+                        <span>
+                          {kind === 'send'
+                            ? 'Client → Server'
+                            : kind === 'receive'
+                              ? 'Server → Client'
+                              : 'Close connection'}
+                        </span>
+                        <span className="opacity-60">
+                          {String(obj(value.response_preview).time_ms ?? obj(value.response).time_ms ?? '')}{' '}
+                          {value.response || value.response_preview ? 'ms recorded' : ''}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        disabled={disabled}
+                        className="ml-auto text-zinc-500 hover:text-red-400 disabled:opacity-40"
+                        aria-label={`Remove message ${i + 1}`}
+                        onClick={() =>
+                          set(
+                            'actions',
+                            actions.filter((_, j) => j !== i),
+                          )
+                        }
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                    <div
+                      id={`ws-${node.id}-message-${i}`}
+                      hidden={!expandedMessages.has(i)}
+                      className="p-4 border-t border-white/5"
+                    >
+                      <fieldset
+                        disabled={disabled}
+                        className="min-w-0 border-0 p-0 m-0 space-y-4"
+                      >
+                        {kind === 'send' ? (
+                          <Payload
+                            value={value}
+                            onChange={v => setAction(i, { ...action, send: v })}
+                            index={i + 1}
+                          />
+                        ) : kind === 'receive' ? (
+                          <Receive
+                            value={value}
+                            onChange={v => setAction(i, { ...action, receive: v })}
+                            index={i + 1}
+                          />
+                        ) : (
+                          <>
+                            <Field
+                              label={`Close code ${i + 1}`}
+                              value={value.code ?? 1000}
+                              onChange={v => setAction(i, { ...action, close: { ...value, code: Number(v) } })}
+                            />
+                            <Field
+                              label={`Close reason ${i + 1}`}
+                              value={value.reason}
+                              onChange={reason => setAction(i, { ...action, close: { ...value, reason } })}
+                            />
+                          </>
+                        )}
+                        {kind === 'receive' && (
+                          <button
+                            type="button"
+                            className="text-xs opacity-70"
+                            onClick={() =>
+                              set(
+                                'actions',
+                                actions.filter((_, j) => j !== i),
+                              )
+                            }
+                          >
+                            Remove this receive step
+                          </button>
+                        )}
+                      </fieldset>
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+            <fieldset
+              disabled={disabled}
+              className="flex gap-4 border-0 p-0 m-0 text-xs text-yellow-400"
+            >
+              {(['send', 'receive'] as const).map(kind => (
+                <button
+                  type="button"
+                  key={kind}
+                  onClick={() => {
+                    const next = [...actions];
+                    const i = next.findIndex(a => a.close);
+                    next.splice(i < 0 ? next.length : i, 0, {
+                      [kind]: kind === 'send' ? { type: 'text', data: '{}' } : { type: 'text' },
+                    });
+                    set('actions', next);
+                  }}
+                >
+                  <Plus
+                    className="inline"
+                    size={14}
+                  />{' '}
+                  {kind === 'send' ? 'Send message' : 'Wait for message'}
+                </button>
+              ))}
+              {!actions.some(a => a.close) && (
+                <button
+                  type="button"
+                  onClick={() => set('actions', [...actions, { close: { code: 1000 } }])}
+                >
+                  + Close
+                </button>
+              )}
+            </fieldset>
+            <p className="text-xs text-zinc-500">
+              <Clock
+                size={12}
+                className="inline"
+              />{' '}
+              Actions run in order. Use named connections to interleave HTTP and WebSocket steps.
+            </p>
+          </>
+        )}
+      </div>
     </section>
   );
 }

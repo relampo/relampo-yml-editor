@@ -1,3 +1,4 @@
+import type { YAMLNode } from '../types/yaml';
 import { describe, it, expect } from 'vitest';
 import { load } from 'js-yaml';
 import { parseYAMLToTree, treeToYAML } from './yamlParser';
@@ -52,7 +53,7 @@ it('edits and removes handshake headers through a child without changing message
   expect(headers).toBeDefined();
   expect(headers?.path).toEqual([...ws.path!, 'websocket', 'headers']);
   expect(load(treeToYAML(tree))).toEqual(load(input));
-  headers!.data = { Authorization: 'Bearer {{new_token}}' };
+  headers!.data = { Authorization: 'Bearer {{new_token}}' } as YAMLNode['data'];
   const saved = load(treeToYAML(tree)) as { scenarios: { steps: { websocket: Record<string, unknown> }[] }[] };
   expect(saved.scenarios[0].steps[0].websocket.headers).toEqual({ Authorization: 'Bearer {{new_token}}' });
   expect(saved.scenarios[0].steps[0].websocket.actions).toEqual(ws.data?.actions);

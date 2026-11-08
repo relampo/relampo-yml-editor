@@ -1,5 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render as baseRender, screen, fireEvent } from '@testing-library/react';
+import type { ReactElement } from 'react';
+import { LanguageProvider } from '../contexts/LanguageContext';
+const render = (ui: ReactElement) => baseRender(<LanguageProvider>{ui}</LanguageProvider>);
 import { YAMLWebSocketDetails } from './YAMLWebSocketDetails';
 import type { YAMLNode } from '../types/yaml';
 const node = {
@@ -19,7 +22,8 @@ const node = {
 describe('WebSocket visual conversation', () => {
   it('shows both directions and received evidence without turning it into an assertion', () => {
     render(<YAMLWebSocketDetails node={node} />);
-    expect(screen.getByRole('heading', { name: 'WebSocket conversation' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: 'Messages' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Edit message 2' }));
     expect(screen.getByText('Client → Server')).toBeInTheDocument();
     expect(screen.getByText('Server → Client')).toBeInTheDocument();
     expect(screen.getByLabelText('Recorded message 2')).toHaveValue('{"type":"subscribed","id":"s1"}');
@@ -32,6 +36,8 @@ describe('WebSocket visual conversation', () => {
         onNodeUpdate={update}
       />,
     );
+    fireEvent.click(screen.getByRole('tab', { name: 'Messages' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Edit message 2' }));
     fireEvent.change(screen.getByLabelText('JSON field 2'), { target: { value: '$.type' } });
     expect(update).toHaveBeenLastCalledWith(
       'ws',
@@ -55,6 +61,8 @@ it('keeps invalid JSON drafts out of executable YAML', () => {
       onNodeUpdate={update}
     />,
   );
+  fireEvent.click(screen.getByRole('tab', { name: 'Messages' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Edit message 1' }));
   const payload = screen.getByLabelText('Message payload 1');
   fireEvent.change(payload, { target: { value: '{broken' } });
   fireEvent.blur(payload);

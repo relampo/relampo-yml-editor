@@ -33,7 +33,8 @@ test('QA imports a recording, configures matching and extraction, and exports ex
   const step = page.getByRole('treeitem', { name: /Live auctions/ });
   await expect(step).toBeVisible();
   await step.click();
-  await expect(page.getByRole('heading', { name: 'WebSocket conversation' })).toBeVisible();
+  await page.getByRole('tab', { name: 'Messages', exact: true }).click();
+  await page.getByRole('button', { name: 'Edit message 2', exact: true }).click();
   await expect(page.getByText('Client → Server')).toBeVisible();
   await expect(page.getByText('Server → Client')).toBeVisible();
   await page.getByRole('button', { name: 'Wait for type = subscribed' }).click();
@@ -55,8 +56,9 @@ test('QA imports a recording, configures matching and extraction, and exports ex
     extractors: [{ type: 'jsonpath', expression: '$.id', var: 'subscription_id' }],
   });
   if (process.env.WS_REVIEW_SCREENSHOT) await page.screenshot({path:process.env.WS_REVIEW_SCREENSHOT,fullPage:true});
+  await page.getByRole('tab', { name: 'Connection', exact: true }).click();
   await page.getByRole('button', { name: 'Keep connection across scenario steps' }).click();
-  await expect(page.getByLabel('Connection mode')).toHaveValue('connect');
+  await expect(page.getByLabel('Connection mode')).toHaveText('Open named connection');
   const secondPending = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await page.getByRole('menuitem', { name: /Save with responses/ }).click();
