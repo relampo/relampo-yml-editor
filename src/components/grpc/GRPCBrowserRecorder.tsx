@@ -30,6 +30,7 @@ export function GRPCBrowserRecorder({
   const [state, setState] = useState<GRPCBrowserRecording>(empty);
   const [applicationURL, setApplicationURL] = useState('');
   const [listen, setListen] = useState('127.0.0.1:0');
+  const [preparingFirefox, setPreparingFirefox] = useState(false);
   const [busy, setBusy] = useState(false),
     [error, setError] = useState('');
   const mounted = useRef(true),
@@ -165,16 +166,32 @@ export function GRPCBrowserRecorder({
             <button
               type="button"
               className={button}
-              disabled={busy || !state.firefoxAvailable || state.firefoxRunning}
+              disabled={busy || !state.firefoxAvailable || state.firefoxRunning || state.firefoxPreparing}
               onClick={() =>
                 run(async signal => {
-                  await grpcRequest('browser-recordings/firefox', {}, signal);
-                  if (mounted.current) setState(current => ({ ...current, firefoxRunning: true }));
+                  setPreparingFirefox(true);
+                  try {
+                    const result = await grpcRequest<{ opened: boolean; certificateReady: boolean }>(
+                      'browser-recordings/firefox',
+                      {},
+                      signal,
+                    );
+                    if (mounted.current)
+                      setState(current => ({
+                        ...current,
+                        firefoxRunning: true,
+                        firefoxCertificateReady: result.certificateReady === true,
+                      }));
+                  } finally {
+                    if (mounted.current) setPreparingFirefox(false);
+                  }
                 })
               }
             >
               <Globe className="h-4 w-4" />
-              {text('Open Firefox', 'Abrir Firefox')}
+              {preparingFirefox || state.firefoxPreparing
+                ? text('Preparing Firefox…', 'Preparando Firefox…')
+                : text('Open Firefox', 'Abrir Firefox')}
             </button>
             <button
               type="button"
@@ -212,14 +229,34 @@ export function GRPCBrowserRecorder({
               )}
             </p>
           )}
+          {state.firefoxCertificateManaged ? (
+            <p className="text-zinc-300">
+              {text(
+                'Relampo automatically prepares and verifies the recorder certificate in this isolated Firefox profile before opening the application. Your system certificates and usual Firefox profile stay unchanged.',
+                'Relampo prepara y verifica automáticamente el certificado del grabador en este perfil aislado de Firefox antes de abrir la aplicación. Conserva los certificados del sistema y tu perfil habitual de Firefox.',
+              )}
+            </p>
+          ) : (
+            <p>
+              {text(
+                'Automatic Firefox certificate setup requires an updated Studio backend.',
+                'La preparación automática del certificado de Firefox requiere un backend Studio actualizado.',
+              )}
+            </p>
+          )}
+          {state.firefoxCertificateReady && (
+            <p className="text-emerald-400">
+              {text('Firefox recorder certificate verified', 'Certificado del grabador verificado en Firefox')}
+            </p>
+          )}
           <details>
             <summary className="cursor-pointer text-yellow-400">
-              {text('HTTPS certificate setup', 'Configuración del certificado HTTPS')}
+              {text('Recorder certificate details', 'Detalles del certificado del grabador')}
             </summary>
             <p className="mt-2">
               {text(
-                'For HTTPS inspection, Firefox must trust the Relampo recorder CA. If a certificate warning appears, import this certificate in Firefox Settings → Privacy & Security → Certificates → Authorities, and trust it to identify websites. Reload the application afterwards.',
-                'Para inspeccionar HTTPS, Firefox debe confiar en la CA del grabador Relampo. Si aparece un aviso de certificado, impórtalo en Ajustes de Firefox → Privacidad y seguridad → Certificados → Autoridades, y confía en él para identificar sitios web. Después vuelve a cargar la aplicación.',
+                'The public recorder certificate is available for diagnostics or for browsers configured outside Relampo. Firefox opened by Relampo is prepared automatically.',
+                'El certificado público está disponible para diagnóstico o para navegadores configurados fuera de Relampo. El Firefox que abre Relampo se prepara automáticamente.',
               )}
             </p>
             <a
@@ -242,8 +279,8 @@ export function GRPCBrowserRecorder({
           {!observed && (
             <p className="text-xs text-zinc-400">
               {text(
-                'No requests have been observed. Open the application, interact with it, and check the browser proxy and recorder certificate. This does not mean that the application cannot use gRPC.',
-                'Todavía no se observaron peticiones. Abre la aplicación, interactúa con ella y revisa el proxy y el certificado del grabador. Esto no significa que la aplicación no pueda usar gRPC.',
+                'No requests have been observed. Open Firefox from Relampo and interact with the application. Relampo prepares its proxy and recorder certificate. This does not mean that the application cannot use gRPC.',
+                'Todavía no se observaron peticiones. Abre Firefox desde Relampo e interactúa con la aplicación. Relampo prepara su proxy y el certificado del grabador. Esto no significa que la aplicación no pueda usar gRPC.',
               )}
             </p>
           )}
@@ -274,8 +311,8 @@ export function GRPCBrowserRecorder({
           {state.tlsFailures > 0 && (
             <p className="text-xs text-amber-300">
               {text(
-                'A browser TLS handshake failed. Check that Firefox trusts the recorder certificate; traffic inside a failed TLS tunnel cannot be inspected.',
-                'Falló una negociación TLS del navegador. Comprueba que Firefox confía en el certificado del grabador; no se puede inspeccionar el tráfico dentro de un túnel TLS fallido.',
+                'A browser TLS handshake failed. Restart the browser recording so Relampo can prepare a fresh Firefox profile. Traffic inside a failed TLS tunnel cannot be inspected.',
+                'Falló una negociación TLS del navegador. Reinicia la grabación para que Relampo prepare un perfil de Firefox nuevo. No se puede inspeccionar el tráfico dentro de un túnel TLS fallido.',
               )}
             </p>
           )}

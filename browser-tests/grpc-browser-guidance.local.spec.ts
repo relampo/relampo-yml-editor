@@ -12,6 +12,9 @@ test('browser capture reports observed traffic and leads to Discovery or proto w
     tlsFailures: 0,
     grpcWebReplaySupported: false,
     firefoxAvailable: true,
+    firefoxCertificateManaged: true,
+    firefoxCertificateReady: false,
+    firefoxRunning: false,
     proxyAddress: '127.0.0.1:8888',
     applicationUrl: 'https://app.example.test',
   };
@@ -33,7 +36,16 @@ test('browser capture reports observed traffic and leads to Discovery or proto w
       });
       state = { ...state, active: true };
     }
-    if (path.endsWith('/stop')) state = { ...state, active: false };
+    if (path.endsWith('/firefox')) {
+      state = { ...state, firefoxRunning: true, firefoxCertificateReady: true };
+      await route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify({ opened: true, certificateReady: true }),
+      });
+      return;
+    }
+    if (path.endsWith('/stop'))
+      state = { ...state, active: false, firefoxRunning: false, firefoxCertificateReady: false };
     await route.fulfill({ contentType: 'application/json', body: JSON.stringify(state) });
   });
   await page.goto('/');
@@ -45,6 +57,11 @@ test('browser capture reports observed traffic and leads to Discovery or proto w
   await page.getByLabel('Application URL').fill('https://app.example.test');
   await page.getByRole('button', { name: 'Start browser recording', exact: true }).click();
   await expect(page.getByText('Waiting for browser traffic', { exact: true })).toBeVisible();
+  await expect(page.getByText(/Relampo automatically prepares and verifies the recorder certificate/)).toBeVisible();
+  await page.getByRole('button', { name: 'Open Firefox', exact: true }).click();
+  await expect(page.getByText('Firefox recorder certificate verified', { exact: true })).toBeVisible();
+  await expect(page.getByText(/import this certificate in Firefox Settings/i)).toHaveCount(0);
+
   state = {
     ...state,
     detected: 'http',

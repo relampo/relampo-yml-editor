@@ -87,6 +87,9 @@ export interface GRPCBrowserRecording {
   grpcWebReplaySupported: boolean;
   firefoxAvailable: boolean;
   firefoxRunning?: boolean;
+  firefoxPreparing?: boolean;
+  firefoxCertificateManaged?: boolean;
+  firefoxCertificateReady?: boolean;
 }
 export function grpcBrowserCAURL(): string {
   return withStudioToken(getRuntimeConfig().apiBaseUrl + '/api/grpc/browser-recordings/ca');
