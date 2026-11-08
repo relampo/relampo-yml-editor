@@ -43,3 +43,20 @@ it('persists a WebSocket rename made in the scenario tree', () => {
   node.name = 'Renamed conversation';
   expect(treeToYAML(tree)).toContain('name: Renamed conversation');
 });
+
+it('edits and removes handshake headers through a child without changing messages or evidence', () => {
+  const input = source.replace('        future_field: preserve', '        future_field: preserve\n        headers: {Authorization: "Bearer {{token}}", Origin: "https://example.com"}');
+  const tree = parseYAMLToTree(input)!;
+  const ws = collectRequests(tree)[0];
+  const headers = ws.children?.find(child => child.type === 'headers');
+  expect(headers).toBeDefined();
+  expect(headers?.path).toEqual([...ws.path!, 'websocket', 'headers']);
+  expect(load(treeToYAML(tree))).toEqual(load(input));
+  headers!.data = { Authorization: 'Bearer {{new_token}}' };
+  const saved = load(treeToYAML(tree)) as { scenarios: { steps: { websocket: Record<string, unknown> }[] }[] };
+  expect(saved.scenarios[0].steps[0].websocket.headers).toEqual({ Authorization: 'Bearer {{new_token}}' });
+  expect(saved.scenarios[0].steps[0].websocket.actions).toEqual(ws.data?.actions);
+  ws.children = [];
+  const removed = load(treeToYAML(tree)) as typeof saved;
+  expect(removed.scenarios[0].steps[0].websocket).not.toHaveProperty('headers');
+});
