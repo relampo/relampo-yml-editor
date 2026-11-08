@@ -36,7 +36,7 @@ it('shows HTTP observation honestly and provides working Discovery and proto alt
       onImport={importProto}
     />,
   );
-  expect(await screen.findByText('HTTP/HTTPS traffic observed')).toBeInTheDocument();
+  expect(await screen.findByText('No gRPC detected in browser traffic')).toBeInTheDocument();
   expect(screen.getByText(/does not reveal whether the server uses gRPC internally/i)).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Use Discovery' }));
   expect(discover).toHaveBeenCalledOnce();

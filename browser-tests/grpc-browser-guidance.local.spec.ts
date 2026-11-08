@@ -69,7 +69,7 @@ test('browser capture reports observed traffic and leads to Discovery or proto w
     counts: { ...state.counts, https: 1 },
     requests: [{ method: 'POST', url: 'https://app.example.test/login', protocol: 'https' }],
   };
-  await expect(page.getByText('HTTP/HTTPS traffic observed', { exact: true })).toBeVisible();
+  await expect(page.getByText('No gRPC detected in browser traffic', { exact: true })).toBeVisible();
   await expect(page.getByText(/does not reveal whether the server uses gRPC internally/)).toBeVisible();
   await page.getByRole('button', { name: 'Use Discovery', exact: true }).click();
   await expect(page.getByLabel('Server address', { exact: true })).toBeVisible();
