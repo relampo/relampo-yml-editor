@@ -74,6 +74,7 @@ export async function httpRecorderRequest<T>(path: string, body?: unknown, signa
   }
   return response.json();
 }
+export const DEFAULT_EMBEDDED_EXCLUDE = String.raw`(?i).*\.(css|js|png|jpg|jpeg|gif|svg|ico|woff2?)(\?.*)?$`;
 export const defaultHTTPRecordOptions: HTTPRecordOptions = {
   applicationUrl: '',
   baseUrls: '',
@@ -83,7 +84,7 @@ export const defaultHTTPRecordOptions: HTTPRecordOptions = {
   responses: true,
   maskSensitive: true,
   include: '',
-  exclude: [],
+  exclude: [DEFAULT_EMBEDDED_EXCLUDE],
   prefix: '',
   prefixEnabled: false,
   transactionsEnabled: false,

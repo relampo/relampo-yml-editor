@@ -52,13 +52,15 @@ it('configures Firefox, selects an output and enables separate recording control
     </LanguageProvider>,
   );
   await screen.findByDisplayValue('/private/tmp/recordings/recording.yaml');
-  expect(screen.getByLabelText('Exclude patterns')).toHaveValue(String.raw`(?i).*\.(css|js|png|jpg|jpeg|gif|svg|ico|woff2?)(\?.*)?$`);
+  expect(screen.getByLabelText('Exclude patterns')).toHaveValue(
+    String.raw`(?i).*\.(css|js|png|jpg|jpeg|gif|svg|ico|woff2?)(\?.*)?$`,
+  );
   expect(screen.queryByText('Advanced settings')).not.toBeInTheDocument();
   fireEvent.change(screen.getByLabelText('Base URL'), { target: { value: 'https://app.example.test' } });
   expect(screen.getByLabelText('Proxy host')).toHaveValue('localhost');
   expect(screen.getByRole('button', { name: 'Start recording and open Firefox' })).toBeDisabled();
   fireEvent.click(screen.getByRole('button', { name: 'Config Firefox' }));
-  await screen.findByText(/Firefox configured: localhost:8888/);
+  await screen.findByTitle(/Firefox configured: localhost:8888/);
   fireEvent.click(screen.getByRole('button', { name: 'Browse…' }));
   await screen.findByDisplayValue('/private/tmp/recordings/chosen.yaml');
   fireEvent.click(screen.getByLabelText('Enable prefix'));
@@ -211,24 +213,23 @@ it('passes every configured CLI option to the recorder and opens only the saved 
   await screen.findByDisplayValue('/private/tmp/recordings/recording.yaml');
   fireEvent.change(screen.getByLabelText('Base URL'), { target: { value: 'https://app.test/home' } });
   fireEvent.click(screen.getByLabelText('Enable prefix'));
-  fireEvent.click(screen.getByText('Advanced settings'));
   fireEvent.change(screen.getByLabelText('Proxy port'), { target: { value: '1234' } });
+  fireEvent.change(screen.getByLabelText('Base URL'), { target: { value: 'https://app.test,https://api.test' } });
+  fireEvent.change(screen.getByLabelText('Include URL containing'), { target: { value: '/api/' } });
+  fireEvent.change(screen.getByLabelText('Exclude patterns'), { target: { value: 'png,jpg\n*.css' } });
+  fireEvent.click(screen.getByLabelText('Capture responses for correlation'));
+  fireEvent.click(screen.getByRole('button', { name: 'Recording options' }));
   fireEvent.change(screen.getByLabelText('Test name (optional)'), { target: { value: 'Booking' } });
-  fireEvent.change(screen.getByLabelText('Base URL'), {
-    target: { value: 'https://app.test,https://api.test' },
-  });
   fireEvent.change(screen.getByLabelText('Application URL (start page)'), {
     target: { value: 'https://app.test/home' },
   });
-  fireEvent.change(screen.getByLabelText('Include URL containing'), { target: { value: '/api/' } });
-  fireEvent.change(screen.getByLabelText('Exclude patterns'), { target: { value: 'png,jpg\n*.css' } });
   fireEvent.change(screen.getByLabelText('Grouping'), { target: { value: 'transaction' } });
   fireEvent.change(screen.getByLabelText('Redirect handling'), { target: { value: 'legacy' } });
   fireEvent.click(screen.getByLabelText('Mask sensitive values in YAML and previews'));
   fireEvent.click(screen.getByLabelText('Keep original compressed response bodies (legacy)'));
   fireEvent.click(screen.getByLabelText('Overwrite the output YAML if it already exists'));
-  fireEvent.click(screen.getByLabelText('Capture responses for correlation'));
   fireEvent.click(screen.getByLabelText('Configure and open Firefox automatically'));
+  fireEvent.click(screen.getByRole('button', { name: 'Done' }));
   fireEvent.click(screen.getByRole('button', { name: 'Start recording' }));
   await screen.findByText('127.0.0.1:1234');
   expect(httpRecorderRequest).toHaveBeenCalledWith('start', {

@@ -98,13 +98,20 @@ test('HTTP Recorder opens a tab, configures Firefox, records prefixes and opens 
   await recorder.getByLabel('Base URL', { exact: true }).fill('https://app.example.test');
   await expect(recorder.getByRole('button', { name: 'Start recording and open Firefox', exact: true })).toBeDisabled();
   await recorder.getByRole('button', { name: 'Config Firefox', exact: true }).click();
-  await expect(recorder.getByText(/Firefox configured: localhost:8888/)).toBeVisible();
+  await expect(recorder.getByRole('button', { name: 'Config Firefox', exact: true })).toHaveAttribute(
+    'title',
+    /Firefox configured: localhost:8888/,
+  );
   await recorder.getByRole('button', { name: 'Browse…', exact: true }).click();
   await expect(recorder.getByLabel('Output YAML file')).toHaveValue('/private/tmp/recordings/booking.yaml');
   await recorder.getByLabel('Enable prefix').check();
   await recorder.getByLabel('Enable transactions').check();
-  await recorder.getByText('Advanced settings', { exact: true }).click();
-  await recorder.getByLabel('Exclude patterns').fill('png,jpg\n*.css');
+  await expect(recorder.getByLabel('Exclude patterns')).toHaveValue(
+    String.raw`(?i).*\.(css|js|png|jpg|jpeg|gif|svg|ico|woff2?)(\?.*)?$`,
+  );
+  await expect(recorder.getByText('Advanced settings', { exact: true })).toHaveCount(0);
+  const configBounds = await recorder.getByRole('group', { name: 'Recording configuration' }).boundingBox();
+  expect(configBounds!.height).toBeLessThan(175);
   await recorder.screenshot({ path: '/private/tmp/relampo-http-setup.png', fullPage: true });
   const controlOpened = recorder.waitForEvent('popup');
   await recorder.getByRole('button', { name: 'Start recording and open Firefox', exact: true }).click();
@@ -124,13 +131,20 @@ test('HTTP Recorder opens a tab, configures Firefox, records prefixes and opens 
     responses: true,
     maskSensitive: true,
     grouping: 'none',
-    exclude: ['png,jpg', '*.css'],
+    exclude: [String.raw`(?i).*\.(css|js|png|jpg|jpeg|gif|svg|ico|woff2?)(\?.*)?$`],
     baseUrls: 'https://app.example.test',
   });
   await expect(recorder.getByRole('cell', { name: '01', exact: true })).toBeVisible();
   await recorder.getByRole('button', { name: 'https://app.example.test/login', exact: true }).click();
   await recorder.getByRole('button', { name: 'Response', exact: true }).click();
   await expect(recorder.locator('pre')).toContainText('eventId');
+  const traffic = await recorder.getByRole('region', { name: 'Recorded traffic' }).boundingBox();
+  const details = await recorder.getByRole('region', { name: 'Request details' }).boundingBox();
+  expect(traffic!.x + traffic!.width).toBeLessThanOrEqual(details!.x);
+  expect(Math.abs(traffic!.y - details!.y)).toBeLessThan(2);
+  expect(details!.height).toBeGreaterThan(250);
+  await recorder.screenshot({ path: '/private/tmp/relampo-compact-recorder.png', fullPage: true });
+
   await controls.getByLabel('Prefix', { exact: true }).fill('Select seats');
   await controls.getByRole('button', { name: 'Apply prefix', exact: true }).click();
   await expect(controls.getByText('Active prefix: Select seats', { exact: true })).toBeVisible();

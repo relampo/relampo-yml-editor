@@ -1,9 +1,15 @@
 import { useEffect, useState } from 'react';
+import { SlidersHorizontal } from 'lucide-react';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '../ui/dialog';
 import type { HTTPRecordOptions } from '../../utils/httpRecorderApi';
 export const recorderInput =
   'w-full rounded-md border border-white/15 bg-zinc-950 px-3 py-2 text-sm text-zinc-200 outline-none focus:border-yellow-400/60 disabled:opacity-50';
 export const recorderButton =
   'inline-flex items-center justify-center gap-2 rounded-md border border-white/15 px-3 py-2 text-sm font-semibold hover:bg-white/5 disabled:opacity-40';
+export const recorderCompactInput =
+  'h-7 min-w-0 w-full rounded border border-white/10 bg-[#171717] px-2 text-xs text-zinc-200 outline-none focus:border-yellow-400/60 disabled:opacity-50';
+export const recorderCompactButton =
+  'inline-flex h-7 shrink-0 items-center justify-center gap-1.5 rounded border border-white/10 bg-white/5 px-2 text-xs font-medium text-zinc-300 hover:bg-white/10 disabled:opacity-40';
 export function HTTPRecorderSettings({
   options,
   onChange,
@@ -47,107 +53,117 @@ export function HTTPRecorderSettings({
     </label>
   );
   return (
-    <details
+    <Dialog
       open={expanded}
-      onToggle={event => setExpanded(event.currentTarget.open)}
-      className="rounded-lg border border-white/10 bg-[#111111]"
+      onOpenChange={setExpanded}
     >
-      <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-zinc-300">
-        {text('Advanced settings', 'Configuración avanzada')}
-      </summary>
-      <fieldset
+      <button
+        type="button"
         disabled={disabled}
-        className="grid gap-5 border-t border-white/10 p-4 md:grid-cols-2"
+        onClick={() => setExpanded(true)}
+        className={recorderCompactButton}
+        aria-label={text('Recording options', 'Opciones de grabación')}
+        title={text('Recording options', 'Opciones de grabación')}
       >
-        {field(text('Test name (optional)', 'Nombre del test (opcional)'), 'name')}
-        {field(text('Application URL (start page)', 'URL de inicio en Firefox'), 'applicationUrl')}
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={options.openFirefox}
-            onChange={e => onChange({ openFirefox: e.target.checked })}
-          />
-          {text('Configure and open Firefox automatically', 'Configurar y abrir Firefox automáticamente')}
-        </label>
-        {field(text('Include URL containing', 'Incluir URL que contenga'), 'include')}
-        <label className="block space-y-1 text-xs text-zinc-400">
-          {text('Exclude URL patterns (one per line)', 'Excluir patrones de URL (uno por línea)')}
-          <textarea
-            aria-label="Exclude patterns"
-            className={recorderInput + ' min-h-24 font-mono'}
-            value={options.exclude.join('\n')}
-            onChange={e => onChange({ exclude: e.target.value.split('\n') })}
-          />
-          <span className="block text-zinc-500">*.css · png,jpg · (?i).*\.(css|js)(\?.*)?$</span>
-        </label>
-        <div className="space-y-3">
-          <label className="block space-y-1 text-xs text-zinc-400">
-            {text('Automatic grouping', 'Agrupación automática')}
-            <select
-              aria-label="Grouping"
-              disabled={options.transactionsEnabled}
-              className={recorderInput}
-              value={options.grouping}
-              onChange={e => onChange({ grouping: e.target.value })}
-            >
-              {[
-                ['none', text('None', 'Sin agrupación')],
-                ['separator', text('Separators', 'Separadores')],
-                ['controller', 'Controller'],
-                ['transaction', text('Transactions', 'Transacciones')],
-                ['first-only', 'First-only'],
-              ].map(([id, label]) => (
-                <option
-                  key={id}
-                  value={id}
-                >
-                  {label}
-                </option>
-              ))}
-            </select>
+        <SlidersHorizontal className="h-3.5 w-3.5" />
+      </button>
+      <DialogContent className="max-h-[85vh] max-w-xl! overflow-y-auto p-4">
+        <DialogTitle className="text-sm">{text('Recording options', 'Opciones de grabación')}</DialogTitle>
+        <DialogDescription className="text-xs">
+          {text('Additional preferences for this recording.', 'Preferencias adicionales para esta grabación.')}
+        </DialogDescription>
+        <fieldset
+          disabled={disabled}
+          className="grid gap-3 md:grid-cols-2"
+        >
+          {field(text('Test name (optional)', 'Nombre del test (opcional)'), 'name')}
+          {field(text('Application URL (start page)', 'URL de inicio en Firefox'), 'applicationUrl')}
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={options.openFirefox}
+              onChange={e => onChange({ openFirefox: e.target.checked })}
+            />
+            {text('Configure and open Firefox automatically', 'Configurar y abrir Firefox automáticamente')}
           </label>
-          <label className="block space-y-1 text-xs text-zinc-400">
-            {text('Redirect handling', 'Manejo de redirecciones')}
-            <select
-              aria-label="Redirect handling"
-              className={recorderInput}
-              value={options.redirectMode}
-              onChange={e => onChange({ redirectMode: e.target.value, redirectDisabling: e.target.value === 'jmeter' })}
-            >
-              <option value="jmeter">JMeter</option>
-              <option value="legacy">Legacy</option>
-            </select>
-          </label>
-        </div>
-        {toggle(
-          text('Mask sensitive values in YAML and previews', 'Enmascarar valores sensibles en YAML y vistas previas'),
-          'maskSensitive',
-        )}
-        {toggle(
-          text(
-            'Disable duplicate redirect-target requests',
-            'Deshabilitar requests destino duplicados de redirecciones',
-          ),
-          'redirectDisabling',
-        )}
-        {toggle(
-          text(
-            'Keep original compressed response bodies (legacy)',
-            'Conservar cuerpos comprimidos originales (legacy)',
-          ),
-          'preserveCompressedResponses',
-        )}
-        {toggle(
-          text('Overwrite the output YAML if it already exists', 'Sobrescribir el YAML de salida si ya existe'),
-          'force',
-        )}
-        <p className="text-xs text-zinc-500 md:col-span-2">
-          {text(
-            'Responses and masking are enabled in this UI. Masked credentials must be supplied before replay. These choices are explicit; the CLI defaults remain unchanged.',
-            'Esta interfaz activa respuestas y enmascarado. Debes proporcionar las credenciales enmascaradas antes de ejecutar. Los valores predeterminados de la CLI se mantienen.',
+          <div className="space-y-3">
+            <label className="block space-y-1 text-xs text-zinc-400">
+              {text('Automatic grouping', 'Agrupación automática')}
+              <select
+                aria-label="Grouping"
+                disabled={options.transactionsEnabled}
+                className={recorderInput}
+                value={options.grouping}
+                onChange={e => onChange({ grouping: e.target.value })}
+              >
+                {[
+                  ['none', text('None', 'Sin agrupación')],
+                  ['separator', text('Separators', 'Separadores')],
+                  ['controller', 'Controller'],
+                  ['transaction', text('Transactions', 'Transacciones')],
+                  ['first-only', 'First-only'],
+                ].map(([id, label]) => (
+                  <option
+                    key={id}
+                    value={id}
+                  >
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block space-y-1 text-xs text-zinc-400">
+              {text('Redirect handling', 'Manejo de redirecciones')}
+              <select
+                aria-label="Redirect handling"
+                className={recorderInput}
+                value={options.redirectMode}
+                onChange={e =>
+                  onChange({ redirectMode: e.target.value, redirectDisabling: e.target.value === 'jmeter' })
+                }
+              >
+                <option value="jmeter">JMeter</option>
+                <option value="legacy">Legacy</option>
+              </select>
+            </label>
+          </div>
+          {toggle(
+            text('Mask sensitive values in YAML and previews', 'Enmascarar valores sensibles en YAML y vistas previas'),
+            'maskSensitive',
           )}
-        </p>
-      </fieldset>
-    </details>
+          {toggle(
+            text(
+              'Disable duplicate redirect-target requests',
+              'Deshabilitar requests destino duplicados de redirecciones',
+            ),
+            'redirectDisabling',
+          )}
+          {toggle(
+            text(
+              'Keep original compressed response bodies (legacy)',
+              'Conservar cuerpos comprimidos originales (legacy)',
+            ),
+            'preserveCompressedResponses',
+          )}
+          {toggle(
+            text('Overwrite the output YAML if it already exists', 'Sobrescribir el YAML de salida si ya existe'),
+            'force',
+          )}
+          <p className="text-xs text-zinc-500 md:col-span-2">
+            {text(
+              'Responses and masking are enabled in this UI. Masked credentials must be supplied before replay. These choices are explicit; the CLI defaults remain unchanged.',
+              'Esta interfaz activa respuestas y enmascarado. Debes proporcionar las credenciales enmascaradas antes de ejecutar. Los valores predeterminados de la CLI se mantienen.',
+            )}
+          </p>
+        </fieldset>
+        <button
+          type="button"
+          className={recorderCompactButton + ' justify-self-end'}
+          onClick={() => setExpanded(false)}
+        >
+          {text('Done', 'Listo')}
+        </button>
+      </DialogContent>
+    </Dialog>
   );
 }
