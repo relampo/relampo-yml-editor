@@ -314,6 +314,21 @@ describe('handleDownload', () => {
     vi.unstubAllGlobals();
   });
 
+  it('retains the independent Studio draft when downloading before autosave', async () => {
+    window.history.replaceState({}, '', '/?editor=download-tab');
+    try {
+      const { result } = renderHook(() => useYAMLPersistence(makeParams({ isDirty: true })));
+      await act(async () => {
+        result.current.handleDownload(true);
+      });
+      expect(saveActiveDraftMock).toHaveBeenCalledWith(
+        expect.objectContaining({ yaml: 'test:\n  name: t\n', fileName: 'my-script.yaml' }),
+      );
+    } finally {
+      window.history.replaceState({}, '', '/');
+    }
+  });
+
   it('shows "YAML downloaded with responses" when includeResponses=true', () => {
     const params = makeParams({ language: 'en' });
     const { result } = renderHook(() => {

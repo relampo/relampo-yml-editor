@@ -82,10 +82,10 @@ describe('protocol dropdown', () => {
 });
 it('provides New Studio beside Recorder without replacing New document', () => {
   const onNewStudio = vi.fn();
-  renderHeader({onNewStudio, onSelectProtocol:vi.fn()});
-  const button=screen.getByRole('button',{name:'New Studio'});
-  expect(button.previousElementSibling).toBe(screen.getByRole('button',{name:'Recorder'}));
+  renderHeader({ onNewStudio, onSelectProtocol: vi.fn() });
+  const button = screen.getByRole('button', { name: 'New Studio' });
+  expect(button.previousElementSibling).toBe(screen.getByRole('button', { name: 'Recorder' }));
   fireEvent.click(button);
   expect(onNewStudio).toHaveBeenCalledOnce();
-  expect(screen.getByRole('button',{name:'New'})).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'New' })).toBeInTheDocument();
 });

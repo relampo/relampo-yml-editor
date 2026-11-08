@@ -51,8 +51,8 @@ it('returns to an existing Recorder tab without reloading its in-progress record
 it('opens each new Studio in a fresh authenticated tab with its own draft identity', async () => {
   const { openNewStudioTab } = await import('./recorderTabs');
   window.history.replaceState({}, '', '/?token=test-session');
-  const tab = { opener: window, location: {replace: vi.fn()}, close:vi.fn() };
-  vi.spyOn(window,'open').mockReturnValue(tab as unknown as Window);
+  const tab = { opener: window, location: { replace: vi.fn() }, close: vi.fn() };
+  vi.spyOn(window, 'open').mockReturnValue(tab as unknown as Window);
   expect(openNewStudioTab('es')).toBe(true);
   const first = new URL(tab.location.replace.mock.calls[0][0]);
   expect(first.origin).toBe(location.origin);
@@ -63,7 +63,7 @@ it('opens each new Studio in a fresh authenticated tab with its own draft identi
   openNewStudioTab('es');
   const second = new URL(tab.location.replace.mock.calls[1][0]);
   expect(second.searchParams.get('editor')).not.toBe(first.searchParams.get('editor'));
-  expect(window.open).toHaveBeenCalledWith('about:blank','_blank');
+  expect(window.open).toHaveBeenCalledWith('about:blank', '_blank');
   vi.mocked(window.open).mockReturnValue(null);
   expect(openNewStudioTab()).toBe(false);
 });

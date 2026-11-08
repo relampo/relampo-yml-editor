@@ -1,3 +1,4 @@
+import { studioEditorId } from '../../utils/studioEditorSession';
 import type { ComponentCapabilities } from '../../utils/componentConfiguration';
 import { logStatsigEvent } from '../../utils/analytics';
 import { useEffect, useRef, useState } from 'react';
@@ -90,7 +91,8 @@ export function useYamlDocumentLifecycle({
     let isCancelled = false;
 
     const initializeDocument = async () => {
-      let initialYaml = mountSnapshotRef.current.yamlContent || '';
+      const independentStudio = studioEditorId() !== null;
+      let initialYaml = independentStudio ? '' : mountSnapshotRef.current.yamlContent || '';
       let initialFileName = DEFAULT_FILE_NAME;
       let initialUpdatedAt: string | null = null;
       let restoreError: string | null = null;
@@ -125,7 +127,7 @@ export function useYamlDocumentLifecycle({
         if (!RUN_VIEW_FORCED && studioInfo.capabilities?.loadRun) setRunViewEnabled(true);
         setDefaultViewMode(studioInfo.defaultView);
       }
-      if (studioInfo?.initialScript) {
+      if (studioInfo?.initialScript && !independentStudio) {
         initialYaml = studioInfo.initialScript.yaml;
         initialFileName = normalizeYamlFileName(studioInfo.initialScript.name);
         initialUpdatedAt = null;

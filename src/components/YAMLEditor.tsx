@@ -1,4 +1,4 @@
-import { openGRPCRecorderTab, openHTTPRecorderTab } from '../utils/recorderTabs';
+import { openGRPCRecorderTab, openHTTPRecorderTab, openNewStudioTab } from '../utils/recorderTabs';
 import { GRPCWorkbench } from './grpc/GRPCWorkbench';
 import { ProtocolSetupDialog } from './protocols/ProtocolSetupDialog';
 import { appendProtocolSteps, type StudioProtocol } from '../utils/protocolProject';
@@ -285,6 +285,12 @@ export function YAMLEditor() {
       {isDragOver && <YAMLEditorDragOverlay language={language} />}
 
       <YAMLEditorHeader
+        onNewStudio={() => {
+          if (!openNewStudioTab(language))
+            setError(
+              language === 'es' ? 'Permite abrir Studio en una pestaña nueva.' : 'Allow opening Studio in a new tab.',
+            );
+        }}
         onSelectProtocol={protocol => {
           if ((protocol === 'grpc' && grpcRecorderTabsEnabled) || (protocol === 'https' && httpRecorderEnabled)) {
             if (!(protocol === 'https' ? openHTTPRecorderTab(language) : openGRPCRecorderTab(language)))

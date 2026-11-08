@@ -18,7 +18,9 @@ interface LanguageContextType {
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguage] = useState<Language>('en');
+  const [language, setLanguage] = useState<Language>(() =>
+    new URLSearchParams(window.location.search).get('lang') === 'es' ? 'es' : 'en',
+  );
 
   const t = useCallback(
     (key: string): string => {

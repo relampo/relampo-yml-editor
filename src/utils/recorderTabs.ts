@@ -82,3 +82,15 @@ export function returnToHTTPRecorderTab(): boolean {
     '/recorder/http',
   );
 }
+
+/** Always create a separate document; Recorder navigation retains its named-tab behavior. */
+export function openNewStudioTab(language = 'en'): boolean {
+  const url = new URL('/', window.location.origin);
+  url.searchParams.set('editor', crypto.randomUUID());
+  url.searchParams.set('lang', language);
+  const tab = window.open('about:blank', '_blank');
+  if (!tab) return false;
+  tab.opener = null;
+  tab.location.replace(withStudioToken(url.toString()));
+  return true;
+}
