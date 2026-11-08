@@ -1,3 +1,4 @@
+import { HTTPRecorderPage } from './components/recorder/HTTPRecorderPage';
 import { GRPCRecorderPage } from './components/grpc/GRPCRecorderPage';
 import { GRPCSchemaProvider } from './contexts/GRPCSchemaContext';
 import { LanguageProvider } from './contexts/LanguageContext';
@@ -14,7 +15,13 @@ export default function AppYAMLStandalone() {
       <YAMLProvider>
         <div className="h-screen w-screen overflow-hidden bg-[#0a0a0a]">
           <GRPCSchemaProvider>
-            {window.location.pathname.replace(/\/$/, '') === '/recorder/grpc' ? <GRPCRecorderPage /> : <YAMLEditor />}
+            {window.location.pathname.replace(/\/$/, '') === '/recorder/grpc' ? (
+              <GRPCRecorderPage />
+            ) : window.location.pathname.replace(/\/$/, '') === '/recorder/http' ? (
+              <HTTPRecorderPage />
+            ) : (
+              <YAMLEditor />
+            )}
           </GRPCSchemaProvider>
         </div>
         <MobileBlockOverlay />
