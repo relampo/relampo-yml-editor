@@ -49,7 +49,7 @@ export function GRPCMessageTabs({
     <div
       role="tablist"
       aria-label="RPC messages"
-      className="flex gap-4 border-b border-white/10 pb-2"
+      className="flex items-center border-b border-white/5 bg-[#111111]"
     >
       {(['request', 'response'] as const).map(tab => (
         <button
@@ -58,7 +58,7 @@ export function GRPCMessageTabs({
           role="tab"
           aria-selected={value === tab}
           onClick={() => onChange(tab)}
-          className={'text-sm ' + (value === tab ? 'text-yellow-300' : 'text-zinc-400')}
+          className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${value === tab ? 'text-yellow-400 bg-yellow-400/10 border-b-2 border-yellow-400' : 'text-zinc-400 hover:text-zinc-300 hover:bg-white/5'}`}
         >
           {tab === 'request' ? 'Request' : 'Response'}
         </button>

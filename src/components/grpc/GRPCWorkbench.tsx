@@ -16,9 +16,12 @@ import {
 } from '../../utils/grpcApi';
 import { useGRPCSchema } from '../../hooks/useGRPCSchema';
 import type { YAMLValue } from '../../types/yaml';
-const input = 'w-full rounded border border-white/15 bg-zinc-950 p-2 text-sm text-zinc-200';
+const input =
+  'w-full h-9.5 rounded border border-white/10 bg-white/5 px-3 py-2 text-sm text-zinc-300 font-mono normal-case tracking-normal font-normal focus:outline-none focus:ring-2 focus:ring-yellow-400/40';
 const button =
-  'rounded border border-white/15 px-3 py-2 text-xs text-zinc-200 hover:border-cyan-300 disabled:opacity-40';
+  'inline-flex items-center justify-center gap-2 rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium text-zinc-300 transition-colors hover:bg-white/10 hover:border-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/40 disabled:opacity-40 disabled:cursor-not-allowed';
+const primaryButton =
+  'inline-flex items-center justify-center gap-2 rounded-md bg-yellow-400 px-3 py-2 text-sm font-bold text-black transition-colors hover:bg-yellow-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/40 disabled:opacity-40 disabled:cursor-not-allowed';
 function readFile(file: File, mode: 'text' | 'base64'): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -207,7 +210,7 @@ export function GRPCWorkbench({
     });
   }
   const field = (label: string, key: keyof NonNullable<GRPCConnection['tls']>) => (
-    <label className="text-xs text-zinc-400">
+    <label className="block space-y-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
       {label}
       <input
         aria-label={label}
@@ -225,8 +228,8 @@ export function GRPCWorkbench({
         onOpenChange(value);
       }}
     >
-      <DialogContent className="flex h-[90vh] w-[min(1200px,95vw)] max-w-none! flex-col overflow-hidden">
-        <DialogHeader>
+      <DialogContent className="flex h-[90vh] w-[min(1200px,95vw)] max-w-none! flex-col gap-0 overflow-hidden bg-[#0a0a0a] p-0">
+        <DialogHeader className="shrink-0 border-b border-white/5 bg-[#111111] px-6 py-4">
           <DialogTitle className="flex items-center gap-2">
             <Network className="h-5 w-5 text-cyan-400" />
             gRPC testing
@@ -235,7 +238,7 @@ export function GRPCWorkbench({
             Connect or import a contract, select operations, provide test data and add them to your scenario.
           </DialogDescription>
         </DialogHeader>
-        <div className="flex gap-2">
+        <div className="flex shrink-0 items-center border-b border-white/5 bg-[#111111]">
           {(
             [
               ['discover', 'Discover', Search],
@@ -247,17 +250,17 @@ export function GRPCWorkbench({
               key={key}
               type="button"
               aria-pressed={mode === key}
-              className={button + (mode === key ? ' border-cyan-400 text-cyan-300' : '')}
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/40 ${mode === key ? 'text-yellow-400 bg-yellow-400/10 border-b-2 border-yellow-400' : 'text-zinc-400 hover:text-zinc-300 hover:bg-white/5'}`}
               onClick={() => setMode(key)}
             >
-              <Icon className="mr-2 inline h-3 w-3" />
+              <Icon className="h-4 w-4 shrink-0" />
               {label}
             </button>
           ))}
         </div>
-        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
-          <section className="grid grid-cols-2 gap-3 rounded border border-white/10 p-4">
-            <label className="col-span-2 text-xs text-zinc-400">
+        <div className="min-h-0 flex-1 space-y-6 overflow-y-auto p-6">
+          <section className="grid grid-cols-2 gap-3 rounded-md border border-white/10 bg-[#111111] p-4">
+            <label className="col-span-2 block space-y-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
               Server address
               <input
                 aria-label="Server address"
@@ -295,7 +298,9 @@ export function GRPCWorkbench({
               </details>
             )}
             <div className="col-span-2 space-y-2">
-              <p className="text-xs text-zinc-400">Authentication and metadata</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                Authentication and metadata
+              </p>
               {headers.map((header, index) => (
                 <div
                   key={index}
@@ -346,7 +351,7 @@ export function GRPCWorkbench({
             <button
               type="button"
               disabled={busy || !connection.target}
-              className={button}
+              className={primaryButton}
               onClick={() =>
                 run(async signal =>
                   mount(
@@ -413,7 +418,7 @@ export function GRPCWorkbench({
             </section>
           )}
           {mode === 'record' && (
-            <section className="space-y-3 rounded border border-white/10 p-4">
+            <section className="space-y-3 rounded-md border border-white/10 bg-[#111111] p-4">
               <h3 className="text-sm text-cyan-300">Client → Relampo recorder → gRPC service</h3>
               <p className="text-xs text-zinc-400">
                 Point the gRPC client or the application server to the recorder. Recording browser HTTPS alone does not
@@ -482,8 +487,8 @@ export function GRPCWorkbench({
             </section>
           )}
           {imported && mode !== 'record' && (
-            <section className="grid grid-cols-[260px_minmax(0,1fr)] gap-4">
-              <aside className="space-y-4 rounded border border-white/10 p-3">
+            <section className="grid grid-cols-1 gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
+              <aside className="space-y-4 rounded-md border border-white/10 bg-[#111111] p-3">
                 <p className="text-xs text-zinc-400">Select operations in business order.</p>
                 {imported.catalog.services.map(service => (
                   <div key={service.name}>
@@ -492,12 +497,14 @@ export function GRPCWorkbench({
                       <div
                         key={method.path}
                         className={
-                          'mb-1 flex items-start gap-2 rounded p-2 ' +
-                          (active?.path === method.path ? 'bg-cyan-400/10' : '')
+                          'mb-1 flex items-start gap-2 rounded border p-2 transition-colors ' +
+                          (active?.path === method.path
+                            ? 'border-yellow-400/30 bg-yellow-400/10'
+                            : 'border-transparent hover:bg-white/5')
                         }
                       >
                         <input
-                          className="mt-1"
+                          className="mt-1 accent-yellow-400"
                           type="checkbox"
                           aria-label={'Select ' + method.name}
                           checked={selected.includes(method.path)}
@@ -570,9 +577,9 @@ export function GRPCWorkbench({
             </section>
           )}
           {imported && mode !== 'record' && (
-            <section className="space-y-3 rounded border border-white/10 p-4">
-              <div className="grid grid-cols-3 gap-3">
-                <label className="text-xs text-zinc-400">
+            <section className="space-y-3 rounded-md border border-white/10 bg-[#111111] p-4">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <label className="block space-y-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
                   Virtual users
                   <input
                     aria-label="Virtual users"
@@ -583,7 +590,7 @@ export function GRPCWorkbench({
                     onChange={event => setUsers(Number(event.target.value))}
                   />
                 </label>
-                <label className="text-xs text-zinc-400">
+                <label className="block space-y-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
                   Test duration
                   <input
                     aria-label="Test duration"
@@ -592,7 +599,7 @@ export function GRPCWorkbench({
                     onChange={event => setDuration(event.target.value)}
                   />
                 </label>
-                <label className="text-xs text-zinc-400">
+                <label className="block space-y-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
                   Iterations per VU (0 = duration)
                   <input
                     aria-label="Iterations per VU"
@@ -615,7 +622,7 @@ export function GRPCWorkbench({
               <button
                 type="button"
                 disabled={busy || !selected.length}
-                className={button}
+                className={primaryButton}
                 onClick={generate}
               >
                 Generate scenario
@@ -639,7 +646,7 @@ export function GRPCWorkbench({
             </p>
           )}
           {generated && (
-            <section className="space-y-3 rounded border border-cyan-400/20 p-4">
+            <section className="space-y-3 rounded-md border border-white/10 bg-[#111111] p-4">
               <GRPCCorrelationReview
                 key={generated.id}
                 project={generated}
@@ -662,7 +669,7 @@ export function GRPCWorkbench({
               <div className="flex gap-3">
                 <button
                   type="button"
-                  className={button + ' bg-cyan-400/15 text-cyan-200'}
+                  className={primaryButton}
                   onClick={() => {
                     try {
                       onAdd(generated.yaml);
@@ -689,7 +696,7 @@ export function GRPCWorkbench({
             </section>
           )}
         </div>
-        <footer className="flex shrink-0 items-center justify-between gap-4 border-t border-white/10 pt-4">
+        <footer className="flex shrink-0 items-center justify-between gap-4 border-t border-white/5 bg-[#111111] px-6 py-4">
           <p className="text-xs text-zinc-500">
             {recording.active
               ? language === 'es'
@@ -702,7 +709,7 @@ export function GRPCWorkbench({
           <button
             type="button"
             className={
-              button + ' inline-flex shrink-0 items-center gap-2 border-yellow-400/30 bg-yellow-400/10 text-yellow-300'
+              'inline-flex shrink-0 items-center justify-center gap-2 rounded-md border border-yellow-400/20 bg-yellow-400/5 px-3 py-2 text-sm font-bold text-yellow-400 transition-colors hover:bg-yellow-400/10 hover:border-yellow-400/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/40'
             }
             onClick={() => {
               abortRef.current?.abort();
