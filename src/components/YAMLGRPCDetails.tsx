@@ -1,3 +1,4 @@
+import { GRPCContractResponse } from './grpc/GRPCContractResponse';
 import { GRPCChecksEditor } from './grpc/GRPCChecksEditor';
 import { GRPCStreamEditor, GRPCRecordedConversation } from './grpc/GRPCStreamEditor';
 import { GRPCMessageForm } from './grpc/GRPCMessageForm';
@@ -220,16 +221,30 @@ export function YAMLGRPCDetails({ node, onNodeUpdate }: NodeDetailProps) {
         </div>
       ) : (
         <div className="space-y-4">
-          <GRPCRecordedConversation messages={(data.response as Record<string, YAMLValue> | undefined)?.messages} />
-          <label className="block space-y-2 text-xs text-zinc-400">
-            <span>Recorded response</span>
-            <textarea
-              aria-label="Recorded response"
-              readOnly
-              value={JSON.stringify(data.response ?? {}, null, 2)}
-              className="w-full min-h-72 p-3 rounded border border-white/10 bg-black/30 text-zinc-200 font-mono text-xs"
+          {(data.response_template || method?.responseTemplate !== undefined) && (
+            <GRPCContractResponse
+              messageType={data.response_template?.message_type || method?.output || ''}
+              message={data.response_template ? data.response_template.message : method?.responseTemplate}
+              streaming={!!data.stream && (data.stream as Record<string, YAMLValue>).type !== 'client_streaming'}
             />
-          </label>
+          )}
+          {!data.response && (
+            <p className="text-xs text-zinc-500">
+              No recorded response yet. Run Debug or record real traffic to obtain server values.
+            </p>
+          )}
+          <GRPCRecordedConversation messages={(data.response as Record<string, YAMLValue> | undefined)?.messages} />
+          {data.response && (
+            <label className="block space-y-2 text-xs text-zinc-400">
+              <span>Recorded response</span>
+              <textarea
+                aria-label="Recorded response"
+                readOnly
+                value={JSON.stringify(data.response ?? {}, null, 2)}
+                className="w-full min-h-72 p-3 rounded border border-white/10 bg-black/30 text-zinc-200 font-mono text-xs"
+              />
+            </label>
+          )}
         </div>
       )}
     </section>

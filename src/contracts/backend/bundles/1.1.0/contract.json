@@ -14,9 +14,9 @@
     "pkg/validator/validator.go": "1a4f03e615a317c7f641259edb2ae634b31fbeaeb814004f403de2918d5c19a1",
     "pkg/validator/validator_stages.go": "a9f6e7cdbb61b4d1a547dea530e803866d2ea58b992f33cd4b056f8e27c9f58f",
     "pkg/validator/validator_throughput_load.go": "5f9e81607510d95ac3b841a04be7ad58a7fefcf0fd3de2a71f9ad7775a3a0e8d",
-    "pkg/runtime/grpc_types.go": "a8cc02d38fda78ce7b1523fcb53a1f223e22b3796ed7ab3e8760b8f14c2b7169",
+    "pkg/runtime/grpc_types.go": "d111f8e6a68ccfb6a0f459f3ea7cb34b26565651f201dcb5bf3f233847ccc65d",
     "pkg/runtime/grpc_stream.go": "e4559cb28f4c7544d545444ac4214f3858e10e27d26d055fbcbaeeb6bf5a314e",
-    "pkg/grpcschema/schema.go": "269b046279d35cad24f543f721a676ba180145ca183198848e1470dd05f0d2ff",
+    "pkg/grpcschema/schema.go": "c824216387861f00ef76128087a97832eb64bdaa6d7247a60ceb42b735b2d77a",
     "pkg/grpcschema/connection.go": "1716b5a2aa9315f3f5ca25a02f6e286697d1865fcb7fcc2a65f33e1eae36e282",
     "pkg/runtime/grpc_descriptors.go": "5a6ea1c74961d68c804c5e9d83c434690225f61e3ebb60c0b1126c2c9c57c05a",
     "pkg/runtime/grpc_json.go": "ea7e12386f7c093114ae2d8d36eed1fb35b846f187d1a4ffe02bd10678a41dbb",
@@ -332,6 +332,7 @@
       "conn_max_lifetime"
     ],
     "grpc": [
+      "response_template",
       "stream",
       "plaintext",
       "tls",
@@ -414,6 +415,10 @@
       "server_name",
       "client_cert",
       "client_key"
+    ],
+    "grpc_response_template": [
+      "message_type",
+      "message"
     ]
   },
   "poc_exclusions": [
@@ -424,7 +429,7 @@
     {
       "kind": "valid",
       "path": "fixtures/valid/full.yaml",
-      "sha256": "28a761b4113135c162c070ec66a87573ec08ae47e667e9bf0a892d54c432ed7f"
+      "sha256": "2769b86c7bd68a2ec1f503ff81909ba783e925621ef5a34ff55e170439417785"
     },
     {
       "kind": "invalid",

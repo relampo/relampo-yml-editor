@@ -28,6 +28,7 @@ export interface GRPCMethod {
   output: string;
   description?: string;
   template?: YAMLValue;
+  responseTemplate?: YAMLValue;
 }
 export interface GRPCCatalog {
   services: { name: string; description?: string; methods: GRPCMethod[] }[];

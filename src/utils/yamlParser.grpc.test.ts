@@ -21,6 +21,9 @@ scenarios:
             username: user001
             password: "***"
           expected_status: OK
+          response_template:
+            message_type: practice.Shop.LoginReply
+            message: {token: "", expiresIn: 0}
           response:
             status: OK
             message: {token: "***"}

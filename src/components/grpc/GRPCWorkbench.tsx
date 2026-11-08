@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Network, Upload, Radio, Search, ArrowLeft } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../ui/dialog';
+import { GRPCContractResponse, GRPCMessageTabs } from './GRPCContractResponse';
 import { GRPCCorrelationReview } from './GRPCCorrelationReview';
 import { GRPCMessageForm } from './GRPCMessageForm';
 import { GRPCStreamEditor } from './GRPCStreamEditor';
@@ -41,6 +42,7 @@ export function GRPCWorkbench({
   language?: string;
 }) {
   const { setCatalog } = useGRPCSchema();
+  const [messageTab, setMessageTab] = useState<'request' | 'response'>('request');
   const [mode, setMode] = useState<'discover' | 'import' | 'record'>('discover');
   const [connection, setConnection] = useState<GRPCConnection>({ target: '' });
   const [headers, setHeaders] = useState<{ name: string; value: string }[]>([]);
@@ -116,6 +118,7 @@ export function GRPCWorkbench({
   };
   const mount = (value: GRPCImported) => {
     setImported(value);
+    setMessageTab('request');
     setCatalog(value.catalog);
     setSelected([]);
     setGenerated(null);
@@ -524,28 +527,42 @@ export function GRPCWorkbench({
                   <>
                     <h3 className="break-all text-sm text-cyan-300">{active.path}</h3>
                     {active.description && <p className="text-xs text-zinc-400">{active.description}</p>}
-                    {active.kind === 'unary' || active.kind === 'server_streaming' ? (
-                      <GRPCMessageForm
-                        catalog={imported.catalog}
-                        messageType={active.input}
-                        value={valueFor(active)}
-                        onChange={value => {
-                          setMessages({ ...messages, [active.path]: value });
-                          setGenerated(null);
-                        }}
+                    <GRPCMessageTabs
+                      value={messageTab}
+                      onChange={setMessageTab}
+                    />
+                    {messageTab === 'response' ? (
+                      <GRPCContractResponse
+                        messageType={active.output}
+                        message={active.responseTemplate}
+                        streaming={active.kind === 'server_streaming' || active.kind === 'bidi'}
                       />
-                    ) : null}
-                    {active.kind !== 'unary' && (
-                      <GRPCStreamEditor
-                        catalog={imported.catalog}
-                        inputType={active.input}
-                        template={active.template}
-                        value={streamFor(active)}
-                        onChange={value => {
-                          setStreams({ ...streams, [active.path]: value });
-                          setGenerated(null);
-                        }}
-                      />
+                    ) : (
+                      <>
+                        {active.kind === 'unary' || active.kind === 'server_streaming' ? (
+                          <GRPCMessageForm
+                            catalog={imported.catalog}
+                            messageType={active.input}
+                            value={valueFor(active)}
+                            onChange={value => {
+                              setMessages({ ...messages, [active.path]: value });
+                              setGenerated(null);
+                            }}
+                          />
+                        ) : null}
+                        {active.kind !== 'unary' && (
+                          <GRPCStreamEditor
+                            catalog={imported.catalog}
+                            inputType={active.input}
+                            template={active.template}
+                            value={streamFor(active)}
+                            onChange={value => {
+                              setStreams({ ...streams, [active.path]: value });
+                              setGenerated(null);
+                            }}
+                          />
+                        )}
+                      </>
                     )}
                   </>
                 )}

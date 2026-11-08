@@ -85,16 +85,39 @@ describe('Studio gRPC workflow', () => {
 });
 
 it('shows the protobuf response shape after discovery before any RPC execution', async () => {
- vi.mocked(api.grpcRequest).mockImplementation(async path => {
-  if(path==='recordings/current') return {active:false,calls:[]} as any;
-  if(path==='schema') return {id:'schema',catalog:{...catalog,services:[{name:'demo.API',methods:[{...catalog.services[0].methods[0],output:'Reply',responseTemplate:{token:'',expiresIn:0}}]}]}} as any;
-  throw Error(path);
- });
- render(<GRPCWorkbench open onOpenChange={()=>{}} onAdd={vi.fn()} />);
- fireEvent.change(screen.getByLabelText('Server address'),{target:{value:'host:443'}});
- fireEvent.click(screen.getByRole('button',{name:'Discover service'}));
- await screen.findByText('demo.API');
- fireEvent.click(screen.getByRole('tab',{name:'Response'}));
- expect(screen.getByLabelText('Contract response template')).toHaveValue(JSON.stringify({token:'',expiresIn:0},null,2));
- expect(api.grpcRequest).not.toHaveBeenCalledWith('generate',expect.anything(),expect.anything());
+  vi.mocked(api.grpcRequest).mockReset();
+  vi.mocked(api.grpcRequest).mockImplementation(async path => {
+    if (path === 'recordings/current') return { active: false, calls: [] } as any;
+    if (path === 'schema')
+      return {
+        id: 'schema',
+        catalog: {
+          ...catalog,
+          services: [
+            {
+              name: 'demo.API',
+              methods: [
+                { ...catalog.services[0].methods[0], output: 'Reply', responseTemplate: { token: '', expiresIn: 0 } },
+              ],
+            },
+          ],
+        },
+      } as any;
+    throw Error(path);
+  });
+  render(
+    <GRPCWorkbench
+      open
+      onOpenChange={() => {}}
+      onAdd={vi.fn()}
+    />,
+  );
+  fireEvent.change(screen.getByLabelText('Server address'), { target: { value: 'host:443' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Discover service' }));
+  await screen.findByText('demo.API');
+  fireEvent.click(screen.getByRole('tab', { name: 'Response' }));
+  expect(screen.getByLabelText('Contract response template')).toHaveValue(
+    JSON.stringify({ token: '', expiresIn: 0 }, null, 2),
+  );
+  expect(api.grpcRequest).not.toHaveBeenCalledWith('generate', expect.anything(), expect.anything());
 });

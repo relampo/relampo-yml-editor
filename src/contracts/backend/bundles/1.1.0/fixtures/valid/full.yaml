@@ -210,6 +210,9 @@ scenarios:
           allow_writes: false
       - grpc:
           name: Unary login
+          response_template:
+            message_type: demo.Tickets.LoginResponse
+            message: {token: "", username: "", expiresIn: 0}
           method: /demo.Tickets/Login
           message: {username: "{{user}}", password: "{{password}}"}
           expected_status: OK
