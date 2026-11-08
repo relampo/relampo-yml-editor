@@ -112,6 +112,7 @@ function installFakeIndexedDB(options: FakeIndexedDBOptions = {}) {
 describe('yamlDraftStorage', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+    window.history.replaceState({}, '', '/');
   });
 
   it('saves and reads the active draft', async () => {
@@ -165,6 +166,19 @@ describe('yamlDraftStorage', () => {
       id: ACTIVE_YAML_DRAFT_KEY,
       ...draft,
     });
+  });
+
+  it('keeps drafts independent across Studio tabs and restores the original draft', async () => {
+    installFakeIndexedDB();
+    const first = {yaml:'first: true',fileName:'first.yaml',updatedAt:'2026-11-08T10:00:00Z'};
+    const second = {yaml:'second: true',fileName:'second.yaml',updatedAt:'2026-11-08T10:01:00Z'};
+    await saveActiveDraft(first);
+    window.history.replaceState({}, '', '/?editor=second-studio');
+    await expect(getActiveDraft()).resolves.toBeNull();
+    await saveActiveDraft(second);
+    await expect(getActiveDraft()).resolves.toEqual(second);
+    window.history.replaceState({}, '', '/');
+    await expect(getActiveDraft()).resolves.toEqual(first);
   });
 
   it('rejects when IndexedDB cannot be opened', async () => {
