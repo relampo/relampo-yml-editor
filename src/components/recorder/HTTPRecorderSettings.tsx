@@ -112,31 +112,10 @@ export function HTTPRecorderSettings({
                 ))}
               </select>
             </label>
-            <label className="block space-y-1 text-xs text-zinc-400">
-              {text('Redirect handling', 'Manejo de redirecciones')}
-              <select
-                aria-label="Redirect handling"
-                className={recorderInput}
-                value={options.redirectMode}
-                onChange={e =>
-                  onChange({ redirectMode: e.target.value, redirectDisabling: e.target.value === 'jmeter' })
-                }
-              >
-                <option value="jmeter">JMeter</option>
-                <option value="legacy">Legacy</option>
-              </select>
-            </label>
           </div>
           {toggle(
             text('Mask sensitive values in YAML and previews', 'Enmascarar valores sensibles en YAML y vistas previas'),
             'maskSensitive',
-          )}
-          {toggle(
-            text(
-              'Disable duplicate redirect-target requests',
-              'Deshabilitar requests destino duplicados de redirecciones',
-            ),
-            'redirectDisabling',
           )}
           {toggle(
             text(

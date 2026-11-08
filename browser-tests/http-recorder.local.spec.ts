@@ -45,20 +45,40 @@ test('HTTP Recorder opens a tab, configures Firefox, records prefixes and opens 
       firefoxRunning: true,
       certificateReady: true,
       responses: true,
-      totalRequests: 1,
-      requests: [
-        {
-          id: 0,
-          name: 'Login - POST /login',
-          method: 'POST',
-          url: 'https://app.example.test/login',
-          status: 200,
-          durationMs: 123.5,
-          time: new Date().toISOString(),
-        },
-      ],
+      recording: false,
+      totalRequests: 0,
+      requests: [],
     };
     return route.fulfill({ status: 200, json: { opened: true, certificateReady: true } });
+  });
+  await context.route('**/api/recorder/http/record', route => {
+    state = { ...state, recording: true };
+    return route.fulfill({ json: state });
+  });
+  await context.route('https://app.example.test/**', route => {
+    if (route.request().url().endsWith('/login')) {
+      if (state.recording)
+        state = {
+          ...state,
+          totalRequests: 1,
+          requests: [
+            {
+              id: 0,
+              name: state.prefix + ' - POST /login',
+              method: 'POST',
+              url: 'https://app.example.test/login',
+              status: 200,
+              durationMs: 123.5,
+              time: new Date().toISOString(),
+            },
+          ],
+        };
+      return route.fulfill({ json: { eventId: 12 } });
+    }
+    return route.fulfill({
+      contentType: 'text/html',
+      body: "<button onclick=\"fetch('/login', {method: 'POST'})\">Login</button>",
+    });
   });
   await context.route('**/api/recorder/http/prefix', route => {
     state = { ...state, prefix: route.request().postDataJSON().prefix };
@@ -100,7 +120,7 @@ test('HTTP Recorder opens a tab, configures Firefox, records prefixes and opens 
   await expect(recorder).toHaveURL(/\/recorder\/http/);
   await expect(recorder).toHaveTitle('Relampo Recorder · HTTP/HTTPS');
   await recorder.getByLabel('Base URL', { exact: true }).fill('https://app.example.test');
-  await expect(recorder.getByRole('button', { name: 'Start recording and open Firefox', exact: true })).toBeDisabled();
+  await expect(recorder.getByRole('button', { name: 'Open Firefox', exact: true })).toBeDisabled();
   await recorder.getByRole('button', { name: 'Config Firefox', exact: true }).click();
   await expect(recorder.getByRole('button', { name: 'Config Firefox', exact: true })).toHaveAttribute(
     'title',
@@ -118,9 +138,13 @@ test('HTTP Recorder opens a tab, configures Firefox, records prefixes and opens 
   expect(configBounds!.height).toBeLessThan(175);
   await recorder.screenshot({ path: '/private/tmp/relampo-http-setup.png', fullPage: true });
   const controlOpened = recorder.waitForEvent('popup');
-  await recorder.getByRole('button', { name: 'Start recording and open Firefox', exact: true }).click();
+  await recorder.getByRole('button', { name: 'Open Firefox', exact: true }).click();
   const controls = await controlOpened;
   await expect(controls).toHaveURL(/\/recorder\/http\/control/);
+  const application = await context.newPage();
+  await application.goto('https://app.example.test/');
+  await expect(controls.getByText('Browser ready · 0 requests', { exact: true })).toBeVisible();
+  await expect(recorder.getByRole('cell', { name: '01', exact: true })).toHaveCount(0);
   await controls.getByLabel('Prefix', { exact: true }).fill('Login');
   await controls.getByRole('button', { name: 'Apply prefix', exact: true }).click();
   await controls.getByLabel('Transaction name', { exact: true }).fill('Reserve seats');
@@ -129,6 +153,7 @@ test('HTTP Recorder opens a tab, configures Firefox, records prefixes and opens 
   await expect(recorder.getByText('Firefox certificate ready', { exact: true })).toBeVisible();
   expect(startBody).toMatchObject({
     openFirefox: true,
+    paused: true,
     prefix: '',
     prefixEnabled: true,
     transactionsEnabled: true,
@@ -138,6 +163,9 @@ test('HTTP Recorder opens a tab, configures Firefox, records prefixes and opens 
     exclude: [String.raw`(?i).*\.(css|js|png|jpg|jpeg|gif|svg|ico|woff2?)(\?.*)?$`],
     baseUrls: 'https://app.example.test',
   });
+  await controls.getByRole('button', { name: 'Start recording', exact: true }).click();
+  await expect(controls.getByText('Recording · 0 requests', { exact: true })).toBeVisible();
+  await application.getByRole('button', { name: 'Login', exact: true }).click();
   await expect(recorder.getByRole('cell', { name: '01', exact: true })).toBeVisible();
   await expect(recorder.getByRole('button', { name: 'Clear', exact: true })).toBeDisabled();
   await recorder.getByRole('button', { name: 'https://app.example.test/login', exact: true }).click();
@@ -173,6 +201,7 @@ test('HTTP Recorder opens a tab, configures Firefox, records prefixes and opens 
   await expect(recorder.getByLabel('Base URL')).toHaveValue('https://app.example.test');
   await expect(recorder.getByLabel('Output YAML file')).toHaveValue('/private/tmp/recordings/booking.yaml');
   await expect(editor.getByRole('treeitem', { name: /Recorded booking/ })).toBeVisible();
+  await application.close();
   await editor.close();
   await controls.close();
   await recorder.close();

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { CircleDot, Play, Square, Eraser, ExternalLink as ControlsIcon } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { validateSavedEditorURL, openHTTPRecordingControls } from '../../utils/recorderTabs';
-import { httpRecorderRequest } from '../../utils/httpRecorderApi';
+import { httpRecorderRequest, recorderTLSFailureText } from '../../utils/httpRecorderApi';
 import { RecorderShell } from './RecorderShell';
 import { useHTTPRecorder } from './useHTTPRecorder';
 import { recorderCompactInput as recorderInput, recorderCompactButton as recorderButton } from './HTTPRecorderSettings';
@@ -26,14 +26,15 @@ export function HTTPRecorderPage() {
       document.title = previous;
     };
   }, [setLanguage]);
+  const recording = state.active && state.recording !== false;
   useEffect(() => {
-    if (!state.active || !state.startedAt) return;
-    const started = Date.parse(state.startedAt);
+    if (!recording || !state.startedAt) return;
+    const started = Date.parse(state.recordingStartedAt || state.startedAt);
     const tick = () => setSeconds(Math.max(0, Math.floor((Date.now() - started) / 1000)));
     tick();
     const timer = setInterval(tick, 1000);
     return () => clearInterval(timer);
-  }, [state.active, state.startedAt]);
+  }, [recording, state.startedAt, state.recordingStartedAt]);
   async function startRecording() {
     const popup = openHTTPRecordingControls(language);
     if (!popup) {
@@ -44,7 +45,6 @@ export function HTTPRecorderPage() {
     }
     const current = await recorder.start();
     if (!current?.active) popup.close();
-    else if (!popup.closed) popup.focus();
   }
   async function openSaved() {
     const editor = window.open('about:blank', '_blank');
@@ -88,12 +88,14 @@ export function HTTPRecorderPage() {
               : busy === 'stop'
                 ? text('Saving…', 'Guardando…')
                 : state.active
-                  ? text('Recording', 'Grabando')
+                  ? recording
+                    ? text('Recording', 'Grabando')
+                    : text('Browser ready · not recording', 'Navegador listo · sin grabar')
                   : state.savedPath
                     ? text('Saved', 'Guardado')
                     : text('Ready to record', 'Listo para grabar')}
           </span>
-          {state.active && (
+          {recording && (
             <span className="font-mono text-zinc-500">
               {Math.floor(seconds / 60)
                 .toString()
@@ -102,6 +104,7 @@ export function HTTPRecorderPage() {
             </span>
           )}
           <span className="text-zinc-500">{state.totalRequests} requests</span>
+          {state.protocol && <span className="font-mono text-yellow-300">{state.protocol}</span>}
           {state.proxyAddress && <span className="font-mono text-zinc-500">{state.proxyAddress}</span>}
           {state.active && state.certificateReady && (
             <span className="text-emerald-400/70">
@@ -184,8 +187,8 @@ export function HTTPRecorderPage() {
               >
                 <Play className="h-3 w-3" />
                 {options.openFirefox
-                  ? text('Start recording and open Firefox', 'Iniciar grabación y abrir Firefox')
-                  : text('Start recording', 'Iniciar grabación')}
+                  ? text('Open Firefox', 'Abrir Firefox')
+                  : text('Prepare recorder', 'Preparar grabador')}
               </button>
             )}
           </div>
@@ -218,10 +221,12 @@ export function HTTPRecorderPage() {
             role="alert"
             className="shrink-0 border-b border-amber-400/15 bg-amber-500/5 px-3 py-2 text-xs text-amber-300"
           >
-            {text(
-              'Relampo could not establish a trusted TLS connection to the application server. Check its certificate and issuing CA.',
-              'Relampo no pudo establecer una conexión TLS de confianza con el servidor. Revisa su certificado y su CA emisora.',
-            )}
+            {state.upstreamTLSError
+              ? recorderTLSFailureText(state.upstreamTLSError, language)
+              : text(
+                  'Relampo could not establish a trusted TLS connection to the application server. Check its certificate and issuing CA.',
+                  'Relampo no pudo establecer una conexión TLS de confianza con el servidor. Revisa su certificado y su CA emisora.',
+                )}
           </p>
         )}
         {canRetrySave && (

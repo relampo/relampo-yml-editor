@@ -1,6 +1,6 @@
 import { FolderOpen, Settings2, Check } from 'lucide-react';
 import type { useHTTPRecorder } from './useHTTPRecorder';
-import { DEFAULT_EMBEDDED_EXCLUDE } from '../../utils/httpRecorderApi';
+import { DEFAULT_EMBEDDED_EXCLUDE, normalizeRecorderBaseURLs, recorderURLProtocol } from '../../utils/httpRecorderApi';
 import {
   HTTPRecorderSettings,
   recorderCompactInput as input,
@@ -24,7 +24,7 @@ export function HTTPRecorderSetup({
       disabled={disabled || !!busy}
       className="shrink-0 space-y-2 border-b border-white/10 bg-[#111111] px-3 py-2"
     >
-      <div className="grid items-end gap-2 grid-cols-[88px_64px_auto_minmax(150px,1fr)_minmax(200px,1.1fr)]">
+      <div className="grid items-end gap-2 grid-cols-[120px_88px_auto_minmax(150px,1fr)_minmax(200px,1.1fr)]">
         <label className={label}>
           {text('Proxy host', 'Host proxy')}
           <input
@@ -69,7 +69,9 @@ export function HTTPRecorderSetup({
           {busy === 'configure-firefox' ? text('Configuring…', 'Configurando…') : 'Config Firefox'}
         </button>
         <label className={label}>
-          Base URL
+          <span className="flex items-center gap-2">
+            Base URL<span className="text-[9px] text-emerald-400/80">{recorderURLProtocol(options.baseUrls)}</span>
+          </span>
           <input
             aria-label="Base URL"
             className={input}
@@ -79,6 +81,10 @@ export function HTTPRecorderSetup({
               'URLs de aplicación, API o autenticación separadas por coma.',
             )}
             value={options.baseUrls}
+            onBlur={() => {
+              const baseUrls = normalizeRecorderBaseURLs(options.baseUrls);
+              update({ baseUrls, applicationUrl: baseUrls.split(',')[0] || '' });
+            }}
             onChange={e => update({ baseUrls: e.target.value, applicationUrl: e.target.value.split(',')[0].trim() })}
           />
         </label>

@@ -58,14 +58,14 @@ it('configures Firefox, selects an output and enables separate recording control
   expect(screen.queryByText('Advanced settings')).not.toBeInTheDocument();
   fireEvent.change(screen.getByLabelText('Base URL'), { target: { value: 'https://app.example.test' } });
   expect(screen.getByLabelText('Proxy host')).toHaveValue('localhost');
-  expect(screen.getByRole('button', { name: 'Start recording and open Firefox' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Open Firefox' })).toBeDisabled();
   fireEvent.click(screen.getByRole('button', { name: 'Config Firefox' }));
   await screen.findByTitle(/Firefox configured: localhost:8888/);
   fireEvent.click(screen.getByRole('button', { name: 'Browse…' }));
   await screen.findByDisplayValue('/private/tmp/recordings/chosen.yaml');
   fireEvent.click(screen.getByLabelText('Enable prefix'));
   fireEvent.click(screen.getByLabelText('Enable transactions'));
-  fireEvent.click(screen.getByRole('button', { name: 'Start recording and open Firefox' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Open Firefox' }));
   await screen.findByText('127.0.0.1:8888');
   expect(httpRecorderRequest).toHaveBeenCalledWith(
     'start',
@@ -83,7 +83,7 @@ it('configures Firefox, selects an output and enables separate recording control
     expect.stringContaining('popup=yes'),
   );
   expect(screen.getByRole('button', { name: 'Open recording controls' })).toBeInTheDocument();
-  const controls=vi.mocked(window.open).mock.results[0].value as Window;
+  const controls = vi.mocked(window.open).mock.results[0].value as Window;
   expect(controls.focus).toHaveBeenCalledTimes(1);
 });
 it('saves when stopping and offers opening the saved script only after success', async () => {
@@ -227,13 +227,12 @@ it('passes every configured CLI option to the recorder and opens only the saved 
     target: { value: 'https://app.test/home' },
   });
   fireEvent.change(screen.getByLabelText('Grouping'), { target: { value: 'transaction' } });
-  fireEvent.change(screen.getByLabelText('Redirect handling'), { target: { value: 'legacy' } });
   fireEvent.click(screen.getByLabelText('Mask sensitive values in YAML and previews'));
   fireEvent.click(screen.getByLabelText('Keep original compressed response bodies (legacy)'));
   fireEvent.click(screen.getByLabelText('Overwrite the output YAML if it already exists'));
   fireEvent.click(screen.getByLabelText('Configure and open Firefox automatically'));
   fireEvent.click(screen.getByRole('button', { name: 'Done' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Start recording' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Prepare recorder' }));
   await screen.findByText('127.0.0.1:1234');
   expect(httpRecorderRequest).toHaveBeenCalledWith('start', {
     applicationUrl: 'https://app.test/home',
@@ -249,11 +248,12 @@ it('passes every configured CLI option to the recorder and opens only the saved 
     prefixEnabled: true,
     transactionsEnabled: false,
     grouping: 'transaction',
-    redirectMode: 'legacy',
-    redirectDisabling: false,
+    redirectMode: 'jmeter',
+    redirectDisabling: true,
     preserveCompressedResponses: true,
     force: true,
     openFirefox: false,
+    paused: true,
   });
   fireEvent.click(screen.getByRole('button', { name: 'Open Firefox' }));
   await screen.findByText('Firefox certificate ready');

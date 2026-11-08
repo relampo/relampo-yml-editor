@@ -60,7 +60,7 @@ export function HTTPRecorderControlPage() {
         </h1>
         <p className="mt-2 text-xs text-zinc-400">
           {state?.active
-            ? `${state.totalRequests} requests`
+            ? `${state.recording === false ? text('Browser ready', 'Navegador listo') : text('Recording', 'Grabando')} · ${state.totalRequests} requests`
             : state?.savedPath
               ? text('Saved', 'Guardado')
               : state
@@ -78,6 +78,24 @@ export function HTTPRecorderControlPage() {
       )}
       {state?.active && (
         <div className="space-y-5">
+          {state.recording === false && (
+            <section className="space-y-3 rounded-md border border-yellow-400/25 bg-yellow-400/5 p-3">
+              <p className="text-xs text-zinc-400">
+                {text(
+                  'The initial page is not being recorded. Prepare your prefix or transaction, then start recording before using the application.',
+                  'La página inicial no se está grabando. Prepara tu prefix o transacción e inicia la grabación antes de usar la aplicación.',
+                )}
+              </p>
+              <button
+                type="button"
+                disabled={!!busy}
+                className={recorderButton + ' w-full border-yellow-400 bg-yellow-400 text-black'}
+                onClick={() => void action('record', {})}
+              >
+                {text('Start recording', 'Grabar')}
+              </button>
+            </section>
+          )}
           {state.prefixEnabled && (
             <form
               className="space-y-3 rounded-md border border-yellow-400/20 bg-yellow-400/5 p-4"
