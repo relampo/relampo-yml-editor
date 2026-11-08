@@ -15,6 +15,7 @@ import {
 interface YAMLEditorHeaderProps {
   onSelectProtocol?: (protocol: StudioProtocol) => void;
   grpcEnabled?: boolean;
+  httpEnabled?: boolean;
   language: string;
   setLanguage: (lang: 'en' | 'es') => void;
   t: (key: string) => string;
@@ -30,6 +31,7 @@ export function YAMLEditorHeader({
   language,
   onSelectProtocol,
   grpcEnabled = false,
+  httpEnabled = false,
   setLanguage,
   t,
   isDocumentEmpty,
@@ -78,6 +80,7 @@ export function YAMLEditorHeader({
               <ProtocolMenu
                 language={language}
                 grpcEnabled={grpcEnabled}
+                httpEnabled={httpEnabled}
                 onSelect={onSelectProtocol}
               />
             )}

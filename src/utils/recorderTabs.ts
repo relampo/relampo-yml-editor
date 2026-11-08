@@ -23,6 +23,12 @@ export function openGRPCRecorderTab(language = 'en'): boolean {
     '/recorder/grpc',
   );
 }
+export function openHTTPRecorderTab(language = 'en'): boolean {
+  window.name = 'relampo-studio-' + window.location.host;
+  const url = new URL('/recorder/http', window.location.origin);
+  url.searchParams.set('lang', language);
+  return focusNamedTab(withStudioToken(url.toString()), 'relampo-http-recorder-' + window.location.host, '/recorder/http');
+}
 export function openStudioEditorTab(): boolean {
   return focusNamedTab(
     withStudioToken(new URL('/', window.location.origin).toString()),

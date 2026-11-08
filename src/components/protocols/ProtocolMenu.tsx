@@ -11,10 +11,12 @@ import {
 export function ProtocolMenu({
   language,
   grpcEnabled,
+  httpEnabled = false,
   onSelect,
 }: {
   language: string;
   grpcEnabled: boolean;
+  httpEnabled?: boolean;
   onSelect: (protocol: StudioProtocol) => void;
 }) {
   const spanish = language === 'es';
@@ -31,7 +33,7 @@ export function ProtocolMenu({
       label: 'HTTP/HTTPS',
       Icon: Globe,
       color: 'text-emerald-300',
-      description: 'Coming soon',
+      description: httpEnabled ? (spanish ? 'Grabar desde Firefox' : 'Record with Firefox') : 'Coming soon',
     },
   ] as const;
   return (
@@ -55,7 +57,7 @@ export function ProtocolMenu({
           <DropdownMenuItem
             key={id}
             aria-label={label}
-            disabled={id === 'https' || (id === 'grpc' && !grpcEnabled)}
+            disabled={(id === 'https' && !httpEnabled) || (id === 'grpc' && !grpcEnabled)}
             onSelect={() => onSelect(id)}
             className="cursor-pointer gap-3 rounded-md px-3 py-2.5 focus:bg-yellow-400/10 focus:text-white data-highlighted:bg-yellow-400/10 data-highlighted:text-white"
           >
