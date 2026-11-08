@@ -41,6 +41,15 @@ test('HTTP and gRPC share presentation and all requests have ordered numbers', a
   await expect(http).toBeVisible();
   await expect(login).toBeVisible();
   await expect(events).toBeVisible();
+  // Numbers belong to the request label, with the same typography and spacing.
+  for (const [row, number] of [
+    [http, '[1]'],
+    [login, '[2]'],
+  ] as const) {
+    const numberLabel = row.getByText(number, { exact: true });
+    await expect(numberLabel.locator('..')).toHaveClass(/text-sm/);
+    await expect(numberLabel).not.toHaveClass(/font-mono|text-xs|text-zinc-500/);
+  }
   await http.click();
   const details = page.locator('[data-node-details]');
   const requestTab = details.getByRole('button', { name: 'Request', exact: true });

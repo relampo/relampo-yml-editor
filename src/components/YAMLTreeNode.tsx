@@ -458,16 +458,13 @@ function YAMLTreeNodeRow({
         <IconComponent className="w-4 h-4" />
       </div>
 
-      {requestNumber !== undefined && (
-        <span className="shrink-0 text-xs text-zinc-500 font-mono tabular-nums">[{requestNumber}] </span>
-      )}
-
       {/* Name */}
       <span
         className={`text-sm truncate flex-1 ${
           node.data?.enabled === false ? 'text-zinc-400' : isRedirectedFollowUp ? 'text-zinc-100' : 'text-zinc-300'
         }`}
       >
+        {requestNumber !== undefined && <span>[{requestNumber}] </span>}
         <HighlightText
           text={
             requestNumber === undefined
