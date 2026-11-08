@@ -58,3 +58,13 @@ describe('gRPC request details', () => {
     expect(screen.getByRole('alert')).toBeInTheDocument();
   });
 });
+
+it('shows a saved contract response without presenting it as server evidence', () => {
+ const contract={message_type:'practice.Shop.LoginResponse',message:{token:'',username:'',expiresIn:0}};
+ const draft={...node,data:{...node.data,response:undefined,response_template:contract}} as YAMLNode;
+ render(<YAMLGRPCDetails node={draft} />);
+ fireEvent.click(screen.getByRole('button',{name:'Response'}));
+ expect(screen.getByLabelText('Contract response template')).toHaveValue(JSON.stringify(contract.message,null,2));
+ expect(screen.getByText(/not an actual server response/i)).toBeInTheDocument();
+ expect(screen.queryByLabelText('Recorded response')).not.toBeInTheDocument();
+});
