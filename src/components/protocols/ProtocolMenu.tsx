@@ -1,4 +1,4 @@
-import { Cable, ChevronDown, Globe, Layers, Network } from 'lucide-react';
+import { ChevronDown, CircleDot, Globe, Network } from 'lucide-react';
 import type { StudioProtocol } from '../../utils/protocolProject';
 import {
   DropdownMenu,
@@ -27,18 +27,11 @@ export function ProtocolMenu({
       description: spanish ? 'Descubrir, importar y grabar' : 'Discover, import and record',
     },
     {
-      id: 'websocket',
-      label: 'WebSocket',
-      Icon: Cable,
-      color: 'text-violet-300',
-      description: spanish ? 'Crear una sesión de mensajes' : 'Create a messaging session',
-    },
-    {
       id: 'https',
-      label: 'HTTPS',
+      label: 'HTTP/HTTPS',
       Icon: Globe,
       color: 'text-emerald-300',
-      description: spanish ? 'Crear una petición HTTP' : 'Create an HTTP request',
+      description: 'Coming soon',
     },
   ] as const;
   return (
@@ -46,8 +39,8 @@ export function ProtocolMenu({
     // closing animation cannot restore a stale pointer lock over that dialog.
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger className="inline-flex h-8 items-center justify-center gap-2 rounded-md border border-white/15 bg-white/5 px-3 text-sm font-semibold text-zinc-200 shadow-sm transition-colors hover:border-white/25 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-yellow-400/40">
-        <Layers className="h-4 w-4" />
-        Other Protocols
+        <CircleDot className="h-4 w-4 text-red-400" />
+        Recorder
         <ChevronDown className="h-4 w-4" />
       </DropdownMenuTrigger>
       <DropdownMenuContent
@@ -62,7 +55,7 @@ export function ProtocolMenu({
           <DropdownMenuItem
             key={id}
             aria-label={label}
-            disabled={id === 'grpc' && !grpcEnabled}
+            disabled={id === 'https' || (id === 'grpc' && !grpcEnabled)}
             onSelect={() => onSelect(id)}
             className="cursor-pointer gap-3 rounded-md px-3 py-2.5 focus:bg-yellow-400/10 focus:text-white data-highlighted:bg-yellow-400/10 data-highlighted:text-white"
           >
