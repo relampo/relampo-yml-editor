@@ -162,6 +162,7 @@ interface StudioInitialScript {
 // it supports. Absent on older studio builds, so every flag defaults to false.
 interface StudioCapabilities {
   grpcAuthoring?: boolean;
+  grpcBrowserRecording?: boolean;
   grpcStreaming?: boolean;
   componentConfiguration?: ComponentCapabilities;
   // loadRun unlocks the Run (load test) view backed by POST /api/run.
@@ -219,6 +220,7 @@ export async function probeStudio(): Promise<StudioInfo | null> {
             ...(componentConfiguration ? { componentConfiguration } : {}),
             loadRun: body.capabilities.loadRun === true,
             ...(body.capabilities.grpcAuthoring === true ? { grpcAuthoring: true } : {}),
+            ...(body.capabilities.grpcBrowserRecording === true ? { grpcBrowserRecording: true } : {}),
             ...(body.capabilities.grpcStreaming === true ? { grpcStreaming: true } : {}),
             dataSourceFiles: body.capabilities.dataSourceFiles === true,
             debug: body.capabilities.debug === true,

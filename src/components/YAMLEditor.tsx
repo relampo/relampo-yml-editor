@@ -109,6 +109,7 @@ export function YAMLEditor() {
     componentCapabilities,
     dataSourceFileBrowseEnabled,
     grpcAuthoringEnabled,
+    grpcBrowserRecordingEnabled,
     defaultViewMode,
   } = useYamlDocumentLifecycle({
     language,
@@ -297,6 +298,7 @@ export function YAMLEditor() {
       {grpcAuthoringEnabled && (
         <GRPCWorkbench
           open={activeProtocol === 'grpc'}
+          browserRecordingEnabled={grpcBrowserRecordingEnabled}
           onOpenChange={open => {
             if (!open) setActiveProtocol(null);
           }}

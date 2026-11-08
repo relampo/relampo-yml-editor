@@ -73,3 +73,21 @@ export async function grpcRequest<T>(path: string, body?: unknown, signal?: Abor
 export function grpcBundleURL(id: string): string {
   return withStudioToken(getRuntimeConfig().apiBaseUrl + '/api/grpc/bundles/' + encodeURIComponent(id));
 }
+
+export interface GRPCBrowserRecording {
+  active: boolean;
+  applicationUrl?: string;
+  proxyAddress?: string;
+  caPath?: string;
+  detected: 'none' | 'http' | 'grpc_web' | 'grpc_native';
+  counts: { http: number; https: number; grpcWeb: number; grpcNative: number };
+  totalRequests: number;
+  tlsFailures: number;
+  requests: { method: string; url: string; protocol: string }[];
+  grpcWebReplaySupported: boolean;
+  firefoxAvailable: boolean;
+  firefoxRunning?: boolean;
+}
+export function grpcBrowserCAURL(): string {
+  return withStudioToken(getRuntimeConfig().apiBaseUrl + '/api/grpc/browser-recordings/ca');
+}
