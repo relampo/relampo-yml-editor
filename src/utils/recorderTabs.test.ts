@@ -37,3 +37,14 @@ it('rejects external or executable editor destinations returned by a save', () =
     expect(() => validateSavedEditorURL(url)).toThrow();
   expect(validateSavedEditorURL('http://127.0.0.1:1234/?token=test')).toBe('http://127.0.0.1:1234/?token=test');
 });
+
+it('returns to an existing Recorder tab without reloading its in-progress recording', () => {
+  const recorder = {
+    location: { origin: window.location.origin, pathname: '/recorder/grpc', replace: vi.fn() },
+    focus: vi.fn(),
+  };
+  vi.spyOn(window, 'open').mockReturnValue(recorder as unknown as Window);
+  expect(openGRPCRecorderTab()).toBe(true);
+  expect(recorder.location.replace).not.toHaveBeenCalled();
+  expect(recorder.focus).toHaveBeenCalledOnce();
+});

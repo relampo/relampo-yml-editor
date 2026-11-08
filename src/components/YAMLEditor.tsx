@@ -1,3 +1,4 @@
+import { openGRPCRecorderTab } from '../utils/recorderTabs';
 import { GRPCWorkbench } from './grpc/GRPCWorkbench';
 import { ProtocolSetupDialog } from './protocols/ProtocolSetupDialog';
 import { appendProtocolSteps, type StudioProtocol } from '../utils/protocolProject';
@@ -109,6 +110,7 @@ export function YAMLEditor() {
     componentCapabilities,
     dataSourceFileBrowseEnabled,
     grpcAuthoringEnabled,
+    grpcRecorderTabsEnabled,
     grpcBrowserRecordingEnabled,
     defaultViewMode,
   } = useYamlDocumentLifecycle({
@@ -282,7 +284,16 @@ export function YAMLEditor() {
       {isDragOver && <YAMLEditorDragOverlay language={language} />}
 
       <YAMLEditorHeader
-        onSelectProtocol={setActiveProtocol}
+        onSelectProtocol={protocol => {
+          if (protocol === 'grpc' && grpcRecorderTabsEnabled) {
+            if (!openGRPCRecorderTab(language))
+              setError(
+                language === 'es'
+                  ? 'Permite abrir Recorder en una pestaña nueva.'
+                  : 'Allow opening Recorder in a new tab.',
+              );
+          } else setActiveProtocol(protocol);
+        }}
         grpcEnabled={grpcAuthoringEnabled}
         language={language}
         setLanguage={setLanguage}

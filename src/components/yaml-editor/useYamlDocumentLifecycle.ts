@@ -60,6 +60,7 @@ export function useYamlDocumentLifecycle({
   const [runViewEnabled, setRunViewEnabled] = useState(RUN_VIEW_FORCED);
   const [multiScenarioRunEnabled, setMultiScenarioRunEnabled] = useState(false);
   const [grpcAuthoringEnabled, setGrpcAuthoringEnabled] = useState(false);
+  const [grpcRecorderTabsEnabled, setGrpcRecorderTabsEnabled] = useState(false);
   const [grpcBrowserRecordingEnabled, setGrpcBrowserRecordingEnabled] = useState(false);
   const [dataSourceFileBrowseEnabled, setDataSourceFileBrowseEnabled] = useState(false);
   const [defaultViewMode, setDefaultViewMode] = useState<EditorViewMode | undefined>();
@@ -116,6 +117,7 @@ export function useYamlDocumentLifecycle({
         setMultiScenarioRunEnabled(studioInfo.capabilities?.multiScenarioRun === true);
         setDataSourceFileBrowseEnabled(studioInfo.capabilities?.dataSourceFiles === true);
         setGrpcAuthoringEnabled(studioInfo.capabilities?.grpcAuthoring === true);
+        setGrpcRecorderTabsEnabled(studioInfo.capabilities?.grpcRecorderTabs === true);
         setGrpcBrowserRecordingEnabled(studioInfo.capabilities?.grpcBrowserRecording === true);
         if (!DEBUG_VIEW_FORCED && studioInfo.capabilities?.debug === true) setDebugViewEnabled(true);
         if (!RUN_VIEW_FORCED && studioInfo.capabilities?.loadRun) setRunViewEnabled(true);
@@ -199,6 +201,7 @@ export function useYamlDocumentLifecycle({
     multiScenarioRunEnabled,
     dataSourceFileBrowseEnabled,
     grpcAuthoringEnabled,
+    grpcRecorderTabsEnabled,
     grpcBrowserRecordingEnabled,
     defaultViewMode,
   };
