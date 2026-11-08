@@ -1,7 +1,7 @@
 import { HTTPRecorderSetup } from './HTTPRecorderSetup';
 import { HTTPRecorderSaved } from './HTTPRecorderSaved';
 import { useEffect, useState } from 'react';
-import { CircleDot, Play, Square, ExternalLink as ControlsIcon } from 'lucide-react';
+import { CircleDot, Play, Square, Eraser, ExternalLink as ControlsIcon } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { validateSavedEditorURL, openHTTPRecordingControls } from '../../utils/recorderTabs';
 import { httpRecorderRequest } from '../../utils/httpRecorderApi';
@@ -109,6 +109,29 @@ export function HTTPRecorderPage() {
             </span>
           )}
           <div className="ml-auto flex gap-2">
+            <button
+              type="button"
+              className={recorderButton}
+              disabled={
+                !ready ||
+                !!busy ||
+                !!state.saving ||
+                state.active ||
+                (!state.proxyAddress && !state.savedPath && !state.totalRequests)
+              }
+              title={
+                state.active
+                  ? text('Stop recording before clearing.', 'Detén la grabación antes de limpiar.')
+                  : text(
+                      'Clear recorded requests and responses. Saved files are kept.',
+                      'Limpia los requests y respuestas grabados. Los archivos guardados se conservan.',
+                    )
+              }
+              onClick={() => void recorder.clear()}
+            >
+              <Eraser className="h-3 w-3" />
+              {text('Clear', 'Limpiar')}
+            </button>
             {state.active && !state.firefoxRunning && !state.firefoxPreparing && (
               <button
                 type="button"

@@ -81,6 +81,10 @@ test('HTTP Recorder opens a tab, configures Firefox, records prefixes and opens 
     state = { ...state, active: false, savedPath: '/private/tmp/recordings/booking.yaml' };
     return route.fulfill({ json: state });
   });
+  await context.route('**/api/recorder/http/clear', route => {
+    state = { active: false, totalRequests: 0, requests: [] };
+    return route.fulfill({ json: state });
+  });
   await context.route('**/api/recorder/http/editor', route =>
     route.fulfill({ json: { editorUrl: 'http://127.0.0.1:4173/?httpSaved=1', savedPath: state.savedPath } }),
   );
@@ -135,6 +139,7 @@ test('HTTP Recorder opens a tab, configures Firefox, records prefixes and opens 
     baseUrls: 'https://app.example.test',
   });
   await expect(recorder.getByRole('cell', { name: '01', exact: true })).toBeVisible();
+  await expect(recorder.getByRole('button', { name: 'Clear', exact: true })).toBeDisabled();
   await recorder.getByRole('button', { name: 'https://app.example.test/login', exact: true }).click();
   await recorder.getByRole('button', { name: 'Response', exact: true }).click();
   await expect(recorder.locator('pre')).toContainText('eventId');
@@ -161,6 +166,13 @@ test('HTTP Recorder opens a tab, configures Firefox, records prefixes and opens 
   const editor = await pending;
   await expect(editor.getByRole('treeitem', { name: /Recorded booking/ })).toBeVisible();
   await recorder.screenshot({ path: '/private/tmp/relampo-http-recorder-screen.png', fullPage: true });
+  await recorder.getByRole('button', { name: 'Clear', exact: true }).click();
+  await expect(recorder.getByRole('button', { name: 'https://app.example.test/login', exact: true })).toHaveCount(0);
+  await expect(recorder.getByRole('region', { name: 'Request details' })).toContainText('Select a recorded request');
+  await expect(controls.getByText('No recording active', { exact: true })).toBeVisible();
+  await expect(recorder.getByLabel('Base URL')).toHaveValue('https://app.example.test');
+  await expect(recorder.getByLabel('Output YAML file')).toHaveValue('/private/tmp/recordings/booking.yaml');
+  await expect(editor.getByRole('treeitem', { name: /Recorded booking/ })).toBeVisible();
   await editor.close();
   await controls.close();
   await recorder.close();

@@ -63,7 +63,9 @@ export function HTTPRecorderControlPage() {
             ? `${state.totalRequests} requests`
             : state?.savedPath
               ? text('Saved', 'Guardado')
-              : text('Preparing recording…', 'Preparando grabación…')}
+              : state
+                ? text('No recording active', 'Sin grabación activa')
+                : text('Preparing recording…', 'Preparando grabación…')}
         </p>
       </header>
       {error && (

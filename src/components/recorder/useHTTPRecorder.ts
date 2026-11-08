@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { probeStudio } from '../../utils/debugApi';
 import {
   defaultHTTPRecordOptions,
@@ -8,6 +8,7 @@ import {
 } from '../../utils/httpRecorderApi';
 const idle: HTTPRecordingState = { active: false, totalRequests: 0, requests: [] };
 export function useHTTPRecorder() {
+  const captureRevision = useRef(0);
   const [options, setOptions] = useState<HTTPRecordOptions>({ ...defaultHTTPRecordOptions });
   const [firefoxConfigured, setFirefoxConfigured] = useState(false);
   const [state, setState] = useState<HTTPRecordingState>(idle),
@@ -21,8 +22,9 @@ export function useHTTPRecorder() {
     setOptions(current => ({ ...current, ...patch }));
   }, []);
   const refresh = useCallback(async (signal?: AbortSignal) => {
+    const revision = captureRevision.current;
     const value = await httpRecorderRequest<HTTPRecordingState>('current', undefined, signal);
-    if (!signal?.aborted) setState(value);
+    if (!signal?.aborted && revision === captureRevision.current) setState(value);
     return value;
   }, []);
   useEffect(() => {
@@ -108,6 +110,25 @@ export function useHTTPRecorder() {
         grouping: options.transactionsEnabled ? 'none' : options.grouping,
       }),
     stop: () => action('stop', state.active ? {} : { output: options.output, force: options.force }),
+    clear: async () => {
+      setBusy('clear');
+      setError('');
+      captureRevision.current++;
+      try {
+        await httpRecorderRequest('clear', {});
+        captureRevision.current++;
+        setState({ ...idle });
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : String(cause));
+        try {
+          await refresh();
+        } catch {
+          /* Preserve the clear error. */
+        }
+      } finally {
+        setBusy('');
+      }
+    },
     applyPrefix: () => action('prefix', { prefix: options.prefix }),
     openFirefox: () => action('firefox', {}),
     configureFirefox: async () => {
