@@ -37,3 +37,12 @@ it('changes prefix and transaction independently and stops from the popup', asyn
   fireEvent.click(screen.getByRole('button', { name: 'Stop and save' }));
   expect(await screen.findByText('/private/tmp/control.yaml')).toBeInTheDocument();
 });
+
+it('keeps startup traffic empty until the tester presses Start recording',async()=>{
+ let state:any={active:true,recording:false,requests:[],totalRequests:0,prefixEnabled:true,transactionsEnabled:false,prefix:'',transaction:{id:0,name:''}};
+ vi.mocked(httpRecorderRequest).mockImplementation(async path=>{if(path==='record')state={...state,recording:true};return state;});
+ render(<LanguageProvider><HTTPRecorderControlPage/></LanguageProvider>);
+ fireEvent.click(await screen.findByRole('button',{name:'Start recording'}));
+ await waitFor(()=>expect(httpRecorderRequest).toHaveBeenCalledWith('record',{}));
+ expect(screen.getByText(/Recording · 0 requests/)).toBeInTheDocument();
+});
