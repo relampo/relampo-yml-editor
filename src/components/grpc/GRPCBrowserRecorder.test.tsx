@@ -105,3 +105,11 @@ it('explains that Relampo manages the recording Firefox certificate automaticall
   ).toBeInTheDocument();
   expect(screen.queryByText(/import this certificate in Firefox Settings/i)).not.toBeInTheDocument();
 });
+
+it('offers contract decoding only after a complete payload recording stops', async () => {
+  vi.mocked(grpcRequest).mockResolvedValue({ ...initial, captureSupported: true, recordingPayloads: true, capturedCalls: 3, pendingCalls: 0, detected: 'grpc_web', totalRequests: 3 });
+  render(<GRPCBrowserRecorder onDiscover={vi.fn()} onImport={vi.fn()} />);
+  expect(await screen.findByLabelText('Recording contract')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Generate recorded scenario' })).toBeDisabled();
+  expect(screen.getByText(/Captured calls: 3/)).toBeInTheDocument();
+});
