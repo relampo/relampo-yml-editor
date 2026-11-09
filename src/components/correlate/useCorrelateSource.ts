@@ -12,6 +12,7 @@ export function useCorrelateSource(
     latest.current = { current, update };
   });
   const sessions = useRef(new Map<string, ReturnType<typeof createCorrelateSource>>());
+  const tabs = useRef(new Map<string, Window>());
   useEffect(
     () => () => {
       sessions.current.forEach(source => source.close());
@@ -21,6 +22,10 @@ export function useCorrelateSource(
   );
   return () => {
     try {
+      // A closed tab cannot always say goodbye (window.close, X button), so release its session here.
+      sessions.current.forEach((source, id) => {
+        if (tabs.current.get(id)?.closed) source.close();
+      });
       if (sessions.current.size >= 8)
         throw Error(
           language === 'es'
@@ -32,7 +37,10 @@ export function useCorrelateSource(
         () => latest.current.current(),
         (yaml, name) => latest.current.update(yaml, name),
         undefined,
-        () => sessions.current.delete(session),
+        () => {
+          sessions.current.delete(session);
+          tabs.current.delete(session);
+        },
       );
       source.connect(session);
       sessions.current.set(session, source);
@@ -40,7 +48,8 @@ export function useCorrelateSource(
       url.searchParams.set('session', session);
       url.searchParams.set('lang', language);
       const tab = window.open(withStudioToken(url.toString()), '_blank');
-      if (!tab) {
+      if (tab) tabs.current.set(session, tab);
+      else {
         source.close();
         throw Error(
           language === 'es' ? 'Permite abrir Correlate en una pestaña nueva.' : 'Allow opening Correlate in a new tab.',
