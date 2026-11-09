@@ -14,7 +14,7 @@ const live = original.replace('Original script', 'Current working script');
 const applied = live
   .replace(
     '      response:',
-    "      extractors: [{var: session_token, type: jsonpath, from: body, expr: '$.token'}]\n      response:",
+    "      extractors: [{var: session_token, type: jsonpath, from: body, expression: '$.token'}]\n      response:",
   )
   .replace("Authorization: 'Bearer captured-session-value-123456'", "Authorization: 'Bearer {{session_token}}'");
 const source = {
@@ -28,6 +28,7 @@ const source = {
 const candidate = {
   id: '1',
   variable: 'session_token',
+  value: 'captured-session-value-123456',
   type: 'auth_token',
   kind: 'auto',
   applicable: true,
@@ -77,7 +78,25 @@ async function setup(context: BrowserContext) {
   });
   await context.route('**/api/correlate/apply', route => {
     lastApply = route.request().postDataJSON();
-    return route.fulfill({ json: { yaml: applied } });
+    return route.fulfill({
+      json: {
+        yaml: applied,
+        applied: [
+          {
+            variable: 'session_token',
+            placeholder: '{{session_token}}',
+            type: 'jsonpath',
+            from: 'body',
+            pattern: '',
+            expression: '$.token',
+            header: '',
+            configuration: 'type: jsonpath\nfrom: body\nvar: session_token\nexpression: $.token',
+            source,
+            targets: candidate.targets,
+          },
+        ],
+      },
+    });
   });
   await context.route('**/api/correlate/save', route =>
     route.fulfill({ json: { savedPath: route.request().postDataJSON().output, name: 'working.correlated.yaml' } }),
@@ -109,7 +128,7 @@ test('Correlate analyzes the current script, applies selected rows, saves and up
   const tab = await openCorrelate(page);
   expect(state.analyzed()).toContain('Current working script');
   expect(state.analyzed()).toContain('captured-session-value-123456');
-  await expect(tab.getByRole('button', { name: 'Apply selected', exact: true })).toBeDisabled();
+  await expect(tab.getByRole('button', { name: 'Correlate', exact: true })).toBeDisabled();
   await expect(tab.getByRole('columnheader', { name: /confidence|explanation/i })).toHaveCount(0);
   await expect(tab.getByLabel('Select candidate 2')).toBeDisabled();
   const controls = await tab.getByRole('region', { name: 'Correlation controls' }).boundingBox();
@@ -123,9 +142,15 @@ test('Correlate analyzes the current script, applies selected rows, saves and up
   await expect(tab.locator('.monaco-editor')).toBeVisible();
   await tab.getByRole('button', { name: 'Tree', exact: true }).click();
   await tab.getByLabel('Select candidate 1').check();
-  await tab.getByRole('button', { name: 'Apply selected', exact: true }).click();
+  await tab.getByRole('button', { name: 'Correlate', exact: true }).click();
   await expect(tab.getByRole('status')).toContainText('Selected correlations applied');
   expect(state.applied().selectedIds).toEqual(['1']);
+  await expect(tab.getByRole('tab', { name: /Correlated/ })).toHaveAttribute('aria-selected', 'true');
+  await expect(tab.getByRole('region', { name: 'Applied correlations' })).toContainText('$.token');
+  await tab.getByText('View YAML configuration', { exact: true }).click();
+  await expect(tab.getByRole('region', { name: 'Applied correlations' })).toContainText('expression: $.token');
+  await tab.getByRole('tab', { name: /Candidates/ }).click();
+  await expect(tab.getByRole('columnheader', { name: 'Value', exact: true })).toBeVisible();
   await tab
     .getByRole('treeitem', { name: /Login POST/ })
     .getByRole('button', { name: 'Expand', exact: true })
@@ -155,14 +180,14 @@ test('Clear resets the workbench and importing another script leaves the source 
   await tab.getByRole('button', { name: 'Clear', exact: true }).click();
   await expect(tab.getByLabel('Select candidate 1')).toHaveCount(0);
   await expect(tab.getByRole('treeitem')).toHaveCount(0);
-  await expect(tab.getByRole('button', { name: 'Apply selected', exact: true })).toBeDisabled();
+  await expect(tab.getByRole('button', { name: 'Correlate', exact: true })).toBeDisabled();
   await tab
     .locator('input[type="file"]')
     .setInputFiles({ name: 'other.yaml', mimeType: 'text/yaml', buffer: Buffer.from(live) });
   await expect(tab.getByLabel('Select candidate 1')).toBeVisible();
   await expect(tab.getByRole('button', { name: 'Save and open in Studio', exact: true })).toBeDisabled();
   await tab.getByLabel('Select candidate 1').check();
-  await tab.getByRole('button', { name: 'Apply selected', exact: true }).click();
+  await tab.getByRole('button', { name: 'Correlate', exact: true }).click();
   const opened = tab.waitForEvent('popup'),
     closed = tab.waitForEvent('close');
   await tab.getByRole('button', { name: 'Save and open in Studio', exact: true }).click();
@@ -183,10 +208,40 @@ test('a changed source is preserved and the saved result remains available', asy
   });
   await expect(page.getByRole('treeitem', { name: /Changed after analysis/ })).toBeVisible();
   await tab.getByLabel('Select candidate 1').check();
-  await tab.getByRole('button', { name: 'Apply selected', exact: true }).click();
+  await tab.getByRole('button', { name: 'Correlate', exact: true }).click();
   await tab.getByRole('button', { name: 'Save and return to Studio', exact: true }).click();
   await expect(tab.getByRole('alert')).toContainText('The source script changed');
   await expect(tab.getByRole('button', { name: 'Open result in new Studio', exact: true })).toBeVisible();
   await expect(page.getByRole('treeitem', { name: /Changed after analysis/ })).toBeVisible();
+  await tab.close();
+});
+test('Value shows the captured value and later uses scroll after five visible entries', async ({ page, context }) => {
+  await setup(context);
+  const targets = Array.from({ length: 8 }, (_, i) => ({
+    StepIndex: i + 1,
+    RequestID: i + 2,
+    Method: 'GET',
+    URL: 'https://app.test/use/' + i,
+    Location: 'request.headers',
+    Path: 'Authorization',
+  }));
+  await context.route('**/api/correlate/analyze', route =>
+    route.fulfill({
+      json: { digest: 'current-digest', requests: 9, responses: 1, candidates: [{ ...candidate, targets }] },
+    }),
+  );
+  await page.goto('/');
+  const tab = await openCorrelate(page);
+  await expect(tab.getByRole('columnheader', { name: 'Value', exact: true })).toBeVisible();
+  await expect(tab.getByText('captured-session-value-123456', { exact: true })).toBeVisible();
+  const uses = tab.getByRole('region', { name: 'Used in candidate 1' });
+  await expect(uses).toHaveJSProperty('clientHeight', 200);
+  expect(await uses.evaluate(element => element.scrollHeight)).toBe(320);
+  await expect(uses.locator(':scope > div').last()).not.toBeInViewport();
+  await uses.evaluate(element => {
+    element.scrollTop = element.scrollHeight;
+  });
+  await expect(uses.locator(':scope > div').last()).toBeInViewport();
+  await tab.screenshot({ path: '/private/tmp/relampo-correlate-value-scroll.png', fullPage: true });
   await tab.close();
 });

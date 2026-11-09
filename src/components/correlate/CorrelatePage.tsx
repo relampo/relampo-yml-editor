@@ -13,7 +13,8 @@ import {
 import { httpRecorderRequest } from '../../utils/httpRecorderApi';
 import { openStudioEditorTab, validateSavedEditorURL } from '../../utils/recorderTabs';
 import { CorrelateDocumentPanel } from './CorrelateDocumentPanel';
-import { CorrelateCandidates } from './CorrelateCandidates';
+import { CorrelateResults } from './CorrelateResults';
+import type { AppliedCorrelation, CorrelatedDocument } from '../../utils/correlateApi';
 
 export function CorrelatePage() {
   const { language, setLanguage } = useLanguage();
@@ -23,6 +24,7 @@ export function CorrelatePage() {
     [name, setName] = useState(''),
     [output, setOutput] = useState(''),
     [overwrite, setOverwrite] = useState(false);
+  const [results, setResults] = useState<AppliedCorrelation[] | null>(null);
   const [report, setReport] = useState<CorrelateReport | null>(null),
     [selected, setSelected] = useState<string[]>([]),
     [locate, setLocate] = useState<CorrelateCandidate | null>(null);
@@ -45,6 +47,7 @@ export function CorrelatePage() {
   const invalidate = () => {
     version.current++;
     setReport(null);
+    setResults(null);
     setSelected([]);
     setLocate(null);
     setApplied(false);
@@ -64,6 +67,7 @@ export function CorrelatePage() {
     setBusy('analyze');
     setError('');
     setReport(null);
+    setResults(null);
     setSelected([]);
     setApplied(false);
     setLocate(null);
@@ -202,13 +206,14 @@ export function CorrelatePage() {
     setBusy('apply');
     setError('');
     try {
-      const result = await correlateRequest<{ yaml: string }>('apply', {
+      const result = await correlateRequest<CorrelatedDocument>('apply', {
         yaml,
         digest: report.digest,
         selectedIds: selected,
       });
       if (revision === version.current) {
         setYaml(result.yaml);
+        setResults(result.applied ?? []);
         setApplied(true);
         setChanged(true);
         setSavedPath('');
@@ -378,7 +383,7 @@ export function CorrelatePage() {
             disabled={!!busy || !report || !selected.length || applied}
           >
             <Check className="h-3.5 w-3.5" />
-            {text('Apply selected', 'Apply seleccionados')}
+            Correlate
           </button>
           <button
             type="button"
@@ -511,7 +516,8 @@ export function CorrelatePage() {
           className="w-1 shrink-0 cursor-col-resize border-l border-white/10 bg-white/5 hover:bg-yellow-400/30"
           onMouseDown={() => setIsResizing(true)}
         />
-        <CorrelateCandidates
+        <CorrelateResults
+          results={results}
           rows={report?.candidates ?? null}
           selected={selected}
           onSelected={setSelected}

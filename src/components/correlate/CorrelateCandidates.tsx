@@ -1,9 +1,7 @@
-import type { CorrelateCandidate, CorrelateLocation } from '../../utils/correlateApi';
+import { correlationRequestLabel as requestLabel, type CorrelateCandidate } from '../../utils/correlateApi';
+import { CorrelateUses } from './CorrelateUses';
 import { recorderCompactInput } from '../recorder/HTTPRecorderSettings';
 import { useState } from 'react';
-function requestLabel(location: CorrelateLocation) {
-  return location.URL ? `#${location.RequestID || location.StepIndex + 1} ${location.Method} ${location.URL}` : '—';
-}
 export function CorrelateCandidates({
   rows,
   selected,
@@ -23,7 +21,7 @@ export function CorrelateCandidates({
   const es = language === 'es';
   const visible =
     rows?.filter(row =>
-      (row.variable + ' ' + row.type + ' ' + row.source.URL + ' ' + row.id)
+      (row.variable + ' ' + row.value + ' ' + row.source.URL + ' ' + row.id)
         .toLowerCase()
         .includes(search.toLowerCase()),
     ) ?? [];
@@ -35,10 +33,6 @@ export function CorrelateCandidates({
       aria-label="Correlation candidates"
       className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[#0a0a0a]"
     >
-      <div className="flex h-9 shrink-0 items-center border-b border-white/10 px-3 text-[10px] font-semibold uppercase tracking-wide text-zinc-400">
-        {es ? 'Candidatos' : 'Candidates'}
-        <span className="ml-auto font-mono">{rows?.length ?? 0}</span>
-      </div>
       <div className="shrink-0 border-b border-white/5 p-2">
         <input
           aria-label="Search candidates"
@@ -52,7 +46,10 @@ export function CorrelateCandidates({
         <table className="w-full text-left text-xs">
           <thead className="sticky top-0 z-10 bg-[#1a1a1a] text-[10px] text-zinc-400">
             <tr>
-              <th className="px-2 py-2">
+              <th
+                scope="col"
+                className="px-2 py-2"
+              >
                 <input
                   type="checkbox"
                   aria-label="Select applicable candidates"
@@ -70,12 +67,13 @@ export function CorrelateCandidates({
               {[
                 'ID',
                 es ? 'Variable' : 'Variable',
-                es ? 'Tipo' : 'Type',
+                'Value',
                 es ? 'Request de origen' : 'Source request',
                 es ? 'Ubicación' : 'Location',
                 es ? 'Se reutiliza en' : 'Used in',
               ].map(label => (
                 <th
+                  scope="col"
                   className="whitespace-nowrap px-2 py-2"
                   key={label}
                 >
@@ -106,7 +104,9 @@ export function CorrelateCandidates({
                 <td className="px-2 py-2 font-mono text-yellow-400">{row.id}</td>
                 <td className="max-w-48 break-words px-2 py-2 font-mono text-zinc-200">{row.variable}</td>
                 <td className="px-2 py-2 text-zinc-400">
-                  {row.type}
+                  <div className="max-h-24 max-w-64 overflow-y-auto whitespace-pre-wrap break-all font-mono text-zinc-300">
+                    {row.value ?? '—'}
+                  </div>
                   {!row.applicable && (
                     <span className="mt-1 block text-[10px] text-amber-300">
                       {es ? 'Revisión manual' : 'Manual review'}
@@ -128,18 +128,10 @@ export function CorrelateCandidates({
                   <span className="block text-zinc-500">{row.source.Path}</span>
                 </td>
                 <td className="max-w-64 px-2 py-2 text-zinc-400">
-                  {(row.targets ?? []).map((target, i) => (
-                    <p
-                      className="truncate"
-                      key={i}
-                      title={requestLabel(target) + ' · ' + target.Location + ' ' + target.Path}
-                    >
-                      {requestLabel(target)}
-                      <span className="block font-mono text-[10px] text-zinc-500">
-                        {target.Location} {target.Path}
-                      </span>
-                    </p>
-                  ))}
+                  <CorrelateUses
+                    targets={row.targets}
+                    label={'Used in candidate ' + row.id}
+                  />
                 </td>
               </tr>
             ))}
