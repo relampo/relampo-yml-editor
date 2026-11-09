@@ -45,6 +45,7 @@ const candidate = {
   ],
 };
 async function setup(context: BrowserContext) {
+  let analysisCalls=0;
   let lastAnalysis = '',
     lastApply: any;
   await context.route('**/api/studio/info', route =>
@@ -63,6 +64,7 @@ async function setup(context: BrowserContext) {
     route.fulfill({ json: { directory: '/private/tmp/relampo-correlate' } }),
   );
   await context.route('**/api/correlate/analyze', route => {
+    analysisCalls++;
     lastAnalysis = route.request().postDataJSON().yaml;
     return route.fulfill({
       json: {
@@ -104,7 +106,7 @@ async function setup(context: BrowserContext) {
   await context.route('**/api/correlate/open-saved', route =>
     route.fulfill({ json: { editorUrl: 'http://127.0.0.1:4173/?correlateSaved=1' } }),
   );
-  return { analyzed: () => lastAnalysis, applied: () => lastApply };
+  return { count:()=>analysisCalls, analyzed: () => lastAnalysis, applied: () => lastApply };
 }
 async function openCorrelate(page: Page) {
   const pending = page.waitForEvent('popup');
@@ -244,4 +246,24 @@ test('Value shows the captured value and later uses scroll after five visible en
   await expect(uses.locator(':scope > div').last()).toBeInViewport();
   await tab.screenshot({ path: '/private/tmp/relampo-correlate-value-scroll.png', fullPage: true });
   await tab.close();
+});
+
+test('loading from Studio or a file waits for Analyze and the right panel is wider',async({page,context})=>{
+ const state=await setup(context);await page.goto('/');
+ const pending=page.waitForEvent('popup');await page.getByRole('button',{name:'Correlate',exact:true}).click();
+ const tab=await pending;
+ await expect(tab.getByText('original.yaml',{exact:true})).toBeVisible();
+ await expect(tab.getByRole('button',{name:'Analyze',exact:true})).toBeEnabled();
+ expect(state.count()).toBe(0);
+ await expect(tab.getByLabel('Select candidate 1')).toHaveCount(0);
+ await tab.getByRole('button',{name:'Analyze',exact:true}).click();
+ await expect(tab.getByLabel('Select candidate 1')).toBeVisible();expect(state.count()).toBe(1);
+ await tab.locator('input[type="file"]').setInputFiles({name:'second.yaml',mimeType:'text/yaml',buffer:Buffer.from(live)});
+ await expect(tab.getByText('second.yaml',{exact:true})).toBeVisible();
+ expect(state.count()).toBe(1);
+ await expect(tab.getByLabel('Select candidate 1')).toHaveCount(0);
+ const left=await tab.getByRole('region',{name:'Correlation script'}).boundingBox();
+ const right=await tab.getByRole('region',{name:'Correlation candidates'}).boundingBox();
+ expect(right!.width).toBeGreaterThan(left!.width*2);
+ await tab.close();
 });
