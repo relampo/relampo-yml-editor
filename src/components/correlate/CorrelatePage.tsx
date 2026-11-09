@@ -31,6 +31,7 @@ export function CorrelatePage() {
   const [busy, setBusy] = useState(''),
     [error, setError] = useState(''),
     [applied, setApplied] = useState(false),
+    [generated, setGenerated] = useState(false),
     [linked, setLinked] = useState(false),
     [changed, setChanged] = useState(false),
     [savedPath, setSavedPath] = useState(''),
@@ -43,7 +44,7 @@ export function CorrelatePage() {
     fileName = useRef('script.yaml'),
     fileInput = useRef<HTMLInputElement | null>(null);
   const pending = useRef<{ id: string; resolve: () => void; reject: (error: Error) => void } | null>(null);
-  const { leftPanelWidth, setIsResizing } = useResizePanel(35);
+  const { leftPanelWidth, setIsResizing } = useResizePanel(30);
   const invalidate = () => {
     version.current++;
     setReport(null);
@@ -51,6 +52,7 @@ export function CorrelatePage() {
     setSelected([]);
     setLocate(null);
     setApplied(false);
+    setGenerated(false);
     setSavedPath('');
     setSavedYaml('');
     setConflict(false);
@@ -67,7 +69,6 @@ export function CorrelatePage() {
     setBusy('analyze');
     setError('');
     setReport(null);
-    setResults(null);
     setSelected([]);
     setApplied(false);
     setLocate(null);
@@ -88,7 +89,7 @@ export function CorrelatePage() {
     setLinked(fromSource);
     setChanged(false);
     if (directory.current) setOutput(directory.current + '/' + correlatedFileName(title));
-    void analyze(value);
+    setBusy('');
   }
   useEffect(() => {
     document.title = 'Relampo Correlate';
@@ -215,6 +216,7 @@ export function CorrelatePage() {
         setYaml(result.yaml);
         setResults(result.applied ?? []);
         setApplied(true);
+        setGenerated(true);
         setChanged(true);
         setSavedPath('');
         setSavedYaml('');
@@ -389,7 +391,7 @@ export function CorrelatePage() {
             type="button"
             className={button + ' border-yellow-400/30 bg-yellow-400! text-black!'}
             onClick={() => void saveAndReturn()}
-            disabled={!!busy || !applied || !output}
+            disabled={!!busy || !generated || !output}
           >
             <Save className="h-3.5 w-3.5" />
             {linked

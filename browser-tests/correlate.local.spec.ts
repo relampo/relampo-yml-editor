@@ -45,7 +45,7 @@ const candidate = {
   ],
 };
 async function setup(context: BrowserContext) {
-  let analysisCalls=0;
+  let analysisCalls = 0;
   let lastAnalysis = '',
     lastApply: any;
   await context.route('**/api/studio/info', route =>
@@ -66,6 +66,8 @@ async function setup(context: BrowserContext) {
   await context.route('**/api/correlate/analyze', route => {
     analysisCalls++;
     lastAnalysis = route.request().postDataJSON().yaml;
+    if (lastAnalysis.includes('extractors:'))
+      return route.fulfill({ json: { digest: 'correlated-digest', requests: 2, responses: 1, candidates: [] } });
     return route.fulfill({
       json: {
         digest: 'current-digest',
@@ -106,13 +108,15 @@ async function setup(context: BrowserContext) {
   await context.route('**/api/correlate/open-saved', route =>
     route.fulfill({ json: { editorUrl: 'http://127.0.0.1:4173/?correlateSaved=1' } }),
   );
-  return { count:()=>analysisCalls, analyzed: () => lastAnalysis, applied: () => lastApply };
+  return { count: () => analysisCalls, analyzed: () => lastAnalysis, applied: () => lastApply };
 }
 async function openCorrelate(page: Page) {
   const pending = page.waitForEvent('popup');
   await page.getByRole('button', { name: 'Correlate', exact: true }).click();
   const tab = await pending;
   await expect(tab).toHaveURL(/\/correlate/);
+  await expect(tab.getByLabel('Select candidate 1')).toHaveCount(0);
+  await tab.getByRole('button', { name: 'Analyze', exact: true }).click();
   await expect(tab.getByLabel('Select candidate 1')).toBeVisible();
   return tab;
 }
@@ -158,6 +162,11 @@ test('Correlate analyzes the current script, applies selected rows, saves and up
     .getByRole('button', { name: 'Expand', exact: true })
     .click();
   await expect(tab.getByRole('button', { name: 'Save and return to Studio', exact: true })).toBeEnabled();
+  await tab.getByRole('button', { name: 'Analyze', exact: true }).click();
+  await expect(tab.getByRole('status')).toContainText('Analysis complete');
+  await expect(tab.getByLabel('Select candidate 1')).toHaveCount(0);
+  await expect(tab.getByRole('tab', { name: /Correlated/ })).toBeVisible();
+  await expect(tab.getByRole('button', { name: 'Save and return to Studio', exact: true })).toBeEnabled();
   const closed = tab.waitForEvent('close');
   await tab.getByRole('button', { name: 'Save and return to Studio', exact: true }).click();
   await closed;
@@ -186,6 +195,8 @@ test('Clear resets the workbench and importing another script leaves the source 
   await tab
     .locator('input[type="file"]')
     .setInputFiles({ name: 'other.yaml', mimeType: 'text/yaml', buffer: Buffer.from(live) });
+  await expect(tab.getByLabel('Select candidate 1')).toHaveCount(0);
+  await tab.getByRole('button', { name: 'Analyze', exact: true }).click();
   await expect(tab.getByLabel('Select candidate 1')).toBeVisible();
   await expect(tab.getByRole('button', { name: 'Save and open in Studio', exact: true })).toBeDisabled();
   await tab.getByLabel('Select candidate 1').check();
@@ -248,22 +259,27 @@ test('Value shows the captured value and later uses scroll after five visible en
   await tab.close();
 });
 
-test('loading from Studio or a file waits for Analyze and the right panel is wider',async({page,context})=>{
- const state=await setup(context);await page.goto('/');
- const pending=page.waitForEvent('popup');await page.getByRole('button',{name:'Correlate',exact:true}).click();
- const tab=await pending;
- await expect(tab.getByText('original.yaml',{exact:true})).toBeVisible();
- await expect(tab.getByRole('button',{name:'Analyze',exact:true})).toBeEnabled();
- expect(state.count()).toBe(0);
- await expect(tab.getByLabel('Select candidate 1')).toHaveCount(0);
- await tab.getByRole('button',{name:'Analyze',exact:true}).click();
- await expect(tab.getByLabel('Select candidate 1')).toBeVisible();expect(state.count()).toBe(1);
- await tab.locator('input[type="file"]').setInputFiles({name:'second.yaml',mimeType:'text/yaml',buffer:Buffer.from(live)});
- await expect(tab.getByText('second.yaml',{exact:true})).toBeVisible();
- expect(state.count()).toBe(1);
- await expect(tab.getByLabel('Select candidate 1')).toHaveCount(0);
- const left=await tab.getByRole('region',{name:'Correlation script'}).boundingBox();
- const right=await tab.getByRole('region',{name:'Correlation candidates'}).boundingBox();
- expect(right!.width).toBeGreaterThan(left!.width*2);
- await tab.close();
+test('loading from Studio or a file waits for Analyze and the right panel is wider', async ({ page, context }) => {
+  const state = await setup(context);
+  await page.goto('/');
+  const pending = page.waitForEvent('popup');
+  await page.getByRole('button', { name: 'Correlate', exact: true }).click();
+  const tab = await pending;
+  await expect(tab.getByText('original.yaml', { exact: true })).toBeVisible();
+  await expect(tab.getByRole('button', { name: 'Analyze', exact: true })).toBeEnabled();
+  expect(state.count()).toBe(0);
+  await expect(tab.getByLabel('Select candidate 1')).toHaveCount(0);
+  await tab.getByRole('button', { name: 'Analyze', exact: true }).click();
+  await expect(tab.getByLabel('Select candidate 1')).toBeVisible();
+  expect(state.count()).toBe(1);
+  await tab
+    .locator('input[type="file"]')
+    .setInputFiles({ name: 'second.yaml', mimeType: 'text/yaml', buffer: Buffer.from(live) });
+  await expect(tab.getByText('second.yaml', { exact: true })).toBeVisible();
+  expect(state.count()).toBe(1);
+  await expect(tab.getByLabel('Select candidate 1')).toHaveCount(0);
+  const left = await tab.getByRole('region', { name: 'Correlation script' }).boundingBox();
+  const right = await tab.getByRole('region', { name: 'Correlation candidates' }).boundingBox();
+  expect(right!.width).toBeGreaterThan(left!.width * 2);
+  await tab.close();
 });

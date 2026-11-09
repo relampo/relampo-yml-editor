@@ -141,8 +141,8 @@ export function CorrelateCandidates({
           <p className="p-8 text-center text-xs text-zinc-500">
             {rows === null
               ? es
-                ? 'Abre un script para analizar sus valores dinámicos.'
-                : 'Open a script to analyze its dynamic values.'
+                ? 'Abre un script y pulsa Analizar.'
+                : 'Load a script, then click Analyze.'
               : es
                 ? 'No se encontraron candidatos.'
                 : 'No candidates found.'}
