@@ -89,3 +89,12 @@ it('provides New Studio beside Recorder without replacing New document', () => {
   expect(onNewStudio).toHaveBeenCalledOnce();
   expect(screen.getByRole('button', { name: 'New' })).toBeInTheDocument();
 });
+it('places Correlate immediately after Recorder and before New Studio', () => {
+  const onCorrelate = vi.fn();
+  renderHeader({ onSelectProtocol: vi.fn(), onCorrelate, correlateEnabled: true, onNewStudio: vi.fn() });
+  const button = screen.getByRole('button', { name: 'Correlate' });
+  expect(button.previousElementSibling).toBe(screen.getByRole('button', { name: 'Recorder' }));
+  expect(button.nextElementSibling).toBe(screen.getByRole('button', { name: 'New Studio' }));
+  fireEvent.click(button);
+  expect(onCorrelate).toHaveBeenCalledOnce();
+});

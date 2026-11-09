@@ -1,3 +1,4 @@
+import { CorrelatePage } from './components/correlate/CorrelatePage';
 import { HTTPRecorderControlPage } from './components/recorder/HTTPRecorderControlPage';
 import { HTTPRecorderPage } from './components/recorder/HTTPRecorderPage';
 import { GRPCRecorderPage } from './components/grpc/GRPCRecorderPage';
@@ -16,7 +17,9 @@ export default function AppYAMLStandalone() {
       <YAMLProvider>
         <div className="h-screen w-screen overflow-hidden bg-[#0a0a0a]">
           <GRPCSchemaProvider>
-            {window.location.pathname.replace(/\/$/, '') === '/recorder/grpc' ? (
+            {window.location.pathname.replace(/\/$/, '') === '/correlate' ? (
+              <CorrelatePage />
+            ) : window.location.pathname.replace(/\/$/, '') === '/recorder/grpc' ? (
               <GRPCRecorderPage />
             ) : window.location.pathname.replace(/\/$/, '') === '/recorder/http/control' ? (
               <HTTPRecorderControlPage />

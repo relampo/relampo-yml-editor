@@ -61,6 +61,7 @@ export function useYamlDocumentLifecycle({
   const [runViewEnabled, setRunViewEnabled] = useState(RUN_VIEW_FORCED);
   const [multiScenarioRunEnabled, setMultiScenarioRunEnabled] = useState(false);
   const [grpcAuthoringEnabled, setGrpcAuthoringEnabled] = useState(false);
+  const [correlateEnabled, setCorrelateEnabled] = useState(false);
   const [httpRecorderEnabled, setHttpRecorderEnabled] = useState(false);
   const [grpcRecorderTabsEnabled, setGrpcRecorderTabsEnabled] = useState(false);
   const [grpcBrowserRecordingEnabled, setGrpcBrowserRecordingEnabled] = useState(false);
@@ -120,6 +121,7 @@ export function useYamlDocumentLifecycle({
         setMultiScenarioRunEnabled(studioInfo.capabilities?.multiScenarioRun === true);
         setDataSourceFileBrowseEnabled(studioInfo.capabilities?.dataSourceFiles === true);
         setGrpcAuthoringEnabled(studioInfo.capabilities?.grpcAuthoring === true);
+        setCorrelateEnabled(studioInfo.capabilities?.correlate === true);
         setHttpRecorderEnabled(studioInfo.capabilities?.httpRecorder === true);
         setGrpcRecorderTabsEnabled(studioInfo.capabilities?.grpcRecorderTabs === true);
         setGrpcBrowserRecordingEnabled(studioInfo.capabilities?.grpcBrowserRecording === true);
@@ -207,6 +209,7 @@ export function useYamlDocumentLifecycle({
     grpcAuthoringEnabled,
     grpcRecorderTabsEnabled,
     httpRecorderEnabled,
+    correlateEnabled,
     grpcBrowserRecordingEnabled,
     defaultViewMode,
   };

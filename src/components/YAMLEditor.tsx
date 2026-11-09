@@ -1,3 +1,5 @@
+import { useCorrelateSource } from './correlate/useCorrelateSource';
+import { saveActiveDraft } from '../utils/yamlDraftStorage';
 import { openGRPCRecorderTab, openHTTPRecorderTab, openNewStudioTab } from '../utils/recorderTabs';
 import { GRPCWorkbench } from './grpc/GRPCWorkbench';
 import { ProtocolSetupDialog } from './protocols/ProtocolSetupDialog';
@@ -112,6 +114,7 @@ export function YAMLEditor() {
     grpcAuthoringEnabled,
     grpcRecorderTabsEnabled,
     httpRecorderEnabled,
+    correlateEnabled,
     grpcBrowserRecordingEnabled,
     defaultViewMode,
   } = useYamlDocumentLifecycle({
@@ -265,6 +268,25 @@ export function YAMLEditor() {
     });
   };
 
+  const openCorrelate = useCorrelateSource(
+    () => ({ yaml: retrieveYamlForSaving(), fileName: currentFileName, revision: editRevisionRef.current }),
+    async (yaml, name) => {
+      // The correlated result is now this tab's document, including after reload.
+      const address = new URL(window.location.href);
+      if (!address.searchParams.has('editor')) {
+        address.searchParams.set('editor', crypto.randomUUID());
+        window.history.replaceState(window.history.state, '', address.pathname + address.search);
+      }
+      handleCodeChange(yaml);
+      setCurrentFileName(name);
+      setHasDocumentActivity(true);
+      setViewMode('tree');
+      await saveActiveDraft({ yaml, fileName: name, updatedAt: new Date().toISOString() });
+    },
+    language,
+    setError,
+  );
+
   const handleNewConfirm = () => {
     resetDocument();
     resetIdentityForNewDocument();
@@ -285,6 +307,8 @@ export function YAMLEditor() {
       {isDragOver && <YAMLEditorDragOverlay language={language} />}
 
       <YAMLEditorHeader
+        onCorrelate={openCorrelate}
+        correlateEnabled={correlateEnabled}
         onNewStudio={() => {
           if (!openNewStudioTab(language))
             setError(

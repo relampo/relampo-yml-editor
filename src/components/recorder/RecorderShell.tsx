@@ -3,11 +3,15 @@ import { ArrowLeft, CircleDot, Globe, Zap } from 'lucide-react';
 import { openStudioEditorTab } from '../../utils/recorderTabs';
 export function RecorderShell({
   children,
+  title,
+  onGoToStudio,
   language,
   setLanguage,
   onError,
 }: {
   children: ReactNode;
+  title?: ReactNode;
+  onGoToStudio?: () => void;
   language: string;
   setLanguage: (language: 'en' | 'es') => void;
   onError: (message: string) => void;
@@ -23,9 +27,13 @@ export function RecorderShell({
           <p className="text-sm font-black text-white">RELAMPO</p>
           <span className="mx-2 h-4 border-l border-white/10" />
           <h1 className="flex items-center gap-2 text-xs font-medium">
-            <CircleDot className="h-3 w-3 text-red-400" />
-            <Globe className="h-3.5 w-3.5 text-emerald-300" />
-            HTTP/HTTPS Recorder
+            {title ?? (
+              <>
+                <CircleDot className="h-3 w-3 text-red-400" />
+                <Globe className="h-3.5 w-3.5 text-emerald-300" />
+                HTTP/HTTPS Recorder
+              </>
+            )}
           </h1>
         </div>
         <div className="flex items-center gap-4">
@@ -33,6 +41,10 @@ export function RecorderShell({
             type="button"
             className="flex items-center gap-2 rounded border border-white/10 px-2 py-1 text-xs hover:bg-white/5"
             onClick={() => {
+              if (onGoToStudio) {
+                onGoToStudio();
+                return;
+              }
               if (!openStudioEditorTab())
                 onError(es ? 'Permite abrir Studio en otra pestaña.' : 'Allow opening Studio in another tab.');
             }}

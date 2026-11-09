@@ -161,6 +161,7 @@ interface StudioInitialScript {
 // Optional studio features the backend advertises so the editor only shows UI
 // it supports. Absent on older studio builds, so every flag defaults to false.
 interface StudioCapabilities {
+  correlate?: boolean;
   httpRecorder?: boolean;
   grpcAuthoring?: boolean;
   grpcRecorderTabs?: boolean;
@@ -220,6 +221,7 @@ export async function probeStudio(): Promise<StudioInfo | null> {
       body.capabilities && typeof body.capabilities === 'object'
         ? {
             ...(componentConfiguration ? { componentConfiguration } : {}),
+            ...(body.capabilities.correlate === true ? { correlate: true } : {}),
             loadRun: body.capabilities.loadRun === true,
             ...(body.capabilities.httpRecorder === true ? { httpRecorder: true } : {}),
             ...(body.capabilities.grpcAuthoring === true ? { grpcAuthoring: true } : {}),
