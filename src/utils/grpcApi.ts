@@ -46,6 +46,7 @@ export interface GRPCImported {
   descriptorPath: string;
 }
 export interface GRPCGenerated {
+  privateEvidence?: boolean;
   id: string;
   yaml: string;
   descriptorPath?: string;
@@ -75,6 +76,11 @@ export function grpcBundleURL(id: string): string {
 }
 
 export interface GRPCBrowserRecording {
+  captureSupported?: boolean;
+  recordingPayloads?: boolean;
+  capturedCalls?: number;
+  pendingCalls?: number;
+  captureWarning?: string;
   active: boolean;
   applicationUrl?: string;
   proxyAddress?: string;

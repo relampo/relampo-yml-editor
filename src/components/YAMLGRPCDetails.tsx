@@ -99,6 +99,7 @@ export function YAMLGRPCDetails({ node, onNodeUpdate }: NodeDetailProps) {
       <section className="space-y-5">
         <h4 className="text-sm font-semibold text-cyan-300">gRPC Defaults</h4>
         {field('Target', 'target', 'host:port')}
+        {field('Transport', 'transport', 'grpc or grpc_web')}
         {field('Protoset', 'protoset', './api/service.protoset')}
         {field('Timeout', 'timeout', '30s')}
         <label className="flex gap-2 text-xs text-zinc-300">
@@ -159,6 +160,7 @@ export function YAMLGRPCDetails({ node, onNodeUpdate }: NodeDetailProps) {
                 <div className="col-span-8">{field('RPC method', 'method', '/package.Service/Method')}</div>
               </div>
               <p className="text-xs text-zinc-500">gRPC · {data.stream ? 'Streaming' : 'Unary'} · Protobuf</p>
+              {field('Transport', 'transport', 'Inherits grpc_defaults.transport')}
               {field('Protoset', 'protoset', 'Inherits grpc_defaults.protoset or reflection')}
               <div className="grid grid-cols-2 gap-3">
                 {field('Timeout', 'timeout', '30s')}

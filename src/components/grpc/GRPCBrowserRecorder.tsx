@@ -1,6 +1,13 @@
+import { load } from 'js-yaml';
 import { useEffect, useRef, useState } from 'react';
 import { ArrowRight, Download, Globe, Square } from 'lucide-react';
-import { grpcRequest, grpcBrowserCAURL, type GRPCBrowserRecording } from '../../utils/grpcApi';
+import {
+  grpcRequest,
+  grpcBrowserCAURL,
+  type GRPCBrowserRecording,
+  type GRPCImported,
+  type GRPCGenerated,
+} from '../../utils/grpcApi';
 
 const empty: GRPCBrowserRecording = {
   active: false,
@@ -20,14 +27,22 @@ export function GRPCBrowserRecorder({
   onDiscover,
   onImport,
   onActiveChange,
+  onGenerated,
   language = 'en',
 }: {
   onDiscover: () => void;
   onImport: () => void;
   onActiveChange?: (active: boolean) => void;
+  onGenerated?: (project: GRPCGenerated | null) => void;
   language?: string;
 }) {
   const [state, setState] = useState<GRPCBrowserRecording>(empty);
+  const [contract, setContract] = useState<GRPCImported | null>(null);
+  const [contractNames, setContractNames] = useState('');
+  const [preview, setPreview] = useState<{ name: string; message?: unknown; response?: unknown; metadata?: unknown }[]>(
+    [],
+  );
+  const [selectedCall, setSelectedCall] = useState(0);
   const [applicationURL, setApplicationURL] = useState('');
   const [listen, setListen] = useState('127.0.0.1:0');
   const [preparingFirefox, setPreparingFirefox] = useState(false);
@@ -60,7 +75,7 @@ export function GRPCBrowserRecorder({
     };
   }, []);
   useEffect(() => {
-    if (!state.active) return;
+    if (!state.active && !state.pendingCalls) return;
     let pending = false;
     const controller = new AbortController();
     const timer = setInterval(() => {
@@ -81,7 +96,7 @@ export function GRPCBrowserRecorder({
       clearInterval(timer);
       controller.abort();
     };
-  }, [state.active]);
+  }, [state.active, state.pendingCalls]);
   async function run(task: (signal: AbortSignal) => Promise<void>) {
     if (busy) return;
     action.current?.abort();
@@ -97,6 +112,43 @@ export function GRPCBrowserRecorder({
     } finally {
       if (mounted.current) setBusy(false);
     }
+  }
+  async function importContract(files: FileList | null) {
+    if (!files?.length) return;
+    const list = Array.from(files);
+    await run(async signal => {
+      if (list.reduce((sum, file) => sum + file.size, 0) > 16 * 1024 * 1024)
+        throw Error('Contracts must be smaller than 16 MB.');
+      const read = (file: File, binary = false) =>
+        new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onerror = () => reject(Error('Could not read contract'));
+          reader.onload = () => resolve(binary ? String(reader.result).split(',')[1] : String(reader.result));
+          if (binary) reader.readAsDataURL(file);
+          else reader.readAsText(file);
+        });
+      let source: { protoset: string } | { files: Record<string, string>; entrypoints: string[] };
+      if (list.length === 1 && list[0].name.endsWith('.protoset')) source = { protoset: await read(list[0], true) };
+      else {
+        const sources: Record<string, string> = {};
+        for (const file of list) {
+          if (!file.name.endsWith('.proto')) continue;
+          const name = file.webkitRelativePath ? file.webkitRelativePath.split('/').slice(1).join('/') : file.name;
+          if (sources[name] !== undefined)
+            throw Error('Duplicate proto filename. Import the folder to preserve paths.');
+          sources[name] = await read(file);
+        }
+        if (!Object.keys(sources).length) throw Error('Select .proto files or a single protoset.');
+        source = { files: sources, entrypoints: Object.keys(sources) };
+      }
+      const imported = await grpcRequest<GRPCImported>('schema', { source }, signal);
+      if (mounted.current) {
+        setContract(imported);
+        setContractNames(list.map(file => file.name).join(', '));
+        setPreview([]);
+        onGenerated?.(null);
+      }
+    });
   }
   const observed = state.totalRequests > 0;
   const heading =
@@ -158,10 +210,14 @@ export function GRPCBrowserRecorder({
               run(async signal => {
                 const value = await grpcRequest<GRPCBrowserRecording>(
                   'browser-recordings',
-                  { applicationUrl: applicationURL, listen },
+                  { applicationUrl: applicationURL, listen, ...(state.captureSupported ? { capture: true } : {}) },
                   signal,
                 );
-                if (mounted.current) setState(value);
+                if (mounted.current) {
+                  setState(value);
+                  setPreview([]);
+                  onGenerated?.(null);
+                }
               })
             }
           >
@@ -298,7 +354,7 @@ export function GRPCBrowserRecorder({
               )}
             </p>
           )}
-          {state.detected === 'grpc_web' && (
+          {state.detected === 'grpc_web' && !state.recordingPayloads && (
             <p className="text-xs text-zinc-400">
               {text(
                 'These requests identify gRPC-Web traffic. gRPC-Web script generation is not available yet. To test the native gRPC service, use Discovery or import its .proto contract.',
@@ -327,6 +383,139 @@ export function GRPCBrowserRecorder({
             {text('Observed requests', 'Peticiones observadas')}: {state.totalRequests}
           </p>
         </div>
+      )}
+      {state.captureSupported && (
+        <section
+          className="space-y-3 rounded-md border border-white/10 bg-[#111111] p-4"
+          aria-label="gRPC-Web recording project"
+        >
+          <div className="flex flex-wrap items-center gap-3">
+            <label className={button + ' cursor-pointer'}>
+              {text('Attach recording contract', 'Adjuntar contrato de la grabación')}
+              <input
+                type="file"
+                aria-label="Recording contract"
+                className="sr-only"
+                multiple
+                accept=".proto,.protoset"
+                disabled={busy}
+                onChange={event => {
+                  const files = event.target.files;
+                  void importContract(files);
+                  event.target.value = '';
+                }}
+              />
+            </label>
+            <label className={button + ' cursor-pointer'}>
+              {text('Contract folder', 'Carpeta del contrato')}
+              <input
+                type="file"
+                aria-label="Recording contract folder"
+                className="sr-only"
+                multiple
+                {...{ webkitdirectory: '' }}
+                disabled={busy}
+                onChange={event => {
+                  const files = event.target.files;
+                  void importContract(files);
+                  event.target.value = '';
+                }}
+              />
+            </label>
+            <span className="text-xs text-cyan-200">{contractNames}</span>
+          </div>
+          <p className="text-xs text-zinc-400">
+            {text(
+              'Record the flow, stop, then generate using the .proto files (including imports) or a protoset. You can attach the contract before or after recording. Replay uses the observed HTTPS address; a native gRPC port is not required.',
+              'Graba el flujo, detén y genera usando los archivos .proto con sus dependencias o un protoset. Puedes adjuntar el contrato antes o después de grabar. La reproducción utiliza la dirección HTTPS observada; no necesita un puerto gRPC nativo.',
+            )}
+          </p>
+          <p className="text-xs text-zinc-300">
+            {text('Captured calls', 'Llamadas capturadas')}: {state.capturedCalls ?? 0} ·{' '}
+            {text('In progress', 'En curso')}: {state.pendingCalls ?? 0}
+          </p>
+          {state.captureWarning && (
+            <p
+              role="alert"
+              className="text-xs text-amber-300"
+            >
+              {state.captureWarning}
+            </p>
+          )}
+          <button
+            type="button"
+            className={button + ' border-yellow-400/30 text-yellow-400'}
+            disabled={
+              busy ||
+              state.active ||
+              !contract ||
+              !state.recordingPayloads ||
+              !state.capturedCalls ||
+              Boolean(state.pendingCalls) ||
+              Boolean(state.captureWarning)
+            }
+            onClick={() =>
+              run(async signal => {
+                const project = await grpcRequest<GRPCGenerated>(
+                  'browser-recordings/generate',
+                  { schemaId: contract?.id },
+                  signal,
+                );
+                if (!mounted.current) return;
+                const document = load(project.yaml) as {
+                  scenarios?: {
+                    steps?: { grpc?: { name: string; message?: unknown; response?: unknown; metadata?: unknown } }[];
+                  }[];
+                };
+                setPreview(
+                  document.scenarios?.flatMap(
+                    scenario => scenario.steps?.flatMap(step => (step.grpc ? [step.grpc] : [])) ?? [],
+                  ) ?? [],
+                );
+                setSelectedCall(0);
+                onGenerated?.(project);
+              })
+            }
+          >
+            {text('Generate recorded scenario', 'Generar escenario grabado')}
+          </button>
+        </section>
+      )}
+      {preview.length > 0 && (
+        <section
+          className="grid gap-3 md:grid-cols-[minmax(160px,1fr)_3fr]"
+          aria-label="Captured messages"
+        >
+          <div className="max-h-96 overflow-auto rounded border border-white/10">
+            {preview.map((call, index) => (
+              <button
+                type="button"
+                key={index}
+                className={
+                  'block w-full px-3 py-2 text-left text-xs ' +
+                  (selectedCall === index ? 'bg-cyan-400/10 text-cyan-200' : 'text-zinc-300 hover:bg-white/5')
+                }
+                onClick={() => setSelectedCall(index)}
+              >
+                {index + 1}. {call.name.split('/').pop()}
+              </button>
+            ))}
+          </div>
+          <div className="space-y-2 rounded border border-white/10 p-3 text-xs text-zinc-300">
+            <h4 className="text-cyan-200">{text('Request', 'Petición')}</h4>
+            <pre className="max-h-52 overflow-auto whitespace-pre-wrap">
+              {JSON.stringify(
+                { metadata: preview[selectedCall]?.metadata, message: preview[selectedCall]?.message },
+                null,
+                2,
+              )}
+            </pre>
+            <h4 className="text-cyan-200">{text('Recorded response', 'Respuesta grabada')}</h4>
+            <pre className="max-h-64 overflow-auto whitespace-pre-wrap">
+              {JSON.stringify(preview[selectedCall]?.response, null, 2)}
+            </pre>
+          </div>
+        </section>
       )}
       <div className="space-y-3 rounded-md border border-white/10 bg-[#111111] p-4">
         <p className="text-xs text-zinc-400">
@@ -359,8 +548,12 @@ export function GRPCBrowserRecorder({
           <table className="w-full text-left text-xs">
             <caption className="px-3 py-2 text-left text-zinc-500">
               {text(
-                'Latest observed requests. Bodies, headers and URL query values are not stored by this protocol detector.',
-                'Últimas peticiones observadas. El detector no almacena cuerpos, cabeceras ni valores de consulta de las URL.',
+                state.recordingPayloads
+                  ? 'Observed traffic. Only protobuf gRPC-Web calls retain bounded message captures; attach a contract to decode them. Other HTTP bodies are not stored.'
+                  : 'Latest observed requests. Bodies, headers and URL query values are not stored by this protocol detector.',
+                state.recordingPayloads
+                  ? 'Tráfico observado. Solo las llamadas gRPC-Web protobuf conservan mensajes con límites de captura; adjunta un contrato para decodificarlos. No se guardan cuerpos de otras peticiones HTTP.'
+                  : 'Últimas peticiones observadas. El detector no almacena cuerpos, cabeceras ni valores de consulta de las URL.',
               )}
             </caption>
             <thead className="bg-[#111111] text-zinc-500">
