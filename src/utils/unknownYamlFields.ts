@@ -76,6 +76,8 @@ function dataScope(
     case 'sql':
       return { scope: 'sql', prefix: path };
     case 'grpc':
+      // The gRPC step node path points at the step; its fields live under `grpc:`.
+      return { scope: node.type, prefix: [...path, 'grpc'] };
     case 'grpc_defaults':
       return { scope: node.type, prefix: path };
     case 'http_defaults':

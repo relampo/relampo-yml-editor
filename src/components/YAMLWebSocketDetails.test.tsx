@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render as baseRender, screen, fireEvent } from '@testing-library/react';
-import type { ReactElement } from 'react';
+import { useState, type ReactElement } from 'react';
 import { LanguageProvider } from '../contexts/LanguageContext';
 const render = (ui: ReactElement) => baseRender(<LanguageProvider>{ui}</LanguageProvider>);
 import { YAMLWebSocketDetails } from './YAMLWebSocketDetails';
@@ -68,4 +68,41 @@ it('keeps invalid JSON drafts out of executable YAML', () => {
   fireEvent.blur(payload);
   expect(update).not.toHaveBeenCalled();
   expect(screen.getByRole('alert')).toHaveTextContent('Check JSON syntax');
+});
+
+it('keeps the chosen match operator when the JSON field changes', () => {
+  const update = vi.fn();
+  const contains = {
+    ...node,
+    data: { ...node.data, actions: [{ receive: { type: 'text', match: { contains: 'ok' } } }] },
+  } as YAMLNode;
+  render(
+    <YAMLWebSocketDetails
+      node={contains}
+      onNodeUpdate={update}
+    />,
+  );
+  fireEvent.click(screen.getByRole('tab', { name: 'Messages' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Edit message 1' }));
+  fireEvent.change(screen.getByLabelText('JSON field 1'), { target: { value: '$.type' } });
+  const actions = update.mock.lastCall?.[1].actions;
+  expect(actions[0].receive.match).toEqual({ contains: 'ok', jsonpath: '$.type' });
+});
+
+it('lets the user type a comma-separated subprotocol list', () => {
+  function Harness() {
+    const [current, setCurrent] = useState(node);
+    return (
+      <YAMLWebSocketDetails
+        node={current}
+        onNodeUpdate={(_, data) => setCurrent({ ...current, data })}
+      />
+    );
+  }
+  render(<Harness />);
+  const input = screen.getByLabelText('Subprotocols');
+  fireEvent.change(input, { target: { value: 'graphql-ws,' } });
+  expect(input).toHaveValue('graphql-ws,');
+  fireEvent.change(input, { target: { value: 'graphql-ws, chat' } });
+  expect(input).toHaveValue('graphql-ws, chat');
 });

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ArrowUpRight, ArrowDownLeft, X, Plus, Clock } from 'lucide-react';
-import { Field, Choice } from './yaml-node-details/WebSocketFields';
+import { Field, Choice, ListField } from './yaml-node-details/WebSocketFields';
 import { BodyTextarea } from './fields/BodyTextarea';
 import { RequestUrlRow } from './fields/RequestUrlRow';
 import type { NodeDetailProps } from './yaml-node-details/types';
@@ -124,6 +124,7 @@ function Payload({ value, onChange, index }: { value: Data; onChange: (v: Data) 
             if (variable) {
               const next = draft + '{{' + variable + '}}';
               setDraft(next);
+              onChange({ ...value, [binary ? 'data_base64' : 'data']: next });
             }
           }}
         >
@@ -156,7 +157,7 @@ function Receive({ value, onChange, index }: { value: Data; onChange: (v: Data) 
     /* non JSON */
   }
   const updateMatch = (fields: Data) =>
-    onChange({ ...value, match: { ...match, equals: match.equals ?? '', ...fields } });
+    onChange({ ...value, match: { [operator]: match[operator] ?? '', ...match, ...fields } });
   const extractors = list(value.extractors);
   const assertions = list(value.assertions);
   return (
@@ -482,6 +483,14 @@ export function YAMLWebSocketDetails({ node, onNodeUpdate, onSplit }: NodeDetail
               ['close', 'Close named connection'],
             ]}
             onChange={action => {
+              const hasMessages =
+                actions.length > 0 || ['send', 'receive', 'close', 'wait'].some(key => data[key] !== undefined);
+              if (
+                action !== mode &&
+                hasMessages &&
+                !window.confirm('Changing the connection mode removes the current messages. Continue?')
+              )
+                return;
               const next = { ...data };
               delete next.actions;
               delete next.action;
@@ -546,18 +555,10 @@ export function YAMLWebSocketDetails({ node, onNodeUpdate, onSplit }: NodeDetail
                   ? 'Edit handshake headers in the Headers element under this WebSocket in the tree.'
                   : 'Use Add → Headers on this WebSocket in the tree to configure handshake headers.'}
               </p>
-              <Field
+              <ListField
                 label="Subprotocols"
-                value={Array.isArray(data.subprotocols) ? data.subprotocols.join(', ') : ''}
-                onChange={v =>
-                  set(
-                    'subprotocols',
-                    v
-                      .split(',')
-                      .map(s => s.trim())
-                      .filter(Boolean),
-                  )
-                }
+                value={data.subprotocols}
+                onChange={subprotocols => set('subprotocols', subprotocols)}
               />
               <Field
                 label="Expected subprotocol"

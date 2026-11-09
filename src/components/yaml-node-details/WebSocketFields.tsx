@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
@@ -26,6 +27,34 @@ export function Field({
         onChange={e => onChange(e.target.value)}
       />
     </label>
+  );
+}
+const splitList = (text: string) =>
+  text
+    .split(',')
+    .map(item => item.trim())
+    .filter(Boolean);
+/** Comma-separated list input: keeps the typed text (for example a trailing comma) while it matches the stored list. */
+export function ListField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: unknown;
+  onChange: (value: string[]) => void;
+}) {
+  const stored = Array.isArray(value) ? value.map(String).join(', ') : '';
+  const [draft, setDraft] = useState(stored);
+  return (
+    <Field
+      label={label}
+      value={splitList(draft).join(', ') === stored ? draft : stored}
+      onChange={text => {
+        setDraft(text);
+        onChange(splitList(text));
+      }}
+    />
   );
 }
 export function Choice({

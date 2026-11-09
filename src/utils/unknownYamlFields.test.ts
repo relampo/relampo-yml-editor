@@ -4,6 +4,19 @@ import { parseYAMLToTree, treeToYAML } from './yamlParser';
 import { collectUnknownFieldPaths } from './unknownYamlFields';
 
 describe('unknown YAML field warnings', () => {
+  it('reports unknown gRPC fields under the grpc key', () => {
+    const tree = parseYAMLToTree(`
+scenarios:
+  - name: rpc
+    steps:
+      - grpc:
+          method: /practice.Shop/Login
+          not_a_grpc_field: true
+`)!;
+
+    expect(collectUnknownFieldPaths(tree)).toEqual(['scenarios[0].steps[0].grpc.not_a_grpc_field']);
+  });
+
   it('does not report recorder metadata at test scope', () => {
     const tree = parseYAMLToTree(`
 test:
@@ -162,6 +175,8 @@ scenarios:
 });
 
 it('RLP-802 recognizes saved Studio load profiles while warning about unrelated fields', () => {
-  const tree = parseYAMLToTree('scenarios:\n  - name: profiles\n    load: {type: constant, users: 1, iterations: 1}\n    x-studio-load-profiles: {linear: {type: ramp, start_users: 1, end_users: 2}}\n    future_scenario: true\n    steps: [{get: /}]\n');
+  const tree = parseYAMLToTree(
+    'scenarios:\n  - name: profiles\n    load: {type: constant, users: 1, iterations: 1}\n    x-studio-load-profiles: {linear: {type: ramp, start_users: 1, end_users: 2}}\n    future_scenario: true\n    steps: [{get: /}]\n',
+  );
   expect(collectUnknownFieldPaths(tree)).toEqual(['scenarios[0].future_scenario']);
 });
