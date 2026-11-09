@@ -16,6 +16,7 @@ import {
   Layers,
   Paperclip,
   Play,
+  PlugZap,
   Repeat,
   RotateCcw,
   Scale,
@@ -33,6 +34,7 @@ export type YAMLAddableNodeType =
   | 'scenario'
   | 'request'
   | 'sql'
+  | 'websocket'
   | 'group'
   | 'transaction'
   | 'parallel'
@@ -80,9 +82,15 @@ function filterAddableItemsByContainment(parentType: YAMLNodeType, items: Addabl
 export function getAddableItems(
   parentType: YAMLNodeType,
   t: (key: string) => string,
-  _parentNode?: Pick<YAMLNode, 'children'>,
+  _parentNode?: Pick<YAMLNode, 'children' | 'data'>,
 ): AddableItem[] {
   const iconClass = 'w-4 h-4';
+  if (parentType === 'websocket') {
+    if (_parentNode?.data?.action && _parentNode.data.action !== 'connect') return [];
+    if (_parentNode?.children?.some(child => child.type === 'headers')) return [];
+    return [{ type: 'headers', label: t('yamlEditor.shell.addable.headers'),
+      description: t('yamlEditor.shell.addable.headersDesc'), icon: <Tag className={iconClass} />, color: 'text-red-500' }];
+  }
 
   if (parentType === 'root' || parentType === 'test') {
     return [
@@ -256,6 +264,13 @@ export function getAddableItems(
         color: 'text-emerald-400',
       },
       {
+        type: 'websocket',
+        label: 'WebSocket',
+        description: 'Connect, send and wait for live messages',
+        icon: <PlugZap className={iconClass} />,
+        color: 'text-violet-400',
+      },
+      {
         type: 'sql',
         label: t('yamlEditor.shell.addable.sqlRequest'),
         description: t('yamlEditor.shell.addable.sqlRequestDesc'),
@@ -336,6 +351,13 @@ export function getAddableItems(
         description: t('yamlEditor.shell.addable.httpRequestDesc'),
         icon: <Globe className={iconClass} />,
         color: 'text-emerald-400',
+      },
+      {
+        type: 'websocket',
+        label: 'WebSocket',
+        description: 'Connect, send and wait for live messages',
+        icon: <PlugZap className={iconClass} />,
+        color: 'text-violet-400',
       },
       {
         type: 'sql',

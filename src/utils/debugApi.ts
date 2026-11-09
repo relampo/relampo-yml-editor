@@ -1,3 +1,4 @@
+import type { WebSocketEventMetrics } from '../components/WebSocketMetrics';
 import {
   componentCapabilityError,
   parseComponentCapabilities,
@@ -60,7 +61,7 @@ interface EngineRedirectHop {
 }
 
 // Mirrors pkg/engine.Event JSON serialization.
-export interface EngineEvent {
+export interface EngineEvent extends WebSocketEventMetrics {
   protocol?: string;
   protocol_status?: string;
   stream_type?: string;

@@ -35,6 +35,7 @@ export interface YAMLNodeData {
   __scalarRetry?: boolean;
   __stepsInController?: boolean;
   action?: string;
+  actions?: YAMLValue;
   active_rules?: string[];
   aggressiveness?: string;
   allow_write?: boolean;
@@ -214,6 +215,7 @@ export type YAMLNodeType =
   | 'request'
   | 'sql'
   | 'grpc'
+  | 'websocket'
   | 'get'
   | 'post'
   | 'put'

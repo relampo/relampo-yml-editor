@@ -205,6 +205,7 @@ test('HTTP Recorder opens a tab, configures Firefox, records prefixes and opens 
   await recorder.getByRole('button', { name: 'Clear', exact: true }).click();
   await expect(recorder.getByRole('button', { name: 'https://app.example.test/login', exact: true })).toHaveCount(0);
   await expect(recorder.getByRole('region', { name: 'Request details' })).toContainText('Select a recorded request');
+  await controls.bringToFront();
   await expect(controls.getByText('No recording active', { exact: true })).toBeVisible();
   await expect(recorder.getByLabel('Base URL')).toHaveValue('https://app.example.test');
   await expect(recorder.getByLabel('Output YAML file')).toHaveValue('/private/tmp/recordings/booking.yaml');

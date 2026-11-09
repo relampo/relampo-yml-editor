@@ -44,6 +44,14 @@ const REQUEST_TYPES = new Set<YAMLNode['type']>([
   'options',
 ]);
 
+// Handshake headers serialize as one map, and belong only to connection steps.
+function acceptsWebSocketHeaders(parent: YAMLNode, incoming: YAMLNode[], movingId?: string): boolean {
+  if (parent.type !== 'websocket' || !incoming.some(node => node.type === 'headers')) return true;
+  if (parent.data?.action && parent.data.action !== 'connect') return false;
+  return incoming.filter(node => node.type === 'headers').length +
+    (parent.children?.filter(child => child.type === 'headers' && child.id !== movingId).length ?? 0) <= 1;
+}
+
 function ordinalAmong(siblings: YAMLNode[], index: number, predicate: (node: YAMLNode) => boolean): number {
   return siblings.slice(0, index + 1).filter(predicate).length - 1;
 }
@@ -77,6 +85,9 @@ function childPathFor(
   }
 
   if (parent.type === 'steps') return [...parentPath, index];
+
+  if (parent.type === 'websocket' && child.type === 'headers')
+    return [...parentPath, 'websocket', 'headers'];
 
   if (STEP_CONTAINER_TYPES.has(parent.type)) return [...parentPath, 'steps', index];
 
@@ -583,6 +594,7 @@ export function addNodeToTree(
   newNode: YAMLNode,
   reuseFallbackLoad = false,
 ): YAMLNode {
+  if (tree.id === parentId && !acceptsWebSocketHeaders(tree, [newNode])) return tree;
   if (tree.id === parentId) {
     const children = tree.children || [];
     if (newNode.type === 'scenario' && tree.type !== 'scenarios') return tree;
@@ -648,6 +660,7 @@ export function duplicateNodeInTree(tree: YAMLNode, nodeId: string, copySuffix: 
     const index = node.children.findIndex(child => child.id === nodeId);
     if (index !== -1) {
       if (!canContain(node.type, newNode.type)) return node;
+      if (!acceptsWebSocketHeaders(node, [newNode])) return node;
       const newChildren = [...node.children];
       newChildren.splice(index + 1, 0, prepareScenarioForInsertion(newNode, newChildren));
       return { ...node, children: newChildren };
@@ -669,6 +682,7 @@ export function insertNodesAfterTarget(tree: YAMLNode, targetId: string, newNode
   const index = tree.children.findIndex(child => child.id === targetId);
   if (index !== -1) {
     if (!newNodes.every(node => canContain(tree.type, node.type))) return tree;
+    if (!acceptsWebSocketHeaders(tree, newNodes)) return tree;
     const newChildren = [...tree.children];
     let position = index + 1;
     newNodes.forEach(node => {
@@ -855,6 +869,7 @@ export function moveNodeInTree(
   const destinationId = destinationParentId(tree, targetId, position);
   const destinationParent = destinationId ? findNodeById(tree, destinationId) : null;
   if (!canDrop(nodeToMove.type, targetNode.type, position, destinationParent?.type)) return tree;
+  if (destinationParent && !acceptsWebSocketHeaders(destinationParent, [nodeToMove], nodeId)) return tree;
 
   // `treeToObject` writes one `data_source:` key per scope, so a second
   // root-level data source would silently drop the first one on save.

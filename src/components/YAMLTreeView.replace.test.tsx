@@ -283,7 +283,7 @@ describe('YAMLTreeView replacement', () => {
 
     expect(screen.getByPlaceholderText('Search nodes...')).toHaveValue('');
     expect(screen.queryByLabelText('Replacement text')).not.toBeInTheDocument();
-    expect(screen.getByText('Token request')).toBeInTheDocument();
+    expect(screen.getByRole('treeitem', { name: /^\[1\]\s*Token request/ })).toBeInTheDocument();
   });
 
   it('blocks an empty replacement after an executed search', () => {
