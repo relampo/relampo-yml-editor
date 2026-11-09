@@ -1,3 +1,4 @@
+import { buildRequestNumbers } from './yaml-tree-view/requestNumbers';
 import { useSearchNavigation } from './yaml-tree-view/SearchNavigationContext';
 import { buildScopedSearch } from './yaml-tree-view/search';
 import type { SearchOccurrence } from './yaml-tree-view/searchOccurrences';
@@ -51,6 +52,7 @@ export function YAMLTreeView({
   searchResetSignal,
 }: YAMLTreeViewProps) {
   const { t } = useLanguage();
+  const requestNumbers = useMemo(() => buildRequestNumbers(tree), [tree]);
   const [currentReplaceMatchIndex, setCurrentReplaceMatchIndex] = useState(0);
   const [currentSearchMatchIndex, setCurrentSearchMatchIndex] = useState(0);
   const { match: focusedSearchMatch, setMatch: setFocusedSearchMatch } = useSearchNavigation();
@@ -337,6 +339,7 @@ export function YAMLTreeView({
         {tree ? (
           <YAMLTreeNode
             node={tree}
+            requestNumbers={requestNumbers}
             depth={0}
             parentType={undefined}
             isSelected={activeSelectedIds.includes(tree.id)}

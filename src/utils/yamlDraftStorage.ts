@@ -1,8 +1,13 @@
+import { studioEditorId } from './studioEditorSession';
 const YAML_DRAFT_DB_NAME = 'relampo-yaml-editor';
 export const YAML_DRAFT_STORE_NAME = 'drafts';
 export const ACTIVE_YAML_DRAFT_KEY = 'active';
 
 const YAML_DRAFT_DB_VERSION = 1;
+function activeDraftKey(): string {
+  const editor = studioEditorId();
+  return editor ? `${ACTIVE_YAML_DRAFT_KEY}:${editor}` : ACTIVE_YAML_DRAFT_KEY;
+}
 
 export type YAMLDraft = {
   yaml: string;
@@ -11,7 +16,7 @@ export type YAMLDraft = {
 };
 
 type YAMLDraftRecord = YAMLDraft & {
-  id: typeof ACTIVE_YAML_DRAFT_KEY;
+  id: string;
 };
 
 function getIndexedDB(): IDBFactory {
@@ -77,7 +82,7 @@ function runDraftTransaction<T>(
 
 export async function saveActiveDraft(draft: YAMLDraft): Promise<YAMLDraft> {
   const record: YAMLDraftRecord = {
-    id: ACTIVE_YAML_DRAFT_KEY,
+    id: activeDraftKey(),
     yaml: draft.yaml,
     fileName: draft.fileName,
     updatedAt: draft.updatedAt,
@@ -88,9 +93,8 @@ export async function saveActiveDraft(draft: YAMLDraft): Promise<YAMLDraft> {
 }
 
 export async function getActiveDraft(): Promise<YAMLDraft | null> {
-  const record = await runDraftTransaction<YAMLDraftRecord | undefined>('readonly', store =>
-    store.get(ACTIVE_YAML_DRAFT_KEY),
-  );
+  const key = activeDraftKey();
+  const record = await runDraftTransaction<YAMLDraftRecord | undefined>('readonly', store => store.get(key));
 
   if (!record) return null;
   return {
@@ -101,5 +105,6 @@ export async function getActiveDraft(): Promise<YAMLDraft | null> {
 }
 
 export async function clearActiveDraft(): Promise<void> {
-  await runDraftTransaction('readwrite', store => store.delete(ACTIVE_YAML_DRAFT_KEY));
+  const key = activeDraftKey();
+  await runDraftTransaction('readwrite', store => store.delete(key));
 }

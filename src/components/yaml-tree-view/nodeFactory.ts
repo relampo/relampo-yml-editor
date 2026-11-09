@@ -54,6 +54,22 @@ export function createNodeByType(
         data: { url: '' },
         children: [],
       };
+    case 'websocket':
+      return {
+        id,
+        type: 'websocket',
+        name: 'WebSocket conversation',
+        data: {
+          url: 'wss://example.com/ws',
+          timeout: '30s',
+          actions: [
+            { send: { type: 'text', data: '{"action":"subscribe"}' } },
+            { receive: { type: 'text' } },
+            { close: { code: 1000 } },
+          ],
+        } as unknown as import('../../types/yaml').YAMLNodeData,
+        children: [],
+      };
     case 'sql':
       return {
         id,

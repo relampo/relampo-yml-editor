@@ -15,6 +15,10 @@ export interface YAMLResponseData {
 }
 
 export interface YAMLNodeData {
+  response_template?: { message_type: string; message: YAMLValue };
+  stream?: YAMLValue;
+  plaintext?: boolean;
+  tls?: YAMLValue;
   __allowTypeSelection?: boolean;
   __assertionsWrapper?: boolean;
   __controller?: boolean;
@@ -31,6 +35,7 @@ export interface YAMLNodeData {
   __scalarRetry?: boolean;
   __stepsInController?: boolean;
   action?: string;
+  actions?: YAMLValue;
   active_rules?: string[];
   aggressiveness?: string;
   allow_write?: boolean;
@@ -108,6 +113,13 @@ export interface YAMLNodeData {
   mean?: YAMLInputValue;
   metric?: string;
   method?: string;
+  metadata?: YAMLValue;
+  message?: YAMLValue;
+  payload_base64?: string;
+  protoset?: string;
+  reflection?: boolean;
+  expected_status?: string;
+  connection_scope?: string;
   mime?: string;
   mime_type?: string;
   min?: YAMLInputValue;
@@ -139,7 +151,7 @@ export interface YAMLNodeData {
   response?: YAMLResponseData;
   right_boundary?: string;
   run_until_stopped?: boolean;
-	 scenario_mode?: ScenarioMode;
+  scenario_mode?: ScenarioMode;
   script?: string;
   ssl_mode?: string;
   spark?: YAMLNodeData[];
@@ -193,6 +205,7 @@ export type YAMLNodeType =
   | 'variables'
   | 'data_source'
   | 'http_defaults'
+  | 'grpc_defaults'
   | 'scenarios'
   | 'scenario'
   | 'metrics'
@@ -201,6 +214,8 @@ export type YAMLNodeType =
   | 'step'
   | 'request'
   | 'sql'
+  | 'grpc'
+  | 'websocket'
   | 'get'
   | 'post'
   | 'put'

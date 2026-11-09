@@ -1,5 +1,7 @@
 import { UsageMetricsConsent } from './UsageMetricsConsent';
-import { ChevronDown, FilePlus, Save, Upload } from 'lucide-react';
+import { ChevronDown, FilePlus, Save, Upload, SquarePlus, Link2 } from 'lucide-react';
+import { ProtocolMenu } from './protocols/ProtocolMenu';
+import type { StudioProtocol } from '../utils/protocolProject';
 import { Button } from './ui/button';
 import {
   DropdownMenu,
@@ -11,6 +13,12 @@ import {
 } from './ui/dropdown-menu';
 
 interface YAMLEditorHeaderProps {
+  correlateEnabled?: boolean;
+  onCorrelate?: () => void;
+  onNewStudio?: () => void;
+  onSelectProtocol?: (protocol: StudioProtocol) => void;
+  grpcEnabled?: boolean;
+  httpEnabled?: boolean;
   language: string;
   setLanguage: (lang: 'en' | 'es') => void;
   t: (key: string) => string;
@@ -24,6 +32,12 @@ interface YAMLEditorHeaderProps {
 
 export function YAMLEditorHeader({
   language,
+  onSelectProtocol,
+  onNewStudio,
+  onCorrelate,
+  correlateEnabled = false,
+  grpcEnabled = false,
+  httpEnabled = false,
   setLanguage,
   t,
   isDocumentEmpty,
@@ -68,6 +82,40 @@ export function YAMLEditorHeader({
           <UsageMetricsConsent language={language} />
           {/* Action Buttons */}
           <div className="flex items-center gap-2">
+            {onSelectProtocol && (
+              <ProtocolMenu
+                language={language}
+                grpcEnabled={grpcEnabled}
+                httpEnabled={httpEnabled}
+                onSelect={onSelectProtocol}
+              />
+            )}
+            {onCorrelate && (
+              <Button
+                onClick={onCorrelate}
+                disabled={!correlateEnabled}
+                variant="outline"
+                size="sm"
+                className="border-white/10 bg-white/5 hover:bg-white/10 text-zinc-300 gap-2"
+              >
+                <Link2 className="w-4 h-4" />
+                Correlate
+              </Button>
+            )}
+            {onNewStudio && (
+              <Button
+                onClick={onNewStudio}
+                variant="outline"
+                size="sm"
+                title={
+                  language === 'es' ? 'Abrir otro editor en una pestaña nueva' : 'Open another editor in a new tab'
+                }
+                className="border-white/10 bg-white/5 hover:bg-white/10 text-zinc-300 gap-2"
+              >
+                <SquarePlus className="w-4 h-4" />
+                {language === 'es' ? 'Nuevo Studio' : 'New Studio'}
+              </Button>
+            )}
             {!isDocumentEmpty && (
               <Button
                 onClick={onNew}

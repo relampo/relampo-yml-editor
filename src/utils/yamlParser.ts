@@ -42,6 +42,7 @@ const ROOT_FIELDS = new Set([
   'data_source',
   'error_policy',
   'http_defaults',
+  'grpc_defaults',
   'scenarios',
   'metrics',
 ]);
@@ -160,6 +161,17 @@ function convertToTree(obj: any, _: string[] = [], defaultRootName?: string): YA
     });
   }
 
+  if (obj.grpc_defaults !== undefined) {
+    if (!isPlainRecord(obj.grpc_defaults)) throw new Error('grpc_defaults must be a mapping');
+    root.children!.push({
+      id: `${rootId}_grpc_defaults`,
+      type: 'grpc_defaults',
+      name: 'gRPC Defaults',
+      data: asYAMLNodeData(obj.grpc_defaults),
+      path: ['grpc_defaults'],
+    });
+  }
+
   // Scenarios
   if (obj.scenarios && Array.isArray(obj.scenarios)) {
     const scenariosNode: YAMLNode = {
@@ -210,9 +222,18 @@ function convertScenarioToNode(scenario: any, index: number, path: any[]): YAMLN
     id: `${scenarioId}_load`,
     type: 'load',
     name: `Load: ${getLoadTypeLabel(scenario.load?.type || 'constant')}`,
-    data: { ...normalizeLoadDataForYaml(scenario.load || { type: 'constant', users: 1, iterations: 1 }),
+    data: {
+      ...normalizeLoadDataForYaml(scenario.load || { type: 'constant', users: 1, iterations: 1 }),
       ...(!scenario.load ? { __loadSelected: false } : {}),
-      ...(isPlainRecord(scenario['x-studio-load-profiles']) ? { __loadProfiles: Object.fromEntries(Object.entries(scenario['x-studio-load-profiles']).filter((entry): entry is [string, Record<string, unknown>] => isPlainRecord(entry[1]))) } : {}),
+      ...(isPlainRecord(scenario['x-studio-load-profiles'])
+        ? {
+            __loadProfiles: Object.fromEntries(
+              Object.entries(scenario['x-studio-load-profiles']).filter(
+                (entry): entry is [string, Record<string, unknown>] => isPlainRecord(entry[1]),
+              ),
+            ),
+          }
+        : {}),
     },
     path: [...path, 'load'],
   });
@@ -304,6 +325,39 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
     const node = createRequestNode(stepId, 'request', step.request, path, isEnabled);
     node.unknownData = unknownFields(step, new Set(['request', 'enabled']));
     return node;
+  }
+
+  if (isPlainRecord(step.websocket)) {
+    const data = asYAMLNodeData(step.websocket);
+    const { headers, ...connectionData } = data;
+    const hasHeaders = isPlainRecord(headers);
+    return {
+      id: stepId,
+      type: 'websocket',
+      name: String(data.name || (data.action ? `WebSocket ${data.action}` : 'WebSocket conversation')),
+      data: hasHeaders ? connectionData : data,
+      path,
+      children: hasHeaders ? [{
+        id: `${stepId}_headers`, type: 'headers', name: 'Headers',
+        data: asYAMLNodeData(headers), path: [...path, 'websocket', 'headers'],
+      }] : [],
+      expanded: false,
+      unknownData: unknownFields(step, new Set(['websocket'])),
+    };
+  }
+
+  if (isPlainRecord(step.grpc)) {
+    const grpc = asYAMLNodeData(step.grpc);
+    return {
+      id: stepId,
+      type: 'grpc',
+      name: typeof grpc.name === 'string' && grpc.name ? grpc.name : String(grpc.method || 'gRPC Request'),
+      data: { ...grpc, ...(step.enabled !== undefined && grpc.enabled === undefined ? { enabled: isEnabled } : {}) },
+      path,
+      children: [],
+      expanded: false,
+      unknownData: unknownFields(step, new Set(['grpc', 'enabled'])),
+    };
   }
 
   if (step.sql) {

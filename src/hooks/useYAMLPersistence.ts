@@ -1,3 +1,4 @@
+import { studioEditorId } from '../utils/studioEditorSession';
 import { parseYAMLToTree } from '../utils/yamlParser';
 import { localizeYAMLSemanticError, validateYAMLSemantics } from '../utils/yamlSemanticValidation';
 import { logStatsigEvent } from '../utils/analytics';
@@ -237,6 +238,8 @@ export function useYAMLPersistence({
     logStatsigEvent('studio_document_exported', { outcome: 'success' });
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    // Export cancels autosave; retain a reloadable snapshot for this Studio tab.
+    if (studioEditorId()) void handleSave();
     setHasDocumentActivity(true);
     setIsDirty(false);
     setLastSavedAt(new Date().toLocaleTimeString());
@@ -249,7 +252,7 @@ export function useYAMLPersistence({
           ? 'YAML descargado sin respuestas'
           : 'YAML downloaded without responses',
     );
-  }, [currentFileName, getPersistableYaml, language, serializeDebounceRef, setError, setHasDocumentActivity, setIsDirty, showActionMessage]);
+  }, [currentFileName, getPersistableYaml, handleSave, language, serializeDebounceRef, setError, setHasDocumentActivity, setIsDirty, showActionMessage]);
 
   // Autosave
   useEffect(() => {

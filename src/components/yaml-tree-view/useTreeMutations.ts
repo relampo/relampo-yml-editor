@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useSyncExternalStore } from 'react';
+import { treeClipboard } from '../../utils/treeClipboard';
 import type { RedirectedRequestInfo, YAMLNode } from '../../types/yaml';
 import { canContain } from '../../utils/yamlDragDropRules';
 import type { YAMLAddableNodeType } from './addableItems';
@@ -58,7 +59,7 @@ export function useTreeMutations({
   getContextActionTargetIds,
   handleCloseContextMenu,
 }: UseTreeMutationsParams) {
-  const [clipboardNodes, setClipboardNodes] = useState<YAMLNode[]>([]);
+  const clipboardNodes = useSyncExternalStore(treeClipboard.subscribe, treeClipboard.getSnapshot, treeClipboard.getSnapshot);
 
   // Commit the new tree and its selection together. Selecting before the parent
   // accepts the tree can leave the details panel pointing at a stale node.
@@ -205,7 +206,7 @@ export function useTreeMutations({
       return node ? [cloneNodeSnapshot(node)] : [];
     });
 
-    setClipboardNodes(copied);
+    treeClipboard.copy(copied);
   };
 
   const handlePasteSelection = (targetOverride?: YAMLNode) => {

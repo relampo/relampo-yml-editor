@@ -397,9 +397,9 @@ describe('YAMLTreeView search highlighting', () => {
     fireEvent.click(screen.getByRole('radio', { name: 'Requests' }));
     fireEvent.click(screen.getByRole('button', { name: 'Search tree' }));
 
-    expect(screen.getByText('Matching request')).toBeInTheDocument();
+    expect(screen.getByRole('treeitem', { name: /^\[1\]\s*Matching request/ })).toBeInTheDocument();
     expect(screen.getByText('req')).toBeInTheDocument();
-    expect(screen.getByText('Other request')).toBeInTheDocument();
+    expect(screen.getByRole('treeitem', { name: /^\[2\]\s*Other request/ })).toBeInTheDocument();
     expect(screen.getByLabelText('Search result count')).toHaveTextContent('1 node');
   });
 
@@ -650,8 +650,8 @@ describe('YAMLTreeView search highlighting', () => {
     fireEvent.keyDown(screen.getByRole('tree'), { key: 'Delete' });
     fireEvent.click(screen.getByTitle('Close search'));
 
-    expect(screen.queryByText('Alpha request')).not.toBeInTheDocument();
-    expect(screen.getByText('Beta request')).toBeInTheDocument();
+    expect(screen.queryByText(/Alpha request/)).not.toBeInTheDocument();
+    expect(screen.getByRole('treeitem', { name: /^\[1\]\s*Beta request/ })).toBeInTheDocument();
   });
 
   it('preserves clipboard order when pasting multiple nodes at the root', async () => {
@@ -739,7 +739,7 @@ describe('YAMLTreeView search highlighting', () => {
 
     const treeElement = screen.getByRole('tree');
     fireEvent.keyDown(treeElement, { key: 'c', ctrlKey: true });
-    fireEvent.click(screen.getByRole('treeitem', { name: 'Target request' }));
+    fireEvent.click(screen.getByRole('treeitem', { name: /\[2\]\s*Target request/ }));
     fireEvent.keyDown(treeElement, { key: 'v', ctrlKey: true });
 
     await waitFor(() => {
@@ -918,8 +918,8 @@ describe('YAMLTreeView search highlighting', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Search tree' }));
 
     expect(screen.getByText('Checkout flow')).toBeInTheDocument();
-    expect(screen.getByText('Matching request')).toBeInTheDocument();
+    expect(screen.getByRole('treeitem', { name: /^\[1\]\s*Matching request/ })).toBeInTheDocument();
     expect(screen.getByText('Load settings')).toBeInTheDocument();
-    expect(screen.getByText('Other request')).toBeInTheDocument();
+    expect(screen.getByRole('treeitem', { name: /^\[2\]\s*Other request/ })).toBeInTheDocument();
   });
 });

@@ -1,3 +1,8 @@
+import { CorrelatePage } from './components/correlate/CorrelatePage';
+import { HTTPRecorderControlPage } from './components/recorder/HTTPRecorderControlPage';
+import { HTTPRecorderPage } from './components/recorder/HTTPRecorderPage';
+import { GRPCRecorderPage } from './components/grpc/GRPCRecorderPage';
+import { GRPCSchemaProvider } from './contexts/GRPCSchemaContext';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { YAMLProvider } from './contexts/YAMLContext';
 import { YAMLEditor } from './components/YAMLEditor';
@@ -11,9 +16,21 @@ export default function AppYAMLStandalone() {
     <LanguageProvider>
       <YAMLProvider>
         <div className="h-screen w-screen overflow-hidden bg-[#0a0a0a]">
-          <YAMLEditor />
+          <GRPCSchemaProvider>
+            {window.location.pathname.replace(/\/$/, '') === '/correlate' ? (
+              <CorrelatePage />
+            ) : window.location.pathname.replace(/\/$/, '') === '/recorder/grpc' ? (
+              <GRPCRecorderPage />
+            ) : window.location.pathname.replace(/\/$/, '') === '/recorder/http/control' ? (
+              <HTTPRecorderControlPage />
+            ) : window.location.pathname.replace(/\/$/, '') === '/recorder/http' ? (
+              <HTTPRecorderPage />
+            ) : (
+              <YAMLEditor />
+            )}
+          </GRPCSchemaProvider>
         </div>
-        <MobileBlockOverlay />
+        {window.location.pathname.replace(/\/$/, '') !== '/recorder/http/control' && <MobileBlockOverlay />}
       </YAMLProvider>
     </LanguageProvider>
   );

@@ -54,3 +54,32 @@ describe('useYamlDocumentLifecycle', () => {
     expect(setHasDocumentActivity).toHaveBeenCalledWith(true);
   });
 });
+it('starts a new Studio blank even when the backend mounts an existing script', async () => {
+  window.history.replaceState({}, '', '/?editor=new-tab');
+  vi.mocked(getActiveDraft).mockResolvedValue(null);
+  vi.mocked(probeStudio).mockResolvedValue({
+    studio: true,
+    initialScript: { name: 'existing.yaml', yaml: 'test: {name: Existing}' },
+  } as any);
+  const setYamlCode = vi.fn();
+  const setInitialized = vi.fn();
+  renderHook(() =>
+    useYamlDocumentLifecycle({
+      language: 'en',
+      initialYamlContent: 'stale: data',
+      setYamlContent: vi.fn(),
+      setError: vi.fn(),
+      isInitialized: false,
+      setIsInitialized: setInitialized,
+      fallbackRootNameRef: useRef<string | null>(null),
+      setYamlCode,
+      syncCodeToTree: vi.fn(),
+      setHasDocumentActivity: vi.fn(),
+      setIsDirty: vi.fn(),
+      setIsFileLoading: vi.fn(),
+    }),
+  );
+  await waitFor(() => expect(setInitialized).toHaveBeenCalledWith(true));
+  expect(setYamlCode).toHaveBeenCalledWith('');
+  window.history.replaceState({}, '', '/');
+});

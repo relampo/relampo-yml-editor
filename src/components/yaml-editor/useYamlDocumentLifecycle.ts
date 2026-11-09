@@ -1,3 +1,4 @@
+import { studioEditorId } from '../../utils/studioEditorSession';
 import type { ComponentCapabilities } from '../../utils/componentConfiguration';
 import { logStatsigEvent } from '../../utils/analytics';
 import { useEffect, useRef, useState } from 'react';
@@ -59,6 +60,11 @@ export function useYamlDocumentLifecycle({
   const [debugViewEnabled, setDebugViewEnabled] = useState(DEBUG_VIEW_FORCED);
   const [runViewEnabled, setRunViewEnabled] = useState(RUN_VIEW_FORCED);
   const [multiScenarioRunEnabled, setMultiScenarioRunEnabled] = useState(false);
+  const [grpcAuthoringEnabled, setGrpcAuthoringEnabled] = useState(false);
+  const [correlateEnabled, setCorrelateEnabled] = useState(false);
+  const [httpRecorderEnabled, setHttpRecorderEnabled] = useState(false);
+  const [grpcRecorderTabsEnabled, setGrpcRecorderTabsEnabled] = useState(false);
+  const [grpcBrowserRecordingEnabled, setGrpcBrowserRecordingEnabled] = useState(false);
   const [dataSourceFileBrowseEnabled, setDataSourceFileBrowseEnabled] = useState(false);
   const [defaultViewMode, setDefaultViewMode] = useState<EditorViewMode | undefined>();
 
@@ -86,7 +92,8 @@ export function useYamlDocumentLifecycle({
     let isCancelled = false;
 
     const initializeDocument = async () => {
-      let initialYaml = mountSnapshotRef.current.yamlContent || '';
+      const independentStudio = studioEditorId() !== null;
+      let initialYaml = independentStudio ? '' : mountSnapshotRef.current.yamlContent || '';
       let initialFileName = DEFAULT_FILE_NAME;
       let initialUpdatedAt: string | null = null;
       let restoreError: string | null = null;
@@ -113,11 +120,16 @@ export function useYamlDocumentLifecycle({
         setMultiScenarioDebugEnabled(studioInfo.capabilities?.multiScenarioDebug === true);
         setMultiScenarioRunEnabled(studioInfo.capabilities?.multiScenarioRun === true);
         setDataSourceFileBrowseEnabled(studioInfo.capabilities?.dataSourceFiles === true);
+        setGrpcAuthoringEnabled(studioInfo.capabilities?.grpcAuthoring === true);
+        setCorrelateEnabled(studioInfo.capabilities?.correlate === true);
+        setHttpRecorderEnabled(studioInfo.capabilities?.httpRecorder === true);
+        setGrpcRecorderTabsEnabled(studioInfo.capabilities?.grpcRecorderTabs === true);
+        setGrpcBrowserRecordingEnabled(studioInfo.capabilities?.grpcBrowserRecording === true);
         if (!DEBUG_VIEW_FORCED && studioInfo.capabilities?.debug === true) setDebugViewEnabled(true);
         if (!RUN_VIEW_FORCED && studioInfo.capabilities?.loadRun) setRunViewEnabled(true);
         setDefaultViewMode(studioInfo.defaultView);
       }
-      if (studioInfo?.initialScript) {
+      if (studioInfo?.initialScript && !independentStudio) {
         initialYaml = studioInfo.initialScript.yaml;
         initialFileName = normalizeYamlFileName(studioInfo.initialScript.name);
         initialUpdatedAt = null;
@@ -194,6 +206,11 @@ export function useYamlDocumentLifecycle({
     runViewEnabled,
     multiScenarioRunEnabled,
     dataSourceFileBrowseEnabled,
+    grpcAuthoringEnabled,
+    grpcRecorderTabsEnabled,
+    httpRecorderEnabled,
+    correlateEnabled,
+    grpcBrowserRecordingEnabled,
     defaultViewMode,
   };
 }

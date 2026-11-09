@@ -1,3 +1,10 @@
+import { useCorrelateSource } from './correlate/useCorrelateSource';
+import { saveActiveDraft } from '../utils/yamlDraftStorage';
+import { openGRPCRecorderTab, openHTTPRecorderTab, openNewStudioTab } from '../utils/recorderTabs';
+import { GRPCWorkbench } from './grpc/GRPCWorkbench';
+import { ProtocolSetupDialog } from './protocols/ProtocolSetupDialog';
+import { appendProtocolSteps, type StudioProtocol } from '../utils/protocolProject';
+import { appendGRPCScenario } from '../utils/grpcProject';
 import type { SearchScope } from './yaml-tree-view/search';
 import { useMemo, useRef, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -28,6 +35,7 @@ import { useYamlFileUpload } from './yaml-editor/useYamlFileUpload';
 import { useYamlViewMode } from './yaml-editor/useYamlViewMode';
 
 export function YAMLEditor() {
+  const [activeProtocol, setActiveProtocol] = useState<StudioProtocol | null>(null);
   const [treeSearchScope, setTreeSearchScope] = useState<SearchScope | null>(null);
   const { language, setLanguage, t } = useLanguage();
   const { yamlContent, setYamlContent } = useYAML();
@@ -103,6 +111,11 @@ export function YAMLEditor() {
     multiScenarioRunEnabled,
     componentCapabilities,
     dataSourceFileBrowseEnabled,
+    grpcAuthoringEnabled,
+    grpcRecorderTabsEnabled,
+    httpRecorderEnabled,
+    correlateEnabled,
+    grpcBrowserRecordingEnabled,
     defaultViewMode,
   } = useYamlDocumentLifecycle({
     language,
@@ -255,6 +268,25 @@ export function YAMLEditor() {
     });
   };
 
+  const openCorrelate = useCorrelateSource(
+    () => ({ yaml: retrieveYamlForSaving(), fileName: currentFileName, revision: editRevisionRef.current }),
+    async (yaml, name) => {
+      // The correlated result is now this tab's document, including after reload.
+      const address = new URL(window.location.href);
+      if (!address.searchParams.has('editor')) {
+        address.searchParams.set('editor', crypto.randomUUID());
+        window.history.replaceState(window.history.state, '', address.pathname + address.search);
+      }
+      handleCodeChange(yaml);
+      setCurrentFileName(name);
+      setHasDocumentActivity(true);
+      setViewMode('tree');
+      await saveActiveDraft({ yaml, fileName: name, updatedAt: new Date().toISOString() });
+    },
+    language,
+    setError,
+  );
+
   const handleNewConfirm = () => {
     resetDocument();
     resetIdentityForNewDocument();
@@ -275,6 +307,26 @@ export function YAMLEditor() {
       {isDragOver && <YAMLEditorDragOverlay language={language} />}
 
       <YAMLEditorHeader
+        onCorrelate={openCorrelate}
+        correlateEnabled={correlateEnabled}
+        onNewStudio={() => {
+          if (!openNewStudioTab(language))
+            setError(
+              language === 'es' ? 'Permite abrir Studio en una pestaña nueva.' : 'Allow opening Studio in a new tab.',
+            );
+        }}
+        onSelectProtocol={protocol => {
+          if ((protocol === 'grpc' && grpcRecorderTabsEnabled) || (protocol === 'https' && httpRecorderEnabled)) {
+            if (!(protocol === 'https' ? openHTTPRecorderTab(language) : openGRPCRecorderTab(language)))
+              setError(
+                language === 'es'
+                  ? 'Permite abrir Recorder en una pestaña nueva.'
+                  : 'Allow opening Recorder in a new tab.',
+              );
+          } else setActiveProtocol(protocol);
+        }}
+        grpcEnabled={grpcAuthoringEnabled}
+        httpEnabled={httpRecorderEnabled}
         language={language}
         setLanguage={setLanguage}
         t={t}
@@ -286,6 +338,38 @@ export function YAMLEditor() {
         onFileChange={handleFileChange}
       />
 
+      {grpcAuthoringEnabled && (
+        <GRPCWorkbench
+          open={activeProtocol === 'grpc'}
+          browserRecordingEnabled={grpcBrowserRecordingEnabled}
+          onOpenChange={open => {
+            if (!open) setActiveProtocol(null);
+          }}
+          language={language}
+          onGoToStudio={() => setViewMode('tree')}
+          onAdd={generated => {
+            const merged = appendGRPCScenario(retrieveYamlForSaving(), generated);
+            handleCodeChange(merged);
+            setViewMode('tree');
+          }}
+        />
+      )}
+      {(activeProtocol === 'https' || activeProtocol === 'websocket') && (
+        <ProtocolSetupDialog
+          key={activeProtocol}
+          open
+          protocol={activeProtocol}
+          language={language}
+          onOpenChange={open => {
+            if (!open) setActiveProtocol(null);
+          }}
+          onGoToStudio={() => setViewMode('tree')}
+          onAdd={step => {
+            handleCodeChange(appendProtocolSteps(retrieveYamlForSaving(), [step]));
+            setViewMode(activeProtocol === 'websocket' ? 'code' : 'tree');
+          }}
+        />
+      )}
       <YAMLEditorNewDocumentDialog
         open={isNewDialogOpen}
         onOpenChange={setIsNewDialogOpen}

@@ -9,6 +9,8 @@ import { useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { getNodeDisplayName } from './yaml-tree-view/nodeDisplayName';
 import type { RedirectSourceInfo, RedirectedRequestInfo, YAMLNode } from '../types/yaml';
+import { YAMLWebSocketDetails } from './YAMLWebSocketDetails';
+import { YAMLGRPCDetails } from './YAMLGRPCDetails';
 import { YAMLRequestDetails } from './YAMLRequestDetails';
 import { YAMLSQLDetails } from './YAMLSQLDetails';
 import { HighlightedInput } from './ui/HighlightedInput';
@@ -52,6 +54,7 @@ interface YAMLNodeDetailsProps {
   hosts?: string[];
   redirectedInfo?: RedirectedRequestInfo | null;
   redirectSourceInfo?: RedirectSourceInfo | null;
+  onSplitWebSocket?: (nodeId:string)=>void;
   onNodeUpdate?: (nodeId: string, updatedData: any) => void;
   onRenameHost?: (oldHost: string, newHost: string) => void;
   onRemoveHost?: (host: string) => void;
@@ -63,9 +66,21 @@ interface YAMLNodeDetailsProps {
 }
 
 const NO_ISSUES: DocumentIssue[] = [];
-const REQUEST_NODE_TYPES = ['request', 'sql', 'get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
+const REQUEST_NODE_TYPES = [
+  'request',
+  'sql',
+  'grpc',
+  'websocket',
+  'get',
+  'post',
+  'put',
+  'delete',
+  'patch',
+  'head',
+  'options',
+];
 // Node types that cannot be toggled on/off (mirrors the tree context menu).
-const NON_TOGGLEABLE_NODE_TYPES = ['root', 'test', 'scenarios', 'steps'];
+const NON_TOGGLEABLE_NODE_TYPES = ['root', 'test', 'scenarios', 'steps', 'grpc_defaults'];
 
 export function YAMLNodeDetails({
   node,
@@ -76,6 +91,7 @@ export function YAMLNodeDetails({
   hosts = [],
   redirectSourceInfo = null,
   onNodeUpdate,
+  onSplitWebSocket,
   onRenameHost,
   onRemoveHost,
   onToggleEnabled,
@@ -207,6 +223,7 @@ export function YAMLNodeDetails({
           />
         )}
         <NodeDetailsContent
+          onSplitWebSocket={onSplitWebSocket}
           node={node}
           nodeName={nodeName}
           setNodeName={setNodeName}
@@ -234,6 +251,7 @@ function NodeDetailsContent({
   hosts,
   redirectSourceInfo,
   onNodeUpdate,
+  onSplitWebSocket,
   onRenameHost,
   onRemoveHost,
   searchQuery = '',
@@ -247,6 +265,7 @@ function NodeDetailsContent({
   baseUrl: string;
   hosts: string[];
   redirectSourceInfo: RedirectSourceInfo | null;
+  onSplitWebSocket?:(nodeId:string)=>void;
   onNodeUpdate?: (nodeId: string, updatedData: any) => void;
   onRenameHost?: (oldHost: string, newHost: string) => void;
   onRemoveHost?: (host: string) => void;
@@ -320,6 +339,23 @@ function NodeDetailsContent({
     case 'steps':
       return (
         <StepDetails
+          node={node}
+          onNodeUpdate={onNodeUpdate}
+        />
+      );
+    case 'websocket':
+      return (
+        <YAMLWebSocketDetails
+          key={node.id}
+          node={node}
+          onNodeUpdate={onNodeUpdate}
+          onSplit={onSplitWebSocket?()=>onSplitWebSocket(node.id):undefined}
+        />
+      );
+    case 'grpc_defaults':
+    case 'grpc':
+      return (
+        <YAMLGRPCDetails
           node={node}
           onNodeUpdate={onNodeUpdate}
         />

@@ -2,6 +2,7 @@ import { inspectComponentConfiguration, STABLE_CONTAINERS } from './componentCon
 import { authoredNodeData } from './yamlAuthoredData';
 import { treeToObject } from './yamlTreeSerializer';
 import slots from '../contracts/backend/slots.json';
+import grpcContract from '../contracts/backend/bundles/1.1.0/contract.json';
 import type { YAMLNode } from '../types/yaml';
 
 interface ContractManifest {
@@ -21,6 +22,10 @@ function currentKnownFields(): Record<string, ReadonlySet<string>> {
 }
 
 const knownFields = currentKnownFields();
+// Adopt the gRPC contract scopes while keeping the current HTTP/component contract.
+for (const [scope, fields] of Object.entries(grpcContract.known_fields)) {
+  if (scope === 'grpc' || scope.startsWith('grpc_')) knownFields[scope] = new Set(fields);
+}
 
 // Recorder fields are preserved document data, beyond the runtime contract.
 knownFields.cookies = new Set([...(knownFields.cookies || []), 'mode']);
@@ -32,11 +37,7 @@ knownFields.response = new Set([...(knownFields.response || []), 'body']);
 // fields that need a warning.
 const SCENARIO_KNOWN_FIELDS = new Set([...(knownFields.scenario || []), 'x-studio-load-profiles']);
 
-const TEST_KNOWN_FIELDS = new Set([
-  ...(knownFields.test || []),
-  'recorded_at',
-  'recorded_from',
-]);
+const TEST_KNOWN_FIELDS = new Set([...(knownFields.test || []), 'recorded_at', 'recorded_from']);
 
 function formatPath(parts: Array<string | number>): string {
   return parts.reduce<string>((path, part) => {
@@ -74,6 +75,11 @@ function dataScope(
       return { supported: SCENARIO_KNOWN_FIELDS, prefix: path };
     case 'sql':
       return { scope: 'sql', prefix: path };
+    case 'grpc':
+      // The gRPC step node path points at the step; its fields live under `grpc:`.
+      return { scope: node.type, prefix: [...path, 'grpc'] };
+    case 'grpc_defaults':
+      return { scope: node.type, prefix: path };
     case 'http_defaults':
     case 'error_policy':
     case 'think_time':

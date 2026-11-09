@@ -16,7 +16,18 @@ export type DebugEventLike = {
   vu?: number;
 };
 
-const REQUEST_TYPES = new Set(['request', 'get', 'post', 'put', 'delete', 'patch', 'head', 'options']);
+const REQUEST_TYPES = new Set([
+  'websocket',
+  'grpc',
+  'request',
+  'get',
+  'post',
+  'put',
+  'delete',
+  'patch',
+  'head',
+  'options',
+]);
 const DEBUG_EVENT_TYPES = new Set([...REQUEST_TYPES, 'think_time']);
 
 function getRequestPath(node: YAMLNode): string {
@@ -580,9 +591,9 @@ function runtimeRequestVariableNames(variables: Record<string, string>, context:
   // and code2), so ambiguous matches remain driven by explicit placeholders.
   // Built-in outputs are excluded because an unrelated variable can match them
   // by value alone.
-  return [...namesByValue].flatMap(([value, names]) => (
-    requestValues.has(value) && !builtinValues.has(value) && names.length === 1 ? names : []
-  ));
+  return [...namesByValue].flatMap(([value, names]) =>
+    requestValues.has(value) && !builtinValues.has(value) && names.length === 1 ? names : [],
+  );
 }
 
 function resolvedRequestUrlVariables(node: YAMLNode | null, context: VariableValueContext): Map<string, string> {
@@ -629,7 +640,9 @@ function requestVariableRoles(
   requestExtractorVariableNames(node).forEach(name => tag(name, 'RES'));
   requestReferencedVariableNames(node, variables).forEach(name => tag(name, 'REQ'));
   runtimeRequestVariableNames(variables, context).forEach(name => tag(name, 'REQ'));
-  Object.keys(context.declaredBuiltinValues ?? {}).forEach(name => { if (!roles.has(name)) tag(name, 'VAR'); });
+  Object.keys(context.declaredBuiltinValues ?? {}).forEach(name => {
+    if (!roles.has(name)) tag(name, 'VAR');
+  });
   return roles;
 }
 
@@ -759,9 +772,15 @@ function builtinBodyRows(
     }
   };
   let template = node.data?.body ?? node.data?.body_raw;
-  const contentType = [...Object.entries(context.requestHeaders ?? {}), ...Object.entries(node.data?.headers ?? {})]
-    .find(([name]) => name.toLowerCase() === 'content-type')?.[1];
-  if (Array.isArray(template) && typeof contentType === 'string' && contentType.toLowerCase().startsWith('application/x-www-form-urlencoded')) {
+  const contentType = [
+    ...Object.entries(context.requestHeaders ?? {}),
+    ...Object.entries(node.data?.headers ?? {}),
+  ].find(([name]) => name.toLowerCase() === 'content-type')?.[1];
+  if (
+    Array.isArray(template) &&
+    typeof contentType === 'string' &&
+    contentType.toLowerCase().startsWith('application/x-www-form-urlencoded')
+  ) {
     const fields = new URLSearchParams();
     for (const item of template)
       if (item && typeof item === 'object')
@@ -795,14 +814,16 @@ export function variableRowsForRequestNode(
     const capturedValue = variables[name];
     const resolvedValue =
       declaredValue !== undefined
-        ? capturedValue !== undefined && !capturedValue.includes('{{') && !capturedValue.includes('${') ? capturedValue : declaredValue
+        ? capturedValue !== undefined && !capturedValue.includes('{{') && !capturedValue.includes('${')
+          ? capturedValue
+          : declaredValue
         : variableRoles?.has('RES') && extracted.has(name)
-        ? extracted.get(name)
-        : variableRoles?.has('REQ') && sent.has(name)
-          ? sent.get(name)
-          : Object.prototype.hasOwnProperty.call(variables, name)
-            ? variables[name]
-            : missingValue;
+          ? extracted.get(name)
+          : variableRoles?.has('REQ') && sent.has(name)
+            ? sent.get(name)
+            : Object.prototype.hasOwnProperty.call(variables, name)
+              ? variables[name]
+              : missingValue;
     return [
       variableRowLabel(name, variableRoles),
       resolvedValue === undefined ? missingValue : displayVariableValue(resolvedValue),
