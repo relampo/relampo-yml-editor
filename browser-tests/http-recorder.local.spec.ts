@@ -143,7 +143,15 @@ test('HTTP Recorder opens a tab, configures Firefox, records prefixes and opens 
   await expect(controls).toHaveURL(/\/recorder\/http\/control/);
   const application = await context.newPage();
   await application.goto('https://app.example.test/');
+  await controls.setViewportSize({ width: 420, height: 390 });
   await expect(controls.getByText('Browser ready · 0 requests', { exact: true })).toBeVisible();
+  expect(
+    await controls.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth && document.documentElement.scrollHeight <= innerHeight,
+    ),
+  ).toBe(true);
+  await expect(controls.getByRole('button', { name: 'Stop and save', exact: true })).toBeInViewport();
+  await controls.screenshot({ path: '/private/tmp/relampo-compact-popup-ready.png' });
   await expect(recorder.getByRole('cell', { name: '01', exact: true })).toHaveCount(0);
   await controls.getByLabel('Prefix', { exact: true }).fill('Login');
   await controls.getByRole('button', { name: 'Apply prefix', exact: true }).click();

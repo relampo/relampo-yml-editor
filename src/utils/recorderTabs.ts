@@ -62,7 +62,7 @@ export function openHTTPRecordingControls(language = 'en'): Window | null {
   const popup = window.open(
     '',
     'relampo-http-controls-' + window.location.host,
-    'popup=yes,width=460,height=650,resizable=yes,scrollbars=yes',
+    'popup=yes,width=420,height=390,resizable=yes,scrollbars=yes',
   );
   if (!popup) return null;
   let existing = false;
