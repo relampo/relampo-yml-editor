@@ -117,6 +117,7 @@ export interface YAMLNodeData {
   message?: YAMLValue;
   payload_base64?: string;
   protoset?: string;
+  transport?: string;
   reflection?: boolean;
   expected_status?: string;
   connection_scope?: string;

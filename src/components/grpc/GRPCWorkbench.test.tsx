@@ -121,3 +121,66 @@ it('shows the protobuf response shape after discovery before any RPC execution',
   );
   expect(api.grpcRequest).not.toHaveBeenCalledWith('generate', expect.anything(), expect.anything());
 });
+
+it('keeps three imported operations selected when the third request has no fields', async () => {
+  const methods = [
+    { ...catalog.services[0].methods[0], name: 'StartSession', path: '/tienda.v1.TiendaService/StartSession' },
+    { ...catalog.services[0].methods[0], name: 'ListProducts', path: '/tienda.v1.TiendaService/ListProducts' },
+    {
+      ...catalog.services[0].methods[0],
+      name: 'CreateCart',
+      path: '/tienda.v1.TiendaService/CreateCart',
+      input: 'Empty',
+      template: {},
+    },
+  ];
+  vi.mocked(api.grpcRequest)
+    .mockReset()
+    .mockImplementation(async path => {
+      if (path === 'recordings/current') return { active: false, calls: [] } as any;
+      if (path === 'schema')
+        return {
+          id: 'tienda-schema',
+          descriptorPath: 'tienda.protoset',
+          catalog: {
+            ...catalog,
+            messages: { ...catalog.messages, Empty: { name: 'Empty', fields: null } },
+            services: [{ name: 'tienda.v1.TiendaService', methods }],
+          },
+        } as any;
+      if (path === 'generate') return { id: 'bundle', yaml: 'generated-yaml', warnings: [] } as any;
+      throw Error(path);
+    });
+  render(
+    <GRPCWorkbench
+      open
+      initialMode="import"
+      onOpenChange={() => {}}
+      onAdd={vi.fn()}
+    />,
+  );
+  fireEvent.change(screen.getByLabelText('Server address'), { target: { value: 'localhost:50051' } });
+  const proto = new File(['syntax="proto3";'], 'tienda.proto', { type: 'text/plain' });
+  fireEvent.change(screen.getByLabelText('Contract files'), { target: { files: [proto] } });
+  await screen.findByLabelText('Select StartSession');
+  fireEvent.click(screen.getByLabelText('Select StartSession'));
+  fireEvent.change(screen.getByLabelText('name'), { target: { value: 'saved-session-data' } });
+  fireEvent.click(screen.getByLabelText('Select ListProducts'));
+  fireEvent.click(screen.getByLabelText('Select CreateCart'));
+  expect(screen.getByText('This message has no fields. Nothing to fill in.')).toBeInTheDocument();
+  for (const method of methods) expect(screen.getByLabelText('Select ' + method.name)).toBeChecked();
+  fireEvent.click(screen.getByRole('button', { name: 'Generate scenario' }));
+  await waitFor(() =>
+    expect(api.grpcRequest).toHaveBeenCalledWith(
+      'generate',
+      expect.objectContaining({
+        methods: [
+          expect.objectContaining({ method: methods[0].path, message: { name: 'saved-session-data' } }),
+          expect.objectContaining({ method: methods[1].path }),
+          expect.objectContaining({ method: methods[2].path, message: {} }),
+        ],
+      }),
+      expect.anything(),
+    ),
+  );
+});

@@ -105,3 +105,83 @@ it('explains that Relampo manages the recording Firefox certificate automaticall
   ).toBeInTheDocument();
   expect(screen.queryByText(/import this certificate in Firefox Settings/i)).not.toBeInTheDocument();
 });
+
+it('offers contract decoding only after a complete payload recording stops', async () => {
+  vi.mocked(grpcRequest).mockResolvedValue({
+    ...initial,
+    captureSupported: true,
+    recordingPayloads: true,
+    capturedCalls: 3,
+    pendingCalls: 0,
+    detected: 'grpc_web',
+    totalRequests: 3,
+  });
+  render(
+    <GRPCBrowserRecorder
+      onDiscover={vi.fn()}
+      onImport={vi.fn()}
+    />,
+  );
+  expect(await screen.findByLabelText('Recording contract')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Generate recorded scenario' })).toBeDisabled();
+  expect(screen.getByText(/Captured calls: 3/)).toBeInTheDocument();
+});
+
+it('imports a recording contract, generates actual messages and hands the project to the save workflow', async () => {
+  const generated = {
+    id: 'recorded-project',
+    warnings: [],
+    yaml: 'grpc_defaults: {transport: grpc_web, target: https://shop.test}\nscenarios:\n- steps:\n  - grpc:\n      name: /shop.v1.API/CreateCart\n      message: {}\n      response: {status: OK, message: {cartId: actual-cart-from-server}}\n',
+  };
+  vi.mocked(grpcRequest).mockImplementation(async (path, body) => {
+    if (path === 'browser-recordings/current')
+      return { ...initial, captureSupported: true, recordingPayloads: true, capturedCalls: 1, pendingCalls: 0 } as any;
+    if (path === 'schema') {
+      expect(body).toMatchObject({ source: { files: { 'shop.proto': expect.any(String) } } });
+      return { id: 'contract' } as any;
+    }
+    if (path === 'browser-recordings/generate') {
+      expect(body).toEqual({ schemaId: 'contract' });
+      return generated as any;
+    }
+    throw Error(path);
+  });
+  const onGenerated = vi.fn();
+  render(
+    <GRPCBrowserRecorder
+      onDiscover={vi.fn()}
+      onImport={vi.fn()}
+      onGenerated={onGenerated}
+    />,
+  );
+  const contract = await screen.findByLabelText('Recording contract');
+  fireEvent.change(contract, { target: { files: [new File(['syntax="proto3";'], 'shop.proto')] } });
+  await screen.findByText('shop.proto', { exact: true });
+  fireEvent.click(screen.getByRole('button', { name: 'Generate recorded scenario' }));
+  expect(await screen.findByText('Recorded response')).toBeInTheDocument();
+  expect(screen.getByText(/actual-cart-from-server/)).toBeInTheDocument();
+  expect(onGenerated).toHaveBeenLastCalledWith(generated);
+});
+
+it('requests payload capture only when the backend advertises the capability', async () => {
+  vi.mocked(grpcRequest).mockImplementation(async path => {
+    if (path === 'browser-recordings/current') return { ...initial, captureSupported: true } as any;
+    if (path === 'browser-recordings') return { ...initial, active: true, recordingPayloads: true } as any;
+    throw Error(path);
+  });
+  render(
+    <GRPCBrowserRecorder
+      onDiscover={vi.fn()}
+      onImport={vi.fn()}
+    />,
+  );
+  await screen.findByLabelText('Recording contract');
+  fireEvent.change(screen.getByLabelText('Application URL'), { target: { value: 'https://shop.test' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Start browser recording' }));
+  await screen.findByRole('button', { name: 'Stop browser recording' });
+  expect(grpcRequest).toHaveBeenCalledWith(
+    'browser-recordings',
+    expect.objectContaining({ capture: true }),
+    expect.anything(),
+  );
+});

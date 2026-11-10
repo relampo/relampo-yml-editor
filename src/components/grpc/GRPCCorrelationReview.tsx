@@ -27,7 +27,10 @@ export function GRPCCorrelationReview({
     setBusy(true);
     setError('');
     try {
-      const result = await grpcRequest<{ candidates: Candidate[] }>('correlations', { yaml: project.yaml });
+      const result = await grpcRequest<{ candidates: Candidate[] }>('correlations', {
+        yaml: project.yaml,
+        projectId: project.id,
+      });
       setCandidates(result.candidates || []);
       setSelected([]);
     } catch (cause) {
@@ -66,8 +69,9 @@ export function GRPCCorrelationReview({
         Find dynamic values
       </button>
       <p className="text-xs text-zinc-500">
-        Relationships use recorded values and timing. Masked credentials cannot prove a relationship. Review
-        asynchronous message filters before applying.
+        {project.privateEvidence
+          ? 'Relationships use private capture evidence; exported credentials remain masked. Review correlations before applying.'
+          : 'Relationships use recorded values and timing. Masked credentials cannot prove a relationship. Review asynchronous message filters before applying.'}
       </p>
       {candidates?.length === 0 && (
         <p className="text-xs text-zinc-400">
