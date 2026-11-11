@@ -80,3 +80,18 @@ it('uses the HTTP tabs and makes disabled requests inspectable without editing',
   expect(screen.getByRole('button', { name: 'Response' })).toHaveAttribute('aria-pressed', 'true');
   expect(screen.getByLabelText('Recorded response')).toHaveAttribute('readonly');
 });
+
+it('does not write default JSON on focus and removes cleared inherited fields', () => {
+  const update = vi.fn();
+  const withTarget = { ...node, data: { ...node.data, target: 'localhost:50051' } } as YAMLNode;
+  render(
+    <YAMLGRPCDetails
+      node={withTarget}
+      onNodeUpdate={update}
+    />,
+  );
+  fireEvent.blur(screen.getByLabelText('Metadata (JSON)'));
+  expect(update).not.toHaveBeenCalled();
+  fireEvent.change(screen.getByLabelText('Target'), { target: { value: '' } });
+  expect(update.mock.lastCall?.[1]).not.toHaveProperty('target');
+});

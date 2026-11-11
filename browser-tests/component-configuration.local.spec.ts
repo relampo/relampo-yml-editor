@@ -56,7 +56,7 @@ test('scoped controls preserve authored overrides and child flows on download', 
     }),
   );
   await page.goto('/');
-  await page.getByText('Local request', { exact: true }).first().click();
+  await page.getByRole('treeitem', { name: /Local request/ }).click();
   await expect(page.getByLabel('http.timeout mode')).toHaveValue('local');
   await expect(page.getByLabel('http.timeout value')).toHaveValue('30s');
   await expect(page.getByLabel('http.auth mode')).toHaveValue('disable');

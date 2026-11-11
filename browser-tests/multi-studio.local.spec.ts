@@ -30,7 +30,7 @@ test('New Studio isolates documents and drafts, and tree copy/paste works in bot
     }),
   );
   await page.goto('/');
-  const originalTransaction = page.getByRole('treeitem', { name: /Checkout$/ });
+  const originalTransaction = page.getByRole('treeitem', { name: /Checkout(?: Transaction)?$/ });
   await expect(originalTransaction).toBeVisible();
   await originalTransaction.click({ button: 'right' });
   await page.getByRole('button', { name: 'Copy', exact: true }).click();

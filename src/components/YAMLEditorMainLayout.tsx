@@ -157,6 +157,7 @@ export function YAMLEditorMainLayout({
         <YAMLEditorDetailsPanel
           debugExecutionAvailable={debugExecutionAvailable}
           runExecutionAvailable={runExecutionAvailable}
+          onTreeChange={onTreeChange}
           isDebugViewActive={isDebugViewActive}
           isRunViewActive={isRunViewActive}
           language={language}

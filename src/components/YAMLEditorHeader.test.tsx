@@ -8,6 +8,7 @@ function renderHeader(extra: Partial<ComponentProps<typeof YAMLEditorHeader>> = 
 
   render(
     <YAMLEditorHeader
+      {...extra}
       language="en"
       setLanguage={vi.fn()}
       t={(key: string) =>

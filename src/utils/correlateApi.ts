@@ -32,8 +32,8 @@ export async function correlateRequest<T>(path: string, body: unknown, signal?: 
     body: JSON.stringify(body),
     signal: signal ?? AbortSignal.timeout(120000),
   });
-  const value = await response.json();
-  if (!response.ok) throw Error(value.error || 'Correlate failed');
+  const value = await response.json().catch(() => ({}));
+  if (!response.ok) throw Error(value.error || `Correlate failed (HTTP ${response.status})`);
   return value;
 }
 export function correlatedFileName(name: string): string {

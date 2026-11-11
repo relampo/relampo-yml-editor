@@ -4,6 +4,10 @@ import { canContain } from '../../utils/yamlDragDropRules';
 import { buildSearchIndex, nodeMatchExpandsDescendants, type SearchNodeState } from './search';
 
 export function canAddNodeToTarget(target: YAMLNode, nodeType: YAMLAddableNodeType) {
+  if (target.type === 'websocket' && nodeType === 'headers') {
+    if (target.data?.action && target.data.action !== 'connect') return false;
+    if (target.children?.some(child => child.type === 'headers')) return false;
+  }
   return canContain(target.type, nodeType);
 }
 

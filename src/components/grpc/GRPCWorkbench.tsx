@@ -376,6 +376,7 @@ export function GRPCWorkbench({
                   />
                   <button
                     type="button"
+                    aria-label={`Remove metadata ${index + 1}`}
                     onClick={() => setHeaders(headers.filter((_, i) => i !== index))}
                   >
                     ×
