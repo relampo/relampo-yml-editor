@@ -8,7 +8,6 @@ function renderHeader(extra: Partial<ComponentProps<typeof YAMLEditorHeader>> = 
 
   render(
     <YAMLEditorHeader
-      {...extra}
       language="en"
       setLanguage={vi.fn()}
       t={(key: string) =>
@@ -24,6 +23,7 @@ function renderHeader(extra: Partial<ComponentProps<typeof YAMLEditorHeader>> = 
       onDownload={onDownload}
       fileInputRef={createRef<HTMLInputElement>()}
       onFileChange={vi.fn()}
+      {...extra}
     />,
   );
 
@@ -97,4 +97,14 @@ it('places Correlate immediately after Recorder and before New Studio', () => {
   expect(button.nextElementSibling).toBe(screen.getByRole('button', { name: 'New Studio' }));
   fireEvent.click(button);
   expect(onCorrelate).toHaveBeenCalledOnce();
+});
+
+it('announces the selected language and preserves the language change action', () => {
+  const setLanguage = vi.fn();
+  renderHeader({ language: 'es', setLanguage });
+  expect(screen.getByRole('group', { name: 'Idioma' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Español' })).toHaveAttribute('aria-pressed', 'true');
+  expect(screen.getByRole('button', { name: 'English' })).toHaveAttribute('aria-pressed', 'false');
+  fireEvent.click(screen.getByRole('button', { name: 'English' }));
+  expect(setLanguage).toHaveBeenCalledExactlyOnceWith('en');
 });
