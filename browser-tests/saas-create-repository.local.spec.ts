@@ -18,6 +18,8 @@ for (const provider of ['github', 'gitlab'] as const) {
       'Access-Control-Allow-Methods': '*',
     };
     let created = false;
+    let structureCommits = 0;
+    let initialTree: any[] = [];
     await context.route(
       provider === 'github' ? 'https://api.github.com/**' : 'https://gitlab.com/api/v4/**',
       async route => {
@@ -50,6 +52,28 @@ for (const provider of ['github', 'gitlab'] as const) {
             201,
           );
         }
+        if (provider === 'github' && path.endsWith('/git/trees')) {
+          initialTree = request.postDataJSON().tree;
+          return respond({ sha: 'e'.repeat(40) }, 201);
+        }
+        if (provider === 'github' && path.endsWith('/git/commits') && request.method() === 'POST')
+          return respond({ sha: 'b'.repeat(40) }, 201);
+        if (provider === 'github' && path.includes('/git/refs/heads/')) {
+          structureCommits++;
+          expect(initialTree.map(item => item.path).sort()).toEqual([
+            'performance-tests/new-repository-plan/Data/.gitkeep',
+            'performance-tests/new-repository-plan/Scripts/.gitkeep',
+            'performance-tests/new-repository-plan/Utilities/.gitkeep',
+            'performance-tests/new-repository-plan/test-plan.yaml',
+          ]);
+          return respond({ object: { sha: 'b'.repeat(40) } });
+        }
+        if (provider === 'gitlab' && path.endsWith('/repository/commits') && request.method() === 'POST') {
+          structureCommits++;
+          expect(request.postDataJSON().actions).toHaveLength(4);
+          return respond({ id: 'b'.repeat(40) }, 201);
+        }
+        if (provider === 'github' && path.includes('/git/commits/')) return respond({ tree: { sha: 'f'.repeat(40) } });
         expect(request.method()).toBe('GET');
         if (path === '/user' || path === '/api/v4/user') return respond({ login: 'acme', username: 'acme' });
         if (path === '/user/repos' || path === '/api/v4/projects') return respond([]);
@@ -120,7 +144,8 @@ for (const provider of ['github', 'gitlab'] as const) {
     await expect(
       page.getByRole('button', { name: 'Open New Repository Plan in RelampoLab', exact: true }),
     ).toBeVisible();
-    expect(posts).toHaveLength(3); // Creating the plan stages files; it never publishes them automatically.
+    expect(posts).toHaveLength(3);
+    expect(structureCommits).toBe(1);
   });
 }
 
