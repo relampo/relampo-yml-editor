@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './saas-git-fixture';
 const saasURL = process.env.RELAMPO_SAAS_URL;
 test.skip(!saasURL, 'Set RELAMPO_SAAS_URL to the prepared local SaaS server.');
 
