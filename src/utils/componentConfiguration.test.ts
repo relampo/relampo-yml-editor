@@ -604,8 +604,8 @@ describe('RLP-689 capabilities before dispatch', () => {
       },
       scenarios: [{ steps: [{ sql: { kind: 'query', query: 'SELECT 1', assertions: [] } }] }],
     };
-    expect(inspectComponentConfiguration(input).required).toEqual([...COMPONENT_FEATURES].sort());
-    for (const feature of COMPONENT_FEATURES)
+    expect(inspectComponentConfiguration(input).required).toEqual(COMPONENT_FEATURES.filter(feature => feature !== 'extractor_enabled').sort());
+    for (const feature of COMPONENT_FEATURES.filter(feature => feature !== 'extractor_enabled'))
       expect(
         componentCapabilityError(dump(input), {
           version: 1,

@@ -133,11 +133,12 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
   const mode = String(data.mode || 'auto').toLowerCase();
   const normalizedMode = mode === 'manual' ? 'manual' : 'auto';
   const policy = String(data.policy || 'standard').toLowerCase();
-  const persistAcrossIterations = data.persist_across_iterations !== false;
-  const clearEachIteration = data.clear_each_iteration === true;
+  const clearEachIteration = typeof data.clear_each_iteration === 'boolean'
+    ? data.clear_each_iteration : data.persist_across_iterations === false;
+  const persistAcrossIterations = !clearEachIteration;
   const seedCookies = Array.isArray(data.cookies) ? data.cookies : [];
   const isIgnorePolicy = policy === 'ignore_cookies';
-  const effectiveClearEachIteration = persistAcrossIterations ? false : clearEachIteration;
+  const effectiveClearEachIteration = clearEachIteration;
   const summaryLine =
     normalizedMode === 'auto'
       ? t('yamlEditor.nodeDetails.ops.summaryAuto')
@@ -151,6 +152,11 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
     'rounded-full border border-transparent text-zinc-400 transition-all duration-200 hover:text-zinc-100 hover:bg-white/6';
 
   const handleChange = (field: string, value: any) => {
+    if (field === 'persist_across_iterations' || field === 'clear_each_iteration') {
+      const clear = field === 'clear_each_iteration' ? value : !value;
+      updateData({ ...data, clear_each_iteration: clear, persist_across_iterations: !clear });
+      return;
+    }
     updateField(field, value);
   };
 
@@ -331,7 +337,7 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
               onChange={handleChange}
               options={[
                 { label: 'vu', value: 'vu' },
-                { label: 'scenario', value: 'scenario' },
+                ...(data.jar_scope && data.jar_scope !== 'vu' ? [{ label: String(data.jar_scope), value: String(data.jar_scope) }] : []),
               ]}
               disabled={isIgnorePolicy}
               noMargin
