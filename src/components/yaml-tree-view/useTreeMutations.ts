@@ -99,6 +99,13 @@ export function useTreeMutations({
       if (!canAddNodeToTarget(target, nodeType)) return currentTree;
 
       const newNode = createNodeByType(nodeType, { balancedName: t('yamlEditor.balanced.name') });
+      if (nodeType === 'grpc_defaults') {
+        if (currentTree.children?.some(child => child.type === 'grpc_defaults')) return currentTree;
+        return addNodeToTree(currentTree, currentTree.id, newNode, true);
+      }
+      if (nodeType === 'grpc' && ['request', 'get', 'post', 'put', 'delete', 'patch', 'head', 'options'].includes(target.type)) {
+        return insertNodesAfterTarget(currentTree, targetId, [newNode]);
+      }
       return addNodeToTree(currentTree, targetId, newNode, true);
     }, tree);
     commitInsertedTree(updatedTree);

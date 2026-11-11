@@ -113,6 +113,7 @@ const BALANCED_CHILD_ELEMENTS: YAMLNodeType[] = [
 
 /** Elements that can be children of a request/sampler */
 const SAMPLER_CHILDREN: YAMLNodeType[] = [
+  'file',
   'headers',
   ...PRE_PROCESSORS,
   ...POST_PROCESSORS,

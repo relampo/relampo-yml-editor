@@ -34,6 +34,8 @@ export type YAMLAddableNodeType =
   | 'scenario'
   | 'request'
   | 'sql'
+  | 'grpc'
+  | 'grpc_defaults'
   | 'websocket'
   | 'group'
   | 'transaction'
@@ -85,6 +87,8 @@ export function getAddableItems(
   _parentNode?: Pick<YAMLNode, 'children' | 'data'>,
 ): AddableItem[] {
   const iconClass = 'w-4 h-4';
+  const grpcItem: AddableItem = { type: 'grpc', label: 'gRPC', icon: <Globe className={iconClass} />, color: 'text-cyan-400' };
+  const grpcDefaultsItem: AddableItem = { type: 'grpc_defaults', label: 'gRPC Defaults', icon: <Settings className={iconClass} />, color: 'text-sky-400' };
   if (parentType === 'websocket') {
     if (_parentNode?.data?.action && _parentNode.data.action !== 'connect') return [];
     if (_parentNode?.children?.some(child => child.type === 'headers')) return [];
@@ -94,6 +98,7 @@ export function getAddableItems(
 
   if (parentType === 'root' || parentType === 'test') {
     return [
+      ...(_parentNode?.children?.some(child => child.type === 'grpc_defaults') ? [] : [grpcDefaultsItem]),
       {
         type: 'variables',
         label: t('yamlEditor.shell.addable.variables'),
@@ -179,7 +184,7 @@ export function getAddableItems(
 
   const httpMethods = ['request', 'get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
   if (httpMethods.includes(parentType)) {
-    return [
+    return [grpcItem, grpcDefaultsItem,
       {
         type: 'spark_before',
         label: t('yamlEditor.shell.addable.sparkBefore'),
@@ -248,7 +253,7 @@ export function getAddableItems(
 
   const controllers = ['group', 'simple', 'transaction', 'parallel', 'if', 'loop', 'retry', 'one_time', 'steps'];
   if (controllers.includes(parentType)) {
-    return filterAddableItemsByContainment(parentType, [
+    return filterAddableItemsByContainment(parentType, [grpcItem,
       {
         type: 'transaction',
         label: t('yamlEditor.shell.addable.transaction'),
@@ -344,7 +349,7 @@ export function getAddableItems(
   }
 
   if (parentType === 'balanced') {
-    return filterAddableItemsByContainment(parentType, [
+    return filterAddableItemsByContainment(parentType, [grpcItem,
       {
         type: 'request',
         label: t('yamlEditor.shell.addable.httpRequest'),
