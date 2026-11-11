@@ -454,6 +454,8 @@ export const enTranslations = {
 
   // YAML Editor
   yamlEditor: {
+    searchScopeRequest: 'Requests',
+    searchScopeResponse: 'Responses',
     title: 'YAML Editor',
     newDocument: 'New',
     uploadYaml: 'Upload YAML',

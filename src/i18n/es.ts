@@ -9,9 +9,9 @@ export const esTranslations = {
     searchOccurrence: 'coincidencia',
     searchNodeCount: 'nodo',
     searchScope: 'Buscar en',
-    searchScopeRequired: 'Selecciona dónde buscar: Requests o Responses.',
-    requestScopeHelp: 'Requests y configuración editable; excluye respuestas grabadas.',
-    responseScopeHelp: 'Las respuestas grabadas son de solo lectura. Selecciona Requests para reemplazar.',
+    searchScopeRequired: 'Selecciona dónde buscar: Petición o Respuesta.',
+    requestScopeHelp: 'Peticiones y configuración editable; excluye respuestas grabadas.',
+    responseScopeHelp: 'Las respuestas grabadas son de solo lectura. Selecciona Petición para reemplazar.',
     searchOccurrences: 'coincidencias',
     searchNodesCount: 'nodos',
     replaceableCount: 'reemplazables',
@@ -455,6 +455,8 @@ export const esTranslations = {
 
   // YAML Editor
   yamlEditor: {
+    searchScopeRequest: 'Petición',
+    searchScopeResponse: 'Respuesta',
     title: 'Editor YAML',
     newDocument: 'Nuevo',
     uploadYaml: 'Subir YAML',
