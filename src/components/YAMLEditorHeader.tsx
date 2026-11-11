@@ -14,6 +14,7 @@ import {
 } from './ui/dropdown-menu';
 
 interface YAMLEditorHeaderProps {
+  embedded?: boolean;
   correlateEnabled?: boolean;
   onCorrelate?: () => void;
   onNewStudio?: () => void;
@@ -32,6 +33,7 @@ interface YAMLEditorHeaderProps {
 }
 
 export function YAMLEditorHeader({
+  embedded = false,
   language,
   onSelectProtocol,
   onNewStudio,
@@ -50,37 +52,39 @@ export function YAMLEditorHeader({
 }: YAMLEditorHeaderProps) {
   return (
     <header
-      className="editor-header saas-editor-surface"
+      className={`editor-header saas-editor-surface ${embedded ? 'editor-header-embedded' : ''}`}
       aria-label={language === 'es' ? 'Herramientas del editor' : 'Editor tools'}
     >
       <div className="editor-header-row">
-        <div className="editor-header-brand">
-          <span
-            className="editor-header-logo"
-            aria-hidden="true"
-          >
-            <svg
-              width="13"
-              height="17"
-              viewBox="0 0 18 22"
-              fill="none"
+        {!embedded && (
+          <div className="editor-header-brand">
+            <span
+              className="editor-header-logo"
+              aria-hidden="true"
             >
-              <path
-                d="M10.5 0L0 12.5H7.5L6 22L18 9H10.5V0Z"
-                fill="currentColor"
-              />
-            </svg>
-          </span>
-          <span className="editor-header-name">Relampo</span>
-          <span
-            className="editor-header-divider"
-            aria-hidden="true"
-          />
-          <h1 className="editor-header-title">{language === 'es' ? 'Editor de YAML' : 'YAML Editor'}</h1>
-        </div>
+              <svg
+                width="13"
+                height="17"
+                viewBox="0 0 18 22"
+                fill="none"
+              >
+                <path
+                  d="M10.5 0L0 12.5H7.5L6 22L18 9H10.5V0Z"
+                  fill="currentColor"
+                />
+              </svg>
+            </span>
+            <span className="editor-header-name">Relampo</span>
+            <span
+              className="editor-header-divider"
+              aria-hidden="true"
+            />
+            <h1 className="editor-header-title">{language === 'es' ? 'Editor de YAML' : 'YAML Editor'}</h1>
+          </div>
+        )}
 
         <div className="editor-header-controls">
-          <UsageMetricsConsent language={language} />
+          {!embedded && <UsageMetricsConsent language={language} />}
           {/* Action Buttons */}
           <div className="editor-header-actions">
             {onSelectProtocol && (
@@ -104,7 +108,7 @@ export function YAMLEditorHeader({
                 Correlate
               </Button>
             )}
-            {onNewStudio && (
+            {!embedded && onNewStudio && (
               <Button
                 onClick={onNewStudio}
                 variant="outline"
@@ -183,23 +187,25 @@ export function YAMLEditorHeader({
             </DropdownMenu>
           </div>
 
-          <div
-            className="editor-header-language"
-            role="group"
-            aria-label={language === 'es' ? 'Idioma' : 'Language'}
-          >
-            {(['en', 'es'] as const).map(locale => (
-              <button
-                key={locale}
-                type="button"
-                aria-label={locale === 'en' ? 'English' : 'Español'}
-                aria-pressed={language === locale}
-                onClick={() => setLanguage(locale)}
-              >
-                {locale.toUpperCase()}
-              </button>
-            ))}
-          </div>
+          {!embedded && (
+            <div
+              className="editor-header-language"
+              role="group"
+              aria-label={language === 'es' ? 'Idioma' : 'Language'}
+            >
+              {(['en', 'es'] as const).map(locale => (
+                <button
+                  key={locale}
+                  type="button"
+                  aria-label={locale === 'en' ? 'English' : 'Español'}
+                  aria-pressed={language === locale}
+                  onClick={() => setLanguage(locale)}
+                >
+                  {locale.toUpperCase()}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

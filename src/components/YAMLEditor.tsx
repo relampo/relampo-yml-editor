@@ -1,3 +1,4 @@
+import { useEmbeddedHost } from '../hooks/useEmbeddedHost';
 import { useCorrelateSource } from './correlate/useCorrelateSource';
 import { saveActiveDraft } from '../utils/yamlDraftStorage';
 import { openGRPCRecorderTab, openHTTPRecorderTab, openNewStudioTab } from '../utils/recorderTabs';
@@ -38,6 +39,7 @@ export function YAMLEditor() {
   const [activeProtocol, setActiveProtocol] = useState<StudioProtocol | null>(null);
   const [treeSearchScope, setTreeSearchScope] = useState<SearchScope | null>(null);
   const { language, setLanguage, t } = useLanguage();
+  const embedded = useEmbeddedHost(setLanguage);
   const { yamlContent, setYamlContent } = useYAML();
   const { leftPanelWidth, isResizing: _isResizing, setIsResizing } = useResizePanel(30);
 
@@ -307,6 +309,7 @@ export function YAMLEditor() {
       {isDragOver && <YAMLEditorDragOverlay language={language} />}
 
       <YAMLEditorHeader
+        embedded={embedded}
         onCorrelate={openCorrelate}
         correlateEnabled={correlateEnabled}
         onNewStudio={() => {

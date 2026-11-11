@@ -188,3 +188,10 @@
     justify-content: space-between;
   }
 }
+
+.editor-header-embedded {
+  padding: 10px 16px;
+}
+.editor-header-embedded .editor-header-row {
+  justify-content: flex-end;
+}
