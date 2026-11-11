@@ -17,6 +17,7 @@ for (const provider of ['github', 'gitlab'] as const) {
       'Access-Control-Allow-Headers': '*',
       'Access-Control-Allow-Methods': '*',
     };
+    const files = new Map<string, string>();
     let created = false;
     let structureCommits = 0;
     let initialTree: any[] = [];
@@ -60,6 +61,7 @@ for (const provider of ['github', 'gitlab'] as const) {
           return respond({ sha: 'b'.repeat(40) }, 201);
         if (provider === 'github' && path.includes('/git/refs/heads/')) {
           structureCommits++;
+          for (const entry of initialTree) files.set(entry.path, entry.content);
           expect(initialTree.map(item => item.path).sort()).toEqual([
             'performance-tests/new-repository-plan/Data/.gitkeep',
             'performance-tests/new-repository-plan/Scripts/.gitkeep',
@@ -71,6 +73,7 @@ for (const provider of ['github', 'gitlab'] as const) {
         if (provider === 'gitlab' && path.endsWith('/repository/commits') && request.method() === 'POST') {
           structureCommits++;
           expect(request.postDataJSON().actions).toHaveLength(4);
+          for (const entry of request.postDataJSON().actions) files.set(entry.file_path, entry.content);
           return respond({ id: 'b'.repeat(40) }, 201);
         }
         if (provider === 'github' && path.includes('/git/commits/')) return respond({ tree: { sha: 'f'.repeat(40) } });
@@ -79,8 +82,20 @@ for (const provider of ['github', 'gitlab'] as const) {
         if (path === '/user/repos' || path === '/api/v4/projects') return respond([]);
         if (path.endsWith('/git/ref/heads/main')) return respond({ object: { sha: 'a'.repeat(40) } });
         if (path.endsWith('/repository/branches/main')) return respond({ commit: { id: 'a'.repeat(40) } });
-        if (path.includes('/contents/') || path.endsWith('/repository/tree') || path.includes('/repository/files/'))
-          return respond({ message: 'Not found' }, 404);
+        if (path.includes('/contents/') || path.includes('/repository/files/')) {
+          const name = decodeURIComponent(
+            path.split(path.includes('/contents/') ? '/contents/' : '/repository/files/')[1]!,
+          );
+          return files.has(name)
+            ? respond({ type: 'file', encoding: 'base64', content: Buffer.from(files.get(name)!).toString('base64') })
+            : [...files.keys()].some(key => key.startsWith(name + '/'))
+              ? respond([{ type: 'file' }])
+              : respond({}, 404);
+        }
+        if (path.endsWith('/repository/tree'))
+          return [...files.keys()].some(key => key.startsWith(new URL(request.url()).searchParams.get('path')! + '/'))
+            ? respond([{ type: 'blob' }])
+            : respond({}, 404);
         if (path.endsWith('/branches')) return respond([{ name: 'main' }]);
         expect(created).toBe(true);
         return respond({ default_branch: 'main', permissions: { push: true } });

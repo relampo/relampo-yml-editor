@@ -19,6 +19,8 @@ for (const provider of ['github', 'gitlab'] as const) {
     const files = new Map<string, string>();
     let head = 'a'.repeat(40),
       denied = true,
+      pretendSuccess = true,
+      lostReply = true,
       commits = 0,
       tree: any[] = [];
     await context.route(provider === 'github' ? 'https://api.github.com/**' : 'https://gitlab.com/api/v4/**', route => {
@@ -43,7 +45,10 @@ for (const provider of ['github', 'gitlab'] as const) {
             ? respond([{ type: 'file' }])
             : respond({}, 404);
       }
-      if (path.endsWith('/repository/tree')) return files.size ? respond([{ type: 'blob' }]) : respond({}, 404);
+      if (path.endsWith('/repository/tree'))
+        return [...files.keys()].some(key => key.startsWith(url.searchParams.get('path')! + '/'))
+          ? respond([{ type: 'blob' }])
+          : respond({}, 404);
       if (path.includes('/repository/files/')) {
         const name = decodeURIComponent(path.split('/repository/files/')[1]!);
         return files.has(name)
@@ -59,17 +64,21 @@ for (const provider of ['github', 'gitlab'] as const) {
       }
       if (path.endsWith('/git/commits') && request.method() === 'POST') return respond({ sha: 'b'.repeat(40) }, 201);
       if (path.includes('/git/refs/heads/')) {
+        if (pretendSuccess) return respond({ object: { sha: 'b'.repeat(40) } });
         for (const entry of tree) files.set(entry.path, entry.content);
         head = 'b'.repeat(40);
         commits++;
-        return respond({ message: 'Reply lost after successful ref update' }, 503);
+        return lostReply
+          ? respond({ message: 'Reply lost after successful ref update' }, 503)
+          : respond({ object: { sha: head } });
       }
       if (path.endsWith('/repository/commits')) {
         if (denied) return respond({}, 403);
+        if (pretendSuccess) return respond({ id: 'b'.repeat(40) }, 201);
         for (const action of request.postDataJSON().actions) files.set(action.file_path, action.content);
         head = 'b'.repeat(40);
         commits++;
-        return respond({ message: 'Reply lost after successful commit' }, 503);
+        return lostReply ? respond({ message: 'Reply lost after successful commit' }, 503) : respond({ id: head }, 201);
       }
       return respond({ default_branch: 'main', permissions: { push: true } });
     });
@@ -101,6 +110,11 @@ for (const provider of ['github', 'gitlab'] as const) {
     await expect(page.getByRole('button', { name: 'Open Reliable Plan in RelampoLab', exact: true })).toHaveCount(0);
     denied = false;
     await create.click();
+    await expect(dialog.getByRole('alert')).toContainText('could not be confirmed');
+    expect(files.size).toBe(0);
+    await expect(page.getByRole('button', { name: 'Open Reliable Plan in RelampoLab', exact: true })).toHaveCount(0);
+    pretendSuccess = false;
+    await create.click();
     await expect(dialog.getByRole('alert')).toContainText('503');
     expect(commits).toBe(1);
     expect(files.size).toBe(4);
@@ -119,5 +133,26 @@ for (const provider of ['github', 'gitlab'] as const) {
     await dialog.getByRole('button', { name: 'Create Test Plan', exact: true }).click();
     await expect(dialog.getByRole('alert')).toContainText('already exists');
     expect(commits).toBe(1);
+    await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+    const planId = manifest!.match(/^id: (.+)$/m)![1]!;
+    const scriptPath = 'performance-tests/reliable-plan/Scripts/existing.yaml';
+    files.set(scriptPath, 'remote script: preserve');
+    for (const name of ['test-plan.yaml', 'Scripts/.gitkeep', 'Data/.gitkeep', 'Utilities/.gitkeep'])
+      files.delete('performance-tests/reliable-plan/' + name);
+    lostReply = false;
+    const repaired = await page.evaluate(async id => {
+      const moduleURL = '/src/utils/gitPlanStorage.ts';
+      const git = await import(moduleURL);
+      await git.stageGitScript(id, 'pending-script', 'pending.yaml', 'test: pending script');
+      const before = await git.inspectGitPlanStructure(id);
+      const after = await git.repairGitPlanStructure(id);
+      return { before, after, pending: await git.gitPlanStatus(id) };
+    }, planId);
+    expect(repaired.before.missing.sort()).toEqual(['Data/', 'Utilities/', 'test-plan.yaml']);
+    expect(repaired.after.missing).toEqual([]);
+    expect(files.get(scriptPath)).toBe('remote script: preserve');
+    expect(files.has('performance-tests/reliable-plan/Scripts/pending.yaml')).toBe(false);
+    expect(repaired.pending.paths).toEqual(['performance-tests/reliable-plan/Scripts/pending.yaml']);
+    expect(commits).toBe(2);
   });
 }
