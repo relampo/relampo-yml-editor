@@ -310,6 +310,7 @@ export function YAMLEditor() {
 
       <YAMLEditorHeader
         embedded={embedded}
+        documentReady={isInitialized}
         onCorrelate={openCorrelate}
         correlateEnabled={correlateEnabled}
         onNewStudio={() => {

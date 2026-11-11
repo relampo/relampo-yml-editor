@@ -1,10 +1,11 @@
+import { embeddedPlanDraftKey } from '../utils/embeddedPlanDraft';
 import { studioEditorId } from '../utils/studioEditorSession';
 import { parseYAMLToTree } from '../utils/yamlParser';
 import { localizeYAMLSemanticError, validateYAMLSemantics } from '../utils/yamlSemanticValidation';
 import { logStatsigEvent } from '../utils/analytics';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import yaml from 'js-yaml';
-import { clearActiveDraft, saveActiveDraft } from '../utils/yamlDraftStorage';
+import { clearActiveDraft, getActiveDraft, saveActiveDraft } from '../utils/yamlDraftStorage';
 
 function normalizeYamlFileName(name: string): string {
   const trimmed = (name || '').trim();
@@ -239,7 +240,7 @@ export function useYAMLPersistence({
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     // Export cancels autosave; retain a reloadable snapshot for this Studio tab.
-    if (studioEditorId()) void handleSave();
+    if (studioEditorId() || embeddedPlanDraftKey()) void handleSave();
     setHasDocumentActivity(true);
     setIsDirty(false);
     setLastSavedAt(new Date().toLocaleTimeString());
@@ -271,6 +272,36 @@ export function useYAMLPersistence({
       if (autosaveDebounceRef.current) window.clearTimeout(autosaveDebounceRef.current);
     };
   }, [isDirty, yamlCode, isInitialized, handleSave]);
+
+  // A parent waits for a durable save before replacing the frame for another plan.
+  useEffect(() => {
+    if (window.parent === window || new URLSearchParams(window.location.search).get('embedded') !== '1') return;
+    const receive = async (event: MessageEvent) => {
+      if (event.source !== window.parent || event.origin !== window.location.origin) return;
+      const message = event.data;
+      if (
+        !message ||
+        message.type !== 'relampo:save-plan' ||
+        typeof message.requestId !== 'string' ||
+        message.requestId.length > 80
+      )
+        return;
+      let ok = false;
+      try {
+        await handleSave();
+        const draft = await getActiveDraft();
+        ok = draft?.yaml === latestSaveInputsRef.current.getPersistableYaml();
+      } catch {
+        /* Report failure to the host so it keeps this editor mounted. */
+      }
+      window.parent.postMessage(
+        { type: 'relampo:plan-saved', requestId: message.requestId, ok },
+        window.location.origin,
+      );
+    };
+    window.addEventListener('message', receive);
+    return () => window.removeEventListener('message', receive);
+  }, [handleSave]);
 
   // Before-unload warning
   useEffect(() => {

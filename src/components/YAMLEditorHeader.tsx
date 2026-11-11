@@ -15,6 +15,7 @@ import {
 
 interface YAMLEditorHeaderProps {
   embedded?: boolean;
+  documentReady?: boolean;
   correlateEnabled?: boolean;
   onCorrelate?: () => void;
   onNewStudio?: () => void;
@@ -34,6 +35,7 @@ interface YAMLEditorHeaderProps {
 
 export function YAMLEditorHeader({
   embedded = false,
+  documentReady = true,
   language,
   onSelectProtocol,
   onNewStudio,
@@ -135,6 +137,7 @@ export function YAMLEditorHeader({
 
             <Button
               onClick={onUpload}
+              disabled={!documentReady}
               variant="outline"
               size="sm"
               className="editor-header-button"
@@ -212,6 +215,7 @@ export function YAMLEditorHeader({
       <input
         ref={fileInputRef}
         type="file"
+        disabled={!documentReady}
         accept=".yaml,.yml"
         onChange={onFileChange}
         className="hidden"

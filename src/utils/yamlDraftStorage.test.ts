@@ -181,6 +181,21 @@ describe('yamlDraftStorage', () => {
     await expect(getActiveDraft()).resolves.toEqual(first);
   });
 
+  it('restores a plan draft without mixing another plan or browser account', async () => {
+    installFakeIndexedDB();
+    const first = { yaml: 'plan: first', fileName: 'first.yaml', updatedAt: '2026-11-10T10:00:00Z' };
+    const second = { yaml: 'plan: second', fileName: 'second.yaml', updatedAt: '2026-11-10T10:01:00Z' };
+    window.history.replaceState({}, '', '/?embedded=1&account=user-a&plan=tp-01');
+    await saveActiveDraft(first);
+    window.history.replaceState({}, '', '/?embedded=1&account=user-a&plan=tp-02');
+    await expect(getActiveDraft()).resolves.toBeNull();
+    await saveActiveDraft(second);
+    window.history.replaceState({}, '', '/?embedded=1&account=user-a&plan=tp-01');
+    await expect(getActiveDraft()).resolves.toEqual(first);
+    window.history.replaceState({}, '', '/?embedded=1&account=user-b&plan=tp-01');
+    await expect(getActiveDraft()).resolves.toBeNull();
+  });
+
   it('rejects when IndexedDB cannot be opened', async () => {
     installFakeIndexedDB({ failOpen: true });
 

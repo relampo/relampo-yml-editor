@@ -1,3 +1,4 @@
+import { embeddedPlanDraftKey } from '../../utils/embeddedPlanDraft';
 import { logStatsigEvent } from '../../utils/analytics';
 import { useRef, useState } from 'react';
 import type { YAMLNode } from '../../types/yaml';
@@ -96,7 +97,7 @@ export function useYamlFileUpload({
       setCurrentFileName(normalizeYamlFileName(file.name));
       setHasDocumentActivity(true);
       logStatsigEvent('studio_document_opened');
-      setIsDirty(false);
+      setIsDirty(embeddedPlanDraftKey() !== null);
       clearInput?.();
     };
     reader.onerror = () => {
