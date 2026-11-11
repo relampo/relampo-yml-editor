@@ -870,28 +870,28 @@ describe('RLP-758 distinct declared variables and built-ins', () => {
    })).toEqual([
      ['token (REQ)', 'synthetic'],
      ['user (REQ)', 'synthetic'],
-     ['Body.password (REQ)', '3'],
-     ['Body.repeated.0 (REQ)', '2'],
-     ['Body.repeated.1 (REQ)', 'prefix-4'],
+     ['_randomInt(1,5) (REQ)', '3'],
+     ['_randomInt(1,5) (REQ)', '2'],
+     ['_randomInt(1,5) (REQ)', 'prefix-4'],
    ]);
  });
 
  it.each([
-   [{ password: '{{_randomInt(1,10)}}' }, 'password=5', [['Body.password (REQ)', '5']]],
-   ['password={{_randomInt(1,10)}}', 'password=5', [['Body.password (REQ)', '5']]],
-   ['{"password":"{{_randomInt(1,10)}}"}', '{"password":5}', [['Body.password (REQ)', '5']]],
-   [{ password: 'prefix-{{_randomInt(1,10)}}' }, 'password=prefix-5', [['Body.password (REQ)', 'prefix-5']]],
-   [{ password: '{{_randomInt(1,10)}}' }, 'password=a%2520b%2Bc', [['Body.password (REQ)', 'a%20b+c']]],
+   [{ password: '{{_randomInt(1,10)}}' }, 'password=5', [['_randomInt(1,10) (REQ)', '5']]],
+   ['password={{_randomInt(1,10)}}', 'password=5', [['_randomInt(1,10) (REQ)', '5']]],
+   ['{"password":"{{_randomInt(1,10)}}"}', '{"password":5}', [['_randomInt(1,10) (REQ)', '5']]],
+   [{ password: 'prefix-{{_randomInt(1,10)}}' }, 'password=prefix-5', [['_randomInt(1,10) (REQ)', 'prefix-5']]],
+   [{ password: '{{_randomInt(1,10)}}' }, 'password=a%2520b%2Bc', [['_randomInt(1,10) (REQ)', 'a%20b+c']]],
    [
      { payload: { items: ['{{_randomInt(0,0)}}', '{{_randomBoolean()}}'] } },
      '{"payload":{"items":[0,false]}}',
      [
-       ['Body.payload.items.0 (REQ)', '0'],
-       ['Body.payload.items.1 (REQ)', 'false'],
+       ['_randomInt(0,0) (REQ)', '0'],
+       ['_randomBoolean() (REQ)', 'false'],
      ],
    ],
-   [{ password: '{{_randomInt(1,10)}}' }, undefined, [['Body.password (REQ)', 'Not captured']]],
-   [{ password: '{{_randomInt(1,10)}}' }, '{"other":5}', [['Body.password (REQ)', 'Not captured']]],
+   [{ password: '{{_randomInt(1,10)}}' }, undefined, [['_randomInt(1,10) (REQ)', 'Not captured']]],
+   [{ password: '{{_randomInt(1,10)}}' }, '{"other":5}', [['_randomInt(1,10) (REQ)', 'Not captured']]],
  ])('shows built-in body fields from the captured request: %j', (body, requestBody, expected) => {
    const node: YAMLNode = { id: 'login', type: 'request', name: 'login', data: { body } };
    expect(variableRowsForRequestNode(node, { unrelated: '5' }, { requestBody, builtinValues: [5] })).toEqual(expected);
@@ -913,7 +913,7 @@ scenarios:
      variableRowsForRequestNode(node, { password: 'original' }, { requestBody: 'password=5&literal=fixed' }),
    ).toEqual([
      ['password (REQ)', 'original'],
-     ['Body.password (REQ)', '5'],
+     ['_randomInt(1,10) (REQ)', '5'],
    ]);
  });
 
@@ -926,4 +926,34 @@ scenarios:
 it('keeps a later variable assignment distinct from the builtin result (RLP-758)', () => {
  const node: YAMLNode={id:'product',type:'request',name:'GET /product',data:{url:'/product'},children:[]};
  expect(variableRowsForRequestNode(node,{product:'42'},{declaredBuiltinValues:{product:'37'}})).toEqual([['product (VAR)','42']]);
+});
+
+describe('RLP-819 captured variable names', () => {
+const source = `test: {name: regression}
+data_source: {type: csv, mode: shared, path: users.csv, variable_names: user, name: Credentials}
+scenarios:
+- name: one
+  load: {type: constant, users: 1, iterations: 1}
+  cookies: {mode: manual, jar_scope: vu, persist_across_iterations: true, clear_each_iteration: false}
+  steps:
+  - request:
+      method: POST
+      url: /test
+      body: {id: '{{real_name}}'}
+      extractors: [{type: regex, var: disabled, pattern: 'id=(.*)', enabled: false}]
+`;
+
+ it('RLP-819 uses actual variable names with captured body and header values', () => {
+  const request = collectDebugEventTargets(parseYAMLToTree(source))[0];
+  request.data = {...request.data,headers:{'X-Test':'{{header_name}}'}};
+  expect(variableRowsForRequestNode(request,{}, {requestBody:'{"id":"resolved"}',requestHeaders:{'x-test':'captured'}})).toContainEqual(['real_name (REQ)','resolved']);
+  expect(variableRowsForRequestNode(request,{}, {requestBody:'{"id":"resolved"}',requestHeaders:{'x-test':'captured'}})).toContainEqual(['header_name (REQ)','captured']);
+ });
+ it('RLP-819 avoids inventing variable names for mixed placeholder strings', () => {
+  const request = collectDebugEventTargets(parseYAMLToTree(source))[0];
+  request.data = {...request.data,body:{id:'{{first}}-{{second}}'}};
+  const rows=variableRowsForRequestNode(request,{}, {requestBody:'{"id":"left-right"}'});
+  expect(rows.some(([name])=>name.includes('}}-{{'))).toBe(false);
+ });
+
 });
