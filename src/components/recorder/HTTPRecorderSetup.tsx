@@ -1,6 +1,6 @@
 import { FolderOpen, Settings2, Check } from 'lucide-react';
 import type { useHTTPRecorder } from './useHTTPRecorder';
-import { DEFAULT_EMBEDDED_EXCLUDE, normalizeRecorderBaseURLs, recorderURLProtocol } from '../../utils/httpRecorderApi';
+import { normalizeRecorderBaseURLs, recorderURLProtocol } from '../../utils/httpRecorderApi';
 import {
   HTTPRecorderSettings,
   recorderCompactInput as input,
@@ -139,22 +139,6 @@ export function HTTPRecorderSetup({
             value={options.exclude.join('\n')}
             onChange={e => update({ exclude: e.target.value.split('\n') })}
           />
-        </label>
-        <label className="flex h-7 items-center gap-1.5 whitespace-nowrap text-xs text-zinc-400">
-          <input
-            aria-label="Exclude embedded resources"
-            className="accent-yellow-400"
-            type="checkbox"
-            checked={options.exclude.includes(DEFAULT_EMBEDDED_EXCLUDE)}
-            onChange={e =>
-              update({
-                exclude: e.target.checked
-                  ? [DEFAULT_EMBEDDED_EXCLUDE, ...options.exclude.filter(p => p !== DEFAULT_EMBEDDED_EXCLUDE)]
-                  : options.exclude.filter(p => p !== DEFAULT_EMBEDDED_EXCLUDE),
-              })
-            }
-          />
-          {text('Exclude embedded resources', 'Excluir recursos embebidos')}
         </label>
         <div className="flex min-h-7 flex-wrap items-center gap-x-3 gap-y-2 text-xs text-zinc-400">
           <label className="flex items-center gap-1.5">
