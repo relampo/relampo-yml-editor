@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 
 const saasURL = process.env.RELAMPO_SAAS_URL;
@@ -131,7 +130,9 @@ test('RelampoLab menus use the live Studio tools and keep the same plan and edit
   await expect(page.getByRole('button', { name: 'Import YAML', exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Save YAML options', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Save Script', exact: true }).click();
-  await expect(editor.getByText('Correlated plan script', { exact: true }).and(editor.locator(':visible'))).toBeVisible();
+  await expect(
+    editor.getByText('Correlated plan script', { exact: true }).and(editor.locator(':visible')),
+  ).toBeVisible();
   await expect(frameElement).toHaveAttribute('src', session!);
   await expect(page).toHaveURL(/plan=tp-01/);
   await page.getByRole('button', { name: 'Save Script', exact: true }).click();
@@ -140,13 +141,16 @@ test('RelampoLab menus use the live Studio tools and keep the same plan and edit
   await expect(page.getByRole('button', { name: 'Correlation', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('button', { name: 'Scripting', exact: true }).click();
   await page.reload();
-  await expect(editor.getByText('Correlated plan script', { exact: true }).and(editor.locator(':visible'))).toBeVisible();
+  await expect(
+    editor.getByText('Correlated plan script', { exact: true }).and(editor.locator(':visible')),
+  ).toBeVisible();
   await page.getByRole('button', { name: 'Save YAML options', exact: true }).click();
-  const downloadPromise = page.waitForEvent('download');
   await page.getByRole('menuitem', { name: 'Save with responses', exact: true }).click();
-  const download = await downloadPromise;
-  const downloadPath = await download.path();
-  expect(readFileSync(downloadPath!, 'utf8')).toContain('Correlated plan script');
+  await expect(page.getByRole('status').filter({ hasText: 'Script saved' })).toBeVisible();
+  await page.reload();
+  await expect(
+    editor.getByText('Correlated plan script', { exact: true }).and(editor.locator(':visible')),
+  ).toBeVisible();
 
   await page.getByRole('button', { name: 'Record', exact: true }).click();
   recording = { active: false, totalRequests: 1, requests: [], savedPath: '/tmp/recordings/recorded.yaml' };

@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs';
 import { load } from 'js-yaml';
 import { expect, test } from '@playwright/test';
 
@@ -131,10 +130,24 @@ for (const connected of [false, true]) {
     await page.getByRole('button', { name: 'Scripting', exact: true }).click();
     await page.getByRole('button', { name: 'Save Script', exact: true }).click();
     await page.getByRole('button', { name: 'Save YAML options', exact: true }).click();
-    const downloadPromise = page.waitForEvent('download');
     await page.getByRole('menuitem', { name: 'Save with responses', exact: true }).click();
-    const downloaded = await downloadPromise;
-    expect(Number((load(readFileSync((await downloaded.path())!, 'utf8')) as any).scenarios[0].load.users)).toBe(3);
+    await expect(page.getByRole('status').filter({ hasText: 'Script saved' })).toBeVisible();
+    const saved = await page.locator('iframe[data-plan-editor]').evaluate(async frame => {
+      const address = new URL((frame as HTMLIFrameElement).src);
+      const id = `saas-plan:${address.searchParams.get('account')}:${address.searchParams.get('plan')}`;
+      return new Promise<string>((resolve, reject) => {
+        const request = indexedDB.open('relampo-yaml-editor');
+        request.onsuccess = () => {
+          const db = request.result;
+          const tx = db.transaction('drafts');
+          const draft = tx.objectStore('drafts').get(id);
+          draft.onsuccess = () => resolve(draft.result.yaml);
+          tx.oncomplete = () => db.close();
+          tx.onerror = () => reject(tx.error);
+        };
+      });
+    });
+    expect(Number((load(saved) as any).scenarios[0].load.users)).toBe(3);
     await expect(page.locator('iframe[data-plan-editor]')).toHaveAttribute('src', session!);
     await editor.getByRole('button', { name: 'Tree', exact: true }).click();
     await page.screenshot({

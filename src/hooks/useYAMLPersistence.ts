@@ -45,7 +45,7 @@ function stripResponsesFromObject(value: unknown, parentKey = ''): unknown {
   return value;
 }
 
-function buildDownloadContent(
+export function buildDownloadContent(
   includeResponses: boolean,
   sourceYaml: string,
   language: string,

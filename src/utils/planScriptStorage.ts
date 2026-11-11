@@ -75,9 +75,8 @@ export function renamePlanScript(scriptId: string, fileName: string): Promise<vo
   });
 }
 
-export function addPlanScript(draft: YAMLDraft): Promise<PlanScripts> {
+export function addPlanScript(draft: YAMLDraft, id = crypto.randomUUID()): Promise<PlanScripts> {
   return updateCatalog((catalog, store) => {
-    const id = crypto.randomUUID();
     const plan = embeddedPlanDraftKey()!;
     store.put({ ...draft, id: `${plan}:script:${id}` });
     catalog.scripts.push({ id, fileName: draft.fileName });

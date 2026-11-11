@@ -1,3 +1,5 @@
+import { persistEmbeddedScript } from '../utils/embeddedFileStorage';
+import { buildDownloadContent } from '../hooks/useYAMLPersistence';
 import { PlanScriptsContext } from '../contexts/PlanScriptsContext';
 import {
   addPlanScript,
@@ -109,6 +111,7 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
       if (draft.current.changed && correlation.current) await correlation.current.save();
       else await controller.current.save();
       await renamePlanScript(scriptId, controller.current.document().fileName);
+      await persistEmbeddedScript(scriptId, controller.current.document());
     },
     [ready, scriptId],
   );
@@ -131,8 +134,11 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
       setSwitching(true);
       try {
         await flush('switch-script');
+        const newId = crypto.randomUUID();
+        // A rejected disk write must not select/register a script that was not created.
+        if (document) await persistEmbeddedScript(newId, document);
         const next = document
-          ? await addPlanScript({ ...document, updatedAt: new Date().toISOString() })
+          ? await addPlanScript({ ...document, updatedAt: new Date().toISOString() }, newId)
           : await selectPlanScript(nextId!);
         // A fresh workspace restores only this script's draft and execution sessions.
         const address = new URL(window.location.href);
@@ -141,6 +147,7 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
       } catch (cause) {
         switchingRef.current = false;
         setSwitching(false);
+        report(cause);
         throw cause;
       }
     },
@@ -156,6 +163,7 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
         await controller.current.replace(yaml, fileName);
         await renamePlanScript(scriptId, fileName);
         fileNameChanged(fileName);
+        await persistEmbeddedScript(scriptId, { yaml, fileName });
       } else await changeScript(undefined, { yaml, fileName });
     },
     [changeScript, fileNameChanged, scriptId],
@@ -179,15 +187,24 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
         message.requestId.length <= 80
       ) {
         let ok = false;
+        let error = '';
         try {
+          if (message.includeResponses === false && controller.current) {
+            if (draft.current.changed && correlation.current) await correlation.current.save();
+            const current = controller.current.document();
+            const result = buildDownloadContent(false, current.yaml, language);
+            if (result.content === null) throw new Error(result.error);
+            await controller.current.replace(result.content, current.fileName);
+          }
           await flush(message.reason);
           setError('');
           ok = true;
         } catch (cause) {
+          error = cause instanceof Error ? cause.message : String(cause);
           report(cause);
         }
         window.parent.postMessage(
-          { type: 'relampo:plan-saved', requestId: message.requestId, ok },
+          { type: 'relampo:plan-saved', requestId: message.requestId, ok, error },
           window.location.origin,
         );
         return;
@@ -238,7 +255,7 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
     };
     window.addEventListener('message', receive);
     return () => window.removeEventListener('message', receive);
-  }, [flush, goToScripting, protocol, ready, importScript, catalog.scripts.length]);
+  }, [flush, goToScripting, protocol, ready, importScript, catalog.scripts.length, language]);
 
   async function importRecording(yaml: string, fileName: string) {
     if (!controller.current) throw new Error('The test plan is not ready.');
@@ -252,6 +269,7 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
     )
       return;
     await controller.current.replace(yaml, fileName);
+    await persistEmbeddedScript(scriptId, { yaml, fileName });
     goToScripting();
   }
   async function openSavedRecording(editorURL: string) {
