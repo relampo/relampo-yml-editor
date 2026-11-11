@@ -1,3 +1,4 @@
+import { embeddedPlanDraftKey } from './embeddedPlanDraft';
 // Shared sessionStorage helper for studio runs (debug and load). The last run
 // is parked in sessionStorage so a page reload can re-attach and let the studio
 // replay it. Only the id and a document fingerprint are stored; the run data
@@ -28,10 +29,14 @@ export interface StoredRunStore {
 // Creates a sessionStorage-backed store for a single run id under storageKey.
 // All operations are best-effort (private-mode / disabled storage just no-ops).
 export function createStoredRunStore(storageKey: string): StoredRunStore {
+  const scopedKey = () => {
+    const plan = embeddedPlanDraftKey();
+    return plan ? `${storageKey}:${plan}` : storageKey;
+  };
   return {
     read(): StoredRun | null {
       try {
-        const raw = sessionStorage.getItem(storageKey);
+        const raw = sessionStorage.getItem(scopedKey());
         if (!raw) return null;
         const parsed = JSON.parse(raw);
         if (parsed && typeof parsed.id === 'string' && typeof parsed.fp === 'string') return parsed;
@@ -42,14 +47,14 @@ export function createStoredRunStore(storageKey: string): StoredRunStore {
     },
     store(run: StoredRun): void {
       try {
-        sessionStorage.setItem(storageKey, JSON.stringify(run));
+        sessionStorage.setItem(scopedKey(), JSON.stringify(run));
       } catch {
         // best-effort
       }
     },
     clear(): void {
       try {
-        sessionStorage.removeItem(storageKey);
+        sessionStorage.removeItem(scopedKey());
       } catch {
         // ignore
       }

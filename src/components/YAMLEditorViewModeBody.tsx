@@ -1,3 +1,7 @@
+import { useEffect, useState } from 'react';
+import { Gauge } from 'lucide-react';
+import { RunLoadEditor } from './RunLoadEditor';
+import type { NodeUpdateHandler } from '../types/shared';
 import type { SearchScope } from './yaml-tree-view/search';
 import type { IssueMarker } from '../utils/documentIssues';
 import type { RedirectedRequestInfo, YAMLNode } from '../types/yaml';
@@ -7,6 +11,9 @@ import { YAMLTreeView } from './YAMLTreeView';
 import type { TreeSelection } from './yamlEditorHelpers';
 
 interface YAMLEditorViewModeBodyProps {
+  showTabs?: boolean;
+  executionView?: 'debug' | 'run';
+  onNodeUpdate?: NodeUpdateHandler;
   leftPanelWidth: number;
   activeViewMode: EditorViewMode;
   onSelectViewMode: (mode: EditorViewMode) => void;
@@ -33,6 +40,9 @@ interface YAMLEditorViewModeBodyProps {
 // The left panel of the main layout: the tree/code/debug/run tab strip plus
 // the content that matches the active tab.
 export function YAMLEditorViewModeBody({
+  showTabs = true,
+  executionView,
+  onNodeUpdate,
   leftPanelWidth,
   activeViewMode,
   onSelectViewMode,
@@ -55,21 +65,57 @@ export function YAMLEditorViewModeBody({
   onCodeChange,
   largeFileMode,
 }: YAMLEditorViewModeBodyProps) {
+  const [executionPanel, setExecutionPanel] = useState<'tree' | 'code' | 'load'>('tree');
+  useEffect(() => {
+    if (executionView === 'run' && selectedNode?.type === 'load') setExecutionPanel('load');
+  }, [executionView, selectedNode?.id, selectedNode?.type]);
+  const panel = executionView
+    ? executionPanel === 'load' && executionView !== 'run'
+      ? 'tree'
+      : executionPanel
+    : activeViewMode;
   return (
     <div
-      className="min-w-0 flex flex-col bg-[#0a0a0a]"
+      className="min-h-0 min-w-0 flex flex-col bg-[#0a0a0a]"
       style={{ width: `${leftPanelWidth}%` }}
     >
-      <EditorViewModeTabs
-        activeViewMode={activeViewMode}
-        onSelect={onSelectViewMode}
-        language={language}
-        debugViewEnabled={debugViewEnabled}
-        runViewEnabled={runViewEnabled}
-      />
+      {showTabs && (
+        <EditorViewModeTabs
+          activeViewMode={panel === 'load' ? 'run' : panel}
+          onSelect={mode => {
+            if (executionView && (mode === 'tree' || mode === 'code')) setExecutionPanel(mode);
+            else onSelectViewMode(mode);
+          }}
+          extraTab={
+            executionView === 'run' ? (
+              <button
+                type="button"
+                aria-label={language === 'es' ? 'Configuración de carga' : 'Load configuration'}
+                aria-pressed={panel === 'load'}
+                onClick={() => setExecutionPanel('load')}
+                className={`flex flex-1 items-center justify-center gap-2 border-b-2 px-4 py-3 text-sm font-bold ${panel === 'load' ? 'border-yellow-400 bg-yellow-400/10 text-yellow-400' : 'border-transparent text-zinc-500 hover:text-zinc-300'}`}
+              >
+                <Gauge className="h-4 w-4" />
+                {language === 'es' ? 'Carga' : 'Load'}
+              </button>
+            ) : undefined
+          }
+          language={language}
+          debugViewEnabled={debugViewEnabled}
+          runViewEnabled={runViewEnabled}
+        />
+      )}
 
       <div className="flex-1 overflow-hidden min-h-0 bg-[#0a0a0a]">
-        {activeViewMode === 'tree' ? (
+        {panel === 'load' && onNodeUpdate ? (
+          <RunLoadEditor
+            tree={tree}
+            language={language}
+            width={100}
+            onNodeUpdate={onNodeUpdate}
+            preferredNodeId={selectedNode?.type === 'load' ? selectedNode.id : undefined}
+          />
+        ) : panel === 'tree' ? (
           <YAMLTreeView
             tree={tree}
             selectedNode={selectedNode}
@@ -84,12 +130,12 @@ export function YAMLEditorViewModeBody({
             onContextMenuOpened={onContextMenuOpened}
             onSearchChange={onSearchChange}
           />
-        ) : activeViewMode === 'code' ? (
+        ) : panel === 'code' ? (
           <YAMLCodeEditor
             value={yamlCode}
             onChange={onCodeChange}
             readOnly={true}
-            active={activeViewMode === 'code'}
+            active={panel === 'code'}
             largeFileMode={largeFileMode}
           />
         ) : (

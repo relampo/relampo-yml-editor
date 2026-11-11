@@ -40,7 +40,14 @@ import { useYamlViewMode } from './yaml-editor/useYamlViewMode';
 export function YAMLEditor({
   controllerRef,
   onReady,
-}: { controllerRef?: Ref<EmbeddedStudioController>; onReady?: (ready: boolean) => void } = {}) {
+  onNavigateToScripting,
+  onNavigateToRun,
+}: {
+  controllerRef?: Ref<EmbeddedStudioController>;
+  onReady?: (ready: boolean) => void;
+  onNavigateToScripting?: () => void;
+  onNavigateToRun?: () => void;
+} = {}) {
   const [activeProtocol, setActiveProtocol] = useState<StudioProtocol | null>(null);
   const [treeSearchScope, setTreeSearchScope] = useState<SearchScope | null>(null);
   const { language, setLanguage, t } = useLanguage();
@@ -149,8 +156,8 @@ export function YAMLEditor({
     handleSelectionChange,
     handleTreeSelectionChange,
   } = useYamlViewMode({
-    debugViewEnabled,
-    runViewEnabled,
+    debugViewEnabled: embedded || debugViewEnabled,
+    runViewEnabled: embedded || runViewEnabled,
     defaultViewMode,
     setSelectedNode,
     setSelectedNodeIds,
@@ -216,6 +223,7 @@ export function YAMLEditor({
   const [searchResetSignal, setSearchResetSignal] = useState(0);
   const goToIssue = (nodeId: string) => {
     if (!yamlTree) return;
+    if (embedded) onNavigateToScripting?.();
     setSearchResetSignal(signal => signal + 1);
     setTreeSearchQuery('');
     const expandedTree = expandAncestorsInTree(yamlTree, nodeId);
@@ -433,14 +441,17 @@ export function YAMLEditor({
       />
 
       <YAMLEditorMainLayout
+        embedded={embedded}
+        debugExecutionAvailable={debugViewEnabled}
+        runExecutionAvailable={runViewEnabled}
         leftPanelWidth={leftPanelWidth}
         onResizeStart={() => setIsResizing(true)}
         activeViewMode={activeViewMode}
         onSelectViewMode={setViewMode}
         language={language}
-        debugViewEnabled={debugViewEnabled}
+        debugViewEnabled={embedded || debugViewEnabled}
         multiScenarioDebugEnabled={multiScenarioDebugEnabled}
-        runViewEnabled={runViewEnabled}
+        runViewEnabled={embedded || runViewEnabled}
         multiScenarioRunEnabled={multiScenarioRunEnabled}
         componentCapabilities={componentCapabilities}
         isDebugViewActive={isDebugViewActive}
@@ -464,7 +475,14 @@ export function YAMLEditor({
         dataSourceFileBrowseEnabled={dataSourceFileBrowseEnabled}
         fileName={currentFileName}
         largeFileMode={isLargeFileMode}
-        onSelectionChange={handleTreeSelectionChange}
+        onSelectionChange={(node, ids) => {
+          if (embedded && node?.type === 'load') {
+            handleSelectionChange(node, ids);
+            setViewMode('run');
+            onNavigateToRun?.();
+          } else if (embedded && (isDebugViewActive || isRunViewActive)) handleSelectionChange(node, ids);
+          else handleTreeSelectionChange(node, ids);
+        }}
         onTreeChange={handleTreeChange}
         onTreeViewChange={handleTreeViewChange}
         onContextMenuOpened={handleTreeContextMenuOpened}
@@ -480,6 +498,7 @@ export function YAMLEditor({
         onDebugEditNode={node => {
           handleSelectionChange(node, [node.id]);
           setViewMode('tree');
+          if (embedded) onNavigateToScripting?.();
         }}
         onNodeUpdate={handleNodeUpdate}
         onRenameHost={handleRenameHost}

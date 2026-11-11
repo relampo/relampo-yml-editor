@@ -7,6 +7,8 @@ import { YAMLLoadRunSession } from './YAMLRunView';
 import { YAMLNodeDetails } from './YAMLNodeDetails';
 
 type YAMLEditorDetailsPanelProps = {
+  debugExecutionAvailable?: boolean;
+  runExecutionAvailable?: boolean;
   isDebugViewActive: boolean;
   isRunViewActive: boolean;
   language: string;
@@ -40,6 +42,8 @@ type YAMLEditorDetailsPanelProps = {
 };
 
 export function YAMLEditorDetailsPanel({
+  debugExecutionAvailable = true,
+  runExecutionAvailable = true,
   isDebugViewActive,
   isRunViewActive,
   language,
@@ -88,6 +92,16 @@ export function YAMLEditorDetailsPanel({
                 : 'Element details'}
         </span>
       </div>
+      {((isDebugViewActive && !debugExecutionAvailable) || (isRunViewActive && !runExecutionAvailable)) && (
+        <p
+          role="status"
+          className="shrink-0 border-b border-amber-400/20 bg-amber-400/5 px-5 py-3 text-xs text-amber-200"
+        >
+          {language === 'es'
+            ? 'Conecta un Relampo Studio compatible para ejecutar este plan. Puedes revisar su configuración.'
+            : 'Connect a compatible Relampo Studio to execute this plan. You can review its configuration.'}
+        </p>
+      )}
       <div className="flex-1 overflow-hidden">
         {/* Keep the debug session mounted while enabled so runs survive tab switches. */}
         {debugViewEnabled && (
@@ -98,7 +112,7 @@ export function YAMLEditorDetailsPanel({
               tree={yamlTree}
               yamlCode={yamlCode}
               flushPendingEdits={flushPendingEdits}
-              documentReady={documentReady}
+              documentReady={documentReady && debugExecutionAvailable}
               validationErrors={validationErrors}
               onGoToFirstError={onGoToFirstError}
               redirectedRequestMap={redirectedRequestMap}
@@ -116,7 +130,7 @@ export function YAMLEditorDetailsPanel({
               tree={yamlTree}
               yamlCode={yamlCode}
               flushPendingEdits={flushPendingEdits}
-              documentReady={documentReady}
+              documentReady={documentReady && runExecutionAvailable}
               validationErrors={validationErrors}
               onGoToFirstError={onGoToFirstError}
             />
