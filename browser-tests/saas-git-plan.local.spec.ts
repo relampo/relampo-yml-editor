@@ -1,0 +1,315 @@
+import { expect, test } from '@playwright/test';
+const saasURL = process.env.RELAMPO_SAAS_URL;
+test.skip(!saasURL, 'Set RELAMPO_SAAS_URL to the prepared local SaaS server.');
+
+for (const provider of ['github', 'gitlab'] as const) {
+  test(`${provider}: stage a plan locally, explicitly publish, reconnect and protect remote edits`, async ({
+    page,
+    context,
+  }) => {
+    test.setTimeout(90000);
+    page.setDefaultTimeout(10000);
+    const base = new URL(saasURL!);
+    expect(['localhost', '127.0.0.1']).toContain(base.hostname);
+    const token = `test-only-${provider}-not-a-real-token`;
+    let head = 'a'.repeat(40),
+      commits = 0;
+    const files = new Map<string, { text: string; commit: string }>([
+      ['README.md', { text: 'untouched', commit: head }],
+    ]);
+    let tree: any[] = [];
+    const mutations: string[] = [];
+    await context.route(
+      provider === 'github' ? 'https://api.github.com/**' : 'https://gitlab.com/api/v4/**',
+      async route => {
+        const request = route.request(),
+          url = new URL(request.url()),
+          path = url.pathname;
+        const headers = {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': '*',
+          'Access-Control-Allow-Methods': '*',
+        };
+        const respond = (json: unknown, status = 200) => route.fulfill({ status, json, headers });
+        if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers });
+        expect(request.headers()[provider === 'github' ? 'authorization' : 'private-token']).toBe(
+          provider === 'github' ? `Bearer ${token}` : token,
+        );
+        if (request.method() !== 'GET') mutations.push(request.method() + ' ' + path);
+        if (provider === 'github') {
+          if (path === '/repos/acme/performance')
+            return respond({ default_branch: 'main', permissions: { push: true } });
+          if (path.endsWith('/branches')) return respond([{ name: 'main' }]);
+          if (path.includes('/git/ref/heads/')) return respond({ object: { sha: head } });
+          if (path.includes('/contents/')) {
+            const name = decodeURIComponent(path.split('/contents/')[1]!);
+            const file = files.get(name);
+            if (file)
+              return respond({ type: 'file', encoding: 'base64', content: Buffer.from(file.text).toString('base64') });
+            if ([...files.keys()].some(key => key.startsWith(name + '/'))) return respond([{ type: 'file' }]);
+            return respond({ message: 'Not Found' }, 404);
+          }
+          if (path.includes('/git/commits/') && request.method() === 'GET')
+            return respond({ tree: { sha: 'f'.repeat(40) } });
+          if (path.endsWith('/git/trees')) {
+            const body = request.postDataJSON();
+            expect(body.base_tree).toBe('f'.repeat(40));
+            tree = body.tree;
+            return respond({ sha: 'e'.repeat(40) }, 201);
+          }
+          if (path.endsWith('/git/commits')) {
+            expect(request.postDataJSON().parents).toEqual([head]);
+            return respond({ sha: String(commits + 1).repeat(40) }, 201);
+          }
+          if (path.includes('/git/refs/heads/')) {
+            expect(request.postDataJSON().force).toBe(false);
+            head = request.postDataJSON().sha;
+            for (const entry of tree) {
+              expect(entry.path).toMatch(/^performance-tests\/git-checkout\//);
+              if (entry.sha === null) files.delete(entry.path);
+              else files.set(entry.path, { text: entry.content, commit: head });
+            }
+            commits++;
+            return respond({ object: { sha: head } });
+          }
+        } else {
+          if (!path.includes('/repository/')) return respond({ default_branch: 'main' });
+          if (path.endsWith('/repository/branches')) return respond([{ name: 'main' }]);
+          if (path.includes('/repository/branches/')) return respond({ commit: { id: head } });
+          if (path.endsWith('/repository/tree')) {
+            const folder = url.searchParams.get('path')!;
+            return respond(
+              [...files.keys()].some(key => key.startsWith(folder + '/')) ? [{ type: 'blob' }] : [],
+              [...files.keys()].some(key => key.startsWith(folder + '/')) ? 200 : 404,
+            );
+          }
+          if (path.includes('/repository/files/')) {
+            const name = decodeURIComponent(path.split('/repository/files/')[1]!);
+            const file = files.get(name);
+            return file
+              ? respond({
+                  encoding: 'base64',
+                  content: Buffer.from(file.text).toString('base64'),
+                  last_commit_id: file.commit,
+                })
+              : respond({ message: 'Not Found' }, 404);
+          }
+          if (path.endsWith('/repository/commits')) {
+            const body = request.postDataJSON();
+            expect(body.branch).toBe('main');
+            expect(body.force).toBe(false);
+            head = String(commits + 1).repeat(40);
+            for (const action of body.actions) {
+              expect(action.file_path).toMatch(/^performance-tests\/git-checkout\//);
+              if (action.action === 'create') expect(files.has(action.file_path)).toBe(false);
+              else expect(action.last_commit_id).toBe(files.get(action.file_path)?.commit);
+              if (action.action === 'delete') files.delete(action.file_path);
+              else files.set(action.file_path, { text: action.content, commit: head });
+            }
+            commits++;
+            return respond({ id: head }, 201);
+          }
+        }
+        throw new Error(`Unexpected fixture request: ${request.method()} ${path}`);
+      },
+    );
+    await page.goto(base.origin);
+    await page.evaluate(provider => {
+      const user = `git-${provider}@example.invalid`;
+      localStorage.setItem('relampo-auth', 'true');
+      localStorage.setItem('relampo-current-user', user);
+      localStorage.setItem(`relampo-onboarding-${user}`, 'true');
+      localStorage.setItem('relampo-language', 'en');
+      localStorage.setItem('relampo-theme', provider === 'github' ? 'light' : 'dark');
+    }, provider);
+    await page.goto(`${base.origin}/projects`);
+    await page.getByRole('button', { name: 'New Plan', exact: true }).click();
+    const dialog = page.getByRole('dialog');
+    await dialog.getByLabel('Test Plan name').fill('Git Checkout');
+    await dialog.getByLabel('Description').fill('Versioned performance plan');
+    await dialog.getByRole('combobox', { name: 'Save in', exact: true }).selectOption(provider);
+    await dialog.getByLabel('Repository').fill('acme/performance');
+    await dialog.getByLabel('Access token').fill(token);
+    await expect(dialog.getByRole('button', { name: 'Create Test Plan', exact: true })).toBeDisabled();
+    await dialog.getByRole('button', { name: 'Connect repository', exact: true }).click();
+    await expect(dialog.getByLabel('Branch')).toHaveValue('main');
+    await expect(dialog.getByLabel('Access token')).toHaveCount(0);
+    await expect(dialog.locator('[data-plan-location]')).toContainText('performance-tests/git-checkout');
+    await page.screenshot({ path: `/tmp/relampo-create-${provider}-plan.png` });
+    await dialog.getByRole('button', { name: 'Create Test Plan', exact: true }).click();
+    await expect(dialog).toHaveCount(0);
+    expect(mutations).toEqual([]);
+    await page.getByRole('button', { name: 'Open Git Checkout in RelampoLab', exact: true }).click();
+    const editor = page.frameLocator('iframe[data-plan-editor]');
+    await expect(page.getByRole('button', { name: 'Import YAML', exact: true })).toBeEnabled();
+    const chooser = page.waitForEvent('filechooser');
+    await page.getByRole('button', { name: 'Import YAML', exact: true }).click();
+    await (
+      await chooser
+    ).setFiles({
+      name: 'checkout.yaml',
+      mimeType: 'text/yaml',
+      buffer: Buffer.from(
+        `test: {name: Git script}\nscenarios:\n- name: Checkout\n  load: {type: constant, users: 1, iterations: 1}\n  steps:\n  - request: {name: Cart, method: GET, url: https://app.test/cart}\n`,
+      ),
+    });
+    await expect(editor.getByText('Git script', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Save Script', exact: true }).click();
+    expect(mutations).toEqual([]);
+    await page.getByRole('button', { name: 'Plan settings', exact: true }).click();
+    await expect(dialog.getByText('Pending changes (5)', { exact: true })).toBeVisible();
+    await dialog.getByRole('button', { name: 'Disconnect repository', exact: true }).click();
+    await expect(dialog.getByLabel('Access token')).toBeVisible();
+    await dialog.getByLabel('Access token').fill(token);
+    await dialog.getByRole('button', { name: 'Connect repository', exact: true }).click();
+    await expect(dialog.getByLabel('Access token')).toHaveCount(0);
+    expect(mutations).toEqual([]);
+    await dialog.getByLabel('Commit message', { exact: true }).fill('feat(tests): add checkout plan');
+    await dialog.getByRole('button', { name: 'Commit & Push', exact: true }).click();
+    await expect(dialog.getByText('No pending changes.', { exact: true })).toBeVisible();
+    expect(commits).toBe(1);
+    expect(files.get('performance-tests/git-checkout/checkout.yaml')).toBeUndefined();
+    expect(files.get('performance-tests/git-checkout/Scripts/checkout.yaml')?.text).toContain('Git script');
+    expect(files.get('README.md')?.text).toBe('untouched');
+    await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await page.reload();
+    await expect(page.getByRole('button', { name: 'Save Script', exact: true })).toBeEnabled();
+    await page.getByRole('button', { name: 'Plan settings', exact: true }).click();
+    await expect(dialog.getByLabel('Access token')).toBeVisible();
+    await dialog.getByLabel('Access token').fill(token);
+    await dialog.getByRole('button', { name: 'Connect repository', exact: true }).click();
+    await expect(dialog.getByLabel('Access token')).toHaveCount(0);
+    await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+    const request = editor.locator('[role="treeitem"]:visible').filter({ hasText: 'Cart' }).last();
+    await request.click();
+    await editor.getByLabel('Path', { exact: true }).fill('/edited');
+    await page.getByRole('button', { name: 'Save Script', exact: true }).click();
+    await page.getByRole('button', { name: 'Plan settings', exact: true }).click();
+    await expect(dialog.getByText('Pending changes (1)', { exact: true })).toBeVisible();
+    head = 'd'.repeat(40); // Unrelated remote commit: refresh may advance safely.
+    await dialog.getByRole('button', { name: 'Commit & Push', exact: true }).click();
+    await expect(dialog.getByRole('alert')).toContainText('branch changed');
+    expect(commits).toBe(1);
+    await dialog.getByRole('button', { name: 'Refresh branch', exact: true }).click();
+    await expect(dialog.getByRole('alert')).toHaveCount(0);
+    await dialog.getByRole('button', { name: 'Commit & Push', exact: true }).click();
+    await expect(dialog.getByText('No pending changes.', { exact: true })).toBeVisible();
+    expect(commits).toBe(2);
+    await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await editor.getByLabel('Path', { exact: true }).fill('/another-edit');
+    await page.getByRole('button', { name: 'Save Script', exact: true }).click();
+    head = 'e'.repeat(40);
+    files.set('performance-tests/git-checkout/Scripts/checkout.yaml', { text: 'remote edit', commit: head });
+    await page.getByRole('button', { name: 'Plan settings', exact: true }).click();
+    await dialog.getByRole('button', { name: 'Refresh branch', exact: true }).click();
+    await expect(dialog.getByRole('alert')).toContainText('Remote file changed');
+    expect(commits).toBe(2);
+    expect(files.get('performance-tests/git-checkout/Scripts/checkout.yaml')?.text).toBe('remote edit');
+    const staleReview = await page.evaluate(async () => {
+      const storageURL = '/src/utils/gitPlanStorage.ts';
+      const storage = await import(storageURL);
+      const providerURL = '/src/utils/gitProvider.ts';
+      const git = await import(providerURL);
+      const id = new URL(window.location.href).searchParams.get('plan')!;
+      const status = await storage.gitPlanStatus(id);
+      let message = '';
+      try {
+        await storage.commitGitPlan(id, 'test-only stale review', status.revision - 1);
+      } catch (error) {
+        message = (error as Error).message;
+      }
+      const user = localStorage.getItem('relampo-current-user')!;
+      localStorage.setItem('relampo-current-user', 'another-account@example.invalid');
+      const other = await storage.gitPlanStatus(id);
+      const connected = git.gitConnected({
+        kind: user.includes('github') ? 'github' : 'gitlab',
+        repository: 'acme/performance',
+      });
+      localStorage.setItem('relampo-current-user', user);
+      return { message, other: other.paths, connected };
+    });
+    expect(staleReview.message).toContain('Pending files changed');
+    expect(staleReview.other).toEqual([]);
+    expect(staleReview.connected).toBe(false);
+    expect(commits).toBe(2);
+    const persistent = await page.evaluate(async () => {
+      const raw = JSON.stringify(localStorage);
+      const records = await new Promise<unknown[]>((resolve, reject) => {
+        const request = indexedDB.open('relampo-git-plans');
+        request.onsuccess = () => {
+          const db = request.result;
+          const tx = db.transaction('plans');
+          const all = tx.objectStore('plans').getAll();
+          all.onsuccess = () => resolve(all.result);
+          tx.oncomplete = () => db.close();
+          tx.onerror = () => reject(tx.error);
+        };
+      });
+      return raw + JSON.stringify(records);
+    });
+    expect(persistent).not.toContain(token);
+  });
+}
+
+test('Git connections reject untrusted hosts, unsafe paths and read-only access without writing remotely', async ({
+  page,
+  context,
+}) => {
+  const base = new URL(saasURL!);
+  expect(['localhost', '127.0.0.1']).toContain(base.hostname);
+  const requests: string[] = [];
+  await context.route('https://api.github.com/**', route => {
+    requests.push(route.request().method() + ' ' + route.request().url());
+    return route.fulfill({
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      json: { default_branch: 'main', permissions: { push: false } },
+    });
+  });
+  await page.goto(base.origin);
+  const result = await page.evaluate(async () => {
+    const moduleURL = '/src/utils/gitProvider.ts';
+    const git = await import(moduleURL);
+    const rejected: string[] = [];
+    for (const input of [
+      'https://github.com.evil.example/org/repo',
+      'https://token@github.com/org/repo',
+      'https://github.com/org/repo?token=secret',
+      'https://gitlab.com/org/repo',
+    ]) {
+      try {
+        await git.connectGit('github', input, 'test-only-secret');
+      } catch {
+        rejected.push(input);
+      }
+    }
+    const folders = ['../outside', '.git', 'base/../outside', 'base//folder'].map(path => {
+      try {
+        git.gitFolder(path);
+        return false;
+      } catch {
+        return true;
+      }
+    });
+    let permission = '';
+    try {
+      await git.connectGit('github', 'acme/readonly', 'test-only-secret');
+    } catch (error) {
+      permission = (error as Error).message;
+    }
+    return {
+      rejected,
+      folders,
+      permission,
+      connected: git.gitConnected({ kind: 'github', repository: 'acme/readonly' }),
+      nested: git.repositoryName('gitlab', 'group/subgroup/repo'),
+      invalidBranches: ['../main', 'a.lock', '/main', 'a b', 'a..b'].map(branch => git.validBranch(branch)),
+    };
+  });
+  expect(result.rejected).toHaveLength(4);
+  expect(result.folders).toEqual([true, true, true, true]);
+  expect(result.invalidBranches).toEqual([false, false, false, false, false]);
+  expect(result.nested).toBe('group/subgroup/repo');
+  expect(result.connected).toBe(false);
+  expect(result.permission).toContain('no write access');
+  expect(requests).toEqual(['GET https://api.github.com/repos/acme/readonly']);
+});
