@@ -1,5 +1,6 @@
+import { selectOption } from '../../../test/selectOption';
 import { describe, expect, it } from 'vitest';
-import { cleanup, fireEvent, render as rtlRender, screen } from '@testing-library/react';
+import { cleanup, render as rtlRender, screen } from '@testing-library/react';
 import { afterEach } from 'vitest';
 import { LanguageProvider } from '../../../contexts/LanguageContext';
 import { TestDetails } from './TestDetails';
@@ -12,7 +13,7 @@ const render = (ui: React.ReactElement) => rtlRender(ui, { wrapper: LanguageProv
 afterEach(cleanup);
 
 describe('scenario scheduling', () => {
-  it('authors explicit scheduling without dropping script or scenario fields', () => {
+  it('authors explicit scheduling without dropping script or scenario fields', async () => {
     const tree = parseYAMLToTree(`test: {name: script, description: preserved, custom_field: keep}
 variables: {user: alice}
 scenarios:
@@ -26,7 +27,7 @@ scenarios:
 `);
     if (!tree) throw new Error('Expected a parsed script');
     render(<TestDetails node={tree} onNodeUpdate={(_id, data) => { tree.data = data as YAMLNodeData; }} />);
-    fireEvent.change(screen.getByRole('combobox', { name: 'Scenario scheduling' }), { target: { value: 'parallel' } });
+    await selectOption('Scenario scheduling', 'Parallel');
     const yaml = treeToYAML(tree);
     expect(yaml).toContain('scenario_mode: parallel');
     expect(yaml).toContain('custom_field: keep');

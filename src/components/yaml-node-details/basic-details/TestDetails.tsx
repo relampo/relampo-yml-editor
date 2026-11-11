@@ -1,3 +1,4 @@
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
 import { useLanguage } from '../../../contexts/LanguageContext';
 import { Input } from '../../ui/input';
 import { Textarea } from '../../ui/textarea';
@@ -53,16 +54,19 @@ export function TestDetails({ node, onNodeUpdate, fileName }: NamedNodeDetailPro
           <label htmlFor="test-scenario-mode" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
             {t('yamlEditor.nodeDetails.test.scenarioScheduling')}
           </label>
-          <select
-            id="test-scenario-mode"
-            value={data.scenario_mode ?? ''}
-            onChange={event => updateField('scenario_mode', event.target.value)}
-            className="w-full px-3 py-2 bg-[#111111] border border-white/10 rounded text-sm text-zinc-300"
+          <Select
+            value={data.scenario_mode || 'unset'}
+            onValueChange={value => updateField('scenario_mode', value === 'unset' ? '' : value)}
           >
-            <option value="">{t('yamlEditor.nodeDetails.test.chooseScheduling')}</option>
-            <option value="sequential">{t('yamlEditor.nodeDetails.test.sequential')}</option>
-            <option value="parallel">{t('yamlEditor.nodeDetails.test.parallel')}</option>
-          </select>
+            <SelectTrigger id="test-scenario-mode" aria-label={t('yamlEditor.nodeDetails.test.scenarioScheduling')}>
+              <SelectValue placeholder={t('yamlEditor.nodeDetails.test.chooseScheduling')} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="unset">{t('yamlEditor.nodeDetails.test.chooseScheduling')}</SelectItem>
+              <SelectItem value="sequential">{t('yamlEditor.nodeDetails.test.sequential')}</SelectItem>
+              <SelectItem value="parallel">{t('yamlEditor.nodeDetails.test.parallel')}</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       )}
 
