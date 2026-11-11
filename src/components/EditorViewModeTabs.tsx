@@ -37,7 +37,7 @@ export function EditorViewModeTabs({
   ];
 
   return (
-    <div className="flex items-center bg-[#111111] border-b border-white/5 shrink-0">
+    <div data-editor-view-tabs className="flex items-center bg-[#111111] border-b border-white/5 shrink-0">
       {tabs.map(tab => (
         <button
           type="button"

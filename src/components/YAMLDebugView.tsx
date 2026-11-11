@@ -778,7 +778,7 @@ function DebugToolbar({
 }) {
   const { t } = useLanguage();
   return (
-    <div className="border-b border-white/5 px-5 py-3">
+    <div data-studio-execution-toolbar className="border-b border-white/5 px-5 py-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">

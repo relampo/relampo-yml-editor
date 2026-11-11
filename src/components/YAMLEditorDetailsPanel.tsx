@@ -77,7 +77,7 @@ export function YAMLEditorDetailsPanel({
 }: YAMLEditorDetailsPanelProps) {
   return (
     <div className="flex-1 min-w-0 flex flex-col bg-[#0d0d0d]">
-      <div className="flex items-center border-b border-white/5 bg-[#111111] shrink-0 px-6 py-3">
+      <div data-editor-panel-heading className="flex items-center border-b border-white/5 bg-[#111111] shrink-0 px-6 py-3">
         <span className="text-sm font-bold tracking-tight uppercase text-zinc-400">
           {isDebugViewActive
             ? language === 'es'
