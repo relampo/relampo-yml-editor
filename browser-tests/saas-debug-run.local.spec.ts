@@ -63,6 +63,9 @@ for (const connected of [false, true]) {
     await expect(editor.getByText('Plan execution', { exact: true })).toBeVisible();
     const session = await page.locator('iframe[data-plan-editor]').getAttribute('src');
     await page.getByRole('button', { name: 'Debug', exact: true }).click();
+    for (const name of ['New script', 'Import YAML', 'Save Script', 'Export YAML options']) {
+      await expect(page.getByRole('button', { name, exact: true })).toHaveCount(0);
+    }
     const debug = editor.getByRole('button', { name: 'Run Debug', exact: true });
     await expect(debug).toBeVisible();
     await expect(editor.getByRole('button', { name: 'Tree', exact: true })).toBeVisible();
@@ -122,6 +125,10 @@ for (const connected of [false, true]) {
       expect(debugYaml).toBe('');
       expect(runYaml).toBe('');
     }
+    for (const name of ['New script', 'Import YAML', 'Save Script', 'Export YAML options']) {
+      await expect(page.getByRole('button', { name, exact: true })).toHaveCount(0);
+    }
+    await page.getByRole('button', { name: 'Scripting', exact: true }).click();
     await page.getByRole('button', { name: 'Save Script', exact: true }).click();
     await page.getByRole('button', { name: 'Export YAML options', exact: true }).click();
     const downloadPromise = page.waitForEvent('download');

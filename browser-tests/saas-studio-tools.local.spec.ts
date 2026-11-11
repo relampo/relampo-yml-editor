@@ -126,13 +126,21 @@ test('RelampoLab menus use the live Studio tools and keep the same plan and edit
   expect(analysisInput).toContain('Current plan script');
   await editor.getByLabel('Select candidate 1', { exact: true }).check();
   await editor.getByRole('button', { name: 'Correlate', exact: true }).click();
-  await editor.getByRole('button', { name: 'Apply to test plan', exact: true }).click();
-  await expect(editor.getByText('Correlated plan script', { exact: true })).toBeVisible();
+  await expect(editor.getByRole('button', { name: 'Apply to test plan', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'New script', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Import YAML', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Export YAML options', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Save Script', exact: true }).click();
+  await expect(editor.getByText('Correlated plan script', { exact: true }).and(editor.locator(':visible'))).toBeVisible();
   await expect(frameElement).toHaveAttribute('src', session!);
   await expect(page).toHaveURL(/plan=tp-01/);
   await page.getByRole('button', { name: 'Save Script', exact: true }).click();
   await expect(page.getByRole('status', { name: '' }).filter({ hasText: 'Script saved' })).toBeVisible();
 
+  await expect(page.getByRole('button', { name: 'Correlation', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: 'Scripting', exact: true }).click();
+  await page.reload();
+  await expect(editor.getByText('Correlated plan script', { exact: true }).and(editor.locator(':visible'))).toBeVisible();
   await page.getByRole('button', { name: 'Export YAML options', exact: true }).click();
   const downloadPromise = page.waitForEvent('download');
   await page.getByRole('menuitem', { name: 'Export with responses', exact: true }).click();

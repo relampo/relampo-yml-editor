@@ -438,19 +438,19 @@ export function CorrelatePage({
             <Check className="h-3.5 w-3.5" />
             Correlate
           </button>
-          <button
-            type="button"
-            className={button + ' border-yellow-400/30 bg-yellow-400! text-black!'}
-            onClick={() => void saveAndReturn()}
-            disabled={!!busy || !generated || (!embedded && !output)}
-          >
-            <Save className="h-3.5 w-3.5" />
-            {embedded
-              ? text('Apply to test plan', 'Aplicar al plan de prueba')
-              : linked
-                ? text('Save and return to Studio', 'Guardar y volver a Studio')
-                : text('Save and open in Studio', 'Guardar y abrir en Studio')}
-          </button>
+          {!embedded && (
+            <button
+              type="button"
+              className={button + ' border-yellow-400/30 bg-yellow-400! text-black!'}
+              onClick={() => void saveAndReturn()}
+              disabled={!!busy || !generated || (!embedded && !output)}
+            >
+              <Save className="h-3.5 w-3.5" />
+              {linked
+                  ? text('Save and return to Studio', 'Guardar y volver a Studio')
+                  : text('Save and open in Studio', 'Guardar y abrir en Studio')}
+            </button>
+          )}
           <button
             type="button"
             className={button + ' ml-auto'}
