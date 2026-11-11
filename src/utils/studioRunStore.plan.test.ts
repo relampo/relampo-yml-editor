@@ -15,6 +15,11 @@ it('keeps execution IDs separate for identical scripts in different plans and ac
   const store = createStoredRunStore('run');
   window.history.replaceState({}, '', '/?embedded=1&account=user-a&plan=tp-01');
   store.store({ id: 'first', fp: 'same-script' });
+  window.history.replaceState({}, '', '/?embedded=1&account=user-a&plan=tp-01&script=second');
+  expect(store.read()).toBeNull();
+  store.store({ id: 'other-script', fp: 'same-script' });
+  window.history.replaceState({}, '', '/?embedded=1&account=user-a&plan=tp-01');
+  expect(store.read()?.id).toBe('first');
   window.history.replaceState({}, '', '/?embedded=1&account=user-a&plan=tp-02');
   expect(store.read()).toBeNull();
   store.store({ id: 'second', fp: 'same-script' });

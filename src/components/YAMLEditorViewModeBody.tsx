@@ -1,3 +1,4 @@
+import { PlanScriptSelector } from './PlanScriptSelector';
 import { useState } from 'react';
 import type { SearchScope } from './yaml-tree-view/search';
 import type { IssueMarker } from '../utils/documentIssues';
@@ -79,6 +80,8 @@ export function YAMLEditorViewModeBody({
           runViewEnabled={runViewEnabled}
         />
       )}
+
+      <PlanScriptSelector language={language} />
 
       <div className="flex-1 overflow-hidden min-h-0 bg-[#0a0a0a]">
         {panel === 'tree' ? (

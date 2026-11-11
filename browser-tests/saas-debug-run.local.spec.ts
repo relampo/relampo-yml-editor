@@ -122,7 +122,7 @@ for (const connected of [false, true]) {
       expect(debugYaml).toBe('');
       expect(runYaml).toBe('');
     }
-    await page.getByRole('button', { name: 'Save plan', exact: true }).click();
+    await page.getByRole('button', { name: 'Save Script', exact: true }).click();
     await page.getByRole('button', { name: 'Export YAML options', exact: true }).click();
     const downloadPromise = page.waitForEvent('download');
     await page.getByRole('menuitem', { name: 'Export with responses', exact: true }).click();

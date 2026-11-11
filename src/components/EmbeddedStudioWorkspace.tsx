@@ -1,3 +1,12 @@
+import { PlanScriptsContext } from '../contexts/PlanScriptsContext';
+import {
+  addPlanScript,
+  loadPlanScripts,
+  renamePlanScript,
+  selectPlanScript,
+  type PlanScripts,
+} from '../utils/planScriptStorage';
+import { NEW_DOCUMENT_YAML } from './yaml-editor/useYamlDocumentSync';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import type { CorrelateDocument } from '../utils/correlateBridge';
@@ -10,8 +19,46 @@ import { CorrelatePage } from './correlate/CorrelatePage';
 
 const views: EmbeddedStudioView[] = ['scripting', 'record', 'correlation', 'debug', 'run'];
 export function EmbeddedStudioWorkspace() {
+  const [catalog, setCatalog] = useState<PlanScripts | null>(null);
+  const [error, setError] = useState('');
+  useEffect(() => {
+    let cancelled = false;
+    void loadPlanScripts()
+      .then(async catalog => {
+        const address = new URL(window.location.href);
+        const requested = address.searchParams.get('script');
+        if (requested && requested !== catalog.activeScriptId) catalog = await selectPlanScript(requested);
+        if (cancelled) return;
+        address.searchParams.set('script', catalog.activeScriptId);
+        window.history.replaceState(window.history.state, '', address);
+        setCatalog(catalog);
+      })
+      .catch(cause => {
+        if (!cancelled) setError(String(cause));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  if (!catalog)
+    return (
+      <p
+        role={error ? 'alert' : 'status'}
+        className="p-4 text-sm text-zinc-400"
+      >
+        {error || 'Loading plan scripts…'}
+      </p>
+    );
+  return <ScriptWorkspace initialCatalog={catalog} />;
+}
+
+function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
   const controller = useRef<EmbeddedStudioController>(null);
   const correlation = useRef<{ save: () => Promise<void> }>(null);
+  const [catalog, setCatalog] = useState(initialCatalog);
+  const [switching, setSwitching] = useState(false);
+  const switchingRef = useRef(false);
+  const scriptId = initialCatalog.activeScriptId;
   const [ready, setReady] = useState(false);
   const [view, setView] = useState<EmbeddedStudioView>('scripting');
   const [protocol, setProtocol] = useState<'http' | 'grpc'>('http');
@@ -55,17 +102,67 @@ export function EmbeddedStudioWorkspace() {
   const flush = useCallback(
     async (reason?: string) => {
       if (!ready || !controller.current) throw new Error('Studio is still loading. Try again when the plan is ready.');
+      if (switchingRef.current && reason !== 'switch-script') throw new Error('A script is already loading.');
       if (reason === 'switch-plan' && (activity.current.http || activity.current.grpc)) {
         throw new Error('Stop the recording before switching test plans.');
       }
       if (draft.current.changed && correlation.current) await correlation.current.save();
       else await controller.current.save();
+      await renamePlanScript(scriptId, controller.current.document().fileName);
     },
-    [ready],
+    [ready, scriptId],
+  );
+  const fileNameChanged = useCallback(
+    (fileName: string) => {
+      setCatalog(current => ({
+        ...current,
+        scripts: current.scripts.map(script => (script.id === scriptId ? { ...script, fileName } : script)),
+      }));
+    },
+    [scriptId],
+  );
+  const changeScript = useCallback(
+    async (nextId?: string, document?: { yaml: string; fileName: string }) => {
+      if (switchingRef.current) throw new Error('A script is already loading.');
+      if (activity.current.http || activity.current.grpc)
+        throw new Error('Stop the recording before switching scripts.');
+      setError('');
+      switchingRef.current = true;
+      setSwitching(true);
+      try {
+        await flush('switch-script');
+        const next = document
+          ? await addPlanScript({ ...document, updatedAt: new Date().toISOString() })
+          : await selectPlanScript(nextId!);
+        // A fresh workspace restores only this script's draft and execution sessions.
+        const address = new URL(window.location.href);
+        address.searchParams.set('script', next.activeScriptId);
+        window.location.replace(address.href);
+      } catch (cause) {
+        switchingRef.current = false;
+        setSwitching(false);
+        throw cause;
+      }
+    },
+    [flush],
+  );
+  const importScript = useCallback(
+    async (yaml: string, fileName: string) => {
+      if (!controller.current) throw new Error('The script is not ready.');
+      if (activity.current.http || activity.current.grpc)
+        throw new Error('Stop the recording before importing a script.');
+      // Use the initial empty slot instead of leaving an unused blank script behind.
+      if (!controller.current.document().yaml.trim()) {
+        await controller.current.replace(yaml, fileName);
+        await renamePlanScript(scriptId, fileName);
+        fileNameChanged(fileName);
+      } else await changeScript(undefined, { yaml, fileName });
+    },
+    [changeScript, fileNameChanged, scriptId],
   );
   useEffect(() => {
-    window.parent.postMessage({ type: 'relampo:workspace-state', ready }, window.location.origin);
-  }, [ready]);
+    window.parent.postMessage({ type: 'relampo:workspace-state', ready: ready && !switching }, window.location.origin);
+  }, [ready, switching]);
   useEffect(() => {
     const receive = async (event: MessageEvent) => {
       if (
@@ -84,6 +181,7 @@ export function EmbeddedStudioWorkspace() {
         let ok = false;
         try {
           await flush(message.reason);
+          setError('');
           ok = true;
         } catch (cause) {
           report(cause);
@@ -94,9 +192,8 @@ export function EmbeddedStudioWorkspace() {
         );
         return;
       }
-      if (!ready || !controller.current) return;
+      if (!ready || !controller.current || switchingRef.current) return;
       if (message.type === 'relampo:workspace-view' && views.includes(message.view)) {
-        setError('');
         if (message.view === 'correlation') {
           const current = controller.current.document();
           if (
@@ -120,9 +217,16 @@ export function EmbeddedStudioWorkspace() {
         try {
           setError('');
           if (message.command === 'upload' || message.command === 'new') {
+            if (activity.current.http || activity.current.grpc)
+              throw new Error('Stop the recording before changing scripts.');
+            await flush('save');
             goToScripting();
             if (message.command === 'upload') controller.current.upload();
-            else controller.current.newDocument();
+            else
+              await importScript(
+                NEW_DOCUMENT_YAML,
+                `script-${catalog.scripts.length + (controller.current.document().yaml.trim() ? 1 : 0)}.yaml`,
+              );
           } else if (message.command === 'export-with-responses' || message.command === 'export-without-responses') {
             await flush('save');
             controller.current.download(message.command === 'export-with-responses');
@@ -134,7 +238,7 @@ export function EmbeddedStudioWorkspace() {
     };
     window.addEventListener('message', receive);
     return () => window.removeEventListener('message', receive);
-  }, [flush, goToScripting, protocol, ready]);
+  }, [flush, goToScripting, protocol, ready, importScript, catalog.scripts.length]);
 
   async function importRecording(yaml: string, fileName: string) {
     if (!controller.current) throw new Error('The test plan is not ready.');
@@ -166,104 +270,117 @@ export function EmbeddedStudioWorkspace() {
     await importRecording(info.initialScript.yaml, info.initialScript.name);
   }
   return (
-    <div
-      className="flex h-full min-h-0 flex-col bg-[#0a0a0a]"
-      data-studio-workspace={view}
+    <PlanScriptsContext.Provider
+      value={{
+        scripts: catalog.scripts,
+        selectedId: scriptId,
+        disabled: switching || !ready || (view !== 'scripting' && view !== 'correlation'),
+        select: id => {
+          if (id !== scriptId) void changeScript(id).catch(report);
+        },
+      }}
     >
-      {error && (
-        <p
-          role="alert"
-          className="shrink-0 bg-red-500/10 px-4 py-2 text-xs text-red-300"
-        >
-          {error}
-        </p>
-      )}
       <div
-        className="min-h-0 flex-1"
-        hidden={view === 'record' || view === 'correlation'}
-        style={{ display: view === 'record' || view === 'correlation' ? 'none' : undefined }}
+        className="flex h-full min-h-0 flex-col bg-[#0a0a0a]"
+        data-studio-workspace={view}
       >
-        <YAMLEditor
-          controllerRef={controller}
-          onReady={setReady}
-          onNavigateToScripting={goToScripting}
-        />
-      </div>
-      <div
-        className="flex min-h-0 flex-1 flex-col"
-        hidden={view !== 'record'}
-        style={{ display: view !== 'record' ? 'none' : undefined }}
-      >
-        <div
-          className="flex shrink-0 gap-2 border-b border-white/10 p-2"
-          role="tablist"
-          aria-label="Recorder protocol"
-        >
-          {(['http', 'grpc'] as const).map(value => (
-            <button
-              key={value}
-              role="tab"
-              aria-selected={protocol === value}
-              className="rounded border border-white/15 px-3 py-1 text-xs text-zinc-200 aria-selected:border-yellow-400 aria-selected:text-yellow-300"
-              onClick={() => {
-                setProtocol(value);
-                if (value === 'http') setOpenedHTTP(true);
-                else setOpenedGRPC(true);
-              }}
-            >
-              {value === 'http' ? 'HTTP/HTTPS' : 'gRPC'}
-            </button>
-          ))}
-        </div>
-        {openedHTTP && (
-          <div
-            className="min-h-0 flex-1"
-            hidden={protocol !== 'http'}
-            style={{ display: protocol !== 'http' ? 'none' : undefined }}
-            data-studio-tool="http-recorder"
+        {error && (
+          <p
+            role="alert"
+            className="shrink-0 bg-red-500/10 px-4 py-2 text-xs text-red-300"
           >
-            <HTTPRecorderPage
-              embedded
-              onOpenSaved={openSavedRecording}
-              onActivityChange={trackHTTP}
-            />
-          </div>
+            {error}
+          </p>
         )}
-        {openedGRPC && (
-          <div
-            className="min-h-0 flex-1"
-            hidden={protocol !== 'grpc'}
-            style={{ display: protocol !== 'grpc' ? 'none' : undefined }}
-            data-studio-tool="grpc-recorder"
-          >
-            <GRPCRecorderPage
-              embedded
-              onGoToScripting={goToScripting}
-              onAdd={yaml => {
-                void importRecording(yaml, 'grpc-recording.yaml').catch(report);
-              }}
-              onActivityChange={trackGRPC}
-            />
-          </div>
-        )}
-      </div>
-      {source && (
         <div
           className="min-h-0 flex-1"
-          hidden={view !== 'correlation'}
-          style={{ display: view !== 'correlation' ? 'none' : undefined }}
-          data-studio-tool="correlation"
+          hidden={view === 'record' || view === 'correlation'}
+          style={{ display: view === 'record' || view === 'correlation' ? 'none' : undefined }}
         >
-          <CorrelatePage
-            key={source.revision + ':' + source.fileName}
-            source={source}
-            onCommit={commitCorrelation}
-            onGoToScripting={goToScripting}
-            onDraftChange={trackDraft}
-            saveRef={correlation}
+          <YAMLEditor
+            controllerRef={controller}
+            onImport={importScript}
+            onFileNameChange={fileNameChanged}
+            onReady={setReady}
+            onNavigateToScripting={goToScripting}
           />
         </div>
-      )}
-    </div>
+        <div
+          className="flex min-h-0 flex-1 flex-col"
+          hidden={view !== 'record'}
+          style={{ display: view !== 'record' ? 'none' : undefined }}
+        >
+          <div
+            className="flex shrink-0 gap-2 border-b border-white/10 p-2"
+            role="tablist"
+            aria-label="Recorder protocol"
+          >
+            {(['http', 'grpc'] as const).map(value => (
+              <button
+                key={value}
+                role="tab"
+                aria-selected={protocol === value}
+                className="rounded border border-white/15 px-3 py-1 text-xs text-zinc-200 aria-selected:border-yellow-400 aria-selected:text-yellow-300"
+                onClick={() => {
+                  setProtocol(value);
+                  if (value === 'http') setOpenedHTTP(true);
+                  else setOpenedGRPC(true);
+                }}
+              >
+                {value === 'http' ? 'HTTP/HTTPS' : 'gRPC'}
+              </button>
+            ))}
+          </div>
+          {openedHTTP && (
+            <div
+              className="min-h-0 flex-1"
+              hidden={protocol !== 'http'}
+              style={{ display: protocol !== 'http' ? 'none' : undefined }}
+              data-studio-tool="http-recorder"
+            >
+              <HTTPRecorderPage
+                embedded
+                onOpenSaved={openSavedRecording}
+                onActivityChange={trackHTTP}
+              />
+            </div>
+          )}
+          {openedGRPC && (
+            <div
+              className="min-h-0 flex-1"
+              hidden={protocol !== 'grpc'}
+              style={{ display: protocol !== 'grpc' ? 'none' : undefined }}
+              data-studio-tool="grpc-recorder"
+            >
+              <GRPCRecorderPage
+                embedded
+                onGoToScripting={goToScripting}
+                onAdd={yaml => {
+                  void importRecording(yaml, 'grpc-recording.yaml').catch(report);
+                }}
+                onActivityChange={trackGRPC}
+              />
+            </div>
+          )}
+        </div>
+        {source && (
+          <div
+            className="min-h-0 flex-1"
+            hidden={view !== 'correlation'}
+            style={{ display: view !== 'correlation' ? 'none' : undefined }}
+            data-studio-tool="correlation"
+          >
+            <CorrelatePage
+              key={source.revision + ':' + source.fileName}
+              source={source}
+              onCommit={commitCorrelation}
+              onGoToScripting={goToScripting}
+              onDraftChange={trackDraft}
+              saveRef={correlation}
+            />
+          </div>
+        )}
+      </div>
+    </PlanScriptsContext.Provider>
   );
 }

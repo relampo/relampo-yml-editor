@@ -8,6 +8,7 @@ import { parseYAMLToTree } from '../../utils/yamlParser';
 const isYamlFile = (file: File) => /\.(ya?ml)$/i.test(file.name);
 
 interface UseYamlFileUploadParams {
+  onImport?: (yaml: string, fileName: string) => Promise<void>;
   language: string;
   setError: (value: string | null) => void;
   setSelectedNode: (node: YAMLNode | null) => void;
@@ -29,6 +30,7 @@ interface UseYamlFileUploadParams {
 
 /** File upload (browse + drag-and-drop) state and handlers for loading a .yaml/.yml file into the document. */
 export function useYamlFileUpload({
+  onImport,
   language,
   setError,
   setSelectedNode,
@@ -79,6 +81,13 @@ export function useYamlFileUpload({
         setIsFileLoading(false);
         setError(language === 'es' ? `Error al parsear YAML: ${detail}` : `Error parsing YAML: ${detail}`);
         clearInput?.();
+        return;
+      }
+
+      if (onImport) {
+        void onImport(content, normalizeYamlFileName(file.name))
+          .catch(error => setError(error instanceof Error ? error.message : String(error)))
+          .finally(() => { setIsFileLoading(false); clearInput?.(); });
         return;
       }
 

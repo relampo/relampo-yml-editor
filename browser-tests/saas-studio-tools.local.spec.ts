@@ -130,8 +130,8 @@ test('RelampoLab menus use the live Studio tools and keep the same plan and edit
   await expect(editor.getByText('Correlated plan script', { exact: true })).toBeVisible();
   await expect(frameElement).toHaveAttribute('src', session!);
   await expect(page).toHaveURL(/plan=tp-01/);
-  await page.getByRole('button', { name: 'Save plan', exact: true }).click();
-  await expect(page.getByRole('status', { name: '' }).filter({ hasText: 'Plan saved' })).toBeVisible();
+  await page.getByRole('button', { name: 'Save Script', exact: true }).click();
+  await expect(page.getByRole('status', { name: '' }).filter({ hasText: 'Script saved' })).toBeVisible();
 
   await page.getByRole('button', { name: 'Export YAML options', exact: true }).click();
   const downloadPromise = page.waitForEvent('download');

@@ -9,3 +9,12 @@ export function embeddedPlanDraftKey(search = window.location.search): string | 
   }
   return `saas-plan:${account}:${plan}`;
 }
+
+/** The legacy plan document is the first script; keep its existing storage key. */
+export function embeddedScriptDraftKey(search = window.location.search): string | null {
+  const plan = embeddedPlanDraftKey(search);
+  if (!plan) return null;
+  const script = new URLSearchParams(search).get('script') || 'default';
+  if (!/^[a-zA-Z0-9_-]{1,100}$/.test(script)) throw new Error('Invalid script ID.');
+  return script === 'default' ? plan : `${plan}:script:${script}`;
+}

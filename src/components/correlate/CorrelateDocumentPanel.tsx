@@ -1,3 +1,4 @@
+import { PlanScriptSelector } from '../PlanScriptSelector';
 import { useEffect, useMemo, useState } from 'react';
 import { GitBranch, Code } from 'lucide-react';
 import type { YAMLNode } from '../../types/yaml';
@@ -12,11 +13,13 @@ export function CorrelateDocumentPanel({
   onChange,
   language,
   locate,
+  scriptSelectionDisabled = false,
 }: {
   yaml: string;
   onChange: (yaml: string) => void;
   language: string;
   locate: CorrelateCandidate | null;
+  scriptSelectionDisabled?: boolean;
 }) {
   const [view, setView] = useState<'tree' | 'code'>('tree');
   const [selected, setSelected] = useState<YAMLNode | null>(null);
@@ -88,6 +91,7 @@ export function CorrelateDocumentPanel({
             </button>
           ))}
         </div>
+        <PlanScriptSelector language={language} disabled={scriptSelectionDisabled} />
         <div className="min-h-0 flex-1 overflow-hidden">
           {view === 'code' ? (
             <YAMLCodeEditor

@@ -565,6 +565,7 @@ export function CorrelatePage({
             onChange={edit}
             language={language}
             locate={locate}
+            scriptSelectionDisabled={!!busy}
           />
         </div>
         <div

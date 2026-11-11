@@ -41,7 +41,11 @@ export function YAMLEditor({
   controllerRef,
   onReady,
   onNavigateToScripting,
+  onImport,
+  onFileNameChange,
 }: {
+  onImport?: (yaml: string, fileName: string) => Promise<void>;
+  onFileNameChange?: (fileName: string) => void;
   controllerRef?: Ref<EmbeddedStudioController>;
   onReady?: (ready: boolean) => void;
   onNavigateToScripting?: () => void;
@@ -180,6 +184,7 @@ export function YAMLEditor({
 
   const { fileInputRef, isDragOver, handleUpload, handleFileChange, handleDragOver, handleDragLeave, handleDrop } =
     useYamlFileUpload({
+      onImport,
       language,
       setError,
       setSelectedNode,
@@ -305,13 +310,17 @@ export function YAMLEditor({
   useEffect(() => {
     onReady?.(isInitialized);
   }, [isInitialized, onReady]);
+  useEffect(() => {
+    if (isInitialized) onFileNameChange?.(currentFileName);
+  }, [currentFileName, isInitialized, onFileNameChange]);
   useImperativeHandle(controllerRef, () => ({
     document: () => ({ yaml: retrieveYamlForSaving(), fileName: currentFileName, revision: editRevisionRef.current }),
     replace: replaceDocument,
     save: async () => {
       await handleSave();
       const draft = await getActiveDraft();
-      if (draft?.yaml !== retrieveYamlForSaving()) throw new Error('The test plan could not be saved.');
+      if (draft?.yaml !== retrieveYamlForSaving() || draft?.fileName !== currentFileName)
+        throw new Error('The test plan could not be saved.');
     },
     upload: handleUpload,
     download: handleDownload,

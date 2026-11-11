@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { embeddedPlanDraftKey } from './embeddedPlanDraft';
+import { embeddedPlanDraftKey, embeddedScriptDraftKey } from './embeddedPlanDraft';
 
 describe('embedded test-plan draft identity', () => {
   it('isolates plans and browser accounts using stable IDs', () => {
@@ -20,4 +20,13 @@ describe('embedded test-plan draft identity', () => {
       expect(() => embeddedPlanDraftKey(search)).toThrow();
     },
   );
+});
+
+it('keeps the legacy document as the default script and separates other scripts', () => {
+  const scope = '?embedded=1&account=user-a&plan=tp-01';
+  expect(embeddedScriptDraftKey(scope)).toBe(embeddedPlanDraftKey(scope));
+  expect(embeddedScriptDraftKey(scope + '&script=default')).toBe(embeddedPlanDraftKey(scope));
+  expect(embeddedScriptDraftKey(scope + '&script=second')).toBe('saas-plan:user-a:tp-01:script:second');
+  expect(() => embeddedScriptDraftKey(scope + '&script=../other')).toThrow();
+  expect(embeddedScriptDraftKey('?editor=standalone&script=second')).toBeNull();
 });
