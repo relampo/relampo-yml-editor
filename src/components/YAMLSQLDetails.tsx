@@ -1,3 +1,4 @@
+import { useStudioMonacoTheme } from '../hooks/useStudioTheme';
 import { Info } from 'lucide-react';
 import MonacoEditor from '@monaco-editor/react';
 import * as jsyaml from 'js-yaml';
@@ -159,6 +160,7 @@ interface SQLQueryEditorProps {
 }
 
 function SQLQueryEditor({ query, onChange, helper }: SQLQueryEditorProps) {
+  const theme = useStudioMonacoTheme();
   const { t } = useLanguage();
   return (
     <div>
@@ -173,7 +175,7 @@ function SQLQueryEditor({ query, onChange, helper }: SQLQueryEditorProps) {
           defaultLanguage="sql"
           value={query}
           onChange={(value: string | undefined) => onChange(value || '')}
-          theme="vs-dark"
+          theme={theme}
           options={{
             minimap: { enabled: false },
             fontSize: 13,

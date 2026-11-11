@@ -1,3 +1,4 @@
+import { useStudioMonacoTheme } from '../../hooks/useStudioTheme';
 import Editor from '@monaco-editor/react';
 import { AlertCircle, CheckCircle, Plus, Trash2 } from 'lucide-react';
 import type { editor as MonacoEditorNS } from 'monaco-editor';
@@ -803,6 +804,7 @@ function MonacoBodyEditor({
   searchMode,
   currentMatchIndex,
 }: MonacoBodyEditorProps) {
+  const theme = useStudioMonacoTheme();
   const editorRef = useRef<MonacoEditorNS.IStandaloneCodeEditor | null>(null);
   const decorationsRef = useRef<MonacoEditorNS.IEditorDecorationsCollection | null>(null);
 
@@ -867,7 +869,7 @@ function MonacoBodyEditor({
           decorationsRef.current = editor.createDecorationsCollection([]);
         }}
         onChange={(next: string | undefined) => onChange(next || '')}
-        theme="vs-dark"
+        theme={theme}
         options={{
           minimap: { enabled: false },
           lineNumbers: 'off',

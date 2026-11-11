@@ -370,7 +370,7 @@ export function CacheManagerDetails({ node, onNodeUpdate }: NodeDetailProps) {
             onClick={() => updateField('enabled', true)}
             activeStyle={{
               backgroundColor: 'rgba(250, 204, 21, 0.10)',
-              color: '#facc15',
+              color: 'var(--studio-tone-yellow, #facc15)',
               borderColor: 'rgba(250, 204, 21, 0.35)',
               boxShadow: '0 10px 22px rgba(250, 204, 21, 0.15)',
             }}
@@ -381,7 +381,7 @@ export function CacheManagerDetails({ node, onNodeUpdate }: NodeDetailProps) {
             onClick={() => updateField('enabled', false)}
             activeStyle={{
               backgroundColor: 'rgba(250, 204, 21, 0.10)',
-              color: '#facc15',
+              color: 'var(--studio-tone-yellow, #facc15)',
               borderColor: 'rgba(250, 204, 21, 0.35)',
               boxShadow: '0 10px 22px rgba(250, 204, 21, 0.15)',
             }}

@@ -1,3 +1,4 @@
+import { applyStudioTheme } from '../utils/studioTheme';
 import { useEffect } from 'react';
 
 const themeTokens = ['--card', '--foreground', '--muted-foreground', '--border', '--accent', '--ring'] as const;
@@ -15,8 +16,7 @@ export function useEmbeddedHost(setLanguage: (language: 'en' | 'es') => void): b
       const message = data as Record<string, unknown>;
       if (message.type !== 'relampo:appearance' || (message.theme !== 'dark' && message.theme !== 'light')) return;
       const root = document.documentElement;
-      root.classList.toggle('dark', message.theme === 'dark');
-      root.style.colorScheme = message.theme;
+      applyStudioTheme(message.theme);
       if (message.language === 'en' || message.language === 'es') setLanguage(message.language);
       if (message.tokens && typeof message.tokens === 'object') {
         const tokens = message.tokens as Record<string, unknown>;

@@ -1,3 +1,5 @@
+import { useStudioTheme } from '../hooks/useStudioTheme';
+import { RELAMPO_YAML_THEME, RELAMPO_YAML_LIGHT_THEME } from '../utils/studioMonacoThemes';
 import Editor, { Monaco } from '@monaco-editor/react';
 import { ChevronDown, ChevronUp, Search, X } from 'lucide-react';
 import type { editor as MonacoEditorNS, languages as MonacoLanguagesNS } from 'monaco-editor';
@@ -31,71 +33,6 @@ const YAML_MONARCH_LANGUAGE: MonacoLanguagesNS.IMonarchLanguage = {
   },
 };
 
-const RELAMPO_YAML_THEME = {
-  base: 'vs-dark',
-  inherit: true,
-  encodedTokensColors: [],
-  semanticHighlighting: false,
-  rules: [
-    { token: '', foreground: 'E4E4E7' },
-    { token: 'comment', foreground: '71717A' },
-    { token: 'comment.yaml', foreground: '71717A' },
-    { token: 'key', foreground: 'FACC15', fontStyle: 'bold' },
-    { token: 'key.yaml', foreground: 'FACC15', fontStyle: 'bold' },
-    { token: 'string.key', foreground: 'FACC15', fontStyle: 'bold' },
-    { token: 'string.key.yaml', foreground: 'FACC15', fontStyle: 'bold' },
-    { token: 'entity.name.tag', foreground: 'FACC15', fontStyle: 'bold' },
-    {
-      token: 'entity.name.tag.yaml',
-      foreground: 'FACC15',
-      fontStyle: 'bold',
-    },
-    {
-      token: 'support.type.property-name',
-      foreground: 'FACC15',
-      fontStyle: 'bold',
-    },
-    {
-      token: 'support.type.property-name.yaml',
-      foreground: 'FACC15',
-      fontStyle: 'bold',
-    },
-    {
-      token: 'meta.object-literal.key',
-      foreground: 'FACC15',
-      fontStyle: 'bold',
-    },
-    {
-      token: 'meta.object-literal.key.yaml',
-      foreground: 'FACC15',
-      fontStyle: 'bold',
-    },
-    { token: 'type', foreground: '60A5FA' },
-    { token: 'type.yaml', foreground: '60A5FA' },
-    { token: 'keyword', foreground: '60A5FA' },
-    { token: 'keyword.yaml', foreground: '60A5FA' },
-    { token: 'string', foreground: 'E4E4E7' },
-    { token: 'string.yaml', foreground: 'E4E4E7' },
-    { token: 'number', foreground: 'E4E4E7' },
-    { token: 'number.yaml', foreground: 'E4E4E7' },
-    { token: 'value', foreground: 'E4E4E7' },
-    { token: 'value.yaml', foreground: 'E4E4E7' },
-    { token: 'operators', foreground: '71717A' },
-    { token: 'delimiter', foreground: '71717A' },
-    { token: 'delimiter.colon', foreground: '71717A' },
-  ],
-  colors: {
-    'editor.background': '#0A0A0A',
-    'editor.foreground': '#E4E4E7',
-    'editorLineNumber.foreground': '#71717A',
-    'editorLineNumber.activeForeground': '#A1A1AA',
-    'editorCursor.foreground': '#FACC15',
-    'editor.selectionBackground': '#FACC1533',
-    'editor.inactiveSelectionBackground': '#FACC151A',
-    'editor.findMatchBackground': '#00000000',
-    'editor.findMatchHighlightBackground': '#00000000',
-  },
-} satisfies MonacoEditorNS.IStandaloneThemeData & { semanticHighlighting: boolean };
 
 interface SearchToolbarProps {
   searchQuery: string;
@@ -185,6 +122,7 @@ interface YAMLMonacoPaneProps {
 }
 
 function YAMLMonacoPane({ value, readOnly, onChange, onMount, options }: YAMLMonacoPaneProps) {
+  const theme = useStudioTheme();
   return (
     <div className="flex-1 overflow-hidden">
       <Editor
@@ -195,7 +133,7 @@ function YAMLMonacoPane({ value, readOnly, onChange, onMount, options }: YAMLMon
           if (!readOnly) onChange(nextValue || '');
         }}
         onMount={onMount}
-        theme="relampo-yaml-dark"
+        theme={theme === 'light' ? 'relampo-yaml-light' : 'relampo-yaml-dark'}
         options={options}
       />
     </div>
@@ -278,6 +216,8 @@ export function YAMLCodeEditor({
     editor.revealRangeInCenter(currentMatch.range);
   }, [matches, currentMatchIndex, searchQuery, active]);
 
+  const theme = useStudioTheme();
+
   const handleEditorDidMount = (editor: MonacoEditorNS.IStandaloneCodeEditor, monaco: Monaco) => {
     monacoRef.current = monaco;
     try {
@@ -289,7 +229,8 @@ export function YAMLCodeEditor({
     }
     monaco.languages.setMonarchTokensProvider('yaml-relampo', YAML_MONARCH_LANGUAGE);
     monaco.editor.defineTheme('relampo-yaml-dark', RELAMPO_YAML_THEME);
-    monaco.editor.setTheme('relampo-yaml-dark');
+    monaco.editor.defineTheme('relampo-yaml-light', RELAMPO_YAML_LIGHT_THEME);
+    monaco.editor.setTheme(theme === 'light' ? 'relampo-yaml-light' : 'relampo-yaml-dark');
     const model = editor.getModel();
     if (model) {
       monaco.editor.setModelLanguage(model, 'yaml-relampo');

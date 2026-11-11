@@ -115,6 +115,7 @@ test('multiple plan scripts persist and all tools use the script selected in Scr
 
 
   await page.getByRole('button', { name: 'Scripting', exact: true }).click();
+  await expect(editor.locator('[data-studio-workspace]')).toHaveAttribute('data-studio-workspace', 'scripting');
   await selector.selectOption(beta);
   await expect(editor.locator('[role="treeitem"]:visible').filter({ hasText: 'Beta' }).first()).toBeVisible();
   await editor.locator('[role="treeitem"]:visible').filter({ hasText: 'Beta request' }).last().click();
@@ -125,6 +126,7 @@ test('multiple plan scripts persist and all tools use the script selected in Scr
   expect(debugYaml).not.toContain('Alpha');
 
   await page.getByRole('button', { name: 'Scripting', exact: true }).click();
+  await expect(editor.locator('[data-studio-workspace]')).toHaveAttribute('data-studio-workspace', 'scripting');
   await page.getByRole('button', { name: 'New script', exact: true }).click();
   await expect(selector.locator('option')).toHaveCount(3);
   await expect(selector.locator('option:checked')).toHaveText('script-3.yaml');
@@ -220,6 +222,7 @@ test('existing single-script plans migrate intact and recording locks script sel
   recording = true;
   await expect(editor.getByText('Recording', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Scripting', exact: true }).click();
+  await expect(editor.locator('[data-studio-workspace]')).toHaveAttribute('data-studio-workspace', 'scripting');
   await selector.selectOption(second);
   await expect(
     editor.getByRole('alert').filter({ hasText: 'Stop the recording before switching scripts.' }),

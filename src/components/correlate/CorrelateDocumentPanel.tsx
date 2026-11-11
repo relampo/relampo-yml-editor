@@ -77,6 +77,8 @@ export function CorrelateDocumentPanel({
           {(['tree', 'code'] as const).map(mode => (
             <button
               key={mode}
+              data-editor-view-tab
+              aria-pressed={view === mode}
               type="button"
               onClick={() => setView(mode)}
               className={

@@ -454,7 +454,7 @@ function YAMLTreeNodeRow({
       {!hasChildren && <div className="w-4" />}
 
       {/* Icon */}
-      <div className={`shrink-0 ${color}`}>
+      <div data-node-icon={node.type} className={`shrink-0 ${color}`}>
         <IconComponent className="w-4 h-4" />
       </div>
 

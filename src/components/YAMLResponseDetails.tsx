@@ -1,3 +1,4 @@
+import { useStudioMonacoTheme } from '../hooks/useStudioTheme';
 import Editor from '@monaco-editor/react';
 import { ChevronDown, ChevronUp, Download, Search } from 'lucide-react';
 import type { editor as MonacoEditorNS } from 'monaco-editor';
@@ -724,6 +725,7 @@ function offsetToPosition(text: string, offset: number) {
 }
 
 function MonacoResponseBodyEditor({ value, searchText, searchMode, currentMatchIndex }: MonacoResponseBodyEditorProps) {
+  const theme = useStudioMonacoTheme();
   const [editorReady, setEditorReady] = useState(false);
   const editorRef = useRef<MonacoEditorNS.IStandaloneCodeEditor | null>(null);
   const decorationsRef = useRef<MonacoEditorNS.IEditorDecorationsCollection | null>(null);
@@ -789,7 +791,7 @@ function MonacoResponseBodyEditor({ value, searchText, searchMode, currentMatchI
           decorationsRef.current = editor.createDecorationsCollection([]);
           setEditorReady(true);
         }}
-        theme="vs-dark"
+        theme={theme}
         options={{
           readOnly: true,
           minimap: { enabled: false },

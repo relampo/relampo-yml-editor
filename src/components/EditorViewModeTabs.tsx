@@ -42,6 +42,8 @@ export function EditorViewModeTabs({
         <button
           type="button"
           key={tab.mode}
+          data-editor-view-tab
+          aria-pressed={activeViewMode === tab.mode}
           onClick={() => onSelect(tab.mode)}
           className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 text-sm font-bold transition-all duration-200 ${
             activeViewMode === tab.mode

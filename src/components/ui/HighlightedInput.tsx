@@ -122,7 +122,7 @@ export function HighlightedInput({
         data-search-highlighted="true"
         value={value}
         className={className}
-        style={{ ...style, color: 'transparent', caretColor: '#d4d4d8' }}
+        style={{ ...style, color: 'transparent', caretColor: 'var(--studio-caret, #d4d4d8)' }}
         {...props}
         onScroll={event => {
           if (overlayRef.current) overlayRef.current.scrollLeft = event.currentTarget.scrollLeft;
