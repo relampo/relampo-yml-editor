@@ -58,7 +58,7 @@ const MAX_LIVE_LOGS = 1000;
 const runStore = createStoredRunStore('relampo.studio.loadRun');
 
 // Collects every `load` node in the tree (one per scenario). The Run panel
-// previews the first as the "planned profile" and notes when there are several.
+// shows each configured profile and filters it with the selected result scope.
 function collectLoadNodes(node: YAMLNode | null): YAMLNode[] {
   if (!node) return [];
   const found: YAMLNode[] = [];
@@ -68,6 +68,17 @@ function collectLoadNodes(node: YAMLNode | null): YAMLNode[] {
   };
   walk(node);
   return found;
+}
+
+function loadScenarioIndex(tree: YAMLNode | null): Map<string, YAMLNode> {
+  const index = new Map<string, YAMLNode>();
+  const visit = (node: YAMLNode, scenario?: YAMLNode) => {
+    const owner = node.type === 'scenario' ? node : scenario;
+    if (node.type === 'load' && owner) index.set(node.id, owner);
+    node.children?.forEach(child => visit(child, owner));
+  };
+  if (tree) visit(tree);
+  return index;
 }
 
 // Names the scenarios whose Load is an unselected placeholder: Run executes
@@ -302,6 +313,7 @@ export function YAMLLoadRunSession({
   }
 
   const loadNodes = useMemo(() => collectLoadNodes(tree), [tree]);
+  const loadScenarios = useMemo(() => loadScenarioIndex(tree), [tree]);
   const fallbackScenarioNames = useMemo(() => collectFallbackScenarioNames(tree), [tree]);
   const usesOnlyFallbackLoad = loadNodes.every(node => node.data?.__loadSelected === false);
   const runRequestTargets = useMemo(() => collectDebugEventTargets(tree), [tree]);
@@ -309,7 +321,6 @@ export function YAMLLoadRunSession({
   const incompatibleMulti = isMultiScenario && !multiScenarioRunEnabled;
   const [resultScope, setResultScope] = useState('');
   const plannedLoadNode = loadNodes[0] ?? null;
-  const plannedLoadType = plannedLoadNode ? normalizeLoadType(plannedLoadNode.data?.type) : null;
   const iterationBudgetCapsDuration = useMemo(() => {
     if (!plannedLoadNode) return false;
     const duration = parseTimeToSeconds(String(plannedLoadNode.data?.duration ?? '').trim());
@@ -581,16 +592,23 @@ export function YAMLLoadRunSession({
               </p>
             )}
 
-            {!isMultiScenario && plannedLoadNode && plannedLoadType !== 'intent' && plannedLoadType !== 'segments' && (
-              <PlannedLoadProfilePanel
-                plannedLoadNode={plannedLoadNode}
-                plannedLoadType={plannedLoadType}
-                scenarioCount={loadNodes.length}
-                iterationBudgetCapsDuration={iterationBudgetCapsDuration}
-                isRunning={isRunning}
-                elapsedMs={latest?.elapsed_ms ?? 0}
-              />
-            )}
+            {loadNodes.filter(node => normalizeLoadType(node.data?.type) !== 'intent').map(node => {
+              const scenario = loadScenarios.get(node.id);
+              if (resultScope && scenario?.data?.name !== resultScope && scenario?.name !== resultScope) return null;
+              return (
+                <div key={node.id}>
+                  {isMultiScenario && <p className="mb-2 text-sm text-zinc-300">{scenario?.name}</p>}
+                  <PlannedLoadProfilePanel
+                    plannedLoadNode={node}
+                    plannedLoadType={normalizeLoadType(node.data?.type)}
+                    scenarioCount={1}
+                    iterationBudgetCapsDuration={!isMultiScenario && iterationBudgetCapsDuration}
+                    isRunning={isRunning && !isMultiScenario}
+                    elapsedMs={latest?.elapsed_ms ?? 0}
+                  />
+                </div>
+              );
+            })}
 
             {intentTicks.length > 0 && (
               <IntentRuntimeTimeline
@@ -611,8 +629,9 @@ export function YAMLLoadRunSession({
                       : selectedResult.outcome
                     : runStatus
                 }
+                scenarioMode={isMultiScenario ? (tree?.data?.scenario_mode === 'sequential' ? 'sequential' : 'parallel') : 'single'}
                 scenarioResult={selectedResult != null}
-                reportUrl={summary && activeRunIdRef.current ? loadRunReportUrl(activeRunIdRef.current) : undefined}
+                reportUrl={summary && activeRunIdRef.current ? loadRunReportUrl(activeRunIdRef.current, language) : undefined}
               />
             )}
 
@@ -1578,11 +1597,13 @@ function RunSummaryPanel({
   status,
   reportUrl,
   scenarioResult = false,
+  scenarioMode,
 }: {
   summary: RunSummary;
   status: RunStatus | null;
   reportUrl?: string;
   scenarioResult?: boolean;
+  scenarioMode: 'single' | 'parallel' | 'sequential';
 }) {
   const { t } = useLanguage();
   const unavailable = t('yamlEditor.runDebug.unavailable');
@@ -1614,6 +1635,7 @@ function RunSummaryPanel({
     : summary.total_requests > 0
       ? (summary.total_failures * 100) / summary.total_requests
       : null;
+  const executionMode = scenarioResult ? 'single' : summary.scenario_mode ?? scenarioMode;
   const metrics = [
     {
       label: t('yamlEditor.runDebug.run.summary.status'),
@@ -1624,49 +1646,12 @@ function RunSummaryPanel({
             ? runStatusLabel((summary.status || status) as RunStatus, t)
             : unavailable,
     },
-    ...(summary.complete === undefined
-      ? []
-      : [
-          {
-            label: t('yamlEditor.runDebug.run.summary.evidence'),
-            value: summary.complete
-              ? t('yamlEditor.runDebug.run.evidenceComplete')
-              : t('yamlEditor.runDebug.run.evidencePartial'),
-          },
-        ]),
-    ...(summary.scenarios
-      ? [
-          {
-            label: t('yamlEditor.runDebug.run.summary.totalElapsed'),
-            value: formatDurationNs(summary.total_elapsed ?? summary.duration),
-          },
-          {
-            label: t('yamlEditor.runDebug.run.summary.workloadDuration'),
-            value: formatDurationNs(summary.workload_duration ?? summary.duration),
-          },
-        ]
-      : []),
-    ...(scenarioResult ||
-    summary.request_latency ||
-    summary.scenarios ||
-    summary.requests.some(request => request.scenario_name)
-      ? [
-          {
-            label: t('yamlEditor.runDebug.run.summary.requestP95'),
-            value: summary.request_latency ? formatMs(summary.request_latency.p95_ms) : unavailable,
-          },
-          {
-            label: t('yamlEditor.runDebug.run.summary.transactionP95'),
-            value: summary.transaction_latency ? formatMs(summary.transaction_latency.p95_ms) : unavailable,
-          },
-        ]
-      : []),
     { label: t('yamlEditor.runDebug.run.summary.duration'), value: formatDurationNs(summary.duration) },
     { label: t('yamlEditor.runDebug.run.summary.vusExecConf'), value: `${executedVUs}/${configuredVUs}` },
     { label: t('yamlEditor.runDebug.run.summary.totalRequests'), value: summary.total_requests.toLocaleString() },
     {
-      label: t('yamlEditor.runDebug.run.summary.failedRequests'),
-      value: `${summary.total_failures.toLocaleString()} (${failurePercent == null ? unavailable : `${failurePercent.toFixed(2)}%`})`,
+      label: t('yamlEditor.runDebug.run.summary.errorPercent'),
+      value: failurePercent == null ? unavailable : `${failurePercent.toFixed(2)}%`,
       tone: summary.total_failures > 0 ? 'text-red-300' : undefined,
     },
     {
@@ -1684,7 +1669,7 @@ function RunSummaryPanel({
     },
     { label: t('yamlEditor.runDebug.run.summary.rssPeak'), value: measured('rss_peak_mib', ' MiB') },
     { label: t('yamlEditor.runDebug.run.summary.cpuPeak'), value: measured('cpu_percent_peak', '%', 1) },
-    { label: t('yamlEditor.runDebug.run.summary.goroutinesPeak'), value: measured('goroutines_peak', '') },
+    { label: t('yamlEditor.runDebug.run.summary.executionMode'), value: t(`yamlEditor.runDebug.run.summary.${executionMode}`) },
   ];
   return (
     <div className="border border-white/10 bg-[#111111]">
