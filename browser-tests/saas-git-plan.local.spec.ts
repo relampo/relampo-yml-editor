@@ -124,6 +124,20 @@ for (const provider of ['github', 'gitlab'] as const) {
         throw new Error(`Unexpected fixture request: ${request.method()} ${path}`);
       },
     );
+    // An already-open editor from before the publication feature omits the flag.
+    // The explicit Save button must still publish, while background flushes do not.
+    await context.addInitScript(() => {
+      if (window.parent === window) return;
+      const post = window.parent.postMessage;
+      window.parent.postMessage = function (message: any, targetOrigin: any, transfer?: any) {
+        if (message?.type === 'relampo:persist-script') {
+          const legacy = { ...message };
+          delete legacy.publish;
+          return post.call(window.parent, legacy, targetOrigin, transfer);
+        }
+        return post.call(window.parent, message, targetOrigin, transfer);
+      };
+    });
     await page.goto(base.origin);
     await page.evaluate(provider => {
       const user = `git-${provider}@example.invalid`;
@@ -218,7 +232,11 @@ for (const provider of ['github', 'gitlab'] as const) {
     await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
     await page.reload();
     await expect(page.getByRole('button', { name: 'Save Script', exact: true })).toBeEnabled();
-    await page.getByRole('button', { name: 'Plan settings', exact: true }).click();
+    await page.getByRole('button', { name: 'Save Script', exact: true }).click();
+    await page
+      .getByRole('button', { name: provider === 'github' ? 'Reconnect GitHub' : 'Reconnect GitLab', exact: true })
+      .click();
+    expect(commits).toBe(3);
     await expect(dialog.getByLabel('Access token')).toBeVisible();
     await dialog.getByLabel('Access token').fill(token);
     await dialog
