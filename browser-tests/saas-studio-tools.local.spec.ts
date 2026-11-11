@@ -129,7 +129,7 @@ test('RelampoLab menus use the live Studio tools and keep the same plan and edit
   await expect(editor.getByRole('button', { name: 'Apply to test plan', exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'New script', exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Import YAML', exact: true })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Export YAML options', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Save YAML options', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Save Script', exact: true }).click();
   await expect(editor.getByText('Correlated plan script', { exact: true }).and(editor.locator(':visible'))).toBeVisible();
   await expect(frameElement).toHaveAttribute('src', session!);
@@ -141,9 +141,9 @@ test('RelampoLab menus use the live Studio tools and keep the same plan and edit
   await page.getByRole('button', { name: 'Scripting', exact: true }).click();
   await page.reload();
   await expect(editor.getByText('Correlated plan script', { exact: true }).and(editor.locator(':visible'))).toBeVisible();
-  await page.getByRole('button', { name: 'Export YAML options', exact: true }).click();
+  await page.getByRole('button', { name: 'Save YAML options', exact: true }).click();
   const downloadPromise = page.waitForEvent('download');
-  await page.getByRole('menuitem', { name: 'Export with responses', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Save with responses', exact: true }).click();
   const download = await downloadPromise;
   const downloadPath = await download.path();
   expect(readFileSync(downloadPath!, 'utf8')).toContain('Correlated plan script');

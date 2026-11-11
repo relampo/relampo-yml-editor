@@ -70,7 +70,7 @@ test('multiple plan scripts persist and all tools use the script selected in Scr
   const saveGroup = page.getByRole('group', { name: 'Save Script', exact: true });
   await expect(saveGroup.getByRole('button')).toHaveCount(2);
   const saveBox = await saveGroup.getByRole('button', { name: 'Save Script', exact: true }).boundingBox();
-  const exportBox = await saveGroup.getByRole('button', { name: 'Export YAML options', exact: true }).boundingBox();
+  const exportBox = await saveGroup.getByRole('button', { name: 'Save YAML options', exact: true }).boundingBox();
   expect(Math.abs(saveBox!.x + saveBox!.width - exportBox!.x)).toBeLessThan(1);
   await upload('Alpha');
   const alpha = await selector.inputValue();

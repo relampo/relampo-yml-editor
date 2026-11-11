@@ -63,7 +63,7 @@ for (const connected of [false, true]) {
     await expect(editor.getByText('Plan execution', { exact: true })).toBeVisible();
     const session = await page.locator('iframe[data-plan-editor]').getAttribute('src');
     await page.getByRole('button', { name: 'Debug', exact: true }).click();
-    for (const name of ['New script', 'Import YAML', 'Save Script', 'Export YAML options']) {
+    for (const name of ['New script', 'Import YAML', 'Save Script', 'Save YAML options']) {
       await expect(page.getByRole('button', { name, exact: true })).toHaveCount(0);
     }
     const debug = editor.getByRole('button', { name: 'Run Debug', exact: true });
@@ -125,14 +125,14 @@ for (const connected of [false, true]) {
       expect(debugYaml).toBe('');
       expect(runYaml).toBe('');
     }
-    for (const name of ['New script', 'Import YAML', 'Save Script', 'Export YAML options']) {
+    for (const name of ['New script', 'Import YAML', 'Save Script', 'Save YAML options']) {
       await expect(page.getByRole('button', { name, exact: true })).toHaveCount(0);
     }
     await page.getByRole('button', { name: 'Scripting', exact: true }).click();
     await page.getByRole('button', { name: 'Save Script', exact: true }).click();
-    await page.getByRole('button', { name: 'Export YAML options', exact: true }).click();
+    await page.getByRole('button', { name: 'Save YAML options', exact: true }).click();
     const downloadPromise = page.waitForEvent('download');
-    await page.getByRole('menuitem', { name: 'Export with responses', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Save with responses', exact: true }).click();
     const downloaded = await downloadPromise;
     expect(Number((load(readFileSync((await downloaded.path())!, 'utf8')) as any).scenarios[0].load.users)).toBe(3);
     await expect(page.locator('iframe[data-plan-editor]')).toHaveAttribute('src', session!);
