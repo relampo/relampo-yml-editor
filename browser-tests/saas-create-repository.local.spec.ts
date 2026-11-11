@@ -113,7 +113,14 @@ for (const provider of ['github', 'gitlab'] as const) {
     await page.goto(`${base.origin}/projects`);
     await page.getByRole('button', { name: 'New Plan', exact: true }).click();
     const dialog = page.getByRole('dialog');
+    await expect(dialog.getByRole('status')).toContainText('Enter a Test Plan name above.');
+    await expect(dialog.getByRole('button', { name: 'Create Test Plan', exact: true })).toBeDisabled();
+    await dialog.getByRole('button', { name: 'Complete details', exact: true }).click();
+    await expect(dialog.getByLabel('Test Plan name')).toBeFocused();
     await dialog.getByLabel('Test Plan name').fill('New Repository Plan');
+    await expect(dialog.getByRole('status')).toContainText('Enter a description above.');
+    await dialog.getByRole('button', { name: 'Complete details', exact: true }).click();
+    await expect(dialog.getByLabel('Description')).toBeFocused();
     await dialog.getByLabel('Description').fill('Storage in a new repository');
     await dialog.getByRole('combobox', { name: 'Save in', exact: true }).selectOption(provider);
     await dialog.getByLabel('Access token').fill('test-only-create-token');
