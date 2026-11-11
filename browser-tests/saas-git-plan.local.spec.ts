@@ -3,7 +3,7 @@ const saasURL = process.env.RELAMPO_SAAS_URL;
 test.skip(!saasURL, 'Set RELAMPO_SAAS_URL to the prepared local SaaS server.');
 
 for (const provider of ['github', 'gitlab'] as const) {
-  test(`${provider}: stage a plan locally, explicitly publish, reconnect and protect remote edits`, async ({
+  test(`${provider}: save scripts directly to Git, retain other drafts, reconnect and protect remote edits`, async ({
     page,
     context,
   }) => {
@@ -19,6 +19,7 @@ for (const provider of ['github', 'gitlab'] as const) {
     ]);
     let tree: any[] = [];
     const mutations: string[] = [];
+    let denyScriptWrites = false;
     await context.route(
       provider === 'github' ? 'https://api.github.com/**' : 'https://gitlab.com/api/v4/**',
       async route => {
@@ -35,7 +36,10 @@ for (const provider of ['github', 'gitlab'] as const) {
         expect(request.headers()[provider === 'github' ? 'authorization' : 'private-token']).toBe(
           provider === 'github' ? `Bearer ${token}` : token,
         );
-        if (request.method() !== 'GET') mutations.push(request.method() + ' ' + path);
+        if (request.method() !== 'GET') {
+          mutations.push(request.method() + ' ' + path);
+          if (denyScriptWrites) return respond({ message: 'Write denied' }, 403);
+        }
         if (path === '/user' || path === '/api/v4/user') return respond({ login: 'acme', username: 'acme' });
         if (path === '/user/repos' || path === '/api/v4/projects')
           return respond([
@@ -175,25 +179,42 @@ for (const provider of ['github', 'gitlab'] as const) {
       ),
     });
     await expect(editor.getByText('Git script', { exact: true })).toBeVisible();
+    expect(mutations).toHaveLength(initializationWrites); // Import retains a draft, without publishing.
+    denyScriptWrites = true;
     await page.getByRole('button', { name: 'Save Script', exact: true }).click();
-    expect(mutations).toHaveLength(initializationWrites);
+    await expect(page.getByRole('alert').filter({ hasText: '403' }).first()).toBeVisible();
+    expect(commits).toBe(1);
+    const planId = new URL(page.url()).searchParams.get('plan')!;
+    await page.evaluate(async id => {
+      const moduleURL = '/src/utils/gitPlanStorage.ts';
+      const storage = await import(moduleURL);
+      await storage.stageGitScript(id, 'other-draft', 'other.yaml', 'test: other pending script');
+    }, planId);
+    denyScriptWrites = false;
+    await page.getByRole('button', { name: 'Save Script', exact: true }).click();
+    await expect.poll(() => commits).toBe(2);
+    await expect(page.getByText('Script saved', { exact: true })).toBeVisible();
+    expect(files.get('performance-tests/git-checkout/Scripts/checkout.yaml')?.text).toContain('Git script');
+    expect(files.has('performance-tests/git-checkout/Scripts/other.yaml')).toBe(false);
+    expect(files.get('README.md')?.text).toBe('untouched');
+    // Saving unchanged content is acknowledged without another commit.
+    await page.getByRole('button', { name: 'Save Script', exact: true }).click();
+    await expect(page.getByText('Script saved', { exact: true })).toBeVisible();
+    expect(commits).toBe(2);
     await page.getByRole('button', { name: 'Plan settings', exact: true }).click();
     await expect(dialog.getByText('Pending changes (1)', { exact: true })).toBeVisible();
+    expect(commits).toBe(2); // Opening settings does not publish drafts.
     await dialog.getByRole('button', { name: 'Disconnect account', exact: true }).click();
-    await expect(dialog.getByLabel('Access token')).toBeVisible();
     await dialog.getByLabel('Access token').fill(token);
     await dialog
       .getByRole('button', { name: provider === 'github' ? 'Connect GitHub' : 'Connect GitLab', exact: true })
       .click();
     await expect(dialog.getByLabel('Access token')).toHaveCount(0);
-    expect(mutations).toHaveLength(initializationWrites);
-    await dialog.getByLabel('Commit message', { exact: true }).fill('feat(tests): add checkout plan');
+    await dialog.getByLabel('Commit message', { exact: true }).fill('feat(tests): publish other draft');
     await dialog.getByRole('button', { name: 'Commit & Push', exact: true }).click();
     await expect(dialog.getByText('No pending changes.', { exact: true })).toBeVisible();
-    expect(commits).toBe(2);
-    expect(files.get('performance-tests/git-checkout/checkout.yaml')).toBeUndefined();
-    expect(files.get('performance-tests/git-checkout/Scripts/checkout.yaml')?.text).toContain('Git script');
-    expect(files.get('README.md')?.text).toBe('untouched');
+    expect(commits).toBe(3);
+    expect(files.get('performance-tests/git-checkout/Scripts/other.yaml')?.text).toContain('other pending');
     await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
     await page.reload();
     await expect(page.getByRole('button', { name: 'Save Script', exact: true })).toBeEnabled();
@@ -208,28 +229,60 @@ for (const provider of ['github', 'gitlab'] as const) {
     const request = editor.locator('[role="treeitem"]:visible').filter({ hasText: 'Cart' }).last();
     await request.click();
     await editor.getByLabel('Path', { exact: true }).fill('/edited');
+    head = 'd'.repeat(40); // An unrelated remote commit can be incorporated safely.
     await page.getByRole('button', { name: 'Save Script', exact: true }).click();
-    await page.getByRole('button', { name: 'Plan settings', exact: true }).click();
-    await expect(dialog.getByText('Pending changes (1)', { exact: true })).toBeVisible();
-    head = 'd'.repeat(40); // Unrelated remote commit: refresh may advance safely.
-    await dialog.getByRole('button', { name: 'Commit & Push', exact: true }).click();
-    await expect(dialog.getByRole('alert')).toContainText('branch changed');
-    expect(commits).toBe(2);
-    await dialog.getByRole('button', { name: 'Refresh branch', exact: true }).click();
-    await expect(dialog.getByRole('alert')).toHaveCount(0);
-    await dialog.getByRole('button', { name: 'Commit & Push', exact: true }).click();
-    await expect(dialog.getByText('No pending changes.', { exact: true })).toBeVisible();
-    expect(commits).toBe(3);
-    await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await expect.poll(() => commits).toBe(4);
+    await expect(page.getByText('Script saved', { exact: true })).toBeVisible();
+    expect(files.get('performance-tests/git-checkout/Scripts/checkout.yaml')?.text).toContain('/edited');
+    // A denied rename retains both the new file and old-path deletion for retry.
+    const renamedContent = files.get('performance-tests/git-checkout/Scripts/checkout.yaml')!.text;
+    denyScriptWrites = true;
+    const renameError = await page.evaluate(
+      async ({ id, yaml }) => {
+        const moduleURL = '/src/utils/gitPlanStorage.ts';
+        try {
+          await (await import(moduleURL)).saveGitScript(id, 'default', 'renamed.yaml', yaml);
+          return '';
+        } catch (cause) {
+          return String(cause);
+        }
+      },
+      { id: planId, yaml: renamedContent },
+    );
+    expect(renameError).toContain('403');
+    expect(commits).toBe(4);
+    denyScriptWrites = false;
+    await page.evaluate(
+      async ({ id, yaml }) => {
+        const moduleURL = '/src/utils/gitPlanStorage.ts';
+        const storage = await import(moduleURL);
+        await storage.saveGitScript(id, 'default', 'renamed.yaml', yaml);
+      },
+      { id: planId, yaml: renamedContent },
+    );
+    expect(commits).toBe(5);
+    expect(files.has('performance-tests/git-checkout/Scripts/checkout.yaml')).toBe(false);
+    expect(files.get('performance-tests/git-checkout/Scripts/renamed.yaml')?.text).toBe(renamedContent);
+    await page.evaluate(
+      async ({ id, yaml }) => {
+        const moduleURL = '/src/utils/gitPlanStorage.ts';
+        await (await import(moduleURL)).saveGitScript(id, 'default', 'checkout.yaml', yaml);
+      },
+      { id: planId, yaml: renamedContent },
+    );
+    expect(commits).toBe(6);
+    expect(files.has('performance-tests/git-checkout/Scripts/renamed.yaml')).toBe(false);
     await editor.getByLabel('Path', { exact: true }).fill('/another-edit');
-    await page.getByRole('button', { name: 'Save Script', exact: true }).click();
     head = 'e'.repeat(40);
     files.set('performance-tests/git-checkout/Scripts/checkout.yaml', { text: 'remote edit', commit: head });
+    await page.getByRole('button', { name: 'Save Script', exact: true }).click();
+    await expect(page.getByRole('alert').filter({ hasText: 'Remote file changed' }).first()).toBeVisible();
+    expect(commits).toBe(6);
+    expect(files.get('performance-tests/git-checkout/Scripts/checkout.yaml')?.text).toBe('remote edit');
     await page.getByRole('button', { name: 'Plan settings', exact: true }).click();
+    await expect(dialog.getByText('Pending changes (1)', { exact: true })).toBeVisible();
     await dialog.getByRole('button', { name: 'Refresh branch', exact: true }).click();
     await expect(dialog.getByRole('alert')).toContainText('Remote file changed');
-    expect(commits).toBe(3);
-    expect(files.get('performance-tests/git-checkout/Scripts/checkout.yaml')?.text).toBe('remote edit');
     const staleReview = await page.evaluate(async () => {
       const storageURL = '/src/utils/gitPlanStorage.ts';
       const storage = await import(storageURL);
@@ -256,7 +309,7 @@ for (const provider of ['github', 'gitlab'] as const) {
     expect(staleReview.message).toContain('Pending files changed');
     expect(staleReview.other).toEqual([]);
     expect(staleReview.connected).toBe(false);
-    expect(commits).toBe(3);
+    expect(commits).toBe(6);
     const persistent = await page.evaluate(async () => {
       const raw = JSON.stringify(localStorage);
       const records = await new Promise<unknown[]>((resolve, reject) => {

@@ -111,7 +111,7 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
       if (draft.current.changed && correlation.current) await correlation.current.save();
       else await controller.current.save();
       await renamePlanScript(scriptId, controller.current.document().fileName);
-      await persistEmbeddedScript(scriptId, controller.current.document());
+      await persistEmbeddedScript(scriptId, controller.current.document(), reason === 'save');
     },
     [ready, scriptId],
   );
@@ -236,7 +236,7 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
           if (message.command === 'upload' || message.command === 'new') {
             if (activity.current.http || activity.current.grpc)
               throw new Error('Stop the recording before changing scripts.');
-            await flush('save');
+            await flush('import');
             goToScripting();
             if (message.command === 'upload') controller.current.upload();
             else
@@ -245,7 +245,7 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
                 `script-${catalog.scripts.length + (controller.current.document().yaml.trim() ? 1 : 0)}.yaml`,
               );
           } else if (message.command === 'export-with-responses' || message.command === 'export-without-responses') {
-            await flush('save');
+            await flush('download');
             controller.current.download(message.command === 'export-with-responses');
           }
         } catch (cause) {

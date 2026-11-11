@@ -1,5 +1,9 @@
 /** The same-origin SaaS owns the chosen local directory; Studio sends only its document. */
-export function persistEmbeddedScript(scriptId: string, document: { yaml: string; fileName: string }): Promise<void> {
+export function persistEmbeddedScript(
+  scriptId: string,
+  document: { yaml: string; fileName: string },
+  publish = false,
+): Promise<void> {
   if (window.parent === window) return Promise.resolve();
   const requestId = crypto.randomUUID();
   return new Promise((resolve, reject) => {
@@ -24,13 +28,16 @@ export function persistEmbeddedScript(scriptId: string, document: { yaml: string
           ),
         );
     };
-    const timer = window.setTimeout(() => {
-      cleanup();
-      reject(new Error('The host did not confirm the script file save.'));
-    }, 8000);
+    const timer = window.setTimeout(
+      () => {
+        cleanup();
+        reject(new Error('The host did not confirm the script file save.'));
+      },
+      publish ? 60000 : 8000,
+    );
     window.addEventListener('message', receive);
     window.parent.postMessage(
-      { type: 'relampo:persist-script', requestId, scriptId, ...document },
+      { type: 'relampo:persist-script', requestId, scriptId, ...document, publish },
       window.location.origin,
     );
   });
