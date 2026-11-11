@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import type { CorrelateDocument } from '../../utils/correlateBridge';
+import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
 import { Link2, FolderOpen, Eraser, Play, Check, Save, X, ExternalLink } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { RecorderShell } from '../recorder/RecorderShell';
@@ -16,7 +17,20 @@ import { CorrelateDocumentPanel } from './CorrelateDocumentPanel';
 import { CorrelateResults } from './CorrelateResults';
 import type { AppliedCorrelation, CorrelatedDocument } from '../../utils/correlateApi';
 
-export function CorrelatePage() {
+export function CorrelatePage({
+  source,
+  onCommit,
+  onGoToScripting,
+  onDraftChange,
+  saveRef,
+}: {
+  saveRef?: Ref<{ save: () => Promise<void> }>;
+  source?: CorrelateDocument;
+  onCommit?: (yaml: string, name: string) => Promise<void>;
+  onGoToScripting?: () => void;
+  onDraftChange?: (draft: { yaml: string; fileName: string; changed: boolean }) => void;
+} = {}) {
+  const embedded = Boolean(onCommit);
   const { language, setLanguage } = useLanguage();
   const es = language === 'es',
     text = (en: string, spanish: string) => (es ? spanish : en);
@@ -94,17 +108,21 @@ export function CorrelatePage() {
   useEffect(() => {
     document.title = 'Relampo Correlate';
     let live = true;
-    correlateRequest<{ directory: string }>('options', {})
-      .then(value => {
-        if (live) {
-          directory.current = value.directory;
-          setOutput(current => current || value.directory + '/' + correlatedFileName(fileName.current));
-        }
-      })
-      .catch(cause => {
-        if (live) setError(String(cause.message || cause));
-      });
-    const session = new URLSearchParams(location.search).get('session');
+    if (source) {
+      load(source.yaml, source.fileName, true);
+    }
+    if (!embedded)
+      correlateRequest<{ directory: string }>('options', {})
+        .then(value => {
+          if (live) {
+            directory.current = value.directory;
+            setOutput(current => current || value.directory + '/' + correlatedFileName(fileName.current));
+          }
+        })
+        .catch(cause => {
+          if (live) setError(String(cause.message || cause));
+        });
+    const session = embedded ? null : new URLSearchParams(location.search).get('session');
     let active: BroadcastChannel | null = null;
     if (session && /^[a-zA-Z0-9_-]{1,80}$/.test(session)) {
       active = new BroadcastChannel('relampo-correlate-v1-' + session);
@@ -163,6 +181,9 @@ export function CorrelatePage() {
     window.addEventListener('beforeunload', guard);
     return () => window.removeEventListener('beforeunload', guard);
   }, [changed]);
+  useEffect(() => {
+    onDraftChange?.({ yaml, fileName: name, changed });
+  }, [yaml, name, changed, onDraftChange]);
   function clear() {
     acceptSource.current = false;
     invalidate();
@@ -242,7 +263,26 @@ export function CorrelatePage() {
       throw cause;
     }
   }
+  const commitEmbedded = async () => {
+    if (!onCommit) return;
+    await onCommit(yaml, name || 'script.yaml');
+    setChanged(false);
+  };
+  useImperativeHandle(saveRef, () => ({ save: commitEmbedded }));
   async function saveAndReturn() {
+    if (onCommit) {
+      setBusy('save');
+      setError('');
+      try {
+        await commitEmbedded();
+        onGoToScripting?.();
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : String(cause));
+      } finally {
+        setBusy('');
+      }
+      return;
+    }
     let placeholder: Window | null = null;
     if (!linked) {
       placeholder = window.open('about:blank', '_blank');
@@ -314,11 +354,16 @@ export function CorrelatePage() {
     }
   }
   const goToStudio = () => {
+    if (onGoToScripting) {
+      onGoToScripting();
+      return;
+    }
     if (window.opener && !window.opener.closed) window.opener.focus();
     else if (!openStudioEditorTab()) setError(text('Allow opening Studio.', 'Permite abrir Studio.'));
   };
   return (
     <RecorderShell
+      embedded={embedded}
       language={language}
       setLanguage={setLanguage}
       onError={setError}
@@ -341,25 +386,29 @@ export function CorrelatePage() {
           >
             {name || text('No script loaded', 'Sin script cargado')}
           </span>
-          <button
-            type="button"
-            className={button}
-            disabled={!!busy}
-            onClick={() => fileInput.current?.click()}
-          >
-            <FolderOpen className="h-3.5 w-3.5" />
-            {text('Open script', 'Abrir script')}
-          </button>
-          <input
-            type="file"
-            accept=".yaml,.yml"
-            ref={fileInput}
-            hidden
-            onChange={e => {
-              void importFile(e.target.files?.[0]);
-              e.target.value = '';
-            }}
-          />
+          {!embedded && (
+            <>
+              <button
+                type="button"
+                className={button}
+                disabled={!!busy}
+                onClick={() => fileInput.current?.click()}
+              >
+                <FolderOpen className="h-3.5 w-3.5" />
+                {text('Open script', 'Abrir script')}
+              </button>
+              <input
+                type="file"
+                accept=".yaml,.yml"
+                ref={fileInput}
+                hidden
+                onChange={e => {
+                  void importFile(e.target.files?.[0]);
+                  e.target.value = '';
+                }}
+              />
+            </>
+          )}
           <button
             type="button"
             className={button}
@@ -391,12 +440,14 @@ export function CorrelatePage() {
             type="button"
             className={button + ' border-yellow-400/30 bg-yellow-400! text-black!'}
             onClick={() => void saveAndReturn()}
-            disabled={!!busy || !generated || !output}
+            disabled={!!busy || !generated || (!embedded && !output)}
           >
             <Save className="h-3.5 w-3.5" />
-            {linked
-              ? text('Save and return to Studio', 'Guardar y volver a Studio')
-              : text('Save and open in Studio', 'Guardar y abrir en Studio')}
+            {embedded
+              ? text('Apply to test plan', 'Aplicar al plan de prueba')
+              : linked
+                ? text('Save and return to Studio', 'Guardar y volver a Studio')
+                : text('Save and open in Studio', 'Guardar y abrir en Studio')}
           </button>
           <button
             type="button"
@@ -406,43 +457,48 @@ export function CorrelatePage() {
                 !changed ||
                 window.confirm(text('Close without saving these changes?', '¿Cerrar sin guardar estos cambios?'))
               )
-                window.close();
+                if (onGoToScripting) {
+                  setChanged(false);
+                  onGoToScripting();
+                } else window.close();
             }}
           >
             <X className="h-3.5 w-3.5" />
-            {text('Close', 'Cerrar')}
+            {embedded ? text('Back to Scripting', 'Volver a Scripting') : text('Close', 'Cerrar')}
           </button>
         </div>
-        <div className="flex items-center gap-2 text-[10px] text-zinc-500">
-          <label className="flex flex-1 items-center gap-2">
-            <span className="uppercase">{text('Output YAML', 'YAML de salida')}</span>
-            <input
-              aria-label="Correlated output YAML"
-              className={input + ' flex-1'}
-              value={output}
+        {!embedded && (
+          <div className="flex items-center gap-2 text-[10px] text-zinc-500">
+            <label className="flex flex-1 items-center gap-2">
+              <span className="uppercase">{text('Output YAML', 'YAML de salida')}</span>
+              <input
+                aria-label="Correlated output YAML"
+                className={input + ' flex-1'}
+                value={output}
+                disabled={!!busy}
+                onChange={e => setOutput(e.target.value)}
+              />
+            </label>
+            <button
+              type="button"
+              className={button}
               disabled={!!busy}
-              onChange={e => setOutput(e.target.value)}
-            />
-          </label>
-          <button
-            type="button"
-            className={button}
-            disabled={!!busy}
-            onClick={() => void chooseOutput()}
-            aria-label={text('Choose output file', 'Seleccionar archivo de salida')}
-          >
-            <FolderOpen className="h-3.5 w-3.5" />
-          </button>
-          <label className="flex items-center gap-1">
-            <input
-              type="checkbox"
-              checked={overwrite}
-              disabled={!!busy}
-              onChange={e => setOverwrite(e.target.checked)}
-            />
-            {text('Overwrite existing', 'Sobrescribir existente')}
-          </label>
-        </div>
+              onClick={() => void chooseOutput()}
+              aria-label={text('Choose output file', 'Seleccionar archivo de salida')}
+            >
+              <FolderOpen className="h-3.5 w-3.5" />
+            </button>
+            <label className="flex items-center gap-1">
+              <input
+                type="checkbox"
+                checked={overwrite}
+                disabled={!!busy}
+                onChange={e => setOverwrite(e.target.checked)}
+              />
+              {text('Overwrite existing', 'Sobrescribir existente')}
+            </label>
+          </div>
+        )}
       </section>
       <div
         role="status"

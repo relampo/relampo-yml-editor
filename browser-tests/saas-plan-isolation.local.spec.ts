@@ -19,7 +19,7 @@ test('test plans keep separate documents across switches, reloads, renaming and 
   const editor = () => page.frameLocator('iframe[data-plan-editor]');
   const sample = readFileSync('examples/simple-test.yaml', 'utf8');
   const upload = async (name: string) => {
-    await expect(editor().getByRole('button', { name: 'Upload YAML' })).toBeEnabled();
+    await expect(page.getByRole('button', { name: 'Import YAML' })).toBeEnabled();
     await editor()
       .locator('input[type=file]')
       .first()
@@ -39,7 +39,7 @@ test('test plans keep separate documents across switches, reloads, renaming and 
   await upload('Plan A Draft');
   // Switch immediately, before the normal autosave debounce expires.
   await selectPlan('Checkout Critical Path', 'Search and Catalog Journey');
-  await expect(editor().getByRole('button', { name: 'Upload YAML' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Import YAML' })).toBeVisible();
   await expect(editor().getByText('Plan A Draft', { exact: true })).toHaveCount(0);
   await upload('Plan B Draft');
   await selectPlan('Search and Catalog Journey', 'Checkout Critical Path');
@@ -79,6 +79,6 @@ test('test plans keep separate documents across switches, reloads, renaming and 
     localStorage.setItem('relampo-onboarding-other-plan-test@example.invalid', 'true');
   });
   await page.reload();
-  await expect(editor().getByRole('button', { name: 'Upload YAML' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Import YAML' })).toBeVisible();
   await expect(editor().getByText('Plan A Draft', { exact: true })).toHaveCount(0);
 });

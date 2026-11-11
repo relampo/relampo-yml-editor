@@ -7,7 +7,9 @@ import { ProtocolSetupDialog } from './protocols/ProtocolSetupDialog';
 import { appendProtocolSteps, type StudioProtocol } from '../utils/protocolProject';
 import { appendGRPCScenario } from '../utils/grpcProject';
 import type { SearchScope } from './yaml-tree-view/search';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useImperativeHandle, useMemo, useRef, useState, type Ref } from 'react';
+import type { EmbeddedStudioController } from '../utils/embeddedStudioController';
+import { getActiveDraft } from '../utils/yamlDraftStorage';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useYAML } from '../contexts/YAMLContext';
 import { useResizePanel } from '../hooks/useResizePanel';
@@ -35,7 +37,10 @@ import { useYamlDocumentSync } from './yaml-editor/useYamlDocumentSync';
 import { useYamlFileUpload } from './yaml-editor/useYamlFileUpload';
 import { useYamlViewMode } from './yaml-editor/useYamlViewMode';
 
-export function YAMLEditor() {
+export function YAMLEditor({
+  controllerRef,
+  onReady,
+}: { controllerRef?: Ref<EmbeddedStudioController>; onReady?: (ready: boolean) => void } = {}) {
   const [activeProtocol, setActiveProtocol] = useState<StudioProtocol | null>(null);
   const [treeSearchScope, setTreeSearchScope] = useState<SearchScope | null>(null);
   const { language, setLanguage, t } = useLanguage();
@@ -153,7 +158,7 @@ export function YAMLEditor() {
     selectedNodeIdsRef,
   });
 
-  const { handleDownload, resetForNewDocument } = useYAMLPersistence({
+  const { handleSave, handleDownload, resetForNewDocument } = useYAMLPersistence({
     isDirty,
     setIsDirty,
     isInitialized,
@@ -270,24 +275,43 @@ export function YAMLEditor() {
     });
   };
 
+  const replaceDocument = async (yaml: string, name: string) => {
+    // The correlated result is now this tab's document, including after reload.
+    const address = new URL(window.location.href);
+    if (!embedded && !address.searchParams.has('editor')) {
+      address.searchParams.set('editor', crypto.randomUUID());
+      window.history.replaceState(window.history.state, '', address.pathname + address.search);
+    }
+    handleCodeChange(yaml);
+    setCurrentFileName(name);
+    setHasDocumentActivity(true);
+    setViewMode('tree');
+    await saveActiveDraft({ yaml, fileName: name, updatedAt: new Date().toISOString() });
+  };
+
   const openCorrelate = useCorrelateSource(
     () => ({ yaml: retrieveYamlForSaving(), fileName: currentFileName, revision: editRevisionRef.current }),
-    async (yaml, name) => {
-      // The correlated result is now this tab's document, including after reload.
-      const address = new URL(window.location.href);
-      if (!address.searchParams.has('editor')) {
-        address.searchParams.set('editor', crypto.randomUUID());
-        window.history.replaceState(window.history.state, '', address.pathname + address.search);
-      }
-      handleCodeChange(yaml);
-      setCurrentFileName(name);
-      setHasDocumentActivity(true);
-      setViewMode('tree');
-      await saveActiveDraft({ yaml, fileName: name, updatedAt: new Date().toISOString() });
-    },
+    replaceDocument,
     language,
     setError,
   );
+
+  useEffect(() => {
+    onReady?.(isInitialized);
+  }, [isInitialized, onReady]);
+  useImperativeHandle(controllerRef, () => ({
+    document: () => ({ yaml: retrieveYamlForSaving(), fileName: currentFileName, revision: editRevisionRef.current }),
+    replace: replaceDocument,
+    save: async () => {
+      await handleSave();
+      const draft = await getActiveDraft();
+      if (draft?.yaml !== retrieveYamlForSaving()) throw new Error('The test plan could not be saved.');
+    },
+    upload: handleUpload,
+    download: handleDownload,
+    newDocument: handleNewOpen,
+    view: setViewMode,
+  }));
 
   const handleNewConfirm = () => {
     resetDocument();
@@ -308,39 +332,50 @@ export function YAMLEditor() {
     >
       {isDragOver && <YAMLEditorDragOverlay language={language} />}
 
-      <YAMLEditorHeader
-        embedded={embedded}
-        documentReady={isInitialized}
-        onCorrelate={openCorrelate}
-        correlateEnabled={correlateEnabled}
-        onNewStudio={() => {
-          if (!openNewStudioTab(language))
-            setError(
-              language === 'es' ? 'Permite abrir Studio en una pestaña nueva.' : 'Allow opening Studio in a new tab.',
-            );
-        }}
-        onSelectProtocol={protocol => {
-          if ((protocol === 'grpc' && grpcRecorderTabsEnabled) || (protocol === 'https' && httpRecorderEnabled)) {
-            if (!(protocol === 'https' ? openHTTPRecorderTab(language) : openGRPCRecorderTab(language)))
+      {embedded ? (
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".yaml,.yml"
+          onChange={handleFileChange}
+          disabled={!isInitialized}
+          hidden
+        />
+      ) : (
+        <YAMLEditorHeader
+          embedded={embedded}
+          documentReady={isInitialized}
+          onCorrelate={openCorrelate}
+          correlateEnabled={correlateEnabled}
+          onNewStudio={() => {
+            if (!openNewStudioTab(language))
               setError(
-                language === 'es'
-                  ? 'Permite abrir Recorder en una pestaña nueva.'
-                  : 'Allow opening Recorder in a new tab.',
+                language === 'es' ? 'Permite abrir Studio en una pestaña nueva.' : 'Allow opening Studio in a new tab.',
               );
-          } else setActiveProtocol(protocol);
-        }}
-        grpcEnabled={grpcAuthoringEnabled}
-        httpEnabled={httpRecorderEnabled}
-        language={language}
-        setLanguage={setLanguage}
-        t={t}
-        isDocumentEmpty={!yamlTree && !yamlCode.trim()}
-        onNew={handleNewOpen}
-        onUpload={handleUpload}
-        onDownload={handleDownload}
-        fileInputRef={fileInputRef}
-        onFileChange={handleFileChange}
-      />
+          }}
+          onSelectProtocol={protocol => {
+            if ((protocol === 'grpc' && grpcRecorderTabsEnabled) || (protocol === 'https' && httpRecorderEnabled)) {
+              if (!(protocol === 'https' ? openHTTPRecorderTab(language) : openGRPCRecorderTab(language)))
+                setError(
+                  language === 'es'
+                    ? 'Permite abrir Recorder en una pestaña nueva.'
+                    : 'Allow opening Recorder in a new tab.',
+                );
+            } else setActiveProtocol(protocol);
+          }}
+          grpcEnabled={grpcAuthoringEnabled}
+          httpEnabled={httpRecorderEnabled}
+          language={language}
+          setLanguage={setLanguage}
+          t={t}
+          isDocumentEmpty={!yamlTree && !yamlCode.trim()}
+          onNew={handleNewOpen}
+          onUpload={handleUpload}
+          onDownload={handleDownload}
+          fileInputRef={fileInputRef}
+          onFileChange={handleFileChange}
+        />
+      )}
 
       {grpcAuthoringEnabled && (
         <GRPCWorkbench

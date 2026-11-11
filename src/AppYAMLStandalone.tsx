@@ -1,3 +1,4 @@
+import { EmbeddedStudioWorkspace } from './components/EmbeddedStudioWorkspace';
 import { CorrelatePage } from './components/correlate/CorrelatePage';
 import { HTTPRecorderControlPage } from './components/recorder/HTTPRecorderControlPage';
 import { HTTPRecorderPage } from './components/recorder/HTTPRecorderPage';
@@ -17,7 +18,9 @@ export default function AppYAMLStandalone() {
       <YAMLProvider>
         <div className="h-screen w-screen overflow-hidden bg-[#0a0a0a]">
           <GRPCSchemaProvider>
-            {window.location.pathname.replace(/\/$/, '') === '/correlate' ? (
+            {window.parent !== window && new URLSearchParams(window.location.search).get('embedded') === '1' ? (
+              <EmbeddedStudioWorkspace />
+            ) : window.location.pathname.replace(/\/$/, '') === '/correlate' ? (
               <CorrelatePage />
             ) : window.location.pathname.replace(/\/$/, '') === '/recorder/grpc' ? (
               <GRPCRecorderPage />
