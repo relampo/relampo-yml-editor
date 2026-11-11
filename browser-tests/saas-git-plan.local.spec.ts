@@ -36,6 +36,13 @@ for (const provider of ['github', 'gitlab'] as const) {
           provider === 'github' ? `Bearer ${token}` : token,
         );
         if (request.method() !== 'GET') mutations.push(request.method() + ' ' + path);
+        if (path === '/user' || path === '/api/v4/user') return respond({ login: 'acme', username: 'acme' });
+        if (path === '/user/repos' || path === '/api/v4/projects')
+          return respond([
+            { full_name: 'acme/performance', path_with_namespace: 'acme/performance', permissions: { push: true } },
+            { full_name: 'team/shared', path_with_namespace: 'team/shared', permissions: { push: true } },
+            { full_name: 'acme/readonly', path_with_namespace: 'acme/readonly', permissions: { push: false } },
+          ]);
         if (provider === 'github') {
           if (path === '/repos/acme/performance')
             return respond({ default_branch: 'main', permissions: { push: true } });
@@ -128,10 +135,19 @@ for (const provider of ['github', 'gitlab'] as const) {
     await dialog.getByLabel('Test Plan name').fill('Git Checkout');
     await dialog.getByLabel('Description').fill('Versioned performance plan');
     await dialog.getByRole('combobox', { name: 'Save in', exact: true }).selectOption(provider);
-    await dialog.getByLabel('Repository').fill('acme/performance');
+    await expect(dialog.getByLabel('Repository')).toHaveCount(0);
     await dialog.getByLabel('Access token').fill(token);
     await expect(dialog.getByRole('button', { name: 'Create Test Plan', exact: true })).toBeDisabled();
-    await dialog.getByRole('button', { name: 'Connect repository', exact: true }).click();
+    await dialog
+      .getByRole('button', { name: provider === 'github' ? 'Connect GitHub' : 'Connect GitLab', exact: true })
+      .click();
+    await expect(dialog.getByRole('status').filter({ hasText: 'Connected as @acme' })).toBeVisible();
+    await expect(dialog.getByLabel('Account or organization')).toHaveValue('acme');
+    await expect(dialog.getByLabel('Repository').locator('option')).toHaveText(['Select a repository', 'performance']);
+    await dialog.getByLabel('Account or organization').selectOption('team');
+    await expect(dialog.getByLabel('Repository').locator('option')).toHaveText(['Select a repository', 'shared']);
+    await dialog.getByLabel('Account or organization').selectOption('acme');
+    await dialog.getByLabel('Repository').selectOption('acme/performance');
     await expect(dialog.getByLabel('Branch')).toHaveValue('main');
     await expect(dialog.getByLabel('Access token')).toHaveCount(0);
     await expect(dialog.locator('[data-plan-location]')).toContainText('performance-tests/git-checkout');
@@ -158,10 +174,12 @@ for (const provider of ['github', 'gitlab'] as const) {
     expect(mutations).toEqual([]);
     await page.getByRole('button', { name: 'Plan settings', exact: true }).click();
     await expect(dialog.getByText('Pending changes (5)', { exact: true })).toBeVisible();
-    await dialog.getByRole('button', { name: 'Disconnect repository', exact: true }).click();
+    await dialog.getByRole('button', { name: 'Disconnect account', exact: true }).click();
     await expect(dialog.getByLabel('Access token')).toBeVisible();
     await dialog.getByLabel('Access token').fill(token);
-    await dialog.getByRole('button', { name: 'Connect repository', exact: true }).click();
+    await dialog
+      .getByRole('button', { name: provider === 'github' ? 'Connect GitHub' : 'Connect GitLab', exact: true })
+      .click();
     await expect(dialog.getByLabel('Access token')).toHaveCount(0);
     expect(mutations).toEqual([]);
     await dialog.getByLabel('Commit message', { exact: true }).fill('feat(tests): add checkout plan');
@@ -177,7 +195,9 @@ for (const provider of ['github', 'gitlab'] as const) {
     await page.getByRole('button', { name: 'Plan settings', exact: true }).click();
     await expect(dialog.getByLabel('Access token')).toBeVisible();
     await dialog.getByLabel('Access token').fill(token);
-    await dialog.getByRole('button', { name: 'Connect repository', exact: true }).click();
+    await dialog
+      .getByRole('button', { name: provider === 'github' ? 'Connect GitHub' : 'Connect GitLab', exact: true })
+      .click();
     await expect(dialog.getByLabel('Access token')).toHaveCount(0);
     await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
     const request = editor.locator('[role="treeitem"]:visible').filter({ hasText: 'Cart' }).last();
@@ -312,4 +332,60 @@ test('Git connections reject untrusted hosts, unsafe paths and read-only access 
   expect(result.connected).toBe(false);
   expect(result.permission).toContain('no write access');
   expect(requests).toEqual(['GET https://api.github.com/repos/acme/readonly']);
+});
+
+test('account discovery paginates repositories, keeps the detected owner and invalidates an expired connection', async ({
+  page,
+  context,
+}) => {
+  const base = new URL(saasURL!);
+  expect(['localhost', '127.0.0.1']).toContain(base.hostname);
+  const pages: string[] = [];
+  let expired = false;
+  await context.route('https://api.github.com/**', route => {
+    const url = new URL(route.request().url());
+    expect(route.request().method()).toBe('GET');
+    const headers = { 'Access-Control-Allow-Origin': '*' };
+    if (url.pathname === '/user') return route.fulfill({ headers, json: { login: 'detected-user' } });
+    if (url.pathname === '/user/repos') {
+      pages.push(url.searchParams.get('page')!);
+      const names =
+        url.searchParams.get('page') === '1'
+          ? Array.from({ length: 100 }, (_, index) => `repo-${index}`)
+          : ['last-repository'];
+      return route.fulfill({
+        headers,
+        json: names.map(name => ({ full_name: `detected-user/${name}`, permissions: { push: true } })),
+      });
+    }
+    expired = true;
+    return route.fulfill({ status: 401, headers, json: { message: 'Expired token' } });
+  });
+  await page.goto(base.origin);
+  await page.evaluate(() => {
+    const user = 'git-pages@example.invalid';
+    localStorage.setItem('relampo-auth', 'true');
+    localStorage.setItem('relampo-current-user', user);
+    localStorage.setItem(`relampo-onboarding-${user}`, 'true');
+    localStorage.setItem('relampo-language', 'en');
+  });
+  await page.goto(`${base.origin}/projects`);
+  await page.getByRole('button', { name: 'New Plan', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('combobox', { name: 'Save in', exact: true }).selectOption('github');
+  await expect(dialog.getByLabel('Repository')).toHaveCount(0);
+  await dialog.getByLabel('Access token').fill('test-only-pagination-token');
+  await dialog.getByRole('button', { name: 'Connect GitHub', exact: true }).click();
+  await expect(dialog.getByRole('status').filter({ hasText: 'Connected as @detected-user' })).toBeVisible();
+  await expect(dialog.getByLabel('Account or organization')).toHaveValue('detected-user');
+  await expect(dialog.getByLabel('Repository').locator('option')).toHaveCount(101);
+  await dialog.getByRole('button', { name: 'Load more repositories', exact: true }).click();
+  await expect(dialog.getByLabel('Repository').locator('option')).toHaveCount(102);
+  await expect(dialog.getByRole('button', { name: 'Load more repositories', exact: true })).toHaveCount(0);
+  expect(pages).toEqual(['1', '2']);
+  await dialog.getByLabel('Repository').selectOption('detected-user/last-repository');
+  await expect(dialog.getByLabel('Access token')).toBeVisible();
+  await expect(dialog.getByRole('alert')).toContainText('401');
+  await expect(dialog.getByRole('button', { name: 'Create Test Plan', exact: true })).toBeDisabled();
+  expect(expired).toBe(true);
 });
