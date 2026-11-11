@@ -502,39 +502,41 @@ export function CorrelatePage({
           </div>
         )}
       </section>
-      <div
-        role="status"
-        className="flex min-h-8 shrink-0 items-center gap-4 border-b border-white/10 bg-[#111111] px-3 py-1 text-[11px] text-zinc-400"
-      >
-        <span>
-          {busy
-            ? text('Working…', 'Procesando…')
-            : applied
-              ? text('Selected correlations applied', 'Correlaciones seleccionadas aplicadas')
-              : report
-                ? text('Analysis complete', 'Análisis completado')
-                : text('Ready', 'Listo')}
-        </span>
-        {report && (
-          <>
-            <span>
-              {report.requests} requests · {report.responses} {text('responses', 'respuestas')}
-            </span>
-            <span>
-              {report.candidates.length} {text('candidates', 'candidatos')} · {selected.length}{' '}
-              {text('selected', 'seleccionados')}
-            </span>
-          </>
-        )}
-        {savedPath && (
-          <span
-            className="truncate text-emerald-300"
-            title={savedPath}
-          >
-            {savedPath}
+      {(!embedded || busy || applied || report || savedPath) && (
+        <div
+          role="status"
+          className="flex min-h-8 shrink-0 items-center gap-4 border-b border-white/10 bg-[#111111] px-3 py-1 text-[11px] text-zinc-400"
+        >
+          <span>
+            {busy
+              ? text('Working…', 'Procesando…')
+              : applied
+                ? text('Selected correlations applied', 'Correlaciones seleccionadas aplicadas')
+                : report
+                  ? text('Analysis complete', 'Análisis completado')
+                  : text('Ready', 'Listo')}
           </span>
-        )}
-      </div>
+          {report && (
+            <>
+              <span>
+                {report.requests} requests · {report.responses} {text('responses', 'respuestas')}
+              </span>
+              <span>
+                {report.candidates.length} {text('candidates', 'candidatos')} · {selected.length}{' '}
+                {text('selected', 'seleccionados')}
+              </span>
+            </>
+          )}
+          {savedPath && (
+            <span
+              className="truncate text-emerald-300"
+              title={savedPath}
+            >
+              {savedPath}
+            </span>
+          )}
+        </div>
+      )}
       {error && (
         <div
           role="alert"
