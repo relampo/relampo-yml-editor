@@ -380,12 +380,14 @@ export function CorrelatePage({
         className="shrink-0 space-y-2 border-b border-white/10 bg-[#111111] px-3 py-2"
       >
         <div className="flex flex-wrap items-center gap-2">
-          <span
-            className="mr-2 max-w-64 truncate text-xs font-medium text-zinc-300"
-            title={name}
-          >
-            {name || text('No script loaded', 'Sin script cargado')}
-          </span>
+          {!embedded && (
+            <span
+              className="mr-2 max-w-64 truncate text-xs font-medium text-zinc-300"
+              title={name}
+            >
+              {name || text('No script loaded', 'Sin script cargado')}
+            </span>
+          )}
           {!embedded && (
             <>
               <button
