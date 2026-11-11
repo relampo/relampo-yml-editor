@@ -41,12 +41,10 @@ export function YAMLEditor({
   controllerRef,
   onReady,
   onNavigateToScripting,
-  onNavigateToRun,
 }: {
   controllerRef?: Ref<EmbeddedStudioController>;
   onReady?: (ready: boolean) => void;
   onNavigateToScripting?: () => void;
-  onNavigateToRun?: () => void;
 } = {}) {
   const [activeProtocol, setActiveProtocol] = useState<StudioProtocol | null>(null);
   const [treeSearchScope, setTreeSearchScope] = useState<SearchScope | null>(null);
@@ -475,14 +473,7 @@ export function YAMLEditor({
         dataSourceFileBrowseEnabled={dataSourceFileBrowseEnabled}
         fileName={currentFileName}
         largeFileMode={isLargeFileMode}
-        onSelectionChange={(node, ids) => {
-          if (embedded && node?.type === 'load') {
-            handleSelectionChange(node, ids);
-            setViewMode('run');
-            onNavigateToRun?.();
-          } else if (embedded && (isDebugViewActive || isRunViewActive)) handleSelectionChange(node, ids);
-          else handleTreeSelectionChange(node, ids);
-        }}
+        onSelectionChange={handleTreeSelectionChange}
         onTreeChange={handleTreeChange}
         onTreeViewChange={handleTreeViewChange}
         onContextMenuOpened={handleTreeContextMenuOpened}

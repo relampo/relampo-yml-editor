@@ -72,6 +72,12 @@ for (const connected of [false, true]) {
     await expect(debug).toBeVisible();
     await editor.getByRole('button', { name: 'Tree', exact: true }).click();
     await expect(editor.getByRole('button', { name: 'Debug', exact: true })).toHaveCount(0);
+    await editor.getByRole('treeitem').filter({ hasText: 'Health' }).last().click();
+    await expect(editor.getByLabel('Path', { exact: true })).toHaveValue('/health');
+    await expect(debug).toBeHidden();
+    await expect(page.getByRole('button', { name: 'Debug', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await page.getByRole('button', { name: 'Debug', exact: true }).click();
+    await expect(debug).toBeVisible();
     if (connected) {
       await expect(debug).toBeEnabled();
       await debug.click();
@@ -89,12 +95,22 @@ for (const connected of [false, true]) {
     await expect(editor.locator('.monaco-editor').first()).toBeVisible();
     await expect(editor.locator('[data-studio-workspace]')).toHaveAttribute('data-studio-workspace', 'run');
     await expect(editor.getByRole('button', { name: 'Run load test', exact: true })).toBeVisible();
-    await editor.getByRole('button', { name: 'Load configuration', exact: true }).click();
-    const configuration = editor.getByRole('region', { name: 'Load configuration', exact: true });
-    await expect(configuration).toBeVisible();
-    await configuration.getByLabel('Virtual Users', { exact: true }).fill('3');
+    await editor.getByRole('button', { name: 'Tree', exact: true }).click();
     const run = editor.getByRole('button', { name: 'Run load test', exact: true });
+    await editor.getByRole('treeitem').filter({ hasText: 'Health' }).last().click();
+    await expect(editor.getByLabel('Path', { exact: true })).toHaveValue('/health');
+    await expect(run).toBeHidden();
+    await expect(page.getByRole('button', { name: 'Run', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await page.screenshot({ path: '/tmp/relampo-saas-run-request-details.png', animations: 'disabled' });
+    await page.getByRole('button', { name: 'Run', exact: true }).click();
     await expect(run).toBeVisible();
+    await editor.getByRole('treeitem').filter({ hasText: 'Load: Constant' }).last().click();
+    await expect(editor.getByLabel('Virtual Users', { exact: true })).toBeVisible();
+    await expect(run).toBeHidden();
+    await editor.getByLabel('Virtual Users', { exact: true }).fill('3');
+    await page.getByRole('button', { name: 'Run', exact: true }).click();
+    await expect(run).toBeVisible();
+    await expect(editor.getByRole('button', { name: 'Load configuration', exact: true })).toHaveCount(0);
     await expect(editor.getByRole('button', { name: 'Run', exact: true })).toHaveCount(0);
     if (connected) {
       await expect(run).toBeEnabled();
@@ -121,8 +137,8 @@ for (const connected of [false, true]) {
     await page.getByRole('button', { name: 'Scripting', exact: true }).click();
     await expect(editor.getByText('Plan execution', { exact: true })).toBeVisible();
     await editor.getByText('Load: Constant', { exact: true }).first().click();
-    await expect(editor.getByRole('region', { name: 'Load configuration', exact: true })).toBeVisible();
-    await expect(editor.locator('[data-studio-workspace]')).toHaveAttribute('data-studio-workspace', 'run');
+    await expect(editor.getByLabel('Virtual Users', { exact: true })).toHaveValue('3');
+    await expect(page.getByRole('button', { name: 'Scripting', exact: true })).toHaveAttribute('aria-pressed', 'true');
     expect(context.pages()).toHaveLength(1);
   });
 }

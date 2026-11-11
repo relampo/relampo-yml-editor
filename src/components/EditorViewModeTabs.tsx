@@ -4,7 +4,6 @@ import type { ReactNode } from 'react';
 export type EditorViewMode = 'tree' | 'code' | 'debug' | 'run';
 
 interface EditorViewModeTabsProps {
-  extraTab?: ReactNode;
   activeViewMode: EditorViewMode;
   onSelect: (mode: EditorViewMode) => void;
   language: string;
@@ -14,7 +13,6 @@ interface EditorViewModeTabsProps {
 }
 
 export function EditorViewModeTabs({
-  extraTab,
   activeViewMode,
   onSelect,
   language,
@@ -55,7 +53,6 @@ export function EditorViewModeTabs({
           {tab.label}
         </button>
       ))}
-      {extraTab}
     </div>
   );
 }

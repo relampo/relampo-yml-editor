@@ -113,10 +113,7 @@ export function YAMLEditorMainLayout({
     <SearchNavigationProvider>
       <div className="flex flex-1 overflow-hidden min-h-0 min-w-0 bg-[#0a0a0a]">
         <YAMLEditorViewModeBody
-          executionView={
-            embedded && (isDebugViewActive || isRunViewActive) ? (isRunViewActive ? 'run' : 'debug') : undefined
-          }
-          onNodeUpdate={onNodeUpdate}
+          embedded={embedded}
           leftPanelWidth={leftPanelWidth}
           activeViewMode={activeViewMode}
           onSelectViewMode={onSelectViewMode}

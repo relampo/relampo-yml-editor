@@ -1,7 +1,4 @@
-import { useEffect, useState } from 'react';
-import { Gauge } from 'lucide-react';
-import { RunLoadEditor } from './RunLoadEditor';
-import type { NodeUpdateHandler } from '../types/shared';
+import { useState } from 'react';
 import type { SearchScope } from './yaml-tree-view/search';
 import type { IssueMarker } from '../utils/documentIssues';
 import type { RedirectedRequestInfo, YAMLNode } from '../types/yaml';
@@ -12,8 +9,7 @@ import type { TreeSelection } from './yamlEditorHelpers';
 
 interface YAMLEditorViewModeBodyProps {
   showTabs?: boolean;
-  executionView?: 'debug' | 'run';
-  onNodeUpdate?: NodeUpdateHandler;
+  embedded?: boolean;
   leftPanelWidth: number;
   activeViewMode: EditorViewMode;
   onSelectViewMode: (mode: EditorViewMode) => void;
@@ -41,8 +37,7 @@ interface YAMLEditorViewModeBodyProps {
 // the content that matches the active tab.
 export function YAMLEditorViewModeBody({
   showTabs = true,
-  executionView,
-  onNodeUpdate,
+  embedded = false,
   leftPanelWidth,
   activeViewMode,
   onSelectViewMode,
@@ -65,15 +60,8 @@ export function YAMLEditorViewModeBody({
   onCodeChange,
   largeFileMode,
 }: YAMLEditorViewModeBodyProps) {
-  const [executionPanel, setExecutionPanel] = useState<'tree' | 'code' | 'load'>('tree');
-  useEffect(() => {
-    if (executionView === 'run' && selectedNode?.type === 'load') setExecutionPanel('load');
-  }, [executionView, selectedNode?.id, selectedNode?.type]);
-  const panel = executionView
-    ? executionPanel === 'load' && executionView !== 'run'
-      ? 'tree'
-      : executionPanel
-    : activeViewMode;
+  const [sidebarMode, setSidebarMode] = useState<'tree' | 'code'>('tree');
+  const panel = embedded ? sidebarMode : activeViewMode;
   return (
     <div
       className="min-h-0 min-w-0 flex flex-col bg-[#0a0a0a]"
@@ -81,25 +69,11 @@ export function YAMLEditorViewModeBody({
     >
       {showTabs && (
         <EditorViewModeTabs
-          activeViewMode={panel === 'load' ? 'run' : panel}
+          activeViewMode={panel}
           onSelect={mode => {
-            if (executionView && (mode === 'tree' || mode === 'code')) setExecutionPanel(mode);
+            if (embedded && (mode === 'tree' || mode === 'code')) setSidebarMode(mode);
             else onSelectViewMode(mode);
           }}
-          extraTab={
-            executionView === 'run' ? (
-              <button
-                type="button"
-                aria-label={language === 'es' ? 'Configuración de carga' : 'Load configuration'}
-                aria-pressed={panel === 'load'}
-                onClick={() => setExecutionPanel('load')}
-                className={`flex flex-1 items-center justify-center gap-2 border-b-2 px-4 py-3 text-sm font-bold ${panel === 'load' ? 'border-yellow-400 bg-yellow-400/10 text-yellow-400' : 'border-transparent text-zinc-500 hover:text-zinc-300'}`}
-              >
-                <Gauge className="h-4 w-4" />
-                {language === 'es' ? 'Carga' : 'Load'}
-              </button>
-            ) : undefined
-          }
           language={language}
           debugViewEnabled={debugViewEnabled}
           runViewEnabled={runViewEnabled}
@@ -107,15 +81,7 @@ export function YAMLEditorViewModeBody({
       )}
 
       <div className="flex-1 overflow-hidden min-h-0 bg-[#0a0a0a]">
-        {panel === 'load' && onNodeUpdate ? (
-          <RunLoadEditor
-            tree={tree}
-            language={language}
-            width={100}
-            onNodeUpdate={onNodeUpdate}
-            preferredNodeId={selectedNode?.type === 'load' ? selectedNode.id : undefined}
-          />
-        ) : panel === 'tree' ? (
+        {panel === 'tree' ? (
           <YAMLTreeView
             tree={tree}
             selectedNode={selectedNode}

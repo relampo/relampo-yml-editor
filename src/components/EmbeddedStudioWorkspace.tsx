@@ -31,11 +31,6 @@ export function EmbeddedStudioWorkspace() {
     setSource(null);
     window.parent.postMessage({ type: 'relampo:navigate-host', view: 'scripting' }, window.location.origin);
   }, []);
-  const goToRun = useCallback(() => {
-    controller.current?.view('run');
-    setView('run');
-    window.parent.postMessage({ type: 'relampo:navigate-host', view: 'run' }, window.location.origin);
-  }, []);
   const trackDraft = useCallback((value: typeof draft.current) => {
     draft.current = value;
   }, []);
@@ -192,7 +187,6 @@ export function EmbeddedStudioWorkspace() {
           controllerRef={controller}
           onReady={setReady}
           onNavigateToScripting={goToScripting}
-          onNavigateToRun={goToRun}
         />
       </div>
       <div
