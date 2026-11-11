@@ -21,6 +21,8 @@ for (const provider of ['github', 'gitlab'] as const) {
     let created = false;
     let structureCommits = 0;
     let initialTree: any[] = [];
+    const blobs = new Map<string, string>();
+    const binaryPaths = new Set<string>();
     await context.route(
       provider === 'github' ? 'https://api.github.com/**' : 'https://gitlab.com/api/v4/**',
       async route => {
@@ -53,6 +55,19 @@ for (const provider of ['github', 'gitlab'] as const) {
             201,
           );
         }
+        if (path.endsWith('/git/blobs') && request.method() === 'POST') {
+          const id = 'c'.repeat(40);
+          blobs.set(id, request.postDataJSON().content);
+          return respond({ sha: id }, 201);
+        }
+        if (path.includes('/git/trees/') && request.method() === 'GET') {
+          const folders = new Set<string>();
+          for (const file of files.keys()) {
+            const parts = file.split('/');
+            for (let i = 1; i < parts.length; i++) folders.add(parts.slice(0, i).join('/'));
+          }
+          return respond({ truncated: false, tree: [...folders].map(path => ({ path, type: 'tree' })) });
+        }
         if (provider === 'github' && path.endsWith('/git/trees')) {
           initialTree = request.postDataJSON().tree;
           return respond({ sha: 'e'.repeat(40) }, 201);
@@ -61,19 +76,26 @@ for (const provider of ['github', 'gitlab'] as const) {
           return respond({ sha: 'b'.repeat(40) }, 201);
         if (provider === 'github' && path.includes('/git/refs/heads/')) {
           structureCommits++;
-          for (const entry of initialTree) files.set(entry.path, entry.content);
-          expect(initialTree.map(item => item.path).sort()).toEqual([
-            'performance-tests/new-repository-plan/Data/.gitkeep',
-            'performance-tests/new-repository-plan/Scripts/.gitkeep',
-            'performance-tests/new-repository-plan/Utilities/.gitkeep',
-            'performance-tests/new-repository-plan/test-plan.yaml',
-          ]);
+          for (const entry of initialTree) {
+            files.set(entry.path, entry.sha ? blobs.get(entry.sha)! : entry.content);
+            if (entry.sha) binaryPaths.add(entry.path);
+          }
+          if (structureCommits === 1)
+            expect(initialTree.map(item => item.path).sort()).toEqual([
+              'performance-tests/new-repository-plan/Data/.gitkeep',
+              'performance-tests/new-repository-plan/Scripts/.gitkeep',
+              'performance-tests/new-repository-plan/Utilities/.gitkeep',
+              'performance-tests/new-repository-plan/test-plan.yaml',
+            ]);
           return respond({ object: { sha: 'b'.repeat(40) } });
         }
         if (provider === 'gitlab' && path.endsWith('/repository/commits') && request.method() === 'POST') {
           structureCommits++;
-          expect(request.postDataJSON().actions).toHaveLength(4);
-          for (const entry of request.postDataJSON().actions) files.set(entry.file_path, entry.content);
+          expect(request.postDataJSON().actions).toHaveLength(structureCommits === 1 ? 4 : 1);
+          for (const entry of request.postDataJSON().actions) {
+            files.set(entry.file_path, entry.content);
+            if (entry.encoding === 'base64') binaryPaths.add(entry.file_path);
+          }
           return respond({ id: 'b'.repeat(40) }, 201);
         }
         if (provider === 'github' && path.includes('/git/commits/')) return respond({ tree: { sha: 'f'.repeat(40) } });
@@ -87,15 +109,29 @@ for (const provider of ['github', 'gitlab'] as const) {
             path.split(path.includes('/contents/') ? '/contents/' : '/repository/files/')[1]!,
           );
           return files.has(name)
-            ? respond({ type: 'file', encoding: 'base64', content: Buffer.from(files.get(name)!).toString('base64') })
+            ? respond({
+                type: 'file',
+                encoding: 'base64',
+                content: binaryPaths.has(name) ? files.get(name) : Buffer.from(files.get(name)!).toString('base64'),
+              })
             : [...files.keys()].some(key => key.startsWith(name + '/'))
               ? respond([{ type: 'file' }])
               : respond({}, 404);
         }
-        if (path.endsWith('/repository/tree'))
-          return [...files.keys()].some(key => key.startsWith(new URL(request.url()).searchParams.get('path')! + '/'))
+        if (path.endsWith('/repository/tree')) {
+          const url = new URL(request.url());
+          if (url.searchParams.get('recursive') === 'true') {
+            const folders = new Set<string>();
+            for (const file of files.keys()) {
+              const parts = file.split('/');
+              for (let i = 1; i < parts.length; i++) folders.add(parts.slice(0, i).join('/'));
+            }
+            return respond([...folders].map(path => ({ path, type: 'tree' })));
+          }
+          return [...files.keys()].some(key => key.startsWith(url.searchParams.get('path')! + '/'))
             ? respond([{ type: 'blob' }])
             : respond({}, 404);
+        }
         if (path.endsWith('/branches')) return respond([{ name: 'main' }]);
         expect(created).toBe(true);
         return respond({ default_branch: 'main', permissions: { push: true } });
@@ -168,6 +204,78 @@ for (const provider of ['github', 'gitlab'] as const) {
     ).toBeVisible();
     expect(posts).toHaveLength(3);
     expect(structureCommits).toBe(1);
+    const manifest = files.get('performance-tests/new-repository-plan/test-plan.yaml')!;
+    const planId = manifest.match(/^id: (.+)$/m)![1]!;
+    await page.evaluate(async id => {
+      const moduleURL = '/src/utils/gitPlanStorage.ts';
+      const git = await import(moduleURL);
+      await git.stageGitScript(id, 'pending-script', 'pending.yaml', 'test: pending draft');
+    }, planId);
+    const storageLink = page.getByRole('link', {
+      name: `${provider === 'github' ? 'GitHub' : 'GitLab'}: acme/new-performance`,
+    });
+    await expect(storageLink).toHaveAttribute('href', `https://${provider}.com/acme/new-performance`);
+    await expect(storageLink).toHaveAttribute('target', '_blank');
+    const add = page.getByRole('button', { name: 'Add new file to New Repository Plan', exact: true });
+    await add.click();
+    const upload = page.getByRole('dialog', { name: 'Add new file', exact: true });
+    const destination = upload.getByLabel('Destination folder', { exact: true });
+    await expect(destination).toHaveValue('Scripts');
+    expect(await destination.locator('option').allTextContents()).toEqual(['Data/', 'Scripts/', 'Utilities/']);
+    const csv = { name: 'users.csv', mimeType: 'text/csv', buffer: Buffer.from('name,id\nAna,1\n') };
+    await upload.getByLabel('File to upload', { exact: true }).setInputFiles(csv);
+    await upload.getByRole('button', { name: 'Upload file', exact: true }).click();
+    await expect(upload.getByRole('alert')).toContainText('Scripts must use');
+    expect(structureCommits).toBe(1);
+    await destination.selectOption('Data');
+    await upload.getByRole('button', { name: 'Upload file', exact: true }).click();
+    await expect(upload).toHaveCount(0);
+    expect(files.get('performance-tests/new-repository-plan/Data/users.csv')).toBe('name,id\nAna,1\n');
+    expect(structureCommits).toBe(2);
+    await add.click();
+    await expect(destination).toHaveValue('Scripts');
+    await destination.selectOption('Data');
+    await upload.getByLabel('File to upload', { exact: true }).setInputFiles(csv);
+    await upload.getByRole('button', { name: 'Upload file', exact: true }).click();
+    await expect(upload.getByRole('alert')).toContainText('already exists');
+    expect(structureCommits).toBe(2);
+    await upload.getByLabel('File to upload', { exact: true }).setInputFiles({
+      name: 'sample.bin',
+      mimeType: 'application/octet-stream',
+      buffer: Buffer.from([0, 255, 128, 1]),
+    });
+    await upload.getByRole('button', { name: 'Upload file', exact: true }).click();
+    await expect(upload).toHaveCount(0);
+    expect(files.get('performance-tests/new-repository-plan/Data/sample.bin')).toBe(
+      Buffer.from([0, 255, 128, 1]).toString('base64'),
+    );
+    expect(structureCommits).toBe(3);
+    await add.click();
+    await expect(destination).toHaveValue('Scripts');
+    await upload.getByLabel('File to upload', { exact: true }).setInputFiles({
+      name: 'uploaded.yaml',
+      mimeType: 'application/yaml',
+      buffer: Buffer.from('test:\n  name: Uploaded test\nscenarios: []\n'),
+    });
+    await upload.getByRole('button', { name: 'Upload file', exact: true }).click();
+    await expect(upload).toHaveCount(0);
+    expect(structureCommits).toBe(4);
+    expect(files.has('performance-tests/new-repository-plan/Scripts/pending.yaml')).toBe(false);
+    const status = await page.evaluate(async id => {
+      const moduleURL = '/src/utils/gitPlanStorage.ts';
+      return (await import(moduleURL)).gitPlanStatus(id);
+    }, planId);
+    expect(status.paths).toEqual(['performance-tests/new-repository-plan/Scripts/pending.yaml']);
+    await page.getByRole('button', { name: 'Open New Repository Plan in RelampoLab', exact: true }).click();
+    await expect(
+      page.frameLocator('iframe[data-plan-editor]').getByRole('combobox', { name: 'Plan script', exact: true }),
+    ).toHaveValue(/.+/);
+    await expect(
+      page
+        .frameLocator('iframe[data-plan-editor]')
+        .getByRole('combobox', { name: 'Plan script', exact: true })
+        .locator('option:checked'),
+    ).toHaveText('uploaded.yaml');
   });
 }
 
