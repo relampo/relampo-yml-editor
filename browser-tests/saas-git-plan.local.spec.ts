@@ -47,6 +47,12 @@ for (const provider of ['github', 'gitlab'] as const) {
             { full_name: 'team/shared', path_with_namespace: 'team/shared', permissions: { push: true } },
             { full_name: 'acme/readonly', path_with_namespace: 'acme/readonly', permissions: { push: false } },
           ]);
+        if (request.method() === 'GET' && path.endsWith('/commits'))
+          return respond(
+            provider === 'github'
+              ? [{ commit: { author: { name: 'Ana Torres' } }, author: { login: 'ana.qa' } }]
+              : [{ author_name: 'Ana Torres' }],
+          );
         if (provider === 'github') {
           if (path === '/repos/acme/performance')
             return respond({ default_branch: 'main', permissions: { push: true } });
@@ -358,9 +364,9 @@ for (const provider of ['github', 'gitlab'] as const) {
     files.set('performance-tests/git-checkout/Scripts/checkout.yaml', { text: 'remote edit', commit: head });
     await page.getByRole('button', { name: 'Save Script', exact: true }).click();
     await expect(
-      page.getByRole('dialog', { name: 'Update script', exact: true }).getByRole('radio', { name: /Use mine/ }),
+      page.getByRole('dialog', { name: 'Update script', exact: true }).getByRole('button', { name: /Use mine/ }),
     ).toBeVisible();
-    await page.getByRole('dialog').getByRole('button', { name: 'Keep editing', exact: true }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Cancel', exact: true }).click();
     expect(commits).toBe(8);
     expect(files.get('performance-tests/git-checkout/Scripts/checkout.yaml')?.text).toBe('remote edit');
     await page.getByRole('button', { name: 'Plan settings', exact: true }).click();

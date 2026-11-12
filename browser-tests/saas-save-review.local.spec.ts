@@ -69,6 +69,12 @@ for (const provider of ['github', 'gitlab'] as const) {
         const respond = (json: unknown, status = 200) => route.fulfill({ json, status });
         if (req.method() === 'OPTIONS') return route.fulfill({ status: 204 });
         if (req.method() !== 'GET' && denyWrites) return respond({ message: 'Write denied' }, 403);
+        if (req.method() === 'GET' && path.endsWith('/commits'))
+          return respond(
+            provider === 'github'
+              ? [{ commit: { author: { name: 'Ana Torres' } }, author: { login: 'ana.qa' } }]
+              : [{ author_name: 'Ana Torres' }],
+          );
         if (provider === 'github') {
           if (path === '/repos/acme/performance')
             return respond({ default_branch: 'main', permissions: { push: true } });
@@ -210,20 +216,30 @@ for (const provider of ['github', 'gitlab'] as const) {
       { provider, origin, baseYaml: yaml(), filePath, head },
     );
     await page.goto(origin + '/relampo-lab?plan=tp-review');
-    // Rebind the in-memory fake provider after navigation. No real credentials or writes.
-    await page.evaluate(
-      async ({ origin, provider }) => {
-        const url = origin + '/src/utils/gitProvider.ts';
-        await (await import(url)).connectGit(provider, 'acme/performance', 'fake-review-token');
-      },
-      { origin, provider },
-    );
     const editor = page.frameLocator('iframe[data-plan-editor]');
     await editor
       .locator('input[type=file]')
       .first()
       .setInputFiles({ name: 'checkout.yaml', mimeType: 'text/yaml', buffer: Buffer.from(yaml('15s')) });
     // First: independent remote metadata edit combines with local protocol edits.
+    // Rebind the in-memory fake provider after navigation. No real credentials or writes.
+    await page.evaluate(
+      async ({ origin, provider }) => {
+        // Vite's live graph can contain both timestamped and bare modules after edits.
+        // Seed the fake authorization in each loaded variant; real UI connection is covered separately.
+        const urls = [
+          ...new Set([
+            ...performance
+              .getEntriesByType('resource')
+              .map(entry => entry.name)
+              .filter(name => name.startsWith(origin + '/src/utils/gitProvider.ts')),
+            origin + '/src/utils/gitProvider.ts',
+          ]),
+        ];
+        for (const url of urls) await (await import(url)).connectGit(provider, 'acme/performance', 'fake-review-token');
+      },
+      { origin, provider },
+    );
     share(yaml('5s', 'Shared title updated'));
     await page.getByRole('button', { name: 'Save Script', exact: true }).click();
     const popup = page.getByRole('dialog');
@@ -235,9 +251,9 @@ for (const provider of ['github', 'gitlab'] as const) {
     expect(writes).toBe(0);
     await page.waitForFunction(() => (window as any).__saveReviewPaused === true);
     await page.clock.runFor(70000);
-    await expect(popup.getByRole('button', { name: 'Save update', exact: true })).toBeEnabled();
+    await expect(popup.getByRole('button', { name: 'Accept and save', exact: true })).toBeEnabled();
     await page.screenshot({ path: `/private/tmp/relampo-save-review-${provider}.png` });
-    await popup.getByRole('button', { name: 'Save update', exact: true }).click();
+    await popup.getByRole('button', { name: 'Accept and save', exact: true }).click();
     await expect(popup.getByText('Script updated', { exact: true })).toBeVisible();
     expect(writes).toBe(1);
     const first = load(files.get(filePath)!) as any;
@@ -254,9 +270,9 @@ for (const provider of ['github', 'gitlab'] as const) {
     const timeout = editor.getByLabel('Timeout', { exact: true });
     await timeout.fill('20s');
     await page.getByRole('button', { name: 'Save Script', exact: true }).click();
-    await expect(popup.getByRole('radio', { name: /Use mine/ }).first()).toBeVisible();
-    await expect(popup.getByRole('button', { name: 'Save update', exact: true })).toBeDisabled();
-    await popup.getByRole('button', { name: 'Keep editing', exact: true }).click();
+    await expect(popup.getByRole('button', { name: /Use mine/ }).first()).toBeVisible();
+    await expect(popup.getByRole('button', { name: 'Accept and save', exact: true })).toBeDisabled();
+    await popup.getByRole('button', { name: 'Cancel', exact: true }).click();
     expect(writes).toBe(1);
     await expect(timeout).toHaveValue('20s');
     await expect(page.getByRole('alert')).toHaveCount(0);
@@ -264,19 +280,19 @@ for (const provider of ['github', 'gitlab'] as const) {
     // Retry and change the shared version while the popup is open: it must review again.
     await page.getByRole('button', { name: 'Save Script', exact: true }).click();
     await popup
-      .getByRole('radio', { name: /Use shared/ })
+      .getByRole('button', { name: /Use shared/ })
       .first()
-      .check();
+      .click();
     remote.scenarios[0].steps[0].request.timeout = '12s';
     share(dump(remote));
-    await popup.getByRole('button', { name: 'Save update', exact: true }).click();
+    await popup.getByRole('button', { name: 'Accept and save', exact: true }).click();
     await expect(popup.getByText('12s', { exact: true })).toBeVisible();
     expect(writes).toBe(1);
     await popup
-      .getByRole('radio', { name: /Use shared/ })
+      .getByRole('button', { name: /Use shared/ })
       .first()
-      .check();
-    await popup.getByRole('button', { name: 'Save update', exact: true }).click();
+      .click();
+    await popup.getByRole('button', { name: 'Accept and save', exact: true }).click();
     await expect(popup.getByText('Script updated', { exact: true })).toBeVisible();
     await popup.getByRole('button', { name: 'Done', exact: true }).click();
     await editor.getByRole('treeitem', { name: /Login/ }).click();
