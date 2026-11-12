@@ -376,5 +376,33 @@ for (const provider of ['github', 'gitlab'] as const) {
     await page.getByRole('button', { name: 'Save Script', exact: true }).click();
     await expect(popup.getByText('Script updated', { exact: true })).toBeVisible();
     expect(writes).toBe(2);
+    await popup.getByRole('button', { name: 'Done', exact: true }).click();
+    await page.goto(origin + '/relampo-lab?plan=tp-review&previewShared=inventory');
+    await expect(popup).toContainText('Test changes');
+    await page.evaluate(
+      async ({ origin, provider }) => {
+        const urls = [
+          ...new Set([
+            ...performance
+              .getEntriesByType('resource')
+              .map(entry => entry.name)
+              .filter(name => name.startsWith(origin + '/src/utils/gitProvider.ts')),
+            origin + '/src/utils/gitProvider.ts',
+          ]),
+        ];
+        for (const url of urls) await (await import(url)).connectGit(provider, 'acme/performance', 'fake-review-token');
+      },
+      { origin, provider },
+    );
+    await expect(popup.locator('tbody tr')).toHaveCount(3);
+    expect(writes).toBe(2);
+    for (const button of await popup.getByRole('button', { name: /Accept change/ }).all()) await button.click();
+    await popup.getByRole('button', { name: 'Save Script', exact: true }).click();
+    await expect(popup.getByText('Script updated', { exact: true })).toBeVisible();
+    expect(writes).toBe(3);
+    expect(files.get(filePath)).toContain('Inventory availability');
+    expect(files.get(filePath)).toContain('localhost:50052');
+    await popup.getByRole('button', { name: 'Done', exact: true }).click();
+    await expect(editor.getByRole('treeitem', { name: /Inventory availability/ })).toBeVisible();
   });
 }
