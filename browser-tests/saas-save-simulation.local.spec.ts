@@ -94,6 +94,29 @@ test('the current script previews four simulated QA updates and applies only sel
     parent: frame.parentElement!.getBoundingClientRect().width,
   }));
   expect(Math.abs(dimensions.parent - dimensions.width)).toBeLessThan(2);
+  await page.getByRole('button', { name: 'Guardar script', exact: true }).click();
+  await expect(popup.getByRole('heading', { name: 'Script actualizado', exact: true })).toBeVisible();
+  await popup.getByRole('tab', { name: 'Historial', exact: true }).click();
+  await versions.getByRole('button').last().click();
+  await expect(historical.getByRole('treeitem', { name: /Get Order/ })).toBeVisible();
+  const filename = page.getByRole('textbox', { name: 'Nombre del nuevo script' });
+  await filename.fill('orders.yaml');
+  await page.getByRole('button', { name: 'Guardar como nuevo script', exact: true }).click();
+  await expect(page.getByRole('alert').filter({ hasText: 'filename already exists' })).toBeVisible();
+  await expect(page.locator('iframe[data-script-history-preview]')).toBeVisible();
+  await filename.fill('orders-history-copy.yaml');
+  await page.getByRole('button', { name: 'Guardar como nuevo script', exact: true }).click();
+  await expect(popup.getByRole('heading', { name: 'Script actualizado', exact: true })).toBeVisible();
+  await popup.getByRole('tab', { name: 'Historial', exact: true }).click();
+  await expect(versions).toContainText('Nuevo script a partir');
+  await popup.getByRole('button', { name: 'Listo', exact: true }).click();
+  await expect(editor.getByRole('treeitem', { name: /Get Order/ })).toBeVisible();
+  const selector = editor.getByRole('combobox', { name: 'Script del plan', exact: true });
+  await expect(selector.locator('option:checked')).toHaveText('orders-history-copy.yaml');
+  await expect(selector.locator('option')).toHaveCount(2);
+  await selector.selectOption({ label: 'orders.yaml' });
+  await expect(editor.getByRole('treeitem', { name: /Order lookup · QA review/ })).toBeVisible();
+  await expect(editor.getByRole('treeitem', { name: /Order status · QA/ })).toBeVisible();
   expect(providerRequests).toBe(0);
 });
 

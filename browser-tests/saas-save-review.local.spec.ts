@@ -99,6 +99,7 @@ for (const provider of ['github', 'gitlab'] as const) {
             return respond({ sha: 'e'.repeat(40) });
           }
           if (path.endsWith('/git/commits')) {
+            expect(req.postDataJSON().message).toContain('\n\nRelampo-Description: ');
             parent = req.postDataJSON().parents[0];
             return respond({ sha: String(writes + 1).repeat(40) });
           }
@@ -240,6 +241,55 @@ for (const provider of ['github', 'gitlab'] as const) {
       },
       { origin, provider },
     );
+    files.set('performance-tests/review/Scripts/existing-only-remote.yaml', yaml());
+    snapshots.set(head, new Map(files));
+    const collision = await page.evaluate(
+      async ({ origin }) => {
+        const key = `${encodeURIComponent(localStorage.getItem('relampo-current-user')!)}:tp-review`;
+        const read = () =>
+          new Promise<any>((resolve, reject) => {
+            const request = indexedDB.open('relampo-git-plans', 1);
+            request.onsuccess = () => {
+              const db = request.result;
+              const tx = db.transaction('plans', 'readonly');
+              const value = tx.objectStore('plans').get(key);
+              tx.oncomplete = () => {
+                db.close();
+                resolve(value.result);
+              };
+              tx.onerror = () => reject(tx.error);
+            };
+          });
+        const before = await read();
+        let error = '';
+        try {
+          await (
+            await import(origin + '/src/utils/gitPlanStorage.ts')
+          ).saveGitScript(
+            'tp-review',
+            'historical-copy',
+            'existing-only-remote.yaml',
+            'test: {name: Historical copy}',
+            {
+              createOnly: true,
+            },
+          );
+        } catch (cause) {
+          error = String(cause);
+        }
+        const after = await read();
+        return {
+          error,
+          unchanged:
+            JSON.stringify(before.changes) === JSON.stringify(after.changes) &&
+            JSON.stringify(before.bindings) === JSON.stringify(after.bindings),
+        };
+      },
+      { origin },
+    );
+    expect(collision.error).toContain('filename already exists');
+    expect(collision.unchanged).toBe(true);
+    expect(writes).toBe(0);
     share(yaml('5s', 'Shared title updated'));
     await page.getByRole('button', { name: 'Save Script', exact: true }).click();
     const popup = page.getByRole('dialog');

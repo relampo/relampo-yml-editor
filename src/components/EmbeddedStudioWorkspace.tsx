@@ -207,14 +207,56 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
         let error = '';
         let cancelled = false;
         try {
-          if (message.includeResponses === false && controller.current) {
-            if (draft.current.changed && correlation.current) await correlation.current.save();
-            const current = controller.current.document();
-            const result = buildDownloadContent(false, current.yaml, language);
-            if (result.content === null) throw new Error(result.error);
-            await controller.current.replace(result.content, current.fileName);
+          if (message.copyVersion !== undefined) {
+            const copy = message.copyVersion;
+            if (
+              message.reason !== 'save' ||
+              !copy ||
+              typeof copy.yaml !== 'string' ||
+              copy.yaml.length > 20 * 1024 * 1024 ||
+              typeof copy.fileName !== 'string' ||
+              !/^[^/\\\x00-\x1f]{1,180}\.ya?ml$/i.test(copy.fileName) ||
+              copy.fileName.startsWith('.') ||
+              typeof copy.scriptId !== 'string' ||
+              !/^[a-zA-Z0-9_-]{1,100}$/.test(copy.scriptId) ||
+              !controller.current ||
+              !ready ||
+              switchingRef.current
+            )
+              throw new Error('This version cannot be copied right now.');
+            if (
+              catalog.scripts.some(
+                script => script.id === copy.scriptId || script.fileName.toLowerCase() === copy.fileName.toLowerCase(),
+              )
+            )
+              throw new Error('A script with this filename already exists. Choose another name.');
+            if (draft.current.changed || activity.current.http || activity.current.grpc)
+              throw new Error('Finish the current correlation or recording before opening a new script.');
+            await controller.current.save();
+            const saved = await persistEmbeddedScript(
+              copy.scriptId,
+              { yaml: copy.yaml, fileName: copy.fileName },
+              true,
+            );
+            await addPlanScript(
+              { yaml: saved?.yaml ?? copy.yaml, fileName: copy.fileName, updatedAt: new Date().toISOString() },
+              copy.scriptId,
+            );
+            switchingRef.current = true;
+            setSwitching(true);
+            const address = new URL(window.location.href);
+            address.searchParams.set('script', copy.scriptId);
+            window.setTimeout(() => window.location.replace(address.href), 50);
+          } else {
+            if (message.includeResponses === false && controller.current) {
+              if (draft.current.changed && correlation.current) await correlation.current.save();
+              const current = controller.current.document();
+              const result = buildDownloadContent(false, current.yaml, language);
+              if (result.content === null) throw new Error(result.error);
+              await controller.current.replace(result.content, current.fileName);
+            }
+            await flush(message.reason);
           }
-          await flush(message.reason);
           setError('');
           ok = true;
         } catch (cause) {
