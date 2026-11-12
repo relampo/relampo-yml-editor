@@ -84,8 +84,9 @@ export function YAMLContextMenu({
   const canAddChildren = addableItems.length > 0;
   const canShowNodeActions =
     node.type !== 'root' && node.type !== 'test' && node.type !== 'scenarios' && node.type !== 'steps';
-  const canToggleEnabled = canShowNodeActions && Boolean(onToggleEnabled);
-  const canDuplicate = canShowNodeActions && Boolean(onDuplicate);
+  const canToggleEnabled =
+    canShowNodeActions && !['grpc_defaults', 'sql_defaults'].includes(node.type) && Boolean(onToggleEnabled);
+  const canDuplicate = canShowNodeActions && node.type !== 'sql_defaults' && Boolean(onDuplicate);
   const canCopy = canShowNodeActions && Boolean(onCopy);
   const canRemove = canShowNodeActions;
 

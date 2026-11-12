@@ -12,7 +12,8 @@ import type { RedirectSourceInfo, RedirectedRequestInfo, YAMLNode } from '../typ
 import { YAMLWebSocketDetails } from './YAMLWebSocketDetails';
 import { YAMLGRPCDetails } from './YAMLGRPCDetails';
 import { YAMLRequestDetails } from './YAMLRequestDetails';
-import { YAMLSQLDetails } from './YAMLSQLDetails';
+import { SQLRequestDetails } from './SQLRequestDetails';
+import { SQLDefaultsDetails } from './SQLDefaultsDetails';
 import { HighlightedInput } from './ui/HighlightedInput';
 import { BalancedDetails } from './yaml-node-details/BalancedDetails';
 import {
@@ -54,7 +55,7 @@ interface YAMLNodeDetailsProps {
   hosts?: string[];
   redirectedInfo?: RedirectedRequestInfo | null;
   redirectSourceInfo?: RedirectSourceInfo | null;
-  onSplitWebSocket?: (nodeId:string)=>void;
+  onSplitWebSocket?: (nodeId: string) => void;
   onNodeUpdate?: (nodeId: string, updatedData: any) => void;
   onRenameHost?: (oldHost: string, newHost: string) => void;
   onRemoveHost?: (host: string) => void;
@@ -80,7 +81,7 @@ const REQUEST_NODE_TYPES = [
   'options',
 ];
 // Node types that cannot be toggled on/off (mirrors the tree context menu).
-const NON_TOGGLEABLE_NODE_TYPES = ['root', 'test', 'scenarios', 'steps', 'grpc_defaults'];
+const NON_TOGGLEABLE_NODE_TYPES = ['root', 'test', 'scenarios', 'steps', 'grpc_defaults', 'sql_defaults'];
 
 export function YAMLNodeDetails({
   node,
@@ -203,7 +204,9 @@ export function YAMLNodeDetails({
               maxLength={isRequestNode ? 255 : 50}
               containerStyle={{
                 width:
-                  node.type === 'think_time' ? '100px' : `${Math.min(Math.max((nodeName || '').length + 4, 12), 48)}ch`,
+                  node.type === 'think_time'
+                    ? '100px'
+                    : `${Math.min(Math.max((nodeName === node.name ? getNodeDisplayName(node, t) : nodeName || '').length + 4, 12), 48)}ch`,
               }}
               containerClass="max-w-full shrink-0"
               className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-semibold"
@@ -223,6 +226,8 @@ export function YAMLNodeDetails({
           />
         )}
         <NodeDetailsContent
+          tree={tree}
+          sqlConnectionTests={componentCapabilities?.features.includes('sql_connection_defaults') ?? false}
           onSplitWebSocket={onSplitWebSocket}
           node={node}
           nodeName={nodeName}
@@ -245,6 +250,8 @@ export function YAMLNodeDetails({
 
 function NodeDetailsContent({
   node,
+  tree,
+  sqlConnectionTests = false,
   nodeName,
   setNodeName,
   baseUrl,
@@ -260,12 +267,14 @@ function NodeDetailsContent({
   fileName = '',
 }: {
   node: YAMLNode;
+  tree?: YAMLNode | null;
+  sqlConnectionTests?: boolean;
   nodeName: string;
   setNodeName: (name: string) => void;
   baseUrl: string;
   hosts: string[];
   redirectSourceInfo: RedirectSourceInfo | null;
-  onSplitWebSocket?:(nodeId:string)=>void;
+  onSplitWebSocket?: (nodeId: string) => void;
   onNodeUpdate?: (nodeId: string, updatedData: any) => void;
   onRenameHost?: (oldHost: string, newHost: string) => void;
   onRemoveHost?: (host: string) => void;
@@ -349,7 +358,16 @@ function NodeDetailsContent({
           key={node.id}
           node={node}
           onNodeUpdate={onNodeUpdate}
-          onSplit={onSplitWebSocket?()=>onSplitWebSocket(node.id):undefined}
+          onSplit={onSplitWebSocket ? () => onSplitWebSocket(node.id) : undefined}
+        />
+      );
+    case 'sql_defaults':
+      return (
+        <SQLDefaultsDetails
+          node={node}
+          tree={tree}
+          onNodeUpdate={onNodeUpdate}
+          canTest={sqlConnectionTests}
         />
       );
     case 'grpc_defaults':
@@ -371,7 +389,9 @@ function NodeDetailsContent({
     case 'options':
       if (node.type === 'sql') {
         return (
-          <YAMLSQLDetails
+          <SQLRequestDetails
+            key={node.id}
+            tree={tree}
             node={node}
             onNodeUpdate={onNodeUpdate}
           />

@@ -168,6 +168,8 @@ export function treeToObject(tree: YAMLNode): any {
       if (!obj.http_defaults.auth) delete obj.http_defaults.auth;
     } else if (child.type === 'grpc_defaults') {
       obj.grpc_defaults = { ...child.data };
+    } else if (child.type === 'sql_defaults') {
+      obj.sql_defaults = { ...child.data };
     } else if (child.type === 'scenarios') {
       obj.scenarios = child.children?.map(scenarioNodeToObject) || [];
     } else if (child.type === 'metrics') {

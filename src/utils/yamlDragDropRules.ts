@@ -48,6 +48,7 @@ const ROOT_LEVEL_ELEMENTS: YAMLNodeType[] = [
   'data_source',
   'http_defaults',
   'grpc_defaults',
+  'sql_defaults',
   'scenarios',
   'metrics',
   'error_policy',
@@ -152,6 +153,7 @@ const containmentRules: Partial<Record<YAMLNodeType, YAMLNodeType[]>> = {
   data_source: [],
   http_defaults: [],
   grpc_defaults: [],
+  sql_defaults: [],
   metrics: [],
 
   // Scenarios container

@@ -43,6 +43,7 @@ const ROOT_FIELDS = new Set([
   'error_policy',
   'http_defaults',
   'grpc_defaults',
+  'sql_defaults',
   'scenarios',
   'metrics',
 ]);
@@ -169,6 +170,17 @@ function convertToTree(obj: any, _: string[] = [], defaultRootName?: string): YA
       name: 'gRPC Defaults',
       data: asYAMLNodeData(obj.grpc_defaults),
       path: ['grpc_defaults'],
+    });
+  }
+
+  if (obj.sql_defaults !== undefined) {
+    if (!isPlainRecord(obj.sql_defaults)) throw new Error('sql_defaults must be a mapping');
+    root.children!.push({
+      id: `${rootId}_sql_defaults`,
+      type: 'sql_defaults',
+      name: 'SQL Defaults',
+      data: asYAMLNodeData(obj.sql_defaults),
+      path: ['sql_defaults'],
     });
   }
 
@@ -337,10 +349,17 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       name: String(data.name || (data.action ? `WebSocket ${data.action}` : 'WebSocket conversation')),
       data: hasHeaders ? connectionData : data,
       path,
-      children: hasHeaders ? [{
-        id: `${stepId}_headers`, type: 'headers', name: 'Headers',
-        data: asYAMLNodeData(headers), path: [...path, 'websocket', 'headers'],
-      }] : [],
+      children: hasHeaders
+        ? [
+            {
+              id: `${stepId}_headers`,
+              type: 'headers',
+              name: 'Headers',
+              data: asYAMLNodeData(headers),
+              path: [...path, 'websocket', 'headers'],
+            },
+          ]
+        : [],
       expanded: false,
       unknownData: unknownFields(step, new Set(['websocket'])),
     };

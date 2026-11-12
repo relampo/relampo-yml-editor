@@ -534,6 +534,7 @@ function getNodeIcon(type: YAMLNodeType): LucideIcon {
     data_source: Database,
     http_defaults: Settings,
     grpc_defaults: Settings,
+    sql_defaults: Database,
     scenarios: List,
     scenario: Zap,
     metrics: BarChart3,
@@ -623,6 +624,7 @@ function getNodeColor(type: YAMLNodeType, node?: YAMLNode): string {
     case 'grpc_defaults':
       return 'text-cyan-400';
     case 'sql':
+    case 'sql_defaults':
       return 'text-teal-400';
     case 'group':
     case 'simple':

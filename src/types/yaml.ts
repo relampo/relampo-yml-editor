@@ -62,6 +62,9 @@ export interface YAMLNodeData {
   comments?: string;
   condition?: string;
   connection?: YAMLNodeData;
+  connection_ref?: string;
+  default_connection?: string;
+  connections?: Record<string, YAMLNodeData>;
   cookies?: unknown;
   cookie_override?: string;
   count?: YAMLInputValue;
@@ -206,6 +209,7 @@ export type YAMLNodeType =
   | 'data_source'
   | 'http_defaults'
   | 'grpc_defaults'
+  | 'sql_defaults'
   | 'scenarios'
   | 'scenario'
   | 'metrics'

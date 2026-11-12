@@ -13,6 +13,7 @@ export const COMPONENT_FEATURES = [
   'sql_assertions',
   'http_state_usage',
   'extractor_enabled',
+  'sql_connection_defaults',
 ] as const;
 export type ComponentFeature = (typeof COMPONENT_FEATURES)[number];
 export interface ComponentCapabilities {
@@ -195,6 +196,7 @@ export function inspectComponentConfiguration(script: unknown): {
   if (!configurationRecord(script)) return { errors, warnings, required: [] };
   const adopted = script.component_configuration_version === 1;
   if (adopted) required.add('http_defaults');
+  if (script.sql_defaults !== undefined) required.add('sql_connection_defaults');
   const error = (path: string, message: string) => errors.push({ path, message: `${path}: ${message}` });
   const unknown = (record: Record<string, unknown>, fields: ReadonlySet<string>, path: string) => {
     for (const key of Object.keys(record))
@@ -511,8 +513,10 @@ export function inspectComponentConfiguration(script: unknown): {
     return next;
   };
   const scopeSQLPolicy = (record: Record<string, unknown>, previous: Record<string, string>, ownPolicy: boolean) => {
-    const defaults = adopted && configurationRecord(record.defaults) && configurationRecord(record.defaults.sql)
-      ? record.defaults.sql : {};
+    const defaults =
+      adopted && configurationRecord(record.defaults) && configurationRecord(record.defaults.sql)
+        ? record.defaults.sql
+        : {};
     return mergeSQLPolicy(ownPolicy ? mergeSQLPolicy(previous, record.error_policy) : previous, defaults.error_policy);
   };
   const walkSteps = (steps: unknown, path: string, inheritedSQL: unknown, inheritedPolicy: Record<string, string>) => {
@@ -552,7 +556,12 @@ export function inspectComponentConfiguration(script: unknown): {
           continue;
         }
         if (!configurationRecord(payload)) continue;
-        if ((HTTP_TYPES.has(kind) || kind === 'grpc') && Array.isArray(payload.extractors) && payload.extractors.some(extractor => configurationRecord(extractor) && extractor.enabled === false)) required.add('extractor_enabled');
+        if (
+          (HTTP_TYPES.has(kind) || kind === 'grpc') &&
+          Array.isArray(payload.extractors) &&
+          payload.extractors.some(extractor => configurationRecord(extractor) && extractor.enabled === false)
+        )
+          required.add('extractor_enabled');
         if (HTTP_TYPES.has(kind) || kind === 'sql') {
           owner(payload, payloadPath, false, kind === 'sql' ? 'sql' : 'http');
           if (adopted && HTTP_TYPES.has(kind))
@@ -588,7 +597,13 @@ export function inspectComponentConfiguration(script: unknown): {
             const localPolicy = mergeSQLPolicy({}, payload.error_policy);
             const localOnError = typeof payload.on_error === 'string' ? payload.on_error.trim().toLowerCase() : '';
             for (const key of ['on_error', 'on_timeout']) {
-              const action = localPolicy[key] || (key === 'on_error' ? localOnError : '') || localPolicy.on_error || inheritedPolicy[key] || inheritedPolicy.on_error || 'continue';
+              const action =
+                localPolicy[key] ||
+                (key === 'on_error' ? localOnError : '') ||
+                localPolicy.on_error ||
+                inheritedPolicy[key] ||
+                inheritedPolicy.on_error ||
+                'continue';
               if (!['continue', 'stop'].includes(action))
                 error(`${payloadPath}.error_policy.${key}`, 'SQL supports continue or stop after policy inheritance.');
             }
@@ -663,7 +678,12 @@ export function inspectComponentConfiguration(script: unknown): {
           for (const field of ['auth', 'headers', 'assertions'])
             if (field in request) validateValue(field, request[field], `${path}.requests[${index}].${field}`, 'http');
         });
-      walkSteps(scenario.steps, `${path}.steps`, inheritedSQLAssertions(scenario, rootSQL), scopeSQLPolicy(scenario, rootPolicy, true));
+      walkSteps(
+        scenario.steps,
+        `${path}.steps`,
+        inheritedSQLAssertions(scenario, rootSQL),
+        scopeSQLPolicy(scenario, rootPolicy, true),
+      );
     });
   return { errors, warnings, required: [...required].sort() };
 }
@@ -681,6 +701,11 @@ export function componentCapabilityError(yaml: string, capabilities?: ComponentC
     return 'This backend cannot disable extractors. Update Relampo before running this script.';
   if (inspection.required.includes('global_error_policy') && !capabilities?.features.includes('global_error_policy'))
     return 'This backend does not support global error policies. Update Relampo before running.';
+  if (
+    inspection.required.includes('sql_connection_defaults') &&
+    !capabilities?.features.includes('sql_connection_defaults')
+  )
+    return 'This backend does not support SQL connection defaults. Update Relampo before running.';
   if (!configurationRecord(script) || script.component_configuration_version !== 1) return null;
   if (capabilities?.version !== 1)
     return 'This backend does not support component configuration version 1. Update Relampo before running.';

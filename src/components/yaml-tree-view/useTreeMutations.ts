@@ -103,8 +103,8 @@ export function useTreeMutations({
       if (!canAddNodeToTarget(target, nodeType)) return currentTree;
 
       const newNode = createNodeByType(nodeType, { balancedName: t('yamlEditor.balanced.name') });
-      if (nodeType === 'grpc_defaults') {
-        if (currentTree.children?.some(child => child.type === 'grpc_defaults')) return currentTree;
+      if (nodeType === 'grpc_defaults' || nodeType === 'sql_defaults') {
+        if (currentTree.children?.some(child => child.type === nodeType)) return currentTree;
         return addNodeToTree(currentTree, currentTree.id, newNode, true);
       }
       return addNodeToTree(currentTree, targetId, newNode, true);
