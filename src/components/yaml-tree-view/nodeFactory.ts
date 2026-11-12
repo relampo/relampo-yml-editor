@@ -70,27 +70,29 @@ export function createNodeByType(
         } as unknown as import('../../types/yaml').YAMLNodeData,
         children: [],
       };
+    case 'grpc':
+      return {
+        id,
+        type: 'grpc',
+        name: 'gRPC Request',
+        data: { target: 'localhost:50051', method: '/package.Service/Method', message: {} },
+        children: [],
+      };
+    case 'grpc_defaults':
+      return { id, type: 'grpc_defaults', name: 'gRPC Defaults', data: { target: 'localhost:50051', timeout: '30s' } };
+    case 'sql_defaults':
+      return { id, type: 'sql_defaults', name: 'SQL Defaults', data: { connections: {} } };
     case 'sql':
       return {
         id,
         type: 'sql',
-        name: 'POSTGRES: SELECT',
+        name: 'SQL Request',
         data: {
-          dialect: 'postgres',
           kind: 'query',
           query: 'SELECT 1',
-          validate_connectivity: true,
-          connection: {
-            host: '{{db_host}}',
-            port: 5432,
-            database: 'app',
-            user: '{{db_user}}',
-            password: '{{db_password}}',
-            max_open_conns: 5,
-            max_idle_conns: 2,
-          },
           params: [],
           allow_writes: false,
+          error_policy: { on_error: 'continue', on_timeout: 'continue' },
         },
         children: [],
       };

@@ -1,3 +1,4 @@
+import { validateSQLConnections } from './sqlConnections';
 import { inspectTreeComponentConfiguration } from './componentConfiguration';
 import {
   getSegmentDurationSummary,
@@ -43,6 +44,7 @@ export function validateYAMLSemantics(tree: YAMLNode | null): YAMLSemanticIssue[
     nodeId: nearestNode(tree, issue.path).node.id,
     message: issue.message,
   }));
+  issues.push(...validateSQLConnections(tree));
   const scenarioNodes: YAMLNode[] = [];
 
   const collectScenarios = (node: YAMLNode) => {
@@ -55,18 +57,27 @@ export function validateYAMLSemantics(tree: YAMLNode | null): YAMLSemanticIssue[
   collectScenarios(tree);
   if (scenarioNodes.length > 1) {
     if (!['sequential', 'parallel'].includes(String(tree.data?.scenario_mode ?? ''))) {
-      issues.push({ nodeId: tree.id, message: 'Choose sequential or parallel scenario scheduling for multiple scenarios.' });
+      issues.push({
+        nodeId: tree.id,
+        message: 'Choose sequential or parallel scenario scheduling for multiple scenarios.',
+      });
     }
     const seen = new Set<string>();
     for (const scenario of scenarioNodes) {
       const rawName = scenario.data ? scenario.data.name : scenario.name;
       const name = typeof rawName === 'string' ? rawName.trim() : '';
-      if (!name || seen.has(name)) issues.push({ nodeId: scenario.id, message: 'Multiple scenarios require unique, non-empty names.' });
+      if (!name || seen.has(name))
+        issues.push({ nodeId: scenario.id, message: 'Multiple scenarios require unique, non-empty names.' });
       seen.add(name);
     }
   }
 
   const walk = (node: YAMLNode, scenarioIterations = 0) => {
+    if (node.type === 'cookies' && node.data?.jar_scope !== undefined && node.data.jar_scope !== 'vu')
+      issues.push({
+        nodeId: node.id,
+        message: 'cookies.jar_scope only supports vu; each virtual user has its own cookie jar.',
+      });
     if (node.data?.enabled === false) {
       return;
     }
@@ -111,7 +122,11 @@ export function validateYAMLSemantics(tree: YAMLNode | null): YAMLSemanticIssue[
       const down = parseTimeToSeconds(String(node.data?.ramp_down ?? ''));
       const phaseDuration = sumDurationSeconds([up, down]);
       if (duration > 0 && phaseDuration > duration && !areDurationsEqual(phaseDuration, duration)) {
-        issues.push({ nodeId: node.id, code: 'load_phase_duration', message: 'Ramp Up + Ramp Down cannot exceed Duration.' });
+        issues.push({
+          nodeId: node.id,
+          code: 'load_phase_duration',
+          message: 'Ramp Up + Ramp Down cannot exceed Duration.',
+        });
       }
     }
 
@@ -266,7 +281,11 @@ function validateIntentLoadNode(node: YAMLNode, issues: YAMLSemanticIssue[]) {
   }
   const phaseDuration = sumDurationSeconds([warmup, rampUp, rampDown]);
   if (duration > 0 && phaseDuration > duration && !areDurationsEqual(phaseDuration, duration)) {
-    issues.push({ nodeId: node.id, code: 'load_phase_duration', message: 'Intent Warm-up + Ramp Up + Ramp Down cannot exceed Duration.' });
+    issues.push({
+      nodeId: node.id,
+      code: 'load_phase_duration',
+      message: 'Intent Warm-up + Ramp Up + Ramp Down cannot exceed Duration.',
+    });
   }
   if (hasWindow && window <= 0) {
     issues.push({ nodeId: node.id, message: 'Intent Window must be greater than 0.' });
@@ -348,7 +367,9 @@ function validateSegmentsLoadNode(node: YAMLNode, issues: YAMLSemanticIssue[]) {
     segment === null || typeof segment !== 'object' || Array.isArray(segment) ? [index] : [],
   );
   if (malformedSegments.length > 0) {
-    malformedSegments.forEach(index => issues.push({ nodeId: node.id, message: `Segment ${index + 1} must be a mapping.` }));
+    malformedSegments.forEach(index =>
+      issues.push({ nodeId: node.id, message: `Segment ${index + 1} must be a mapping.` }),
+    );
     return;
   }
 
@@ -388,7 +409,10 @@ function validateSegmentsLoadNode(node: YAMLNode, issues: YAMLSemanticIssue[]) {
     if (transition === '') {
       issues.push({ nodeId: node.id, message: `Segment ${index + 1} Transition is required.` });
     } else if (!['constant', 'ramp_up', 'ramp_down'].includes(transition)) {
-      issues.push({ nodeId: node.id, message: `Segment ${index + 1} Transition must be Constant, Ramp up or Ramp down.` });
+      issues.push({
+        nodeId: node.id,
+        message: `Segment ${index + 1} Transition must be Constant, Ramp up or Ramp down.`,
+      });
     }
 
     const targetRpsValue = valueText(segment?.target_rps);
@@ -430,11 +454,21 @@ function validateSegmentsLoadNode(node: YAMLNode, issues: YAMLSemanticIssue[]) {
     }
 
     const startVus = getSegmentStartVUs(segments, index);
-    if (hasTargetVus && !hasTargetRps && Number.isInteger(targetVus) && targetVus >= 0 && startVus !== undefined && ['constant', 'ramp_up', 'ramp_down'].includes(transition)) {
+    if (
+      hasTargetVus &&
+      !hasTargetRps &&
+      Number.isInteger(targetVus) &&
+      targetVus >= 0 &&
+      startVus !== undefined &&
+      ['constant', 'ramp_up', 'ramp_down'].includes(transition)
+    ) {
       const required = getSegmentRequiredTransition(startVus, targetVus);
       if (transition !== 'constant' && transition !== required) {
         const label = { constant: 'Constant', ramp_up: 'Ramp up', ramp_down: 'Ramp down' }[required];
-        issues.push({ nodeId: node.id, message: `Segment ${index + 1} Transition must be ${label} from ${startVus} VUs to ${targetVus} VUs.` });
+        issues.push({
+          nodeId: node.id,
+          message: `Segment ${index + 1} Transition must be ${label} from ${startVus} VUs to ${targetVus} VUs.`,
+        });
       }
     }
 
@@ -469,7 +503,9 @@ function validateSegmentsLoadNode(node: YAMLNode, issues: YAMLSemanticIssue[]) {
     if (
       hasTargetRps &&
       !hasTargetVus &&
-      minVusValue !== '' && Number.isInteger(minVus) && minVus >= 0 &&
+      minVusValue !== '' &&
+      Number.isInteger(minVus) &&
+      minVus >= 0 &&
       isPositiveInteger(maxVus) &&
       minVus >= maxVus
     ) {

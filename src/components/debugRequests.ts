@@ -1,3 +1,5 @@
+import { isNativeSampler } from '../utils/protocolChildren';
+import { nativeDebugConfiguration, nativeDebugExtractorNames, dataSourceVariableNames } from './debugNativeRequests';
 import type { RedirectedRequestInfo, YAMLNode } from '../types/yaml';
 import { buildRelampoRegex } from './debugSearch';
 
@@ -16,7 +18,19 @@ export type DebugEventLike = {
   vu?: number;
 };
 
-const REQUEST_TYPES = new Set(['websocket', 'grpc', 'request', 'get', 'post', 'put', 'delete', 'patch', 'head', 'options']);
+const REQUEST_TYPES = new Set([
+  'sql',
+  'websocket',
+  'grpc',
+  'request',
+  'get',
+  'post',
+  'put',
+  'delete',
+  'patch',
+  'head',
+  'options',
+]);
 const DEBUG_EVENT_TYPES = new Set([...REQUEST_TYPES, 'think_time']);
 
 function getRequestPath(node: YAMLNode): string {
@@ -402,6 +416,10 @@ function extractorVariableName(node: YAMLNode): string | null {
 }
 
 export function requestExtractorVariableNames(node: YAMLNode | null): string[] {
+  if (node) {
+    const native = nativeDebugExtractorNames(node);
+    if (native) return native;
+  }
   if (!node?.children) return [];
   const names = new Set<string>();
   node.children.forEach(child => {
@@ -467,6 +485,12 @@ function isBuiltinExpression(expression: string): boolean {
 function requestReferencedVariableNames(node: YAMLNode | null, variables: Record<string, string> = {}): string[] {
   if (!node) return [];
   const names = new Set<string>();
+  const native = nativeDebugConfiguration(node);
+  if (native) {
+    collectPlaceholderNames(native, names, variables);
+    dataSourceVariableNames((native.data_source || {}) as Record<string, unknown>).forEach(name => names.add(name));
+    return [...names];
+  }
   collectPlaceholderNames(node.data, names, variables);
   node.children?.forEach(child => {
     // Header/body config edited through the detail UI lives on child config
@@ -477,10 +501,7 @@ function requestReferencedVariableNames(node: YAMLNode | null, variables: Record
     if (REQUEST_TYPES.has(child.type)) return;
     collectPlaceholderNames(child.data, names, variables);
     if (child.type === 'data_source') {
-      const bind = child.data?.bind;
-      if (bind && typeof bind === 'object') {
-        Object.keys(bind as Record<string, unknown>).forEach(name => name && names.add(name));
-      }
+      dataSourceVariableNames((child.data || {}) as Record<string, unknown>).forEach(name => names.add(name));
     }
   });
   return [...names];
@@ -697,6 +718,9 @@ function regexExtractorValue(data: Record<string, unknown>, context: VariableVal
 
 function responseExtractorValues(node: YAMLNode | null, context: VariableValueContext): Map<string, string> {
   const values = new Map<string, string>();
+  // Native events can aggregate multiple messages. Only the runtime knows which
+  // message/row actually produced each capture; never re-extract in the UI.
+  if (node && isNativeSampler(node.type)) return values;
   node?.children?.forEach(child => {
     if (child.type !== 'extractor' && child.type !== 'extract') return;
     const name = extractorVariableName(child);
@@ -733,6 +757,41 @@ function structuredBody(value: unknown): unknown {
   }
 }
 
+function capturedRequestVariables(node: YAMLNode, context: VariableValueContext): Map<string, string> {
+  const values = resolvedRequestUrlVariables(node, context);
+  const visit = (template: unknown, captured: unknown) => {
+    if (typeof template === 'string') {
+      // A complete placeholder can be attributed to its captured value without
+      // re-evaluating time/random functions or guessing mixed-string boundaries.
+      const match = template.match(/^\{\{([^{}]+)\}\}$|^\$\{([^{}]+)\}$/);
+      if (match && !isBuiltinExpression((match[1] ?? match[2]).trim()) && captured !== undefined)
+        values.set((match[1] ?? match[2]).trim(), typeof captured === 'string' ? captured : JSON.stringify(captured));
+    } else if (template && typeof template === 'object' && captured && typeof captured === 'object') {
+      for (const [key, field] of Object.entries(template))
+        if (Object.hasOwn(captured, key)) visit(field, (captured as Record<string, unknown>)[key]);
+    }
+  };
+  let template = node.data?.body ?? node.data?.body_raw;
+  const contentType = Object.entries(context.requestHeaders ?? node.data?.headers ?? {}).find(
+    ([key]) => key.toLowerCase() === 'content-type',
+  )?.[1];
+  if (Array.isArray(template) && String(contentType).toLowerCase().startsWith('application/x-www-form-urlencoded')) {
+    const fields = new URLSearchParams();
+    for (const item of template)
+      if (item && typeof item === 'object')
+        for (const [key, value] of Object.entries(item)) fields.append(key, String(value ?? ''));
+    template = fields.toString();
+  }
+  visit(structuredBody(template), structuredBody(context.requestBody));
+  for (const [name, templateValue] of Object.entries(node.data?.headers ?? {})) {
+    const captured = Object.entries(context.requestHeaders ?? {}).find(
+      ([key]) => key.toLowerCase() === name.toLowerCase(),
+    )?.[1];
+    visit(templateValue, captured);
+  }
+  return values;
+}
+
 function builtinBodyRows(
   node: YAMLNode,
   variables: Record<string, string>,
@@ -746,7 +805,11 @@ function builtinBodyRows(
       );
       if (path.length && hasBuiltin) {
         const value = typeof captured === 'string' ? captured : JSON.stringify(captured);
-        rows.push([`Body.${path.join('.')} (REQ)`, value ?? context.missingValueLabel ?? MISSING_VARIABLE_VALUE]);
+        const expressions = [...template.matchAll(/\{\{([^{}]+)\}\}/g)].map(([, name]) => name.trim());
+        rows.push([
+          `${expressions.length ? expressions.join(' + ') : template} (REQ)`,
+          value ?? context.missingValueLabel ?? MISSING_VARIABLE_VALUE,
+        ]);
       }
       return;
     }
@@ -796,7 +859,8 @@ export function variableRowsForRequestNode(
   if (!node) return [];
   const roles = requestVariableRoles(node, variables, context);
   const extracted = responseExtractorValues(node, context);
-  const sent = resolvedRequestUrlVariables(node, context);
+  const sent = capturedRequestVariables(node, context);
+  for (const name of sent.keys()) if (!roles.has(name)) roles.set(name, new Set(['REQ']));
   const missingValue = context.missingValueLabel ?? MISSING_VARIABLE_VALUE;
   const rows = [...roles].map<[string, string]>(([name, variableRoles]) => {
     const declaredValue = context.declaredBuiltinValues?.[name];
@@ -815,7 +879,11 @@ export function variableRowsForRequestNode(
               : missingValue;
     return [
       variableRowLabel(name, variableRoles),
-      resolvedValue === undefined ? missingValue : displayVariableValue(resolvedValue),
+      resolvedValue === undefined
+        ? missingValue
+        : isNativeSampler(node.type)
+          ? resolvedValue
+          : displayVariableValue(resolvedValue),
     ];
   });
   return [...rows, ...builtinBodyRows(node, variables, context)];

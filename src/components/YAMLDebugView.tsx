@@ -1,3 +1,5 @@
+import { SQLResultTable } from './SQLResultTable';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { WebSocketMetrics } from './WebSocketMetrics';
 import { componentCapabilityError, type ComponentCapabilities } from '../utils/componentConfiguration';
 import {
@@ -687,23 +689,29 @@ export function YAMLDebugSession({
           {multiScenarioDebugEnabled ? (
             <label className="flex items-center gap-3">
               {t('yamlEditor.runDebug.debug.scenarioLabel')}
-              <select
-                aria-label={t('yamlEditor.runDebug.debug.scenarioLabel')}
-                value={scenarioName}
-                onChange={event => setScenarioName(event.target.value)}
+              <Select
+                value={scenarioName || 'unset'}
+                onValueChange={value => setScenarioName(value === 'unset' ? '' : value)}
                 disabled={isRunning}
-                className="rounded border border-white/20 bg-[#161616] px-3 py-2"
               >
-                <option value="">{t('yamlEditor.runDebug.debug.selectScenario')}</option>
-                {scenarios.map(node => (
-                  <option
-                    key={node.id}
-                    value={String(node.data?.name ?? '')}
-                  >
-                    {node.name}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger
+                  id="debug-scenario"
+                  aria-label={t('yamlEditor.runDebug.debug.scenarioLabel')}
+                >
+                  <SelectValue placeholder={t('yamlEditor.runDebug.debug.selectScenario')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unset">{t('yamlEditor.runDebug.debug.selectScenario')}</SelectItem>
+                  {scenarios.map(node => (
+                    <SelectItem
+                      key={node.id}
+                      value={String(node.data?.name ?? '')}
+                    >
+                      {node.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </label>
           ) : (
             <p>{t('yamlEditor.runDebug.debug.scenarioUnsupported')}</p>
@@ -1015,7 +1023,11 @@ function DebugTimelinePanel({
                           <span className="rounded border border-blue-400/25 bg-blue-400/10 px-1.5 py-0.5 text-[10px] font-semibold text-blue-300">
                             {entry.event.method}
                           </span>
-                          <span className="truncate text-sm text-zinc-100">{entry.event.path || entry.event.name}</span>
+                          <span className="truncate text-sm text-zinc-100">
+                            {entry.event.method === 'SQL'
+                              ? entry.event.name.replace(/^\[[^\]]+\]\s*/, '')
+                              : entry.event.path || entry.event.name}
+                          </span>
                         </div>
                         <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] text-zinc-500">
                           {entry.status === 'skipped' ? (
@@ -1081,7 +1093,9 @@ function DebugDetailPanel({
                     {activeEntry.event.method}
                   </span>
                   <h3 className="truncate text-base font-semibold text-zinc-100">
-                    {activeEntry.event.path || activeEntry.event.name}
+                    {activeEntry.event.method === 'SQL'
+                      ? activeEntry.event.name.replace(/^\[[^\]]+\]\s*/, '')
+                      : activeEntry.event.path || activeEntry.event.name}
                   </h3>
                 </div>
               </div>
@@ -1208,12 +1222,22 @@ function DebugRequestInspector({ event }: { event: EngineEvent }) {
   const [search, setSearch] = useState('');
   const [searchMode, setSearchMode] = useState<SearchMode>('text');
   const [matchIndex, setMatchIndex] = useState(0);
-  const rows: Array<[string, string]> = [
-    [t('yamlEditor.runDebug.debug.request.url'), event.path || t('yamlEditor.runDebug.debug.request.unknown')],
-    [t('yamlEditor.runDebug.debug.request.method'), event.method],
-    ...Object.entries(event.request_headers ?? {}),
-  ];
-  const body = event.request_body || t('yamlEditor.runDebug.debug.request.empty');
+  const sql = event.method === 'SQL' ? event.sql_result : undefined;
+  const rows: Array<[string, string]> = sql
+    ? [
+        [t('yamlEditor.sqlResults.dialect'), sql.dialect ?? '—'],
+        [t('yamlEditor.sqlResults.kind'), sql.kind.toUpperCase()],
+        [t('yamlEditor.sqlResults.params'), JSON.stringify(sql.params ?? [])],
+        ...(sql.request_truncated
+          ? [[t('yamlEditor.sqlResults.request'), t('yamlEditor.sqlResults.requestTruncated')] as [string, string]]
+          : []),
+      ]
+    : [
+        [t('yamlEditor.runDebug.debug.request.url'), event.path || t('yamlEditor.runDebug.debug.request.unknown')],
+        [t('yamlEditor.runDebug.debug.request.method'), event.method],
+        ...Object.entries(event.request_headers ?? {}),
+      ];
+  const body = sql?.query || event.request_body || t('yamlEditor.runDebug.debug.request.empty');
   const searchText = [...rows.map(([label, value]) => `${label}: ${value}`), body].join('\n');
   const totalMatches = findMatchRanges(searchText, search, searchMode).length;
   return (
@@ -1237,6 +1261,7 @@ function DebugRequestInspector({ event }: { event: EngineEvent }) {
       <DebugSection
         rows={rows}
         body={body}
+        bodyLabel={event.method === 'SQL' ? t('yamlEditor.sqlResults.query') : undefined}
         searchText={search}
         searchMode={searchMode}
         currentMatchIndex={matchIndex}
@@ -1273,30 +1298,36 @@ function DebugResponseInspector({ event }: { event: EngineEvent }) {
   const totalMatches = findMatchRanges(searchText, search, searchMode).length;
   return (
     <div className="space-y-3">
-      <DebugSearchControls
-        value={search}
-        mode={searchMode}
-        placeholder={t('yamlEditor.runDebug.debug.response.search')}
-        totalMatches={totalMatches}
-        currentMatchIndex={matchIndex}
-        onChange={value => {
-          setSearch(value);
-          setMatchIndex(0);
-        }}
-        onModeChange={mode => {
-          setSearchMode(mode);
-          setMatchIndex(0);
-        }}
-        onNavigate={setMatchIndex}
-      />
-      <DebugSection
-        rows={rows}
-        body={body}
-        bodyDownload={bodyDownload}
-        searchText={search}
-        searchMode={searchMode}
-        currentMatchIndex={matchIndex}
-      />
+      {!event.sql_result && (
+        <DebugSearchControls
+          value={search}
+          mode={searchMode}
+          placeholder={t('yamlEditor.runDebug.debug.response.search')}
+          totalMatches={totalMatches}
+          currentMatchIndex={matchIndex}
+          onChange={value => {
+            setSearch(value);
+            setMatchIndex(0);
+          }}
+          onModeChange={mode => {
+            setSearchMode(mode);
+            setMatchIndex(0);
+          }}
+          onNavigate={setMatchIndex}
+        />
+      )}
+      {event.sql_result ? (
+        <SQLResultTable result={event.sql_result} />
+      ) : (
+        <DebugSection
+          rows={rows}
+          body={body}
+          bodyDownload={bodyDownload}
+          searchText={search}
+          searchMode={searchMode}
+          currentMatchIndex={matchIndex}
+        />
+      )}
     </div>
   );
 }

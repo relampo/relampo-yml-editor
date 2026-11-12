@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { LanguageProvider } from '../contexts/LanguageContext';
 import { YAMLContextMenu } from './YAMLContextMenu';
@@ -24,9 +24,20 @@ describe('YAMLContextMenu', () => {
     );
 
     expect(screen.getByRole('button', { name: 'HTTP Request Request HTTP' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'SQL Request Database request for PostgreSQL or MySQL' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'SQL Request Database request for PostgreSQL or MySQL' }),
+    ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Group Group steps' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Think Time Pause between requests' })).toBeInTheDocument();
+    const buttons = screen.getAllByRole('button');
+    expect(buttons[0]).toHaveTextContent('HTTP Request');
+    expect(buttons[1]).toHaveTextContent('gRPC Request');
+    expect(buttons[2]).toHaveTextContent('WebSocket');
+    expect(buttons[3]).toHaveTextContent('SQL Request');
+    expect(
+      screen.getByRole('button', { name: 'Assertion Validate the last HTTP response received' }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole('separator')).toHaveLength(2);
   });
 
   it('offers another scenario under a populated scenarios container', () => {
@@ -128,4 +139,17 @@ describe('YAMLContextMenu', () => {
     expect(onCopy).toHaveBeenCalledWith('headers');
     expect(onPaste).toHaveBeenCalledWith('headers');
   });
+});
+
+it('shows all HTTP options for SQL and blocks unsupported additions with an explanation', () => {
+  const onAddNode=vi.fn();
+  render(<LanguageProvider><YAMLContextMenu x={10} y={10}
+    node={{id:'sql',type:'sql',name:'SQL',data:{kind:'query'}}}
+    onClose={vi.fn()} onAddNode={onAddNode} onRemove={vi.fn()} /></LanguageProvider>);
+  const file=screen.getByRole('button',{name:'File Upload Does not apply to SQL requests'});
+  expect(file).toBeDisabled();
+  fireEvent.click(file);
+  expect(onAddNode).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button',{name:/^Extractor(?: |$)/}));
+  expect(onAddNode).toHaveBeenCalledWith('extractor');
 });

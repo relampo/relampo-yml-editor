@@ -60,19 +60,48 @@ export function HeaderDetails({ node, onNodeUpdate }: NodeDetailProps) {
   );
 }
 
-export function HeadersDetails({ node, onNodeUpdate, searchQuery = '' }: NodeDetailProps & { searchQuery?: string }) {
+export function HeadersDetails({
+  node,
+  onNodeUpdate,
+  searchQuery = '',
+  grpcContext = false,
+}: NodeDetailProps & { searchQuery?: string; grpcContext?: boolean }) {
   const { t } = useLanguage();
   const data = node.data || {};
   const headers = Object.fromEntries(
-    Object.entries(data).filter((entry): entry is [string, string] => typeof entry[1] === 'string'),
+    Object.entries(data).flatMap(([key, value]) =>
+      typeof value === 'string'
+        ? [[key, value]]
+        : grpcContext && Array.isArray(value)
+          ? [[key, JSON.stringify(value)]]
+          : [],
+    ),
   );
 
   return (
     <>
       <EditableList
-        title={t('yamlEditor.nodeDetails.basic.httpHeaders')}
+        title={grpcContext ? t('yamlEditor.shell.addable.grpcMetadata') : t('yamlEditor.nodeDetails.basic.httpHeaders')}
         items={headers}
-        onUpdate={items => onNodeUpdate?.(node.id, items)}
+        onUpdate={items => {
+          if (!grpcContext) {
+            onNodeUpdate?.(node.id, items);
+            return;
+          }
+          const metadata = Object.fromEntries(
+            Object.entries(items).map(([key, value]) => {
+              if (value === headers[key]) return [key, data[key as keyof typeof data]];
+              try {
+                const parsed: unknown = JSON.parse(value);
+                if (Array.isArray(parsed) && parsed.every(item => typeof item === 'string')) return [key, parsed];
+              } catch {
+                /* A regular metadata value is a string. */
+              }
+              return [key, value];
+            }),
+          );
+          onNodeUpdate?.(node.id, metadata);
+        }}
         keyPlaceholder="Header-Name"
         valuePlaceholder={t('yamlEditor.nodeDetails.header.valuePlaceholder')}
         enableCheckboxes={false}

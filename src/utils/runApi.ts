@@ -1,3 +1,4 @@
+import { isSQLResult, type SQLResult } from './sqlResults';
 import { componentCapabilityError, type ComponentCapabilities } from './componentConfiguration';
 import { trackStudioRunStarted, trackStudioRunCompleted } from './analytics';
 // Client for the relampo studio load-run API: a full `relampo run` load test
@@ -69,6 +70,10 @@ type RunLogLevel = 'request' | 'info' | 'error' | 'system';
 // One line of the live log feed. Request events carry the structured fields;
 // lifecycle/info events use `message`.
 export interface RunLogLine {
+  sql_result?: SQLResult;
+  name?: string;
+  rows_returned?: number;
+  rows_affected?: number;
   scenario_name?: string;
   node_id?: string | number;
   seq: number;
@@ -99,6 +104,8 @@ export interface GRPCStreamTiming {
   unmatched_messages?: number;
 }
 export interface RunRequestStat {
+  rows_returned?: number;
+  rows_affected?: number;
   protocol?: string;
   protocol_status?: string;
   stream_type?: string;
@@ -263,6 +270,7 @@ export interface RunScenarioResult {
 }
 
 export interface RunSummary {
+  scenario_mode?: 'single' | 'parallel' | 'sequential';
   complete?: boolean;
   total_elapsed?: number;
   workload_duration?: number;
@@ -353,10 +361,10 @@ export async function startLoadRun(yaml: string, componentCapabilities?: Compone
 
 // URL of the standalone HTML report the studio generates when a run finishes
 // (the same report `relampo run` writes). Open it in a new tab.
-export function loadRunReportUrl(runId: string): string {
+export function loadRunReportUrl(runId: string, language: 'en' | 'es' = 'en'): string {
   // Opened in a new tab, so it cannot send the token header — carry it in the
   // query string, which the studio server also accepts.
-  return withStudioToken(`${apiBase()}/api/run/${runId}/report`);
+  return withStudioToken(`${apiBase()}/api/run/${runId}/report?lang=${language}`);
 }
 
 // Asks the studio to cancel a running load run. The engine drains its VUs and
@@ -545,6 +553,7 @@ function isRunIntentResult(value: unknown): value is RunIntentResult {
 function isRunLogLine(value: unknown): value is RunLogLine {
   if (!isRecord(value)) return false;
   return (
+    (value.sql_result === undefined || isSQLResult(value.sql_result)) &&
     isRunScope(value) &&
     isFiniteNumber(value.seq) &&
     isFiniteNumber(value.ts) &&

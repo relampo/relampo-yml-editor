@@ -89,19 +89,7 @@ export function LoadVisualization({ data, loadType, progressSeconds }: LoadVisua
           model={model}
           t={t}
         />
-        {loadType === 'segments' && (
-          <div className="mt-2 text-[11px] text-zinc-400">
-            <p>{t('yamlEditor.runDebug.visualization.segmentsLegend')}</p>
-            <ol className="mt-1 space-y-1" aria-label={t('yamlEditor.runDebug.visualization.segmentsAria')}>
-              {getSegmentVisualizationEntries(data).map((entry, index) => (
-                <li key={index}>
-                  {index + 1}. {entry.name} · {segmentTargetLabel(entry, t)} · {formatTimeLabel(entry.start)}–{formatTimeLabel(entry.end)}
-                  {entry.targetRps > 0 && ` · ${entry.minVus}–${entry.value} VUs`}
-                </li>
-              ))}
-            </ol>
-          </div>
-        )}
+
       </div>
     </div>
   );

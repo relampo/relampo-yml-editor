@@ -1,3 +1,4 @@
+import { requiresNativeSamplerComponents } from './nativeSamplerComponents';
 import { load } from 'js-yaml';
 import type { YAMLNode } from '../types/yaml';
 import { authoredNodeData } from './yamlAuthoredData';
@@ -12,6 +13,10 @@ export const COMPONENT_FEATURES = [
   'http_assertions',
   'sql_assertions',
   'http_state_usage',
+  'extractor_enabled',
+  'sql_connection_defaults',
+  'sql_extractors',
+  'native_sampler_components',
 ] as const;
 export type ComponentFeature = (typeof COMPONENT_FEATURES)[number];
 export interface ComponentCapabilities {
@@ -194,6 +199,7 @@ export function inspectComponentConfiguration(script: unknown): {
   if (!configurationRecord(script)) return { errors, warnings, required: [] };
   const adopted = script.component_configuration_version === 1;
   if (adopted) required.add('http_defaults');
+  if (script.sql_defaults !== undefined) required.add('sql_connection_defaults');
   const error = (path: string, message: string) => errors.push({ path, message: `${path}: ${message}` });
   const unknown = (record: Record<string, unknown>, fields: ReadonlySet<string>, path: string) => {
     for (const key of Object.keys(record))
@@ -510,8 +516,10 @@ export function inspectComponentConfiguration(script: unknown): {
     return next;
   };
   const scopeSQLPolicy = (record: Record<string, unknown>, previous: Record<string, string>, ownPolicy: boolean) => {
-    const defaults = adopted && configurationRecord(record.defaults) && configurationRecord(record.defaults.sql)
-      ? record.defaults.sql : {};
+    const defaults =
+      adopted && configurationRecord(record.defaults) && configurationRecord(record.defaults.sql)
+        ? record.defaults.sql
+        : {};
     return mergeSQLPolicy(ownPolicy ? mergeSQLPolicy(previous, record.error_policy) : previous, defaults.error_policy);
   };
   const walkSteps = (steps: unknown, path: string, inheritedSQL: unknown, inheritedPolicy: Record<string, string>) => {
@@ -551,6 +559,26 @@ export function inspectComponentConfiguration(script: unknown): {
           continue;
         }
         if (!configurationRecord(payload)) continue;
+        if (requiresNativeSamplerComponents(kind, payload, adopted)) required.add('native_sampler_components');
+        if (['sql', 'grpc', 'websocket'].includes(kind)) {
+          if ('think_time' in payload)
+            validateValue(
+              'think_time',
+              payload.think_time,
+              `${payloadPath}.think_time`,
+              kind === 'sql' ? 'sql' : 'http',
+            );
+          if ('data_source' in payload)
+            validateValue('data_source', payload.data_source, `${payloadPath}.data_source`, 'http');
+          if (kind === 'sql' && 'assertions' in payload)
+            validateValue('assertions', payload.assertions, `${payloadPath}.assertions`, 'sql');
+        }
+        if (
+          (HTTP_TYPES.has(kind) || kind === 'grpc') &&
+          Array.isArray(payload.extractors) &&
+          payload.extractors.some(extractor => configurationRecord(extractor) && extractor.enabled === false)
+        )
+          required.add('extractor_enabled');
         if (HTTP_TYPES.has(kind) || kind === 'sql') {
           owner(payload, payloadPath, false, kind === 'sql' ? 'sql' : 'http');
           if (adopted && HTTP_TYPES.has(kind))
@@ -583,15 +611,57 @@ export function inspectComponentConfiguration(script: unknown): {
             for (const field of ['auth', 'headers', 'assertions'])
               if (field in payload) validateValue(field, payload[field], `${payloadPath}.${field}`, 'http');
           if (kind === 'sql') {
+            if (payload.extractors !== undefined) {
+              required.add('sql_extractors');
+              if (!Array.isArray(payload.extractors)) error(`${payloadPath}.extractors`, 'Expected a list.');
+              else {
+                const names = new Set<string>();
+                if (payload.extractors.length > 128)
+                  error(`${payloadPath}.extractors`, 'At most 128 SQL extractors are supported.');
+                payload.extractors.forEach((ext, index) => {
+                  const path = `${payloadPath}.extractors[${index}]`;
+                  if (!configurationRecord(ext)) {
+                    error(path, 'Expected an SQL extractor.');
+                    return;
+                  }
+                  if (ext.enabled === false) return;
+                  if (String(payload.kind ?? 'query') !== 'query') error(path, 'SQL extractors require kind=query.');
+                  const type = String(ext.type ?? 'sql').toLowerCase();
+                  if (!['sql', 'regex', 'jsonpath', 'json', 'xpath', 'boundary', 'body'].includes(type))
+                    error(`${path}.type`, 'Unsupported SQL result extractor.');
+                  if (ext.from !== undefined && ext.from !== '' && ext.from !== 'body')
+                    error(`${path}.from`, 'SQL results provide a body source.');
+                  const name = String(ext.var ?? ext.variable ?? '');
+                  if (!name.trim() || name !== name.trim())
+                    error(`${path}.var`, 'Variable name is required without surrounding whitespace.');
+                  if (names.has(name)) error(`${path}.var`, 'Duplicate destination variable.');
+                  names.add(name);
+                  if (ext.var && ext.variable && ext.var !== ext.variable)
+                    error(`${path}.variable`, 'Conflicts with var.');
+                  if ((type === 'sql' || type === 'xpath') && (typeof ext.column !== 'string' || !ext.column.trim()))
+                    error(
+                      `${path}.column`,
+                      type === 'xpath' ? 'Select an XML column for XPath.' : 'Column name is required.',
+                    );
+                  if (ext.row !== undefined && (!Number.isSafeInteger(ext.row) || Number(ext.row) < 1))
+                    error(`${path}.row`, 'Expected a one-based positive row.');
+                });
+              }
+            }
+
             const localPolicy = mergeSQLPolicy({}, payload.error_policy);
             const localOnError = typeof payload.on_error === 'string' ? payload.on_error.trim().toLowerCase() : '';
             for (const key of ['on_error', 'on_timeout']) {
-              const action = localPolicy[key] || (key === 'on_error' ? localOnError : '') || localPolicy.on_error || inheritedPolicy[key] || inheritedPolicy.on_error || 'continue';
+              const action =
+                localPolicy[key] ||
+                (key === 'on_error' ? localOnError : '') ||
+                localPolicy.on_error ||
+                inheritedPolicy[key] ||
+                inheritedPolicy.on_error ||
+                'continue';
               if (!['continue', 'stop'].includes(action))
                 error(`${payloadPath}.error_policy.${key}`, 'SQL supports continue or stop after policy inheritance.');
             }
-            if (!adopted && ('assertions' in payload || 'think_time' in payload))
-              error(payloadPath, 'SQL assertions and think_time require component_configuration_version: 1.');
             if (adopted) {
               for (const field of [
                 'auth',
@@ -605,7 +675,6 @@ export function inspectComponentConfiguration(script: unknown): {
                 'cache',
                 'cookie_override',
                 'cache_override',
-                'data_source',
               ])
                 if (field in payload)
                   error(`${payloadPath}.${field}`, 'HTTP or scoped configuration cannot apply to local SQL.');
@@ -661,7 +730,12 @@ export function inspectComponentConfiguration(script: unknown): {
           for (const field of ['auth', 'headers', 'assertions'])
             if (field in request) validateValue(field, request[field], `${path}.requests[${index}].${field}`, 'http');
         });
-      walkSteps(scenario.steps, `${path}.steps`, inheritedSQLAssertions(scenario, rootSQL), scopeSQLPolicy(scenario, rootPolicy, true));
+      walkSteps(
+        scenario.steps,
+        `${path}.steps`,
+        inheritedSQLAssertions(scenario, rootSQL),
+        scopeSQLPolicy(scenario, rootPolicy, true),
+      );
     });
   return { errors, warnings, required: [...required].sort() };
 }
@@ -675,8 +749,22 @@ export function componentCapabilityError(yaml: string, capabilities?: ComponentC
   }
   const inspection = inspectComponentConfiguration(script);
   if (inspection.errors.length) return inspection.errors[0].message;
+  if (inspection.required.includes('extractor_enabled') && !capabilities?.features.includes('extractor_enabled'))
+    return 'This backend cannot disable extractors. Update Relampo before running this script.';
   if (inspection.required.includes('global_error_policy') && !capabilities?.features.includes('global_error_policy'))
     return 'This backend does not support global error policies. Update Relampo before running.';
+  if (
+    inspection.required.includes('sql_connection_defaults') &&
+    !capabilities?.features.includes('sql_connection_defaults')
+  )
+    return 'This backend does not support SQL connection defaults. Update Relampo before running.';
+  if (inspection.required.includes('sql_extractors') && !capabilities?.features.includes('sql_extractors'))
+    return 'This backend does not support SQL extractors. Update Relampo before running.';
+  if (
+    inspection.required.includes('native_sampler_components') &&
+    !capabilities?.features.includes('native_sampler_components')
+  )
+    return 'This backend does not support native sampler components. Update Relampo before running.';
   if (!configurationRecord(script) || script.component_configuration_version !== 1) return null;
   if (capabilities?.version !== 1)
     return 'This backend does not support component configuration version 1. Update Relampo before running.';

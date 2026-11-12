@@ -1,3 +1,4 @@
+import { isSQLResult, type SQLResult } from './sqlResults';
 import type { WebSocketEventMetrics } from '../components/WebSocketMetrics';
 import {
   componentCapabilityError,
@@ -62,6 +63,7 @@ interface EngineRedirectHop {
 
 // Mirrors pkg/engine.Event JSON serialization.
 export interface EngineEvent extends WebSocketEventMetrics {
+  sql_result?: SQLResult;
   protocol?: string;
   protocol_status?: string;
   stream_type?: string;
@@ -171,6 +173,7 @@ interface StudioCapabilities {
   componentConfiguration?: ComponentCapabilities;
   // loadRun unlocks the Run (load test) view backed by POST /api/run.
   loadRun?: boolean;
+  distributedRun?: boolean;
   dataSourceFiles?: boolean;
   // debug unlocks the Debug view backed by POST /api/debug/runs.
   debug?: boolean;
@@ -225,6 +228,7 @@ export async function probeStudio(): Promise<StudioInfo | null> {
             ...(body.capabilities.correlate === true ? { correlate: true } : {}),
             loadRun: body.capabilities.loadRun === true,
             ...(body.capabilities.httpRecorder === true ? { httpRecorder: true } : {}),
+            ...(body.capabilities.distributedRun === true ? { distributedRun: true } : {}),
             ...(body.capabilities.grpcAuthoring === true ? { grpcAuthoring: true } : {}),
             ...(body.capabilities.grpcRecorderTabs === true ? { grpcRecorderTabs: true } : {}),
             ...(body.capabilities.grpcBrowserRecording === true ? { grpcBrowserRecording: true } : {}),
@@ -378,6 +382,7 @@ interface DebugDonePayload {
 function isEngineEvent(value: unknown): value is EngineEvent {
   if (!isRecord(value)) return false;
   return (
+    (value.sql_result === undefined || isSQLResult(value.sql_result)) &&
     typeof value.ts === 'string' &&
     typeof value.name === 'string' &&
     typeof value.method === 'string' &&

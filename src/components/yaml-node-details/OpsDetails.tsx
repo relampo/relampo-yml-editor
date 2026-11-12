@@ -50,7 +50,9 @@ function SeedCookiesEditor({
   return (
     <div className={`rounded border border-white/10 bg-white/5 p-3 ${disabled ? 'opacity-50' : ''}`}>
       <div className="mb-2 flex items-center justify-between">
-        <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400">{t('yamlEditor.nodeDetails.ops.seedCookies')}</span>
+        <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+          {t('yamlEditor.nodeDetails.ops.seedCookies')}
+        </span>
         <button
           type="button"
           onClick={() => {
@@ -120,7 +122,10 @@ function SeedCookiesEditor({
       )}
       {invalidSeedRows.length > 0 && (
         <div className="mt-2 rounded border border-amber-400/30 bg-amber-400/10 px-2 py-1.5 text-xs text-amber-200">
-          {t('yamlEditor.nodeDetails.ops.seedValidation').replace('{rows}', invalidSeedRows.map((index: number) => index + 1).join(', '))}
+          {t('yamlEditor.nodeDetails.ops.seedValidation').replace(
+            '{rows}',
+            invalidSeedRows.map((index: number) => index + 1).join(', '),
+          )}
         </div>
       )}
     </div>
@@ -133,24 +138,38 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
   const mode = String(data.mode || 'auto').toLowerCase();
   const normalizedMode = mode === 'manual' ? 'manual' : 'auto';
   const policy = String(data.policy || 'standard').toLowerCase();
-  const persistAcrossIterations = data.persist_across_iterations !== false;
-  const clearEachIteration = data.clear_each_iteration === true;
+  const clearEachIteration =
+    typeof data.clear_each_iteration === 'boolean'
+      ? data.clear_each_iteration
+      : data.persist_across_iterations === false;
+  const persistAcrossIterations = !clearEachIteration;
   const seedCookies = Array.isArray(data.cookies) ? data.cookies : [];
   const isIgnorePolicy = policy === 'ignore_cookies';
-  const effectiveClearEachIteration = persistAcrossIterations ? false : clearEachIteration;
+  const effectiveClearEachIteration = clearEachIteration;
   const summaryLine =
     normalizedMode === 'auto'
       ? t('yamlEditor.nodeDetails.ops.summaryAuto')
       : t('yamlEditor.nodeDetails.ops.summaryManual')
-          .replace('{policy}', isIgnorePolicy ? t('yamlEditor.nodeDetails.ops.ignoreCookies') : t('yamlEditor.nodeDetails.ops.standard'))
+          .replace(
+            '{policy}',
+            isIgnorePolicy ? t('yamlEditor.nodeDetails.ops.ignoreCookies') : t('yamlEditor.nodeDetails.ops.standard'),
+          )
           .replace('{scope}', String(data.jar_scope || 'vu').toUpperCase())
-          .replace('{persist}', persistAcrossIterations ? t('yamlEditor.nodeDetails.ops.on') : t('yamlEditor.nodeDetails.ops.off'));
+          .replace(
+            '{persist}',
+            persistAcrossIterations ? t('yamlEditor.nodeDetails.ops.on') : t('yamlEditor.nodeDetails.ops.off'),
+          );
   const activePillClass =
     'rounded-full border border-yellow-400/20 bg-yellow-400/5 text-yellow-400 shadow-sm transition-all duration-200 hover:bg-yellow-400/10 hover:border-yellow-400/35';
   const inactivePillClass =
     'rounded-full border border-transparent text-zinc-400 transition-all duration-200 hover:text-zinc-100 hover:bg-white/6';
 
   const handleChange = (field: string, value: any) => {
+    if (field === 'persist_across_iterations' || field === 'clear_each_iteration') {
+      const clear = field === 'clear_each_iteration' ? value : !value;
+      updateData({ ...data, clear_each_iteration: clear, persist_across_iterations: !clear });
+      return;
+    }
     updateField(field, value);
   };
 
@@ -182,11 +201,12 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
     });
   };
 
-
   return (
     <div className="space-y-6">
       <div>
-        <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">{t('yamlEditor.nodeDetails.ops.mode')}</div>
+        <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
+          {t('yamlEditor.nodeDetails.ops.mode')}
+        </div>
         <div className="flex flex-wrap items-center gap-1">
           <button
             type="button"
@@ -221,7 +241,9 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
       ) : (
         <>
           <div className="mb-4">
-            <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{t('yamlEditor.nodeDetails.ops.policy')}</div>
+            <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+              {t('yamlEditor.nodeDetails.ops.policy')}
+            </div>
             <div className="flex flex-wrap items-center gap-1">
               <button
                 type="button"
@@ -331,7 +353,9 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
               onChange={handleChange}
               options={[
                 { label: 'vu', value: 'vu' },
-                { label: 'scenario', value: 'scenario' },
+                ...(data.jar_scope && data.jar_scope !== 'vu'
+                  ? [{ label: String(data.jar_scope), value: String(data.jar_scope) }]
+                  : []),
               ]}
               disabled={isIgnorePolicy}
               noMargin
@@ -362,7 +386,9 @@ export function CacheManagerDetails({ node, onNodeUpdate }: NodeDetailProps) {
   return (
     <div className="space-y-6">
       <div>
-        <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">{t('yamlEditor.nodeDetails.ops.cache')}</div>
+        <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
+          {t('yamlEditor.nodeDetails.ops.cache')}
+        </div>
         <div className="flex flex-wrap items-center gap-1">
           <TogglePill
             active={enabled}
@@ -425,7 +451,10 @@ export function CacheManagerDetails({ node, onNodeUpdate }: NodeDetailProps) {
         <div className="rounded border border-white/10 bg-black/20 px-3 py-2 text-xs text-zinc-300">
           {t('yamlEditor.nodeDetails.ops.cacheSummary')
             .replace('{cache}', enabled ? t('yamlEditor.nodeDetails.ops.on') : t('yamlEditor.nodeDetails.ops.off'))
-            .replace('{clear}', clearEachIteration ? t('yamlEditor.nodeDetails.ops.on') : t('yamlEditor.nodeDetails.ops.off'))
+            .replace(
+              '{clear}',
+              clearEachIteration ? t('yamlEditor.nodeDetails.ops.on') : t('yamlEditor.nodeDetails.ops.off'),
+            )
             .replace('{max}', maxElements)}
         </div>
       </div>
@@ -441,18 +470,24 @@ const errorPolicyRules = [
   { key: 'on_error', labelKey: 'rule_on_error', icon: AlertTriangle },
 ] as const;
 
-export function ErrorPolicyDetails({ node, onNodeUpdate }: NodeDetailProps) {
+export function ErrorPolicyDetails({
+  node,
+  onNodeUpdate,
+  nativeContext = false,
+}: NodeDetailProps & { nativeContext?: boolean }) {
   const { t } = useLanguage();
   const { data, updateData } = createNodeDataUpdater(node, onNodeUpdate);
-  const ruleLabel = (key: typeof errorPolicyRules[number]['key']) =>
-    t(`yamlEditor.nodeDetails.ops.rule_${key}`);
+  const ruleLabel = (key: (typeof errorPolicyRules)[number]['key']) => t(`yamlEditor.nodeDetails.ops.rule_${key}`);
+  const rules = nativeContext
+    ? errorPolicyRules.filter(rule => ['on_error', 'on_timeout'].includes(rule.key))
+    : errorPolicyRules;
   const activeRules = errorPolicyRules.filter(({ key }) => String(data[key] || '').trim()).map(({ key }) => key);
-  const currentValueForRule = (rule: typeof errorPolicyRules[number]['key']) => {
+  const currentValueForRule = (rule: (typeof errorPolicyRules)[number]['key']) => {
     const value = String(data[rule] || 'continue');
-    return value === 'stop' ? 'stop_user' : value;
+    return !nativeContext && value === 'stop' ? 'stop_user' : value;
   };
 
-  const toggleRule = (rule: typeof errorPolicyRules[number]['key']) => {
+  const toggleRule = (rule: (typeof errorPolicyRules)[number]['key']) => {
     const nextData = { ...data };
     delete nextData.active_rules;
     if (activeRules.includes(rule)) delete nextData[rule];
@@ -463,9 +498,11 @@ export function ErrorPolicyDetails({ node, onNodeUpdate }: NodeDetailProps) {
   return (
     <div className="space-y-6">
       <div>
-        <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">{t('yamlEditor.nodeDetails.ops.rules')}</div>
+        <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
+          {t('yamlEditor.nodeDetails.ops.rules')}
+        </div>
         <div className="flex flex-wrap items-center gap-1">
-          {errorPolicyRules.map(({ key, icon: Icon }) => (
+          {rules.map(({ key, icon: Icon }) => (
             <button
               key={key}
               type="button"
@@ -483,18 +520,28 @@ export function ErrorPolicyDetails({ node, onNodeUpdate }: NodeDetailProps) {
       </div>
       <div className="h-px bg-white/10" />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {errorPolicyRules.map(({ key }) => (
-          <div key={key} className={activeRules.includes(key) ? '' : 'opacity-50'}>
+        {rules.map(({ key }) => (
+          <div
+            key={key}
+            className={activeRules.includes(key) ? '' : 'opacity-50'}
+          >
             <SelectField
               label={t('yamlEditor.nodeDetails.ops.ruleAction').replace('{rule}', ruleLabel(key))}
               value={currentValueForRule(key)}
               field={key}
               onChange={(_, value) => updateData({ ...data, [key]: value })}
-              options={[
-                { label: t('yamlEditor.nodeDetails.ops.actionContinue'), value: 'continue' },
-                { label: t('yamlEditor.nodeDetails.ops.actionNextIteration'), value: 'next_iteration' },
-                { label: t('yamlEditor.nodeDetails.ops.actionStopUser'), value: 'stop_user' },
-              ]}
+              options={
+                nativeContext
+                  ? [
+                      { label: t('yamlEditor.nodeDetails.ops.actionContinue'), value: 'continue' },
+                      { label: t('yamlEditor.nodeDetails.ops.actionNativeStop'), value: 'stop' },
+                    ]
+                  : [
+                      { label: t('yamlEditor.nodeDetails.ops.actionContinue'), value: 'continue' },
+                      { label: t('yamlEditor.nodeDetails.ops.actionNextIteration'), value: 'next_iteration' },
+                      { label: t('yamlEditor.nodeDetails.ops.actionStopUser'), value: 'stop_user' },
+                    ]
+              }
               disabled={!activeRules.includes(key)}
               noMargin
             />
@@ -502,8 +549,14 @@ export function ErrorPolicyDetails({ node, onNodeUpdate }: NodeDetailProps) {
         ))}
       </div>
       <div className="rounded border border-white/10 bg-black/20 px-3 py-2 text-xs text-zinc-300 space-y-2">
-        <p>{t('yamlEditor.nodeDetails.ops.policyHelp1')}</p>
-        <p>{t('yamlEditor.nodeDetails.ops.policyHelp2')}</p>
+        {nativeContext ? (
+          <p>{t('yamlEditor.nodeDetails.ops.nativePolicyHelp')}</p>
+        ) : (
+          <>
+            <p>{t('yamlEditor.nodeDetails.ops.policyHelp1')}</p>
+            <p>{t('yamlEditor.nodeDetails.ops.policyHelp2')}</p>
+          </>
+        )}
         {data.enabled === false && <p>{t('yamlEditor.nodeDetails.ops.policyDisabled')}</p>}
       </div>
     </div>

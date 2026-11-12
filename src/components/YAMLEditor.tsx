@@ -125,6 +125,7 @@ export function YAMLEditor({
     multiScenarioDebugEnabled,
     runViewEnabled,
     multiScenarioRunEnabled,
+    distributedRunEnabled,
     componentCapabilities,
     dataSourceFileBrowseEnabled,
     grpcAuthoringEnabled,
@@ -460,6 +461,7 @@ export function YAMLEditor({
         multiScenarioDebugEnabled={multiScenarioDebugEnabled}
         runViewEnabled={embedded || runViewEnabled}
         multiScenarioRunEnabled={multiScenarioRunEnabled}
+        distributedRunEnabled={distributedRunEnabled}
         componentCapabilities={componentCapabilities}
         isDebugViewActive={isDebugViewActive}
         isRunViewActive={isRunViewActive}

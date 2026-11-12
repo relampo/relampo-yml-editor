@@ -1129,7 +1129,7 @@ scenarios:
     });
     fireEvent.click((await screen.findByText('#1')).closest('button')!);
     fireEvent.click(screen.getByRole('button', { name: 'variables' }));
-    expect(screen.getByText('Body.password (REQ)')).toBeInTheDocument();
+    expect(screen.getByText('_randomInt(1,10) (REQ)')).toBeInTheDocument();
     expect(screen.getByText('5', { exact: true })).toBeInTheDocument();
     expect(screen.getByText('user (REQ)')).toBeInTheDocument();
     expect(screen.getByText('test@example.com')).toBeInTheDocument();

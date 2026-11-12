@@ -118,9 +118,9 @@ describe('YAMLLoadRunSession', () => {
     expect(screen.queryByText('Completed transactions')).not.toBeInTheDocument();
     expect(screen.queryByText('Incomplete transactions')).not.toBeInTheDocument();
     expect(screen.getByText('TPS').parentElement).toHaveTextContent('Not applicable');
-    expect(screen.getByText('Failed Requests').parentElement).toHaveTextContent('0 (Unavailable)');
-    expect(screen.getByText('RSS Peak').parentElement).toHaveTextContent(zero ? '0 MiB' : 'Unavailable');
-    expect(screen.getByText('Goroutines Peak').parentElement).toHaveTextContent(zero ? '0' : 'Unavailable');
+    expect(screen.getByText('Error %').parentElement).toHaveTextContent('Unavailable');
+    expect(screen.getByText('Memory').parentElement).toHaveTextContent(zero ? '0 MiB' : 'Unavailable');
+    expect(screen.queryByText('Goroutines Peak')).not.toBeInTheDocument();
     expect(screen.queryByText('RSS peak percent')).not.toBeInTheDocument();
     expect(screen.queryByText('Go heap peak')).not.toBeInTheDocument();
     expect(screen.queryByText('Memory capacity')).not.toBeInTheDocument();
@@ -142,9 +142,9 @@ describe('YAMLLoadRunSession', () => {
       ],
     }) }));
     expect(screen.queryByText('Req/s')).not.toBeInTheDocument();
-    expect(screen.getByText('RSS Peak').parentElement).toHaveTextContent('80 MiB (a)');
-    expect(screen.getByText('CPU Peak').parentElement).toHaveTextContent('40.0% (b)');
-    expect(screen.getByText('Goroutines Peak').parentElement).toHaveTextContent('9 (c)');
+    expect(screen.getByText('Memory').parentElement).toHaveTextContent('80 MiB (a)');
+    expect(screen.getByText('CPU').parentElement).toHaveTextContent('40.0% (b)');
+    expect(screen.queryByText('Goroutines Peak')).not.toBeInTheDocument();
     expect(screen.getByText('RPS').parentElement).toHaveTextContent('66.7');
   });
 
@@ -181,9 +181,9 @@ describe('YAMLLoadRunSession', () => {
     });
     expect(screen.getByText('TPS').parentElement).toHaveTextContent('4.0');
     expect(screen.queryByText('Req/s')).not.toBeInTheDocument();
-    expect(screen.getByText('RSS Peak').parentElement).toHaveTextContent('64 MiB');
-    expect(screen.getByText('CPU Peak').parentElement).toHaveTextContent('0.0%');
-    expect(screen.getByText('Goroutines Peak').parentElement).toHaveTextContent('8');
+    expect(screen.getByText('Memory').parentElement).toHaveTextContent('64 MiB');
+    expect(screen.getByText('CPU').parentElement).toHaveTextContent('0.0%');
+    expect(screen.queryByText('Goroutines Peak')).not.toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: 'p50' })).toBeInTheDocument();
   });
 
@@ -202,8 +202,8 @@ describe('YAMLLoadRunSession', () => {
       transactions: [], node_resources: [{ node: 'local', mem_peak_mb: 999, cpu_peak: 999, go_peak: 999, measurements: {} }],
     }) }));
     expect(screen.getByText('TPS').parentElement).toHaveTextContent(expected);
-    expect(screen.getByText('RSS Peak').parentElement).toHaveTextContent('Unavailable');
-    expect(screen.getByText('CPU Peak').parentElement).toHaveTextContent('Unavailable');
+    expect(screen.getByText('Memory').parentElement).toHaveTextContent('Unavailable');
+    expect(screen.getByText('CPU').parentElement).toHaveTextContent('Unavailable');
     expect(screen.getByText('Run stopped — partial summary')).toBeInTheDocument();
   });
 
@@ -305,9 +305,9 @@ describe('YAMLLoadRunSession', () => {
     expect(screen.getByText('TPS')).toBeInTheDocument();
     expect(screen.getByText('TPS').parentElement).toHaveTextContent('Unavailable');
     expect(screen.queryByText(/Legacy transaction rate:/)).not.toBeInTheDocument();
-    expect(screen.getByText('RSS Peak').parentElement).toHaveTextContent('Unavailable');
+    expect(screen.getByText('Memory').parentElement).toHaveTextContent('Unavailable');
     expect(screen.queryByText(/Legacy measurements:/)).not.toBeInTheDocument();
-    expect(screen.getByText('Failed Requests').parentElement).toHaveTextContent('2 (1.00%)');
+    expect(screen.getByText('Error %').parentElement).toHaveTextContent('1.00%');
     expect(within(screen.getByRole('table')).getByText('/x')).toBeInTheDocument();
     expect(within(screen.getByRole('table')).getByText('88ms')).toBeInTheDocument();
 
@@ -1204,4 +1204,65 @@ it('replaces the unselected Load when a Load is pasted after a sibling (keyboard
     const loads = result.children!.find(node => node.type === 'scenarios')!.children![0].children!.filter(node => node.type === 'load');
     expect(loads).toEqual([pasted]);
   }
+});
+
+
+it.each(['single', 'parallel', 'sequential'] as const)('SPRINT 6 renders ten summary fields and the segment pattern after %s execution', async mode => {
+ const scenario = `  - name: first
+    load:
+      type: segments
+      segments:
+      - {name: start, duration: 10s, transition: constant, target_vus: 1}
+      - {name: end, duration: 10s, transition: linear, target_vus: 2}
+    steps: [{get: /health}]
+`;
+ const yaml = `test: {name: segments, scenario_mode: ${mode === 'single' ? 'parallel' : mode}}
+scenarios:
+${scenario}${mode === 'single' ? '' : scenario.replace('name: first','name: second')}`;
+ render(<YAMLLoadRunSession {...baseProps} tree={parseYAMLToTree(yaml)} yamlCode={yaml} multiScenarioRunEnabled />);
+ fireEvent.click(screen.getByRole('button',{name:'Run load test'}));
+ await waitFor(()=>expect(runApiMock.handlers).toHaveLength(1));
+ act(()=>runApiMock.handlers[0].onDone({status:'completed',error:null,summary:summary({scenario_mode:mode})}));
+ expect(screen.getAllByText('Planned load profile')).toHaveLength(mode==='single'?1:2);
+ expect(screen.getAllByText(/Peak Users: 2.*Total: 20s/)).toHaveLength(mode==='single'?1:2);
+ for (const field of ['Status','Duration','VUs (exec/conf)','Total Requests','Error %','RPS','TPS','Memory','CPU','Execution mode']) expect(screen.getByText(field)).toBeInTheDocument();
+ expect(screen.queryByText('Goroutines Peak')).not.toBeInTheDocument();
+ expect(screen.queryByText('Request p95')).not.toBeInTheDocument();
+ expect(screen.getByText('Execution mode').parentElement).toHaveTextContent(mode==='single'?'Single':mode==='parallel'?'Parallel':'Sequential');
+});
+
+it('keeps SQL response samples after log rotation and completion, then clears them for a new run', async () => {
+  render(<YAMLLoadRunSession {...baseProps} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Run load test' }));
+  await waitFor(() => expect(runApiMock.handlers).toHaveLength(1));
+  act(() =>
+    runApiMock.handlers[0].onLog?.([
+      {
+        seq: 1,
+        ts: 1,
+        level: 'request',
+        method: 'SQL',
+        name: 'Events query',
+        sql_result: {
+          kind: 'query',
+          columns: ['id', 'name'],
+          rows: [[1, 'SQL event']],
+          rows_returned: 1,
+          rows_affected: 0,
+          truncated: false,
+        },
+      },
+    ]),
+  );
+  expect(screen.getByRole('table', { name: 'Returned SQL rows' })).toHaveTextContent('SQL event');
+  act(() =>
+    runApiMock.handlers[0].onLog?.(
+      Array.from({ length: 1001 }, (_, i) => ({ seq: i + 2, ts: i + 2, level: 'info' as const, message: 'later' })),
+    ),
+  );
+  act(() => runApiMock.handlers[0].onDone({ status: 'completed', summary: summary(), error: null }));
+  expect(screen.getByRole('table', { name: 'Returned SQL rows' })).toHaveTextContent('SQL event');
+  fireEvent.click(screen.getByRole('button', { name: 'Run load test' }));
+  await waitFor(() => expect(runApiMock.handlers).toHaveLength(2));
+  expect(screen.queryByRole('table', { name: 'Returned SQL rows' })).not.toBeInTheDocument();
 });

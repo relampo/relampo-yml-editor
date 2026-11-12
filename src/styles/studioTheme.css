@@ -111,6 +111,8 @@
 
 :root[data-studio-theme='light'] [class~='bg-[#101010]'],
 :root[data-studio-theme='light'] [class~='bg-[#111111]'],
+:root[data-studio-theme='light'] [class~='bg-[#111]'],
+:root[data-studio-theme='light'] [class~='bg-[#191919]'],
 :root[data-studio-theme='light'] [class~='bg-[#151515]'],
 :root[data-studio-theme='light'] [class~='bg-[#161616]'],
 :root[data-studio-theme='light'] [class~='bg-[#171717]'] {

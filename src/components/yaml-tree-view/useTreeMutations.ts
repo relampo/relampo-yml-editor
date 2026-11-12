@@ -1,3 +1,4 @@
+import { receivePaths } from '../../utils/protocolChildren';
 import { useSyncExternalStore } from 'react';
 import { treeClipboard } from '../../utils/treeClipboard';
 import type { RedirectedRequestInfo, YAMLNode } from '../../types/yaml';
@@ -59,7 +60,11 @@ export function useTreeMutations({
   getContextActionTargetIds,
   handleCloseContextMenu,
 }: UseTreeMutationsParams) {
-  const clipboardNodes = useSyncExternalStore(treeClipboard.subscribe, treeClipboard.getSnapshot, treeClipboard.getSnapshot);
+  const clipboardNodes = useSyncExternalStore(
+    treeClipboard.subscribe,
+    treeClipboard.getSnapshot,
+    treeClipboard.getSnapshot,
+  );
 
   // Commit the new tree and its selection together. Selecting before the parent
   // accepts the tree can leave the details panel pointing at a stale node.
@@ -92,6 +97,15 @@ export function useTreeMutations({
   const handleAddNode = (nodeType: YAMLAddableNodeType) => {
     if (!contextMenu || !tree) return;
 
+    if (nodeType === 'sql_defaults') {
+      const existing = tree.children?.find(child => child.type === 'sql_defaults');
+      if (existing) {
+        onSelectionChange(existing, [existing.id]);
+        handleCloseContextMenu();
+        return;
+      }
+    }
+
     const targetIds = getContextActionTargetIds();
     const updatedTree = targetIds.reduce((currentTree, targetId) => {
       const target = findNodeById(currentTree, targetId);
@@ -99,6 +113,24 @@ export function useTreeMutations({
       if (!canAddNodeToTarget(target, nodeType)) return currentTree;
 
       const newNode = createNodeByType(nodeType, { balancedName: t('yamlEditor.balanced.name') });
+      if (target.type === 'sql' && nodeType === 'extractor') {
+        newNode.data = { type: 'sql', var: 'extracted_value', column: '', row: 1 };
+        newNode.name = t('yamlEditor.shell.addable.extractor');
+      }
+      if (target.type === 'websocket' && ['assertion', 'extractor'].includes(nodeType)) {
+        const path = receivePaths((target.data || {}) as Record<string, unknown>).at(-1)!;
+        newNode.protocolTarget = [...path, nodeType === 'assertion' ? 'assertions' : 'extractors', -1];
+      }
+      if (['grpc', 'websocket'].includes(target.type) && nodeType === 'assertion')
+        newNode.data = { type: 'contains', value: '' };
+      if (target.type === 'sql' && nodeType === 'assertion')
+        newNode.data = { type: target.data?.kind === 'exec' ? 'rows_affected' : 'rows_returned', value: { min: 1 } };
+      if (target.type === 'websocket' && nodeType === 'file') newNode.data = { path: '' };
+      if (target.type === 'grpc' && nodeType === 'headers') newNode.data = {};
+      if (nodeType === 'grpc_defaults' || nodeType === 'sql_defaults') {
+        if (currentTree.children?.some(child => child.type === nodeType)) return currentTree;
+        return addNodeToTree(currentTree, currentTree.id, newNode, true);
+      }
       return addNodeToTree(currentTree, targetId, newNode, true);
     }, tree);
     commitInsertedTree(updatedTree);
@@ -110,14 +142,11 @@ export function useTreeMutations({
 
     const copySuffix = t('yamlEditor.common.copy') || 'Copy';
     const targetIds = getContextActionTargetIds(nodeId);
-    const updatedTree = targetIds.reduce(
-      (currentTree, targetId) => {
-        const target = findNodeById(currentTree, targetId);
-        if (!canDuplicateNode(target)) return currentTree;
-        return duplicateNodeInTree(currentTree, targetId, copySuffix);
-      },
-      tree,
-    );
+    const updatedTree = targetIds.reduce((currentTree, targetId) => {
+      const target = findNodeById(currentTree, targetId);
+      if (!canDuplicateNode(target)) return currentTree;
+      return duplicateNodeInTree(currentTree, targetId, copySuffix);
+    }, tree);
     commitInsertedTree(updatedTree);
     handleCloseContextMenu();
   };
@@ -224,15 +253,11 @@ export function useTreeMutations({
     let updatedTree: YAMLNode;
     if (canPasteInside) {
       const insertionOrder = targetNode.type === 'scenarios' ? pastedNodes : [...pastedNodes].reverse();
-      updatedTree = insertionOrder.reduce(
-        (currentTree, node) => addNodeToTree(currentTree, targetNode.id, node),
-        tree,
-      );
+      updatedTree = insertionOrder.reduce((currentTree, node) => addNodeToTree(currentTree, targetNode.id, node), tree);
     } else if (targetNode.id === tree.id) {
-      updatedTree = [...pastedNodes].reverse().reduce(
-        (currentTree, node) => addNodeToTree(currentTree, tree.id, node),
-        tree,
-      );
+      updatedTree = [...pastedNodes]
+        .reverse()
+        .reduce((currentTree, node) => addNodeToTree(currentTree, tree.id, node), tree);
     } else {
       updatedTree = insertNodesAfterTarget(tree, targetNode.id, pastedNodes);
     }
@@ -244,14 +269,11 @@ export function useTreeMutations({
     if (!tree || effectiveSelectedIds.length === 0) return;
 
     const copySuffix = t('yamlEditor.common.copy') || 'Copy';
-    const updatedTree = effectiveSelectedIds.reduce(
-      (currentTree, nodeId) => {
-        const target = findNodeById(currentTree, nodeId);
-        if (!canDuplicateNode(target)) return currentTree;
-        return duplicateNodeInTree(currentTree, nodeId, copySuffix);
-      },
-      tree,
-    );
+    const updatedTree = effectiveSelectedIds.reduce((currentTree, nodeId) => {
+      const target = findNodeById(currentTree, nodeId);
+      if (!canDuplicateNode(target)) return currentTree;
+      return duplicateNodeInTree(currentTree, nodeId, copySuffix);
+    }, tree);
     commitInsertedTree(updatedTree);
   };
 

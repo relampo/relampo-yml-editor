@@ -15,6 +15,8 @@ export interface YAMLResponseData {
 }
 
 export interface YAMLNodeData {
+  column?: string;
+  row?: number;
   response_template?: { message_type: string; message: YAMLValue };
   stream?: YAMLValue;
   plaintext?: boolean;
@@ -62,6 +64,9 @@ export interface YAMLNodeData {
   comments?: string;
   condition?: string;
   connection?: YAMLNodeData;
+  connection_ref?: string;
+  default_connection?: string;
+  connections?: Record<string, YAMLNodeData>;
   cookies?: unknown;
   cookie_override?: string;
   count?: YAMLInputValue;
@@ -206,6 +211,7 @@ export type YAMLNodeType =
   | 'data_source'
   | 'http_defaults'
   | 'grpc_defaults'
+  | 'sql_defaults'
   | 'scenarios'
   | 'scenario'
   | 'metrics'
@@ -261,6 +267,10 @@ export interface YAMLNode {
   authoredChildTypes?: string[];
   initialData?: YAMLNodeData;
   componentEdits?: string[];
+  /** Native sampler child ownership; editor metadata, never emitted into YAML. */
+  protocolChildrenManaged?: boolean;
+  protocolScalar?: boolean;
+  protocolTarget?: Array<string | number>;
   expanded?: boolean;
   path?: Array<string | number>; // Path in the YAML tree for synchronization
 }
