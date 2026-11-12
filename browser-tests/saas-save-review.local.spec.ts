@@ -251,9 +251,14 @@ for (const provider of ['github', 'gitlab'] as const) {
     expect(writes).toBe(0);
     await page.waitForFunction(() => (window as any).__saveReviewPaused === true);
     await page.clock.runFor(70000);
-    await expect(popup.getByRole('button', { name: 'Accept and save', exact: true })).toBeEnabled();
+    await expect(popup.getByRole('button', { name: 'Save Script', exact: true })).toBeDisabled();
+    await popup
+      .getByRole('button', { name: /Accept change/ })
+      .first()
+      .click();
+    await expect(popup.getByRole('button', { name: 'Save Script', exact: true })).toBeEnabled();
     await page.screenshot({ path: `/private/tmp/relampo-save-review-${provider}.png` });
-    await popup.getByRole('button', { name: 'Accept and save', exact: true }).click();
+    await popup.getByRole('button', { name: 'Save Script', exact: true }).click();
     await expect(popup.getByText('Script updated', { exact: true })).toBeVisible();
     expect(writes).toBe(1);
     const first = load(files.get(filePath)!) as any;
@@ -271,7 +276,7 @@ for (const provider of ['github', 'gitlab'] as const) {
     await timeout.fill('20s');
     await page.getByRole('button', { name: 'Save Script', exact: true }).click();
     await expect(popup.getByRole('button', { name: /Use mine/ }).first()).toBeVisible();
-    await expect(popup.getByRole('button', { name: 'Accept and save', exact: true })).toBeDisabled();
+    await expect(popup.getByRole('button', { name: 'Save Script', exact: true })).toBeDisabled();
     await popup.getByRole('button', { name: 'Cancel', exact: true }).click();
     expect(writes).toBe(1);
     await expect(timeout).toHaveValue('20s');
@@ -285,14 +290,14 @@ for (const provider of ['github', 'gitlab'] as const) {
       .click();
     remote.scenarios[0].steps[0].request.timeout = '12s';
     share(dump(remote));
-    await popup.getByRole('button', { name: 'Accept and save', exact: true }).click();
+    await popup.getByRole('button', { name: 'Save Script', exact: true }).click();
     await expect(popup.getByText('12s', { exact: true })).toBeVisible();
     expect(writes).toBe(1);
     await popup
       .getByRole('button', { name: /Use shared/ })
       .first()
       .click();
-    await popup.getByRole('button', { name: 'Accept and save', exact: true }).click();
+    await popup.getByRole('button', { name: 'Save Script', exact: true }).click();
     await expect(popup.getByText('Script updated', { exact: true })).toBeVisible();
     await popup.getByRole('button', { name: 'Done', exact: true }).click();
     await editor.getByRole('treeitem', { name: /Login/ }).click();

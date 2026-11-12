@@ -42,15 +42,25 @@ test('the current script previews four simulated QA updates and applies only sel
   await expect(popup.getByRole('columnheader', { name: 'Tu n.º', exact: true })).toBeVisible();
   await expect(popup.locator('tbody tr').first().getByRole('cell').first()).toHaveText('[1]');
   await expect(popup.locator('tbody tr').nth(1).getByRole('cell').first()).toHaveText('[1]');
-  await expect(popup.locator('tbody tr').nth(1)).toContainText('extractors.order_id_qa');
+  await expect(popup.locator('tbody tr').nth(1)).toContainText('Se agregó un extractor');
+  await expect(popup.locator('tbody tr').nth(1)).toContainText('Variable');
   await expect(popup.getByText('Ana Torres', { exact: true })).toHaveCount(4);
 
   await expect(popup.getByRole('button', { name: /Aceptar cambio/ })).toHaveCount(4);
   await expect(popup.locator('tbody tr').first().locator('[data-script-component=grpc]')).toBeVisible();
   const watch = popup.locator('tbody tr').filter({ has: page.getByText('Watch Order', { exact: true }) });
+  await expect(popup.getByRole('button', { name: 'Guardar script', exact: true })).toBeDisabled();
   await watch.getByRole('button', { name: /Descartar cambio/ }).click();
+  for (const index of [0, 1, 3])
+    await popup
+      .locator('tbody tr')
+      .nth(index)
+      .getByRole('button', { name: /Aceptar cambio/ })
+      .click();
+  await expect(editor.getByRole('treeitem', { name: /Get Order/ })).toBeVisible();
+  await expect(editor.getByRole('treeitem', { name: /Order lookup · QA review/ })).toHaveCount(0);
   await page.screenshot({ path: '/private/tmp/relampo-save-simulation-popup.png' });
-  await popup.getByRole('button', { name: 'Aceptar seleccionados', exact: true }).click();
+  await popup.getByRole('button', { name: 'Guardar script', exact: true }).click();
   await expect(popup.getByRole('heading', { name: 'Simulación aplicada', exact: true })).toBeVisible();
   await popup.getByRole('button', { name: 'Listo', exact: true }).click();
   await expect(editor.getByRole('treeitem', { name: /Order lookup · QA review/ })).toBeVisible();
@@ -105,17 +115,24 @@ test('cart simulation previews domain and full-request deletion using current lo
   await expect(rows).toHaveCount(3);
   await expect(rows.nth(1).getByRole('cell').first()).toHaveText('[1]');
   await expect(rows.nth(2).getByRole('cell').first()).toHaveText('[3]');
-  await expect(rows.nth(2)).toContainText('Petición completa');
-  await expect(rows.nth(2)).toContainText('Eliminado');
-  await expect(rows.nth(1)).toContainText('localhost:50051');
+  await expect(rows.nth(2)).toContainText('Se eliminó la petición completa');
+  await expect(rows.nth(2)).toContainText('Petición eliminada');
+  await expect(rows.nth(1)).toContainText('Dominio: localhost');
+  await expect(popup).not.toContainText('steps.');
+  await expect(popup).not.toContainText('target');
+  await expect(popup.getByRole('button', { name: 'Guardar script', exact: true })).toBeDisabled();
   await rows
     .first()
     .getByRole('button', { name: /Descartar cambio/ })
     .click();
   await expect(rows.first().getByRole('button', { name: /Descartar cambio/ })).toHaveAttribute('aria-pressed', 'true');
   await expect(rows.first().getByRole('button', { name: /Aceptar cambio/ })).toHaveAttribute('aria-pressed', 'false');
+  await rows.nth(1).getByRole('button', { name: /Aceptar cambio/ }).click();
+  await rows.nth(2).getByRole('button', { name: /Aceptar cambio/ }).click();
+  await expect(editor.getByRole('treeitem', { name: /CreateCart/ })).toBeVisible();
+  await expect(popup.getByRole('button', { name: 'Guardar script', exact: true })).toBeEnabled();
   await page.screenshot({ path: '/private/tmp/relampo-cart-review-compact.png' });
-  await popup.getByRole('button', { name: 'Aceptar seleccionados', exact: true }).click();
+  await popup.getByRole('button', { name: 'Guardar script', exact: true }).click();
   await expect(popup.getByRole('heading', { name: 'Simulación aplicada', exact: true })).toBeVisible();
   await popup.getByRole('button', { name: 'Listo', exact: true }).click();
   await expect(editor.getByRole('treeitem', { name: /CreateCart/ })).toHaveCount(0);
