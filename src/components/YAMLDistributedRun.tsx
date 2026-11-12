@@ -576,7 +576,11 @@ export function YAMLDistributedRun({
                         const changes = paths.map((path, index) => ({
                           action: fileAction,
                           path,
-                          target: fileAction === 'remove' ? path : `scenarios/${uploads[index].name}`,
+                          // Match the CLI repository path: a bare name lives under scenarios/.
+                          target:
+                            fileAction === 'remove'
+                              ? path.replace(/^(\.\/)+/, '').replace(/^[^/]+$/, name => `scenarios/${name}`)
+                              : `scenarios/${uploads[index].name}`,
                           repositoryKey: projectKey,
                         }));
                         const targets = new Set(changes.map(file => file.target));

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { LanguageProvider } from '../contexts/LanguageContext';
 import { YAMLDistributedRun } from './YAMLDistributedRun';
+import { selectOption } from '../test/selectOption';
 
 const mocks = vi.hoisted(() => ({
   probe: vi.fn(),
@@ -283,6 +284,22 @@ describe('distributed execution', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Ejecutar' }));
     await screen.findByRole('link', { name: 'Abrir el reporte completo' });
     expect(mocks.request.mock.calls.filter(call => call[0] === 'files')).toHaveLength(1);
+  });
+  it('drops a staged upload when it is removed by its bare file name', async () => {
+    mount();
+    await selectRepository();
+    fireEvent.change(screen.getByLabelText('Archivos del equipo'), {
+      target: { files: [new File(['id\n1'], 'users.csv')] },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Aplicar acción a los archivos' }));
+    await screen.findByText('2 archivos subidos');
+    await selectOption('Acción de archivos', 'Eliminar');
+    fireEvent.change(screen.getByLabelText('Archivos del repositorio'), { target: { value: 'users.csv' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Aplicar acción a los archivos' }));
+    await screen.findByText('2 cambios aplicados');
+    fireEvent.click(screen.getByRole('button', { name: 'Ejecutar' }));
+    await waitFor(() => expect(mocks.prepare).toHaveBeenCalled());
+    expect(mocks.prepare.mock.calls.at(-1)?.[0].files).toEqual(['.relampo/datasources/studio.yaml']);
   });
   it('can upload the current YAML without choosing additional files', async () => {
     mount();
