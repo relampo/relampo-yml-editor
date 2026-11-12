@@ -923,3 +923,26 @@ describe('YAMLTreeView search highlighting', () => {
     expect(screen.getByRole('treeitem', { name: /^\[2\]\s*Other request/ })).toBeInTheDocument();
   });
 });
+
+it('adds SQL Defaults from the project menu and reopens the existing configuration without duplicating it', async () => {
+  const root: YAMLNode = { id: 'root-sql-menu', type: 'test', name: 'SQL project', expanded: true, children: [] };
+  let latest = root;
+  let selection: string[] = [];
+  renderInteractiveTreeView({
+    tree: root,
+    onTreeStateChange: (tree, ids) => {
+      latest = tree;
+      selection = ids;
+    },
+  });
+  fireEvent.contextMenu(screen.getByText('SQL project'));
+  fireEvent.click(screen.getByRole('button', { name: 'SQL Defaults' }));
+  await waitFor(() => expect(latest.children?.filter(node => node.type === 'sql_defaults')).toHaveLength(1));
+  const id = latest.children![0].id;
+  expect(latest.children![0].data).toEqual({ connections: {} });
+  fireEvent.click(screen.getByText('SQL project'));
+  fireEvent.contextMenu(screen.getByText('SQL project'));
+  fireEvent.click(screen.getByRole('button', { name: 'SQL Defaults' }));
+  await waitFor(() => expect(selection).toEqual([id]));
+  expect(latest.children?.filter(node => node.type === 'sql_defaults')).toHaveLength(1);
+});

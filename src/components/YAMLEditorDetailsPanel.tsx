@@ -80,7 +80,7 @@ export function YAMLEditorDetailsPanel({
 }: YAMLEditorDetailsPanelProps) {
   const [runMode, setRunMode] = useState<'local' | 'distributed'>('local');
   return (
-    <div className="flex-1 min-w-0 flex flex-col bg-[#0d0d0d]">
+    <div className="flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden bg-[#0d0d0d]">
       <div className="flex items-center border-b border-white/5 bg-[#111111] shrink-0 px-6 py-3">
         <span className="text-sm font-bold tracking-tight uppercase text-zinc-400">
           {isDebugViewActive
@@ -96,7 +96,7 @@ export function YAMLEditorDetailsPanel({
                 : 'Element details'}
         </span>
       </div>
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
         {/* Keep the debug session mounted while enabled so runs survive tab switches. */}
         {debugViewEnabled && (
           <div className={isDebugViewActive ? 'h-full' : 'hidden'}>
@@ -161,7 +161,7 @@ export function YAMLEditorDetailsPanel({
               role="tabpanel"
               id="run-panel-local"
               aria-labelledby="run-mode-local"
-              className={runMode === 'local' ? 'min-h-0 flex-1' : 'hidden'}
+              className={runMode === 'local' ? 'min-h-0 min-w-0 flex-1 overflow-hidden' : 'hidden'}
             >
               <YAMLLoadRunSession
                 multiScenarioRunEnabled={multiScenarioRunEnabled}
@@ -178,7 +178,7 @@ export function YAMLEditorDetailsPanel({
               role="tabpanel"
               id="run-panel-distributed"
               aria-labelledby="run-mode-distributed"
-              className={runMode === 'distributed' ? 'min-h-0 flex-1' : 'hidden'}
+              className={runMode === 'distributed' ? 'min-h-0 min-w-0 flex-1 overflow-hidden' : 'hidden'}
             >
               <YAMLDistributedRun
                 enabled={distributedRunEnabled}

@@ -166,16 +166,12 @@ export function getAddableItems(
         color: 'text-sky-400',
       },
       ...(_parentNode?.children?.some(child => child.type === 'grpc_defaults') ? [] : [grpcDefaultsItem]),
-      ...(_parentNode?.children?.some(child => child.type === 'sql_defaults')
-        ? []
-        : [
-            {
-              type: 'sql_defaults' as const,
-              label: t('yamlEditor.sqlDefaults.title'),
-              icon: <Database className={iconClass} />,
-              color: 'text-teal-400',
-            },
-          ]),
+      {
+        type: 'sql_defaults',
+        label: t('yamlEditor.sqlDefaults.title'),
+        icon: <Database className={iconClass} />,
+        color: 'text-teal-400',
+      },
       {
         type: 'error_policy',
         label: t('yamlEditor.shell.addable.errorPolicy'),

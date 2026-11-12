@@ -96,6 +96,15 @@ export function useTreeMutations({
   const handleAddNode = (nodeType: YAMLAddableNodeType) => {
     if (!contextMenu || !tree) return;
 
+    if (nodeType === 'sql_defaults') {
+      const existing = tree.children?.find(child => child.type === 'sql_defaults');
+      if (existing) {
+        onSelectionChange(existing, [existing.id]);
+        handleCloseContextMenu();
+        return;
+      }
+    }
+
     const targetIds = getContextActionTargetIds();
     const updatedTree = targetIds.reduce((currentTree, targetId) => {
       const target = findNodeById(currentTree, targetId);
