@@ -9,6 +9,7 @@ import { useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { getNodeDisplayName } from './yaml-tree-view/nodeDisplayName';
 import type { RedirectSourceInfo, RedirectedRequestInfo, YAMLNode } from '../types/yaml';
+import { protocolData } from '../utils/protocolChildren';
 import { YAMLWebSocketDetails } from './YAMLWebSocketDetails';
 import { YAMLGRPCDetails } from './YAMLGRPCDetails';
 import { YAMLRequestDetails } from './YAMLRequestDetails';
@@ -199,7 +200,7 @@ export function YAMLNodeDetails({
               onChange={event => {
                 const nextName = event.target.value;
                 setNodeName(nextName);
-                onNodeUpdate?.(node.id, { ...node.data, __name: nextName });
+                onNodeUpdate?.(node.id, { ...(['sql', 'grpc', 'websocket'].includes(node.type) ? protocolData(node) : node.data), __name: nextName });
               }}
               maxLength={isRequestNode ? 255 : 50}
               containerStyle={{
@@ -356,7 +357,7 @@ function NodeDetailsContent({
       return (
         <YAMLWebSocketDetails
           key={node.id}
-          node={node}
+          node={{ ...node, data: protocolData(node) as YAMLNode['data'] }}
           onNodeUpdate={onNodeUpdate}
           onSplit={onSplitWebSocket ? () => onSplitWebSocket(node.id) : undefined}
         />
@@ -374,7 +375,7 @@ function NodeDetailsContent({
     case 'grpc':
       return (
         <YAMLGRPCDetails
-          node={node}
+          node={{ ...node, data: protocolData(node) as YAMLNode['data'] }}
           onNodeUpdate={onNodeUpdate}
         />
       );
@@ -392,7 +393,7 @@ function NodeDetailsContent({
           <SQLRequestDetails
             key={node.id}
             tree={tree}
-            node={node}
+            node={{ ...node, data: protocolData(node) as YAMLNode['data'] }}
             onNodeUpdate={onNodeUpdate}
           />
         );
@@ -545,6 +546,7 @@ function NodeDetailsContent({
       return (
         <HeadersDetails
           node={node}
+          grpcContext={Boolean(tree && componentNodeChain(tree, node.id).some(parent => parent.type === 'grpc'))}
           onNodeUpdate={onNodeUpdate}
           searchQuery={searchScope === 'responses' ? '' : searchQuery}
         />

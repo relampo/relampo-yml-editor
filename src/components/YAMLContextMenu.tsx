@@ -125,13 +125,17 @@ export function YAMLContextMenu({
               )}
               <button
                 type="button"
+                disabled={Boolean(item.disabledReason)}
+                title={item.disabledReason}
                 onClick={() => onAddNode(item.type)}
-                className="w-full px-3 py-2 flex items-center gap-3 hover:bg-white/5 text-left transition-colors"
+                className="w-full px-3 py-2 flex items-center gap-3 hover:bg-white/5 disabled:opacity-45 disabled:cursor-not-allowed text-left transition-colors"
               >
                 <div className={item.color}>{item.icon}</div>
                 <div className="flex-1">
                   <div className="text-sm text-zinc-200">{item.label}</div>
-                  {item.description && <div className="text-xs text-zinc-500">{item.description}</div>}
+                  {(item.disabledReason || item.description) && (
+                    <div className="text-xs text-zinc-500">{item.disabledReason || item.description}</div>
+                  )}
                 </div>
               </button>
             </Fragment>

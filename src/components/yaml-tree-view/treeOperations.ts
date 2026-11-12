@@ -1,3 +1,8 @@
+import {
+  isNativeSampler,
+  acceptsNativeChildren as acceptsWebSocketHeaders,
+  protocolChildPath,
+} from '../../utils/protocolChildren';
 import { replacementNodeData, updatedValidationLabel } from './replacementNodePresentation';
 import { canContain, canDrop } from '../../utils/yamlDragDropRules';
 import type { RedirectedRequestInfo, YAMLNode, YAMLNodeData } from '../../types/yaml';
@@ -44,17 +49,6 @@ const REQUEST_TYPES = new Set<YAMLNode['type']>([
   'options',
 ]);
 
-// Handshake headers serialize as one map, and belong only to connection steps.
-function acceptsWebSocketHeaders(parent: YAMLNode, incoming: YAMLNode[], movingId?: string): boolean {
-  if (parent.type !== 'websocket' || !incoming.some(node => node.type === 'headers')) return true;
-  if (parent.data?.action && parent.data.action !== 'connect') return false;
-  return (
-    incoming.filter(node => node.type === 'headers').length +
-      (parent.children?.filter(child => child.type === 'headers' && child.id !== movingId).length ?? 0) <=
-    1
-  );
-}
-
 function ordinalAmong(siblings: YAMLNode[], index: number, predicate: (node: YAMLNode) => boolean): number {
   return siblings.slice(0, index + 1).filter(predicate).length - 1;
 }
@@ -89,7 +83,7 @@ function childPathFor(
 
   if (parent.type === 'steps') return [...parentPath, index];
 
-  if (parent.type === 'websocket' && child.type === 'headers') return [...parentPath, 'websocket', 'headers'];
+  if (isNativeSampler(parent.type)) return protocolChildPath(parent, child, index, siblings, parentPath);
 
   if (STEP_CONTAINER_TYPES.has(parent.type)) return [...parentPath, 'steps', index];
 

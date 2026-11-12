@@ -267,6 +267,9 @@ export interface YAMLNode {
   authoredChildTypes?: string[];
   initialData?: YAMLNodeData;
   componentEdits?: string[];
+  /** Native sampler child ownership; editor metadata, never emitted into YAML. */
+  protocolChildrenManaged?: boolean;
+  protocolTarget?: Array<string | number>;
   expanded?: boolean;
   path?: Array<string | number>; // Path in the YAML tree for synchronization
 }

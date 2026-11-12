@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { LanguageProvider } from '../contexts/LanguageContext';
 import { YAMLContextMenu } from './YAMLContextMenu';
@@ -139,4 +139,17 @@ describe('YAMLContextMenu', () => {
     expect(onCopy).toHaveBeenCalledWith('headers');
     expect(onPaste).toHaveBeenCalledWith('headers');
   });
+});
+
+it('shows all HTTP options for SQL and blocks unsupported additions with an explanation', () => {
+  const onAddNode=vi.fn();
+  render(<LanguageProvider><YAMLContextMenu x={10} y={10}
+    node={{id:'sql',type:'sql',name:'SQL',data:{kind:'query'}}}
+    onClose={vi.fn()} onAddNode={onAddNode} onRemove={vi.fn()} /></LanguageProvider>);
+  const file=screen.getByRole('button',{name:'File Upload HTTP requests only'});
+  expect(file).toBeDisabled();
+  fireEvent.click(file);
+  expect(onAddNode).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button',{name:/^Extractor(?: |$)/}));
+  expect(onAddNode).toHaveBeenCalledWith('extractor');
 });

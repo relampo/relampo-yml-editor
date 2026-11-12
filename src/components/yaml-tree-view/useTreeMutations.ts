@@ -1,3 +1,4 @@
+import { receivePaths } from '../../utils/protocolChildren';
 import { useSyncExternalStore } from 'react';
 import { treeClipboard } from '../../utils/treeClipboard';
 import type { RedirectedRequestInfo, YAMLNode } from '../../types/yaml';
@@ -116,6 +117,13 @@ export function useTreeMutations({
         newNode.data = { type: 'sql', var: 'extracted_value', column: '', row: 1 };
         newNode.name = t('yamlEditor.shell.addable.extractor');
       }
+      if (target.type === 'websocket' && ['assertion', 'extractor'].includes(nodeType)) {
+        const path = receivePaths((target.data || {}) as Record<string, unknown>).at(-1)!;
+        newNode.protocolTarget = [...path, nodeType === 'assertion' ? 'assertions' : 'extractors', -1];
+      }
+      if (['grpc', 'websocket'].includes(target.type) && nodeType === 'assertion')
+        newNode.data = { type: 'contains', value: '' };
+      if (target.type === 'grpc' && nodeType === 'headers') newNode.data = {};
       if (nodeType === 'grpc_defaults' || nodeType === 'sql_defaults') {
         if (currentTree.children?.some(child => child.type === nodeType)) return currentTree;
         return addNodeToTree(currentTree, currentTree.id, newNode, true);

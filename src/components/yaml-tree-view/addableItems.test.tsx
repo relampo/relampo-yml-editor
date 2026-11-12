@@ -100,6 +100,6 @@ it.each(['request', 'get', 'post', 'put', 'delete', 'patch', 'head', 'options', 
 );
 
 it('offers an extractor inside an SQL query, but not inside SQL exec', () => {
-  expect(getAddableItems('sql', t).map((item) => item.type)).toEqual(['extractor']);
-  expect(getAddableItems('sql', t, { data: { kind: 'exec' } })).toEqual([]);
+  expect(getAddableItems('sql', t).find(item => item.type === 'extractor')?.disabledReason).toBeUndefined();
+  expect(getAddableItems('sql', t, { data: { kind: 'exec' } }).find(item => item.type === 'extractor')?.disabledReason).toBeTruthy();
 });
