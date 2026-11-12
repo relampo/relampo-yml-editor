@@ -1,3 +1,4 @@
+import { isSQLResult, type SQLResult } from './sqlResults';
 import type { WebSocketEventMetrics } from '../components/WebSocketMetrics';
 import {
   componentCapabilityError,
@@ -62,6 +63,7 @@ interface EngineRedirectHop {
 
 // Mirrors pkg/engine.Event JSON serialization.
 export interface EngineEvent extends WebSocketEventMetrics {
+  sql_result?: SQLResult;
   protocol?: string;
   protocol_status?: string;
   stream_type?: string;
@@ -380,6 +382,7 @@ interface DebugDonePayload {
 function isEngineEvent(value: unknown): value is EngineEvent {
   if (!isRecord(value)) return false;
   return (
+    (value.sql_result === undefined || isSQLResult(value.sql_result)) &&
     typeof value.ts === 'string' &&
     typeof value.name === 'string' &&
     typeof value.method === 'string' &&

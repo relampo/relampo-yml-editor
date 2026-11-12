@@ -454,6 +454,24 @@ export const enTranslations = {
 
   // YAML Editor
   yamlEditor: {
+    sqlResults: {
+      request: 'SQL request',
+      query: 'SQL query',
+      params: 'Bound parameters',
+      dialect: 'Database engine',
+      kind: 'Operation',
+      requestTruncated: 'The query or parameters were truncated for display.',
+
+      omitted: 'Rows were omitted from the sample because of its size limit.',
+      title: 'SQL results',
+      rows: 'Returned SQL rows',
+      returned: 'Rows returned',
+      affected: 'Rows affected',
+      shown: 'Rows shown',
+      empty: 'The query returned no rows.',
+      truncated: 'Limited sample: up to 100 rows, 64 columns and 64 KiB; long values may be truncated.',
+      sample: 'First successful execution per query. Metrics include all executions.',
+    },
     sqlDefaults: {
       error_ssl: 'Check the database SSL mode and trusted certificates.',
       title: 'SQL Defaults',

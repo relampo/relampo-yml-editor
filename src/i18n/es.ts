@@ -455,6 +455,24 @@ export const esTranslations = {
 
   // YAML Editor
   yamlEditor: {
+    sqlResults: {
+      request: 'Petición SQL',
+      query: 'Consulta SQL',
+      params: 'Parámetros enlazados',
+      dialect: 'Motor de base de datos',
+      kind: 'Operación',
+      requestTruncated: 'La consulta o sus parámetros se recortaron para mostrarlos.',
+
+      omitted: 'Las filas se omitieron de la muestra por el límite de tamaño.',
+      title: 'Resultados SQL',
+      rows: 'Filas SQL devueltas',
+      returned: 'Filas devueltas',
+      affected: 'Filas afectadas',
+      shown: 'Filas mostradas',
+      empty: 'La consulta no devolvió filas.',
+      truncated: 'Muestra limitada: hasta 100 filas, 64 columnas y 64 KiB; los valores largos pueden recortarse.',
+      sample: 'Primera ejecución correcta de cada consulta. Las métricas incluyen todas las ejecuciones.',
+    },
     sqlDefaults: {
       error_ssl: 'Revisa el modo SSL y los certificados de confianza de la base de datos.',
       title: 'Valores SQL por defecto',

@@ -940,3 +940,50 @@ describe('YAMLDebugSession tree selection sync', () => {
   });
 
 });
+
+it('shows the returned SQL row values in the debug response inspector', async () => {
+  const sql: YAMLNode = {
+    id: 'sql-events',
+    type: 'sql',
+    name: 'Events query',
+    data: { query: 'SELECT id, name FROM events', kind: 'query' },
+  };
+  render(
+    <YAMLDebugSession
+      tree={{ id: 'root', type: 'test', name: 'SQL test', children: [sql] }}
+      yamlCode={'test:\n  name: SQL test\n'}
+      documentReady
+      validationErrors={[]}
+      onSelectNode={vi.fn()}
+      onEditNode={vi.fn()}
+    />,
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+  await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
+  act(() =>
+    debugApiMock.handlers[0].onEvent(
+      event({
+        name: 'Events query',
+        method: 'SQL',
+        path: 'postgres QUERY',
+        status: 0,
+        rows_returned: 1,
+        sql_result: {
+          kind: 'query',
+          query: 'SELECT id, name FROM actual_events WHERE id=$1',
+          params: [1],
+          dialect: 'postgres',
+          columns: ['id', 'name'],
+          rows: [[1, 'SQL event']],
+          rows_returned: 1,
+          rows_affected: 0,
+          truncated: false,
+        },
+      }),
+    ),
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'request' }));
+ expect(await screen.findByText('SELECT id, name FROM actual_events WHERE id=$1')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'response' }));
+  expect(await screen.findByRole('table', { name: 'Returned SQL rows' })).toHaveTextContent('SQL event');
+});
