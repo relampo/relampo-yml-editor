@@ -93,6 +93,7 @@ const STEP_ELEMENTS: YAMLNodeType[] = [
   ...SQL_SAMPLERS,
   ...GRPC_SAMPLERS,
   ...LOGIC_CONTROLLERS,
+  ...ASSERTIONS,
   ...TIMERS,
   'data_source',
   'step',

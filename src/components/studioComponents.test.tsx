@@ -38,9 +38,11 @@ describe('SPRINT 6 component authoring', () => {
   expect(treeToYAML(tree)).toContain('path: fixture.txt');
   expect(collectDebugEventTargets(parseYAMLToTree(treeToYAML(tree)))[0].children?.some(node=>node.type==='file')).toBe(true);
  });
- it('RLP-821 offers gRPC from request and step menus and defaults at test scope', () => {
-  for (const type of ['request','steps','balanced'] as const) expect(getAddableItems(type,key=>key).map(item=>item.type)).toContain('grpc');
-  expect(getAddableItems('request',key=>key).map(item=>item.type)).toContain('grpc_defaults');
+ it('RLP-821 offers gRPC from step containers and defaults only at test scope', () => {
+  for (const type of ['steps','balanced'] as const) expect(getAddableItems(type,key=>key).map(item=>item.type)).toContain('grpc');
+  expect(getAddableItems('test',key=>key).map(item=>item.type)).toContain('grpc_defaults');
+  expect(getAddableItems('request',key=>key).map(item=>item.type)).not.toContain('grpc');
+  expect(getAddableItems('request',key=>key).map(item=>item.type)).not.toContain('grpc_defaults');
   expect(createNodeByType('grpc').type).toBe('grpc');
   expect(createNodeByType('grpc_defaults').type).toBe('grpc_defaults');
  });

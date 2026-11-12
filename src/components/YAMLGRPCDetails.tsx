@@ -1,3 +1,4 @@
+import { useLanguage } from '../contexts/LanguageContext';
 import { RequestDetailsTabs } from './RequestDetailsTabs';
 import { GRPCContractResponse } from './grpc/GRPCContractResponse';
 import { GRPCChecksEditor } from './grpc/GRPCChecksEditor';
@@ -70,6 +71,8 @@ function JsonField({
 }
 
 export function YAMLGRPCDetails({ node, onNodeUpdate }: NodeDetailProps) {
+  const { t } = useLanguage();
+  const defaultsLabel = (key: string) => t(`yamlEditor.shell.grpcDefaults.${key}`);
   const [tab, setTab] = useState<'request' | 'response'>('request');
   const data = node.data || {};
   const { catalog } = useGRPCSchema();
@@ -96,29 +99,32 @@ export function YAMLGRPCDetails({ node, onNodeUpdate }: NodeDetailProps) {
   );
   if (node.type === 'grpc_defaults') {
     return (
-      <section className="space-y-5">
-        <h4 className="text-sm font-semibold text-cyan-300">gRPC Defaults</h4>
-        {field('Target', 'target', 'host:port')}
-        {field('Protoset', 'protoset', './api/service.protoset')}
-        {field('Timeout', 'timeout', '30s')}
+      <section
+        className="space-y-5"
+        aria-label={t('yamlEditor.shell.nodeNames.grpcDefaults')}
+      >
+        <h4 className="text-sm font-semibold text-cyan-300">{t('yamlEditor.shell.nodeNames.grpcDefaults')}</h4>
+        {field(defaultsLabel('target'), 'target', 'host:port')}
+        {field(defaultsLabel('protoset'), 'protoset', './api/service.protoset')}
+        {field(defaultsLabel('timeout'), 'timeout', '30s')}
         <label className="flex gap-2 text-xs text-zinc-300">
           <input
             type="checkbox"
             checked={data.plaintext === true}
             onChange={event => update('plaintext', event.target.checked)}
           />
-          Plaintext connection (explicit opt-in)
+          {defaultsLabel('plaintext')}
         </label>
         <label className="block space-y-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-          <span>Connection scope</span>
+          <span>{defaultsLabel('connectionScope')}</span>
           <select
-            aria-label="Connection scope"
+            aria-label={defaultsLabel('connectionScope')}
             value={data.connection_scope || 'per_vu'}
             onChange={event => update('connection_scope', event.target.value)}
             className="block w-full bg-zinc-900 p-2 rounded border border-white/10"
           >
-            <option value="per_vu">Per VU</option>
-            <option value="run">Shared across run</option>
+            <option value="per_vu">{defaultsLabel('perVU')}</option>
+            <option value="run">{defaultsLabel('shared')}</option>
           </select>
         </label>
         <label className="flex gap-2 text-sm text-zinc-300">
@@ -127,11 +133,11 @@ export function YAMLGRPCDetails({ node, onNodeUpdate }: NodeDetailProps) {
             checked={data.reflection !== false}
             onChange={event => update('reflection', event.target.checked)}
           />
-          Reflection
+          {defaultsLabel('reflection')}
         </label>
         <JsonField
           key={node.id + '-metadata'}
-          label="Metadata (JSON)"
+          label={defaultsLabel('metadata')}
           value={data.metadata}
           onCommit={value => update('metadata', value)}
         />

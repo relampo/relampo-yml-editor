@@ -4,8 +4,6 @@ import { canContain } from '../../utils/yamlDragDropRules';
 import { buildSearchIndex, nodeMatchExpandsDescendants, type SearchNodeState } from './search';
 
 export function canAddNodeToTarget(target: YAMLNode, nodeType: YAMLAddableNodeType) {
-  // From an HTTP context menu, gRPC is a sibling step and defaults belong to the test.
-  if (['request', 'get', 'post', 'put', 'delete', 'patch', 'head', 'options'].includes(target.type) && ['grpc', 'grpc_defaults'].includes(nodeType)) return true;
   if (target.type === 'websocket' && nodeType === 'headers') {
     if (target.data?.action && target.data.action !== 'connect') return false;
     if (target.children?.some(child => child.type === 'headers')) return false;
