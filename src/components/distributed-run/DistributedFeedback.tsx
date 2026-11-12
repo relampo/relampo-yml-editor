@@ -48,7 +48,17 @@ export function DistributedChart({
   });
   return (
     <div className="rounded-lg border border-white/10 bg-[#111] p-3">
-      <div className="mb-3 text-xs uppercase text-zinc-400">{label}</div>
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-zinc-500">{label}</span>
+        <span className="font-mono text-sm text-zinc-200">
+          {values.length && values[values.length - 1] != null
+            ? values[values.length - 1]!.toFixed(field === 'active_vus' ? 0 : 1)
+            : '—'}
+          <span className="ml-1 text-[10px] text-zinc-500">
+            {field === 'rps' ? 'req/s' : field === 'p95_ms' ? 'ms' : 'VUs'}
+          </span>
+        </span>
+      </div>
       <svg
         role="img"
         aria-label={label}

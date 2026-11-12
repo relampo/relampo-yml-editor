@@ -260,6 +260,27 @@ export function YAMLDistributedRun({
     JSON.stringify(config(yamlCode)) === JSON.stringify(planRequest.current) &&
     reviewedProjectFiles.current === JSON.stringify(projectFiles);
   const disabled = busy || active || available !== true;
+  function clearResults() {
+    if (active || !state || !['completed', 'errored', 'stopped'].includes(state.status)) return;
+    setRunId('');
+    setState(null);
+    setScope('global');
+    histories.current.clear();
+    historyStamp.current = '';
+    setError('');
+    setNotice('');
+    setConnectionError('');
+    setPlan(null);
+    planRequest.current = null;
+    reviewedProjectFiles.current = '';
+    setReviewed(false);
+    setShowSettings(true);
+    try {
+      sessionStorage.removeItem(savedRunKey);
+    } catch {
+      /* Optional. */
+    }
+  }
   const points = scope === 'global' ? (state?.history ?? []) : (histories.current.get(scope) ?? []);
 
   return (
@@ -669,6 +690,8 @@ export function YAMLDistributedRun({
             points={points}
             active={active}
             busy={busy}
+            onClear={clearResults}
+            yamlCode={planRequest.current?.yaml ?? yamlCode}
             onStop={() =>
               void perform(async () => {
                 await distributedRequest(`run/${encodeURIComponent(runId)}/stop`, {});

@@ -27,6 +27,9 @@ export interface ProgressStats {
   min_ms: number | null;
   max_ms: number | null;
   avg_ms: number | null;
+  p50_ms?: number | null;
+  p90_ms?: number | null;
+  p99_ms?: number | null;
   p95_ms: number | null;
 }
 export interface DistributedPoint {
@@ -51,7 +54,14 @@ export interface DistributedNode {
   node_id: number;
   state: string;
   updated_at: string;
-  progress: { final: boolean; active_vus: number; peak_vus: number; total: ProgressStats; window: ProgressStats };
+  progress: {
+    final: boolean;
+    active_vus: number;
+    peak_vus: number;
+    total: ProgressStats;
+    window: ProgressStats;
+    resource_measurements?: { rss_peak_mib?: number; cpu_percent_peak?: number };
+  };
 }
 export interface DistributedState {
   id: string;
@@ -146,4 +156,15 @@ export async function uploadDistributedFile(file: File): Promise<string> {
   if (!response.ok) throw new Error(typeof body.error === 'string' ? body.error : 'File upload failed');
   if (typeof body.path !== 'string' || !body.path) throw new Error('File upload did not return a path');
   return body.path;
+}
+
+export function distributedStatus(status: string, es: boolean) {
+  const labels: Record<string, [string, string]> = {
+    completed: ['Completada', 'Completed'],
+    stopped: ['Detenida', 'Stopped'],
+    stopping: ['Deteniendo', 'Stopping'],
+    running: ['Ejecutando', 'Running'],
+    errored: ['Fallida', 'Failed'],
+  };
+  return labels[status]?.[es ? 0 : 1] ?? (es ? 'Fallida' : 'Failed');
 }

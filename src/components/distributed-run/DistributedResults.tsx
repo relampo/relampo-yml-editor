@@ -1,26 +1,28 @@
-import { ExternalLink, Square } from 'lucide-react';
+import { useMemo } from 'react';
+import { ChevronDown, ExternalLink, RotateCcw, Square, Terminal } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import {
   distributedReportUrl,
+  distributedStatus,
   safeProviderURL,
   type DistributedState,
   type DistributedPlan,
   type DistributedPoint,
 } from '../../utils/distributedApi';
+import { parseYAMLToTree } from '../../utils/yamlParser';
+import type { YAMLNode } from '../../types/yaml';
+import { LoadVisualization } from '../yaml-node-details/LoadVisualization';
+import { normalizeLoadType, toLoadData } from '../yaml-node-details/loadUtils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import {
-  DistributedNotice as Notice,
-  DistributedMetric as Metric,
-  DistributedChart as LiveChart,
-} from './DistributedFeedback';
+import { DistributedNotice as Notice, DistributedChart as LiveChart } from './DistributedFeedback';
+import { DistributedSummary } from './DistributedSummary';
 const buttonClass =
   'inline-flex items-center justify-center gap-2 rounded-lg border border-white/15 px-3 py-2 text-sm text-zinc-200 hover:bg-white/5 disabled:opacity-40';
-const stageNames: Record<string, [string, string]> = {
+const stages: Record<string, [string, string]> = {
   preparing: ['Preparando archivos y publicación', 'Preparing files and publication'],
   prepared: ['Preparación completada', 'Preparation completed'],
   queued: ['En cola', 'Queued'],
   pending: ['En cola', 'Queued'],
-  created: ['Creada', 'Created'],
   waiting: ['Esperando runners', 'Waiting for runners'],
   in_progress: ['Ejecutando', 'Running'],
   running: ['Ejecutando', 'Running'],
@@ -37,6 +39,8 @@ export function DistributedResults({
   active,
   busy,
   onStop,
+  onClear,
+  yamlCode,
 }: {
   state: DistributedState;
   runId: string;
@@ -47,34 +51,56 @@ export function DistributedResults({
   active: boolean;
   busy: boolean;
   onStop: () => void;
+  onClear: () => void;
+  yamlCode: string;
 }) {
   const { language } = useLanguage();
   const es = language === 'es';
-  const text = (spanish: string, english: string) => (es ? spanish : english);
-  const selectedScope =
-    state?.scopes?.find(item => item.key === scope) ?? state?.scopes?.find(item => item.key === 'global');
-  const total = selectedScope?.total;
-  const latest = points.at(-1);
-  const remoteURL = safeProviderURL(state?.url);
-  const reportsURL = safeProviderURL(state?.reports_url);
-  const staleNodes =
-    state?.nodes.filter(node => !node.progress.final && Date.now() - Date.parse(node.updated_at) > 60_000) ?? [];
+  const t = (a: string, b: string) => (es ? a : b);
+  const selected = state.scopes.find(item => item.key === scope) ?? state.scopes.find(item => item.key === 'global');
+  const remoteURL = safeProviderURL(state.url),
+    reportsURL = safeProviderURL(state.reports_url);
+  const formats = state.report_formats ?? ['html', 'json', 'csv', 'txt'];
+  const htmlURL = state.reports_ready && formats.includes('html') ? distributedReportUrl(runId, 'html') : undefined;
+  const finished = ['completed', 'errored', 'stopped'].includes(state.status);
+  const errorMessage =
+    state.error &&
+    (state.run_id || state.error.length > 300 || /[\r\n]/.test(state.error)
+      ? t(
+          'La ejecución distribuida terminó con un error. Consulta Ver ejecución para ver el detalle.',
+          'The distributed execution ended with an error. Open View execution for details.',
+        )
+      : state.error);
+  const profile = useMemo(() => {
+    try {
+      const tree = parseYAMLToTree(yamlCode);
+      const loads: { node: YAMLNode; scenario: string }[] = [];
+      let hasTransactions = false;
+      const visit = (node: YAMLNode, scenario = '') => {
+        const name = node.type === 'scenario' ? String(node.data?.name ?? node.name) : scenario;
+        if (node.type === 'load') loads.push({ node, scenario: name });
+        if (node.type === 'transaction') hasTransactions = true;
+        node.children?.forEach(child => visit(child, name));
+      };
+      if (tree) visit(tree);
+      return { loads, hasTransactions: tree ? hasTransactions : undefined };
+    } catch {
+      return { loads: [], hasTransactions: undefined };
+    }
+  }, [yamlCode]);
+  const stale = state.nodes.some(node => !node.progress.final && Date.now() - Date.parse(node.updated_at) > 60000);
   return (
     <section
       className="space-y-4"
-      aria-label={text('Resultados distribuidos', 'Distributed results')}
+      aria-label={t('Resultados distribuidos', 'Distributed results')}
     >
       <div className="flex flex-wrap items-center gap-3">
-        <span className="rounded-full border border-white/15 px-3 py-1 text-sm">
+        <span
+          className={`rounded-full border px-3 py-1 text-sm ${state.status === 'errored' ? 'border-red-400/30 text-red-300' : finished ? 'border-emerald-400/30 text-emerald-300' : 'border-white/15 text-zinc-300'}`}
+        >
           {state.status === 'running'
-            ? (stageNames[state.stage]?.[es ? 0 : 1] ?? state.stage)
-            : state.status === 'completed'
-              ? text('Completada', 'Completed')
-              : state.status === 'stopped'
-                ? text('Detenida', 'Stopped')
-                : state.status === 'stopping'
-                  ? text('Deteniendo', 'Stopping')
-                  : text('Fallida', 'Failed')}
+            ? (stages[state.stage]?.[es ? 0 : 1] ?? t('Ejecutando', 'Running'))
+            : distributedStatus(state.status, es)}
         </span>
         {remoteURL && (
           <a
@@ -84,7 +110,7 @@ export function DistributedResults({
             className={buttonClass}
           >
             <ExternalLink size={15} />
-            {text('Ver ejecución', 'View execution')}
+            {t('Ver ejecución', 'View execution')}
           </a>
         )}
         {active && state.run_id && (
@@ -94,15 +120,25 @@ export function DistributedResults({
             onClick={onStop}
           >
             <Square size={15} />
-            {text('Cancelar ejecución remota', 'Cancel remote execution')}
+            {t('Cancelar ejecución remota', 'Cancel remote execution')}
+          </button>
+        )}
+        {finished && !active && (
+          <button
+            className={`${buttonClass} ml-auto`}
+            disabled={busy}
+            onClick={onClear}
+          >
+            <RotateCcw size={15} />
+            Clear
           </button>
         )}
       </div>
-      {state.error && <Notice alert>{state.error}</Notice>}
+      {errorMessage && <Notice alert>{errorMessage}</Notice>}
       {state.warning && <Notice>{state.warning}</Notice>}
-      {staleNodes.length > 0 && (
+      {stale && active && (
         <Notice>
-          {text(
+          {t(
             'Hay nodos sin muestras recientes. Las cifras visibles son las últimas recibidas.',
             'Some nodes have no recent samples. Visible figures are the last received.',
           )}
@@ -112,7 +148,7 @@ export function DistributedResults({
         value={scope}
         onValueChange={onScopeChange}
       >
-        <SelectTrigger aria-label={text('Alcance del resultado distribuido', 'Distributed result scope')}>
+        <SelectTrigger aria-label={t('Alcance del resultado distribuido', 'Distributed result scope')}>
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -125,52 +161,30 @@ export function DistributedResults({
                 value={item.key}
               >
                 {item.node_id
-                  ? `${text('Nodo', 'Node')} ${item.node_id}`
-                  : item.scenario || text('Sin escenario', 'No scenario')}
+                  ? `${t('Nodo', 'Node')} ${item.node_id}`
+                  : item.scenario || t('Sin escenario', 'No scenario')}
               </SelectItem>
             ))}
         </SelectContent>
       </Select>
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-5">
-        <Metric
-          label={text('Peticiones', 'Requests')}
-          value={total?.requests}
+      <div className="grid gap-3 lg:grid-cols-3">
+        <LiveChart
+          label={t('Tasa de peticiones (intervalo)', 'Request rate (interval)')}
+          points={points}
+          field="rps"
+          color="#facc15"
         />
-        <Metric
-          label={text('Errores', 'Errors')}
-          value={total?.failures}
+        <LiveChart
+          label={t('Latencia P95', 'P95 latency')}
+          points={points}
+          field="p95_ms"
+          color="#60a5fa"
         />
-        <Metric
-          label={text('Tasa de error', 'Error rate')}
-          value={total && total.requests > 0 ? `${((100 * total.failures) / total.requests).toFixed(2)}%` : undefined}
-        />
-        <Metric
-          label="RPS"
-          value={latest?.rps.toFixed(1)}
-        />
-        <Metric
-          label={text('Usuarios activos', 'Active users')}
-          value={selectedScope?.scenario ? undefined : latest?.active_vus}
-        />
-        <Metric
-          label={text('Latencia media', 'Average latency')}
-          value={total?.avg_ms != null ? `${total.avg_ms.toFixed(1)} ms` : undefined}
-        />
-        <Metric
-          label="P95 ≈"
-          value={total?.p95_ms != null ? `${total.p95_ms.toFixed(1)} ms` : undefined}
-        />
-        <Metric
-          label={text('Nodos con muestras', 'Nodes with samples')}
-          value={`${new Set(state.nodes.map(node => node.node_id)).size}/${state.expected_nodes ?? plan?.nodes ?? '—'}`}
-        />
-        <Metric
-          label={text('Duración observada', 'Observed duration')}
-          value={total ? `${total.elapsed_seconds.toFixed(1)} s` : undefined}
-        />
-        <Metric
-          label={text('Modo', 'Mode')}
-          value={text('Distribuido', 'Distributed')}
+        <LiveChart
+          label={t('VUs activos', 'Active VUs')}
+          points={selected?.scenario ? [] : points}
+          field="active_vus"
+          color="#a1a1aa"
         />
       </div>
       {!state.history.length && (
@@ -178,146 +192,133 @@ export function DistributedResults({
           role="status"
           className="text-sm text-zinc-400"
         >
-          {text('Esperando las primeras muestras de los workers…', 'Waiting for the first worker samples…')}
+          {active
+            ? t('Esperando las primeras muestras de los workers…', 'Waiting for the first worker samples…')
+            : t('No se recibieron muestras de los workers.', 'No worker samples were received.')}
         </p>
       )}
-      <div className="grid gap-3 lg:grid-cols-3">
-        <LiveChart
-          label="RPS"
-          points={points}
-          field="rps"
-          color="#facc15"
-        />
-        <LiveChart
-          label="P95 ≈ (ms)"
-          points={points}
-          field="p95_ms"
-          color="#60a5fa"
-        />
-        <LiveChart
-          label={text('Usuarios activos', 'Active users')}
-          points={selectedScope?.scenario ? [] : points}
-          field="active_vus"
-          color="#a1a1aa"
-        />
-      </div>
+      {profile.loads
+        .filter(item => !selected?.scenario || item.scenario === selected.scenario)
+        .map(item => (
+          <div
+            key={item.node.id}
+            className="border border-white/10 bg-[#111111] p-4"
+          >
+            <h3 className="mb-3 text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">
+              {t('Perfil de carga planificado', 'Planned load profile')}
+              {profile.loads.length > 1 ? ` · ${item.scenario}` : ''}
+            </h3>
+            <LoadVisualization
+              data={toLoadData(item.node.data as Record<string, unknown> | undefined)}
+              loadType={normalizeLoadType(item.node.data?.type)}
+              progressSeconds={active ? selected?.total.elapsed_seconds : undefined}
+            />
+          </div>
+        ))}
+      <DistributedSummary
+        state={state}
+        plan={plan}
+        scope={scope}
+        reportURL={htmlURL}
+        hasTransactions={profile.hasTransactions}
+        es={es}
+      />
+      {state.nodes.length > 0 && (
+        <details className="border border-white/10 bg-[#111] p-3">
+          <summary className="cursor-pointer text-xs font-semibold text-zinc-400">
+            {t('Nodos', 'Nodes')} · {new Set(state.nodes.map(node => node.node_id)).size}/
+            {state.expected_nodes ?? plan?.nodes ?? '—'}
+          </summary>
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr>
+                  {[
+                    t('Nodo', 'Node'),
+                    t('Estado', 'State'),
+                    t('Peticiones', 'Requests'),
+                    t('Errores', 'Errors'),
+                    'RPS',
+                    t('Última muestra', 'Last sample'),
+                  ].map(label => (
+                    <th
+                      className="p-2"
+                      key={label}
+                    >
+                      {label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {state.nodes.map(node => (
+                  <tr
+                    key={node.key}
+                    className="border-t border-white/5"
+                  >
+                    <td className="p-2">{node.node_id}</td>
+                    <td>{node.progress.final ? t('Finalizado', 'Finished') : node.state}</td>
+                    <td>{node.progress.total.requests}</td>
+                    <td>{node.progress.total.failures}</td>
+                    <td>{node.progress.window.rps.toFixed(1)}</td>
+                    <td>{new Date(node.updated_at).toLocaleTimeString(language)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </details>
+      )}
+      <details
+        open
+        className="border border-white/10 bg-[#080808]"
+      >
+        <summary className="flex cursor-pointer items-center gap-2 border-b border-white/5 px-4 py-3 text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">
+          <ChevronDown size={14} />
+          <Terminal
+            size={15}
+            className="text-emerald-300"
+          />
+          {t('Logs en vivo', 'Live logs')}
+          <span className="ml-auto font-normal tracking-normal">
+            {state.history.length} {t('actualizaciones', 'updates')}
+          </span>
+        </summary>
+        <div className="max-h-60 overflow-auto px-4 py-3 font-mono text-xs text-zinc-300">
+          {state.history.length ? (
+            state.history.map((point, index) => (
+              <p
+                key={`${point.at}-${index}`}
+                className={point.failures > 0 ? 'text-red-300' : ''}
+              >
+                <span className="mr-3 text-zinc-600">{new Date(point.at).toLocaleTimeString(language)}</span>
+                {point.requests} {t('peticiones', 'requests')} · {point.failures} {t('errores', 'failures')} ·{' '}
+                {point.rps.toFixed(1)} req/s
+              </p>
+            ))
+          ) : (
+            <p className="text-zinc-500">{t('Sin actualizaciones recibidas.', 'No updates received.')}</p>
+          )}
+        </div>
+      </details>
       <p className="text-xs text-zinc-500">
-        {text(
-          'Métricas agregadas durante la ejecución; P95 aproximado por histograma. Los reportes finales contienen el resultado canónico. Las muestras pueden demorarse según el proveedor.',
-          'Aggregated execution metrics; histogram-based approximate P95. Final reports contain the canonical result. Samples may be delayed by the provider.',
+        {t(
+          'Percentiles aproximados por histogramas combinados. El reporte completo conserva los resultados canónicos.',
+          'Percentiles are approximated from combined histograms. The full report retains canonical results.',
         )}
       </p>
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-xs">
-          <thead className="text-zinc-500">
-            <tr>
-              {[
-                text('Nodo', 'Node'),
-                text('Estado', 'State'),
-                text('Peticiones', 'Requests'),
-                text('Errores', 'Errors'),
-                'RPS',
-                text('Última muestra', 'Last sample'),
-              ].map(label => (
-                <th
-                  className="p-2"
-                  key={label}
-                >
-                  {label}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {state.nodes.map(node => (
-              <tr
-                className="border-t border-white/5"
-                key={node.key}
-              >
-                <td className="p-2">{node.node_id}</td>
-                <td>{node.progress.final ? text('Finalizado', 'Finished') : node.state}</td>
-                <td>{node.progress.total.requests}</td>
-                <td>{node.progress.total.failures}</td>
-                <td>{node.progress.window.rps.toFixed(1)}</td>
-                <td>{new Date(node.updated_at).toLocaleTimeString(language)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-xs">
-          <thead className="text-zinc-500">
-            <tr>
-              {[
-                text('Nodo', 'Node'),
-                text('Escenario', 'Scenario'),
-                text('Petición', 'Request'),
-                text('Total', 'Total'),
-                text('Errores', 'Errors'),
-                'P95 ≈',
-              ].map(label => (
-                <th
-                  className="p-2"
-                  key={label}
-                >
-                  {label}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {state.scopes
-              .filter(
-                item =>
-                  item.name &&
-                  (scope === 'global' ||
-                    (selectedScope?.node_id
-                      ? selectedScope.node_id === item.node_id
-                      : selectedScope?.scenario === item.scenario)),
-              )
-              .map(item => (
-                <tr
-                  className="border-t border-white/5"
-                  key={item.key}
-                >
-                  <td className="p-2">{item.node_id}</td>
-                  <td>{item.scenario}</td>
-                  <td>{item.name}</td>
-                  <td>{item.total.requests}</td>
-                  <td>{item.total.failures}</td>
-                  <td>{item.total.p95_ms?.toFixed(1) ?? '—'}</td>
-                </tr>
-              ))}
-          </tbody>
-        </table>
-      </div>
       {(state.reports_ready || reportsURL) && (
-        <div className="flex flex-wrap gap-2 rounded-xl border border-white/10 p-4">
-          {state.reports_ready && (
-            <>
-              {(state.report_formats ?? ['html', 'json', 'csv', 'txt']).includes('html') && (
-                <a
-                  className={`${buttonClass} !text-yellow-400`}
-                  href={distributedReportUrl(runId, 'html')}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <ExternalLink size={16} />
-                  {text('Abrir reporte HTML', 'Open HTML report')}
-                </a>
-              )}
-              {(state.report_formats ?? ['html', 'json', 'csv', 'txt']).map(format => (
-                <a
-                  className={buttonClass}
-                  key={format}
-                  href={distributedReportUrl(runId, format, true)}
-                >
-                  {text('Descargar', 'Download')} {format.toUpperCase()}
-                </a>
-              ))}
-            </>
-          )}
+        <div className="flex flex-wrap gap-2 border border-white/10 p-3">
+          {state.reports_ready &&
+            formats.map(format => (
+              <a
+                key={format}
+                className={buttonClass}
+                href={distributedReportUrl(runId, format, true)}
+              >
+                {t('Descargar', 'Download')} {format.toUpperCase()}
+              </a>
+            ))}
           {reportsURL && (
             <a
               className={buttonClass}
@@ -325,15 +326,9 @@ export function DistributedResults({
               target="_blank"
               rel="noreferrer"
             >
-              {text('Ver reportes en el repositorio', 'View reports in repository')}
+              {t('Ver reportes en el repositorio', 'View reports in repository')}
             </a>
           )}
-          <p className="w-full text-xs text-zinc-500">
-            {text(
-              'Los reportes se conservan en el proveedor. Solo se descargan al equipo cuando eliges abrirlos o descargarlos.',
-              'Reports remain in the provider. They are downloaded to your computer only when you open or download them.',
-            )}
-          </p>
         </div>
       )}
     </section>

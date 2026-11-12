@@ -133,7 +133,7 @@ describe('distributed execution', () => {
       screen.getByRole('checkbox', { name: 'He revisado el repositorio y los archivos que se publicarán.' }),
     );
     fireEvent.click(screen.getByRole('button', { name: 'Ejecutar' }));
-    await screen.findByRole('link', { name: 'Abrir reporte HTML' });
+    await screen.findByRole('link', { name: 'Abrir el reporte completo' });
     expect(mocks.request).toHaveBeenCalledWith(
       'run',
       expect.objectContaining({ yaml, repository: 'owner/repo', prepare_only: false }),
@@ -208,9 +208,10 @@ describe('distributed execution', () => {
     });
     mount();
     await screen.findByText('47');
-    expect(screen.getByText('9.4')).toBeInTheDocument();
-    expect(screen.getByText('12.0 ms')).toBeInTheDocument();
-    expect(screen.getAllByText('P95 ≈')[0].parentElement).toHaveTextContent('—');
+    expect(
+      within(screen.getByRole('region', { name: 'Resumen de la ejecución' })).getByText('9.4'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'Latencia P95' }).parentElement).toHaveTextContent('—');
   });
   it('keeps nodes out of Connection and invalidates the plan when report selection changes', async () => {
     mount();
@@ -280,7 +281,7 @@ describe('distributed execution', () => {
       screen.getByRole('checkbox', { name: 'He revisado el repositorio y los archivos que se publicarán.' }),
     );
     fireEvent.click(screen.getByRole('button', { name: 'Ejecutar' }));
-    await screen.findByRole('link', { name: 'Abrir reporte HTML' });
+    await screen.findByRole('link', { name: 'Abrir el reporte completo' });
     expect(mocks.request.mock.calls.filter(call => call[0] === 'files')).toHaveLength(1);
   });
   it('can upload the current YAML without choosing additional files', async () => {
@@ -328,4 +329,38 @@ describe('distributed execution', () => {
     expect(within(panels[1]).getByRole('button', { name: 'Crear repositorio' })).toBeDisabled();
     expect(within(panels[2]).getByRole('button', { name: 'Seleccionar archivos' })).toBeInTheDocument();
   });
+});
+
+it.each(['completed', 'errored', 'stopped'])('clears a %s run and removes its saved attachment', async status => {
+  sessionStorage.setItem(
+    'relampo.studio.distributedRun',
+    JSON.stringify({ id: 'drun-1', fp: (await import('../utils/studioRunStore')).fingerprint(yaml) }),
+  );
+  const original = mocks.request.getMockImplementation()!;
+  mocks.request.mockImplementation(async (...args) => {
+    const result = await original(...args);
+    return args[0].startsWith('run/')
+      ? {
+          ...result,
+          status,
+          reports_ready: false,
+          error:
+            status === 'errored' ? 'Refreshing run status every 3 seconds.\nJOBS prepare-context failed' : undefined,
+        }
+      : result;
+  });
+  mount();
+  const clear = await screen.findByRole('button', { name: 'Clear' });
+  expect(screen.getByRole('link', { name: 'Ver reportes en el repositorio' })).toHaveAttribute(
+    'href',
+    expect.stringContaining('relampo-report-42-1'),
+  );
+  if (status === 'errored') {
+    expect(screen.queryByText(/Refreshing run status/)).not.toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('terminó con un error');
+  }
+  fireEvent.click(clear);
+  expect(screen.queryByRole('region', { name: 'Resultados distribuidos' })).not.toBeInTheDocument();
+  expect(sessionStorage.getItem('relampo.studio.distributedRun')).toBeNull();
+  expect(screen.getByRole('combobox', { name: 'Repositorio' })).toBeInTheDocument();
 });
