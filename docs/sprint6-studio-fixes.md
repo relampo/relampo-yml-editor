@@ -39,3 +39,21 @@ Backend: pruebas de runtime, API Studio, reporter y contrato aprobadas; `go vet 
 - `TestDevelopPublisherReceiptsFinalArchiveBeforeLatest`: falta `sha256sum` en el entorno macOS.
 
 Estos fallos no se ocultan ni se corrigen como parte de los tickets de Studio. Las correcciones de extractores, cookies y reportes requieren la rama complementaria del backend para funcionar completas con el editor. La skill y las ramas son locales: no constituyen un rollout a develop ni a producción.
+
+## Validación completa en Chrome — 11 de noviembre de 2026
+
+Los 15 tickets de la matriz pasaron sus comprobaciones observables con el editor compilado integrado en el backend local de las ramas indicadas. Se utilizaron datos sintéticos y un servidor HTTP de prueba en loopback.
+
+- RLP-787/788/809: ejecución real en modos Único, Paralelo y Secuencial; diez tarjetas, distribución en dos filas, perfil de segmentos después de ejecutar y filtro de alcance funcional.
+- RLP-808/814: selectores operativos con teclado; scheduling persiste al alternar Árbol/Código y al guardar. Debug deshabilita el selector durante la ejecución y el servidor confirma que solo recibe peticiones del escenario seleccionado.
+- RLP-810: curva, targets y duración se conservan al guardar; no hay lista inferior duplicada.
+- RLP-811: edición y guardado conservan metadatos y aliases; precedencia canónica de cookies visible. La ejecución HTTP real conserva la variable de un extractor desactivado y captura el token con el activo. Un campo desconocido se avisa y conserva. La prueba negativa sin `extractor_enabled` intercepta únicamente la respuesta de capacidades de `/api/studio/info`; no simula el motor.
+- RLP-813/820/821: políticas globales/de escenario, SQL, fichero, gRPC y gRPC Defaults se añaden desde los menús y se configuran/serializan en su ámbito correcto; el fichero se guarda y reimporta. Se valida la configuración, sin conectar servicios SQL/gRPC externos.
+- RLP-815: búsqueda en español e inglés y selección de Petición/Respuesta funcionales.
+- RLP-816/817: reporte generado por una ejecución real en español, guardado y reabierto como HTML con filtros funcionales. Durante la revisión se alineó el radio del selector del reporte de 6 a 8 px; la comparación final verifica altura 36 px, fuente 14 px, radio 8 px y foco visible con teclado.
+- RLP-818: 47 vistas de componentes y configuración del Recorder sin los textos técnicos retirados.
+- RLP-819: valores de variables y funciones del body contrastados con la petición HTTP capturada, sin reevaluación.
+
+Evidencias locales: `/tmp/relampo-studio-validation/validacion-todos.html`, `results-final.json`, capturas por ticket, YAML exportados y `reporte-final-es.html`. Los archivos de intentos anteriores se conservan para diagnóstico; `results-final.json` reúne exclusivamente los 15 resultados definitivos. El informe HTML enlaza cada captura y el reporte real exportado.
+
+Tras el ajuste visual de RLP-817: `go fix ./...`, `go fmt ./...`, `go test ./pkg/reporter ./internal/studio`, `go vet ./pkg/reporter ./internal/studio` y compilación del CLI con editor embebido completados. Se retiraron los cambios mecánicos ajenos al ajuste. No hubo cambios de código del editor después de su validación completa de 1169 pruebas.
