@@ -1,11 +1,11 @@
 import {
+  ServerCog,
   BetweenHorizontalStart,
   Binary,
   Braces,
   Brackets,
   CheckCircle2,
   Clock3,
-  Database,
   Search,
   SearchX,
   Tag,
@@ -287,10 +287,10 @@ const extractorTypes = [
 
 const extractorTypeButtonStyle: Record<string, React.CSSProperties> = {
   sql: {
-    backgroundColor: 'rgba(20, 184, 166, 0.20)',
-    color: '#5eead4',
-    borderColor: 'rgba(94, 234, 212, 0.50)',
-    boxShadow: '0 10px 22px rgba(20, 184, 166, 0.20)',
+    backgroundColor: 'rgba(244, 114, 182, 0.20)',
+    color: '#f472b6',
+    borderColor: 'rgba(244, 114, 182, 0.50)',
+    boxShadow: '0 10px 22px rgba(244, 114, 182, 0.20)',
   },
   regex: {
     backgroundColor: 'rgba(168, 85, 247, 0.20)',
@@ -323,7 +323,7 @@ export function ExtractorDetails({ node, onNodeUpdate, searchQuery = '', sqlCont
   const { data, updateData, updateField } = createNodeDataUpdater(node, onNodeUpdate);
   const extractorType = data.type || 'regex';
   const isSQL = sqlContext || extractorType === 'sql';
-  const availableTypes = isSQL ? [...extractorTypes, { value: 'sql', icon: Database }] : extractorTypes;
+  const availableTypes = isSQL ? [...extractorTypes, { value: 'sql', icon: ServerCog }] : extractorTypes;
   const extractorVariableName = data.var ?? data.variable ?? '';
   const extractorSource = data.from || 'body';
 
@@ -403,7 +403,7 @@ export function ExtractorDetails({ node, onNodeUpdate, searchQuery = '', sqlCont
                 style={active ? extractorTypeButtonStyle[type.value] : undefined}
               >
                 <span className="inline-flex items-center gap-1.5">
-                  <Icon className="h-3.5 w-3.5" />
+                  <Icon className={type.value === 'sql' ? 'h-3.5 w-3.5 text-pink-400' : 'h-3.5 w-3.5'} />
                   <span>{type.value === 'sql' ? 'SQL' : t(`yamlEditor.nodeDetails.validation.extract_${type.value}`)}</span>
                 </span>
               </button>

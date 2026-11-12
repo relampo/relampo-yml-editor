@@ -1,4 +1,5 @@
 import {
+  ServerCog,
   AlertTriangle,
   ArrowRightLeft,
   BetweenHorizontalStart,
@@ -337,8 +338,8 @@ export function getAddableItems(
         type: 'sql',
         label: t('yamlEditor.shell.addable.sqlRequest'),
         description: t('yamlEditor.shell.addable.sqlRequestDesc'),
-        icon: <Database className={iconClass} />,
-        color: 'text-teal-400',
+        icon: <ServerCog className={iconClass} />,
+        color: 'text-pink-400',
       },
       {
         type: 'group',
@@ -434,8 +435,8 @@ export function getAddableItems(
         type: 'sql',
         label: t('yamlEditor.shell.addable.sqlRequest'),
         description: t('yamlEditor.shell.addable.sqlRequestDesc'),
-        icon: <Database className={iconClass} />,
-        color: 'text-teal-400',
+        icon: <ServerCog className={iconClass} />,
+        color: 'text-pink-400',
       },
       {
         type: 'group',

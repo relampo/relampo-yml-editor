@@ -1,5 +1,6 @@
 import { useSearchNavigation } from './yaml-tree-view/SearchNavigationContext';
 import {
+  ServerCog,
   AlertTriangle,
   BarChart3,
   BetweenHorizontalStart,
@@ -542,7 +543,7 @@ function getNodeIcon(type: YAMLNodeType): LucideIcon {
     steps: Package,
     step: Code,
     request: Globe,
-    sql: Database,
+    sql: ServerCog,
     grpc: ArrowRightLeft,
     websocket: PlugZap,
     get: Globe,
@@ -624,6 +625,7 @@ function getNodeColor(type: YAMLNodeType, node?: YAMLNode): string {
     case 'grpc_defaults':
       return 'text-cyan-400';
     case 'sql':
+      return 'text-pink-400';
     case 'sql_defaults':
       return 'text-teal-400';
     case 'group':
