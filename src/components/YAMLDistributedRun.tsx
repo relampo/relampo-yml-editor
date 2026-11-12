@@ -1,11 +1,14 @@
+import { DistributedNodes } from './distributed-run/DistributedNodes';
+import { DistributedConnection, type ProviderConnection } from './distributed-run/DistributedConnection';
 import { DistributedResults } from './distributed-run/DistributedResults';
 import { DistributedNotice as Notice } from './distributed-run/DistributedFeedback';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Loader2, Play } from 'lucide-react';
+import { FolderOpen, Loader2, Play } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { fingerprint } from '../utils/studioRunStore';
 import {
   distributedRequest,
+  uploadDistributedFile,
   prepareDistributed,
   type DistributedConfig,
   type DistributedPlan,
@@ -43,7 +46,12 @@ export function YAMLDistributedRun({
   const [repository, setRepository] = useState('');
   const [host, setHost] = useState('gitlab.com');
   const [tags, setTags] = useState('');
-  const [nodes, setNodes] = useState(2);
+  const [selectedNodes, setSelectedNodes] = useState<number[]>([1, 2]);
+  const nodes = selectedNodes.length;
+  const [formats, setFormats] = useState<string[]>(['html']);
+  const [connection, setConnection] = useState<{ key: string; status: ProviderConnection | null } | null>(null);
+  const connectionKey = `${provider}:${host}`;
+  const connected = connection?.key === connectionKey && connection.status?.authenticated === true;
   const [plan, setPlan] = useState<DistributedPlan | null>(null);
   const planRequest = useRef<DistributedConfig | null>(null);
   const [busy, setBusy] = useState(false);
@@ -54,6 +62,32 @@ export function YAMLDistributedRun({
   const [state, setState] = useState<DistributedState | null>(null);
   const [scope, setScope] = useState('global');
   const [files, setFiles] = useState('');
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const projectKey = `${provider}:${host}:${repository}`;
+  const [publishedFiles, setPublishedFiles] = useState<
+    { action: string; path: string; target: string; repositoryKey: string }[]
+  >([]);
+  const projectFiles = publishedFiles.filter(file => file.repositoryKey === projectKey);
+  const reviewedProjectFiles = useRef('');
+  const filePicker = useRef<HTMLInputElement>(null);
+  const reportsMenu = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    const closeOutside = (event: PointerEvent) => {
+      if (reportsMenu.current && !reportsMenu.current.contains(event.target as Node)) reportsMenu.current.open = false;
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && reportsMenu.current?.open) {
+        reportsMenu.current.open = false;
+        reportsMenu.current.querySelector('summary')?.focus();
+      }
+    };
+    document.addEventListener('pointerdown', closeOutside);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOutside);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, []);
   const [fileAction, setFileAction] = useState('upload');
   const [reviewed, setReviewed] = useState(false);
   const [connectionError, setConnectionError] = useState('');
@@ -148,6 +182,8 @@ export function YAMLDistributedRun({
       yaml: script,
       file_name: fileName && /\.ya?ml$/i.test(fileName) ? fileName : 'studio.yaml',
       nodes,
+      report_formats: formats,
+      files: projectFiles.filter(file => file.action !== 'remove').map(file => file.path),
       language,
       ...(provider === 'gitlab'
         ? {
@@ -177,14 +213,27 @@ export function YAMLDistributedRun({
       const request = config(flushPendingEdits());
       const result = await prepareDistributed(request);
       planRequest.current = request;
-      setPlan(result.plan);
+      reviewedProjectFiles.current = JSON.stringify(projectFiles);
+      setPlan({
+        ...result.plan,
+        files: [
+          ...new Set([
+            ...result.plan.files,
+            ...projectFiles.filter(file => file.action !== 'remove').map(file => file.target),
+          ]),
+        ],
+      });
       setReviewed(false);
     });
   }
   async function start(prepareOnly: boolean) {
     await perform(async () => {
       const request = config(flushPendingEdits());
-      if (!planRequest.current || JSON.stringify(planRequest.current) !== JSON.stringify(request))
+      if (
+        !planRequest.current ||
+        JSON.stringify(planRequest.current) !== JSON.stringify(request) ||
+        reviewedProjectFiles.current !== JSON.stringify(projectFiles)
+      )
         throw new Error(
           text(
             'Cambió el documento o la configuración. Vuelve a comprobar la preparación.',
@@ -206,7 +255,10 @@ export function YAMLDistributedRun({
     });
   }
   const planCurrent =
-    !!plan && !!planRequest.current && JSON.stringify(config(yamlCode)) === JSON.stringify(planRequest.current);
+    !!plan &&
+    !!planRequest.current &&
+    JSON.stringify(config(yamlCode)) === JSON.stringify(planRequest.current) &&
+    reviewedProjectFiles.current === JSON.stringify(projectFiles);
   const disabled = busy || active || available !== true;
   const points = scope === 'global' ? (state?.history ?? []) : (histories.current.get(scope) ?? []);
 
@@ -219,31 +271,75 @@ export function YAMLDistributedRun({
               {text('Prueba de carga', 'Load test')}
             </p>
             <h2 className="mt-1 text-base font-semibold text-zinc-100">
-              {text('Ejecución distribuida', 'Distributed execution')}
+              {text('Prueba distribuida', 'Distributed test')}
             </h2>
           </div>
-          <button
-            className="inline-flex h-9 items-center gap-2 rounded border border-yellow-400/40 bg-yellow-400 px-3 text-sm font-semibold text-black transition-colors hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-50"
-            onClick={() => void (planCurrent && reviewed ? start(false) : validate())}
-            disabled={
-              disabled ||
-              !documentReady ||
-              !yamlCode.trim() ||
-              validationErrors.length > 0 ||
-              !repository.trim() ||
-              nodes < 1
-            }
-          >
-            {busy ? (
-              <Loader2
-                size={16}
-                className="animate-spin"
-              />
-            ) : (
-              <Play className="h-4 w-4" />
-            )}
-            {text('Ejecutar prueba distribuida', 'Run distributed test')}
-          </button>
+          <div className="flex flex-wrap items-center gap-3">
+            <DistributedNodes
+              selected={selectedNodes}
+              onChange={setSelectedNodes}
+              capacity={40}
+              maxSelected={10}
+              disabled={disabled}
+              es={es}
+            />
+            <details
+              ref={reportsMenu}
+              className="relative text-xs"
+            >
+              <summary
+                className={`${buttonClass} cursor-pointer !py-2 text-xs`}
+                aria-label={text('Reportes', 'Reports')}
+              >
+                {text('Reportes', 'Reports')} · {formats.map(f => f.toUpperCase()).join(', ') || '—'}
+              </summary>
+              <div className="absolute right-0 z-20 mt-2 min-w-36 space-y-2 rounded-lg border border-white/15 bg-[#171717] p-3 shadow-xl">
+                {['html', 'json', 'csv', 'txt'].map(format => (
+                  <label
+                    className="flex items-center gap-2"
+                    key={format}
+                  >
+                    <input
+                      type="checkbox"
+                      aria-label={format.toUpperCase()}
+                      checked={formats.includes(format)}
+                      disabled={disabled}
+                      onChange={e =>
+                        setFormats(current =>
+                          e.target.checked ? [...current, format] : current.filter(f => f !== format),
+                        )
+                      }
+                    />
+                    {format.toUpperCase()}
+                  </label>
+                ))}
+              </div>
+            </details>
+            <button
+              className="inline-flex h-9 items-center gap-2 rounded border border-yellow-400/40 bg-yellow-400 px-3 text-sm font-semibold text-black transition-colors hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={() => void (planCurrent && reviewed ? start(false) : validate())}
+              disabled={
+                disabled ||
+                !documentReady ||
+                !yamlCode.trim() ||
+                validationErrors.length > 0 ||
+                !repository.trim() ||
+                !connected ||
+                formats.length === 0 ||
+                nodes < 1
+              }
+            >
+              {busy ? (
+                <Loader2
+                  size={16}
+                  className="animate-spin"
+                />
+              ) : (
+                <Play className="h-4 w-4" />
+              )}
+              {text('Ejecutar', 'Run')}
+            </button>
+          </div>
         </div>
         {available === false && (
           <Notice>
@@ -273,7 +369,74 @@ export function YAMLDistributedRun({
           </button>
         )}
         <div className={showSettings ? 'space-y-5' : 'hidden'}>
-          <div className="grid items-start gap-3 @[48rem]:grid-cols-2">
+          <div className="grid items-stretch gap-3 @[56rem]:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1.25fr)]">
+            <DistributedConnection
+              provider={provider}
+              host={host}
+              enabled={available}
+              disabled={disabled}
+              repository={repository}
+              onRepository={setRepository}
+              onStatus={(key, status) => setConnection({ key, status })}
+              es={es}
+            >
+              {({ connection: connectionPanel, repository: repositoryPanel }) => (
+                <>
+                  <fieldset
+                    disabled={disabled}
+                    className="min-w-0 space-y-3 rounded-lg border border-white/10 bg-[#111] p-3 disabled:opacity-70"
+                  >
+                    <legend className="px-1 text-sm font-medium">{text('Conexión', 'Connection')}</legend>
+                    <div className="grid grid-cols-1 gap-3">
+                      <Field label={text('Proveedor', 'Provider')}>
+                        <Select
+                          value={provider}
+                          onValueChange={value => setProvider(value as 'github' | 'gitlab')}
+                          disabled={disabled}
+                        >
+                          <SelectTrigger aria-label={text('Proveedor', 'Provider')}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="github">GitHub Actions</SelectItem>
+                            <SelectItem value="gitlab">GitLab CI/CD</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </Field>
+                    </div>
+                    {provider === 'gitlab' && (
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <Field label={text('Servidor GitLab', 'GitLab host')}>
+                          <input
+                            aria-label="GitLab host"
+                            className={fieldClass}
+                            value={host}
+                            onChange={e => setHost(e.target.value)}
+                          />
+                        </Field>
+                        <Field label={text('Etiquetas de runners', 'Runner tags')}>
+                          <input
+                            aria-label="Runner tags"
+                            className={fieldClass}
+                            value={tags}
+                            onChange={e => setTags(e.target.value)}
+                            placeholder="linux, load-test"
+                          />
+                        </Field>
+                      </div>
+                    )}
+                    {connectionPanel}
+                  </fieldset>
+                  <fieldset
+                    disabled={disabled}
+                    className="min-w-0 space-y-3 rounded-lg border border-white/10 bg-[#111] p-3 disabled:opacity-70"
+                  >
+                    <legend className="px-1 text-sm font-medium">{text('Repositorio', 'Repository')}</legend>
+                    {repositoryPanel}
+                  </fieldset>
+                </>
+              )}
+            </DistributedConnection>
             <fieldset
               disabled={disabled}
               className="min-w-0 space-y-3 rounded-lg border border-white/10 bg-[#111] p-3 disabled:opacity-70"
@@ -289,34 +452,49 @@ export function YAMLDistributedRun({
                     {fileName || 'studio.yaml'}
                   </span>
                 </div>
-                <button
-                  className={buttonClass}
-                  disabled={disabled || !repository.trim()}
-                  onClick={() =>
-                    void perform(async () => {
-                      await distributedRequest('setup', config(flushPendingEdits()));
-                      setPlan(null);
-                      setNotice(
-                        text(
-                          'Proyecto configurado. Comprueba la preparación para continuar.',
-                          'Project configured. Check preparation to continue.',
-                        ),
-                      );
-                    })
-                  }
-                >
-                  {text('Preparar repositorio', 'Prepare repository')}
-                </button>
-
                 <input
-                  aria-label={text('Archivos', 'Files')}
-                  className={fieldClass}
-                  value={files}
-                  onChange={e => setFiles(e.target.value)}
-                  placeholder="users.csv, products.csv"
+                  ref={filePicker}
+                  type="file"
+                  multiple
+                  className="hidden"
+                  aria-label={text('Archivos del equipo', 'Computer files')}
                   disabled={disabled}
+                  onChange={event => {
+                    setSelectedFiles(Array.from(event.target.files ?? []));
+                    setPlan(null);
+                    event.target.value = '';
+                  }}
                 />
-                <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
+                <div className="grid grid-cols-[minmax(0,1fr)_8rem_auto] items-center gap-2">
+                  {fileAction === 'remove' ? (
+                    <input
+                      aria-label={text('Archivos del repositorio', 'Repository files')}
+                      className={fieldClass}
+                      value={files}
+                      onChange={e => setFiles(e.target.value)}
+                      placeholder="scenarios/users.csv"
+                      disabled={disabled}
+                    />
+                  ) : (
+                    <button
+                      className={`${buttonClass} h-9 min-w-0 justify-start !px-2`}
+                      disabled={disabled}
+                      onClick={() => filePicker.current?.click()}
+                      title={selectedFiles.map(file => file.name).join(', ')}
+                    >
+                      <FolderOpen
+                        size={16}
+                        className="shrink-0"
+                      />
+                      <span className="truncate">
+                        {selectedFiles.length === 0
+                          ? text('Seleccionar archivos', 'Select files')
+                          : selectedFiles.length === 1
+                            ? selectedFiles[0].name
+                            : `${selectedFiles.length} ${text('archivos', 'files')}`}
+                      </span>
+                    </button>
+                  )}
                   <Select
                     value={fileAction}
                     onValueChange={setFileAction}
@@ -328,106 +506,88 @@ export function YAMLDistributedRun({
                     <SelectContent>
                       <SelectItem value="upload">{text('Subir', 'Upload')}</SelectItem>
                       <SelectItem value="update">{text('Actualizar', 'Update')}</SelectItem>
-                      <SelectItem value="remove">
-                        {text('Eliminar del repositorio', 'Remove from repository')}
-                      </SelectItem>
+                      <SelectItem value="remove">{text('Eliminar', 'Remove')}</SelectItem>
                     </SelectContent>
                   </Select>
                   <button
-                    className={buttonClass}
+                    className={`${buttonClass} h-9 !px-2`}
                     aria-label={text('Aplicar acción a los archivos', 'Apply file action')}
-                    disabled={disabled || !repository.trim() || !files.trim()}
+                    disabled={
+                      disabled ||
+                      !connected ||
+                      !repository.trim() ||
+                      (fileAction === 'remove'
+                        ? !files.trim()
+                        : !documentReady || !yamlCode.trim() || validationErrors.length > 0)
+                    }
                     onClick={() =>
                       void perform(async () => {
-                        await distributedRequest('files', {
-                          ...config(flushPendingEdits()),
-                          files: files
-                            .split(',')
-                            .map(v => v.trim())
-                            .filter(Boolean),
+                        const request = config(flushPendingEdits());
+                        const documentName = request.file_name ?? 'studio.yaml';
+                        const uploads =
+                          fileAction === 'remove'
+                            ? []
+                            : [
+                                ...selectedFiles.filter(file => file.name !== documentName),
+                                new File([request.yaml], documentName, { type: 'application/yaml' }),
+                              ];
+                        if (uploads.length > 64)
+                          throw new Error(
+                            text(
+                              'Selecciona como máximo 63 archivos adicionales.',
+                              'Select at most 63 additional files.',
+                            ),
+                          );
+                        if (uploads.some(file => file.size > 64 * 1024 * 1024))
+                          throw new Error(
+                            text('Cada archivo debe pesar menos de 64 MiB.', 'Each file must be smaller than 64 MiB.'),
+                          );
+                        const paths: string[] = [];
+                        if (fileAction === 'remove')
+                          paths.push(
+                            ...files
+                              .split(',')
+                              .map(value => value.trim())
+                              .filter(Boolean),
+                          );
+                        else for (const file of uploads) paths.push(await uploadDistributedFile(file));
+                        await distributedRequest('files', { ...request, files: paths, action: fileAction });
+                        const changes = paths.map((path, index) => ({
                           action: fileAction,
-                        });
+                          path,
+                          target: fileAction === 'remove' ? path : `scenarios/${uploads[index].name}`,
+                          repositoryKey: projectKey,
+                        }));
+                        const targets = new Set(changes.map(file => file.target));
+                        setPublishedFiles(current => [
+                          ...current.filter(file => file.repositoryKey !== projectKey || !targets.has(file.target)),
+                          ...changes,
+                        ]);
                         setPlan(null);
-                        setNotice(text('Archivos del repositorio actualizados.', 'Repository files updated.'));
+                        setSelectedFiles([]);
+                        setFiles('');
                       })
                     }
                   >
                     {text('Aplicar', 'Apply')}
                   </button>
                 </div>
-              </div>
-            </fieldset>
-            <fieldset
-              disabled={disabled}
-              className="min-w-0 space-y-3 rounded-lg border border-white/10 bg-[#111] p-3 disabled:opacity-70"
-            >
-              <legend className="px-1 text-sm font-medium">
-                {text('Conexión y configuración', 'Connection and settings')}
-              </legend>
-              <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)_4rem] gap-3">
-                <Field label={text('Proveedor', 'Provider')}>
-                  <Select
-                    value={provider}
-                    onValueChange={value => setProvider(value as 'github' | 'gitlab')}
-                    disabled={disabled}
+                {projectFiles.length > 0 && (
+                  <p
+                    className="text-xs text-yellow-400/80"
+                    title={projectFiles.map(file => `${file.action}: ${file.target}`).join('\n')}
                   >
-                    <SelectTrigger aria-label={text('Proveedor', 'Provider')}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="github">GitHub Actions</SelectItem>
-                      <SelectItem value="gitlab">GitLab CI/CD</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </Field>
-                <Field label={text('Repositorio', 'Repository')}>
-                  <input
-                    aria-label={text('Repositorio', 'Repository')}
-                    className={fieldClass}
-                    value={repository}
-                    onChange={e => setRepository(e.target.value)}
-                    placeholder="owner/project"
-                  />
-                </Field>
-                <Field label={text('Nodos', 'Nodes')}>
-                  <input
-                    aria-label={text('Nodos', 'Nodes')}
-                    type="number"
-                    min={1}
-                    max={plan?.max_nodes ?? 256}
-                    className={fieldClass}
-                    value={nodes}
-                    onChange={e => setNodes(Number(e.target.value))}
-                  />
-                </Field>
-              </div>
-              {provider === 'gitlab' && (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label={text('Servidor GitLab', 'GitLab host')}>
-                    <input
-                      aria-label="GitLab host"
-                      className={fieldClass}
-                      value={host}
-                      onChange={e => setHost(e.target.value)}
-                    />
-                  </Field>
-                  <Field label={text('Etiquetas de runners', 'Runner tags')}>
-                    <input
-                      aria-label="Runner tags"
-                      className={fieldClass}
-                      value={tags}
-                      onChange={e => setTags(e.target.value)}
-                      placeholder="linux, load-test"
-                    />
-                  </Field>
-                </div>
-              )}
-              <p className="text-xs text-zinc-500">
-                {text(
-                  'Usa la cuenta de GitHub/GitLab conectada en este equipo. La carga se toma del YAML.',
-                  'Uses the GitHub/GitLab account connected on this computer. Load settings come from the YAML.',
+                    {projectFiles.length}{' '}
+                    {projectFiles.some(file => file.action === 'remove')
+                      ? projectFiles.length === 1
+                        ? text('cambio aplicado', 'change applied')
+                        : text('cambios aplicados', 'changes applied')
+                      : projectFiles.length === 1
+                        ? text('archivo subido', 'file uploaded')
+                        : text('archivos subidos', 'files uploaded')}
+                  </p>
                 )}
-              </p>
+              </div>
             </fieldset>
           </div>
           {validationErrors.length > 0 && (
@@ -454,8 +614,8 @@ export function YAMLDistributedRun({
               {!plan.repository_exists && (
                 <Notice>
                   {text(
-                    'El repositorio no existe. Preparar repositorio permite crear uno administrado por Relampo.',
-                    'The repository does not exist. Prepare repository can create a Relampo-managed repository.',
+                    'El repositorio no existe. Créalo desde Conexión y configuración.',
+                    'The repository does not exist. Create it in Connection and settings.',
                   )}
                 </Notice>
               )}
@@ -482,14 +642,14 @@ export function YAMLDistributedRun({
               <div className="flex flex-wrap gap-2">
                 <button
                   className={buttonClass}
-                  disabled={disabled || !planCurrent || !reviewed}
+                  disabled={disabled || !connected || !planCurrent || !reviewed}
                   onClick={() => void start(true)}
                 >
                   {text('Preparar sin ejecutar', 'Prepare without running')}
                 </button>
                 <button
                   className={`${buttonClass} !border-yellow-400 !bg-yellow-400 !text-black`}
-                  disabled={disabled || !planCurrent || !reviewed}
+                  disabled={disabled || !connected || !planCurrent || !reviewed}
                   onClick={() => void start(false)}
                 >
                   <Play size={16} />

@@ -296,16 +296,18 @@ export function DistributedResults({
         <div className="flex flex-wrap gap-2 rounded-xl border border-white/10 p-4">
           {state.reports_ready && (
             <>
-              <a
-                className={`${buttonClass} !text-yellow-400`}
-                href={distributedReportUrl(runId, 'html')}
-                target="_blank"
-                rel="noreferrer"
-              >
-                <ExternalLink size={16} />
-                {text('Abrir reporte HTML', 'Open HTML report')}
-              </a>
-              {['html', 'json', 'csv', 'txt'].map(format => (
+              {(state.report_formats ?? ['html', 'json', 'csv', 'txt']).includes('html') && (
+                <a
+                  className={`${buttonClass} !text-yellow-400`}
+                  href={distributedReportUrl(runId, 'html')}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <ExternalLink size={16} />
+                  {text('Abrir reporte HTML', 'Open HTML report')}
+                </a>
+              )}
+              {(state.report_formats ?? ['html', 'json', 'csv', 'txt']).map(format => (
                 <a
                   className={buttonClass}
                   key={format}

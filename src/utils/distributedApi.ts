@@ -8,6 +8,8 @@ export interface DistributedConfig {
   runner_tags?: string[];
   yaml: string;
   file_name?: string;
+  report_formats?: string[];
+  files?: string[];
   nodes: number;
   vus?: number;
   duration?: string;
@@ -62,6 +64,7 @@ export interface DistributedState {
   url?: string;
   reports_url?: string;
   reports_ready: boolean;
+  report_formats?: string[];
   expected_nodes?: number;
   started_at: string;
   nodes: DistributedNode[];
@@ -126,4 +129,21 @@ export function safeProviderURL(value?: string): string | undefined {
   } catch {
     return undefined;
   }
+}
+
+// File inputs expose bytes, not absolute paths. Stage selected files in the
+// Studio session, then pass the returned paths to the existing CLI operation.
+export async function uploadDistributedFile(file: File): Promise<string> {
+  const form = new FormData();
+  form.append('file', file);
+  const response = await fetch(`${base()}/api/distributed/upload`, {
+    method: 'POST',
+    headers: studioAuthHeaders(),
+    body: form,
+    cache: 'no-store',
+  });
+  const body = await response.json();
+  if (!response.ok) throw new Error(typeof body.error === 'string' ? body.error : 'File upload failed');
+  if (typeof body.path !== 'string' || !body.path) throw new Error('File upload did not return a path');
+  return body.path;
 }
