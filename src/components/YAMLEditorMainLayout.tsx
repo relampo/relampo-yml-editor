@@ -18,6 +18,7 @@ interface YAMLEditorMainLayoutProps {
   multiScenarioDebugEnabled: boolean;
   runViewEnabled: boolean;
   multiScenarioRunEnabled?: boolean;
+  distributedRunEnabled?: boolean;
   componentCapabilities?: ComponentCapabilities;
   isDebugViewActive: boolean;
   isRunViewActive: boolean;
@@ -67,6 +68,7 @@ export function YAMLEditorMainLayout({
   multiScenarioDebugEnabled,
   runViewEnabled,
   multiScenarioRunEnabled,
+  distributedRunEnabled,
   componentCapabilities,
   isDebugViewActive,
   isRunViewActive,
@@ -156,6 +158,7 @@ export function YAMLEditorMainLayout({
           multiScenarioDebugEnabled={multiScenarioDebugEnabled}
           runViewEnabled={runViewEnabled}
           multiScenarioRunEnabled={multiScenarioRunEnabled}
+          distributedRunEnabled={distributedRunEnabled}
           componentCapabilities={componentCapabilities}
           yamlTree={yamlTree}
           yamlCode={yamlCode}
