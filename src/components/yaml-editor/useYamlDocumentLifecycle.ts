@@ -60,6 +60,7 @@ export function useYamlDocumentLifecycle({
   const [debugViewEnabled, setDebugViewEnabled] = useState(DEBUG_VIEW_FORCED);
   const [runViewEnabled, setRunViewEnabled] = useState(RUN_VIEW_FORCED);
   const [multiScenarioRunEnabled, setMultiScenarioRunEnabled] = useState(false);
+  const [distributedRunEnabled, setDistributedRunEnabled] = useState(false);
   const [grpcAuthoringEnabled, setGrpcAuthoringEnabled] = useState(false);
   const [correlateEnabled, setCorrelateEnabled] = useState(false);
   const [httpRecorderEnabled, setHttpRecorderEnabled] = useState(false);
@@ -119,6 +120,7 @@ export function useYamlDocumentLifecycle({
         setComponentCapabilities(studioInfo.capabilities?.componentConfiguration);
         setMultiScenarioDebugEnabled(studioInfo.capabilities?.multiScenarioDebug === true);
         setMultiScenarioRunEnabled(studioInfo.capabilities?.multiScenarioRun === true);
+        setDistributedRunEnabled(studioInfo.capabilities?.distributedRun === true);
         setDataSourceFileBrowseEnabled(studioInfo.capabilities?.dataSourceFiles === true);
         setGrpcAuthoringEnabled(studioInfo.capabilities?.grpcAuthoring === true);
         setCorrelateEnabled(studioInfo.capabilities?.correlate === true);
@@ -205,6 +207,7 @@ export function useYamlDocumentLifecycle({
     componentCapabilities,
     runViewEnabled,
     multiScenarioRunEnabled,
+    distributedRunEnabled,
     dataSourceFileBrowseEnabled,
     grpcAuthoringEnabled,
     grpcRecorderTabsEnabled,

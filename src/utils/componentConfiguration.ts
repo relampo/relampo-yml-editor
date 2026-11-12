@@ -12,6 +12,7 @@ export const COMPONENT_FEATURES = [
   'http_assertions',
   'sql_assertions',
   'http_state_usage',
+  'extractor_enabled',
 ] as const;
 export type ComponentFeature = (typeof COMPONENT_FEATURES)[number];
 export interface ComponentCapabilities {
@@ -551,6 +552,7 @@ export function inspectComponentConfiguration(script: unknown): {
           continue;
         }
         if (!configurationRecord(payload)) continue;
+        if ((HTTP_TYPES.has(kind) || kind === 'grpc') && Array.isArray(payload.extractors) && payload.extractors.some(extractor => configurationRecord(extractor) && extractor.enabled === false)) required.add('extractor_enabled');
         if (HTTP_TYPES.has(kind) || kind === 'sql') {
           owner(payload, payloadPath, false, kind === 'sql' ? 'sql' : 'http');
           if (adopted && HTTP_TYPES.has(kind))
@@ -675,6 +677,8 @@ export function componentCapabilityError(yaml: string, capabilities?: ComponentC
   }
   const inspection = inspectComponentConfiguration(script);
   if (inspection.errors.length) return inspection.errors[0].message;
+  if (inspection.required.includes('extractor_enabled') && !capabilities?.features.includes('extractor_enabled'))
+    return 'This backend cannot disable extractors. Update Relampo before running this script.';
   if (inspection.required.includes('global_error_policy') && !capabilities?.features.includes('global_error_policy'))
     return 'This backend does not support global error policies. Update Relampo before running.';
   if (!configurationRecord(script) || script.component_configuration_version !== 1) return null;

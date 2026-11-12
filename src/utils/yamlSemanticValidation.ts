@@ -67,6 +67,7 @@ export function validateYAMLSemantics(tree: YAMLNode | null): YAMLSemanticIssue[
   }
 
   const walk = (node: YAMLNode, scenarioIterations = 0) => {
+    if (node.type === 'cookies' && node.data?.jar_scope !== undefined && node.data.jar_scope !== 'vu') issues.push({ nodeId: node.id, message: 'cookies.jar_scope only supports vu; each virtual user has its own cookie jar.' });
     if (node.data?.enabled === false) {
       return;
     }

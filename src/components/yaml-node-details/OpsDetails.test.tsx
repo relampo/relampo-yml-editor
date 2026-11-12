@@ -1,3 +1,4 @@
+import { selectOption } from '../../test/selectOption';
 import { useState } from 'react';
 import { fireEvent, render as rtlRender, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
@@ -39,4 +40,15 @@ describe('CookiesDetails', () => {
     const updatedInput = screen.getByDisplayValue('session-updated');
     expect(document.activeElement).toBe(updatedInput);
   });
+});
+
+
+it('RLP-811 shows canonical cookie lifetime and keeps both controls consistent when edited', async () => {
+ render(<ControlledCookies node={{id:'cookies',type:'cookies',name:'Cookies',data:{mode:'manual',persist_across_iterations:true,clear_each_iteration:true,jar_scope:'vu'}}} />);
+ expect(screen.getByRole('combobox',{name:'Clear Each Iteration'})).toHaveTextContent('true');
+ expect(screen.getByRole('combobox',{name:'Persist Across Iterations'})).toHaveTextContent('false');
+ await selectOption('Persist Across Iterations','true');
+ expect(screen.getByRole('combobox',{name:'Clear Each Iteration'})).toHaveTextContent('false');
+ await selectOption('Clear Each Iteration','true');
+ expect(screen.getByRole('combobox',{name:'Persist Across Iterations'})).toHaveTextContent('false');
 });

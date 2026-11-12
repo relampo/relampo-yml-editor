@@ -140,8 +140,8 @@ describe('LoadVisualization', () => {
     );
 
     expect(screen.getByText(/Peak VU capacity:\s*100\s*\|\s*Total:\s*20s/i)).toBeInTheDocument();
-    expect(screen.getByText(/rps-block.*25 RPS \(max 100 VUs\)/i)).toBeInTheDocument();
-    expect(screen.getByText(/vus-block.*25 VUs/i)).toBeInTheDocument();
+    expect(screen.queryByRole('list')).not.toBeInTheDocument();
+    expect(screen.getByText(/rps-block.*25 RPS/i).tagName.toLowerCase()).toBe('title');
   });
 });
 

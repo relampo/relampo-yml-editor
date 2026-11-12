@@ -154,7 +154,7 @@ export function TreeSearchBar({
                 }}
                 className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
               />
-              {option === 'requests' ? 'Requests' : 'Responses'}
+              {t(option === 'requests' ? 'yamlEditor.searchScopeRequest' : 'yamlEditor.searchScopeResponse')}
             </label>
           ))}
         </fieldset>

@@ -1,6 +1,6 @@
 import {
   AlertTriangle,
-  BarChart3,
+  ArrowRightLeft,
   BetweenHorizontalStart,
   Braces,
   CheckCircle,
@@ -34,6 +34,8 @@ export type YAMLAddableNodeType =
   | 'scenario'
   | 'request'
   | 'sql'
+  | 'grpc'
+  | 'grpc_defaults'
   | 'websocket'
   | 'group'
   | 'transaction'
@@ -73,10 +75,38 @@ export interface AddableItem {
   description?: string;
   icon: ReactNode;
   color: string;
+  section?: 'requests' | 'controllers' | 'elements';
 }
 
 function filterAddableItemsByContainment(parentType: YAMLNodeType, items: AddableItem[]): AddableItem[] {
-  return items.filter(item => canContain(parentType, item.type as YAMLNodeType));
+  const order: YAMLAddableNodeType[] = [
+    'request',
+    'grpc',
+    'websocket',
+    'sql',
+    'transaction',
+    'group',
+    'parallel',
+    'balanced',
+    'if',
+    'loop',
+    'retry',
+    'one_time',
+    'assertion',
+    'think_time',
+    'data_source',
+  ];
+  return items
+    .filter(item => canContain(parentType, item.type as YAMLNodeType))
+    .sort((a, b) => order.indexOf(a.type) - order.indexOf(b.type))
+    .map(item => ({
+      ...item,
+      section: ['request', 'grpc', 'websocket', 'sql'].includes(item.type)
+        ? 'requests'
+        : ['assertion', 'think_time', 'data_source'].includes(item.type)
+          ? 'elements'
+          : 'controllers',
+    }));
 }
 
 export function getAddableItems(
@@ -85,11 +115,30 @@ export function getAddableItems(
   _parentNode?: Pick<YAMLNode, 'children' | 'data'>,
 ): AddableItem[] {
   const iconClass = 'w-4 h-4';
+  const grpcItem: AddableItem = {
+    type: 'grpc',
+    label: t('yamlEditor.shell.addable.grpcRequest'),
+    icon: <ArrowRightLeft className={iconClass} />,
+    color: 'text-cyan-400',
+  };
+  const grpcDefaultsItem: AddableItem = {
+    type: 'grpc_defaults',
+    label: t('yamlEditor.shell.addable.grpcDefaults'),
+    icon: <Settings className={iconClass} />,
+    color: 'text-sky-400',
+  };
   if (parentType === 'websocket') {
     if (_parentNode?.data?.action && _parentNode.data.action !== 'connect') return [];
     if (_parentNode?.children?.some(child => child.type === 'headers')) return [];
-    return [{ type: 'headers', label: t('yamlEditor.shell.addable.headers'),
-      description: t('yamlEditor.shell.addable.headersDesc'), icon: <Tag className={iconClass} />, color: 'text-red-500' }];
+    return [
+      {
+        type: 'headers',
+        label: t('yamlEditor.shell.addable.headers'),
+        description: t('yamlEditor.shell.addable.headersDesc'),
+        icon: <Tag className={iconClass} />,
+        color: 'text-red-500',
+      },
+    ];
   }
 
   if (parentType === 'root' || parentType === 'test') {
@@ -115,13 +164,7 @@ export function getAddableItems(
         icon: <Settings className={iconClass} />,
         color: 'text-sky-400',
       },
-      {
-        type: 'metrics',
-        label: t('yamlEditor.shell.addable.metrics'),
-        description: t('yamlEditor.shell.addable.metricsDesc'),
-        icon: <BarChart3 className={iconClass} />,
-        color: 'text-indigo-400',
-      },
+      ...(_parentNode?.children?.some(child => child.type === 'grpc_defaults') ? [] : [grpcDefaultsItem]),
       {
         type: 'error_policy',
         label: t('yamlEditor.shell.addable.errorPolicy'),
@@ -249,6 +292,7 @@ export function getAddableItems(
   const controllers = ['group', 'simple', 'transaction', 'parallel', 'if', 'loop', 'retry', 'one_time', 'steps'];
   if (controllers.includes(parentType)) {
     return filterAddableItemsByContainment(parentType, [
+      grpcItem,
       {
         type: 'transaction',
         label: t('yamlEditor.shell.addable.transaction'),
@@ -327,6 +371,13 @@ export function getAddableItems(
         color: 'text-white',
       },
       {
+        type: 'assertion',
+        label: t('yamlEditor.shell.addable.assertion'),
+        description: t('yamlEditor.shell.addable.standaloneAssertionDesc'),
+        icon: <CheckCircle className={iconClass} />,
+        color: 'text-green-400',
+      },
+      {
         type: 'think_time',
         label: t('yamlEditor.shell.addable.thinkTime'),
         description: t('yamlEditor.shell.addable.thinkTimeBetween'),
@@ -345,6 +396,7 @@ export function getAddableItems(
 
   if (parentType === 'balanced') {
     return filterAddableItemsByContainment(parentType, [
+      grpcItem,
       {
         type: 'request',
         label: t('yamlEditor.shell.addable.httpRequest'),
