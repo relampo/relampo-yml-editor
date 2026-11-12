@@ -99,6 +99,10 @@ test('a plan requires a real directory, creates its structure and saves scripts 
   await expect(editor.getByRole('combobox', { name: 'Plan script', exact: true }).locator('option')).toHaveCount(2);
   await page.getByRole('button', { name: 'Save Script', exact: true }).click();
   await expect.poll(() => disk('script-2.yaml')).toContain('test:');
+  await page
+    .getByRole('dialog', { name: 'Script updated', exact: true })
+    .getByRole('button', { name: 'Done', exact: true })
+    .click();
   await editor.getByRole('combobox', { name: 'Plan script', exact: true }).selectOption('default');
   await expect(editor.getByText('Local script', { exact: true })).toBeVisible();
   await page.evaluate(async () => {
@@ -113,6 +117,10 @@ test('a plan requires a real directory, creates its structure and saves scripts 
   });
   await page.getByRole('button', { name: 'Save Script', exact: true }).click();
   await expect(editor.getByRole('alert')).toContainText('changed outside');
+  await page
+    .getByRole('dialog', { name: 'Update script', exact: true })
+    .getByRole('button', { name: 'Done', exact: true })
+    .click();
   expect(await disk('checkout.yaml')).toBe('external edit');
   // Settings remain reachable even when the current file cannot be saved.
   await page.getByRole('button', { name: 'Plan settings', exact: true }).click();

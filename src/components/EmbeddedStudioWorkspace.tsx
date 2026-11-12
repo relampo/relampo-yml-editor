@@ -111,7 +111,19 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
       if (draft.current.changed && correlation.current) await correlation.current.save();
       else await controller.current.save();
       await renamePlanScript(scriptId, controller.current.document().fileName);
-      await persistEmbeddedScript(scriptId, controller.current.document(), reason === 'save');
+      const document = controller.current.document();
+      const saved = await persistEmbeddedScript(scriptId, document, reason === 'save');
+      if (saved?.yaml !== undefined && saved.yaml !== document.yaml) {
+        const current = controller.current.document();
+        if (current.revision === document.revision && current.fileName === document.fileName) {
+          await controller.current.replace(saved.yaml, document.fileName);
+          const updated = { yaml: saved.yaml, fileName: document.fileName, revision: current.revision };
+          sourceRef.current = updated;
+          setSource(updated);
+          draft.current.changed = false;
+        } else
+          throw new Error('The shared update was saved. Your newer draft was kept; review it before saving again.');
+      }
     },
     [ready, scriptId],
   );
@@ -188,6 +200,7 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
       ) {
         let ok = false;
         let error = '';
+        let cancelled = false;
         try {
           if (message.includeResponses === false && controller.current) {
             if (draft.current.changed && correlation.current) await correlation.current.save();
@@ -200,11 +213,15 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
           setError('');
           ok = true;
         } catch (cause) {
-          error = cause instanceof Error ? cause.message : String(cause);
-          report(cause);
+          cancelled = cause instanceof Error && cause.name === 'ScriptSaveCancelled';
+          if (cancelled) setError('');
+          else {
+            error = cause instanceof Error ? cause.message : String(cause);
+            report(cause);
+          }
         }
         window.parent.postMessage(
-          { type: 'relampo:plan-saved', requestId: message.requestId, ok, error },
+          { type: 'relampo:plan-saved', requestId: message.requestId, ok, error, cancelled },
           window.location.origin,
         );
         return;

@@ -56,6 +56,7 @@ test('SaaS keeps SQL connections, selection and native execution panels across s
   await editor.getByLabel('Connection', { exact: true }).selectOption('archive');
   await page.getByRole('button', { name: 'Save Script', exact: true }).click();
   await expect(page.getByText('Script saved', { exact: true })).toBeVisible();
+  await page.getByRole('dialog').getByRole('button', { name: 'Done', exact: true }).click();
   await page.reload();
   await editor.getByRole('treeitem', { name: /Read tickets/ }).click();
   await expect(editor.getByLabel('Connection', { exact: true })).toHaveValue('archive');

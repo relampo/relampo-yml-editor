@@ -84,6 +84,7 @@ test('embedded Studio supports WebSocket authoring, node widgets and persisted p
   await expect(editor.getByLabel('Message payload 1', { exact: true })).toHaveValue('ping');
   await page.getByRole('button', { name: 'Save Script', exact: true }).click();
   await expect(page.getByText('Script saved', { exact: true })).toBeVisible();
+  await page.getByRole('dialog').getByRole('button', { name: 'Done', exact: true }).click();
   await page.reload();
   await expect(page.getByRole('button', { name: 'Save Script', exact: true })).toBeEnabled();
   await editor.getByRole('treeitem', { name: /Live updates/ }).click();

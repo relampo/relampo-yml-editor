@@ -129,9 +129,11 @@ for (const connected of [false, true]) {
     }
     await page.getByRole('button', { name: 'Scripting', exact: true }).click();
     await page.getByRole('button', { name: 'Save Script', exact: true }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Done', exact: true }).click();
     await page.getByRole('button', { name: 'Save YAML options', exact: true }).click();
     await page.getByRole('menuitem', { name: 'Save with responses', exact: true }).click();
     await expect(page.getByRole('status').filter({ hasText: 'Script saved' })).toBeVisible();
+    await page.getByRole('dialog').getByRole('button', { name: 'Done', exact: true }).click();
     const saved = await page.locator('iframe[data-plan-editor]').evaluate(async frame => {
       const address = new URL((frame as HTMLIFrameElement).src);
       const id = `saas-plan:${address.searchParams.get('account')}:${address.searchParams.get('plan')}`;

@@ -197,6 +197,10 @@ for (const provider of ['github', 'gitlab'] as const) {
     denyScriptWrites = true;
     await page.getByRole('button', { name: 'Save Script', exact: true }).click();
     await expect(page.getByRole('alert').filter({ hasText: '403' }).first()).toBeVisible();
+    await page
+      .getByRole('dialog', { name: 'Update script', exact: true })
+      .getByRole('button', { name: 'Done', exact: true })
+      .click();
     expect(commits).toBe(1);
     const planId = new URL(page.url()).searchParams.get('plan')!;
     await page.evaluate(async id => {
@@ -208,12 +212,20 @@ for (const provider of ['github', 'gitlab'] as const) {
     await page.getByRole('button', { name: 'Save Script', exact: true }).click();
     await expect.poll(() => commits).toBe(2);
     await expect(page.getByText('Script saved', { exact: true })).toBeVisible();
+    await page
+      .getByRole('dialog', { name: 'Script updated', exact: true })
+      .getByRole('button', { name: 'Done', exact: true })
+      .click();
     expect(files.get('performance-tests/git-checkout/Scripts/checkout.yaml')?.text).toContain('Git script');
     expect(files.has('performance-tests/git-checkout/Scripts/other.yaml')).toBe(false);
     expect(files.get('README.md')?.text).toBe('untouched');
     // Saving unchanged content is acknowledged without another commit.
     await page.getByRole('button', { name: 'Save Script', exact: true }).click();
     await expect(page.getByText('Script saved', { exact: true })).toBeVisible();
+    await page
+      .getByRole('dialog', { name: 'Script updated', exact: true })
+      .getByRole('button', { name: 'Done', exact: true })
+      .click();
     expect(commits).toBe(2);
     await page.getByRole('button', { name: 'Plan settings', exact: true }).click();
     await expect(dialog.getByText('Pending changes (1)', { exact: true })).toBeVisible();
@@ -241,6 +253,10 @@ for (const provider of ['github', 'gitlab'] as const) {
     await page.getByRole('button', { name: 'Save Script', exact: true }).click();
     await expect.poll(() => commits).toBe(4);
     await expect(page.getByText('Script saved', { exact: true })).toBeVisible();
+    await page
+      .getByRole('dialog', { name: 'Script updated', exact: true })
+      .getByRole('button', { name: 'Done', exact: true })
+      .click();
     await expect(
       page.getByRole('button', { name: provider === 'github' ? 'Reconnect GitHub' : 'Reconnect GitLab', exact: true }),
     ).toHaveCount(0);
@@ -255,6 +271,10 @@ for (const provider of ['github', 'gitlab'] as const) {
       name: provider === 'github' ? 'Reconnect GitHub' : 'Reconnect GitLab',
       exact: true,
     });
+    await page
+      .getByRole('dialog', { name: 'Update script', exact: true })
+      .getByRole('button', { name: 'Done', exact: true })
+      .click();
     await reconnect.click();
     const connection = page.getByRole('dialog', {
       name: provider === 'github' ? 'Reconnect GitHub' : 'Reconnect GitLab',
@@ -277,6 +297,10 @@ for (const provider of ['github', 'gitlab'] as const) {
       .click();
     await expect(connection).toHaveCount(0);
     await expect(page.getByText('Script saved', { exact: true })).toBeVisible();
+    await page
+      .getByRole('dialog', { name: 'Script updated', exact: true })
+      .getByRole('button', { name: 'Done', exact: true })
+      .click();
     await expect(page.getByRole('alert')).toHaveCount(0);
     expect(page.url()).toBe(studioURL);
     expect(commits).toBe(5);
@@ -286,6 +310,10 @@ for (const provider of ['github', 'gitlab'] as const) {
     await page.getByRole('button', { name: 'Save Script', exact: true }).click();
     await expect.poll(() => commits).toBe(6);
     await expect(page.getByText('Script saved', { exact: true })).toBeVisible();
+    await page
+      .getByRole('dialog', { name: 'Script updated', exact: true })
+      .getByRole('button', { name: 'Done', exact: true })
+      .click();
     expect(files.get('performance-tests/git-checkout/Scripts/checkout.yaml')?.text).toContain('/edited');
     // A denied rename retains both the new file and old-path deletion for retry.
     const renamedContent = files.get('performance-tests/git-checkout/Scripts/checkout.yaml')!.text;
@@ -329,7 +357,10 @@ for (const provider of ['github', 'gitlab'] as const) {
     head = 'e'.repeat(40);
     files.set('performance-tests/git-checkout/Scripts/checkout.yaml', { text: 'remote edit', commit: head });
     await page.getByRole('button', { name: 'Save Script', exact: true }).click();
-    await expect(page.getByRole('alert').filter({ hasText: 'Remote file changed' }).first()).toBeVisible();
+    await expect(
+      page.getByRole('dialog', { name: 'Update script', exact: true }).getByRole('radio', { name: /Use mine/ }),
+    ).toBeVisible();
+    await page.getByRole('dialog').getByRole('button', { name: 'Keep editing', exact: true }).click();
     expect(commits).toBe(8);
     expect(files.get('performance-tests/git-checkout/Scripts/checkout.yaml')?.text).toBe('remote edit');
     await page.getByRole('button', { name: 'Plan settings', exact: true }).click();
