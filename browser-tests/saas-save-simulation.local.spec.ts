@@ -64,8 +64,7 @@ test('the current script previews four simulated QA updates and applies only sel
   await expect(versions.getByRole('button')).toHaveCount(1);
   await expect(popup.getByLabel('Contenido de la versión')).toHaveCount(0);
   await page.screenshot({ path: '/private/tmp/relampo-history-list.png' });
-  await versions.getByRole('button').first().click();
-  await expect(popup.getByLabel('Contenido de la versión')).toContainText('Get Order');
+  await expect(versions).toContainText('Primera versión guardada');
   await expect(editor.getByRole('treeitem', { name: /Get Order/ })).toBeVisible();
   await popup.getByRole('tab', { name: 'Cambios', exact: true }).click();
   await expect(watch.getByRole('button', { name: /Descartar cambio/ })).toHaveAttribute('aria-pressed', 'true');
@@ -74,12 +73,18 @@ test('the current script previews four simulated QA updates and applies only sel
   await expect(popup.getByRole('heading', { name: 'Simulación aplicada', exact: true })).toBeVisible();
   await popup.getByRole('tab', { name: 'Historial', exact: true }).click();
   await expect(versions.getByRole('button')).toHaveCount(2);
+  await expect(versions.getByRole('columnheader', { name: 'Qué cambió' })).toBeVisible();
   await versions.getByRole('button').last().click();
-  await expect(popup.getByLabel('Contenido de la versión')).toContainText('Get Order');
-  await expect(popup.getByLabel('Contenido de la versión')).not.toContainText('Order lookup · QA review');
-  await expect(editor.getByRole('treeitem', { name: /Order lookup · QA review/ })).toBeVisible();
-  await page.screenshot({ path: '/private/tmp/relampo-script-history.png' });
-  await popup.getByRole('button', { name: 'Listo', exact: true }).click();
+  await expect(popup).toHaveCount(0);
+  const historical = page.frameLocator('iframe[data-script-history-preview]');
+  await expect(historical.getByRole('treeitem', { name: /Get Order/ })).toBeVisible();
+  await expect(historical.getByRole('treeitem', { name: /Order lookup · QA review/ })).toHaveCount(0);
+  await expect(page.locator('iframe[data-plan-editor]')).toBeHidden();
+  await historical.getByRole('treeitem', { name: /Get Order/ }).click();
+  await expect(historical.locator('input').first()).toHaveAttribute('readonly', '');
+  await page.screenshot({ path: '/private/tmp/relampo-script-history-native.png' });
+  await page.getByRole('button', { name: 'Volver a mi borrador' }).click();
+  await expect(page.locator('iframe[data-script-history-preview]')).toHaveCount(0);
   await expect(editor.getByRole('treeitem', { name: /Order lookup · QA review/ })).toBeVisible();
   await expect(editor.getByRole('treeitem', { name: /Order status · QA/ })).toBeVisible();
   await expect(editor.getByRole('treeitem', { name: /Watch Order/ })).toHaveCount(0);
@@ -144,8 +149,14 @@ test('cart simulation previews domain and full-request deletion using current lo
     .click();
   await expect(rows.first().getByRole('button', { name: /Descartar cambio/ })).toHaveAttribute('aria-pressed', 'true');
   await expect(rows.first().getByRole('button', { name: /Aceptar cambio/ })).toHaveAttribute('aria-pressed', 'false');
-  await rows.nth(1).getByRole('button', { name: /Aceptar cambio/ }).click();
-  await rows.nth(2).getByRole('button', { name: /Aceptar cambio/ }).click();
+  await rows
+    .nth(1)
+    .getByRole('button', { name: /Aceptar cambio/ })
+    .click();
+  await rows
+    .nth(2)
+    .getByRole('button', { name: /Aceptar cambio/ })
+    .click();
   await expect(editor.getByRole('treeitem', { name: /CreateCart/ })).toBeVisible();
   await expect(popup.getByRole('button', { name: 'Guardar script', exact: true })).toBeEnabled();
   await page.screenshot({ path: '/private/tmp/relampo-cart-review-compact.png' });

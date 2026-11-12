@@ -1,3 +1,4 @@
+import { HistoricalScriptWorkspace } from './HistoricalScriptWorkspace';
 import { persistEmbeddedScript } from '../utils/embeddedFileStorage';
 import { buildDownloadContent } from '../hooks/useYAMLPersistence';
 import { PlanScriptsContext } from '../contexts/PlanScriptsContext';
@@ -21,6 +22,10 @@ import { CorrelatePage } from './correlate/CorrelatePage';
 
 const views: EmbeddedStudioView[] = ['scripting', 'record', 'correlation', 'debug', 'run'];
 export function EmbeddedStudioWorkspace() {
+  if (new URLSearchParams(window.location.search).get('historical') === '1') return <HistoricalScriptWorkspace />;
+  return <CurrentStudioWorkspace />;
+}
+function CurrentStudioWorkspace() {
   const [catalog, setCatalog] = useState<PlanScripts | null>(null);
   const [error, setError] = useState('');
   useEffect(() => {
