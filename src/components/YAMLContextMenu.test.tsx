@@ -146,7 +146,7 @@ it('shows all HTTP options for SQL and blocks unsupported additions with an expl
   render(<LanguageProvider><YAMLContextMenu x={10} y={10}
     node={{id:'sql',type:'sql',name:'SQL',data:{kind:'query'}}}
     onClose={vi.fn()} onAddNode={onAddNode} onRemove={vi.fn()} /></LanguageProvider>);
-  const file=screen.getByRole('button',{name:'File Upload HTTP requests only'});
+  const file=screen.getByRole('button',{name:'File Upload Does not apply to SQL requests'});
   expect(file).toBeDisabled();
   fireEvent.click(file);
   expect(onAddNode).not.toHaveBeenCalled();

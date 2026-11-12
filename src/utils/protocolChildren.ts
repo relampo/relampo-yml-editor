@@ -40,12 +40,20 @@ function fields(node: YAMLNode): Array<[string, YAMLNode['type']]> {
     return [
       ['headers', 'headers'],
       ['error_policy', 'error_policy'],
+      ['data_source', 'data_source'],
+      ['think_time', 'think_time'],
     ];
   return node.type === 'sql'
-    ? [['error_policy', 'error_policy']]
+    ? [
+        ['error_policy', 'error_policy'],
+        ['data_source', 'data_source'],
+        ['think_time', 'think_time'],
+      ]
     : [
         ['metadata', 'headers'],
         ['error_policy', 'error_policy'],
+        ['data_source', 'data_source'],
+        ['think_time', 'think_time'],
       ];
 }
 
@@ -81,7 +89,15 @@ export function withProtocolChildren(node: YAMLNode): YAMLNode {
                   ? 'Assertion'
                   : type === 'error_policy'
                     ? 'Error Policy'
-                    : 'Think Time',
+                    : type === 'data_source'
+                      ? 'Data Source'
+                      : type === 'file'
+                        ? 'File Upload'
+                        : type === 'spark_before'
+                          ? 'Spark Before'
+                          : type === 'spark_after'
+                            ? 'Spark After'
+                            : 'Think Time',
           data: normalized as YAMLNodeData,
           path: [...base, ...target],
           protocolTarget: target,
@@ -91,7 +107,10 @@ export function withProtocolChildren(node: YAMLNode): YAMLNode {
     );
   };
   for (const [field, type] of fields(node)) {
-    if (data[field] && typeof data[field] === 'object') add(type, data[field], [field]);
+    if (type === 'think_time' && typeof data[field] === 'string') {
+      add(type, { duration: data[field] }, [field]);
+      children[children.length - 1].protocolScalar = true;
+    } else if (data[field] && typeof data[field] === 'object') add(type, data[field], [field]);
   }
   for (const path of ownerPaths(node, data)) {
     const owner = at(data, path);
@@ -99,10 +118,19 @@ export function withProtocolChildren(node: YAMLNode): YAMLNode {
       ['extractors', 'extractor'],
       ['assertions', 'assertion'],
     ] as const) {
-      if (node.type === 'sql' && type === 'assertion') continue;
       if (Array.isArray(owner[field]))
         owner[field].forEach((value, index) => add(type, value, [...path, field, index]));
     }
+  }
+  for (const [field, type] of [
+    ['spark', 'spark_after'],
+    ['files', 'file'],
+  ] as const) {
+    if (Array.isArray(data[field]))
+      data[field].forEach((value, index) => {
+        const kind = field === 'spark' && record(value).when === 'before' ? 'spark_before' : type;
+        add(kind, value, [field, index]);
+      });
   }
   return { ...node, protocolChildrenManaged: true, authoredChildTypes: children.map(child => child.type), children };
 }
@@ -125,7 +153,6 @@ export function protocolData(node: YAMLNode, input: Data = authoredNodeData(node
       ['extractors', 'extractor'],
       ['assertions', 'assertion'],
     ] as const) {
-      if (node.type === 'sql' && type === 'assertion') continue;
       const matches = children.filter(
         child => child.type === type && JSON.stringify(targetFor(child)) === JSON.stringify(path),
       );
@@ -144,8 +171,29 @@ export function protocolData(node: YAMLNode, input: Data = authoredNodeData(node
   }
   for (const [field, type] of fields(node)) {
     const child = children.find(child => child.type === type);
-    if (child) data[field] = authoredNodeData(child);
-    else if (node.authoredChildTypes?.includes(type)) delete data[field];
+    if (child) {
+      const value = authoredNodeData(child);
+      data[field] =
+        child.protocolScalar && Object.keys(value).every(key => key === 'duration') ? value.duration : value;
+    } else if (node.authoredChildTypes?.includes(type)) delete data[field];
+  }
+  for (const field of ['spark', 'files']) {
+    const matches = children.filter(child =>
+      field === 'spark' ? ['spark_before', 'spark_after'].includes(child.type) : child.type === 'file',
+    );
+    if (!node.protocolChildrenManaged && !matches.length) continue;
+    if (matches.length || Array.isArray(data[field]))
+      data[field] = matches.map(child => {
+        const value = authoredNodeData(child);
+        if (field === 'spark') {
+          if (!child.authoredData || JSON.stringify(child.data) !== JSON.stringify(child.initialData))
+            value.when = child.type === 'spark_before' ? 'before' : 'after';
+        } else if (value.mime_type !== undefined) {
+          value.mime = value.mime ?? value.mime_type;
+          delete value.mime_type;
+        }
+        return value;
+      });
   }
   return data;
 }
@@ -156,17 +204,18 @@ export function nativeChildUnavailable(
   type: string,
 ): string | undefined {
   if (!isNativeSampler(node.type)) return;
-  if (['spark_before', 'spark_after', 'data_source'].includes(type)) return 'nativeUnsupported';
-  if (type === 'file') return 'httpOnly';
+  if (type === 'file' && node.type === 'sql') return 'sqlUnsupported';
   if (node.type === 'sql') {
-    if (type === 'headers') return 'httpOnly';
-    if (['assertion', 'think_time'].includes(type)) return 'sqlConfiguration';
+    if (type === 'headers') return 'sqlUnsupported';
     if (type === 'extractor' && ['exec', 'write'].includes(String(node.data?.kind))) return 'queryOnly';
   }
-  if (node.type !== 'sql' && type === 'think_time') return 'nativeUnsupported';
-  if (['headers', 'error_policy'].includes(type) && node.children?.some(child => child.type === type))
+  if (
+    ['headers', 'error_policy', 'data_source', 'think_time'].includes(type) &&
+    node.children?.some(child => child.type === type)
+  )
     return 'alreadyAdded';
   if (node.type === 'websocket') {
+    if (type === 'file' && node.data?.action && node.data.action !== 'send') return 'sendOnly';
     if (type === 'headers' && node.data?.action && node.data.action !== 'connect') return 'handshakeOnly';
     if (['extractor', 'assertion'].includes(type) && !receivePaths(record(node.data)).length) return 'receiveOnly';
   }
@@ -198,6 +247,16 @@ export function protocolChildPath(
   const ordinal = (nodes: YAMLNode[], last: number, predicate: (node: YAMLNode) => boolean) =>
     nodes.slice(0, last + 1).filter(predicate).length - 1;
   const base = parent.type === 'sql' ? parentPath : [...parentPath, parent.type];
+  if (['spark_before', 'spark_after', 'file'].includes(child.type)) {
+    const isSpark = child.type !== 'file';
+    return [
+      ...base,
+      isSpark ? 'spark' : 'files',
+      ordinal(siblings, index, node =>
+        isSpark ? ['spark_before', 'spark_after'].includes(node.type) : node.type === 'file',
+      ),
+    ];
+  }
   const field =
     child.type === 'extractor'
       ? 'extractors'

@@ -983,7 +983,7 @@ it.each(['grpc', 'websocket'] as const)('adds an extractor from the %s right-cli
   let latest = root;
   renderInteractiveTreeView({tree:root,onTreeStateChange: tree => {latest=tree;}});
   fireEvent.contextMenu(screen.getByText('Native request'));
-  expect(screen.getByRole('button', {name: /File Upload/})).toBeDisabled();
+  expect(screen.getByRole('button', {name: /File Upload/})).toBeEnabled();
   fireEvent.click(screen.getByRole('button',{name:/^Extractor(?: |$)/}));
   await waitFor(() => expect(latest.children![0].children).toHaveLength(1));
   const child=latest.children![0].children![0];

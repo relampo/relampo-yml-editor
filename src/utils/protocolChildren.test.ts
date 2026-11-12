@@ -55,7 +55,8 @@ describe('native request context menus', () => {
             item.type,
           ),
         ).toBe(!item.disabledReason);
-      expect(items.find(i => i.type === 'file')?.disabledReason).toContain('httpOnly');
+      if (type === 'sql') expect(items.find(i => i.type === 'file')?.disabledReason).toContain('sqlUnsupported');
+      else expect(items.find(i => i.type === 'file')?.disabledReason).toBeUndefined();
     },
   );
   it('round-trips native processors losslessly and keeps repeated metadata', () => {
@@ -137,7 +138,7 @@ describe('native request context menus', () => {
   });
   it('rejects incompatible additions from non-menu paths too', () => {
     const tree = parseYAMLToTree(source)!;
-    for (const type of ['grpc', 'sql', 'websocket']) {
+    for (const type of ['sql']) {
       const parent = find(tree, type)!;
       expect(
         treeToYAML(addNodeToTree(tree, parent.id, { id: 'bad', type: 'file', name: 'File', data: { path: 'x' } })),
@@ -205,4 +206,71 @@ it('keeps SQL extractor edits when editing the query or the component policy', (
   tree = applyNodeUpdateToTree(tree, sql.id, { ...protocolData(sql), query: 'SELECT edited FROM events' });
   tree = applyNodeUpdateToTree(tree, sql.id, { __componentFields: { error_policy: { on_error: 'continue' } } });
   expect(saved(tree).scenarios[0].steps[2].sql.extractors[0].column).toBe('edited');
+});
+
+it.each(['sql', 'grpc', 'websocket'] as const)('adds and round-trips every shared processor on %s', type => {
+  let node: YAMLNode = {
+    id: 'native',
+    type,
+    name: 'Native',
+    data:
+      type === 'websocket'
+        ? { actions: [{ receive: { type: 'text' } }] }
+        : type === 'sql'
+          ? { kind: 'query', query: 'SELECT 1' }
+          : { method: '/demo/Call' },
+    children: [],
+  };
+  const additions: YAMLNode[] = [
+    { id: 'before', type: 'spark_before', name: 'Before', data: { script: 'vars.set("id",1)' } },
+    { id: 'after', type: 'spark_after', name: 'After', data: { script: 'vars.set("ready",true)' } },
+    { id: 'timer', type: 'think_time', name: 'Think Time', data: { duration: '10ms' } },
+    {
+      id: 'source',
+      type: 'data_source',
+      name: 'Data Source',
+      data: { type: 'csv', file: 'data.csv', bind: { id: 'id' } },
+    },
+    {
+      id: 'assertion',
+      type: 'assertion',
+      name: 'Assertion',
+      data: type === 'sql' ? { type: 'rows_returned', value: { min: 1 } } : { type: 'contains', value: 'ok' },
+    },
+  ];
+  for (const child of additions) {
+    expect(canAddNodeToTarget(node, child.type as any)).toBe(true);
+    node = addNodeToTree(node, node.id, child);
+  }
+  const data = protocolData(node) as any;
+  expect(data.spark.map((s: any) => s.when)).toEqual(['after', 'before']);
+  expect(data.data_source.file).toBe('data.csv');
+  expect(data.think_time.duration).toBe('10ms');
+  const assertions = type === 'websocket' ? data.actions[0].receive.assertions : data.assertions;
+  expect(assertions).toHaveLength(1);
+  const reopened = withProtocolChildren({ ...node, data, children: [] });
+  expect(reopened.children!.filter(child => child.type === 'spark_before')).toHaveLength(1);
+  expect(protocolData(reopened)).toEqual(data);
+  expect(canAddNodeToTarget(reopened, 'think_time')).toBe(false);
+});
+it.each(['grpc', 'websocket'] as const)('serializes native file children on %s', type => {
+  const node: YAMLNode = {
+    id: 'n',
+    type,
+    name: 'Native',
+    data: type === 'websocket' ? { actions: [] } : { method: '/demo/Call' },
+    children: [
+      {
+        id: 'file',
+        type: 'file',
+        name: 'File',
+        data: { path: 'payload.bin', field: 'payload', mime_type: 'application/octet-stream' },
+      },
+    ],
+  };
+  expect((protocolData(node).files as any[])[0]).toEqual({
+    path: 'payload.bin',
+    field: 'payload',
+    mime: 'application/octet-stream',
+  });
 });

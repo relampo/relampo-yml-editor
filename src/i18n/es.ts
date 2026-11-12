@@ -1103,14 +1103,31 @@ export const esTranslations = {
         actionContinue: 'Continuar',
         actionNextIteration: 'Siguiente iteración (mismo usuario)',
         actionStopUser: 'Detener este usuario',
-        policyHelp1:
+        actionNativeStop: 'Detener',
+      nativePolicyHelp: 'Configura qué hacer si la petición falla o supera el tiempo límite: continuar o detener la ejecución del usuario.',
+      policyHelp1:
           'Continuar ejecuta el siguiente paso. Siguiente iteración omite los pasos restantes e inicia otra iteración del mismo usuario virtual. Detener este usuario finaliza solo al usuario virtual que falló.',
         policyHelp2:
           'Otros errores cubre fallos de conexión, TLS, aserciones y correlación. También se aplica cuando no hay una regla específica.',
         policyDisabled:
           'Esta política está deshabilitada en el YAML. Establece enabled en true para aplicar sus reglas.',
       },
-      validation: {
+      sqlAssertion: {
+      rows_returned: 'Filas devueltas',
+      rows_affected: 'Filas afectadas',
+      duration: 'Duración',
+      comparison: 'Comparación',
+      eq: 'Igual a',
+      min: 'Mínimo',
+      max: 'Máximo',
+      range: 'Entre mínimo y máximo',
+    },
+    nativeFile: {
+      grpcField: 'Campo bytes del mensaje (vacío: protobuf binario completo)',
+      grpcInfo: 'El contenido del archivo se envía en el campo bytes indicado. Usa un punto para campos anidados. Sin campo, el archivo debe contener un mensaje protobuf binario válido.',
+      wsInfo: 'Cada archivo se envía como un mensaje binario antes de las acciones de la conversación. Una acción de envío individual admite un archivo.',
+    },
+    validation: {
         assert_status: 'Estado',
         assert_status_in: 'Estado en',
         assert_contains: 'Contiene',
@@ -1351,6 +1368,8 @@ export const esTranslations = {
         cacheManager: 'Gestor de caché',
         cacheManagerDesc: 'Gestor de caché',
         sparkBefore: 'Spark antes',
+        sqlUnsupported: 'No aplica a peticiones SQL',
+        sendOnly: 'Los archivos requieren una acción de envío WebSocket',
         lastReceive: 'Se aplica a la última recepción de texto',
         grpcMetadata: 'Metadatos gRPC',
         nativeUnsupported: 'Aún no disponible para este protocolo',

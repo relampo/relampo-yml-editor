@@ -200,7 +200,10 @@ export function YAMLNodeDetails({
               onChange={event => {
                 const nextName = event.target.value;
                 setNodeName(nextName);
-                onNodeUpdate?.(node.id, { ...(['sql', 'grpc', 'websocket'].includes(node.type) ? protocolData(node) : node.data), __name: nextName });
+                onNodeUpdate?.(node.id, {
+                  ...(['sql', 'grpc', 'websocket'].includes(node.type) ? protocolData(node) : node.data),
+                  __name: nextName,
+                });
               }}
               maxLength={isRequestNode ? 255 : 50}
               containerStyle={{
@@ -493,6 +496,10 @@ function NodeDetailsContent({
       return (
         <ErrorPolicyDetails
           node={node}
+          nativeContext={Boolean(
+            tree &&
+            componentNodeChain(tree, node.id).some(parent => ['sql', 'grpc', 'websocket'].includes(parent.type)),
+          )}
           onNodeUpdate={onNodeUpdate}
         />
       );
@@ -515,6 +522,10 @@ function NodeDetailsContent({
       return (
         <AssertionDetails
           node={node}
+          sqlContext={Boolean(tree && componentNodeChain(tree, node.id).some(parent => parent.type === 'sql'))}
+          sqlKind={
+            tree ? componentNodeChain(tree, node.id).find(parent => parent.type === 'sql')?.data?.kind : undefined
+          }
           onNodeUpdate={onNodeUpdate}
           searchQuery={searchScope === 'responses' ? '' : searchQuery}
         />
@@ -532,6 +543,11 @@ function NodeDetailsContent({
       return (
         <FileDetails
           node={node}
+          protocol={
+            tree
+              ? componentNodeChain(tree, node.id).find(parent => ['grpc', 'websocket'].includes(parent.type))?.type
+              : undefined
+          }
           onNodeUpdate={onNodeUpdate}
         />
       );

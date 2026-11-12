@@ -1099,13 +1099,30 @@ export const enTranslations = {
         actionContinue: 'Continue',
         actionNextIteration: 'Next iteration (same user)',
         actionStopUser: 'Stop this user',
-        policyHelp1:
+        actionNativeStop: 'Stop',
+      nativePolicyHelp: 'Choose whether a failed or timed out request continues or stops this user execution.',
+      policyHelp1:
           'Continue runs the next step. Next iteration skips the remaining steps and starts another iteration of the same virtual user. Stop this user ends only the failing virtual user.',
         policyHelp2:
           'Other Errors covers connection, TLS, assertion and correlation failures. It also applies when no specific rule is set.',
         policyDisabled: 'This policy is disabled in YAML. Set enabled to true to apply its rules.',
       },
-      validation: {
+      sqlAssertion: {
+      rows_returned: 'Rows returned',
+      rows_affected: 'Rows affected',
+      duration: 'Duration',
+      comparison: 'Comparison',
+      eq: 'Equal to',
+      min: 'Minimum',
+      max: 'Maximum',
+      range: 'Between minimum and maximum',
+    },
+    nativeFile: {
+      grpcField: 'Message bytes field (empty: complete binary protobuf)',
+      grpcInfo: 'The file content fills the selected bytes field. Use dots for nested fields. Without a field, the file must contain a valid binary protobuf message.',
+      wsInfo: 'Each file is sent as a binary message before the conversation actions. A standalone send accepts one file.',
+    },
+    validation: {
         assert_status: 'Status',
         assert_status_in: 'Status in',
         assert_contains: 'Contains',
@@ -1346,6 +1363,8 @@ export const enTranslations = {
         cacheManager: 'Cache Manager',
         cacheManagerDesc: 'Cache manager',
         sparkBefore: 'Spark Before',
+        sqlUnsupported: 'Does not apply to SQL requests',
+        sendOnly: 'Files require a WebSocket send action',
         lastReceive: 'Applies to the last text receive',
         grpcMetadata: 'gRPC metadata',
         nativeUnsupported: 'Not yet available for this protocol',

@@ -182,9 +182,9 @@ const containmentRules: Partial<Record<YAMLNodeType, YAMLNodeType[]>> = {
   options: SAMPLER_CHILDREN,
 
   // SQL queries can extract one cell into a variable.
-  sql: ['extractor', 'error_policy'],
-  grpc: ['extractor', 'assertion', 'headers', 'error_policy'],
-  websocket: ['extractor', 'assertion', 'headers', 'error_policy'],
+  sql: SAMPLER_CHILDREN.filter(type => !['file', 'headers'].includes(type)),
+  grpc: SAMPLER_CHILDREN,
+  websocket: SAMPLER_CHILDREN,
 
   // Logic Controllers - can contain steps and other controllers
   group: STEP_ELEMENTS,

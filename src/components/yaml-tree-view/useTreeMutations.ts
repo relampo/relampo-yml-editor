@@ -123,6 +123,9 @@ export function useTreeMutations({
       }
       if (['grpc', 'websocket'].includes(target.type) && nodeType === 'assertion')
         newNode.data = { type: 'contains', value: '' };
+      if (target.type === 'sql' && nodeType === 'assertion')
+        newNode.data = { type: target.data?.kind === 'exec' ? 'rows_affected' : 'rows_returned', value: { min: 1 } };
+      if (target.type === 'websocket' && nodeType === 'file') newNode.data = { path: '' };
       if (target.type === 'grpc' && nodeType === 'headers') newNode.data = {};
       if (nodeType === 'grpc_defaults' || nodeType === 'sql_defaults') {
         if (currentTree.children?.some(child => child.type === nodeType)) return currentTree;

@@ -30,7 +30,7 @@ function currentKnownFields(): Record<string, ReadonlySet<string>> {
 const knownFields = currentKnownFields();
 // Adopt the gRPC contract scopes while keeping the current HTTP/component contract.
 for (const [scope, fields] of Object.entries(grpcContract.known_fields)) {
-  if (scope === 'grpc' || scope.startsWith('grpc_')) knownFields[scope] = new Set(fields);
+  if ((scope === 'grpc' || scope.startsWith('grpc_')) && !knownFields[scope]) knownFields[scope] = new Set(fields);
 }
 
 // Recorder fields are preserved document data, beyond the runtime contract.

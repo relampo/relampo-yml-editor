@@ -1,3 +1,4 @@
+import { requiresNativeSamplerComponents } from './nativeSamplerComponents';
 import { load } from 'js-yaml';
 import type { YAMLNode } from '../types/yaml';
 import { authoredNodeData } from './yamlAuthoredData';
@@ -15,6 +16,7 @@ export const COMPONENT_FEATURES = [
   'extractor_enabled',
   'sql_connection_defaults',
   'sql_extractors',
+  'native_sampler_components',
 ] as const;
 export type ComponentFeature = (typeof COMPONENT_FEATURES)[number];
 export interface ComponentCapabilities {
@@ -557,6 +559,20 @@ export function inspectComponentConfiguration(script: unknown): {
           continue;
         }
         if (!configurationRecord(payload)) continue;
+        if (requiresNativeSamplerComponents(kind, payload, adopted)) required.add('native_sampler_components');
+        if (['sql', 'grpc', 'websocket'].includes(kind)) {
+          if ('think_time' in payload)
+            validateValue(
+              'think_time',
+              payload.think_time,
+              `${payloadPath}.think_time`,
+              kind === 'sql' ? 'sql' : 'http',
+            );
+          if ('data_source' in payload)
+            validateValue('data_source', payload.data_source, `${payloadPath}.data_source`, 'http');
+          if (kind === 'sql' && 'assertions' in payload)
+            validateValue('assertions', payload.assertions, `${payloadPath}.assertions`, 'sql');
+        }
         if (
           (HTTP_TYPES.has(kind) || kind === 'grpc') &&
           Array.isArray(payload.extractors) &&
@@ -646,8 +662,6 @@ export function inspectComponentConfiguration(script: unknown): {
               if (!['continue', 'stop'].includes(action))
                 error(`${payloadPath}.error_policy.${key}`, 'SQL supports continue or stop after policy inheritance.');
             }
-            if (!adopted && ('assertions' in payload || 'think_time' in payload))
-              error(payloadPath, 'SQL assertions and think_time require component_configuration_version: 1.');
             if (adopted) {
               for (const field of [
                 'auth',
@@ -661,7 +675,6 @@ export function inspectComponentConfiguration(script: unknown): {
                 'cache',
                 'cookie_override',
                 'cache_override',
-                'data_source',
               ])
                 if (field in payload)
                   error(`${payloadPath}.${field}`, 'HTTP or scoped configuration cannot apply to local SQL.');
@@ -747,6 +760,11 @@ export function componentCapabilityError(yaml: string, capabilities?: ComponentC
     return 'This backend does not support SQL connection defaults. Update Relampo before running.';
   if (inspection.required.includes('sql_extractors') && !capabilities?.features.includes('sql_extractors'))
     return 'This backend does not support SQL extractors. Update Relampo before running.';
+  if (
+    inspection.required.includes('native_sampler_components') &&
+    !capabilities?.features.includes('native_sampler_components')
+  )
+    return 'This backend does not support native sampler components. Update Relampo before running.';
   if (!configurationRecord(script) || script.component_configuration_version !== 1) return null;
   if (capabilities?.version !== 1)
     return 'This backend does not support component configuration version 1. Update Relampo before running.';

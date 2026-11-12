@@ -11,6 +11,7 @@ import {
   Tag,
   TextSearch,
 } from 'lucide-react';
+import { SQLAssertionDetails } from './SQLAssertionDetails';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { HighlightedInput } from '../ui/HighlightedInput';
 import { Input } from '../ui/input';
@@ -87,7 +88,11 @@ const assertionTypeButtonStyle: Record<string, React.CSSProperties> = {
   },
 };
 
-export function AssertionDetails({ node, onNodeUpdate, searchQuery = '' }: NodeDetailProps) {
+export function AssertionDetails(props:NodeDetailProps & {sqlContext?:boolean;sqlKind?:string}) {
+  if(props.sqlContext) return <SQLAssertionDetails {...props} />;
+  return <ResponseAssertionDetails {...props} />;
+}
+function ResponseAssertionDetails({ node, onNodeUpdate, searchQuery = '' }: NodeDetailProps) {
   const { t } = useLanguage();
   const { data, updateData, updateField } = createNodeDataUpdater(node, onNodeUpdate);
   const assertionType = data.type || 'status';

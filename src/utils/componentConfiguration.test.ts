@@ -622,7 +622,7 @@ describe('RLP-689 capabilities before dispatch', () => {
         http: { assertions: [], cookies: false, cache: false },
         sql: { error_policy: { on_error: 'continue' } },
       },
-      scenarios: [{ steps: [{ sql: { kind: 'query', query: 'SELECT 1 AS value', assertions: [], extractors: [{type:'sql',var:'value',column:'value',row:1}] } }] }],
+      scenarios: [{ steps: [{ sql: { kind: 'query', query: 'SELECT 1 AS value', spark: [{when:'before',script:'vars.set("id",1)'}], assertions: [], extractors: [{type:'sql',var:'value',column:'value',row:1}] } }] }],
     };
     expect(inspectComponentConfiguration(input).required).toEqual(
       COMPONENT_FEATURES.filter(feature => feature !== 'extractor_enabled').sort(),
@@ -638,7 +638,7 @@ describe('RLP-689 capabilities before dispatch', () => {
           ? 'global error policies'
           : feature === 'sql_connection_defaults'
             ? 'SQL connection defaults'
-            : feature === 'sql_extractors' ? 'SQL extractors' : feature,
+            : feature === 'sql_extractors' ? 'SQL extractors' : feature === 'native_sampler_components' ? 'native sampler components' : feature,
       );
   });
   it('normalizes advertised features without accepting an unsupported version', () => {
