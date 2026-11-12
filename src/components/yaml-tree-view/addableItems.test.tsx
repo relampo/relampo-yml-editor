@@ -98,3 +98,8 @@ it.each(['request', 'get', 'post', 'put', 'delete', 'patch', 'head', 'options', 
     expect(canAddNodeToTarget(target, 'grpc_defaults')).toBe(false);
   },
 );
+
+it('offers an extractor inside an SQL query, but not inside SQL exec', () => {
+  expect(getAddableItems('sql', t).find(item => item.type === 'extractor')?.disabledReason).toBeUndefined();
+  expect(getAddableItems('sql', t, { data: { kind: 'exec' } }).find(item => item.type === 'extractor')?.disabledReason).toBeTruthy();
+});

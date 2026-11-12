@@ -1,4 +1,6 @@
+import { nativeChildUnavailable } from '../../utils/protocolChildren';
 import {
+  ServerCog,
   AlertTriangle,
   ArrowRightLeft,
   BetweenHorizontalStart,
@@ -36,6 +38,7 @@ export type YAMLAddableNodeType =
   | 'sql'
   | 'grpc'
   | 'grpc_defaults'
+  | 'sql_defaults'
   | 'websocket'
   | 'group'
   | 'transaction'
@@ -76,6 +79,7 @@ export interface AddableItem {
   icon: ReactNode;
   color: string;
   section?: 'requests' | 'controllers' | 'elements';
+  disabledReason?: string;
 }
 
 function filterAddableItemsByContainment(parentType: YAMLNodeType, items: AddableItem[]): AddableItem[] {
@@ -127,20 +131,6 @@ export function getAddableItems(
     icon: <Settings className={iconClass} />,
     color: 'text-sky-400',
   };
-  if (parentType === 'websocket') {
-    if (_parentNode?.data?.action && _parentNode.data.action !== 'connect') return [];
-    if (_parentNode?.children?.some(child => child.type === 'headers')) return [];
-    return [
-      {
-        type: 'headers',
-        label: t('yamlEditor.shell.addable.headers'),
-        description: t('yamlEditor.shell.addable.headersDesc'),
-        icon: <Tag className={iconClass} />,
-        color: 'text-red-500',
-      },
-    ];
-  }
-
   if (parentType === 'root' || parentType === 'test') {
     return [
       {
@@ -165,6 +155,12 @@ export function getAddableItems(
         color: 'text-sky-400',
       },
       ...(_parentNode?.children?.some(child => child.type === 'grpc_defaults') ? [] : [grpcDefaultsItem]),
+      {
+        type: 'sql_defaults',
+        label: t('yamlEditor.sqlDefaults.title'),
+        icon: <Database className={iconClass} />,
+        color: 'text-teal-400',
+      },
       {
         type: 'error_policy',
         label: t('yamlEditor.shell.addable.errorPolicy'),
@@ -221,8 +217,8 @@ export function getAddableItems(
   }
 
   const httpMethods = ['request', 'get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
-  if (httpMethods.includes(parentType)) {
-    return [
+  if (httpMethods.includes(parentType) || ['sql', 'grpc', 'websocket'].includes(parentType)) {
+    const items: AddableItem[] = [
       {
         type: 'spark_before',
         label: t('yamlEditor.shell.addable.sparkBefore'),
@@ -287,6 +283,15 @@ export function getAddableItems(
         color: 'text-cyan-400',
       },
     ];
+    return items.map(item => {
+      const reason = nativeChildUnavailable({ type: parentType, ..._parentNode }, item.type);
+      if (reason) return { ...item, disabledReason: t(`yamlEditor.shell.addable.${reason}`) };
+      if (parentType === 'grpc' && item.type === 'headers')
+        return { ...item, description: t('yamlEditor.shell.addable.grpcMetadata') };
+      if (parentType === 'websocket' && ['extractor', 'assertion'].includes(item.type))
+        return { ...item, description: t('yamlEditor.shell.addable.lastReceive') };
+      return item;
+    });
   }
 
   const controllers = ['group', 'simple', 'transaction', 'parallel', 'if', 'loop', 'retry', 'one_time', 'steps'];
@@ -318,8 +323,8 @@ export function getAddableItems(
         type: 'sql',
         label: t('yamlEditor.shell.addable.sqlRequest'),
         description: t('yamlEditor.shell.addable.sqlRequestDesc'),
-        icon: <Database className={iconClass} />,
-        color: 'text-teal-400',
+        icon: <ServerCog className={iconClass} />,
+        color: 'text-pink-400',
       },
       {
         type: 'group',
@@ -415,8 +420,8 @@ export function getAddableItems(
         type: 'sql',
         label: t('yamlEditor.shell.addable.sqlRequest'),
         description: t('yamlEditor.shell.addable.sqlRequestDesc'),
-        icon: <Database className={iconClass} />,
-        color: 'text-teal-400',
+        icon: <ServerCog className={iconClass} />,
+        color: 'text-pink-400',
       },
       {
         type: 'group',

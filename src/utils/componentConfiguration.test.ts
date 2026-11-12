@@ -542,21 +542,34 @@ scenarios:
     expect(roundtrip(input).error_policy).toEqual(input.error_policy);
     const adopted = parseYAMLToTree(dump({ ...input, component_configuration_version: 1 }))!;
     expect(inspectComponentConfiguration({ ...input, component_configuration_version: 1 }).errors).toEqual([]);
-    expect(effectiveComponentValues(adopted, find(adopted, 'get'), 'http').error_policy.value).toMatchObject({ on_error: 'stop' });
+    expect(effectiveComponentValues(adopted, find(adopted, 'get'), 'http').error_policy.value).toMatchObject({
+      on_error: 'stop',
+    });
     expect(componentCapabilityError(dump(input), capabilities)).toBeNull();
-    expect(componentCapabilityError(dump(input), { version: 1, features: ['error_policy'] })).toContain('global error policies');
+    expect(componentCapabilityError(dump(input), { version: 1, features: ['error_policy'] })).toContain(
+      'global error policies',
+    );
   });
   it.each(['request', 'sql'])('shows global origins and scenario overrides for %s', type => {
     const input = {
       component_configuration_version: 1,
       test: { name: 'Global plan' },
       error_policy: { on_error: 'stop', on_timeout: 'stop' },
-      scenarios: [{ name: 'Scenario', error_policy: { on_error: 'continue' }, steps: [{ [type]: { url: '/', query: 'SELECT 1' } }] }],
+      scenarios: [
+        {
+          name: 'Scenario',
+          error_policy: { on_error: 'continue' },
+          steps: [{ [type]: { url: '/', query: 'SELECT 1' } }],
+        },
+      ],
     };
     const tree = parseYAMLToTree(dump(input))!;
     const policy = effectiveComponentValues(tree, find(tree, type), type === 'sql' ? 'sql' : 'http').error_policy;
     expect(policy.value).toMatchObject({ on_error: 'continue', on_timeout: 'stop' });
-    expect(policy.origins).toMatchObject({ on_error: 'Scenario: error_policy', on_timeout: 'Global plan: error_policy' });
+    expect(policy.origins).toMatchObject({
+      on_error: 'Scenario: error_policy',
+      on_timeout: 'Global plan: error_policy',
+    });
   });
   it.each([0, 1])('validates effective SQL policies after overrides with adoption %s', version => {
     for (const action of ['stop_user', 'next_iteration']) {
@@ -569,7 +582,9 @@ scenarios:
         const input = {
           ...(version ? { component_configuration_version: version } : {}),
           error_policy: { on_error: action },
-          scenarios: [{ error_policy: scenario, steps: [{ sql: { kind: 'query', query: 'SELECT 1', error_policy: local } }] }],
+          scenarios: [
+            { error_policy: scenario, steps: [{ sql: { kind: 'query', query: 'SELECT 1', error_policy: local } }] },
+          ],
         };
         const errors = inspectComponentConfiguration(input).errors;
         expect(errors.length === 0).toBe(valid);
@@ -594,6 +609,11 @@ describe('RLP-689 capabilities before dispatch', () => {
   });
   it('requires every authored feature, including disabled declarations and SQL locals', () => {
     const input = {
+      sql_defaults: {
+        connections: {
+          main: { dialect: 'postgres', connection: { host: 'localhost', database: 'app', user: 'reader' } },
+        },
+      },
       component_configuration_version: 1,
       error_policy: { on_4xx: 'continue' },
       defaults: {
@@ -602,16 +622,24 @@ describe('RLP-689 capabilities before dispatch', () => {
         http: { assertions: [], cookies: false, cache: false },
         sql: { error_policy: { on_error: 'continue' } },
       },
-      scenarios: [{ steps: [{ sql: { kind: 'query', query: 'SELECT 1', assertions: [] } }] }],
+      scenarios: [{ steps: [{ sql: { kind: 'query', query: 'SELECT 1 AS value', spark: [{when:'before',script:'vars.set("id",1)'}], assertions: [], extractors: [{type:'sql',var:'value',column:'value',row:1}] } }] }],
     };
-    expect(inspectComponentConfiguration(input).required).toEqual(COMPONENT_FEATURES.filter(feature => feature !== 'extractor_enabled').sort());
+    expect(inspectComponentConfiguration(input).required).toEqual(
+      COMPONENT_FEATURES.filter(feature => feature !== 'extractor_enabled').sort(),
+    );
     for (const feature of COMPONENT_FEATURES.filter(feature => feature !== 'extractor_enabled'))
       expect(
         componentCapabilityError(dump(input), {
           version: 1,
           features: COMPONENT_FEATURES.filter(item => item !== feature),
         }),
-      ).toContain(feature === 'global_error_policy' ? 'global error policies' : feature);
+      ).toContain(
+        feature === 'global_error_policy'
+          ? 'global error policies'
+          : feature === 'sql_connection_defaults'
+            ? 'SQL connection defaults'
+            : feature === 'sql_extractors' ? 'SQL extractors' : feature === 'native_sampler_components' ? 'native sampler components' : feature,
+      );
   });
   it('normalizes advertised features without accepting an unsupported version', () => {
     expect(parseComponentCapabilities({ version: 1, features: ['http_defaults', 'future_feature'] })).toEqual({

@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowLeftRight, CheckCircle2, ChevronDown, CircleDashed, Database, Globe, GitBranch, Layers, Repeat, RotateCcw, Waves } from 'lucide-react';
+import { ServerCog, AlertTriangle, ArrowLeftRight, CheckCircle2, ChevronDown, CircleDashed, Globe, GitBranch, Layers, Repeat, RotateCcw, Waves } from 'lucide-react';
 import { useState } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import {
@@ -60,7 +60,7 @@ function getBalancedItemIcon(type: string) {
   }
   switch (type) {
     case 'sql':
-      return <Database className="w-5 h-5" />;
+      return <ServerCog className="w-5 h-5 text-pink-400" />;
     case 'group':
       return <Layers className="w-5 h-5" />;
     case 'transaction':

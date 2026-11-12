@@ -1,3 +1,4 @@
+import { receivePaths } from '../../utils/protocolChildren';
 import { useSyncExternalStore } from 'react';
 import { treeClipboard } from '../../utils/treeClipboard';
 import type { RedirectedRequestInfo, YAMLNode } from '../../types/yaml';
@@ -96,6 +97,15 @@ export function useTreeMutations({
   const handleAddNode = (nodeType: YAMLAddableNodeType) => {
     if (!contextMenu || !tree) return;
 
+    if (nodeType === 'sql_defaults') {
+      const existing = tree.children?.find(child => child.type === 'sql_defaults');
+      if (existing) {
+        onSelectionChange(existing, [existing.id]);
+        handleCloseContextMenu();
+        return;
+      }
+    }
+
     const targetIds = getContextActionTargetIds();
     const updatedTree = targetIds.reduce((currentTree, targetId) => {
       const target = findNodeById(currentTree, targetId);
@@ -103,8 +113,22 @@ export function useTreeMutations({
       if (!canAddNodeToTarget(target, nodeType)) return currentTree;
 
       const newNode = createNodeByType(nodeType, { balancedName: t('yamlEditor.balanced.name') });
-      if (nodeType === 'grpc_defaults') {
-        if (currentTree.children?.some(child => child.type === 'grpc_defaults')) return currentTree;
+      if (target.type === 'sql' && nodeType === 'extractor') {
+        newNode.data = { type: 'sql', var: 'extracted_value', column: '', row: 1 };
+        newNode.name = t('yamlEditor.shell.addable.extractor');
+      }
+      if (target.type === 'websocket' && ['assertion', 'extractor'].includes(nodeType)) {
+        const path = receivePaths((target.data || {}) as Record<string, unknown>).at(-1)!;
+        newNode.protocolTarget = [...path, nodeType === 'assertion' ? 'assertions' : 'extractors', -1];
+      }
+      if (['grpc', 'websocket'].includes(target.type) && nodeType === 'assertion')
+        newNode.data = { type: 'contains', value: '' };
+      if (target.type === 'sql' && nodeType === 'assertion')
+        newNode.data = { type: target.data?.kind === 'exec' ? 'rows_affected' : 'rows_returned', value: { min: 1 } };
+      if (target.type === 'websocket' && nodeType === 'file') newNode.data = { path: '' };
+      if (target.type === 'grpc' && nodeType === 'headers') newNode.data = {};
+      if (nodeType === 'grpc_defaults' || nodeType === 'sql_defaults') {
+        if (currentTree.children?.some(child => child.type === nodeType)) return currentTree;
         return addNodeToTree(currentTree, currentTree.id, newNode, true);
       }
       return addNodeToTree(currentTree, targetId, newNode, true);

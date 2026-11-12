@@ -158,7 +158,7 @@ interface SQLQueryEditorProps {
   helper: string;
 }
 
-function SQLQueryEditor({ query, onChange, helper }: SQLQueryEditorProps) {
+export function SQLQueryEditor({ query, onChange, helper }: SQLQueryEditorProps) {
   const { t } = useLanguage();
   return (
     <div>
