@@ -472,6 +472,17 @@ export const enTranslations = {
       truncated: 'Limited sample: up to 100 rows, 64 columns and 64 KiB; long values may be truncated.',
       sample: 'First successful execution per query. Metrics include all executions.',
     },
+    sqlExtractor: {
+      sourceColumn: 'Source column (optional)',
+      title: 'SQL extractor',
+      help: 'For SQL selection, choose a row and column. For other types, select a source column or leave it empty to extract from the complete JSON row array. XPath requires an XML column.',
+      enabled: 'Enabled',
+      column: 'Column name or alias',
+      row: 'Row (starting at 1)',
+      variable: 'Save to variable',
+      useDefault: 'Use a default if the value is missing or NULL',
+      default: 'Default value',
+    },
     sqlDefaults: {
       error_ssl: 'Check the database SSL mode and trusted certificates.',
       title: 'SQL Defaults',

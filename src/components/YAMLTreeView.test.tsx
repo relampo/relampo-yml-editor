@@ -946,3 +946,32 @@ it('adds SQL Defaults from the project menu and reopens the existing configurati
   await waitFor(() => expect(selection).toEqual([id]));
   expect(latest.children?.filter(node => node.type === 'sql_defaults')).toHaveLength(1);
 });
+
+it('adds an SQL cell extractor through the SQL request context menu', async () => {
+  const root: YAMLNode = {
+    id: 'sql-root',
+    type: 'test',
+    name: 'SQL project',
+    expanded: true,
+    children: [
+      {
+        id: 'sql-scalar',
+        type: 'sql',
+        name: 'Read scalar',
+        data: { kind: 'query', query: 'SELECT 1 AS value' },
+        children: [],
+      },
+    ],
+  };
+  let latest = root;
+  renderInteractiveTreeView({
+    tree: root,
+    onTreeStateChange: (tree) => {
+      latest = tree;
+    },
+  });
+  fireEvent.contextMenu(screen.getByText('Read scalar'));
+  fireEvent.click(screen.getByRole('button', { name: 'Extractor' }));
+  await waitFor(() => expect(latest.children![0].children).toHaveLength(1));
+  expect(latest.children![0].children![0].data).toEqual({ type: 'sql', var: 'extracted_value', column: '', row: 1 });
+});

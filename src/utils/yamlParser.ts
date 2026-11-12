@@ -389,8 +389,16 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
       name: buildSQLStepName(sql),
       data: sql,
       path: [...path, 'sql'],
-      children: [],
-      expanded: false,
+      children: Array.isArray(sql.extractors)
+        ? sql.extractors.map((extractor: any, index: number) => ({
+            id: `${stepId}_sql_extractor_${index}`,
+            type: 'extractor' as const,
+            name: `Extract: ${extractor.var ?? extractor.variable ?? ''}`,
+            data: asYAMLNodeData({ ...extractor, type: extractor.type ?? 'sql' }),
+            path: [...path, 'sql', 'extractors', index],
+          }))
+        : [],
+      expanded: Array.isArray(sql.extractors) && sql.extractors.length > 0,
       unknownData: unknownFields(step, new Set(['sql', 'enabled'])),
     };
   }

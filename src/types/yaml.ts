@@ -15,6 +15,8 @@ export interface YAMLResponseData {
 }
 
 export interface YAMLNodeData {
+  column?: string;
+  row?: number;
   response_template?: { message_type: string; message: YAMLValue };
   stream?: YAMLValue;
   plaintext?: boolean;

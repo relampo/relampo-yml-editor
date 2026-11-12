@@ -473,6 +473,17 @@ export const esTranslations = {
       truncated: 'Muestra limitada: hasta 100 filas, 64 columnas y 64 KiB; los valores largos pueden recortarse.',
       sample: 'Primera ejecución correcta de cada consulta. Las métricas incluyen todas las ejecuciones.',
     },
+    sqlExtractor: {
+      sourceColumn: 'Columna de origen (opcional)',
+      title: 'Extractor SQL',
+      help: 'Para selección SQL, indica fila y columna. Para los otros tipos, selecciona una columna de origen o déjala vacía para extraer del resultado completo como una lista JSON. XPath requiere una columna XML.',
+      enabled: 'Habilitado',
+      column: 'Nombre o alias de la columna',
+      row: 'Fila (desde 1)',
+      variable: 'Guardar en variable',
+      useDefault: 'Usar un valor por defecto si no existe o es NULL',
+      default: 'Valor por defecto',
+    },
     sqlDefaults: {
       error_ssl: 'Revisa el modo SSL y los certificados de confianza de la base de datos.',
       title: 'Valores SQL por defecto',

@@ -19,7 +19,12 @@ function currentKnownFields(): Record<string, ReadonlySet<string>> {
   const suffix = `/bundles/${slots.current}/contract.json`;
   const manifest = Object.entries(manifests).find(([path]) => path.endsWith(suffix))?.[1];
   if (!manifest) return {};
-  return Object.fromEntries(Object.entries(manifest.known_fields).map(([scope, fields]) => [scope, new Set([...fields, ...(manifest.editor_fields?.[scope] ?? [])]) ]));
+  return Object.fromEntries(
+    Object.entries(manifest.known_fields).map(([scope, fields]) => [
+      scope,
+      new Set([...fields, ...(manifest.editor_fields?.[scope] ?? [])]),
+    ]),
+  );
 }
 
 const knownFields = currentKnownFields();
@@ -127,11 +132,13 @@ function dataScope(
     case 'extractor':
     case 'extract':
       return {
-        scope: 'extractor',
+        scope: node.data?.type === 'sql' ? 'sql_extractor' : 'extractor',
         prefix:
-          parent && REQUEST_TYPES.has(parent.type)
-            ? [...(parent.path || []), 'request', 'extractors', childIndex(parent, node, EXTRACTOR_TYPES)]
-            : path,
+          parent?.type === 'sql'
+            ? [...(parent.path || []), 'extractors', childIndex(parent, node, EXTRACTOR_TYPES)]
+            : parent && REQUEST_TYPES.has(parent.type)
+              ? [...(parent.path || []), 'request', 'extractors', childIndex(parent, node, EXTRACTOR_TYPES)]
+              : path,
       };
     default:
       return null;

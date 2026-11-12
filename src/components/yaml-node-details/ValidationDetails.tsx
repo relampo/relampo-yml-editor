@@ -5,6 +5,7 @@ import {
   Brackets,
   CheckCircle2,
   Clock3,
+  Database,
   Search,
   SearchX,
   Tag,
@@ -285,6 +286,12 @@ const extractorTypes = [
 ] as const;
 
 const extractorTypeButtonStyle: Record<string, React.CSSProperties> = {
+  sql: {
+    backgroundColor: 'rgba(20, 184, 166, 0.20)',
+    color: '#5eead4',
+    borderColor: 'rgba(94, 234, 212, 0.50)',
+    boxShadow: '0 10px 22px rgba(20, 184, 166, 0.20)',
+  },
   regex: {
     backgroundColor: 'rgba(168, 85, 247, 0.20)',
     color: '#d8b4fe',
@@ -311,14 +318,17 @@ const extractorTypeButtonStyle: Record<string, React.CSSProperties> = {
   },
 };
 
-export function ExtractorDetails({ node, onNodeUpdate, searchQuery = '' }: NodeDetailProps) {
+export function ExtractorDetails({ node, onNodeUpdate, searchQuery = '', sqlContext = false }: NodeDetailProps & {sqlContext?:boolean}) {
   const { t } = useLanguage();
   const { data, updateData, updateField } = createNodeDataUpdater(node, onNodeUpdate);
   const extractorType = data.type || 'regex';
+  const isSQL = sqlContext || extractorType === 'sql';
+  const availableTypes = isSQL ? [...extractorTypes, { value: 'sql', icon: Database }] : extractorTypes;
   const extractorVariableName = data.var ?? data.variable ?? '';
   const extractorSource = data.from || 'body';
 
   const getExtractorDefaults = (type: string) => {
+    if (type === 'sql') return { type: 'sql', column: data.column ?? '', row: data.row ?? 1 };
     if (type === 'regex') {
       return {
         type: 'regex',
@@ -380,7 +390,7 @@ export function ExtractorDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
           {t('yamlEditor.nodeDetails.validation.extractorType')}
         </div>
         <div className="flex flex-wrap items-center gap-1">
-          {extractorTypes.map(type => {
+          {availableTypes.map(type => {
             const active = extractorType === type.value;
             const Icon = type.icon;
             return (
@@ -394,7 +404,7 @@ export function ExtractorDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
               >
                 <span className="inline-flex items-center gap-1.5">
                   <Icon className="h-3.5 w-3.5" />
-                  <span>{t(`yamlEditor.nodeDetails.validation.extract_${type.value}`)}</span>
+                  <span>{type.value === 'sql' ? 'SQL' : t(`yamlEditor.nodeDetails.validation.extract_${type.value}`)}</span>
                 </span>
               </button>
             );
@@ -416,9 +426,35 @@ export function ExtractorDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
         />
       </div>
 
+      {isSQL && (
+        <>
+          <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-3 items-end">
+            <TextField
+              searchQuery={searchQuery}
+              id="validation-sql-column"
+              label={t(extractorType === 'sql' ? 'yamlEditor.sqlExtractor.column' : 'yamlEditor.sqlExtractor.sourceColumn')}
+              value={data.column ?? ''}
+              placeholder="event_id"
+              onChange={value => handleChange('column', value)}
+            />
+            {(extractorType === 'sql' || Boolean(data.column)) && <SimpleNumberField
+              id="validation-sql-row"
+              label={t('yamlEditor.sqlExtractor.row')}
+              value={data.row ?? 1}
+              placeholder="1"
+              min={1}
+              noMargin
+              onChange={value => handleChange('row', value === '' ? undefined : Number(value))}
+            />}
+          </div>
+          <div className="mb-4 -mt-1 text-xs text-zinc-500">{t('yamlEditor.sqlExtractor.help')}</div>
+        </>
+      )}
+
       {extractorType === 'regex' && (
         <>
           <ExtractorSourceAndPattern
+            sqlContext={isSQL}
             source={extractorSource}
             label={t('yamlEditor.nodeDetails.validation.regexPatternRequired')}
             value={data.pattern || ''}
@@ -485,6 +521,7 @@ export function ExtractorDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
       {extractorType === 'jsonpath' && (
         <>
           <ExtractorSourceAndPattern
+            sqlContext={isSQL}
             source={extractorSource}
             label={t('yamlEditor.nodeDetails.validation.jsonpathRequired')}
             value={data.expression || data.pattern || ''}
@@ -500,6 +537,7 @@ export function ExtractorDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
       {extractorType === 'xpath' && (
         <>
           <ExtractorSourceAndPattern
+            sqlContext={isSQL}
             source={extractorSource}
             label={t('yamlEditor.nodeDetails.validation.xpathRequired')}
             value={data.expression || data.pattern || ''}
@@ -533,6 +571,7 @@ export function ExtractorDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
       {extractorType === 'boundary' && (
         <div className="mb-4 flex items-end gap-3">
           <ExtractorSourceSelect
+            sqlContext={isSQL}
             value={extractorSource}
             onChange={value => handleChange('from', value)}
           />
@@ -583,6 +622,7 @@ export function ExtractorDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
 
 function ExtractorSourceAndPattern({
   source,
+  sqlContext = false,
   label,
   value,
   placeholder,
@@ -591,6 +631,7 @@ function ExtractorSourceAndPattern({
   onValueChange,
 }: {
   source: string;
+  sqlContext?: boolean;
   label: string;
   value: string;
   placeholder: string;
@@ -601,6 +642,7 @@ function ExtractorSourceAndPattern({
   return (
     <div className="mb-4 flex items-end gap-3">
       <ExtractorSourceSelect
+        sqlContext={sqlContext}
         value={source}
         onChange={onSourceChange}
       />
@@ -620,7 +662,7 @@ function ExtractorSourceAndPattern({
   );
 }
 
-function ExtractorSourceSelect({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+function ExtractorSourceSelect({ value, onChange, sqlContext=false }: { value: string; onChange: (value: string) => void; sqlContext?:boolean }) {
   const { t } = useLanguage();
   return (
     <div className="w-55 shrink-0">
@@ -631,11 +673,13 @@ function ExtractorSourceSelect({ value, onChange }: { value: string; onChange: (
         </SelectTrigger>
         <SelectContent className="border-white/10 bg-[#111111]">
           <SelectItem value="body">{t('yamlEditor.nodeDetails.validation.fromBody')}</SelectItem>
-          <SelectItem value="headers">{t('yamlEditor.nodeDetails.validation.fromHeaders')}</SelectItem>
+          {!sqlContext && <>
+        <SelectItem value="headers">{t('yamlEditor.nodeDetails.validation.fromHeaders')}</SelectItem>
           <SelectItem value="status_line">{t('yamlEditor.nodeDetails.validation.fromStatusLine')}</SelectItem>
           <SelectItem value="request_url">{t('yamlEditor.nodeDetails.validation.fromRequestUrl')}</SelectItem>
           <SelectItem value="request_headers">{t('yamlEditor.nodeDetails.validation.fromRequestHeaders')}</SelectItem>
-        </SelectContent>
+          </>}
+      </SelectContent>
       </Select>
     </div>
   );

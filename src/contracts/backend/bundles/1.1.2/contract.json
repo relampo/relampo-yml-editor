@@ -11,7 +11,7 @@
     "pkg/runtime/config_view.go": "19af805f478de773b10ce083ab5ed6f1aa1974d97d28a566955eee368e6a72f6",
     "pkg/runtime/error_policy.go": "54fc81b8cc03b49a5ccd1020ccd4843eeeeca9f4d82124ff99232422b81fbf4b",
     "pkg/validator/load_config.go": "6efda3bc372589014f1ef092d8560a7bbe327d20205e8173cc20252ef53ceaa7",
-    "pkg/validator/validator.go": "72a525161ddca73ab63160af0b59211caf50a2c522c9e55a29ba5ac50cc9f5d4",
+    "pkg/validator/validator.go": "b662ca101e4647c8c01e532cb03ca7ad372f1520ce8e6b60c2b75e1fd1ca204f",
     "pkg/validator/validator_stages.go": "d69ba662a13977d8a0a706a51acdb8fca5972250b39a48e3f1d1790f727b3ad9",
     "pkg/validator/validator_throughput_load.go": "5f9e81607510d95ac3b841a04be7ad58a7fefcf0fd3de2a71f9ad7775a3a0e8d",
     "pkg/validator/validator_segments.go": "6c41c0ac69f19e4e8699077001049e807cc93e2c883e5c124af86edcf9c8bff8",
@@ -76,13 +76,13 @@
     "pkg/runtime/assertions.go": "0de838aba99acb2fe21544d588555779ff020d45dff08f442b12cafa117b42c2",
     "pkg/runtime/auth.go": "4222ab3fd639aa980cc52a85962c1da519c264dd55ffdcacf08221f9e0443ab3",
     "pkg/runtime/balanced.go": "91f7c5fc1a8fe4ab2ebb83b81c52fea64b750cb6be08f7f3acff0ea316b935c4",
-    "pkg/runtime/component_configuration.go": "1154b41e73e9819af35a27b1e566b664d25e67d289a89098a896785691ebdbe3",
+    "pkg/runtime/component_configuration.go": "518d20fbdb0b8e0753414f4259466b88b56c7ad046041831014001dae39d9b2e",
     "pkg/runtime/component_diagnostics.go": "514e62a5c2777883f2873cdb573371b9dbc2df41cf3ea859d3e3954cac25f386",
     "pkg/runtime/component_execution.go": "08ed6b02387c3cd7e3b006c12c86830c953b26558d149538fb3a837e5fbab64d",
     "pkg/runtime/component_inputs.go": "f059e5158fabeac4d16fb4932d9d8a1cc403c8099723fdb7caf1ddb7c5147eed",
     "pkg/runtime/component_one_time.go": "5305b138e0bc85e6c6cbf49111fa31cdbb3d427484da81fd68ddbb4a5d833c46",
     "pkg/runtime/component_redirects.go": "a91ce62eb949b5bef37518801e528101a6e50f8b0e32c2a0e67f884b892cb678",
-    "pkg/runtime/component_sql_assertions.go": "652b3c697e39679cd2ef24fbff5346373233dc74a16289fda13171cdedfbc176",
+    "pkg/runtime/component_sql_assertions.go": "872ef47746ae56b52fb10a3cf3387a006e802f978e4b516604bc3ce3771141ef",
     "pkg/runtime/component_validation.go": "f445425cd6255a64848a76a94f630846912cbdd25b0c7255f1b0f6c4b32fb853",
     "pkg/runtime/control_flow.go": "2f639f87659e080f4712f5fe552930680da129b773c8002b0835361447ee2945",
     "pkg/runtime/datasource.go": "dbb011bd3adf5571b8b4678939dc818814d8bd6abe225989e71490dabc070d59",
@@ -90,8 +90,8 @@
     "pkg/runtime/one_time.go": "629a5e3d6ba6d1d01bfd90b2580c03f7b5d301c9a4d0a6f7dff1e64b05dfc9b4",
     "pkg/runtime/parallel.go": "1b6d0c2ea2c63941418500f238a876ce1ec79b21c2296eb64f627a1bfefd6027",
     "pkg/runtime/request.go": "2f62aaaf76c36437a5080ec84f61eca5cb38053c0599ff02ad4bc963d84edea4",
-    "pkg/runtime/sql.go": "9db9aab2d85bff315bc32c2ac416892971f5da9627651c482ef9cb50c48aa5b6",
-    "pkg/runtime/sql_types.go": "3c305ce440199eff25df0451e8c1aaed4b298ee45776777330ceb40cf8758ff3",
+    "pkg/runtime/sql.go": "1cd65dfd68bf8369987b7beadad8b7351b123397672f1555c9f7824c3ebbd0a8",
+    "pkg/runtime/sql_types.go": "c7f50ed15e28acab9690b45d6d6096fff063774c2e4a0c8fbe41a9148afeb329",
     "pkg/runtime/transaction.go": "651c42ddc981999aea9b70c9ec50d832ce777ac84016aebed19617ad535688db",
     "pkg/runtime/url.go": "20adb180dd3009cb1c76381ead6c9a9098065a0159a4fc07cb9c5976ac02c00d",
     "pkg/runtime/redirect_chain.go": "f7afe10dcd98fe92b8bbb37eaac2c7708020d291e98a6b63d408d8905f11d8ad",
@@ -105,7 +105,8 @@
     "pkg/grpcschema/json.go": "c6a497d5ebadeea0420e977d0ade806d22d370dc51a42a9418154140d60529c5",
     "pkg/runtime/cookie.go": "ecc9a4f70618daa7d9af1ac6a4e982e9ab3838e1845dd24868fdc0cc300fe5d3",
     "pkg/runtime/extractors.go": "9dfe173ac62bf9f3cd1d8b35af72700fbece9c6728d2f1f0da800ee7c63d37e3",
-    "pkg/runtime/sql_defaults.go": "da1fe7b4fb346ebedc3420d8a9264f6dd3ce63e863cd17e17f73e44a7945da4f"
+    "pkg/runtime/sql_defaults.go": "1d6234360a7cc8bb3fc8bac64fdadb1101823095de5b99c1ccd38823dbfbfe4d",
+    "pkg/runtime/sql_extractors.go": "1c2998cbe7b2ba101978869318473edb8acb7eef58eceedff1a2dc14dfd087ad"
   },
   "validation_error_codes": [
     "builtin_syntax",
@@ -522,6 +523,7 @@
       "script"
     ],
     "sql": [
+      "extractors",
       "connection_ref",
       "assertions",
       "think_time",
@@ -580,6 +582,28 @@
       "connection",
       "timeout",
       "validate_connectivity"
+    ],
+    "sql_extractor": [
+      "type",
+      "var",
+      "variable",
+      "column",
+      "row",
+      "default",
+      "enabled",
+      "from",
+      "pattern",
+      "expression",
+      "path",
+      "transform",
+      "left_boundary",
+      "right_boundary",
+      "template",
+      "match_no",
+      "capture_mode",
+      "capture_index",
+      "group",
+      "namespace"
     ]
   },
   "poc_exclusions": [

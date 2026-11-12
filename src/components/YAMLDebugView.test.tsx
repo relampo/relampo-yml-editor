@@ -947,6 +947,7 @@ it('shows the returned SQL row values in the debug response inspector', async ()
     type: 'sql',
     name: 'Events query',
     data: { query: 'SELECT id, name FROM events', kind: 'query' },
+ children: [{id:'sql-id-extractor',type:'extractor',name:'Extract: event_id',data:{type:'sql',var:'event_id',column:'id',row:1}}],
   };
   render(
     <YAMLDebugSession
@@ -968,6 +969,7 @@ it('shows the returned SQL row values in the debug response inspector', async ()
         path: 'postgres QUERY',
         status: 0,
         rows_returned: 1,
+ variables: {event_id:'1'},
         sql_result: {
           kind: 'query',
           query: 'SELECT id, name FROM actual_events WHERE id=$1',
@@ -986,4 +988,6 @@ it('shows the returned SQL row values in the debug response inspector', async ()
  expect(await screen.findByText('SELECT id, name FROM actual_events WHERE id=$1')).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'response' }));
   expect(await screen.findByRole('table', { name: 'Returned SQL rows' })).toHaveTextContent('SQL event');
+ fireEvent.click(screen.getByRole('button',{name:'variables'}));
+ expect(await screen.findByText('event_id (RES)')).toBeInTheDocument();
 });

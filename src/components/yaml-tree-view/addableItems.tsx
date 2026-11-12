@@ -227,6 +227,18 @@ export function getAddableItems(
     ];
   }
 
+  if (parentType === 'sql')
+    return _parentNode?.data?.kind === 'exec'
+      ? []
+      : [
+          {
+            type: 'extractor',
+            label: t('yamlEditor.shell.addable.extractor'),
+            icon: <Filter className={iconClass} />,
+            color: 'text-blue-400',
+          },
+        ];
+
   const httpMethods = ['request', 'get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
   if (httpMethods.includes(parentType)) {
     return [

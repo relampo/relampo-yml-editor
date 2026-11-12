@@ -262,6 +262,8 @@ function stepNodeToObject(node: YAMLNode): any {
 
   if (node.type === 'sql') {
     const sqlStep = normalizeSQLForYaml(sanitizeBalancedNodeData(authoredNodeData(node)), Boolean(node.authoredData));
+    const extractors = node.children?.filter(child => child.type === 'extractor') ?? [];
+    if (extractors.length || 'extractors' in sqlStep) sqlStep.extractors = extractors.map(child => ({ ...child.data }));
     if (node.name && node.name !== node.data?.name && !node.authoredData) sqlStep.name = node.name;
     return { ...(node.unknownData || {}), sql: sqlStep };
   }

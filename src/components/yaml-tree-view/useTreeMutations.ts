@@ -112,6 +112,10 @@ export function useTreeMutations({
       if (!canAddNodeToTarget(target, nodeType)) return currentTree;
 
       const newNode = createNodeByType(nodeType, { balancedName: t('yamlEditor.balanced.name') });
+      if (target.type === 'sql' && nodeType === 'extractor') {
+        newNode.data = { type: 'sql', var: 'extracted_value', column: '', row: 1 };
+        newNode.name = t('yamlEditor.shell.addable.extractor');
+      }
       if (nodeType === 'grpc_defaults' || nodeType === 'sql_defaults') {
         if (currentTree.children?.some(child => child.type === nodeType)) return currentTree;
         return addNodeToTree(currentTree, currentTree.id, newNode, true);

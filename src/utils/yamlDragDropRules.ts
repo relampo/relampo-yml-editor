@@ -181,8 +181,8 @@ const containmentRules: Partial<Record<YAMLNodeType, YAMLNodeType[]>> = {
   head: SAMPLER_CHILDREN,
   options: SAMPLER_CHILDREN,
 
-  // SQL steps are leaf executable steps
-  sql: [],
+  // SQL queries can extract one cell into a variable.
+  sql: ['extractor'],
   grpc: [],
   websocket: ['headers'],
 

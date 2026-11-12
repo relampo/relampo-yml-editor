@@ -17,6 +17,7 @@ export type DebugEventLike = {
 };
 
 const REQUEST_TYPES = new Set([
+  'sql',
   'websocket',
   'grpc',
   'request',

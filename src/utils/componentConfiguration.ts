@@ -14,6 +14,7 @@ export const COMPONENT_FEATURES = [
   'http_state_usage',
   'extractor_enabled',
   'sql_connection_defaults',
+  'sql_extractors',
 ] as const;
 export type ComponentFeature = (typeof COMPONENT_FEATURES)[number];
 export interface ComponentCapabilities {
@@ -594,6 +595,44 @@ export function inspectComponentConfiguration(script: unknown): {
             for (const field of ['auth', 'headers', 'assertions'])
               if (field in payload) validateValue(field, payload[field], `${payloadPath}.${field}`, 'http');
           if (kind === 'sql') {
+            if (payload.extractors !== undefined) {
+              required.add('sql_extractors');
+              if (!Array.isArray(payload.extractors)) error(`${payloadPath}.extractors`, 'Expected a list.');
+              else {
+                const names = new Set<string>();
+                if (payload.extractors.length > 128)
+                  error(`${payloadPath}.extractors`, 'At most 128 SQL extractors are supported.');
+                payload.extractors.forEach((ext, index) => {
+                  const path = `${payloadPath}.extractors[${index}]`;
+                  if (!configurationRecord(ext)) {
+                    error(path, 'Expected an SQL extractor.');
+                    return;
+                  }
+                  if (ext.enabled === false) return;
+                  if (String(payload.kind ?? 'query') !== 'query') error(path, 'SQL extractors require kind=query.');
+                  const type = String(ext.type ?? 'sql').toLowerCase();
+                  if (!['sql', 'regex', 'jsonpath', 'json', 'xpath', 'boundary', 'body'].includes(type))
+                    error(`${path}.type`, 'Unsupported SQL result extractor.');
+                  if (ext.from !== undefined && ext.from !== '' && ext.from !== 'body')
+                    error(`${path}.from`, 'SQL results provide a body source.');
+                  const name = String(ext.var ?? ext.variable ?? '');
+                  if (!name.trim() || name !== name.trim())
+                    error(`${path}.var`, 'Variable name is required without surrounding whitespace.');
+                  if (names.has(name)) error(`${path}.var`, 'Duplicate destination variable.');
+                  names.add(name);
+                  if (ext.var && ext.variable && ext.var !== ext.variable)
+                    error(`${path}.variable`, 'Conflicts with var.');
+                  if ((type === 'sql' || type === 'xpath') && (typeof ext.column !== 'string' || !ext.column.trim()))
+                    error(
+                      `${path}.column`,
+                      type === 'xpath' ? 'Select an XML column for XPath.' : 'Column name is required.',
+                    );
+                  if (ext.row !== undefined && (!Number.isSafeInteger(ext.row) || Number(ext.row) < 1))
+                    error(`${path}.row`, 'Expected a one-based positive row.');
+                });
+              }
+            }
+
             const localPolicy = mergeSQLPolicy({}, payload.error_policy);
             const localOnError = typeof payload.on_error === 'string' ? payload.on_error.trim().toLowerCase() : '';
             for (const key of ['on_error', 'on_timeout']) {
@@ -706,6 +745,8 @@ export function componentCapabilityError(yaml: string, capabilities?: ComponentC
     !capabilities?.features.includes('sql_connection_defaults')
   )
     return 'This backend does not support SQL connection defaults. Update Relampo before running.';
+  if (inspection.required.includes('sql_extractors') && !capabilities?.features.includes('sql_extractors'))
+    return 'This backend does not support SQL extractors. Update Relampo before running.';
   if (!configurationRecord(script) || script.component_configuration_version !== 1) return null;
   if (capabilities?.version !== 1)
     return 'This backend does not support component configuration version 1. Update Relampo before running.';

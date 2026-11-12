@@ -1,7 +1,7 @@
 import { SearchMatchDetails } from './yaml-tree-view/SearchMatchDetails';
 import type { SearchScope } from './yaml-tree-view/search';
 import { ComponentConfigurationDetails } from './yaml-node-details/ComponentConfigurationDetails';
-import type { ComponentCapabilities } from '../utils/componentConfiguration';
+import { componentNodeChain, type ComponentCapabilities } from '../utils/componentConfiguration';
 import type { DocumentIssue } from '../utils/documentIssues';
 import { NodeIssuesSection } from './DocumentIssues';
 import { Eye, EyeOff, FileText } from 'lucide-react';
@@ -522,6 +522,7 @@ function NodeDetailsContent({
       return (
         <ExtractorDetails
           node={node}
+          sqlContext={Boolean(tree && componentNodeChain(tree, node.id).some(parent => parent.type === 'sql'))}
           onNodeUpdate={onNodeUpdate}
           searchQuery={searchScope === 'responses' ? '' : searchQuery}
         />
