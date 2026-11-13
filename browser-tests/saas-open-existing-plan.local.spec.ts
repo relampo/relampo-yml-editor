@@ -263,3 +263,44 @@ test('keeps the discovery panel visible when GitHub rejects reading the reposito
   await expect(discovery.getByRole('button', { name: 'Search again', exact: true })).toBeEnabled();
   expect(f.writes()).toBe(0);
 });
+
+test('adds a collaborator script to the open selector while preserving the active edited document', async ({
+  page,
+  context,
+}) => {
+  const f = await fixture(page, context);
+  await f.open();
+  await expect(page).toHaveURL(/relampo-lab\?plan=tp-team-existing/);
+  const editor = page.frameLocator('iframe[data-plan-editor]');
+  const selector = editor.getByRole('combobox', { name: 'Plan script', exact: true });
+  await expect(selector.locator('option')).toHaveCount(2);
+  const selected = await selector.inputValue();
+  await editor.getByRole('treeitem', { name: /Shared health/ }).click();
+  const name = editor.getByRole('textbox', { name: 'Name', exact: true });
+  await name.fill('My unsaved request');
+  f.files.set(`${base}/Scripts/from-colleague.yaml`, yaml.replace('Shared health', 'Colleague request'));
+  f.files.set(`${base}/Scripts/health.yaml`, yaml.replace('Shared health', 'Published overwrite must wait'));
+  await page.getByRole('button', { name: 'Refresh scripts', exact: true }).click();
+  await expect(selector.locator('option')).toHaveText(['health.yaml', 'login.yaml', 'from-colleague.yaml']);
+  await expect(selector).toHaveValue(selected);
+  await expect(name).toHaveValue('My unsaved request');
+  expect(f.writes()).toBe(0);
+  await selector.selectOption({ label: 'from-colleague.yaml' });
+  await expect(editor.getByRole('treeitem', { name: /Colleague request/ })).toBeVisible();
+  expect(f.writes()).toBe(0);
+});
+
+test('automatically shows both scripts when the collaborator returns to Relampo', async ({ page, context }) => {
+  const f = await fixture(page, context);
+  f.files.delete(`${base}/Scripts/login.yaml`);
+  await f.open();
+  await expect(page).toHaveURL(/relampo-lab\?plan=tp-team-existing/);
+  const editor = page.frameLocator('iframe[data-plan-editor]');
+  const selector = editor.getByRole('combobox', { name: 'Plan script', exact: true });
+  await expect(selector.locator('option')).toHaveCount(1);
+  await expect(page.getByRole('button', { name: 'Refresh scripts', exact: true })).toBeEnabled();
+  f.files.set(`${base}/Scripts/colleague.yaml`, yaml.replace('Shared health', 'Colleague health'));
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  await expect(selector.locator('option')).toHaveText(['health.yaml', 'colleague.yaml']);
+  expect(f.writes()).toBe(0);
+});
