@@ -19,6 +19,8 @@ async function fixture(
     duplicate?: boolean;
     readOnly?: boolean;
     draft?: boolean;
+    noPlans?: boolean;
+    denyRead?: boolean;
   } = {},
 ) {
   const files = new Map<string, string>([
@@ -33,6 +35,7 @@ async function fixture(
     ['another/plan/Data/.gitkeep', ''],
     ['another/plan/Utilities/.gitkeep', ''],
   ]);
+  if (options.noPlans) for (const path of [...files.keys()]) if (path.endsWith('/test-plan.yaml')) files.delete(path);
   if (options.missing) files.delete(`${base}/Data/.gitkeep`);
   let writes = 0,
     refs = 0;
@@ -64,6 +67,7 @@ async function fixture(
       const sha = options.stale && refs > 2 ? 'b'.repeat(40) : head;
       return send({ object: { sha }, commit: { id: sha } });
     }
+    if (options.denyRead && path.includes('/git/trees/')) return send({ message: 'Contents access denied' }, 403);
     if (path.includes('/git/commits/')) return send({ tree: { sha: 'f'.repeat(40) } });
     if (path.includes('/git/trees/') || path.endsWith('/repository/tree'))
       return send(options.gitlab ? tree() : { tree: tree(), truncated: false });
@@ -119,8 +123,10 @@ async function fixture(
   await dialog.getByLabel('Access token').fill('test-only-open-shared-token');
   await dialog.getByRole('button', { name: options.gitlab ? 'Connect GitLab' : 'Connect GitHub', exact: true }).click();
   await dialog.getByLabel('Repository').selectOption('friend/team');
-  await expect(dialog.getByLabel('Test Plans found in this repository')).toBeVisible();
-  if (!options.invalid) await dialog.getByLabel('Test Plans found in this repository').selectOption(base);
+  if (!options.noPlans && !options.denyRead)
+    await expect(dialog.getByLabel('Test Plans found in this repository')).toBeVisible();
+  if (!options.invalid && !options.noPlans && !options.denyRead)
+    await dialog.getByLabel('Test Plans found in this repository').selectOption(base);
   return {
     dialog,
     files,
@@ -229,5 +235,31 @@ test('keeps an orphaned browser draft intact instead of replacing it with the sh
     return value;
   });
   expect(saved.yaml).toBe('test: {name: Unsaved work}');
+  expect(f.writes()).toBe(0);
+});
+
+test('shows why no plans were found and can rescan after a collaborator publishes the manifest', async ({
+  page,
+  context,
+}) => {
+  const f = await fixture(page, context, { noPlans: true });
+  const discovery = f.dialog.getByRole('region', { name: 'Open an existing Test Plan', exact: true });
+  await expect(discovery).toContainText('friend/team');
+  await expect(discovery.getByRole('status')).toContainText('No compatible Test Plan was found');
+  await expect(discovery).toContainText('test-plan.yaml');
+  expect(f.writes()).toBe(0);
+  f.files.set(`${base}/test-plan.yaml`, manifest());
+  await discovery.getByRole('button', { name: 'Search again', exact: true }).click();
+  await expect(f.dialog.getByLabel('Test Plans found in this repository')).toBeVisible();
+  await f.open();
+  await expect(page).toHaveURL(/relampo-lab\?plan=tp-team-existing/);
+  expect(f.writes()).toBe(0);
+});
+test('keeps the discovery panel visible when GitHub rejects reading the repository', async ({ page, context }) => {
+  const f = await fixture(page, context, { denyRead: true });
+  const discovery = f.dialog.getByRole('region', { name: 'Open an existing Test Plan', exact: true });
+  await expect(discovery.getByRole('alert')).toContainText('Could not read the plans');
+  await expect(discovery.getByRole('alert')).toContainText('403');
+  await expect(discovery.getByRole('button', { name: 'Search again', exact: true })).toBeEnabled();
   expect(f.writes()).toBe(0);
 });
