@@ -310,3 +310,86 @@ test('automatically shows both scripts without a refresh button or user action',
   await expect(selector.locator('option')).toHaveText(['health.yaml', 'colleague.yaml'], { timeout: 40000 });
   expect(f.writes()).toBe(0);
 });
+
+test('reconnects a returning legacy default script and discovers an identical-content copy without replacing its draft', async ({
+  page,
+  context,
+}) => {
+  test.setTimeout(65000);
+  const f = await fixture(page, context);
+  const original = 'demo9.correlated con spark (1) (3).yaml';
+  const copy = 'demo9.correlated con spark (1) (3)-copyDelvis.yaml';
+  f.files.delete(`${base}/Scripts/health.yaml`);
+  f.files.delete(`${base}/Scripts/login.yaml`);
+  f.files.set(`${base}/Scripts/${original}`, yaml);
+  await f.open();
+  await expect(page).toHaveURL(/relampo-lab\?plan=tp-team-existing/);
+  const selector = page
+    .frameLocator('iframe[data-plan-editor]')
+    .getByRole('combobox', { name: 'Plan script', exact: true });
+  await expect(selector.locator('option')).toHaveText([original]);
+  await page.goto(new URL('/projects', saasURL!).href);
+  await page.evaluate(
+    async ({ original, base }) => {
+      const user = localStorage.getItem('relampo-current-user')!;
+      const namespace = localStorage.getItem(`relampo-editor-account:${encodeURIComponent(user)}`)!;
+      const prefix = `saas-plan:${namespace}:tp-team-existing`;
+      async function open(name: string) {
+        return await new Promise<IDBDatabase>((resolve, reject) => {
+          const req = indexedDB.open(name, 1);
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
+        });
+      }
+      const db = await open('relampo-yaml-editor');
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction('drafts', 'readwrite'),
+          store = tx.objectStore('drafts'),
+          request = store.get(`${prefix}:scripts`);
+        request.onsuccess = () => {
+          const catalog = request.result;
+          const id = catalog.scripts[0].id;
+          const draft = store.get(`${prefix}:script:${id}`);
+          draft.onsuccess = () => {
+            store.put({ ...draft.result, id: prefix });
+            store.put({ ...draft.result, id: `${prefix}:script:default` });
+            store.put({ ...catalog, activeScriptId: 'default', scripts: [{ id: 'default', fileName: original }] });
+          };
+        };
+        tx.oncomplete = () => resolve();
+        tx.onabort = tx.onerror = () => reject(tx.error);
+      });
+      db.close();
+      const git = await open('relampo-git-plans');
+      await new Promise<void>((resolve, reject) => {
+        const tx = git.transaction('plans', 'readwrite'),
+          store = tx.objectStore('plans');
+        const key = `${encodeURIComponent(user)}:tp-team-existing`;
+        const req = store.get(key);
+        req.onsuccess = () => store.put({ ...req.result, bindings: { default: `${base}/Scripts/${original}` } }, key);
+        tx.oncomplete = () => resolve();
+        tx.onabort = tx.onerror = () => reject(tx.error);
+      });
+      git.close();
+    },
+    { original, base },
+  );
+  f.files.set(`${base}/Scripts/${copy}`, yaml);
+  await page.goto(new URL('/relampo-lab?plan=tp-team-existing&script=default', saasURL!).href);
+  const returning = page
+    .frameLocator('iframe[data-plan-editor]')
+    .getByRole('combobox', { name: 'Plan script', exact: true });
+  // Static-host fixtures deliberately have no server credential session. Reconnect
+  // in the existing plan rather than assuming a page reload retained credentials.
+  await expect(returning.locator('option')).toHaveText([original]);
+  await page.getByRole('button', { name: 'Plan settings', exact: true }).click();
+  const settings = page.getByRole('dialog');
+  await settings.getByLabel('Access token').fill('test-only-open-shared-token');
+  await settings.getByRole('button', { name: 'Connect GitHub', exact: true }).click();
+  await expect(settings.getByRole('status').filter({ hasText: 'Connected as @collaborator' })).toBeVisible();
+  await settings.getByRole('button', { name: 'Close', exact: true }).click();
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  await expect(returning.locator('option')).toHaveText([original, copy], { timeout: 40000 });
+  await expect(returning).toHaveValue('default');
+  expect(f.writes()).toBe(0);
+});
