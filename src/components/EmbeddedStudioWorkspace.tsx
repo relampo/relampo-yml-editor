@@ -198,6 +198,14 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
       )
         return;
       const message = event.data;
+      if (message.type === 'relampo:refresh-plan-scripts') {
+        try {
+          setCatalog(await loadPlanScripts());
+        } catch (cause) {
+          report(cause);
+        }
+        return;
+      }
       if (
         message.type === 'relampo:save-plan' &&
         typeof message.requestId === 'string' &&
