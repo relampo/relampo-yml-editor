@@ -38,7 +38,8 @@ async function fixture(
   if (options.noPlans) for (const path of [...files.keys()]) if (path.endsWith('/test-plan.yaml')) files.delete(path);
   if (options.missing) files.delete(`${base}/Data/.gitkeep`);
   let writes = 0,
-    refs = 0;
+    refs = 0,
+    treeReads = 0;
   const tree = () => [...files.keys()].map(path => ({ path, type: 'blob' }));
   await context.route(options.gitlab ? 'https://gitlab.com/api/v4/**' : 'https://api.github.com/**', async route => {
     const request = route.request(),
@@ -69,8 +70,10 @@ async function fixture(
     }
     if (options.denyRead && path.includes('/git/trees/')) return send({ message: 'Contents access denied' }, 403);
     if (path.includes('/git/commits/')) return send({ tree: { sha: 'f'.repeat(40) } });
-    if (path.includes('/git/trees/') || path.endsWith('/repository/tree'))
+    if (path.includes('/git/trees/') || path.endsWith('/repository/tree')) {
+      treeReads++;
       return send(options.gitlab ? tree() : { tree: tree(), truncated: false });
+    }
     const file = path.includes('/contents/')
       ? path.split('/contents/')[1]!
       : path.includes('/repository/files/')
@@ -131,6 +134,7 @@ async function fixture(
     dialog,
     files,
     writes: () => writes,
+    treeReads: () => treeReads,
     open: () => dialog.getByRole('button', { name: 'Open existing Test Plan', exact: true }).click(),
   };
 }
@@ -280,7 +284,8 @@ test('adds a collaborator script to the open selector while preserving the activ
   await name.fill('My unsaved request');
   f.files.set(`${base}/Scripts/from-colleague.yaml`, yaml.replace('Shared health', 'Colleague request'));
   f.files.set(`${base}/Scripts/health.yaml`, yaml.replace('Shared health', 'Published overwrite must wait'));
-  await page.getByRole('button', { name: 'Refresh scripts', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Refresh scripts', exact: true })).toHaveCount(0);
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
   await expect(selector.locator('option')).toHaveText(['health.yaml', 'login.yaml', 'from-colleague.yaml']);
   await expect(selector).toHaveValue(selected);
   await expect(name).toHaveValue('My unsaved request');
@@ -290,7 +295,8 @@ test('adds a collaborator script to the open selector while preserving the activ
   expect(f.writes()).toBe(0);
 });
 
-test('automatically shows both scripts when the collaborator returns to Relampo', async ({ page, context }) => {
+test('automatically shows both scripts without a refresh button or user action', async ({ page, context }) => {
+  test.setTimeout(50000);
   const f = await fixture(page, context);
   f.files.delete(`${base}/Scripts/login.yaml`);
   await f.open();
@@ -298,9 +304,9 @@ test('automatically shows both scripts when the collaborator returns to Relampo'
   const editor = page.frameLocator('iframe[data-plan-editor]');
   const selector = editor.getByRole('combobox', { name: 'Plan script', exact: true });
   await expect(selector.locator('option')).toHaveCount(1);
-  await expect(page.getByRole('button', { name: 'Refresh scripts', exact: true })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Refresh scripts', exact: true })).toHaveCount(0);
+  await expect.poll(f.treeReads).toBeGreaterThanOrEqual(3);
   f.files.set(`${base}/Scripts/colleague.yaml`, yaml.replace('Shared health', 'Colleague health'));
-  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
-  await expect(selector.locator('option')).toHaveText(['health.yaml', 'colleague.yaml']);
+  await expect(selector.locator('option')).toHaveText(['health.yaml', 'colleague.yaml'], { timeout: 40000 });
   expect(f.writes()).toBe(0);
 });
