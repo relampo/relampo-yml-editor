@@ -68,6 +68,8 @@ for (const provider of ['github', 'gitlab'] as const) {
           }
           if (path.includes('/git/commits/') && request.method() === 'GET')
             return respond({ tree: { sha: 'f'.repeat(40) } });
+          if (path.includes('/git/trees/') && request.method() === 'GET')
+            return respond({ tree: [...files.keys()].map(path => ({ path, type: 'blob' })), truncated: false });
           if (path.endsWith('/git/trees')) {
             const body = request.postDataJSON();
             expect(body.base_tree).toBe('f'.repeat(40));
@@ -94,6 +96,8 @@ for (const provider of ['github', 'gitlab'] as const) {
           if (path.endsWith('/repository/branches')) return respond([{ name: 'main' }]);
           if (path.includes('/repository/branches/')) return respond({ commit: { id: head } });
           if (path.endsWith('/repository/tree')) {
+            if (url.searchParams.get('recursive') === 'true')
+              return respond([...files.keys()].map(path => ({ path, type: 'blob' })));
             const folder = url.searchParams.get('path')!;
             return respond(
               [...files.keys()].some(key => key.startsWith(folder + '/')) ? [{ type: 'blob' }] : [],
@@ -167,7 +171,11 @@ for (const provider of ['github', 'gitlab'] as const) {
       .click();
     await expect(dialog.getByRole('status').filter({ hasText: 'Connected as @acme' })).toBeVisible();
     await expect(dialog.getByLabel('Account or organization')).toHaveValue('acme');
-    await expect(dialog.getByLabel('Repository').locator('option')).toHaveText(['Select a repository', 'performance']);
+    await expect(dialog.getByLabel('Repository').locator('option')).toHaveText([
+      'Select a repository',
+      'performance',
+      'readonly',
+    ]);
     await dialog.getByLabel('Account or organization').selectOption('team');
     await expect(dialog.getByLabel('Repository').locator('option')).toHaveText(['Select a repository', 'shared']);
     await dialog.getByLabel('Account or organization').selectOption('acme');
@@ -419,7 +427,7 @@ for (const provider of ['github', 'gitlab'] as const) {
   });
 }
 
-test('Git connections reject untrusted hosts, unsafe paths and read-only access without writing remotely', async ({
+test('Git connections reject untrusted hosts and unsafe paths while allowing read-only access without remote writes', async ({
   page,
   context,
 }) => {
@@ -430,7 +438,9 @@ test('Git connections reject untrusted hosts, unsafe paths and read-only access 
     requests.push(route.request().method() + ' ' + route.request().url());
     return route.fulfill({
       headers: { 'Access-Control-Allow-Origin': '*' },
-      json: { default_branch: 'main', permissions: { push: false } },
+      json: new URL(route.request().url()).pathname.endsWith('/branches')
+        ? [{ name: 'main' }]
+        : { default_branch: 'main', permissions: { push: false } },
     });
   });
   await page.goto(base.origin);
@@ -477,9 +487,12 @@ test('Git connections reject untrusted hosts, unsafe paths and read-only access 
   expect(result.folders).toEqual([true, true, true, true]);
   expect(result.invalidBranches).toEqual([false, false, false, false, false]);
   expect(result.nested).toBe('group/subgroup/repo');
-  expect(result.connected).toBe(false);
-  expect(result.permission).toContain('no write access');
-  expect(requests).toEqual(['GET https://api.github.com/repos/acme/readonly']);
+  expect(result.connected).toBe(true);
+  expect(result.permission).toBe('');
+  expect(requests).toEqual([
+    'GET https://api.github.com/repos/acme/readonly',
+    'GET https://api.github.com/repos/acme/readonly/branches?per_page=100',
+  ]);
 });
 
 test('account discovery paginates repositories, keeps the detected owner and invalidates an expired connection', async ({

@@ -81,6 +81,8 @@ async function fixture(
       return respond({ message: 'Not Found' }, 404);
     }
     if (path.includes('/git/commits/') && req.method() === 'GET') return respond({ tree: { sha: 'f'.repeat(40) } });
+    if (path.includes('/git/trees/') && req.method() === 'GET')
+      return respond({ tree: [...files.keys()].map(path => ({ path, type: 'blob' })), truncated: false });
     if (path.endsWith('/git/trees')) {
       treeWrites++;
       expect(head).not.toBeNull();
@@ -201,7 +203,7 @@ test('a normal conflict does not initialize the repository or incorrectly blame 
 }) => {
   const f = await fixture(page, context, { nonEmptyConflict: true });
   await f.create();
-  const error = f.dialog.getByRole('alert');
+  const error = f.dialog.getByRole('alert').last();
   await expect(error).toContainText('409');
   await expect(error).not.toContainText('Check the token');
   expect(f.counts()).toEqual({ bootstrapWrites: 0, treeWrites: 0, refWrites: 0 });
