@@ -1,5 +1,4 @@
-import { studioAuthHeaders } from './studioAuth';
-import { getRuntimeConfig } from './runtimeConfig';
+import { agentRequest } from './agentTransport';
 export interface HTTPRecordOptions {
   paused: boolean;
   applicationUrl: string;
@@ -67,9 +66,9 @@ export interface HTTPRecordingPreview {
   response: unknown;
 }
 export async function httpRecorderRequest<T>(path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
-  const response = await fetch(getRuntimeConfig().apiBaseUrl + '/api/recorder/http/' + path, {
+  const response = await agentRequest('/api/recorder/http/' + path, {
     method: body === undefined ? 'GET' : 'POST',
-    headers: studioAuthHeaders(body === undefined ? undefined : { 'Content-Type': 'application/json' }),
+    headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
     body: body === undefined ? undefined : JSON.stringify(body),
     signal: signal ?? AbortSignal.timeout(45000),
   });

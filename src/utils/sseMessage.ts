@@ -1,3 +1,5 @@
+import { AGENT_STREAM_CLOSED, agentEventStream } from './agentTransport';
+
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -15,11 +17,11 @@ function parseSSEMessage<T>(message: Event, isValid: (value: unknown) => value i
 }
 
 export function createValidatedEventStream(
-  url: string,
+  path: string,
   reconnectGraceMs: number,
   onConnectionError: () => void,
 ) {
-  const source = new EventSource(url);
+  const source = agentEventStream(path);
   let finished = false;
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -48,7 +50,7 @@ export function createValidatedEventStream(
   source.addEventListener('open', clearReconnectTimer);
   source.onerror = () => {
     if (finished) return;
-    if (source.readyState === EventSource.CLOSED) {
+    if (source.readyState === AGENT_STREAM_CLOSED) {
       fail();
       return;
     }

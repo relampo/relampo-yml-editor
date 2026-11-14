@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { GRPCBrowserRecorder } from './GRPCBrowserRecorder';
 import { grpcRequest } from '../../utils/grpcApi';
-vi.mock('../../utils/grpcApi', () => ({ grpcRequest: vi.fn(), grpcBrowserCAURL: () => '/certificate' }));
+vi.mock('../../utils/grpcApi', () => ({ grpcRequest: vi.fn(), GRPC_BROWSER_CA_PATH: '/certificate' }));
 const initial = {
   active: false,
   detected: 'none',

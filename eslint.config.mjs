@@ -58,6 +58,24 @@ export default tseslint.config(
     },
   },
   {
+    // Backend calls go through src/utils/agentTransport.ts. The other two files
+    // call their own origin (runtime-config.json) and Statsig, not the backend.
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: [
+      'src/**/*.test.{ts,tsx}',
+      'src/utils/agentTransport.ts',
+      'src/utils/runtimeConfig.ts',
+      'src/utils/analytics.ts',
+    ],
+    rules: {
+      'no-restricted-globals': [
+        'error',
+        { name: 'fetch', message: 'Use agentRequest from utils/agentTransport.' },
+        { name: 'EventSource', message: 'Use agentEventStream from utils/agentTransport.' },
+      ],
+    },
+  },
+  {
     files: ['test/**/*.{ts,tsx}', 'vite.config.ts'],
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     languageOptions: {

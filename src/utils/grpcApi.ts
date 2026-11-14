@@ -1,5 +1,4 @@
-import { studioAuthHeaders, withStudioToken } from './studioAuth';
-import { getRuntimeConfig } from './runtimeConfig';
+import { agentRequest } from './agentTransport';
 import type { YAMLValue } from '../types/yaml';
 export interface GRPCField {
   name: string;
@@ -58,9 +57,9 @@ export interface GRPCRecording {
   truncated?: boolean;
 }
 export async function grpcRequest<T>(path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
-  const response = await fetch(getRuntimeConfig().apiBaseUrl + '/api/grpc/' + path, {
+  const response = await agentRequest('/api/grpc/' + path, {
     method: body === undefined ? 'GET' : 'POST',
-    headers: studioAuthHeaders(body === undefined ? undefined : { 'Content-Type': 'application/json' }),
+    headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
     body: body === undefined ? undefined : JSON.stringify(body),
     signal: signal ?? AbortSignal.timeout(30000),
   });
@@ -70,8 +69,8 @@ export async function grpcRequest<T>(path: string, body?: unknown, signal?: Abor
   }
   return response.json();
 }
-export function grpcBundleURL(id: string): string {
-  return withStudioToken(getRuntimeConfig().apiBaseUrl + '/api/grpc/bundles/' + encodeURIComponent(id));
+export function grpcBundlePath(id: string): string {
+  return '/api/grpc/bundles/' + encodeURIComponent(id);
 }
 
 export interface GRPCBrowserRecording {
@@ -91,6 +90,4 @@ export interface GRPCBrowserRecording {
   firefoxCertificateManaged?: boolean;
   firefoxCertificateReady?: boolean;
 }
-export function grpcBrowserCAURL(): string {
-  return withStudioToken(getRuntimeConfig().apiBaseUrl + '/api/grpc/browser-recordings/ca');
-}
+export const GRPC_BROWSER_CA_PATH = '/api/grpc/browser-recordings/ca';

@@ -10,13 +10,14 @@ import { GRPCMessageForm } from './GRPCMessageForm';
 import { GRPCStreamEditor } from './GRPCStreamEditor';
 import {
   grpcRequest,
-  grpcBundleURL,
+  grpcBundlePath,
   type GRPCConnection,
   type GRPCGenerated,
   type GRPCImported,
   type GRPCMethod,
   type GRPCRecording,
 } from '../../utils/grpcApi';
+import { AgentFileLink } from '../AgentFileLink';
 import { useGRPCSchema } from '../../hooks/useGRPCSchema';
 import type { YAMLValue } from '../../types/yaml';
 const input =
@@ -689,13 +690,13 @@ export function GRPCWorkbench({
                   Add to scenario
                 </button>
               )}
-              <a
+              <AgentFileLink
                 className={button}
-                href={grpcBundleURL(generated.id)}
+                path={grpcBundlePath(generated.id)}
                 download
               >
                 Download project bundle
-              </a>
+              </AgentFileLink>
             </div>
             {presentation === 'page' &&
               !onAdd &&

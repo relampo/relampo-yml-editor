@@ -1,7 +1,6 @@
 import type { YAMLNode, YAMLNodeData } from '../types/yaml';
 import { treeToYAML } from './yamlParser';
-import { studioAuthHeaders } from './studioAuth';
-import { getRuntimeConfig } from './runtimeConfig';
+import { agentRequest } from './agentTransport';
 
 export function sqlDefaults(tree?: YAMLNode | null): YAMLNodeData {
   return tree?.children?.find(node => node.type === 'sql_defaults')?.data ?? {};
@@ -19,9 +18,9 @@ export async function testSQLConnection(
   reference: string,
   signal?: AbortSignal,
 ): Promise<{ ok: boolean; duration_ms?: number; code?: string }> {
-  const response = await fetch(`${getRuntimeConfig().apiBaseUrl}/api/sql/test-connection`, {
+  const response = await agentRequest('/api/sql/test-connection', {
     method: 'POST',
-    headers: studioAuthHeaders({ 'Content-Type': 'application/json' }),
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ yaml: treeToYAML(tree), connection_ref: reference }),
     signal,
   });
