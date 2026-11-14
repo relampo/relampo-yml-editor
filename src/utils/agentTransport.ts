@@ -10,7 +10,13 @@
 // - Everywhere else: same-origin HTTP with the Studio session token. This is
 //   the Studio that a CLI serves on loopback (`relampo studio`).
 
-import { isEmbeddedStudio, markRelayRefused, requestRelayTicket, subscribeAgentState } from './agentHost';
+import {
+  getAgentState,
+  isEmbeddedStudio,
+  markRelayRefused,
+  requestRelayTicket,
+  subscribeAgentState,
+} from './agentHost';
 import { createRelayTransport } from './relayTransport';
 import { getRuntimeConfig } from './runtimeConfig';
 import { studioAuthHeaders, withStudioToken } from './studioAuth';
@@ -56,8 +62,13 @@ const httpTransport: AgentTransport = {
 // and the standalone recorder and Correlate pages at the cut-over, when no CLI
 // serves Studio.
 const relayTransport = createRelayTransport({ getTicket: requestRelayTicket, onRefused: markRelayRefused });
-// A new machine state, or "Retry", ends the reconnect wait: the next request tries at once.
-subscribeAgentState(() => relayTransport.resetBackoff());
+// A connection belongs to one machine. When the machine is not available, also
+// when the user picks another one, Studio closes the connection. A new state,
+// or "Retry", ends the reconnect wait: the next request asks for a new ticket.
+subscribeAgentState(() => {
+  if (getAgentState()?.connected === false) relayTransport.disconnect();
+  else relayTransport.resetBackoff();
+});
 
 /** True when the agent is reached through the relay and not over HTTP. */
 export function usesRelay(): boolean {

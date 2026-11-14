@@ -283,6 +283,8 @@ class Connection {
   private stopped = false;
   /** Tickets for the next connection: one, and one new ticket. After a stop: one. */
   private handshakes = 2;
+  /** Grows with every `disconnect`. A handshake of an older value is for a machine that Studio left. */
+  private epoch = 0;
   private pingTimer: ReturnType<typeof setInterval> | undefined;
 
   constructor(private options: RelayOptions) {}
@@ -309,23 +311,45 @@ class Connection {
     if (this.stopped) return Promise.reject(unreachable('the relay refused the connection'));
     if (Date.now() < this.retryAt) return Promise.reject(unreachable('the relay connection is not ready'));
 
-    const opening = this.dial().then(
+    const epoch = this.epoch;
+    const opening = this.dial(epoch).then(
       socket => {
         this.failures = 0;
         this.socket = socket;
         return socket;
       },
       (error: unknown) => {
-        this.wait();
+        if (epoch === this.epoch) this.wait();
         throw error instanceof TypeError ? error : unreachable(error instanceof Error ? error.message : String(error));
       },
     );
     this.opening = opening;
-    void opening.then(
-      () => (this.opening = null),
-      () => (this.opening = null),
-    );
+    const forget = () => {
+      if (this.opening === opening) this.opening = null;
+    };
+    void opening.then(forget, forget);
     return opening;
+  }
+
+  /**
+   * Closes the connection and fails every open request and stream. A
+   * connection belongs to one machine, so Studio calls this when the machine
+   * is not available, for example when the user picks another one. The next
+   * request asks for a new ticket. Nothing more goes to the old socket.
+   */
+  disconnect(): void {
+    this.epoch++;
+    this.opening = null;
+    const socket = this.socket;
+    this.socket = null;
+    clearInterval(this.pingTimer);
+    if (socket) {
+      socket.onclose = null;
+      socket.onmessage = null;
+      socket.close();
+    }
+    for (const exchange of [...this.exchanges.values()]) exchange.fail('closed');
+    this.reset();
   }
 
   /** Lets the next request connect at once, for example when the machine comes online. */
@@ -354,13 +378,23 @@ class Connection {
     });
   }
 
-  private async dial(): Promise<WebSocket> {
+  private async dial(epoch: number): Promise<WebSocket> {
     // The relay refuses a bad ticket in the handshake (401 or 403). A browser
     // cannot read that status: the socket closes before it opens. Studio asks
     // for one new ticket, then stops. "Retry" or a new state from the web app
     // lets it try again, with one ticket.
     let socket: WebSocket | null = null;
-    for (let attempt = 0; attempt < this.handshakes && !socket; attempt++) socket = await this.handshake();
+    for (let attempt = 0; attempt < this.handshakes && !socket && epoch === this.epoch; attempt++) {
+      socket = await this.handshake();
+    }
+    if (epoch !== this.epoch) {
+      // `disconnect` came during the handshake: this ticket was for the machine that Studio left.
+      if (socket) {
+        socket.onclose = null;
+        socket.close();
+      }
+      throw unreachable('the machine changed');
+    }
     if (!socket) {
       this.stopped = true;
       this.handshakes = 1;
@@ -653,12 +687,15 @@ class RelayEventStream implements AgentEventStream {
 export interface RelayTransport extends AgentTransport {
   /** Forget the reconnect wait. Call it when the machine becomes available. */
   resetBackoff(): void;
+  /** Close the connection and fail what is open. Call it when the machine is not available. */
+  disconnect(): void;
 }
 
 export function createRelayTransport(options: RelayOptions): RelayTransport {
   const connection = new Connection(options);
   return {
     resetBackoff: () => connection.reset(),
+    disconnect: () => connection.disconnect(),
     request: (path, init) => request(connection, path, init),
     eventStream: path => new RelayEventStream(connection, path),
     // A file from the agent has no URL. AgentFileLink reads it with `request`.

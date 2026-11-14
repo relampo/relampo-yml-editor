@@ -430,6 +430,55 @@ describe('connection', () => {
     expect(relay.sockets).toHaveLength(2);
   });
 
+  it('closes the connection on disconnect and opens a new one with a new ticket', async () => {
+    relay.agent!.handle = request => (request.path === '/api/run/7/events' ? new FakeStream() : { status: 200 });
+    await transport.request('/api/studio/info');
+    const stream = transport.eventStream('/api/run/7/events');
+    await flush();
+    relay.agent!.receive = () => undefined;
+    const pending = transport.request('/api/run', { method: 'POST', body: '{}' });
+    const failure = expect(pending).rejects.toThrow(TypeError);
+    await flush();
+    const oldSocket = relay.sockets[0];
+    const sentToOld = vi.spyOn(oldSocket, 'send');
+
+    // A connection belongs to one machine: the user picked another one.
+    transport.disconnect();
+
+    await failure;
+    expect(oldSocket.readyState).toBe(3);
+    expect(stream.readyState).toBe(0);
+    relay.agentComesBack();
+    expect((await transport.request('/api/studio/info')).status).toBe(200);
+    expect(relay.ticketsIssued).toBe(2);
+    expect(relay.sockets).toHaveLength(2);
+    expect(sentToOld).not.toHaveBeenCalled();
+    stream.close();
+  });
+
+  it('drops a connection that opens after disconnect', async () => {
+    let giveTicket!: () => void;
+    const getTicket = vi.fn(async () => {
+      if (getTicket.mock.calls.length === 1) await new Promise<void>(resolve => (giveTicket = resolve));
+      return relay.issueTicket();
+    });
+    transport = createRelayTransport({ getTicket, createSocket: relay.createSocket });
+    const first = transport.request('/api/studio/info');
+    const failure = expect(first).rejects.toThrow(TypeError);
+    await flush();
+
+    // The ticket of this handshake is for the machine that the user left.
+    transport.disconnect();
+    giveTicket();
+    await failure;
+    await flush();
+
+    expect(relay.sockets[0].readyState).toBe(3);
+    expect(relay.received).toEqual([]);
+    expect((await transport.request('/api/studio/info')).status).toBe(200);
+    expect(relay.sockets).toHaveLength(2);
+  });
+
   it('sends ping every 5 minutes', async () => {
     await transport.request('/api/studio/info');
 
