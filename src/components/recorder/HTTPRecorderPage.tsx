@@ -39,7 +39,9 @@ export function HTTPRecorderPage({
   useEffect(() => {
     onActivityChange?.(state.active);
   }, [state.active, onActivityChange]);
-  const recording = state.active && state.recording !== false;
+  // Inside the web app only `recording: true` is a recording: with `false`, or
+  // with no value, the proxy forwards the traffic and records nothing.
+  const recording = state.active && (embedded ? state.recording === true : state.recording !== false);
   useEffect(() => {
     if (!recording || !state.startedAt) return;
     const started = Date.parse(state.recordingStartedAt || state.startedAt);
@@ -287,7 +289,7 @@ export function HTTPRecorderPage({
         {embedded && state.active && (
           <div className="max-w-md shrink-0 border-b border-white/10 px-3 py-2 text-xs">
             <HTTPRecorderControls
-              state={state}
+              state={{ ...state, recording }}
               busy={busy}
               language={language}
               stopLabel={text('Stop recording', 'Detener grabación')}

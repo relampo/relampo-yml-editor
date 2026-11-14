@@ -127,7 +127,7 @@ export function timerReadError(setError: (update: (shown: string) => string) => 
 }
 
 /** True when a request got no answer: the agent can have done the work. */
-function isLostAnswer(cause: unknown): boolean {
+export function isLostAnswer(cause: unknown): boolean {
   return cause instanceof TypeError || (cause as { name?: unknown } | null)?.name === 'TimeoutError';
 }
 

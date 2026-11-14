@@ -11,7 +11,7 @@ import { useHTTPRecorder } from './useHTTPRecorder';
 
 let relay: FakeRelay;
 let transport: RelayTransport;
-let recording: { active: boolean; totalRequests: number; requests: unknown[] };
+let recording: { active: boolean; recording?: boolean; totalRequests: number; requests: unknown[] };
 let posts: string[];
 
 vi.mock('../../utils/agentTransport', async importOriginal => ({
@@ -54,7 +54,8 @@ beforeEach(() => {
     const name = path.slice(ROOT.length);
     if (name === 'options') return { body: JSON.stringify({ port: 8888, firefoxAvailable: true }) };
     if (method === 'POST') posts.push(name);
-    if (name === 'start') recording = { ...idle, active: true };
+    if (name === 'start') recording = { ...idle, active: true, recording: false };
+    if (name === 'record') recording = { ...recording, recording: true };
     if (name === 'stop') recording = { ...idle, totalRequests: 3 };
     return { body: JSON.stringify(recording) };
   };
@@ -134,6 +135,63 @@ describe('a POST with no answer', () => {
     expect(posts).toEqual(['start', 'stop']);
     expect(recorder.current.state).toMatchObject({ active: false, totalRequests: 3 });
     expect(recorder.current.error).toBe('');
+    expect(recorder.current.busy).toBe('');
+  });
+});
+
+// Contract 0.16: `POST /record` is safe to repeat. A lost one left the
+// recorder in pause in the third full test, and Studio showed a recording.
+describe('record with no answer', () => {
+  const records = () => relay.sent('req').filter(frame => frame.path === ROOT + 'record');
+
+  async function openBrowser() {
+    const recorder = await openRecorder();
+    act(() => void recorder.current.start());
+    await advance(1000);
+    expect(recorder.current.state).toMatchObject({ active: true, recording: false });
+    return recorder;
+  }
+
+  it('sends record again when the state did not change', async () => {
+    const recorder = await openBrowser();
+    loseOnce('agent', 'req', 'record');
+
+    act(() => void recorder.current.control('record', {}));
+    await advance(9_900);
+    expect(records()).toHaveLength(1);
+    await advance(1_100);
+
+    expect(records()).toHaveLength(2);
+    expect(posts).toEqual(['start', 'record']);
+    expect(recorder.current.state.recording).toBe(true);
+    expect(recorder.current.error).toBe('');
+    expect(recorder.current.busy).toBe('');
+  });
+
+  it('sends record one time when the agent did the work and the answer is lost', async () => {
+    const recorder = await openBrowser();
+    loseOnce('web', 'res', 'record');
+
+    act(() => void recorder.current.control('record', {}));
+    await advance(11_000);
+
+    expect(records()).toHaveLength(1);
+    expect(recorder.current.state.recording).toBe(true);
+    expect(recorder.current.error).toBe('');
+    expect(recorder.current.busy).toBe('');
+  });
+
+  it('stops after 3 tries and shows an error', async () => {
+    const recorder = await openBrowser();
+    relay.drop = (frame, side) => side === 'agent' && frame.t === 'req' && frame.path === ROOT + 'record';
+
+    act(() => void recorder.current.control('record', {}));
+    await advance(60_000);
+
+    expect(records()).toHaveLength(3);
+    expect(posts).toEqual(['start']);
+    expect(recorder.current.state.recording).toBe(false);
+    expect(recorder.current.error).not.toBe('');
     expect(recorder.current.busy).toBe('');
   });
 });

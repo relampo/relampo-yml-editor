@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAgentState } from '../../hooks/useAgentState';
 import { agentUnavailableText } from '../../utils/agentHost';
-import { stateAfterLostAnswer, timerRead, timerReadError, usesRelay } from '../../utils/agentTransport';
+import { isLostAnswer, stateAfterLostAnswer, timerRead, timerReadError, usesRelay } from '../../utils/agentTransport';
 import { probeStudio } from '../../utils/debugApi';
 import {
   defaultHTTPRecordOptions,
@@ -100,24 +100,29 @@ export function useHTTPRecorder(embedded = false) {
   async function action(name: string, body: unknown) {
     setBusy(name);
     setError('');
+    // `record` is safe to repeat (contract, section 8): 3 tries, 10 seconds each.
+    const repeat = name === 'record';
     try {
-      await httpRecorderRequest(name, body);
-      return await timerRead(refresh);
-    } catch (cause) {
-      const message = cause instanceof Error ? cause.message : String(cause);
-      try {
-        // With no answer, the agent can have done the work: the state decides.
-        const current = await stateAfterLostAnswer(cause, refresh);
-        const done =
-          name === 'start' ? current.active : name === 'stop' && !current.active && (embedded || !!current.savedPath);
-        if (!done) setError(message);
-        return current;
-      } catch {
-        setError(message);
+      for (let tries = repeat ? 3 : 1; ; tries--) {
         try {
+          await (repeat
+            ? timerRead(signal => httpRecorderRequest(name, body, signal))
+            : httpRecorderRequest(name, body));
           return await timerRead(refresh);
-        } catch {
-          /* Preserve the original operation error. */
+        } catch (cause) {
+          // With no answer, the agent can have done the work: the state decides.
+          const current = await stateAfterLostAnswer(cause, refresh).catch(() => undefined);
+          const done =
+            name === 'start'
+              ? current?.active
+              : name === 'stop'
+                ? current && !current.active && (embedded || !!current.savedPath)
+                : repeat && current?.recording === true;
+          if (done) return current;
+          if (tries > 1 && isLostAnswer(cause)) continue;
+          setError(cause instanceof Error ? cause.message : String(cause));
+          // After an error with an answer, show the state of the agent.
+          return current ?? (await timerRead(refresh).catch(() => undefined));
         }
       }
     } finally {

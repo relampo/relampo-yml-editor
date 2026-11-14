@@ -138,3 +138,19 @@ it('shows the recorded traffic one time after stop, also after more state polls'
   expect(screen.getAllByRole('region', { name: 'Recorded traffic' })).toHaveLength(1);
   expect(screen.getAllByRole('button', { name: 'Add recording to the test plan' })).toHaveLength(1);
 }, 12_000);
+
+it('shows a recording only when the state says recording: true', async () => {
+  // Contract 0.16. An answer with no `recording` is not a recording.
+  await start();
+  state = { ...state, recording: undefined };
+  const seen = polls;
+  await waitFor(() => expect(polls).toBeGreaterThan(seen + 1), { timeout: 4000 });
+
+  expect(screen.getByText('Browser ready · not recording')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Start recording' })).toBeInTheDocument();
+  expect(screen.queryByText('Recording')).not.toBeInTheDocument();
+
+  state = { ...state, recording: true };
+  await waitFor(() => expect(screen.getByText('Recording')).toBeInTheDocument(), { timeout: 4000 });
+  expect(screen.queryByRole('button', { name: 'Start recording' })).not.toBeInTheDocument();
+});
