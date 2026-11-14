@@ -2,7 +2,8 @@
 // and CLI contract (relampo-control-plane/docs/web-cli-contract.md):
 // one-time tickets, the allow list, 16 KB data frames, `ack` after every 16
 // frames and after the last one, a window of 64 unacknowledged frames, `err`
-// codes and `agent_offline` with no `id`.
+// codes, `agent_offline` with and with no `id`, the path checks, and frames
+// that the relay drops with no answer.
 //
 // The fake agent records every rule that the web side breaks in `violations`.
 // It does not have the 30-second timer of a sender; no test needs it.
@@ -11,6 +12,22 @@ const CHUNK = 16 * 1024;
 const WINDOW = 64;
 const ACK_EVERY = 16;
 const MAX_FRAMES = 4096;
+/** One message is at most 30 KB. */
+const MAX_MESSAGE = 30 * 1024;
+const WEB_FRAMES = ['req', 'data', 'end', 'cancel', 'ack'];
+
+/** The decoded path with no query string, or null when the relay refuses it. */
+function checkedPath(path: string): string | null {
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(path.split('?')[0]);
+  } catch {
+    return null;
+  }
+  const bad = [...decoded].some(character => character === '\\' || character < ' ' || character === '\x7f');
+  const parts = decoded.split('/').slice(1);
+  return bad || decoded.includes('//') || parts.some(part => part === '.' || part === '..') ? null : decoded;
+}
 
 const ALLOW_LIST: [prefix: string, feature: string | null][] = [
   ['/api/studio/info', null],
@@ -309,30 +326,33 @@ export class FakeRelay {
 
   fromWeb(socket: FakeSocket, frame: RelayFrame): void {
     this.received.push(frame);
+    // The relay answers `ping` itself. It forwards neither `ping` nor `pong`.
     if (frame.t === 'ping') {
       this.toWeb(socket, { t: 'pong' });
       return;
     }
-    if (frame.t === 'pong') return;
-    if (frame.t === 'req') {
-      const path = String(frame.path);
-      const rule = ALLOW_LIST.find(([prefix]) => path.startsWith(prefix));
-      const refusal = !rule
+    // A frame that is not valid is dropped with no answer.
+    if (typeof frame.id !== 'string' || frame.id.length > 128 || !WEB_FRAMES.includes(frame.t)) return;
+    let refusal = JSON.stringify(frame).length > MAX_MESSAGE ? 'too_large' : '';
+    if (!refusal && frame.t === 'req') {
+      const path = checkedPath(String(frame.path));
+      const rule = path === null ? undefined : ALLOW_LIST.find(([prefix]) => path.startsWith(prefix));
+      refusal = !rule
         ? 'not_found'
         : rule[1] && !this.features.has(rule[1])
           ? 'plan_not_allowed'
           : Number(frame.body_frames) > MAX_FRAMES
             ? 'too_large'
-            : !this.agent
-              ? 'agent_offline'
-              : '';
-      if (refusal) {
-        this.toWeb(socket, { t: 'err', id: frame.id, code: refusal });
-        return;
-      }
+            : '';
+    }
+    // With no agent, every frame that has an `id` gets `agent_offline` with that `id`.
+    if (!refusal && !this.agent) refusal = 'agent_offline';
+    if (refusal) {
+      this.toWeb(socket, { t: 'err', id: frame.id, code: refusal });
+      return;
     }
     // The relay adds the web connection as `from` on the way to the agent.
-    this.agent?.receive({ ...frame, from: socket.connectionId });
+    this.agent!.receive({ ...frame, from: socket.connectionId });
   }
 
   private fromAgent(frame: RelayFrame): void {

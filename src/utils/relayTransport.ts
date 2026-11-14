@@ -14,6 +14,12 @@ const ACK_EVERY = 16;
 /** A sender has at most this many data frames without an `ack`. */
 const WINDOW = 64;
 const ACK_TIMEOUT_MS = 30_000;
+/**
+ * How long a request waits for `res`. The relay drops an invalid frame with no
+ * answer, so this is the only signal. It is longer than every timeout that a
+ * caller sets (the longest is 120 seconds, for Correlate).
+ */
+const RESPONSE_TIMEOUT_MS = 150_000;
 const PING_INTERVAL_MS = 5 * 60_000;
 const BACKOFF_START_MS = 1_000;
 const BACKOFF_MAX_MS = 30_000;
@@ -43,6 +49,7 @@ type Failure =
   | 'cancelled'
   | 'protocol'
   | 'ack_timeout'
+  | 'no_response'
   | 'agent_offline'
   | 'plan_not_allowed'
   | 'not_found'
@@ -91,6 +98,7 @@ class Exchange {
   // Sending side.
   private peerAcknowledged = 0;
   private ackWaiter: { resolve: () => void; reject: (error: Error) => void } | null = null;
+  private responseTimer: ReturnType<typeof setTimeout> | undefined;
   private done = false;
 
   constructor(
@@ -113,7 +121,10 @@ class Exchange {
         b64: encodeBase64(body.subarray(seq * CHUNK_BYTES, (seq + 1) * CHUNK_BYTES)),
       });
     }
-    if (!this.done) this.send({ t: 'end', id: this.id, frames });
+    if (this.done) return;
+    // Always, also with no body: the agent accepts the `end` that follows a request.
+    this.send({ t: 'end', id: this.id, frames });
+    if (!this.responded) this.responseTimer = setTimeout(() => this.cancel('no_response'), RESPONSE_TIMEOUT_MS);
   }
 
   // The 30-second timer runs only here, at the limit of the window.
@@ -146,6 +157,7 @@ class Exchange {
         for (const [name, value] of Object.entries(frame.headers)) if (typeof value === 'string') headers[name] = value;
       }
       this.responded = true;
+      clearTimeout(this.responseTimer);
       this.handlers.onResponse(status, headers);
       this.acknowledge();
     } else if (frame.t === 'data') {
@@ -165,14 +177,16 @@ class Exchange {
       this.ackWaiter = null;
       waiter?.resolve();
     } else if (frame.t === 'cancel') {
+      // A `cancel` from the agent before `end` is a failed request, for example
+      // a response that passed 64 MB after `res`.
       this.fail('cancelled');
     } else if (frame.t === 'err') {
       const code = frame.code;
-      this.fail(
-        code === 'agent_offline' || code === 'plan_not_allowed' || code === 'not_found' || code === 'too_large'
-          ? code
-          : 'protocol',
-      );
+      // The relay did not forward a frame that is too large. The agent can
+      // hold the start of the request, so the sender ends it with `cancel`.
+      if (code === 'too_large') this.cancel('too_large');
+      else
+        this.fail(code === 'agent_offline' || code === 'plan_not_allowed' || code === 'not_found' ? code : 'protocol');
     }
   }
 
@@ -242,6 +256,7 @@ class Exchange {
 
   private finish(): void {
     this.done = true;
+    clearTimeout(this.responseTimer);
     this.buffered.clear();
     this.release();
   }
@@ -254,6 +269,8 @@ class Connection {
   private exchanges = new Map<string, Exchange>();
   private failures = 0;
   private retryAt = 0;
+  /** The relay refused two tickets. Studio waits for a new state from the web app. */
+  private stopped = false;
   private pingTimer: ReturnType<typeof setInterval> | undefined;
 
   constructor(private options: RelayOptions) {}
@@ -277,6 +294,7 @@ class Connection {
   private connect(): Promise<WebSocket> {
     if (this.socket?.readyState === SOCKET_OPEN) return Promise.resolve(this.socket);
     if (this.opening) return this.opening;
+    if (this.stopped) return Promise.reject(unreachable('the relay refused the connection'));
     if (Date.now() < this.retryAt) return Promise.reject(unreachable('the relay connection is not ready'));
 
     const opening = this.dial().then(
@@ -302,6 +320,7 @@ class Connection {
   reset(): void {
     this.failures = 0;
     this.retryAt = 0;
+    this.stopped = false;
   }
 
   private wait(): void {
@@ -309,20 +328,31 @@ class Connection {
     this.retryAt = Date.now() + backoff(this.failures);
   }
 
-  private async dial(): Promise<WebSocket> {
+  /** Opens a socket with a new ticket. Null when it closes before it opens. */
+  private async handshake(): Promise<WebSocket | null> {
     // One ticket opens one connection, so every attempt asks for a new one.
     const { relayUrl, ticket } = await this.options.getTicket();
     const address = new URL(relayUrl);
     if (address.protocol !== 'wss:') throw unreachable('the relay address is not secure');
     address.searchParams.set('ticket', ticket);
     const socket = (this.options.createSocket ?? (target => new WebSocket(target)))(address.href);
-
-    await new Promise<void>((resolve, reject) => {
-      socket.onopen = () => resolve();
-      socket.onclose = () => reject(unreachable('the relay refused the connection'));
+    return new Promise(resolve => {
+      socket.onopen = () => resolve(socket);
+      socket.onclose = () => resolve(null);
     });
+  }
 
-    socket.onmessage = event => this.receive(socket, event.data);
+  private async dial(): Promise<WebSocket> {
+    // The relay refuses a bad ticket in the handshake (401 or 403). A browser
+    // cannot read that status: the socket closes before it opens. Studio asks
+    // for one new ticket, then stops until the web app sends a new state.
+    const socket = (await this.handshake()) ?? (await this.handshake());
+    if (!socket) {
+      this.stopped = true;
+      throw unreachable('the relay refused the connection');
+    }
+
+    socket.onmessage = event => this.receive(event.data);
     socket.onclose = () => {
       clearInterval(this.pingTimer);
       if (this.socket === socket) this.socket = null;
@@ -336,7 +366,7 @@ class Connection {
     return socket;
   }
 
-  private receive(socket: WebSocket, data: unknown): void {
+  private receive(data: unknown): void {
     let frame: Frame;
     try {
       frame = JSON.parse(String(data)) as Frame;
@@ -344,15 +374,14 @@ class Connection {
       return;
     }
     if (!frame || typeof frame !== 'object') return;
-    if (frame.t === 'ping') {
-      socket.send(JSON.stringify({ t: 'pong' }));
-      return;
-    }
+    // With an `id`, a frame is about one request. The relay answers `ping`
+    // itself, so no `ping` comes here, and Studio does not wait for `pong`.
     if (typeof frame.id === 'string') {
       this.exchanges.get(frame.id)?.receive(frame);
       return;
     }
-    // The agent connection closed: the relay cannot name the open requests.
+    // With no `id`, `err` is about the connection. The agent closed, or a
+    // second `relampo connect` replaced it: every open request fails.
     if (frame.t === 'err' && frame.code === 'agent_offline') {
       for (const exchange of [...this.exchanges.values()]) exchange.fail('agent_offline');
     }
@@ -374,8 +403,15 @@ const FAILURE_DETAILS: Partial<Record<Failure, string>> = {
   cancelled: 'the agent stopped the request',
   protocol: 'the answer did not follow the relay protocol',
   ack_timeout: 'the agent did not confirm the data in 30 seconds',
+  no_response: 'the agent did not answer in 150 seconds',
   agent_offline: 'the machine is offline',
 };
+
+/** The path as fetch sends it: no `.` or `..` part, and the query string. The relay refuses other forms. */
+function agentPath(path: string): string {
+  const address = new URL(path, 'https://agent.invalid');
+  return address.pathname + address.search;
+}
 
 function untilAborted<T>(promise: Promise<T>, signal: AbortSignal | null | undefined): Promise<T> {
   if (!signal) return promise;
@@ -449,7 +485,9 @@ async function request(connection: Connection, path: string, init: RequestInit =
   const abort = () => exchange.cancel();
   signal?.addEventListener('abort', abort);
   // A failure of the body reaches the caller through onFailure.
-  void exchange.sendRequest(outgoing.method, path, Object.fromEntries(outgoing.headers), body).catch(() => undefined);
+  void exchange
+    .sendRequest(outgoing.method, agentPath(path), Object.fromEntries(outgoing.headers), body)
+    .catch(() => undefined);
   try {
     return await result;
   } finally {
@@ -558,7 +596,7 @@ class RelayEventStream implements AgentEventStream {
     }
     this.exchange = exchange;
     const headers = { accept: 'text/event-stream', ...(this.lastEventId ? { 'Last-Event-ID': this.lastEventId } : {}) };
-    void exchange.sendRequest('GET', this.path, headers, new Uint8Array()).catch(() => undefined);
+    void exchange.sendRequest('GET', agentPath(this.path), headers, new Uint8Array()).catch(() => undefined);
   }
 
   private fail(): void {

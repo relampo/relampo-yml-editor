@@ -1,12 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FakeRelay, FakeStream, type FakeSocket } from '../test/fakeRelay';
-import type { AgentTransport } from './agentTransport';
-import { createRelayTransport } from './relayTransport';
+import { createRelayTransport, type RelayTransport } from './relayTransport';
 
 const CHUNK = 16 * 1024;
 
 let relay: FakeRelay;
-let transport: AgentTransport;
+let transport: RelayTransport;
 
 function bytes(length: number): Uint8Array<ArrayBuffer> {
   return Uint8Array.from({ length }, (_, index) => index % 251);
@@ -224,6 +223,47 @@ describe('request', () => {
     relay.toWeb(relay.sockets[0], { t: 'err', id: relay.sent('req')[0].id, code: 'too_large' });
 
     expect((await result).status).toBe(413);
+    // The relay did not forward the frame: the sender ends the request with `cancel`.
+    await flush();
+    expect(relay.agent!.cancelled).toEqual([relay.sent('req')[0].id]);
+  });
+
+  it('cancels a request that gets no res in 150 seconds', async () => {
+    // The relay drops an invalid frame with no answer, so only a timeout ends the request.
+    relay.agent!.receive = () => undefined;
+    const result = transport.request('/api/studio/info');
+    const failure = expect(result).rejects.toThrow(TypeError);
+    await flush();
+
+    await vi.advanceTimersByTimeAsync(149_000);
+    expect(relay.sent('cancel')).toHaveLength(0);
+    await vi.advanceTimersByTimeAsync(1_000);
+
+    await failure;
+    expect(relay.sent('cancel')).toHaveLength(1);
+  });
+
+  it('starts no timer for the body after res', async () => {
+    relay.agent!.handle = () => new FakeStream();
+    void transport.request('/api/run/7/report').catch(() => undefined);
+    await flush();
+
+    await vi.advanceTimersByTimeAsync(10 * 60_000);
+
+    expect(relay.sent('cancel')).toHaveLength(0);
+  });
+
+  it('sends the path as fetch does, with the query string', async () => {
+    await transport.request('/api/debug/../studio/info?probe=1');
+
+    expect(relay.sent('req')[0].path).toBe('/api/studio/info?probe=1');
+  });
+
+  it('gets a 404 response for a path that the relay refuses after decoding', async () => {
+    const response = await transport.request('/api/debug/a%2F%2Fb');
+
+    expect(response.status).toBe(404);
+    expect(relay.agent!.requests).toEqual([]);
   });
 
   it('cancels a response that has more than 4,096 data frames', async () => {
@@ -261,8 +301,38 @@ describe('connection', () => {
     expect(relay.sockets).toHaveLength(0);
   });
 
-  it('waits with backoff after a failed connection and asks for a new ticket each time', async () => {
+  it('asks for one new ticket when the relay refuses the handshake, then stops', async () => {
     const getTicket = vi.fn(() => Promise.resolve({ relayUrl: relay.url, ticket: 'used-or-unknown' }));
+    transport = createRelayTransport({ getTicket, createSocket: relay.createSocket });
+
+    await expect(transport.request('/api/studio/info')).rejects.toThrow(TypeError);
+    expect(getTicket).toHaveBeenCalledTimes(2);
+
+    // No endless retry: Studio waits for the web app.
+    await vi.advanceTimersByTimeAsync(10 * 60_000);
+    await expect(transport.request('/api/studio/info')).rejects.toThrow(TypeError);
+    expect(getTicket).toHaveBeenCalledTimes(2);
+
+    // A new `relampo:agent-state` lets Studio try again.
+    transport.resetBackoff();
+    await expect(transport.request('/api/studio/info')).rejects.toThrow(TypeError);
+    expect(getTicket).toHaveBeenCalledTimes(4);
+  });
+
+  it('connects with the second ticket when the relay refuses only the first', async () => {
+    const getTicket = vi.fn(() =>
+      getTicket.mock.calls.length === 1
+        ? Promise.resolve({ relayUrl: relay.url, ticket: 'expired' })
+        : relay.issueTicket(),
+    );
+    transport = createRelayTransport({ getTicket, createSocket: relay.createSocket });
+
+    expect((await transport.request('/api/studio/info')).status).toBe(200);
+    expect(getTicket).toHaveBeenCalledTimes(2);
+  });
+
+  it('waits with backoff when the web app gives no ticket, and asks again each time', async () => {
+    const getTicket = vi.fn(() => Promise.reject<{ relayUrl: string; ticket: string }>(new Error('agent_offline')));
     transport = createRelayTransport({ getTicket, createSocket: relay.createSocket });
 
     await expect(transport.request('/api/studio/info')).rejects.toThrow(TypeError);
@@ -295,16 +365,14 @@ describe('connection', () => {
     expect(relay.sockets).toHaveLength(2);
   });
 
-  it('sends ping every 5 minutes and answers ping with pong', async () => {
+  it('sends ping every 5 minutes', async () => {
     await transport.request('/api/studio/info');
 
     await vi.advanceTimersByTimeAsync(5 * 60_000);
     await flush();
-    expect(relay.sent('ping')).toHaveLength(1);
 
-    relay.toWeb(relay.sockets[0], { t: 'ping' });
-    await flush();
-    expect(relay.sent('pong')).toHaveLength(1);
+    // The relay answers with `pong`. Studio does not wait for it.
+    expect(relay.sent('ping')).toHaveLength(1);
   });
 });
 
@@ -406,6 +474,24 @@ describe('eventStream', () => {
     streams[0].send('event: done\ndata: {}\n\n');
     await flush();
     expect(events).toHaveLength(1);
+  });
+
+  it('asks again when the stream gets no res in 150 seconds', async () => {
+    const { source, streams } = open();
+    const agent = relay.agent!;
+    const receive = agent.receive.bind(agent);
+    agent.receive = () => undefined;
+    await flush();
+    expect(streams).toHaveLength(0);
+
+    await vi.advanceTimersByTimeAsync(150_000);
+    expect(relay.sent('cancel')).toHaveLength(1);
+    agent.receive = receive;
+    await vi.advanceTimersByTimeAsync(1_000);
+    await flush();
+
+    expect(streams).toHaveLength(1);
+    expect(source.readyState).toBe(1);
   });
 
   it('asks again when the agent ends the stream', async () => {
