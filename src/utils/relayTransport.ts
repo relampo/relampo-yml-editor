@@ -20,7 +20,18 @@ const ACK_TIMEOUT_MS = 30_000;
  * caller sets (the longest is 120 seconds, for Correlate).
  */
 const RESPONSE_TIMEOUT_MS = 150_000;
-const PING_INTERVAL_MS = 5 * 60_000;
+// The platform can lose a frame and tell nobody (section 8, "Lost frames").
+// Every wait has a time limit, so a lost frame ends in an error or a new try.
+/** `data` or `end` came before `res`: they wait this long for it. */
+const EARLY_FRAMES_MS = 30_000;
+/** After `res`, a body that is not a stream fails with no frame for this long. */
+const BODY_IDLE_MS = 30_000;
+/** The agent sends a frame on an open stream at least every 15 seconds. */
+const STREAM_IDLE_MS = 45_000;
+/** A later frame or `end` came, and a `data` frame before it is still missing. */
+const MISSING_FRAME_MS = 5_000;
+/** A quiet connection was closed after about 60 seconds between a customer and the cloud. */
+const PING_INTERVAL_MS = 30_000;
 const BACKOFF_START_MS = 1_000;
 const BACKOFF_MAX_MS = 30_000;
 
@@ -52,6 +63,7 @@ type Failure =
   | 'protocol'
   | 'ack_timeout'
   | 'no_response'
+  | 'stalled'
   | 'agent_offline'
   | 'plan_not_allowed'
   | 'not_found'
@@ -89,6 +101,13 @@ function unreachable(detail: string): TypeError {
   return new TypeError(`Could not reach the Relampo agent: ${detail}`);
 }
 
+/**
+ * The request went out and its answer did not arrive. The agent can have done
+ * the work, so Studio reads the state again before it shows an error, and it
+ * does not repeat a POST by itself. It is a TypeError, like a fetch that fails.
+ */
+export class AgentAnswerLost extends TypeError {}
+
 /** One request and its response on the connection. */
 class Exchange {
   // Receiving side.
@@ -100,7 +119,10 @@ class Exchange {
   // Sending side.
   private peerAcknowledged = 0;
   private ackWaiter: { resolve: () => void; reject: (error: Error) => void } | null = null;
-  private responseTimer: ReturnType<typeof setTimeout> | undefined;
+  /** The waits of "Lost frames". Each one ends the exchange with `cancel`. */
+  private timers: Partial<Record<'response' | 'early' | 'idle' | 'missing', ReturnType<typeof setTimeout>>> = {};
+  /** The frame that the `missing` timer waits for. */
+  private missing = -1;
   private done = false;
 
   constructor(
@@ -126,7 +148,31 @@ class Exchange {
     if (this.done) return;
     // Always, also with no body: the agent accepts the `end` that follows a request.
     this.send({ t: 'end', id: this.id, frames });
-    if (!this.responded) this.responseTimer = setTimeout(() => this.cancel('no_response'), RESPONSE_TIMEOUT_MS);
+    if (!this.responded) this.wait('response', RESPONSE_TIMEOUT_MS, 'no_response');
+  }
+
+  private wait(name: keyof Exchange['timers'], milliseconds: number, reason: Failure): void {
+    clearTimeout(this.timers[name]);
+    this.timers[name] = setTimeout(() => this.cancel(reason), milliseconds);
+  }
+
+  /** Starts the waits again after a frame of the response. */
+  private watch(): void {
+    if (this.done) return;
+    if (!this.responded) {
+      // `data` or `end` before `res`: Studio keeps them 30 seconds. After that the body cannot be complete.
+      if (!this.timers.early) this.wait('early', EARLY_FRAMES_MS, 'stalled');
+      return;
+    }
+    this.wait('idle', this.handlers.stream ? STREAM_IDLE_MS : BODY_IDLE_MS, 'stalled');
+    const gap = this.buffered.size > 0 || (this.total !== null && this.next < this.total);
+    if (!gap) {
+      clearTimeout(this.timers.missing);
+      this.missing = -1;
+    } else if (this.missing !== this.next) {
+      this.missing = this.next;
+      this.wait('missing', MISSING_FRAME_MS, 'stalled');
+    }
   }
 
   // The 30-second timer runs only here, at the limit of the window.
@@ -159,7 +205,8 @@ class Exchange {
         for (const [name, value] of Object.entries(frame.headers)) if (typeof value === 'string') headers[name] = value;
       }
       this.responded = true;
-      clearTimeout(this.responseTimer);
+      clearTimeout(this.timers.response);
+      clearTimeout(this.timers.early);
       this.handlers.onResponse(status, headers);
       this.deliver();
     } else if (frame.t === 'data') {
@@ -190,6 +237,7 @@ class Exchange {
       else
         this.fail(code === 'agent_offline' || code === 'plan_not_allowed' || code === 'not_found' ? code : 'protocol');
     }
+    this.watch();
   }
 
   private receiveData(seq: unknown, b64: unknown): void {
@@ -214,8 +262,8 @@ class Exchange {
 
   /**
    * Gives the body to the caller in order, after `res`. Frames can arrive out
-   * of order, so `data` and `end` can come before `res`: they wait here until
-   * `res` comes or the request ends (at the latest, the 150 seconds with no `res`).
+   * of order, so `data` and `end` can come before `res`: they wait here for
+   * `res`, at most 30 seconds.
    */
   private deliver(): void {
     while (!this.done && this.responded && this.buffered.has(this.next)) {
@@ -266,7 +314,7 @@ class Exchange {
 
   private finish(): void {
     this.done = true;
-    clearTimeout(this.responseTimer);
+    for (const timer of Object.values(this.timers)) clearTimeout(timer);
     this.buffered.clear();
     this.release();
   }
@@ -465,6 +513,7 @@ const FAILURE_DETAILS: Partial<Record<Failure, string>> = {
   protocol: 'the answer did not follow the relay protocol',
   ack_timeout: 'the agent did not confirm the data in 30 seconds',
   no_response: 'the agent did not answer in 150 seconds',
+  stalled: 'a part of the answer did not arrive',
   agent_offline: 'the machine is offline',
 };
 
@@ -533,7 +582,7 @@ async function request(connection: Connection, path: string, init: RequestInit =
       const refusal = REFUSALS[reason];
       if (signal?.aborted) settle.reject(signal.reason);
       else if (refusal) settle.resolve(errorResponse(...refusal));
-      else settle.reject(unreachable(FAILURE_DETAILS[reason] ?? reason));
+      else settle.reject(new AgentAnswerLost(unreachable(FAILURE_DETAILS[reason] ?? reason).message));
     },
   });
 

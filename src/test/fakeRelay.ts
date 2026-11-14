@@ -3,7 +3,8 @@
 // one-time tickets, the allow list, 16 KB data frames, `ack` after every 16
 // frames and after the last one, a window of 64 unacknowledged frames, `err`
 // codes, `agent_offline` with and with no `id`, the path checks, and frames
-// that the relay drops with no answer.
+// that the relay drops with no answer. A test can also lose a chosen frame
+// (`drop`), as the platform does when it has no free capacity.
 //
 // The fake agent records every rule that the web side breaks in `violations`.
 // It does not have the 30-second timer of a sender; no test needs it.
@@ -254,6 +255,8 @@ export class FakeRelay {
   features = new Set(['debug', 'local_run', 'record', 'correlate_detect', 'correlate_full', 'distributed_run']);
   /** Deliver the frames of one batch to the web side in reverse order. */
   reorder = false;
+  /** Return true to lose a frame and tell nobody. `to` is the side that does not get it. */
+  drop: (frame: RelayFrame, to: 'web' | 'agent') => boolean = () => false;
   readonly url = 'wss://relay.test/';
   /** Every frame that the web side sent, in order. */
   readonly received: RelayFrame[] = [];
@@ -313,6 +316,7 @@ export class FakeRelay {
 
   /** Sends one frame to a web connection, as if it came from the agent. */
   toWeb(socket: FakeSocket, frame: RelayFrame): void {
+    if (this.drop(frame, 'web')) return;
     const batch = this.batches.get(socket);
     if (batch) {
       batch.push(frame);
@@ -334,6 +338,7 @@ export class FakeRelay {
       this.toWeb(socket, { t: 'pong' });
       return;
     }
+    if (this.drop(frame, 'agent')) return;
     // A frame that is not valid is dropped with no answer.
     if (typeof frame.id !== 'string' || frame.id.length > 128 || !WEB_FRAMES.includes(frame.t)) return;
     let refusal = JSON.stringify(frame).length > MAX_MESSAGE ? 'too_large' : '';

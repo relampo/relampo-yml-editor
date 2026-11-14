@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { FakeRelay, FakeStream, type FakeSocket } from '../test/fakeRelay';
-import { createRelayTransport, type RelayTransport } from './relayTransport';
+import { FakeRelay, FakeStream, type FakeSocket, type RelayFrame } from '../test/fakeRelay';
+import { AgentAnswerLost, createRelayTransport, type RelayTransport } from './relayTransport';
 
 const CHUNK = 16 * 1024;
 
@@ -295,16 +295,6 @@ describe('request', () => {
     expect(relay.sent('cancel')).toHaveLength(1);
   });
 
-  it('starts no timer for the body after res', async () => {
-    relay.agent!.handle = () => new FakeStream();
-    void transport.request('/api/run/7/report').catch(() => undefined);
-    await flush();
-
-    await vi.advanceTimersByTimeAsync(10 * 60_000);
-
-    expect(relay.sent('cancel')).toHaveLength(0);
-  });
-
   it('sends the path as fetch does, with the query string', async () => {
     await transport.request('/api/debug/../studio/info?probe=1');
 
@@ -479,10 +469,10 @@ describe('connection', () => {
     expect(relay.sockets).toHaveLength(2);
   });
 
-  it('sends ping every 5 minutes', async () => {
+  it('sends ping every 30 seconds', async () => {
     await transport.request('/api/studio/info');
 
-    await vi.advanceTimersByTimeAsync(5 * 60_000);
+    await vi.advanceTimersByTimeAsync(30_000);
     await flush();
 
     // The relay answers with `pong`. Studio does not wait for it.
@@ -692,6 +682,161 @@ describe('eventStream', () => {
     await flush();
 
     expect(relay.ticketsIssued).toBe(1);
+  });
+});
+
+// Contract section 8, "Lost frames": the platform can lose a frame and tell
+// nobody. Every wait has a time limit, so no request and no stream waits for ever.
+describe('lost frames', () => {
+  /** Loses the first frame that matches, on its way to that side. */
+  function loseOnce(to: 'web' | 'agent', match: (frame: RelayFrame) => boolean) {
+    let lost = false;
+    relay.drop = (frame, side) => {
+      if (lost || side !== to || !match(frame)) return false;
+      lost = true;
+      return true;
+    };
+  }
+
+  /** A request that must fail exactly `seconds` after the frames arrived, with `cancel`. */
+  async function failsAfter(seconds: number, result: Promise<Response>) {
+    const failure = expect(result).rejects.toThrow(AgentAnswerLost);
+    await flush();
+    await vi.advanceTimersByTimeAsync(seconds * 1000 - 100);
+    expect(relay.sent('cancel')).toHaveLength(0);
+    await vi.advanceTimersByTimeAsync(100);
+    await failure;
+    await flush();
+    expect(relay.sent('cancel')).toHaveLength(1);
+  }
+
+  it('fails a request 150 seconds after a lost req', async () => {
+    loseOnce('agent', frame => frame.t === 'req');
+
+    await failsAfter(150, transport.request('/api/studio/info'));
+    expect(relay.agent!.requests).toEqual([]);
+  });
+
+  it('fails a request 30 seconds after its first frame when res is lost', async () => {
+    relay.agent!.handle = () => ({ body: 'state' });
+    loseOnce('web', frame => frame.t === 'res');
+
+    await failsAfter(30, transport.request('/api/recorder/http/current'));
+  });
+
+  it('fails a request 5 seconds after a later frame when a middle data frame is lost', async () => {
+    relay.agent!.handle = () => ({ body: bytes(3 * CHUNK) });
+    loseOnce('web', frame => frame.t === 'data' && frame.seq === 1);
+
+    await failsAfter(5, transport.request('/api/run/7/report'));
+  });
+
+  it('fails a request 5 seconds after end when the last data frame is lost', async () => {
+    relay.agent!.handle = () => ({ body: bytes(3 * CHUNK) });
+    loseOnce('web', frame => frame.t === 'data' && frame.seq === 2);
+
+    await failsAfter(5, transport.request('/api/run/7/report'));
+  });
+
+  it('fails a request 30 seconds after its last frame when end is lost', async () => {
+    relay.agent!.handle = () => ({ body: 'state' });
+    loseOnce('web', frame => frame.t === 'end');
+
+    await failsAfter(30, transport.request('/api/recorder/http/current'));
+  });
+
+  it('fails an upload 30 seconds after the window is full when the acks of the agent are lost', async () => {
+    relay.drop = (frame, side) => side === 'web' && frame.t === 'ack';
+
+    await failsAfter(
+      30,
+      transport.request('/api/studio/data-source-files', { method: 'POST', body: bytes(70 * CHUNK) }),
+    );
+    expect(relay.sent('data')).toHaveLength(64);
+  });
+
+  it('fails a response 30 seconds after its last frame when the acks of Studio are lost', async () => {
+    relay.agent!.handle = () => ({ body: bytes(70 * CHUNK) });
+    relay.drop = (frame, side) => side === 'agent' && frame.t === 'ack';
+
+    await failsAfter(30, transport.request('/api/run/7/report'));
+  });
+
+  it('says that the answer is lost only after the request went out', async () => {
+    transport = createRelayTransport({ getTicket: () => Promise.reject(new Error('agent_offline')) });
+
+    const failure = await transport.request('/api/run', { method: 'POST', body: '{}' }).catch(error => error);
+
+    // The agent got nothing, so it did no work.
+    expect(failure).toBeInstanceOf(TypeError);
+    expect(failure).not.toBeInstanceOf(AgentAnswerLost);
+  });
+
+  describe('event stream', () => {
+    function open() {
+      const streams: FakeStream[] = [];
+      relay.agent!.handle = () => {
+        const stream = new FakeStream();
+        streams.push(stream);
+        return stream;
+      };
+      const source = transport.eventStream('/api/run/7/events');
+      const ids: string[] = [];
+      source.addEventListener('metrics', event => ids.push(event.lastEventId));
+      return { source, streams, ids };
+    }
+
+    it('opens the stream again 5 seconds after a later frame when a stream frame is lost', async () => {
+      const { source, streams, ids } = open();
+      await flush();
+      streams[0].send('id: 1\nevent: metrics\ndata: {}\n\n');
+      await flush();
+      loseOnce('web', frame => frame.t === 'data' && frame.seq === 1);
+      streams[0].send('id: 2\nevent: metrics\ndata: {}\n\n');
+      streams[0].send('id: 3\nevent: metrics\ndata: {}\n\n');
+      await flush();
+      expect(ids).toEqual(['1']);
+
+      await vi.advanceTimersByTimeAsync(5_000);
+      expect(relay.sent('cancel')).toHaveLength(1);
+      await vi.advanceTimersByTimeAsync(1_000);
+      await flush();
+
+      // The agent sends again what comes after the last event that Studio has.
+      expect(streams).toHaveLength(2);
+      expect(streams[1].lastEventId).toBe('1');
+      expect(source.readyState).toBe(1);
+    });
+
+    it('opens the stream again after 45 seconds with no frame', async () => {
+      const { streams } = open();
+      await flush();
+      streams[0].send('id: 9\nevent: metrics\ndata: {}\n\n');
+      await flush();
+
+      await vi.advanceTimersByTimeAsync(44_900);
+      expect(relay.sent('cancel')).toHaveLength(0);
+      await vi.advanceTimersByTimeAsync(1_100);
+      await flush();
+
+      expect(relay.sent('cancel')).toHaveLength(1);
+      expect(streams).toHaveLength(2);
+      expect(streams[1].lastEventId).toBe('9');
+    });
+
+    it('keeps a quiet stream open while the agent sends a frame every 15 seconds', async () => {
+      const { source, streams } = open();
+      await flush();
+
+      for (let turn = 0; turn < 8; turn++) {
+        streams[0].send(': keep-alive\n\n');
+        await vi.advanceTimersByTimeAsync(15_000);
+      }
+
+      expect(streams).toHaveLength(1);
+      expect(relay.sent('cancel')).toHaveLength(0);
+      expect(source.readyState).toBe(1);
+    });
   });
 });
 
