@@ -18,23 +18,34 @@ const idle = { active: false, totalRequests: 0, requests: [] };
 let state: any;
 let calls: [path: string, body: unknown][];
 let script: unknown;
+let polls: number;
 
 beforeEach(() => {
   state = idle;
   calls = [];
+  polls = 0;
   script = { name: 'checkout.yaml', yaml: 'test:\n  name: checkout\n' };
   vi.spyOn(window, 'open');
   vi.mocked(httpRecorderRequest).mockReset();
   vi.mocked(httpRecorderRequest).mockImplementation(async (path, body: any) => {
     if (body !== undefined) calls.push([path, body]);
+    if (path === 'current') polls++;
     if (path === 'options')
       return { directory: '/home/user/recordings', port: 8888, firefoxAvailable: true, firefoxConfigured: true } as any;
     if (path === 'editor') return script as any;
     if (path === 'start')
-      state = { ...idle, active: true, recording: false, prefixEnabled: true, transactionsEnabled: true };
+      state = {
+        ...idle,
+        active: true,
+        recording: false,
+        prefixEnabled: true,
+        transactionsEnabled: true,
+        startedAt: '2026-11-14T06:00:00Z',
+      };
     if (path === 'record') state = { ...state, recording: true };
     if (path === 'prefix') state = { ...state, prefix: body.prefix };
-    if (path === 'stop') state = { ...idle, totalRequests: 3 };
+    // The real agent keeps `startedAt` of the recording after `stop`.
+    if (path === 'stop') state = { ...idle, totalRequests: 3, startedAt: state.startedAt };
     return state;
   });
 });
@@ -114,3 +125,16 @@ it('reports an answer with no script', async () => {
   expect(await screen.findByRole('alert')).toHaveTextContent('The agent returned no recording.');
   expect(onImport).not.toHaveBeenCalled();
 });
+
+it('shows the recorded traffic one time after stop, also after more state polls', async () => {
+  await start();
+  fireEvent.click(screen.getAllByRole('button', { name: 'Stop recording' })[0]);
+  await screen.findByRole('button', { name: 'Add recording to the test plan' });
+  const seen = polls;
+
+  // The page asks for the state each second. Every answer draws the page again.
+  await waitFor(() => expect(polls).toBeGreaterThanOrEqual(seen + 3), { timeout: 8000 });
+
+  expect(screen.getAllByRole('region', { name: 'Recorded traffic' })).toHaveLength(1);
+  expect(screen.getAllByRole('button', { name: 'Add recording to the test plan' })).toHaveLength(1);
+}, 12_000);

@@ -309,7 +309,8 @@ export function HTTPRecorderPage({
         />
         {(state.savedPath || recorded) && (
           <HTTPRecorderSaved
-            key={state.savedPath || state.startedAt || 'recorded'}
+            // Its own key space: the list of requests above also uses `startedAt` as its key.
+            key={'saved:' + (state.savedPath || state.startedAt || 'recorded')}
             path={state.savedPath ?? ''}
             embedded={embedded}
             total={state.totalRequests}
