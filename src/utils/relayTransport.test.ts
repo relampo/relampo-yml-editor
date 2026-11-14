@@ -313,10 +313,23 @@ describe('connection', () => {
     await expect(transport.request('/api/studio/info')).rejects.toThrow(TypeError);
     expect(getTicket).toHaveBeenCalledTimes(2);
 
-    // A new `relampo:agent-state` lets Studio try again.
+    // "Retry" or a new `relampo:agent-state` lets Studio try again, with one ticket.
     transport.resetBackoff();
     await expect(transport.request('/api/studio/info')).rejects.toThrow(TypeError);
-    expect(getTicket).toHaveBeenCalledTimes(4);
+    expect(getTicket).toHaveBeenCalledTimes(3);
+  });
+
+  it('tells its owner when it stops', async () => {
+    const onRefused = vi.fn();
+    transport = createRelayTransport({
+      getTicket: () => Promise.resolve({ relayUrl: relay.url, ticket: 'used-or-unknown' }),
+      createSocket: relay.createSocket,
+      onRefused,
+    });
+
+    await expect(transport.request('/api/studio/info')).rejects.toThrow(TypeError);
+
+    expect(onRefused).toHaveBeenCalledTimes(1);
   });
 
   it('connects with the second ticket when the relay refuses only the first', async () => {

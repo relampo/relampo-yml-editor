@@ -39,6 +39,8 @@ export interface RelayOptions {
   getTicket: () => Promise<RelayTicket>;
   /** Tests pass a fake. The default is the WebSocket of the browser. */
   createSocket?: (address: string) => WebSocket;
+  /** The relay refused the connection and the transport stopped. `resetBackoff` lets it try again. */
+  onRefused?: () => void;
 }
 
 type Frame = { t?: unknown; id?: unknown; [field: string]: unknown };
@@ -269,8 +271,10 @@ class Connection {
   private exchanges = new Map<string, Exchange>();
   private failures = 0;
   private retryAt = 0;
-  /** The relay refused two tickets. Studio waits for a new state from the web app. */
+  /** The relay refused the connection. Studio waits for "Retry" or a new state from the web app. */
   private stopped = false;
+  /** Tickets for the next connection: one, and one new ticket. After a stop: one. */
+  private handshakes = 2;
   private pingTimer: ReturnType<typeof setInterval> | undefined;
 
   constructor(private options: RelayOptions) {}
@@ -345,12 +349,17 @@ class Connection {
   private async dial(): Promise<WebSocket> {
     // The relay refuses a bad ticket in the handshake (401 or 403). A browser
     // cannot read that status: the socket closes before it opens. Studio asks
-    // for one new ticket, then stops until the web app sends a new state.
-    const socket = (await this.handshake()) ?? (await this.handshake());
+    // for one new ticket, then stops. "Retry" or a new state from the web app
+    // lets it try again, with one ticket.
+    let socket: WebSocket | null = null;
+    for (let attempt = 0; attempt < this.handshakes && !socket; attempt++) socket = await this.handshake();
     if (!socket) {
       this.stopped = true;
+      this.handshakes = 1;
+      this.options.onRefused?.();
       throw unreachable('the relay refused the connection');
     }
+    this.handshakes = 2;
 
     socket.onmessage = event => this.receive(event.data);
     socket.onclose = () => {

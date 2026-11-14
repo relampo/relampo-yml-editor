@@ -10,8 +10,11 @@ export type AgentUnavailableReason = 'plan' | 'offline' | 'not_selected';
 
 export interface AgentState {
   connected: boolean;
-  /** Why the machine is not available. */
-  reason?: AgentUnavailableReason;
+  /**
+   * Why the machine is not available. `refused` does not come from the web
+   * app: Studio sets it when the relay refused the connection (see markRelayRefused).
+   */
+  reason?: AgentUnavailableReason | 'refused';
 }
 
 const REASONS: unknown[] = ['plan', 'offline', 'not_selected'];
@@ -34,11 +37,28 @@ function messageFromHost(event: MessageEvent): Record<string, unknown> | null {
 function receiveAgentState(event: MessageEvent): void {
   const message = messageFromHost(event);
   if (message?.type !== 'relampo:agent-state' || typeof message.connected !== 'boolean') return;
-  state = {
+  setState({
     connected: message.connected,
     ...(REASONS.includes(message.reason) ? { reason: message.reason as AgentUnavailableReason } : {}),
-  };
+  });
+}
+
+function setState(next: AgentState | null): void {
+  state = next;
   listeners.forEach(listener => listener());
+}
+
+/**
+ * The relay refused a ticket and one new ticket. Studio stops: it asks for no
+ * ticket until the user clicks "Retry" or the web app sends a new state.
+ */
+export function markRelayRefused(): void {
+  setState({ connected: false, reason: 'refused' });
+}
+
+/** The "Retry" button. Studio forgets the refusal, and the open views ask again. */
+export function retryRelay(): void {
+  if (state?.reason === 'refused') setState(null);
 }
 
 /** Starts to listen for `relampo:agent-state`. Call it once, before the app renders. */
@@ -93,7 +113,7 @@ export function requestRelayTicket(): Promise<RelayTicket> {
   });
 }
 
-const UNAVAILABLE: Record<AgentUnavailableReason | 'unknown', [en: string, es: string]> = {
+const UNAVAILABLE: Record<AgentUnavailableReason | 'refused' | 'unknown', [en: string, es: string]> = {
   plan: ['Your plan does not include a connected machine.', 'Tu plan no incluye una máquina conectada.'],
   offline: [
     'Your machine is offline. Start `relampo connect` on it.',
@@ -102,6 +122,10 @@ const UNAVAILABLE: Record<AgentUnavailableReason | 'unknown', [en: string, es: s
   not_selected: [
     'No machine is selected. Select one in Relampo.',
     'No hay una máquina seleccionada. Selecciona una en Relampo.',
+  ],
+  refused: [
+    'Relampo could not connect to your machine. Try again.',
+    'Relampo no pudo conectar con tu máquina. Intenta de nuevo.',
   ],
   unknown: [
     'Could not reach your machine. Check that `relampo connect` is running on it.',

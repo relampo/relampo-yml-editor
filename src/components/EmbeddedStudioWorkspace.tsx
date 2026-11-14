@@ -14,8 +14,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import type { CorrelateDocument } from '../utils/correlateBridge';
 import type { EmbeddedStudioController, EmbeddedStudioView } from '../utils/embeddedStudioController';
-import { useAgentState } from '../hooks/useAgentState';
-import { agentUnavailableText } from '../utils/agentHost';
+import { AgentUnavailableNotice } from './AgentUnavailableNotice';
 import { YAMLEditor } from './YAMLEditor';
 import { HTTPRecorderPage } from './recorder/HTTPRecorderPage';
 import { GRPCRecorderPage } from './grpc/GRPCRecorderPage';
@@ -79,7 +78,6 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
   const activity = useRef({ http: false, grpc: false });
   const [error, setError] = useState('');
   const { language } = useLanguage();
-  const agentState = useAgentState();
   const report = (cause: unknown) => setError(cause instanceof Error ? cause.message : String(cause));
   const goToScripting = useCallback(() => {
     draft.current.changed = false;
@@ -371,14 +369,7 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
           </p>
         )}
         {/* Editing needs no machine. Record, Correlation, Debug and Run do. */}
-        {agentState?.connected === false && view !== 'scripting' && (
-          <p
-            role="status"
-            className="shrink-0 bg-amber-500/10 px-4 py-2 text-xs text-amber-300"
-          >
-            {agentUnavailableText(language)}
-          </p>
-        )}
+        {view !== 'scripting' && <AgentUnavailableNotice language={language} />}
         <div
           className="min-h-0 flex-1"
           hidden={view === 'record' || view === 'correlation'}

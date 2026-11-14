@@ -4,7 +4,9 @@ import {
   getAgentState,
   initializeAgentHost,
   isEmbeddedStudio,
+  markRelayRefused,
   requestRelayTicket,
+  retryRelay,
   resetAgentHostForTests,
   subscribeAgentState,
 } from './agentHost';
@@ -131,5 +133,38 @@ describe('agent state', () => {
     fromHost({ type: 'relampo:agent-state', connected: 'no' });
 
     expect(getAgentState()).toBeNull();
+  });
+});
+
+describe('a connection that the relay refused', () => {
+  it('asks for no ticket until the user retries', async () => {
+    const listener = vi.fn();
+    subscribeAgentState(listener);
+
+    markRelayRefused();
+
+    expect(getAgentState()).toEqual({ connected: false, reason: 'refused' });
+    expect(agentUnavailableText('es')).toBe('Relampo no pudo conectar con tu máquina. Intenta de nuevo.');
+    await expect(requestRelayTicket()).rejects.toThrow('Relampo could not connect to your machine. Try again.');
+    expect(parent.postMessage).not.toHaveBeenCalled();
+
+    retryRelay();
+
+    expect(getAgentState()).toBeNull();
+    expect(listener).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps the state of the web app when the user retries with no refusal', () => {
+    fromHost({ type: 'relampo:agent-state', connected: false, reason: 'offline' });
+
+    retryRelay();
+
+    expect(getAgentState()).toEqual({ connected: false, reason: 'offline' });
+  });
+
+  it('does not take the refused reason from the web app', () => {
+    fromHost({ type: 'relampo:agent-state', connected: false, reason: 'refused' });
+
+    expect(getAgentState()).toEqual({ connected: false });
   });
 });
