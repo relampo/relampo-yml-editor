@@ -3,6 +3,8 @@ import { Database, LoaderCircle, Plus, Trash2 } from 'lucide-react';
 import type { YAMLNode, YAMLNodeData } from '../types/yaml';
 import { useLanguage } from '../contexts/LanguageContext';
 import { testSQLConnection, effectiveSQLConnection } from '../utils/sqlConnections';
+import { agentUnavailableText } from '../utils/agentHost';
+import { usesRelay } from '../utils/agentTransport';
 
 const inputClass = 'h-9 w-full rounded border border-white/10 bg-[#171717] px-3 text-sm text-zinc-200';
 const buttonClass =
@@ -18,7 +20,7 @@ export function SQLDefaultsDetails({
   onNodeUpdate?: (id: string, data: YAMLNodeData) => void;
   canTest: boolean;
 }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const text = (key: string) => t(`yamlEditor.sqlDefaults.${key}`);
   const data = node.data ?? {},
     connections = data.connections ?? {},
@@ -95,7 +97,9 @@ export function SQLDefaultsDetails({
           : text(`error_${response.code ?? 'connection'}`),
       );
     } catch {
-      if (current === generation.current && !request.signal.aborted) setResult(text('error_connection'));
+      // Inside the web app the request fails when the machine is not reachable, not the database.
+      if (current === generation.current && !request.signal.aborted)
+        setResult(usesRelay() ? agentUnavailableText(language) : text('error_connection'));
     } finally {
       if (current === generation.current) setBusy(false);
     }

@@ -6,6 +6,7 @@ import type { YAMLNode, YAMLNodeData } from '../types/yaml';
 import { SQLDefaultsDetails } from './SQLDefaultsDetails';
 import { SQLRequestDetails } from './SQLRequestDetails';
 import { parseYAMLToTree, treeToYAML } from '../utils/yamlParser';
+import * as transport from '../utils/agentTransport';
 vi.mock('@monaco-editor/react', () => ({
   default: ({ value, onChange }: { value: string; onChange: (value: string) => void }) => (
     <textarea
@@ -64,6 +65,43 @@ describe('SQL Defaults and Request', () => {
     fireEvent.change(screen.getByLabelText('Base de datos'), { target: { value: 'auctions' } });
     await waitFor(() => expect(screen.queryByText(/Conectado ·/)).not.toBeInTheDocument());
   });
+  describe('a connection test that the agent cannot run', () => {
+    function testConnection() {
+      setupLanguage();
+      render(<Defaults />);
+      fireEvent.change(screen.getByLabelText('Nombre de la nueva conexión'), { target: { value: 'tickets' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Agregar conexión' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Probar conexión' }));
+    }
+    afterEach(() => vi.restoreAllMocks());
+
+    it('says that Relampo cannot test SQL connections yet when the route does not exist', async () => {
+      vi.spyOn(transport, 'agentRequest').mockResolvedValue(new Response('', { status: 404 }));
+
+      testConnection();
+
+      expect(await screen.findByText('Relampo todavía no puede probar conexiones SQL.')).toBeInTheDocument();
+    });
+
+    it('shows the plan text inside the web app when the plan refuses the route', async () => {
+      vi.spyOn(transport, 'usesRelay').mockReturnValue(true);
+      vi.spyOn(transport, 'agentRequest').mockResolvedValue(new Response('{}', { status: 403 }));
+
+      testConnection();
+
+      expect(await screen.findByText('Tu plan no incluye esta función.')).toBeInTheDocument();
+    });
+
+    it('says that the machine is not reachable inside the web app', async () => {
+      vi.spyOn(transport, 'usesRelay').mockReturnValue(true);
+      vi.spyOn(transport, 'agentRequest').mockRejectedValue(new TypeError('offline'));
+
+      testConnection();
+
+      expect(await screen.findByText(/No se pudo conectar con tu máquina\./)).toBeInTheDocument();
+    });
+  });
+
   it('inherits the only connection without copying credentials into the request', () => {
     setupLanguage();
     const tree = parseYAMLToTree(
