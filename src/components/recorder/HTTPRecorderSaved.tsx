@@ -9,8 +9,12 @@ export function HTTPRecorderSaved({
   opening,
   onOpen,
   language,
+  embedded = false,
 }: {
+  /** The saved file. Inside the web app there is none: the agent holds the recording. */
   path: string;
+  /** Inside the web app the script goes to the test plan. */
+  embedded?: boolean;
   total: number;
   opening: boolean;
   onOpen: () => void;
@@ -26,7 +30,7 @@ export function HTTPRecorderSaved({
         className="min-w-0 flex-1 truncate font-mono text-emerald-300"
         title={path}
       >
-        {path}
+        {path || text('Recording ready', 'Grabación lista')}
       </p>
       {total === 0 && <span className="text-amber-300">{text('No requests captured', 'Sin requests capturados')}</span>}
       <button
@@ -43,7 +47,9 @@ export function HTTPRecorderSaved({
         onClick={onOpen}
       >
         <ExternalLink className="h-3.5 w-3.5" />
-        {text('Open saved script in Studio', 'Abrir script guardado en Studio')}
+        {embedded
+          ? text('Add recording to the test plan', 'Agregar la grabación al plan de pruebas')
+          : text('Open saved script in Studio', 'Abrir script guardado en Studio')}
       </button>
       <Dialog
         open={review}

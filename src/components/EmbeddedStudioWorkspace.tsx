@@ -14,8 +14,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import type { CorrelateDocument } from '../utils/correlateBridge';
 import type { EmbeddedStudioController, EmbeddedStudioView } from '../utils/embeddedStudioController';
-import { validateSavedEditorURL } from '../utils/recorderTabs';
-import { requestSavedStudioInfo } from '../utils/agentTransport';
+import { useAgentState } from '../hooks/useAgentState';
+import { agentUnavailableText } from '../utils/agentHost';
 import { YAMLEditor } from './YAMLEditor';
 import { HTTPRecorderPage } from './recorder/HTTPRecorderPage';
 import { GRPCRecorderPage } from './grpc/GRPCRecorderPage';
@@ -79,6 +79,7 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
   const activity = useRef({ http: false, grpc: false });
   const [error, setError] = useState('');
   const { language } = useLanguage();
+  const agentState = useAgentState();
   const report = (cause: unknown) => setError(cause instanceof Error ? cause.message : String(cause));
   const goToScripting = useCallback(() => {
     draft.current.changed = false;
@@ -346,14 +347,6 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
     await persistEmbeddedScript(scriptId, { yaml, fileName });
     goToScripting();
   }
-  async function openSavedRecording(editorURL: string) {
-    const response = await requestSavedStudioInfo(validateSavedEditorURL(editorURL));
-    if (!response.ok) throw new Error('Could not load the saved recording from Studio.');
-    const info = await response.json();
-    if (typeof info.initialScript?.yaml !== 'string' || typeof info.initialScript?.name !== 'string')
-      throw new Error('Studio did not return the saved recording.');
-    await importRecording(info.initialScript.yaml, info.initialScript.name);
-  }
   return (
     <PlanScriptsContext.Provider
       value={{
@@ -375,6 +368,15 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
             className="shrink-0 bg-red-500/10 px-4 py-2 text-xs text-red-300"
           >
             {error}
+          </p>
+        )}
+        {/* Editing needs no machine. Record, Correlation, Debug and Run do. */}
+        {agentState?.connected === false && view !== 'scripting' && (
+          <p
+            role="status"
+            className="shrink-0 bg-amber-500/10 px-4 py-2 text-xs text-amber-300"
+          >
+            {agentUnavailableText(language)}
           </p>
         )}
         <div
@@ -425,7 +427,7 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
             >
               <HTTPRecorderPage
                 embedded
-                onOpenSaved={openSavedRecording}
+                onImport={importRecording}
                 onActivityChange={trackHTTP}
               />
             </div>

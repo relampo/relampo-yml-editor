@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { agentEventStream, agentFileUrl, agentRequest, requestSavedStudioInfo } from './agentTransport';
+import { agentEventStream, agentFileUrl, agentRequest } from './agentTransport';
 import { resetRuntimeConfigForTests } from './runtimeConfig';
 import { resetStudioSessionForTests } from './studioAuth';
 
@@ -105,14 +105,27 @@ describe('agentFileUrl', () => {
   });
 });
 
-describe('requestSavedStudioInfo', () => {
-  it('uses the address and the token of the saved editor, not the session', async () => {
-    useSession('session', '/studio');
+describe('inside the web app frame', () => {
+  const originalParent = window.parent;
 
-    await requestSavedStudioInfo('http://127.0.0.1:4321/?token=saved');
+  afterEach(() => {
+    Object.defineProperty(window, 'parent', { configurable: true, value: originalParent });
+  });
 
-    const [url, init] = vi.mocked(fetch).mock.calls[0];
-    expect(String(url)).toBe('http://127.0.0.1:4321/api/studio/info');
-    expect(init).toMatchObject({ headers: { 'X-Relampo-Studio-Token': 'saved' }, credentials: 'omit' });
+  it('uses the relay: no fetch, no file URL, and a ticket request to the parent frame', async () => {
+    const parent = { postMessage: vi.fn() };
+    Object.defineProperty(window, 'parent', { configurable: true, value: parent });
+    window.history.replaceState({}, '', '/?embedded=1&token=secret');
+    resetStudioSessionForTests();
+
+    expect(agentFileUrl('/api/run/7/report')).toBeNull();
+    const result = agentRequest('/api/studio/info', { signal: AbortSignal.timeout(50) });
+    await expect(result).rejects.toThrow();
+
+    expect(fetch).not.toHaveBeenCalled();
+    expect(parent.postMessage).toHaveBeenCalledWith(
+      { type: 'relampo:relay-ticket-request', requestId: expect.any(String) },
+      window.location.origin,
+    );
   });
 });

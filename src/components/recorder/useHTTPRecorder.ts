@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useAgentState } from '../../hooks/useAgentState';
+import { agentUnavailableText } from '../../utils/agentHost';
+import { usesRelay } from '../../utils/agentTransport';
 import { probeStudio } from '../../utils/debugApi';
 import {
   defaultHTTPRecordOptions,
@@ -7,7 +10,13 @@ import {
   type HTTPRecordingState,
 } from '../../utils/httpRecorderApi';
 const idle: HTTPRecordingState = { active: false, totalRequests: 0, requests: [] };
-export function useHTTPRecorder() {
+/**
+ * `embedded` is true inside the web app. There the agent keeps the recording
+ * in memory: no output file, and the script goes to the test plan.
+ */
+export function useHTTPRecorder(embedded = false) {
+  // Through the relay the machine can connect later: a new state starts again.
+  const agentState = useAgentState();
   const captureRevision = useRef(0);
   const [options, setOptions] = useState<HTTPRecordOptions>({ ...defaultHTTPRecordOptions });
   const [firefoxConfigured, setFirefoxConfigured] = useState(false);
@@ -31,7 +40,13 @@ export function useHTTPRecorder() {
     const controller = new AbortController();
     async function initialize() {
       const studio = await probeStudio();
-      if (!studio?.capabilities?.httpRecorder) throw new Error('A compatible local Relampo Studio is required.');
+      if (!studio && usesRelay()) throw new Error(agentUnavailableText());
+      if (!studio?.capabilities?.httpRecorder)
+        throw new Error(
+          usesRelay()
+            ? 'The HTTP recorder is not available with your plan or your agent version.'
+            : 'A compatible local Relampo Studio is required.',
+        );
       const defaults = await httpRecorderRequest<{
         directory: string;
         port: number;
@@ -44,19 +59,20 @@ export function useHTTPRecorder() {
       setFirefoxConfigured(defaults.firefoxConfigured === true);
       setOptions(current => ({
         ...current,
-        output: current.output || defaults.directory + '/recording.yaml',
+        output: embedded ? '' : current.output || defaults.directory + '/recording.yaml',
         port: defaults.firefoxConfigured ? defaults.configuredPort || defaults.port : defaults.port,
       }));
       const current = await refresh(controller.signal);
       if (controller.signal.aborted) return;
-      if (current.output) setOptions(value => ({ ...value, output: current.output! }));
+      if (current.output && !embedded) setOptions(value => ({ ...value, output: current.output! }));
+      setError('');
       setReady(true);
     }
     initialize().catch(cause => {
       if (!controller.signal.aborted) setError(cause.message);
     });
     return () => controller.abort();
-  }, [refresh, generation]);
+  }, [refresh, generation, embedded, agentState]);
   useEffect(() => {
     if (!ready) return;
     const controller = new AbortController();
@@ -103,13 +119,19 @@ export function useHTTPRecorder() {
     firefoxAvailable,
     firefoxConfigured,
     refresh,
-    start: () =>
-      action('start', {
-        ...options,
+    start: () => {
+      const { output, force, ...kept } = options;
+      return action('start', {
+        ...kept,
+        // The agent of the web app takes no output and no force: it writes no file.
+        ...(embedded ? {} : { output, force }),
         prefix: options.prefixEnabled ? options.prefix : '',
         grouping: options.transactionsEnabled ? 'none' : options.grouping,
-      }),
-    stop: () => action('stop', state.active ? {} : { output: options.output, force: options.force }),
+      });
+    },
+    stop: () => action('stop', state.active || embedded ? {} : { output: options.output, force: options.force }),
+    /** Prefix, transaction and record: the controls of an active recording. */
+    control: action,
     clear: async () => {
       setBusy('clear');
       setError('');

@@ -9,19 +9,21 @@ import { RecorderShell } from './RecorderShell';
 import { useHTTPRecorder } from './useHTTPRecorder';
 import { recorderCompactInput as recorderInput, recorderCompactButton as recorderButton } from './HTTPRecorderSettings';
 import { HTTPRecorderRequests } from './HTTPRecorderRequests';
+import { HTTPRecorderControls } from './HTTPRecorderControls';
 export function HTTPRecorderPage({
   embedded = false,
-  onOpenSaved,
+  onImport,
   onActivityChange,
 }: {
+  /** Inside the web app: no popup, no output file, and the recording goes to the test plan. */
   embedded?: boolean;
-  onOpenSaved?: (editorURL: string) => Promise<void>;
+  onImport?: (yaml: string, name: string) => Promise<void>;
   onActivityChange?: (active: boolean) => void;
 } = {}) {
   const { language, setLanguage } = useLanguage();
   const es = language === 'es',
     text = (en: string, spanish: string) => (es ? spanish : en);
-  const recorder = useHTTPRecorder(),
+  const recorder = useHTTPRecorder(embedded),
     { options, update, state, error, setError, busy, ready, firefoxAvailable, firefoxConfigured } = recorder;
   const [opening, setOpening] = useState(false),
     [seconds, setSeconds] = useState(0);
@@ -47,6 +49,11 @@ export function HTTPRecorderPage({
     return () => clearInterval(timer);
   }, [recording, state.startedAt, state.recordingStartedAt]);
   async function startRecording() {
+    if (embedded) {
+      // The controls are a view below. Studio opens no window inside the web app.
+      await recorder.start();
+      return;
+    }
     const popup = openHTTPRecordingControls(language);
     if (!popup) {
       setError(
@@ -58,12 +65,17 @@ export function HTTPRecorderPage({
     if (!current?.active) popup.close();
   }
   async function openSaved() {
-    if (onOpenSaved) {
+    if (onImport) {
       setOpening(true);
       setError('');
       try {
-        const result = await httpRecorderRequest<{ editorUrl: string }>('editor', {});
-        await onOpenSaved(validateSavedEditorURL(result.editorUrl));
+        // The agent returns the script. It has no second Studio process to open.
+        const result = await httpRecorderRequest<{ name?: unknown; yaml?: unknown }>('editor', {});
+        if (typeof result.yaml !== 'string' || !result.yaml.trim())
+          throw new Error(text('The agent returned no recording.', 'El agente no devolvió la grabación.'));
+        // eslint-disable-next-line no-control-regex -- the file name must not contain control characters
+        const valid = typeof result.name === 'string' && /^[^/\\\x00-\x1f]{1,180}\.ya?ml$/i.test(result.name);
+        await onImport(result.yaml, valid ? (result.name as string) : 'recording.yaml');
       } catch (cause) {
         setError(cause instanceof Error ? cause.message : String(cause));
       } finally {
@@ -91,7 +103,9 @@ export function HTTPRecorderPage({
       setOpening(false);
     }
   }
-  const canRetrySave = !state.active && !state.savedPath && !!state.proxyAddress;
+  const canRetrySave = !embedded && !state.active && !state.savedPath && !!state.proxyAddress;
+  // Inside the web app the agent keeps a stopped recording in memory until Clear or the next start.
+  const recorded = embedded && !state.active && state.totalRequests > 0;
   return (
     <RecorderShell
       embedded={embedded}
@@ -104,6 +118,7 @@ export function HTTPRecorderPage({
           recorder={recorder}
           language={language}
           disabled={state.active || canRetrySave}
+          embedded={embedded}
         />
         <div className="flex h-9 shrink-0 items-center gap-3 border-b border-white/10 bg-[#111111] px-3 text-xs">
           <span className={'flex items-center gap-1.5 ' + (state.active ? 'text-red-300' : 'text-zinc-400')}>
@@ -118,7 +133,9 @@ export function HTTPRecorderPage({
                     : text('Browser ready · not recording', 'Navegador listo · sin grabar')
                   : state.savedPath
                     ? text('Saved', 'Guardado')
-                    : text('Ready to record', 'Listo para grabar')}
+                    : recorded
+                      ? text('Recording ready', 'Grabación lista')
+                      : text('Ready to record', 'Listo para grabar')}
           </span>
           {recording && (
             <span className="font-mono text-zinc-500">
@@ -170,7 +187,7 @@ export function HTTPRecorderPage({
                 {text('Open Firefox', 'Abrir Firefox')}
               </button>
             )}
-            {state.active && (
+            {state.active && !embedded && (
               <button
                 type="button"
                 className={recorderButton}
@@ -193,7 +210,9 @@ export function HTTPRecorderPage({
                 <Square className="h-3 w-3" />
                 {canRetrySave
                   ? text('Retry saving', 'Reintentar guardado')
-                  : text('Stop and save', 'Detener y guardar')}
+                  : embedded
+                    ? text('Stop recording', 'Detener grabación')
+                    : text('Stop and save', 'Detener y guardar')}
               </button>
             ) : (
               <button
@@ -202,7 +221,7 @@ export function HTTPRecorderPage({
                   !ready ||
                   !!busy ||
                   !options.applicationUrl.trim() ||
-                  !options.output.trim() ||
+                  (!embedded && !options.output.trim()) ||
                   (options.openFirefox && (!firefoxAvailable || !firefoxConfigured))
                 }
                 className={
@@ -265,6 +284,21 @@ export function HTTPRecorderPage({
             />
           </label>
         )}
+        {embedded && state.active && (
+          <div className="max-w-md shrink-0 border-b border-white/10 px-3 py-2 text-xs">
+            <HTTPRecorderControls
+              state={state}
+              busy={busy}
+              language={language}
+              stopLabel={text('Stop recording', 'Detener grabación')}
+              stopHelp={text(
+                'Stop ends the active transaction. Then you can add the recording to the test plan.',
+                'Detener cierra la transacción activa. Después puedes agregar la grabación al plan de pruebas.',
+              )}
+              onAction={recorder.control}
+            />
+          </div>
+        )}
         <HTTPRecorderRequests
           key={state.startedAt || 'idle'}
           rows={state.requests || []}
@@ -273,10 +307,11 @@ export function HTTPRecorderPage({
           language={language}
           transactionsEnabled={state.transactionsEnabled}
         />
-        {state.savedPath && (
+        {(state.savedPath || recorded) && (
           <HTTPRecorderSaved
-            key={state.savedPath}
-            path={state.savedPath}
+            key={state.savedPath || state.startedAt || 'recorded'}
+            path={state.savedPath ?? ''}
+            embedded={embedded}
             total={state.totalRequests}
             opening={opening}
             onOpen={() => void openSaved()}

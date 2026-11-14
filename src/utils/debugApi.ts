@@ -10,7 +10,8 @@ import { trackStudioRunStarted, trackStudioRunCompleted, setAnalyticsVersion, in
 // When the editor is served by `relampo studio` the API lives on the same
 // origin; during `vite dev` point VITE_DEBUG_API_URL at a running studio.
 
-import { agentRequest } from './agentTransport';
+import { agentUnavailableText } from './agentHost';
+import { agentRequest, usesRelay } from './agentTransport';
 import { createValidatedEventStream, isRecord } from './sseMessage';
 import { name, type Named } from '@gdp-ts/core';
 import { supportedDataSourceFile, type SupportedDataSourceFile } from '../proofs/supportedDataSourceFile';
@@ -144,7 +145,7 @@ async function fetchAgent(path: string, init?: RequestInit): Promise<Response> {
   try {
     return await agentRequest(path, init);
   } catch (error) {
-    if (isConnectionFailure(error)) throw new Error(AGENT_UNREACHABLE_MESSAGE);
+    if (isConnectionFailure(error)) throw new Error(usesRelay() ? agentUnavailableText() : AGENT_UNREACHABLE_MESSAGE);
     throw error;
   }
 }
@@ -203,7 +204,8 @@ export interface StudioDataSourcePreview {
 // a script (`relampo studio file.yaml`) it is returned so the editor mounts it.
 export async function probeStudio(): Promise<StudioInfo | null> {
   try {
-    const response = await agentRequest('/api/studio/info', { signal: AbortSignal.timeout(2000) });
+    // Through the relay the first request also gets a ticket and opens the connection.
+    const response = await agentRequest('/api/studio/info', { signal: AbortSignal.timeout(usesRelay() ? 10_000 : 2000) });
     if (!response.ok) return null;
     const body = await response.json();
     if (body?.studio !== true) return null;
