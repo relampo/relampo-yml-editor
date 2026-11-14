@@ -1,4 +1,5 @@
 import {
+  ServerCog,
   BetweenHorizontalStart,
   Binary,
   Braces,
@@ -10,6 +11,7 @@ import {
   Tag,
   TextSearch,
 } from 'lucide-react';
+import { SQLAssertionDetails } from './SQLAssertionDetails';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { HighlightedInput } from '../ui/HighlightedInput';
 import { Input } from '../ui/input';
@@ -32,61 +34,65 @@ const assertionTypes = [
 const assertionTypeButtonStyle: Record<string, React.CSSProperties> = {
   status: {
     backgroundColor: 'rgba(34, 197, 94, 0.20)',
-    color: '#86efac',
+    color: 'var(--studio-tone-green, #86efac)',
     borderColor: 'rgba(134, 239, 172, 0.50)',
     boxShadow: '0 10px 22px rgba(34, 197, 94, 0.20)',
   },
   status_in: {
     backgroundColor: 'rgba(34, 197, 94, 0.20)',
-    color: '#86efac',
+    color: 'var(--studio-tone-green, #86efac)',
     borderColor: 'rgba(134, 239, 172, 0.50)',
     boxShadow: '0 10px 22px rgba(34, 197, 94, 0.20)',
   },
   contains: {
     backgroundColor: 'rgba(56, 189, 248, 0.20)',
-    color: '#7dd3fc',
+    color: 'var(--studio-tone-sky, #7dd3fc)',
     borderColor: 'rgba(125, 211, 252, 0.50)',
     boxShadow: '0 10px 22px rgba(56, 189, 248, 0.20)',
   },
   not_contains: {
     backgroundColor: 'rgba(245, 158, 11, 0.20)',
-    color: '#fcd34d',
+    color: 'var(--studio-tone-amber, #fcd34d)',
     borderColor: 'rgba(252, 211, 77, 0.50)',
     boxShadow: '0 10px 22px rgba(245, 158, 11, 0.20)',
   },
   regex: {
     backgroundColor: 'rgba(168, 85, 247, 0.20)',
-    color: '#d8b4fe',
+    color: 'var(--studio-tone-purple, #d8b4fe)',
     borderColor: 'rgba(216, 180, 254, 0.50)',
     boxShadow: '0 10px 22px rgba(168, 85, 247, 0.20)',
   },
   response_time: {
     backgroundColor: 'rgba(249, 115, 22, 0.20)',
-    color: '#fdba74',
+    color: 'var(--studio-tone-orange, #fdba74)',
     borderColor: 'rgba(253, 186, 116, 0.50)',
     boxShadow: '0 10px 22px rgba(249, 115, 22, 0.20)',
   },
   response_size: {
     backgroundColor: 'rgba(99, 102, 241, 0.20)',
-    color: '#a5b4fc',
+    color: 'var(--studio-tone-indigo, #a5b4fc)',
     borderColor: 'rgba(165, 180, 252, 0.50)',
     boxShadow: '0 10px 22px rgba(99, 102, 241, 0.20)',
   },
   header: {
     backgroundColor: 'rgba(236, 72, 153, 0.20)',
-    color: '#f9a8d4',
+    color: 'var(--studio-tone-pink, #f9a8d4)',
     borderColor: 'rgba(249, 168, 212, 0.50)',
     boxShadow: '0 10px 22px rgba(236, 72, 153, 0.20)',
   },
   json: {
     backgroundColor: 'rgba(6, 182, 212, 0.20)',
-    color: '#67e8f9',
+    color: 'var(--studio-tone-cyan, #67e8f9)',
     borderColor: 'rgba(103, 232, 249, 0.50)',
     boxShadow: '0 10px 22px rgba(6, 182, 212, 0.20)',
   },
 };
 
-export function AssertionDetails({ node, onNodeUpdate, searchQuery = '' }: NodeDetailProps) {
+export function AssertionDetails(props:NodeDetailProps & {sqlContext?:boolean;sqlKind?:string}) {
+  if(props.sqlContext) return <SQLAssertionDetails {...props} />;
+  return <ResponseAssertionDetails {...props} />;
+}
+function ResponseAssertionDetails({ node, onNodeUpdate, searchQuery = '' }: NodeDetailProps) {
   const { t } = useLanguage();
   const { data, updateData, updateField } = createNodeDataUpdater(node, onNodeUpdate);
   const assertionType = data.type || 'status';
@@ -285,40 +291,49 @@ const extractorTypes = [
 ] as const;
 
 const extractorTypeButtonStyle: Record<string, React.CSSProperties> = {
+  sql: {
+    backgroundColor: 'rgba(244, 114, 182, 0.20)',
+    color: '#f472b6',
+    borderColor: 'rgba(244, 114, 182, 0.50)',
+    boxShadow: '0 10px 22px rgba(244, 114, 182, 0.20)',
+  },
   regex: {
     backgroundColor: 'rgba(168, 85, 247, 0.20)',
-    color: '#d8b4fe',
+    color: 'var(--studio-tone-purple, #d8b4fe)',
     borderColor: 'rgba(216, 180, 254, 0.50)',
     boxShadow: '0 10px 22px rgba(168, 85, 247, 0.20)',
   },
   jsonpath: {
     backgroundColor: 'rgba(6, 182, 212, 0.20)',
-    color: '#67e8f9',
+    color: 'var(--studio-tone-cyan, #67e8f9)',
     borderColor: 'rgba(103, 232, 249, 0.50)',
     boxShadow: '0 10px 22px rgba(6, 182, 212, 0.20)',
   },
   xpath: {
     backgroundColor: 'rgba(236, 72, 153, 0.20)',
-    color: '#f9a8d4',
+    color: 'var(--studio-tone-pink, #f9a8d4)',
     borderColor: 'rgba(249, 168, 212, 0.50)',
     boxShadow: '0 10px 22px rgba(236, 72, 153, 0.20)',
   },
   boundary: {
     backgroundColor: 'rgba(249, 115, 22, 0.20)',
-    color: '#fdba74',
+    color: 'var(--studio-tone-orange, #fdba74)',
     borderColor: 'rgba(253, 186, 116, 0.50)',
     boxShadow: '0 10px 22px rgba(249, 115, 22, 0.20)',
   },
 };
 
-export function ExtractorDetails({ node, onNodeUpdate, searchQuery = '' }: NodeDetailProps) {
+export function ExtractorDetails({ node, onNodeUpdate, searchQuery = '', sqlContext = false }: NodeDetailProps & {sqlContext?:boolean}) {
   const { t } = useLanguage();
   const { data, updateData, updateField } = createNodeDataUpdater(node, onNodeUpdate);
   const extractorType = data.type || 'regex';
+  const isSQL = sqlContext || extractorType === 'sql';
+  const availableTypes = isSQL ? [...extractorTypes, { value: 'sql', icon: ServerCog }] : extractorTypes;
   const extractorVariableName = data.var ?? data.variable ?? '';
   const extractorSource = data.from || 'body';
 
   const getExtractorDefaults = (type: string) => {
+    if (type === 'sql') return { type: 'sql', column: data.column ?? '', row: data.row ?? 1 };
     if (type === 'regex') {
       return {
         type: 'regex',
@@ -380,7 +395,7 @@ export function ExtractorDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
           {t('yamlEditor.nodeDetails.validation.extractorType')}
         </div>
         <div className="flex flex-wrap items-center gap-1">
-          {extractorTypes.map(type => {
+          {availableTypes.map(type => {
             const active = extractorType === type.value;
             const Icon = type.icon;
             return (
@@ -393,8 +408,8 @@ export function ExtractorDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
                 style={active ? extractorTypeButtonStyle[type.value] : undefined}
               >
                 <span className="inline-flex items-center gap-1.5">
-                  <Icon className="h-3.5 w-3.5" />
-                  <span>{t(`yamlEditor.nodeDetails.validation.extract_${type.value}`)}</span>
+                  <Icon className={type.value === 'sql' ? 'h-3.5 w-3.5 text-pink-400' : 'h-3.5 w-3.5'} />
+                  <span>{type.value === 'sql' ? 'SQL' : t(`yamlEditor.nodeDetails.validation.extract_${type.value}`)}</span>
                 </span>
               </button>
             );
@@ -416,9 +431,35 @@ export function ExtractorDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
         />
       </div>
 
+      {isSQL && (
+        <>
+          <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-3 items-end">
+            <TextField
+              searchQuery={searchQuery}
+              id="validation-sql-column"
+              label={t(extractorType === 'sql' ? 'yamlEditor.sqlExtractor.column' : 'yamlEditor.sqlExtractor.sourceColumn')}
+              value={data.column ?? ''}
+              placeholder="event_id"
+              onChange={value => handleChange('column', value)}
+            />
+            {(extractorType === 'sql' || Boolean(data.column)) && <SimpleNumberField
+              id="validation-sql-row"
+              label={t('yamlEditor.sqlExtractor.row')}
+              value={data.row ?? 1}
+              placeholder="1"
+              min={1}
+              noMargin
+              onChange={value => handleChange('row', value === '' ? undefined : Number(value))}
+            />}
+          </div>
+          <div className="mb-4 -mt-1 text-xs text-zinc-500">{t('yamlEditor.sqlExtractor.help')}</div>
+        </>
+      )}
+
       {extractorType === 'regex' && (
         <>
           <ExtractorSourceAndPattern
+            sqlContext={isSQL}
             source={extractorSource}
             label={t('yamlEditor.nodeDetails.validation.regexPatternRequired')}
             value={data.pattern || ''}
@@ -485,6 +526,7 @@ export function ExtractorDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
       {extractorType === 'jsonpath' && (
         <>
           <ExtractorSourceAndPattern
+            sqlContext={isSQL}
             source={extractorSource}
             label={t('yamlEditor.nodeDetails.validation.jsonpathRequired')}
             value={data.expression || data.pattern || ''}
@@ -500,6 +542,7 @@ export function ExtractorDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
       {extractorType === 'xpath' && (
         <>
           <ExtractorSourceAndPattern
+            sqlContext={isSQL}
             source={extractorSource}
             label={t('yamlEditor.nodeDetails.validation.xpathRequired')}
             value={data.expression || data.pattern || ''}
@@ -533,6 +576,7 @@ export function ExtractorDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
       {extractorType === 'boundary' && (
         <div className="mb-4 flex items-end gap-3">
           <ExtractorSourceSelect
+            sqlContext={isSQL}
             value={extractorSource}
             onChange={value => handleChange('from', value)}
           />
@@ -583,6 +627,7 @@ export function ExtractorDetails({ node, onNodeUpdate, searchQuery = '' }: NodeD
 
 function ExtractorSourceAndPattern({
   source,
+  sqlContext = false,
   label,
   value,
   placeholder,
@@ -591,6 +636,7 @@ function ExtractorSourceAndPattern({
   onValueChange,
 }: {
   source: string;
+  sqlContext?: boolean;
   label: string;
   value: string;
   placeholder: string;
@@ -601,6 +647,7 @@ function ExtractorSourceAndPattern({
   return (
     <div className="mb-4 flex items-end gap-3">
       <ExtractorSourceSelect
+        sqlContext={sqlContext}
         value={source}
         onChange={onSourceChange}
       />
@@ -620,7 +667,7 @@ function ExtractorSourceAndPattern({
   );
 }
 
-function ExtractorSourceSelect({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+function ExtractorSourceSelect({ value, onChange, sqlContext=false }: { value: string; onChange: (value: string) => void; sqlContext?:boolean }) {
   const { t } = useLanguage();
   return (
     <div className="w-55 shrink-0">
@@ -631,11 +678,13 @@ function ExtractorSourceSelect({ value, onChange }: { value: string; onChange: (
         </SelectTrigger>
         <SelectContent className="border-white/10 bg-[#111111]">
           <SelectItem value="body">{t('yamlEditor.nodeDetails.validation.fromBody')}</SelectItem>
-          <SelectItem value="headers">{t('yamlEditor.nodeDetails.validation.fromHeaders')}</SelectItem>
+          {!sqlContext && <>
+        <SelectItem value="headers">{t('yamlEditor.nodeDetails.validation.fromHeaders')}</SelectItem>
           <SelectItem value="status_line">{t('yamlEditor.nodeDetails.validation.fromStatusLine')}</SelectItem>
           <SelectItem value="request_url">{t('yamlEditor.nodeDetails.validation.fromRequestUrl')}</SelectItem>
           <SelectItem value="request_headers">{t('yamlEditor.nodeDetails.validation.fromRequestHeaders')}</SelectItem>
-        </SelectContent>
+          </>}
+      </SelectContent>
       </Select>
     </div>
   );

@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@import "./studioTheme.css";
+@import "./studioTypography.css";
 
 @custom-variant dark (&:is(.dark *));
 

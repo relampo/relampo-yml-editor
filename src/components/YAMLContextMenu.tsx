@@ -84,8 +84,9 @@ export function YAMLContextMenu({
   const canAddChildren = addableItems.length > 0;
   const canShowNodeActions =
     node.type !== 'root' && node.type !== 'test' && node.type !== 'scenarios' && node.type !== 'steps';
-  const canToggleEnabled = canShowNodeActions && Boolean(onToggleEnabled);
-  const canDuplicate = canShowNodeActions && Boolean(onDuplicate);
+  const canToggleEnabled =
+    canShowNodeActions && !['grpc_defaults', 'sql_defaults'].includes(node.type) && Boolean(onToggleEnabled);
+  const canDuplicate = canShowNodeActions && node.type !== 'sql_defaults' && Boolean(onDuplicate);
   const canCopy = canShowNodeActions && Boolean(onCopy);
   const canRemove = canShowNodeActions;
 
@@ -124,13 +125,17 @@ export function YAMLContextMenu({
               )}
               <button
                 type="button"
+                disabled={Boolean(item.disabledReason)}
+                title={item.disabledReason}
                 onClick={() => onAddNode(item.type)}
-                className="w-full px-3 py-2 flex items-center gap-3 hover:bg-white/5 text-left transition-colors"
+                className="w-full px-3 py-2 flex items-center gap-3 hover:bg-white/5 disabled:opacity-45 disabled:cursor-not-allowed text-left transition-colors"
               >
                 <div className={item.color}>{item.icon}</div>
                 <div className="flex-1">
                   <div className="text-sm text-zinc-200">{item.label}</div>
-                  {item.description && <div className="text-xs text-zinc-500">{item.description}</div>}
+                  {(item.disabledReason || item.description) && (
+                    <div className="text-xs text-zinc-500">{item.disabledReason || item.description}</div>
+                  )}
                 </div>
               </button>
             </Fragment>

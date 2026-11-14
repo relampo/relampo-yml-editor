@@ -1,3 +1,4 @@
+import '../styles/editor-header.css';
 import { UsageMetricsConsent } from './UsageMetricsConsent';
 import { ChevronDown, FilePlus, Save, Upload, SquarePlus, Link2 } from 'lucide-react';
 import { ProtocolMenu } from './protocols/ProtocolMenu';
@@ -13,6 +14,8 @@ import {
 } from './ui/dropdown-menu';
 
 interface YAMLEditorHeaderProps {
+  embedded?: boolean;
+  documentReady?: boolean;
   correlateEnabled?: boolean;
   onCorrelate?: () => void;
   onNewStudio?: () => void;
@@ -31,6 +34,8 @@ interface YAMLEditorHeaderProps {
 }
 
 export function YAMLEditorHeader({
+  embedded = false,
+  documentReady = true,
   language,
   onSelectProtocol,
   onNewStudio,
@@ -48,43 +53,46 @@ export function YAMLEditorHeader({
   onFileChange,
 }: YAMLEditorHeaderProps) {
   return (
-    <div className="bg-[#1a1a1a] border-b border-white/10 px-6 py-4 shrink-0">
-      <div className="flex items-center justify-between gap-4">
-        {/* Left: Brand */}
-        <div className="flex items-center gap-3">
-          <div
-            className="w-10 h-10 rounded-xl bg-linear-to-br from-[#fde047] via-[#facc15] to-[#eab308] flex items-center justify-center"
-            style={{ boxShadow: '0 14px 35px rgba(250, 204, 21, 0.40)' }}
-          >
-            <svg
-              width="18"
-              height="22"
-              viewBox="0 0 18 22"
-              fill="none"
-              style={{ filter: 'drop-shadow(0 2px 6px rgba(0, 0, 0, 0.25))' }}
+    <header
+      className={`editor-header saas-editor-surface ${embedded ? 'editor-header-embedded' : ''}`}
+      aria-label={language === 'es' ? 'Herramientas del editor' : 'Editor tools'}
+    >
+      <div className="editor-header-row">
+        {!embedded && (
+          <div className="editor-header-brand">
+            <span
+              className="editor-header-logo"
+              aria-hidden="true"
             >
-              <path
-                d="M10.5 0L0 12.5H7.5L6 22L18 9H10.5V0Z"
-                fill="white"
-              />
-            </svg>
+              <svg
+                width="13"
+                height="17"
+                viewBox="0 0 18 22"
+                fill="none"
+              >
+                <path
+                  d="M10.5 0L0 12.5H7.5L6 22L18 9H10.5V0Z"
+                  fill="currentColor"
+                />
+              </svg>
+            </span>
+            <span className="editor-header-name">Relampo</span>
+            <span
+              className="editor-header-divider"
+              aria-hidden="true"
+            />
+            <h1 className="editor-header-title">{language === 'es' ? 'Editor de YAML' : 'YAML Editor'}</h1>
           </div>
-          <div>
-            <h1 className="text-[20px] font-black text-white tracking-tight m-0">RELAMPO</h1>
-            <p className="text-xs text-zinc-400 font-medium tracking-wide m-0">
-              {language === 'es' ? 'Editor de YAML' : 'YAML Editor'}
-            </p>
-          </div>
-        </div>
+        )}
 
-        {/* Right: Buttons + Language Toggle */}
-        <div className="flex items-center gap-4">
-          <UsageMetricsConsent language={language} />
+        <div className="editor-header-controls">
+          {!embedded && <UsageMetricsConsent language={language} />}
           {/* Action Buttons */}
-          <div className="flex items-center gap-2">
+          <div className="editor-header-actions">
             {onSelectProtocol && (
               <ProtocolMenu
                 language={language}
+                appearance="saas"
                 grpcEnabled={grpcEnabled}
                 httpEnabled={httpEnabled}
                 onSelect={onSelectProtocol}
@@ -96,13 +104,13 @@ export function YAMLEditorHeader({
                 disabled={!correlateEnabled}
                 variant="outline"
                 size="sm"
-                className="border-white/10 bg-white/5 hover:bg-white/10 text-zinc-300 gap-2"
+                className="editor-header-button"
               >
                 <Link2 className="w-4 h-4" />
                 Correlate
               </Button>
             )}
-            {onNewStudio && (
+            {!embedded && onNewStudio && (
               <Button
                 onClick={onNewStudio}
                 variant="outline"
@@ -110,7 +118,7 @@ export function YAMLEditorHeader({
                 title={
                   language === 'es' ? 'Abrir otro editor en una pestaña nueva' : 'Open another editor in a new tab'
                 }
-                className="border-white/10 bg-white/5 hover:bg-white/10 text-zinc-300 gap-2"
+                className="editor-header-button"
               >
                 <SquarePlus className="w-4 h-4" />
                 {language === 'es' ? 'Nuevo Studio' : 'New Studio'}
@@ -120,7 +128,7 @@ export function YAMLEditorHeader({
               <Button
                 onClick={onNew}
                 size="sm"
-                className="bg-yellow-400 hover:bg-yellow-300 text-black font-bold gap-2"
+                className="editor-header-button"
               >
                 <FilePlus className="w-4 h-4" />
                 {t('yamlEditor.newDocument')}
@@ -129,31 +137,32 @@ export function YAMLEditorHeader({
 
             <Button
               onClick={onUpload}
+              disabled={!documentReady}
               variant="outline"
               size="sm"
-              className="border-white/10 bg-white/5 hover:bg-white/10 text-zinc-300"
+              className="editor-header-button"
             >
-              <Upload className="w-4 h-4 mr-2" />
+              <Upload className="w-4 h-4" />
               {t('yamlEditor.uploadYaml')}
             </Button>
 
             <DropdownMenu>
-              <DropdownMenuTrigger className="inline-flex h-8 items-center justify-center gap-2 rounded-md border border-yellow-400/20 bg-yellow-400/5 px-3 text-sm font-bold text-yellow-400 shadow-sm transition-[background-color,border-color,box-shadow] duration-200 hover:bg-yellow-400/10 hover:border-yellow-400/35 hover:shadow-yellow-400/10 focus:outline-none focus:ring-2 focus:ring-yellow-400/40">
+              <DropdownMenuTrigger className="editor-header-button editor-header-save">
                 <Save className="w-4 h-4" />
                 {t('yamlEditor.saveYaml')}
                 <ChevronDown className="w-4 h-4" />
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="end"
-                className="bg-[#111111] border border-white/10 text-zinc-200 min-w-65 p-1.5"
+                className="saas-editor-surface editor-header-menu min-w-65 p-1.5"
               >
-                <DropdownMenuLabel className="text-zinc-400 text-xs uppercase tracking-wide">
+                <DropdownMenuLabel className="editor-header-menu-label text-xs">
                   {language === 'es' ? 'Opciones de guardado' : 'Save options'}
                 </DropdownMenuLabel>
-                <DropdownMenuSeparator className="bg-white/10" />
+                <DropdownMenuSeparator className="editor-header-menu-separator" />
                 <DropdownMenuItem
                   onClick={() => onDownload(true)}
-                  className="rounded-md px-3 py-2 focus:bg-yellow-400/10 focus:text-white cursor-pointer data-highlighted:bg-yellow-400/10 data-highlighted:text-white"
+                  className="editor-header-menu-item rounded-md px-3 py-2 cursor-pointer"
                 >
                   <div className="flex flex-col">
                     <span>{language === 'es' ? 'Guardar con respuestas' : 'Save with responses'}</span>
@@ -166,7 +175,7 @@ export function YAMLEditorHeader({
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => onDownload(false)}
-                  className="rounded-md px-3 py-2 focus:bg-yellow-400/10 focus:text-white cursor-pointer data-highlighted:bg-yellow-400/10 data-highlighted:text-white"
+                  className="editor-header-menu-item rounded-md px-3 py-2 cursor-pointer"
                 >
                   <div className="flex flex-col">
                     <span>{language === 'es' ? 'Guardar sin respuestas' : 'Save without responses'}</span>
@@ -181,98 +190,36 @@ export function YAMLEditorHeader({
             </DropdownMenu>
           </div>
 
-          {/* Language Toggle */}
-          <div
-            className="lang-toggle"
-            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-          >
-            <span
-              className="lang-label"
-              style={{
-                fontSize: '12px',
-                fontWeight: '600',
-                color: language === 'en' ? '#facc15' : '#a3a3a3',
-                transition: 'color 0.3s ease',
-              }}
+          {!embedded && (
+            <div
+              className="editor-header-language"
+              role="group"
+              aria-label={language === 'es' ? 'Idioma' : 'Language'}
             >
-              EN
-            </span>
-            <label
-              className="toggle-switch"
-              htmlFor="langToggle"
-              aria-label={language === 'es' ? 'Cambiar idioma' : 'Language toggle'}
-              style={{
-                position: 'relative',
-                display: 'inline-block',
-                width: '44px',
-                height: '24px',
-                cursor: 'pointer',
-              }}
-            >
-              <input
-                type="checkbox"
-                id="langToggle"
-                checked={language === 'es'}
-                onChange={() => setLanguage(language === 'en' ? 'es' : 'en')}
-                style={{ opacity: 0, width: 0, height: 0 }}
-              />
-              <span
-                className="toggle-slider"
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  backgroundColor: '#1a1a1a',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  borderRadius: '24px',
-                  transition: 'background-color 0.3s ease, border-color 0.3s ease',
-                }}
-              ></span>
-            </label>
-            <span
-              className="lang-label"
-              style={{
-                fontSize: '12px',
-                fontWeight: '600',
-                color: language === 'es' ? '#facc15' : '#a3a3a3',
-                transition: 'color 0.3s ease',
-              }}
-            >
-              ES
-            </span>
-            <style>{`
-              .toggle-slider:before {
-                position: absolute;
-                content: "";
-                height: 18px;
-                width: 18px;
-                left: 3px;
-                bottom: 2px;
-                background: linear-gradient(135deg, #fde047 0%, #facc15 45%, #eab308 100%);
-                border-radius: 50%;
-                transition: transform 0.3s ease;
-                box-shadow: 0 2px 8px rgba(250, 204, 21, 0.4);
-              }
-              input:checked + .toggle-slider:before {
-                transform: translateX(20px);
-              }
-              .toggle-switch:hover .toggle-slider {
-                border-color: #facc15;
-              }
-            `}</style>
-          </div>
+              {(['en', 'es'] as const).map(locale => (
+                <button
+                  key={locale}
+                  type="button"
+                  aria-label={locale === 'en' ? 'English' : 'Español'}
+                  aria-pressed={language === locale}
+                  onClick={() => setLanguage(locale)}
+                >
+                  {locale.toUpperCase()}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
       <input
         ref={fileInputRef}
         type="file"
+        disabled={!documentReady}
         accept=".yaml,.yml"
         onChange={onFileChange}
         className="hidden"
       />
-    </div>
+    </header>
   );
 }

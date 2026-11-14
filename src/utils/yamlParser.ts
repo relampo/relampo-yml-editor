@@ -1,3 +1,4 @@
+import { withProtocolChildren } from './protocolChildren';
 import { rememberAuthoredData } from './yamlAuthoredData';
 import type { YAMLNode, YAMLNodeData, YAMLValue } from '../types/yaml';
 import { getLoadTypeLabel, normalizeLoadDataForYaml } from '../components/yaml-node-details/loadUtils';
@@ -43,6 +44,7 @@ const ROOT_FIELDS = new Set([
   'error_policy',
   'http_defaults',
   'grpc_defaults',
+  'sql_defaults',
   'scenarios',
   'metrics',
 ]);
@@ -169,6 +171,17 @@ function convertToTree(obj: any, _: string[] = [], defaultRootName?: string): YA
       name: 'gRPC Defaults',
       data: asYAMLNodeData(obj.grpc_defaults),
       path: ['grpc_defaults'],
+    });
+  }
+
+  if (obj.sql_defaults !== undefined) {
+    if (!isPlainRecord(obj.sql_defaults)) throw new Error('sql_defaults must be a mapping');
+    root.children!.push({
+      id: `${rootId}_sql_defaults`,
+      type: 'sql_defaults',
+      name: 'SQL Defaults',
+      data: asYAMLNodeData(obj.sql_defaults),
+      path: ['sql_defaults'],
     });
   }
 
@@ -327,53 +340,30 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
     return node;
   }
 
-  if (isPlainRecord(step.websocket)) {
-    const data = asYAMLNodeData(step.websocket);
-    const { headers, ...connectionData } = data;
-    const hasHeaders = isPlainRecord(headers);
-    return {
+  if (isPlainRecord(step.websocket) || isPlainRecord(step.grpc) || step.sql) {
+    const type = step.sql ? 'sql' : step.grpc ? 'grpc' : 'websocket';
+    const raw = asYAMLNodeData(step[type]);
+    const data = type === 'sql' ? normalizeSQLForEditor(raw as unknown as Record<string, unknown>) : raw;
+    const node = withProtocolChildren({
       id: stepId,
-      type: 'websocket',
-      name: String(data.name || (data.action ? `WebSocket ${data.action}` : 'WebSocket conversation')),
-      data: hasHeaders ? connectionData : data,
-      path,
-      children: hasHeaders ? [{
-        id: `${stepId}_headers`, type: 'headers', name: 'Headers',
-        data: asYAMLNodeData(headers), path: [...path, 'websocket', 'headers'],
-      }] : [],
-      expanded: false,
-      unknownData: unknownFields(step, new Set(['websocket'])),
-    };
-  }
-
-  if (isPlainRecord(step.grpc)) {
-    const grpc = asYAMLNodeData(step.grpc);
-    return {
-      id: stepId,
-      type: 'grpc',
-      name: typeof grpc.name === 'string' && grpc.name ? grpc.name : String(grpc.method || 'gRPC Request'),
-      data: { ...grpc, ...(step.enabled !== undefined && grpc.enabled === undefined ? { enabled: isEnabled } : {}) },
-      path,
-      children: [],
-      expanded: false,
-      unknownData: unknownFields(step, new Set(['grpc', 'enabled'])),
-    };
-  }
-
-  if (step.sql) {
-    const sql = normalizeSQLForEditor(step.sql);
-    return {
-      id: stepId,
-      type: 'sql',
-      authoredData: structuredClone(step.sql),
-      initialData: structuredClone(sql),
-      name: buildSQLStepName(sql),
-      data: sql,
-      path: [...path, 'sql'],
-      children: [],
-      expanded: false,
-      unknownData: unknownFields(step, new Set(['sql', 'enabled'])),
-    };
+      type,
+      name:
+        type === 'sql'
+          ? buildSQLStepName(data as unknown as Record<string, unknown>)
+          : String(
+              data.name ||
+                (type === 'grpc'
+                  ? data.method || 'gRPC Request'
+                  : data.action
+                    ? `WebSocket ${data.action}`
+                    : 'WebSocket conversation'),
+            ),
+      data: { ...data, ...(step.enabled !== undefined && data.enabled === undefined ? { enabled: isEnabled } : {}) },
+      ...(type === 'sql' ? { authoredData: structuredClone(raw), initialData: structuredClone(data) } : {}),
+      path: type === 'sql' ? [...path, 'sql'] : path,
+      unknownData: unknownFields(step, new Set([type, 'enabled'])),
+    });
+    return { ...node, expanded: type === 'sql' && Boolean(node.children?.length) };
   }
 
   // Think time (standalone - can be between requests)

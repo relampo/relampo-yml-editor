@@ -296,7 +296,7 @@ export function ParallelDetails({ node }: NodeDetailProps) {
   return (
     <div
       className="space-y-6 text-zinc-50"
-      style={{ color: '#f8fafc' }}
+      style={{ color: 'var(--studio-text, #f8fafc)' }}
     >
       <div className="rounded-xl border border-white/10 bg-white/[0.04] px-5 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
         <div className="flex items-start gap-3">
@@ -307,7 +307,7 @@ export function ParallelDetails({ node }: NodeDetailProps) {
             <div className="text-xs font-bold uppercase tracking-[0.2em] text-yellow-400">
               {t('yamlEditor.nodeDetails.flow.executionModel')}
             </div>
-            <p className="text-sm leading-6" style={{ color: '#f8fafc' }}>
+            <p className="text-sm leading-6" style={{ color: 'var(--studio-text, #f8fafc)' }}>
               {t('yamlEditor.nodeDetails.flow.executionModelHelp')}
             </p>
           </div>
@@ -326,7 +326,7 @@ export function ParallelDetails({ node }: NodeDetailProps) {
               </div>
               <div
                 className="text-3xl font-black font-mono mt-1"
-                style={{ color: '#ffffff' }}
+                style={{ color: 'var(--studio-text, #ffffff)' }}
               >
                 {stepsCount}
               </div>
@@ -344,7 +344,7 @@ export function ParallelDetails({ node }: NodeDetailProps) {
               </div>
               <div
                 className="text-base font-semibold mt-1"
-                style={{ color: isEmpty ? '#fde68a' : '#f8fafc' }}
+                style={{ color: isEmpty ? 'var(--studio-tone-amber, #fde68a)' : 'var(--studio-text, #f8fafc)' }}
               >
                 {isEmpty ? t('yamlEditor.nodeDetails.flow.blocked') : t('yamlEditor.nodeDetails.flow.waitsForAll')}
               </div>
@@ -357,13 +357,13 @@ export function ParallelDetails({ node }: NodeDetailProps) {
         <div className="rounded-xl border border-amber-300/30 bg-amber-400/10 px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
           <div
             className="mb-2 text-xs font-bold uppercase tracking-[0.2em]"
-            style={{ color: '#fde68a' }}
+            style={{ color: 'var(--studio-tone-amber, #fde68a)' }}
           >
             {t('yamlEditor.nodeDetails.flow.validation')}
           </div>
           <p
             className="text-sm leading-6"
-            style={{ color: '#fffbeb' }}
+            style={{ color: 'var(--studio-tone-amber, #fffbeb)' }}
           >
             {t('yamlEditor.nodeDetails.flow.parallelEmpty')}
           </p>

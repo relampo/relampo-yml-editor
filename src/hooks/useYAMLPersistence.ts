@@ -1,3 +1,4 @@
+import { embeddedPlanDraftKey } from '../utils/embeddedPlanDraft';
 import { studioEditorId } from '../utils/studioEditorSession';
 import { parseYAMLToTree } from '../utils/yamlParser';
 import { localizeYAMLSemanticError, validateYAMLSemantics } from '../utils/yamlSemanticValidation';
@@ -44,7 +45,7 @@ function stripResponsesFromObject(value: unknown, parentKey = ''): unknown {
   return value;
 }
 
-function buildDownloadContent(
+export function buildDownloadContent(
   includeResponses: boolean,
   sourceYaml: string,
   language: string,
@@ -239,7 +240,7 @@ export function useYAMLPersistence({
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     // Export cancels autosave; retain a reloadable snapshot for this Studio tab.
-    if (studioEditorId()) void handleSave();
+    if (studioEditorId() || embeddedPlanDraftKey()) void handleSave();
     setHasDocumentActivity(true);
     setIsDirty(false);
     setLastSavedAt(new Date().toLocaleTimeString());

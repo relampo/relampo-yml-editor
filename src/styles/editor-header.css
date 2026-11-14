@@ -1,0 +1,197 @@
+/* Scoped to the first SaaS component, including menus rendered in portals. */
+.saas-editor-surface {
+  color-scheme: inherit;
+  --header-surface: var(--card, #ffffff);
+  --header-text: var(--foreground, #171b26);
+  --header-muted: var(--muted-foreground, #626774);
+  --header-border: var(--border, #e5e7eb);
+  --header-hover: var(--accent, #f5f6f8);
+  --header-hover-border: var(--ring, #cdd0d6);
+  --header-accent: #f8c83e;
+  --header-selection: color-mix(in srgb, var(--header-accent) 12%, var(--header-surface));
+}
+
+.editor-header {
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--header-border);
+  background: var(--header-surface);
+  color: var(--header-text);
+  padding: 14px 24px;
+}
+
+.editor-header-row,
+.editor-header-brand,
+.editor-header-controls,
+.editor-header-actions {
+  display: flex;
+  align-items: center;
+}
+
+.editor-header-row {
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px 24px;
+}
+
+.editor-header-brand {
+  gap: 10px;
+}
+.editor-header-controls {
+  flex-wrap: wrap;
+  gap: 12px 16px;
+}
+.editor-header-actions {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.editor-header-logo {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  background: var(--header-accent);
+  color: #ffffff;
+}
+
+.editor-header-name {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+.editor-header-divider {
+  width: 1px;
+  height: 20px;
+  margin: 0 4px;
+  background: var(--header-border);
+}
+.editor-header-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--header-muted);
+}
+
+.editor-header .editor-header-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 0 11px;
+  border: 1px solid var(--header-border);
+  border-radius: 8px;
+  background: var(--header-surface);
+  color: var(--header-text);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  box-shadow: none;
+  transition:
+    background-color 150ms,
+    border-color 150ms;
+}
+
+.editor-header .editor-header-button:hover {
+  background: var(--header-hover);
+  border-color: var(--header-hover-border);
+}
+.editor-header .editor-header-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.editor-header .editor-header-save {
+  color: #171b26;
+  background: var(--header-accent);
+  border-color: var(--header-accent);
+  font-weight: 600;
+}
+.editor-header .editor-header-save:hover {
+  background: #f2bd27;
+  border-color: #f2bd27;
+}
+.editor-header .lucide-circle-dot {
+  color: #dc4545;
+}
+.editor-header-controls > label {
+  color: var(--header-muted);
+}
+
+.editor-header-language {
+  display: flex;
+  padding: 3px;
+  gap: 2px;
+  border: 1px solid var(--header-border);
+  border-radius: 8px;
+}
+
+.editor-header-language button {
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--header-muted);
+  padding: 5px 7px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.editor-header-language button[aria-pressed='true'] {
+  background: var(--header-selection);
+  color: var(--header-text);
+}
+.editor-header-language button:hover {
+  background: var(--header-hover);
+}
+.editor-header button:focus-visible {
+  outline: 2px solid var(--header-hover-border);
+  outline-offset: 3px;
+}
+
+.editor-header-menu {
+  border: 1px solid var(--header-border);
+  border-radius: 10px;
+  background: var(--header-surface);
+  color: var(--header-text);
+  box-shadow: 0 8px 24px rgb(23 27 38 / 10%);
+}
+
+.editor-header-menu [data-slot='dropdown-menu-label'] {
+  color: var(--header-muted);
+}
+.editor-header-menu [data-slot='dropdown-menu-separator'] {
+  background: var(--header-border);
+}
+.editor-header-menu [data-slot='dropdown-menu-item']:focus,
+.editor-header-menu [data-slot='dropdown-menu-item'][data-highlighted] {
+  background: var(--header-selection);
+  color: var(--header-text);
+}
+
+.editor-header-menu [data-slot='dropdown-menu-item'] .text-zinc-500 {
+  color: var(--header-muted);
+}
+.editor-header-menu .text-cyan-300 {
+  color: var(--header-text);
+}
+.editor-header-menu .text-emerald-300 {
+  color: var(--header-text);
+}
+
+@media (max-width: 1100px) {
+  .editor-header {
+    padding: 12px 16px;
+  }
+  .editor-header-controls {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+.editor-header-embedded {
+  padding: 10px 16px;
+}
+.editor-header-embedded .editor-header-row {
+  justify-content: flex-end;
+}

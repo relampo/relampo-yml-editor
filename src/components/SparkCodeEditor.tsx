@@ -1,3 +1,4 @@
+import { useStudioMonacoTheme } from '../hooks/useStudioTheme';
 import MonacoEditor, { Monaco } from '@monaco-editor/react';
 import { AlertCircle, CheckCircle2, Play } from 'lucide-react';
 import type { editor } from 'monaco-editor';
@@ -26,6 +27,7 @@ interface ValidationResult {
  */
 export function SparkCodeEditor({ value, onChange, minHeight = '250px' }: SparkCodeEditorProps) {
   const { t } = useLanguage();
+  const theme = useStudioMonacoTheme();
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [isValidating, setIsValidating] = useState(false);
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
@@ -132,7 +134,7 @@ export function SparkCodeEditor({ value, onChange, minHeight = '250px' }: SparkC
           value={value}
           onChange={handleEditorChange}
           onMount={handleEditorDidMount}
-          theme="vs-dark"
+          theme={theme}
           options={{
             minimap: { enabled: false },
             fontSize: 13,

@@ -957,3 +957,11 @@ scenarios:
  });
 
 });
+
+it('maps SQL events to the SQL request and exposes its extracted variable',()=>{
+ const node:YAMLNode={id:'sql',type:'sql',name:'Read scalar',path:['scenarios',0,'steps',0,'sql'],children:[{id:'extract',type:'extractor',name:'Extract: event_id',data:{type:'sql',column:'event_id',var:'event_id',row:1}}]};
+ const targets=collectDebugEventTargets(node);
+ expect(targets).toEqual([node]);
+ expect(matchDebugEventTarget(event({method:'SQL',name:'[vu-1] Read scalar',path:'postgres QUERY hash',step_path:'scenarios[0].steps[0]'}),targets)).toBe(node);
+ expect(variableRowsForRequestNode(node,{event_id:'7'})).toContainEqual(['event_id (RES)','7']);
+});

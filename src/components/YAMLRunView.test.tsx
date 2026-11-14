@@ -1230,3 +1230,39 @@ ${scenario}${mode === 'single' ? '' : scenario.replace('name: first','name: seco
  expect(screen.queryByText('Request p95')).not.toBeInTheDocument();
  expect(screen.getByText('Execution mode').parentElement).toHaveTextContent(mode==='single'?'Single':mode==='parallel'?'Parallel':'Sequential');
 });
+
+it('keeps SQL response samples after log rotation and completion, then clears them for a new run', async () => {
+  render(<YAMLLoadRunSession {...baseProps} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Run load test' }));
+  await waitFor(() => expect(runApiMock.handlers).toHaveLength(1));
+  act(() =>
+    runApiMock.handlers[0].onLog?.([
+      {
+        seq: 1,
+        ts: 1,
+        level: 'request',
+        method: 'SQL',
+        name: 'Events query',
+        sql_result: {
+          kind: 'query',
+          columns: ['id', 'name'],
+          rows: [[1, 'SQL event']],
+          rows_returned: 1,
+          rows_affected: 0,
+          truncated: false,
+        },
+      },
+    ]),
+  );
+  expect(screen.getByRole('table', { name: 'Returned SQL rows' })).toHaveTextContent('SQL event');
+  act(() =>
+    runApiMock.handlers[0].onLog?.(
+      Array.from({ length: 1001 }, (_, i) => ({ seq: i + 2, ts: i + 2, level: 'info' as const, message: 'later' })),
+    ),
+  );
+  act(() => runApiMock.handlers[0].onDone({ status: 'completed', summary: summary(), error: null }));
+  expect(screen.getByRole('table', { name: 'Returned SQL rows' })).toHaveTextContent('SQL event');
+  fireEvent.click(screen.getByRole('button', { name: 'Run load test' }));
+  await waitFor(() => expect(runApiMock.handlers).toHaveLength(2));
+  expect(screen.queryByRole('table', { name: 'Returned SQL rows' })).not.toBeInTheDocument();
+});

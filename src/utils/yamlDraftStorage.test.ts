@@ -181,6 +181,37 @@ describe('yamlDraftStorage', () => {
     await expect(getActiveDraft()).resolves.toEqual(first);
   });
 
+  it('restores a plan draft without mixing another plan or browser account', async () => {
+    installFakeIndexedDB();
+    const first = { yaml: 'plan: first', fileName: 'first.yaml', updatedAt: '2026-11-10T10:00:00Z' };
+    const second = { yaml: 'plan: second', fileName: 'second.yaml', updatedAt: '2026-11-10T10:01:00Z' };
+    window.history.replaceState({}, '', '/?embedded=1&account=user-a&plan=tp-01');
+    await saveActiveDraft(first);
+    window.history.replaceState({}, '', '/?embedded=1&account=user-a&plan=tp-02');
+    await expect(getActiveDraft()).resolves.toBeNull();
+    await saveActiveDraft(second);
+    window.history.replaceState({}, '', '/?embedded=1&account=user-a&plan=tp-01');
+    await expect(getActiveDraft()).resolves.toEqual(first);
+    window.history.replaceState({}, '', '/?embedded=1&account=user-b&plan=tp-01');
+    await expect(getActiveDraft()).resolves.toBeNull();
+  });
+
+  it('keeps multiple script drafts separate inside the same plan', async () => {
+    installFakeIndexedDB();
+    const first = { yaml: 'script: first', fileName: 'first.yaml', updatedAt: '2026-11-10T10:00:00Z' };
+    const second = { ...first, yaml: 'script: second', fileName: 'second.yaml' };
+    const scope = '/?embedded=1&account=user-a&plan=tp-01';
+    window.history.replaceState({}, '', scope);
+    await saveActiveDraft(first);
+    window.history.replaceState({}, '', scope + '&script=second');
+    await expect(getActiveDraft()).resolves.toBeNull();
+    await saveActiveDraft(second);
+    window.history.replaceState({}, '', scope + '&script=default');
+    await expect(getActiveDraft()).resolves.toEqual(first);
+    window.history.replaceState({}, '', scope + '&script=second');
+    await expect(getActiveDraft()).resolves.toEqual(second);
+  });
+
   it('rejects when IndexedDB cannot be opened', async () => {
     installFakeIndexedDB({ failOpen: true });
 

@@ -1,3 +1,4 @@
+import { isNativeSampler, protocolData, withProtocolChildren } from './protocolChildren';
 import { authoredNodeData } from './yamlAuthoredData';
 import { buildRequestUrl } from '../components/fields/requestUrl';
 import type { YAMLNode } from '../types/yaml';
@@ -22,8 +23,14 @@ function buildUpdatedNode(node: YAMLNode, updatedData: NodeUpdateData): YAMLNode
   }
   if (__componentFields && typeof __componentFields === 'object') {
     const patch = __componentFields as Record<string, unknown>;
-    const authored = { ...authoredNodeData(node), ...patch } as Record<string, unknown>;
-    const data = { ...node.data, ...patch } as Record<string, unknown>;
+    const authored = {
+      ...(isNativeSampler(node.type) ? protocolData(node) : authoredNodeData(node)),
+      ...patch,
+    } as Record<string, unknown>;
+    const data = { ...node.data, ...(isNativeSampler(node.type) ? protocolData(node) : {}), ...patch } as Record<
+      string,
+      unknown
+    >;
     for (const key of Object.keys(patch))
       if (patch[key] === undefined) {
         delete authored[key];
@@ -35,7 +42,7 @@ function buildUpdatedNode(node: YAMLNode, updatedData: NodeUpdateData): YAMLNode
       think_time: 'think_time',
       error_policy: 'error_policy',
     };
-    return {
+    const updated: YAMLNode = {
       ...node,
       data: data as YAMLNode['data'],
       authoredData: authored as YAMLNode['data'],
@@ -43,6 +50,7 @@ function buildUpdatedNode(node: YAMLNode, updatedData: NodeUpdateData): YAMLNode
       componentEdits: [...new Set([...(node.componentEdits || []), ...Object.keys(patch)])],
       children: node.children?.filter(child => !(childFields[child.type] in patch)),
     };
+    return isNativeSampler(node.type) ? withProtocolChildren(updated) : updated;
   }
   if (__name !== undefined && (isHttpRequestNodeType(node.type) || node.type === 'sql')) cleanData.name = __name;
   const requestPresentation = isHttpRequestNodeType(node.type)
@@ -55,7 +63,7 @@ function buildUpdatedNode(node: YAMLNode, updatedData: NodeUpdateData): YAMLNode
       })
     : null;
 
-  return {
+  const updated: YAMLNode = {
     ...node,
     type: requestPresentation?.type ?? node.type,
     name: requestPresentation?.name ?? __name ?? node.name,
@@ -63,6 +71,7 @@ function buildUpdatedNode(node: YAMLNode, updatedData: NodeUpdateData): YAMLNode
       ? { ...cleanData, name: __name }
       : cleanData) as YAMLNode['data'],
   };
+  return isNativeSampler(node.type) ? withProtocolChildren(updated) : updated;
 }
 
 export function applyNodeUpdateToTree(tree: YAMLNode, nodeId: string, updatedData: NodeUpdateData): YAMLNode {

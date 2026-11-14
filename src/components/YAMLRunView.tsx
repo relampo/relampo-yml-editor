@@ -1,3 +1,4 @@
+import { SQLResultTable } from './SQLResultTable';
 import { GRPCRequestMetrics } from './grpc/GRPCRequestMetrics';
 import { componentCapabilityError, type ComponentCapabilities } from '../utils/componentConfiguration';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
@@ -185,6 +186,7 @@ interface LoadRunState {
   runStatus: RunStatus | null;
   summary: RunSummary | null;
   logs: RunLogLine[];
+  sqlResults: RunLogLine[];
 }
 
 const initialLoadRunState: LoadRunState = {
@@ -195,6 +197,7 @@ const initialLoadRunState: LoadRunState = {
   runStatus: null,
   summary: null,
   logs: [],
+  sqlResults: [],
 };
 
 type LoadRunAction =
@@ -216,6 +219,7 @@ function loadRunReducer(state: LoadRunState, action: LoadRunAction): LoadRunStat
         ...state,
         snapshots: [],
         logs: [],
+        sqlResults: [],
         summary: null,
         runError: null,
         runStatus: 'running',
@@ -253,7 +257,13 @@ function loadRunReducer(state: LoadRunState, action: LoadRunAction): LoadRunStat
       });
       if (newLines.length === 0) return state;
       const merged = [...state.logs, ...newLines].sort((left, right) => left.seq - right.seq);
-      return { ...state, logs: merged.length > MAX_LIVE_LOGS ? merged.slice(merged.length - MAX_LIVE_LOGS) : merged };
+      const samples = new Map(state.sqlResults.map(line => [line.seq, line]));
+      for (const line of newLines) if (line.sql_result) samples.set(line.seq, line);
+      return {
+        ...state,
+        sqlResults: [...samples.values()].slice(0, 20),
+        logs: merged.length > MAX_LIVE_LOGS ? merged.slice(merged.length - MAX_LIVE_LOGS) : merged,
+      };
     }
     case 'run_done':
       return {
@@ -300,7 +310,7 @@ export function YAMLLoadRunSession({
 }: YAMLLoadRunSessionProps) {
   const { t, language } = useLanguage();
   const [runState, dispatch] = useReducer(loadRunReducer, initialLoadRunState);
-  const { snapshots, isRunning, isStopping, runError, runStatus, summary, logs } = runState;
+  const { snapshots, isRunning, isStopping, runError, runStatus, summary, logs, sqlResults } = runState;
 
   const logScrollRef = useRef<HTMLDivElement | null>(null);
   const stopStreamRef = useRef<(() => void) | null>(null);
@@ -592,23 +602,25 @@ export function YAMLLoadRunSession({
               </p>
             )}
 
-            {loadNodes.filter(node => normalizeLoadType(node.data?.type) !== 'intent').map(node => {
-              const scenario = loadScenarios.get(node.id);
-              if (resultScope && scenario?.data?.name !== resultScope && scenario?.name !== resultScope) return null;
-              return (
-                <div key={node.id}>
-                  {isMultiScenario && <p className="mb-2 text-sm text-zinc-300">{scenario?.name}</p>}
-                  <PlannedLoadProfilePanel
-                    plannedLoadNode={node}
-                    plannedLoadType={normalizeLoadType(node.data?.type)}
-                    scenarioCount={1}
-                    iterationBudgetCapsDuration={!isMultiScenario && iterationBudgetCapsDuration}
-                    isRunning={isRunning && !isMultiScenario}
-                    elapsedMs={latest?.elapsed_ms ?? 0}
-                  />
-                </div>
-              );
-            })}
+            {loadNodes
+              .filter(node => normalizeLoadType(node.data?.type) !== 'intent')
+              .map(node => {
+                const scenario = loadScenarios.get(node.id);
+                if (resultScope && scenario?.data?.name !== resultScope && scenario?.name !== resultScope) return null;
+                return (
+                  <div key={node.id}>
+                    {isMultiScenario && <p className="mb-2 text-sm text-zinc-300">{scenario?.name}</p>}
+                    <PlannedLoadProfilePanel
+                      plannedLoadNode={node}
+                      plannedLoadType={normalizeLoadType(node.data?.type)}
+                      scenarioCount={1}
+                      iterationBudgetCapsDuration={!isMultiScenario && iterationBudgetCapsDuration}
+                      isRunning={isRunning && !isMultiScenario}
+                      elapsedMs={latest?.elapsed_ms ?? 0}
+                    />
+                  </div>
+                );
+              })}
 
             {intentTicks.length > 0 && (
               <IntentRuntimeTimeline
@@ -629,10 +641,32 @@ export function YAMLLoadRunSession({
                       : selectedResult.outcome
                     : runStatus
                 }
-                scenarioMode={isMultiScenario ? (tree?.data?.scenario_mode === 'sequential' ? 'sequential' : 'parallel') : 'single'}
+                scenarioMode={
+                  isMultiScenario ? (tree?.data?.scenario_mode === 'sequential' ? 'sequential' : 'parallel') : 'single'
+                }
                 scenarioResult={selectedResult != null}
-                reportUrl={summary && activeRunIdRef.current ? loadRunReportUrl(activeRunIdRef.current, language) : undefined}
+                reportUrl={
+                  summary && activeRunIdRef.current ? loadRunReportUrl(activeRunIdRef.current, language) : undefined
+                }
               />
+            )}
+
+            {sqlResults.length > 0 && (
+              <div className="space-y-3">
+                <p className="text-xs text-zinc-400">{t('yamlEditor.sqlResults.sample')}</p>
+                {sqlResults
+                  .filter(line => !resultScope || line.scenario_name === resultScope)
+                  .map(
+                    line =>
+                      line.sql_result && (
+                        <SQLResultTable
+                          key={line.seq}
+                          result={line.sql_result}
+                          label={line.name || line.path}
+                        />
+                      ),
+                  )}
+              </div>
             )}
 
             <LiveLogPanel
@@ -670,7 +704,7 @@ function RunToolbar({
 }) {
   const { t } = useLanguage();
   return (
-    <div className="border-b border-white/5 px-5 py-3">
+    <div data-studio-execution-toolbar className="border-b border-white/5 px-5 py-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">
@@ -1635,7 +1669,7 @@ function RunSummaryPanel({
     : summary.total_requests > 0
       ? (summary.total_failures * 100) / summary.total_requests
       : null;
-  const executionMode = scenarioResult ? 'single' : summary.scenario_mode ?? scenarioMode;
+  const executionMode = scenarioResult ? 'single' : (summary.scenario_mode ?? scenarioMode);
   const metrics = [
     {
       label: t('yamlEditor.runDebug.run.summary.status'),
@@ -1669,7 +1703,10 @@ function RunSummaryPanel({
     },
     { label: t('yamlEditor.runDebug.run.summary.rssPeak'), value: measured('rss_peak_mib', ' MiB') },
     { label: t('yamlEditor.runDebug.run.summary.cpuPeak'), value: measured('cpu_percent_peak', '%', 1) },
-    { label: t('yamlEditor.runDebug.run.summary.executionMode'), value: t(`yamlEditor.runDebug.run.summary.${executionMode}`) },
+    {
+      label: t('yamlEditor.runDebug.run.summary.executionMode'),
+      value: t(`yamlEditor.runDebug.run.summary.${executionMode}`),
+    },
   ];
   return (
     <div className="border border-white/10 bg-[#111111]">
@@ -1747,8 +1784,14 @@ function RunSummaryPanel({
                       {request.method}
                     </span>
                     {request.scenario_name && <span className="mr-2 text-zinc-400">{request.scenario_name}</span>}
-                    {request.path || request.name}
+                    {request.method === 'SQL' ? request.name : request.path || request.name}
                     <GRPCRequestMetrics request={request} />
+                    {request.method === 'SQL' && (
+                      <span className="mt-1 block text-zinc-400">
+                        {t('yamlEditor.sqlResults.returned')}: {request.rows_returned ?? 0} ·{' '}
+                        {t('yamlEditor.sqlResults.affected')}: {request.rows_affected ?? 0}
+                      </span>
+                    )}
                   </td>
                   <td className="px-3 py-2 text-right font-mono text-zinc-300">{request.count.toLocaleString()}</td>
                   <td

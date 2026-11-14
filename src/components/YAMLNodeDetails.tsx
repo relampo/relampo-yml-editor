@@ -1,7 +1,7 @@
 import { SearchMatchDetails } from './yaml-tree-view/SearchMatchDetails';
 import type { SearchScope } from './yaml-tree-view/search';
 import { ComponentConfigurationDetails } from './yaml-node-details/ComponentConfigurationDetails';
-import type { ComponentCapabilities } from '../utils/componentConfiguration';
+import { componentNodeChain, type ComponentCapabilities } from '../utils/componentConfiguration';
 import type { DocumentIssue } from '../utils/documentIssues';
 import { NodeIssuesSection } from './DocumentIssues';
 import { Eye, EyeOff, FileText } from 'lucide-react';
@@ -9,10 +9,12 @@ import { useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { getNodeDisplayName } from './yaml-tree-view/nodeDisplayName';
 import type { RedirectSourceInfo, RedirectedRequestInfo, YAMLNode } from '../types/yaml';
+import { protocolData } from '../utils/protocolChildren';
 import { YAMLWebSocketDetails } from './YAMLWebSocketDetails';
 import { YAMLGRPCDetails } from './YAMLGRPCDetails';
 import { YAMLRequestDetails } from './YAMLRequestDetails';
-import { YAMLSQLDetails } from './YAMLSQLDetails';
+import { SQLRequestDetails } from './SQLRequestDetails';
+import { SQLDefaultsDetails } from './SQLDefaultsDetails';
 import { HighlightedInput } from './ui/HighlightedInput';
 import { BalancedDetails } from './yaml-node-details/BalancedDetails';
 import {
@@ -54,7 +56,7 @@ interface YAMLNodeDetailsProps {
   hosts?: string[];
   redirectedInfo?: RedirectedRequestInfo | null;
   redirectSourceInfo?: RedirectSourceInfo | null;
-  onSplitWebSocket?: (nodeId:string)=>void;
+  onSplitWebSocket?: (nodeId: string) => void;
   onNodeUpdate?: (nodeId: string, updatedData: any) => void;
   onRenameHost?: (oldHost: string, newHost: string) => void;
   onRemoveHost?: (host: string) => void;
@@ -80,7 +82,7 @@ const REQUEST_NODE_TYPES = [
   'options',
 ];
 // Node types that cannot be toggled on/off (mirrors the tree context menu).
-const NON_TOGGLEABLE_NODE_TYPES = ['root', 'test', 'scenarios', 'steps', 'grpc_defaults'];
+const NON_TOGGLEABLE_NODE_TYPES = ['root', 'test', 'scenarios', 'steps', 'grpc_defaults', 'sql_defaults'];
 
 export function YAMLNodeDetails({
   node,
@@ -198,12 +200,17 @@ export function YAMLNodeDetails({
               onChange={event => {
                 const nextName = event.target.value;
                 setNodeName(nextName);
-                onNodeUpdate?.(node.id, { ...node.data, __name: nextName });
+                onNodeUpdate?.(node.id, {
+                  ...(['sql', 'grpc', 'websocket'].includes(node.type) ? protocolData(node) : node.data),
+                  __name: nextName,
+                });
               }}
               maxLength={isRequestNode ? 255 : 50}
               containerStyle={{
                 width:
-                  node.type === 'think_time' ? '100px' : `${Math.min(Math.max((nodeName || '').length + 4, 12), 48)}ch`,
+                  node.type === 'think_time'
+                    ? '100px'
+                    : `${Math.min(Math.max((nodeName === node.name ? getNodeDisplayName(node, t) : nodeName || '').length + 4, 12), 48)}ch`,
               }}
               containerClass="max-w-full shrink-0"
               className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-semibold"
@@ -223,6 +230,8 @@ export function YAMLNodeDetails({
           />
         )}
         <NodeDetailsContent
+          tree={tree}
+          sqlConnectionTests={componentCapabilities?.features.includes('sql_connection_defaults') ?? false}
           onSplitWebSocket={onSplitWebSocket}
           node={node}
           nodeName={nodeName}
@@ -245,6 +254,8 @@ export function YAMLNodeDetails({
 
 function NodeDetailsContent({
   node,
+  tree,
+  sqlConnectionTests = false,
   nodeName,
   setNodeName,
   baseUrl,
@@ -260,12 +271,14 @@ function NodeDetailsContent({
   fileName = '',
 }: {
   node: YAMLNode;
+  tree?: YAMLNode | null;
+  sqlConnectionTests?: boolean;
   nodeName: string;
   setNodeName: (name: string) => void;
   baseUrl: string;
   hosts: string[];
   redirectSourceInfo: RedirectSourceInfo | null;
-  onSplitWebSocket?:(nodeId:string)=>void;
+  onSplitWebSocket?: (nodeId: string) => void;
   onNodeUpdate?: (nodeId: string, updatedData: any) => void;
   onRenameHost?: (oldHost: string, newHost: string) => void;
   onRemoveHost?: (host: string) => void;
@@ -347,16 +360,25 @@ function NodeDetailsContent({
       return (
         <YAMLWebSocketDetails
           key={node.id}
-          node={node}
+          node={{ ...node, data: protocolData(node) as YAMLNode['data'] }}
           onNodeUpdate={onNodeUpdate}
-          onSplit={onSplitWebSocket?()=>onSplitWebSocket(node.id):undefined}
+          onSplit={onSplitWebSocket ? () => onSplitWebSocket(node.id) : undefined}
+        />
+      );
+    case 'sql_defaults':
+      return (
+        <SQLDefaultsDetails
+          node={node}
+          tree={tree}
+          onNodeUpdate={onNodeUpdate}
+          canTest={sqlConnectionTests}
         />
       );
     case 'grpc_defaults':
     case 'grpc':
       return (
         <YAMLGRPCDetails
-          node={node}
+          node={{ ...node, data: protocolData(node) as YAMLNode['data'] }}
           onNodeUpdate={onNodeUpdate}
         />
       );
@@ -371,8 +393,10 @@ function NodeDetailsContent({
     case 'options':
       if (node.type === 'sql') {
         return (
-          <YAMLSQLDetails
-            node={node}
+          <SQLRequestDetails
+            key={node.id}
+            tree={tree}
+            node={{ ...node, data: protocolData(node) as YAMLNode['data'] }}
             onNodeUpdate={onNodeUpdate}
           />
         );
@@ -472,6 +496,10 @@ function NodeDetailsContent({
       return (
         <ErrorPolicyDetails
           node={node}
+          nativeContext={Boolean(
+            tree &&
+            componentNodeChain(tree, node.id).some(parent => ['sql', 'grpc', 'websocket'].includes(parent.type)),
+          )}
           onNodeUpdate={onNodeUpdate}
         />
       );
@@ -494,6 +522,10 @@ function NodeDetailsContent({
       return (
         <AssertionDetails
           node={node}
+          sqlContext={Boolean(tree && componentNodeChain(tree, node.id).some(parent => parent.type === 'sql'))}
+          sqlKind={
+            tree ? componentNodeChain(tree, node.id).find(parent => parent.type === 'sql')?.data?.kind : undefined
+          }
           onNodeUpdate={onNodeUpdate}
           searchQuery={searchScope === 'responses' ? '' : searchQuery}
         />
@@ -502,6 +534,7 @@ function NodeDetailsContent({
       return (
         <ExtractorDetails
           node={node}
+          sqlContext={Boolean(tree && componentNodeChain(tree, node.id).some(parent => parent.type === 'sql'))}
           onNodeUpdate={onNodeUpdate}
           searchQuery={searchScope === 'responses' ? '' : searchQuery}
         />
@@ -510,6 +543,11 @@ function NodeDetailsContent({
       return (
         <FileDetails
           node={node}
+          protocol={
+            tree
+              ? componentNodeChain(tree, node.id).find(parent => ['grpc', 'websocket'].includes(parent.type))?.type
+              : undefined
+          }
           onNodeUpdate={onNodeUpdate}
         />
       );
@@ -524,6 +562,7 @@ function NodeDetailsContent({
       return (
         <HeadersDetails
           node={node}
+          grpcContext={Boolean(tree && componentNodeChain(tree, node.id).some(parent => parent.type === 'grpc'))}
           onNodeUpdate={onNodeUpdate}
           searchQuery={searchScope === 'responses' ? '' : searchQuery}
         />

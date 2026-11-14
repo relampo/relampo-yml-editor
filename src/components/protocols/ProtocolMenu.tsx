@@ -13,8 +13,10 @@ export function ProtocolMenu({
   grpcEnabled,
   httpEnabled = false,
   onSelect,
+  appearance = 'studio',
 }: {
   language: string;
+  appearance?: 'studio' | 'saas';
   grpcEnabled: boolean;
   httpEnabled?: boolean;
   onSelect: (protocol: StudioProtocol) => void;
@@ -40,14 +42,22 @@ export function ProtocolMenu({
     // A selected item opens a modal dialog. Keep the menu non-modal so its
     // closing animation cannot restore a stale pointer lock over that dialog.
     <DropdownMenu modal={false}>
-      <DropdownMenuTrigger className="inline-flex h-8 items-center justify-center gap-2 rounded-md border border-white/15 bg-white/5 px-3 text-sm font-semibold text-zinc-200 shadow-sm transition-colors hover:border-white/25 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-yellow-400/40">
+      <DropdownMenuTrigger
+        className={
+          (appearance === 'saas' ? 'editor-header-button ' : '') +
+          'inline-flex h-8 items-center justify-center gap-2 rounded-md border border-white/15 bg-white/5 px-3 text-sm font-semibold text-zinc-200 shadow-sm transition-colors hover:border-white/25 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-yellow-400/40'
+        }
+      >
         <CircleDot className="h-4 w-4 text-red-400" />
         Recorder
         <ChevronDown className="h-4 w-4" />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"
-        className="min-w-65 border border-white/10 bg-[#111111] p-1.5 text-zinc-200"
+        className={
+          (appearance === 'saas' ? 'saas-editor-surface editor-header-menu ' : '') +
+          'min-w-65 border border-white/10 bg-[#111111] p-1.5 text-zinc-200'
+        }
       >
         <DropdownMenuLabel className="text-xs uppercase tracking-wide text-zinc-400">
           {spanish ? 'Seleccionar protocolo' : 'Select protocol'}

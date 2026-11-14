@@ -1,0 +1,74 @@
+/* Record and Correlation define the compact scale for every embedded tool. */
+:root[data-studio-theme] {
+  --studio-ui-size: 0.75rem;
+  --studio-label-size: 0.625rem;
+  --studio-ui-line-height: 1rem;
+  --studio-control-height: 1.75rem;
+  --studio-panel-heading-height: 2.25rem;
+  --text-sm: var(--studio-ui-size);
+  --text-sm--line-height: 1.5;
+  --text-base: 0.8125rem;
+  --text-base--line-height: 1.5;
+  --text-lg: 0.875rem;
+  --text-lg--line-height: 1.5;
+  --text-xl: 1rem;
+  --text-xl--line-height: 1.5;
+}
+
+:root[data-studio-theme] body {
+  font-family: var(--font-sans);
+  font-size: var(--studio-ui-size);
+  line-height: 1.5;
+}
+
+:root[data-studio-theme] [data-editor-view-tabs],
+:root[data-studio-theme] [data-editor-panel-heading] {
+  height: var(--studio-panel-heading-height);
+}
+
+:root[data-studio-theme] [data-editor-view-tab] {
+  font-size: var(--studio-ui-size);
+  line-height: var(--studio-ui-line-height);
+}
+
+:root[data-studio-theme] [data-editor-view-tabs] > button {
+  height: 100%;
+  padding: 0 0.75rem;
+  font-size: var(--studio-ui-size);
+}
+
+:root[data-studio-theme] [data-editor-view-tabs] > button svg {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+:root[data-studio-theme] [data-editor-panel-heading] {
+  padding: 0 0.75rem;
+}
+
+:root[data-studio-theme] [data-editor-panel-heading] > span,
+:root[data-studio-theme] [data-studio-workspace] .uppercase:not(.font-mono) {
+  font-size: var(--studio-label-size);
+  font-weight: 600;
+  letter-spacing: 0.025em;
+  line-height: 1.5;
+}
+
+:root[data-studio-theme] [data-studio-execution-toolbar] {
+  padding: 0.5rem 0.75rem;
+}
+
+:root[data-studio-theme] [data-studio-execution-toolbar] :is(button, fieldset) {
+  height: var(--studio-control-height);
+  font-size: var(--studio-ui-size);
+  line-height: var(--studio-ui-line-height);
+}
+
+:root[data-studio-theme] [data-studio-execution-toolbar] button.w-9 {
+  width: var(--studio-control-height);
+}
+
+:root[data-studio-theme] [data-studio-execution-toolbar] button > svg {
+  width: 0.875rem;
+  height: 0.875rem;
+}

@@ -1,0 +1,98 @@
+import type { editor as MonacoEditorNS } from 'monaco-editor';
+
+export const RELAMPO_YAML_THEME = {
+  base: 'vs-dark',
+  inherit: true,
+  encodedTokensColors: [],
+  semanticHighlighting: false,
+  rules: [
+    { token: '', foreground: 'E4E4E7' },
+    { token: 'comment', foreground: '71717A' },
+    { token: 'comment.yaml', foreground: '71717A' },
+    { token: 'key', foreground: 'FACC15', fontStyle: 'bold' },
+    { token: 'key.yaml', foreground: 'FACC15', fontStyle: 'bold' },
+    { token: 'string.key', foreground: 'FACC15', fontStyle: 'bold' },
+    { token: 'string.key.yaml', foreground: 'FACC15', fontStyle: 'bold' },
+    { token: 'entity.name.tag', foreground: 'FACC15', fontStyle: 'bold' },
+    {
+      token: 'entity.name.tag.yaml',
+      foreground: 'FACC15',
+      fontStyle: 'bold',
+    },
+    {
+      token: 'support.type.property-name',
+      foreground: 'FACC15',
+      fontStyle: 'bold',
+    },
+    {
+      token: 'support.type.property-name.yaml',
+      foreground: 'FACC15',
+      fontStyle: 'bold',
+    },
+    {
+      token: 'meta.object-literal.key',
+      foreground: 'FACC15',
+      fontStyle: 'bold',
+    },
+    {
+      token: 'meta.object-literal.key.yaml',
+      foreground: 'FACC15',
+      fontStyle: 'bold',
+    },
+    { token: 'type', foreground: '60A5FA' },
+    { token: 'type.yaml', foreground: '60A5FA' },
+    { token: 'keyword', foreground: '60A5FA' },
+    { token: 'keyword.yaml', foreground: '60A5FA' },
+    { token: 'string', foreground: 'E4E4E7' },
+    { token: 'string.yaml', foreground: 'E4E4E7' },
+    { token: 'number', foreground: 'E4E4E7' },
+    { token: 'number.yaml', foreground: 'E4E4E7' },
+    { token: 'value', foreground: 'E4E4E7' },
+    { token: 'value.yaml', foreground: 'E4E4E7' },
+    { token: 'operators', foreground: '71717A' },
+    { token: 'delimiter', foreground: '71717A' },
+    { token: 'delimiter.colon', foreground: '71717A' },
+  ],
+  colors: {
+    'editor.background': '#0A0A0A',
+    'editor.foreground': '#E4E4E7',
+    'editorLineNumber.foreground': '#71717A',
+    'editorLineNumber.activeForeground': '#A1A1AA',
+    'editorCursor.foreground': '#FACC15',
+    'editor.selectionBackground': '#FACC1533',
+    'editor.inactiveSelectionBackground': '#FACC151A',
+    'editor.findMatchBackground': '#00000000',
+    'editor.findMatchHighlightBackground': '#00000000',
+  },
+} satisfies MonacoEditorNS.IStandaloneThemeData & { semanticHighlighting: boolean };
+
+const lightColors: Record<string, string> = {
+  E4E4E7: '202020',
+  FACC15: '956800',
+  '60A5FA': '1D4ED8',
+  '71717A': '575757',
+};
+export const RELAMPO_YAML_LIGHT_THEME: MonacoEditorNS.IStandaloneThemeData = {
+  ...RELAMPO_YAML_THEME,
+  base: 'vs',
+  rules: RELAMPO_YAML_THEME.rules.map(rule => ({
+    ...rule,
+    foreground: lightColors[rule.foreground] || rule.foreground,
+  })),
+  colors: {
+    'editor.background': '#FFFFFF',
+    'editor.foreground': '#202020',
+    'editorLineNumber.foreground': '#888888',
+    'editorLineNumber.activeForeground': '#575757',
+    'editorCursor.foreground': '#956800',
+    'editor.lineHighlightBackground': '#FFFFFF',
+    'editor.selectionBackground': '#FDE68A80',
+    'editor.inactiveSelectionBackground': '#FEF3C780',
+    'editor.findMatchBackground': '#00000000',
+    'editor.findMatchHighlightBackground': '#00000000',
+    'editorWidget.background': '#FFFFFF',
+    'editorWidget.border': '#AAAAAA',
+    'editorGutter.background': '#FFFFFF',
+    'editorIndentGuide.background1': '#DEDEDE',
+  },
+};

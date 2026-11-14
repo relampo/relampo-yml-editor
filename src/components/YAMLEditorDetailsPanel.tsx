@@ -10,6 +10,8 @@ import { YAMLLoadRunSession } from './YAMLRunView';
 import { YAMLNodeDetails } from './YAMLNodeDetails';
 
 type YAMLEditorDetailsPanelProps = {
+  debugExecutionAvailable?: boolean;
+  runExecutionAvailable?: boolean;
   onTreeChange?: (tree: YAMLNode) => void;
   isDebugViewActive: boolean;
   isRunViewActive: boolean;
@@ -45,6 +47,8 @@ type YAMLEditorDetailsPanelProps = {
 };
 
 export function YAMLEditorDetailsPanel({
+  debugExecutionAvailable = true,
+  runExecutionAvailable = true,
   isDebugViewActive,
   isRunViewActive,
   language,
@@ -80,8 +84,11 @@ export function YAMLEditorDetailsPanel({
 }: YAMLEditorDetailsPanelProps) {
   const [runMode, setRunMode] = useState<'local' | 'distributed'>('local');
   return (
-    <div className="flex-1 min-w-0 flex flex-col bg-[#0d0d0d]">
-      <div className="flex items-center border-b border-white/5 bg-[#111111] shrink-0 px-6 py-3">
+    <div className="flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden bg-[#0d0d0d]">
+      <div
+        data-editor-panel-heading
+        className="flex items-center border-b border-white/5 bg-[#111111] shrink-0 px-6 py-3"
+      >
         <span className="text-sm font-bold tracking-tight uppercase text-zinc-400">
           {isDebugViewActive
             ? language === 'es'
@@ -96,7 +103,17 @@ export function YAMLEditorDetailsPanel({
                 : 'Element details'}
         </span>
       </div>
-      <div className="flex-1 overflow-hidden">
+      {((isDebugViewActive && !debugExecutionAvailable) || (isRunViewActive && !runExecutionAvailable)) && (
+        <p
+          role="status"
+          className="shrink-0 border-b border-amber-400/20 bg-amber-400/5 px-5 py-3 text-xs text-amber-200"
+        >
+          {language === 'es'
+            ? 'Conecta un Relampo Studio compatible para ejecutar este plan. Puedes revisar su configuración.'
+            : 'Connect a compatible Relampo Studio to execute this plan. You can review its configuration.'}
+        </p>
+      )}
+      <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
         {/* Keep the debug session mounted while enabled so runs survive tab switches. */}
         {debugViewEnabled && (
           <div className={isDebugViewActive ? 'h-full' : 'hidden'}>
@@ -106,7 +123,7 @@ export function YAMLEditorDetailsPanel({
               tree={yamlTree}
               yamlCode={yamlCode}
               flushPendingEdits={flushPendingEdits}
-              documentReady={documentReady}
+              documentReady={documentReady && debugExecutionAvailable}
               validationErrors={validationErrors}
               onGoToFirstError={onGoToFirstError}
               redirectedRequestMap={redirectedRequestMap}
@@ -161,7 +178,7 @@ export function YAMLEditorDetailsPanel({
               role="tabpanel"
               id="run-panel-local"
               aria-labelledby="run-mode-local"
-              className={runMode === 'local' ? 'min-h-0 flex-1' : 'hidden'}
+              className={runMode === 'local' ? 'min-h-0 min-w-0 flex-1 overflow-hidden' : 'hidden'}
             >
               <YAMLLoadRunSession
                 multiScenarioRunEnabled={multiScenarioRunEnabled}
@@ -169,7 +186,7 @@ export function YAMLEditorDetailsPanel({
                 tree={yamlTree}
                 yamlCode={yamlCode}
                 flushPendingEdits={flushPendingEdits}
-                documentReady={documentReady}
+                documentReady={documentReady && runExecutionAvailable}
                 validationErrors={validationErrors}
                 onGoToFirstError={onGoToFirstError}
               />
@@ -178,14 +195,14 @@ export function YAMLEditorDetailsPanel({
               role="tabpanel"
               id="run-panel-distributed"
               aria-labelledby="run-mode-distributed"
-              className={runMode === 'distributed' ? 'min-h-0 flex-1' : 'hidden'}
+              className={runMode === 'distributed' ? 'min-h-0 min-w-0 flex-1 overflow-hidden' : 'hidden'}
             >
               <YAMLDistributedRun
                 enabled={distributedRunEnabled}
                 fileName={fileName}
                 yamlCode={yamlCode}
                 flushPendingEdits={flushPendingEdits}
-                documentReady={documentReady}
+                documentReady={documentReady && runExecutionAvailable}
                 validationErrors={validationErrors}
               />
             </div>

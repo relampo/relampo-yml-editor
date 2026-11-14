@@ -9,7 +9,15 @@ import { RecorderShell } from './RecorderShell';
 import { useHTTPRecorder } from './useHTTPRecorder';
 import { recorderCompactInput as recorderInput, recorderCompactButton as recorderButton } from './HTTPRecorderSettings';
 import { HTTPRecorderRequests } from './HTTPRecorderRequests';
-export function HTTPRecorderPage() {
+export function HTTPRecorderPage({
+  embedded = false,
+  onOpenSaved,
+  onActivityChange,
+}: {
+  embedded?: boolean;
+  onOpenSaved?: (editorURL: string) => Promise<void>;
+  onActivityChange?: (active: boolean) => void;
+} = {}) {
   const { language, setLanguage } = useLanguage();
   const es = language === 'es',
     text = (en: string, spanish: string) => (es ? spanish : en);
@@ -26,6 +34,9 @@ export function HTTPRecorderPage() {
       document.title = previous;
     };
   }, [setLanguage]);
+  useEffect(() => {
+    onActivityChange?.(state.active);
+  }, [state.active, onActivityChange]);
   const recording = state.active && state.recording !== false;
   useEffect(() => {
     if (!recording || !state.startedAt) return;
@@ -47,6 +58,19 @@ export function HTTPRecorderPage() {
     if (!current?.active) popup.close();
   }
   async function openSaved() {
+    if (onOpenSaved) {
+      setOpening(true);
+      setError('');
+      try {
+        const result = await httpRecorderRequest<{ editorUrl: string }>('editor', {});
+        await onOpenSaved(validateSavedEditorURL(result.editorUrl));
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : String(cause));
+      } finally {
+        setOpening(false);
+      }
+      return;
+    }
     const editor = window.open('about:blank', '_blank');
     if (!editor) {
       setError(text('Allow opening Studio in another tab.', 'Permite abrir Studio en otra pestaña.'));
@@ -70,6 +94,7 @@ export function HTTPRecorderPage() {
   const canRetrySave = !state.active && !state.savedPath && !!state.proxyAddress;
   return (
     <RecorderShell
+      embedded={embedded}
       language={language}
       setLanguage={setLanguage}
       onError={setError}

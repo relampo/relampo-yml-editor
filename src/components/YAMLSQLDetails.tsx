@@ -1,3 +1,4 @@
+import { useStudioMonacoTheme } from '../hooks/useStudioTheme';
 import { Info } from 'lucide-react';
 import MonacoEditor from '@monaco-editor/react';
 import * as jsyaml from 'js-yaml';
@@ -66,7 +67,12 @@ function SQLSelectField({ id, label, value, options, onValueChange, helper, trig
   const { t } = useLanguage();
   return (
     <div>
-      <label htmlFor={id} className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{label}</label>
+      <label
+        htmlFor={id}
+        className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
+      >
+        {label}
+      </label>
       <Select
         value={value}
         onValueChange={onValueChange}
@@ -137,7 +143,10 @@ function SQLBasicsRow({
       />
 
       <div>
-        <label htmlFor="sql-driver-override" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+        <label
+          htmlFor="sql-driver-override"
+          className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
+        >
           {t('yamlEditor.requestDetails.sqlDriverOverride')}
         </label>
         <Input
@@ -158,22 +167,29 @@ interface SQLQueryEditorProps {
   helper: string;
 }
 
-function SQLQueryEditor({ query, onChange, helper }: SQLQueryEditorProps) {
+export function SQLQueryEditor({ query, onChange, helper }: SQLQueryEditorProps) {
+  const theme = useStudioMonacoTheme();
   const { t } = useLanguage();
   return (
     <div>
-      <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{t('yamlEditor.requestDetails.sqlQuery')}</div>
+      <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+        {t('yamlEditor.requestDetails.sqlQuery')}
+      </div>
       <div className="overflow-hidden rounded-lg border border-white/10 bg-[#111111]">
         <div className="flex items-center justify-between border-b border-white/10 bg-[#161616] px-3 py-2">
-          <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500">{t('yamlEditor.requestDetails.sqlEditor')}</span>
-          <span className="text-[11px] font-mono text-zinc-500">{t('yamlEditor.requestDetails.lineCount').replace('{count}', String(query.split('\n').length))}</span>
+          <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+            {t('yamlEditor.requestDetails.sqlEditor')}
+          </span>
+          <span className="text-[11px] font-mono text-zinc-500">
+            {t('yamlEditor.requestDetails.lineCount').replace('{count}', String(query.split('\n').length))}
+          </span>
         </div>
         <MonacoEditor
           height="220px"
           defaultLanguage="sql"
           value={query}
           onChange={(value: string | undefined) => onChange(value || '')}
-          theme="vs-dark"
+          theme={theme}
           options={{
             minimap: { enabled: false },
             fontSize: 13,
@@ -245,11 +261,16 @@ function SQLConnectionFields({
   const { t } = useLanguage();
   return (
     <div>
-      <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">{t('yamlEditor.requestDetails.sqlConnection')}</p>
+      <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
+        {t('yamlEditor.requestDetails.sqlConnection')}
+      </p>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {fields.map(f => (
           <div key={f.id}>
-            <label htmlFor={f.id} className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+            <label
+              htmlFor={f.id}
+              className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
+            >
               {f.label}
             </label>
             <Input
@@ -294,11 +315,16 @@ function SQLPoolingFields({
   const { t } = useLanguage();
   return (
     <div>
-      <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">{t('yamlEditor.requestDetails.sqlPooling')}</p>
+      <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
+        {t('yamlEditor.requestDetails.sqlPooling')}
+      </p>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {POOLING_FIELDS.map(f => (
           <div key={f.id}>
-            <label htmlFor={f.id} className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">
+            <label
+              htmlFor={f.id}
+              className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
+            >
               {t(`yamlEditor.requestDetails.${f.label}`)}
             </label>
             <Input
@@ -333,7 +359,9 @@ function SQLParamsField({ value, error, onChange, onBlur, helperBefore, helperAf
   const { t } = useLanguage();
   return (
     <div>
-      <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">{t('yamlEditor.requestDetails.sqlBoundParameters')}</p>
+      <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
+        {t('yamlEditor.requestDetails.sqlBoundParameters')}
+      </p>
       <Textarea
         value={value}
         onChange={event => onChange(event.target.value)}
@@ -359,7 +387,9 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
   const connection = data.connection || {};
   const options = connection.options || {};
   const extract =
-    data.extract && !Array.isArray(data.extract) && Object.values(data.extract).every(value => typeof value === 'string')
+    data.extract &&
+    !Array.isArray(data.extract) &&
+    Object.values(data.extract).every(value => typeof value === 'string')
       ? (data.extract as StringMap)
       : {};
   const kind = data.kind || 'query';
@@ -378,7 +408,11 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
     SQL_PARAMS_SYNC_UNSET,
   );
 
-  if (syncedParams === SQL_PARAMS_SYNC_UNSET || data.params !== syncedParams.params || node.id !== syncedParams.nodeId) {
+  if (
+    syncedParams === SQL_PARAMS_SYNC_UNSET ||
+    data.params !== syncedParams.params ||
+    node.id !== syncedParams.nodeId
+  ) {
     setSyncedParams({ params: data.params, nodeId: node.id });
     setParamsText(stringifyParams(data.params));
     setParamsError('');
@@ -466,11 +500,32 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
       placeholder: data.dialect === 'mysql' ? '3306' : '5432',
       useNullishFallback: true,
     },
-    { id: 'sql-connection-database', field: 'database', label: t('yamlEditor.requestDetails.sqlDatabase'), placeholder: 'app' },
+    {
+      id: 'sql-connection-database',
+      field: 'database',
+      label: t('yamlEditor.requestDetails.sqlDatabase'),
+      placeholder: 'app',
+    },
     { id: 'sql-user', field: 'user', label: t('yamlEditor.requestDetails.sqlUser'), placeholder: '{{db_user}}' },
-    { id: 'sql-password', field: 'password', label: t('yamlEditor.requestDetails.sqlPassword'), placeholder: '{{db_password}}', type: 'password' },
-    { id: 'sql-dsn-override', field: 'dsn', label: t('yamlEditor.requestDetails.sqlDsnOverride'), placeholder: t('yamlEditor.requestDetails.sqlDsnPlaceholder') },
-    { id: 'sql-ssl-mode', field: 'ssl_mode', label: t('yamlEditor.requestDetails.sqlSslMode'), placeholder: 'disable, require, verify-full' },
+    {
+      id: 'sql-password',
+      field: 'password',
+      label: t('yamlEditor.requestDetails.sqlPassword'),
+      placeholder: '{{db_password}}',
+      type: 'password',
+    },
+    {
+      id: 'sql-dsn-override',
+      field: 'dsn',
+      label: t('yamlEditor.requestDetails.sqlDsnOverride'),
+      placeholder: t('yamlEditor.requestDetails.sqlDsnPlaceholder'),
+    },
+    {
+      id: 'sql-ssl-mode',
+      field: 'ssl_mode',
+      label: t('yamlEditor.requestDetails.sqlSslMode'),
+      placeholder: 'disable, require, verify-full',
+    },
     { id: 'sql-charset', field: 'charset', label: t('yamlEditor.requestDetails.sqlCharset'), placeholder: 'utf8mb4' },
   ];
 
@@ -495,7 +550,12 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
-          <label htmlFor="sql-timeout" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2">{t('yamlEditor.requestDetails.timeout')}</label>
+          <label
+            htmlFor="sql-timeout"
+            className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
+          >
+            {t('yamlEditor.requestDetails.timeout')}
+          </label>
           <Input
             id="sql-timeout"
             value={data.timeout || ''}
@@ -529,19 +589,22 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
           value={allowWrites ? 'true' : 'false'}
           options={BOOLEAN_OPTIONS}
           onValueChange={value => handleBooleanChange('allow_writes', value)}
-          triggerClassName={
-            allowWrites
-              ? 'border-red-400/30 bg-red-400/10 text-red-200'
-              : ''
-          }
+          triggerClassName={allowWrites ? 'border-red-400/30 bg-red-400/10 text-red-200' : ''}
         />
       </div>
 
-      <SQLWriteStatusBanner allowWrites={allowWrites} kind={kind} />
+      <SQLWriteStatusBanner
+        allowWrites={allowWrites}
+        kind={kind}
+      />
 
       <div className="h-px bg-white/10" />
 
-      <SQLConnectionFields connection={connection} fields={connectionTextFields} onFieldChange={handleConnectionChange} />
+      <SQLConnectionFields
+        connection={connection}
+        fields={connectionTextFields}
+        onFieldChange={handleConnectionChange}
+      />
 
       <EditableList
         title={t('yamlEditor.requestDetails.sqlConnectionOptions')}
@@ -578,9 +641,7 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
           enableBulkActions={false}
           variant="minimal"
         />
-        <p className="mt-2 text-xs text-zinc-500">
-          {t('yamlEditor.sql.helpers.resultMapping')}
-        </p>
+        <p className="mt-2 text-xs text-zinc-500">{t('yamlEditor.sql.helpers.resultMapping')}</p>
       </div>
 
       <div className="h-px bg-white/10" />

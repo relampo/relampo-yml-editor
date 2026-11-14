@@ -1,3 +1,4 @@
+import { embeddedPlanDraftKey } from '../../utils/embeddedPlanDraft';
 import { logStatsigEvent } from '../../utils/analytics';
 import { useRef, useState } from 'react';
 import type { YAMLNode } from '../../types/yaml';
@@ -7,6 +8,7 @@ import { parseYAMLToTree } from '../../utils/yamlParser';
 const isYamlFile = (file: File) => /\.(ya?ml)$/i.test(file.name);
 
 interface UseYamlFileUploadParams {
+  onImport?: (yaml: string, fileName: string) => Promise<void>;
   language: string;
   setError: (value: string | null) => void;
   setSelectedNode: (node: YAMLNode | null) => void;
@@ -28,6 +30,7 @@ interface UseYamlFileUploadParams {
 
 /** File upload (browse + drag-and-drop) state and handlers for loading a .yaml/.yml file into the document. */
 export function useYamlFileUpload({
+  onImport,
   language,
   setError,
   setSelectedNode,
@@ -81,6 +84,13 @@ export function useYamlFileUpload({
         return;
       }
 
+      if (onImport) {
+        void onImport(content, normalizeYamlFileName(file.name))
+          .catch(error => setError(error instanceof Error ? error.message : String(error)))
+          .finally(() => { setIsFileLoading(false); clearInput?.(); });
+        return;
+      }
+
       void invalidatePendingDraft?.();
       if (parseDebounceRef.current) window.clearTimeout(parseDebounceRef.current);
       if (serializeDebounceRef.current) window.clearTimeout(serializeDebounceRef.current);
@@ -96,7 +106,7 @@ export function useYamlFileUpload({
       setCurrentFileName(normalizeYamlFileName(file.name));
       setHasDocumentActivity(true);
       logStatsigEvent('studio_document_opened');
-      setIsDirty(false);
+      setIsDirty(embeddedPlanDraftKey() !== null);
       clearInput?.();
     };
     reader.onerror = () => {

@@ -1,3 +1,4 @@
+import { RELAMPO_YAML_LIGHT_THEME } from './utils/studioMonacoThemes';
 // Bundles Monaco into the app instead of loading it from the CDN, so the
 // editor works fully offline (required for `relampo studio`, RLP-507).
 // Only the languages the app actually uses are included: YAML and SQL get
@@ -24,4 +25,5 @@ self.MonacoEnvironment = {
   },
 };
 
+monaco.editor.defineTheme('relampo-yaml-light', RELAMPO_YAML_LIGHT_THEME);
 loader.config({ monaco });

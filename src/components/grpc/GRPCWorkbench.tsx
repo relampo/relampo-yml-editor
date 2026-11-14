@@ -42,28 +42,31 @@ function metadataFromHeaders(headers: { name: string; value: string }[]) {
     }
   return result;
 }
-
-export function GRPCWorkbench({
-  open,
-  onOpenChange,
-  onAdd,
-  onGoToStudio,
-  language = 'en',
-  browserRecordingEnabled = false,
-  presentation = 'dialog',
-  initialMode = 'discover',
-  saveProjectEnabled = false,
-}: {
+interface GRPCWorkbenchProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onAdd?: (yaml: string) => void;
+  onActivityChange?: (active: boolean) => void;
   presentation?: 'dialog' | 'page';
   initialMode?: 'discover' | 'import' | 'record';
   saveProjectEnabled?: boolean;
   onGoToStudio?: () => void;
   language?: string;
   browserRecordingEnabled?: boolean;
-}) {
+}
+
+export function GRPCWorkbench({
+  open,
+  onOpenChange,
+  onAdd,
+  onActivityChange,
+  onGoToStudio,
+  language = 'en',
+  browserRecordingEnabled = false,
+  presentation = 'dialog',
+  initialMode = 'discover',
+  saveProjectEnabled = false,
+}: GRPCWorkbenchProps) {
   const { setCatalog } = useGRPCSchema();
   const [recordingSource, setRecordingSource] = useState<'browser' | 'native'>(
     browserRecordingEnabled ? 'browser' : 'native',
@@ -241,6 +244,9 @@ export function GRPCWorkbench({
       />
     </label>
   );
+  useEffect(() => {
+    onActivityChange?.(recording.active || browserActive);
+  }, [recording.active, browserActive, onActivityChange]);
   return (
     <GRPCWorkbenchFrame
       page={presentation === 'page'}
@@ -667,7 +673,7 @@ export function GRPCWorkbench({
               </pre>
             </details>
             <div className="flex gap-3">
-              {presentation !== 'page' && (
+              {(presentation !== 'page' || onAdd) && (
                 <button
                   type="button"
                   className={primaryButton}
@@ -692,6 +698,7 @@ export function GRPCWorkbench({
               </a>
             </div>
             {presentation === 'page' &&
+              !onAdd &&
               (saveProjectEnabled ? (
                 <GRPCSaveProject
                   projectId={generated.id}

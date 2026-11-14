@@ -19,9 +19,9 @@ describe('SQL connectivity field placement', () => {
     expect(saved.scenarios[0].steps[0].sql.connection).not.toHaveProperty('validate_connectivity');
   });
 
-  it('creates SQL nodes with the engine field location', () => {
+  it('creates SQL nodes that inherit connectivity settings from SQL Defaults', () => {
     const node = createNodeByType('sql');
-    expect(node.data?.validate_connectivity).toBe(true);
-    expect(node.data?.connection).not.toHaveProperty('validate_connectivity');
+    expect(node.data?.validate_connectivity).toBeUndefined();
+    expect(node.data?.connection).toBeUndefined();
   });
 });

@@ -923,3 +923,70 @@ describe('YAMLTreeView search highlighting', () => {
     expect(screen.getByRole('treeitem', { name: /^\[2\]\s*Other request/ })).toBeInTheDocument();
   });
 });
+
+it('adds SQL Defaults from the project menu and reopens the existing configuration without duplicating it', async () => {
+  const root: YAMLNode = { id: 'root-sql-menu', type: 'test', name: 'SQL project', expanded: true, children: [] };
+  let latest = root;
+  let selection: string[] = [];
+  renderInteractiveTreeView({
+    tree: root,
+    onTreeStateChange: (tree, ids) => {
+      latest = tree;
+      selection = ids;
+    },
+  });
+  fireEvent.contextMenu(screen.getByText('SQL project'));
+  fireEvent.click(screen.getByRole('button', { name: 'SQL Defaults' }));
+  await waitFor(() => expect(latest.children?.filter(node => node.type === 'sql_defaults')).toHaveLength(1));
+  const id = latest.children![0].id;
+  expect(latest.children![0].data).toEqual({ connections: {} });
+  fireEvent.click(screen.getByText('SQL project'));
+  fireEvent.contextMenu(screen.getByText('SQL project'));
+  fireEvent.click(screen.getByRole('button', { name: 'SQL Defaults' }));
+  await waitFor(() => expect(selection).toEqual([id]));
+  expect(latest.children?.filter(node => node.type === 'sql_defaults')).toHaveLength(1);
+});
+
+it('adds an SQL cell extractor through the SQL request context menu', async () => {
+  const root: YAMLNode = {
+    id: 'sql-root',
+    type: 'test',
+    name: 'SQL project',
+    expanded: true,
+    children: [
+      {
+        id: 'sql-scalar',
+        type: 'sql',
+        name: 'Read scalar',
+        data: { kind: 'query', query: 'SELECT 1 AS value' },
+        children: [],
+      },
+    ],
+  };
+  let latest = root;
+  renderInteractiveTreeView({
+    tree: root,
+    onTreeStateChange: (tree) => {
+      latest = tree;
+    },
+  });
+  fireEvent.contextMenu(screen.getByText('Read scalar'));
+  fireEvent.click(screen.getByRole('button', { name: /^Extractor(?: |$)/ }));
+  await waitFor(() => expect(latest.children![0].children).toHaveLength(1));
+  expect(latest.children![0].children![0].data).toEqual({ type: 'sql', var: 'extracted_value', column: '', row: 1 });
+});
+
+it.each(['grpc', 'websocket'] as const)('adds an extractor from the %s right-click menu', async type => {
+  const root: YAMLNode = { id: 'native-root', type: 'test', name: 'Native project', expanded: true,
+    children: [{id:'native',type,name:'Native request',children:[],data: type === 'grpc'
+      ? {method:'/service/Call'} : {actions:[{receive:{type:'text'}}]}}] };
+  let latest = root;
+  renderInteractiveTreeView({tree:root,onTreeStateChange: tree => {latest=tree;}});
+  fireEvent.contextMenu(screen.getByText('Native request'));
+  expect(screen.getByRole('button', {name: /File Upload/})).toBeEnabled();
+  fireEvent.click(screen.getByRole('button',{name:/^Extractor(?: |$)/}));
+  await waitFor(() => expect(latest.children![0].children).toHaveLength(1));
+  const child=latest.children![0].children![0];
+  expect(child.type).toBe('extractor');
+  if(type==='websocket') expect(child.protocolTarget).toEqual(['actions',0,'receive','extractors',-1]);
+});

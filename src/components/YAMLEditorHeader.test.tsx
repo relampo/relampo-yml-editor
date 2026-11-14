@@ -24,6 +24,7 @@ function renderHeader(extra: Partial<ComponentProps<typeof YAMLEditorHeader>> = 
       onDownload={onDownload}
       fileInputRef={createRef<HTMLInputElement>()}
       onFileChange={vi.fn()}
+      {...extra}
     />,
   );
 
@@ -97,4 +98,25 @@ it('places Correlate immediately after Recorder and before New Studio', () => {
   expect(button.nextElementSibling).toBe(screen.getByRole('button', { name: 'New Studio' }));
   fireEvent.click(button);
   expect(onCorrelate).toHaveBeenCalledOnce();
+});
+
+it('announces the selected language and preserves the language change action', () => {
+  const setLanguage = vi.fn();
+  renderHeader({ language: 'es', setLanguage });
+  expect(screen.getByRole('group', { name: 'Idioma' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Español' })).toHaveAttribute('aria-pressed', 'true');
+  expect(screen.getByRole('button', { name: 'English' })).toHaveAttribute('aria-pressed', 'false');
+  fireEvent.click(screen.getByRole('button', { name: 'English' }));
+  expect(setLanguage).toHaveBeenCalledExactlyOnceWith('en');
+});
+
+it('keeps editing actions inside the SaaS without duplicating its brand or language controls', () => {
+  renderHeader({ embedded: true, onSelectProtocol: vi.fn(), onCorrelate: vi.fn(), onNewStudio: vi.fn() });
+  expect(screen.getByRole('button', { name: 'Recorder' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Correlate' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Upload YAML' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument();
+  expect(screen.queryByRole('heading', { name: 'YAML Editor' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('group', { name: 'Language' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'New Studio' })).not.toBeInTheDocument();
 });

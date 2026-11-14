@@ -1,6 +1,6 @@
 import { FolderOpen, Settings2, Check } from 'lucide-react';
 import type { useHTTPRecorder } from './useHTTPRecorder';
-import { DEFAULT_EMBEDDED_EXCLUDE, normalizeRecorderBaseURLs, recorderURLProtocol } from '../../utils/httpRecorderApi';
+import { normalizeRecorderBaseURLs, recorderURLProtocol } from '../../utils/httpRecorderApi';
 import {
   HTTPRecorderSettings,
   recorderCompactInput as input,
@@ -117,8 +117,8 @@ export function HTTPRecorderSetup({
           </div>
         </div>
       </div>
-      <div className="grid items-end gap-2 grid-cols-[minmax(140px,.5fr)_minmax(280px,1.6fr)_auto]">
-        <label className={label}>
+      <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
+        <label className={label + ' min-w-[140px] flex-1'}>
           {text('Include (contains)', 'Include (contiene)')}
           <input
             aria-label="Include URL containing"
@@ -128,7 +128,7 @@ export function HTTPRecorderSetup({
             onChange={e => update({ include: e.target.value })}
           />
         </label>
-        <label className={label}>
+        <label className={label + ' min-w-[200px] flex-[1.5]'}>
           Exclude
           <textarea
             rows={1}
@@ -140,67 +140,51 @@ export function HTTPRecorderSetup({
             onChange={e => update({ exclude: e.target.value.split('\n') })}
           />
         </label>
-        <label className="flex h-7 items-center gap-1.5 whitespace-nowrap text-xs text-zinc-400">
-          <input
-            aria-label="Exclude embedded resources"
-            className="accent-yellow-400"
-            type="checkbox"
-            checked={options.exclude.includes(DEFAULT_EMBEDDED_EXCLUDE)}
-            onChange={e =>
-              update({
-                exclude: e.target.checked
-                  ? [DEFAULT_EMBEDDED_EXCLUDE, ...options.exclude.filter(p => p !== DEFAULT_EMBEDDED_EXCLUDE)]
-                  : options.exclude.filter(p => p !== DEFAULT_EMBEDDED_EXCLUDE),
-              })
-            }
-          />
-          {text('Exclude embedded resources', 'Excluir recursos embebidos')}
-        </label>
-      </div>
-      <div className="flex items-center gap-4 text-xs text-zinc-400">
-        <label className="flex items-center gap-1.5">
-          <input
-            aria-label="Enable prefix"
-            className="accent-yellow-400"
-            type="checkbox"
-            checked={options.prefixEnabled}
-            onChange={e => update({ prefixEnabled: e.target.checked })}
-          />
-          Prefix
-        </label>
-        <label className="flex items-center gap-1.5">
-          <input
-            aria-label="Enable transactions"
-            className="accent-yellow-400"
-            type="checkbox"
-            checked={options.transactionsEnabled}
-            onChange={e =>
-              update({ transactionsEnabled: e.target.checked, grouping: e.target.checked ? 'none' : options.grouping })
-            }
-          />
-          {text('Transactions', 'Transacciones')}
-        </label>
-        <label className="flex items-center gap-1.5">
-          <input
-            aria-label="Capture responses for correlation"
-            className="accent-yellow-400"
-            type="checkbox"
-            checked={options.responses}
-            onChange={e => update({ responses: e.target.checked })}
-          />
-          {text('Capture responses', 'Capturar respuestas')}
-        </label>
-        <span className="ml-auto flex items-center gap-2">
-          {!firefoxAvailable && ready && (
-            <span className="text-amber-300">{text('Firefox not found', 'Firefox no encontrado')}</span>
-          )}
-          <HTTPRecorderSettings
-            options={options}
-            onChange={update}
-            disabled={disabled || !!busy}
-            language={language}
-          />
-        </span>
+        <div className="flex min-h-7 flex-wrap items-center gap-x-3 gap-y-2 text-xs text-zinc-400">
+          <label className="flex items-center gap-1.5">
+            <input
+              aria-label="Enable prefix"
+              className="accent-yellow-400"
+              type="checkbox"
+              checked={options.prefixEnabled}
+              onChange={e => update({ prefixEnabled: e.target.checked })}
+            />
+            Prefix
+          </label>
+          <label className="flex items-center gap-1.5">
+            <input
+              aria-label="Enable transactions"
+              className="accent-yellow-400"
+              type="checkbox"
+              checked={options.transactionsEnabled}
+              onChange={e =>
+                update({ transactionsEnabled: e.target.checked, grouping: e.target.checked ? 'none' : options.grouping })
+              }
+            />
+            {text('Transactions', 'Transacciones')}
+          </label>
+          <label className="flex items-center gap-1.5">
+            <input
+              aria-label="Capture responses for correlation"
+              className="accent-yellow-400"
+              type="checkbox"
+              checked={options.responses}
+              onChange={e => update({ responses: e.target.checked })}
+            />
+            {text('Capture responses', 'Capturar respuestas')}
+          </label>
+          <span className="ml-auto flex items-center gap-2">
+            {!firefoxAvailable && ready && (
+              <span className="text-amber-300">{text('Firefox not found', 'Firefox no encontrado')}</span>
+            )}
+            <HTTPRecorderSettings
+              options={options}
+              onChange={update}
+              disabled={disabled || !!busy}
+              language={language}
+            />
+          </span>
+        </div>
       </div>
     </fieldset>
   );

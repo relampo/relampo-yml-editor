@@ -1,3 +1,4 @@
+import { embeddedScriptDraftKey } from './embeddedPlanDraft';
 import { studioEditorId } from './studioEditorSession';
 const YAML_DRAFT_DB_NAME = 'relampo-yaml-editor';
 export const YAML_DRAFT_STORE_NAME = 'drafts';
@@ -5,6 +6,8 @@ export const ACTIVE_YAML_DRAFT_KEY = 'active';
 
 const YAML_DRAFT_DB_VERSION = 1;
 function activeDraftKey(): string {
+  const plan = embeddedScriptDraftKey();
+  if (plan) return plan;
   const editor = studioEditorId();
   return editor ? `${ACTIVE_YAML_DRAFT_KEY}:${editor}` : ACTIVE_YAML_DRAFT_KEY;
 }
@@ -26,7 +29,7 @@ function getIndexedDB(): IDBFactory {
   return indexedDB;
 }
 
-function openDraftDatabase(): Promise<IDBDatabase> {
+export function openDraftDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     let request: IDBOpenDBRequest;
     try {

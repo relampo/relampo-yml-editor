@@ -1,6 +1,6 @@
+import { protocolData } from './protocolChildren';
 import { authoredNodeData } from './yamlAuthoredData';
 import type { YAMLNode } from '../types/yaml';
-import type { StringMap } from '../types/shared';
 import { normalizeLoadDataForYaml, toLoadData } from '../components/yaml-node-details/loadUtils';
 import {
   isBalancedLoadBearingChild,
@@ -168,6 +168,8 @@ export function treeToObject(tree: YAMLNode): any {
       if (!obj.http_defaults.auth) delete obj.http_defaults.auth;
     } else if (child.type === 'grpc_defaults') {
       obj.grpc_defaults = { ...child.data };
+    } else if (child.type === 'sql_defaults') {
+      obj.sql_defaults = { ...child.data };
     } else if (child.type === 'scenarios') {
       obj.scenarios = child.children?.map(scenarioNodeToObject) || [];
     } else if (child.type === 'metrics') {
@@ -243,23 +245,21 @@ function stepNodeToObject(node: YAMLNode): any {
   }
 
   if (node.type === 'websocket') {
-    const websocket = sanitizeBalancedNodeData(node.data) || {};
-    const headers = node.children?.find(child => child.type === 'headers');
-    if (headers) websocket.headers = (headers.data || {}) as StringMap;
+    const websocket = sanitizeBalancedNodeData(protocolData(node)) || {};
     const autoName = websocket.name || (websocket.action ? `WebSocket ${websocket.action}` : 'WebSocket conversation');
     if (node.name && node.name !== autoName) websocket.name = node.name;
     return { ...(node.unknownData || {}), websocket };
   }
 
   if (node.type === 'grpc') {
-    const grpc = sanitizeBalancedNodeData(node.data) || {};
+    const grpc = sanitizeBalancedNodeData(protocolData(node)) || {};
     const autoName = grpc?.name || grpc?.method || 'gRPC Request';
     if (node.name && node.name !== autoName) grpc.name = node.name;
     return { ...(node.unknownData || {}), grpc };
   }
 
   if (node.type === 'sql') {
-    const sqlStep = normalizeSQLForYaml(sanitizeBalancedNodeData(authoredNodeData(node)), Boolean(node.authoredData));
+    const sqlStep = normalizeSQLForYaml(sanitizeBalancedNodeData(protocolData(node)), Boolean(node.authoredData));
     if (node.name && node.name !== node.data?.name && !node.authoredData) sqlStep.name = node.name;
     return { ...(node.unknownData || {}), sql: sqlStep };
   }

@@ -1,3 +1,5 @@
+import { PlanScriptSelector } from './PlanScriptSelector';
+import { useState } from 'react';
 import type { SearchScope } from './yaml-tree-view/search';
 import type { IssueMarker } from '../utils/documentIssues';
 import type { RedirectedRequestInfo, YAMLNode } from '../types/yaml';
@@ -7,6 +9,8 @@ import { YAMLTreeView } from './YAMLTreeView';
 import type { TreeSelection } from './yamlEditorHelpers';
 
 interface YAMLEditorViewModeBodyProps {
+  showTabs?: boolean;
+  embedded?: boolean;
   leftPanelWidth: number;
   activeViewMode: EditorViewMode;
   onSelectViewMode: (mode: EditorViewMode) => void;
@@ -33,6 +37,8 @@ interface YAMLEditorViewModeBodyProps {
 // The left panel of the main layout: the tree/code/debug/run tab strip plus
 // the content that matches the active tab.
 export function YAMLEditorViewModeBody({
+  showTabs = true,
+  embedded = false,
   leftPanelWidth,
   activeViewMode,
   onSelectViewMode,
@@ -55,21 +61,30 @@ export function YAMLEditorViewModeBody({
   onCodeChange,
   largeFileMode,
 }: YAMLEditorViewModeBodyProps) {
+  const [sidebarMode, setSidebarMode] = useState<'tree' | 'code'>('tree');
+  const panel = embedded ? sidebarMode : activeViewMode;
   return (
     <div
-      className="min-w-0 flex flex-col bg-[#0a0a0a]"
+      className="min-h-0 min-w-0 flex flex-col bg-[#0a0a0a]"
       style={{ width: `${leftPanelWidth}%` }}
     >
-      <EditorViewModeTabs
-        activeViewMode={activeViewMode}
-        onSelect={onSelectViewMode}
-        language={language}
-        debugViewEnabled={debugViewEnabled}
-        runViewEnabled={runViewEnabled}
-      />
+      {showTabs && (
+        <EditorViewModeTabs
+          activeViewMode={panel}
+          onSelect={mode => {
+            if (embedded && (mode === 'tree' || mode === 'code')) setSidebarMode(mode);
+            else onSelectViewMode(mode);
+          }}
+          language={language}
+          debugViewEnabled={debugViewEnabled}
+          runViewEnabled={runViewEnabled}
+        />
+      )}
+
+      <PlanScriptSelector language={language} />
 
       <div className="flex-1 overflow-hidden min-h-0 bg-[#0a0a0a]">
-        {activeViewMode === 'tree' ? (
+        {panel === 'tree' ? (
           <YAMLTreeView
             tree={tree}
             selectedNode={selectedNode}
@@ -84,12 +99,12 @@ export function YAMLEditorViewModeBody({
             onContextMenuOpened={onContextMenuOpened}
             onSearchChange={onSearchChange}
           />
-        ) : activeViewMode === 'code' ? (
+        ) : panel === 'code' ? (
           <YAMLCodeEditor
             value={yamlCode}
             onChange={onCodeChange}
             readOnly={true}
-            active={activeViewMode === 'code'}
+            active={panel === 'code'}
             largeFileMode={largeFileMode}
           />
         ) : (

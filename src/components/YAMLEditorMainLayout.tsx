@@ -9,6 +9,9 @@ import { YAMLEditorViewModeBody } from './YAMLEditorViewModeBody';
 import type { TreeSelection } from './yamlEditorHelpers';
 
 interface YAMLEditorMainLayoutProps {
+  embedded?: boolean;
+  debugExecutionAvailable?: boolean;
+  runExecutionAvailable?: boolean;
   leftPanelWidth: number;
   onResizeStart: () => void;
   activeViewMode: EditorViewMode;
@@ -59,6 +62,9 @@ interface YAMLEditorMainLayoutProps {
 // The resizable two-panel body: the tree/code view-mode panel on the left,
 // the drag handle, and the details/debug/run panel on the right.
 export function YAMLEditorMainLayout({
+  embedded = false,
+  debugExecutionAvailable = true,
+  runExecutionAvailable = true,
   leftPanelWidth,
   onResizeStart,
   activeViewMode,
@@ -109,12 +115,13 @@ export function YAMLEditorMainLayout({
     <SearchNavigationProvider>
       <div className="flex flex-1 overflow-hidden min-h-0 min-w-0 bg-[#0a0a0a]">
         <YAMLEditorViewModeBody
+          embedded={embedded}
           leftPanelWidth={leftPanelWidth}
           activeViewMode={activeViewMode}
           onSelectViewMode={onSelectViewMode}
           language={language}
-          debugViewEnabled={debugViewEnabled}
-          runViewEnabled={runViewEnabled}
+          debugViewEnabled={debugViewEnabled && !embedded}
+          runViewEnabled={runViewEnabled && !embedded}
           tree={yamlTree}
           selectedNode={selectedNode}
           selectedNodeIds={selectedNodeIds}
@@ -150,6 +157,8 @@ export function YAMLEditorMainLayout({
         </div>
 
         <YAMLEditorDetailsPanel
+          debugExecutionAvailable={debugExecutionAvailable}
+          runExecutionAvailable={runExecutionAvailable}
           onTreeChange={onTreeChange}
           isDebugViewActive={isDebugViewActive}
           isRunViewActive={isRunViewActive}
