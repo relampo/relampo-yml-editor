@@ -241,7 +241,10 @@ export function SQLDefaultsDetails({
                 {result}
               </p>
             )}
-            {!canTest && <p className="text-xs text-zinc-500">{text('requiresBackend')}</p>}
+            {/* Inside the web app there is no other Studio to open: the agent cannot run the test yet. */}
+            {!canTest && (
+              <p className="text-xs text-zinc-500">{text(usesRelay() ? 'error_unsupported' : 'requiresBackend')}</p>
+            )}
           </div>
         </>
       )}

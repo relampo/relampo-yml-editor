@@ -151,5 +151,34 @@ describe('SQL Defaults and Request', () => {
       </LanguageProvider>,
     );
     expect(screen.getByRole('button', { name: 'Probar conexión' })).toBeDisabled();
+    expect(screen.getByText(/versión actualizada de Relampo Studio/)).toBeInTheDocument();
+  });
+
+  it('does not ask for another Studio inside the web app when the test is not available', () => {
+    setupLanguage();
+    vi.spyOn(transport, 'usesRelay').mockReturnValue(true);
+    const node: YAMLNode = {
+      id: 'defaults',
+      type: 'sql_defaults',
+      name: 'SQL Defaults',
+      data: {
+        connections: {
+          main: { dialect: 'postgres', connection: { host: 'localhost', database: 'tickets', user: 'reader' } },
+        },
+      },
+    };
+
+    render(
+      <LanguageProvider>
+        <SQLDefaultsDetails
+          node={node}
+          canTest={false}
+        />
+      </LanguageProvider>,
+    );
+
+    expect(screen.getByText('Relampo todavía no puede probar conexiones SQL.')).toBeInTheDocument();
+    expect(screen.queryByText(/versión actualizada de Relampo Studio/)).toBeNull();
+    vi.restoreAllMocks();
   });
 });
