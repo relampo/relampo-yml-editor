@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAgentState } from '../../hooks/useAgentState';
 import { agentUnavailableText } from '../../utils/agentHost';
 import { isLostAnswer, stateAfterLostAnswer, timerRead, timerReadError, usesRelay } from '../../utils/agentTransport';
+import { useInFront } from '../../hooks/useInFront';
 import { probeStudio } from '../../utils/debugApi';
 import {
   defaultHTTPRecordOptions,
@@ -73,12 +74,13 @@ export function useHTTPRecorder(embedded = false) {
     });
     return () => controller.abort();
   }, [refresh, generation, embedded, agentState]);
+  const [inFront, cameBack] = useInFront();
   useEffect(() => {
-    if (!ready) return;
+    if (!ready || !inFront) return;
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout>;
     // ponytail: one poll each second. Through the relay that is about 6
-    // messages each second while this view is open (accepted cost: about
+    // messages each second while this view is in front (accepted cost: about
     // 5 cents each hour). Upgrade path: an event stream from the agent with
     // the recorder state, read with agentEventStream.
     const report = timerReadError(setError);
@@ -91,12 +93,12 @@ export function useHTTPRecorder(embedded = false) {
       }
       if (!controller.signal.aborted) timer = setTimeout(poll, 1000);
     }
-    timer = setTimeout(poll, 1000);
+    timer = setTimeout(poll, cameBack() ? 0 : 1000);
     return () => {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [refresh, ready]);
+  }, [refresh, ready, inFront, cameBack]);
   async function action(name: string, body: unknown) {
     setBusy(name);
     setError('');

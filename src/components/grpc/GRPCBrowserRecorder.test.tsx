@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GRPCBrowserRecorder } from './GRPCBrowserRecorder';
 import { grpcRequest } from '../../utils/grpcApi';
 import { advance, lostAnswer } from '../../test/lostFrames';
+import { InFrontWhen } from '../../contexts/InFrontContext';
 vi.mock('../../utils/grpcApi', () => ({ grpcRequest: vi.fn(), GRPC_BROWSER_CA_PATH: '/certificate' }));
 const initial = {
   active: false,
@@ -136,6 +137,35 @@ describe('when the relay loses a frame', () => {
     await advance(1000);
     expect(reads).toBeGreaterThanOrEqual(3);
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('reads nothing while the view is hidden, and reads at once when it is in front again', async () => {
+    // Contract 0.18: a hidden view sends no frame.
+    let reads = 0;
+    vi.mocked(grpcRequest).mockImplementation(() =>
+      Promise.resolve({ ...initial, active: true, totalRequests: ++reads } as any),
+    );
+    const noop = vi.fn();
+    const view = (shown: boolean) => (
+      <InFrontWhen shown={shown}>
+        <GRPCBrowserRecorder
+          onDiscover={noop}
+          onImport={noop}
+        />
+      </InFrontWhen>
+    );
+    const { rerender } = render(view(true));
+    await advance(0);
+    await advance(1000);
+    expect(reads).toBe(2);
+
+    rerender(view(false));
+    await advance(60_000);
+    expect(reads).toBe(2);
+
+    rerender(view(true));
+    await advance(0);
+    expect(reads).toBe(3);
   });
 
   it('reads the state after a start and a stop with no answer, and sends each one time', async () => {

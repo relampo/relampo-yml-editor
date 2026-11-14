@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { GRPCWorkbench } from './GRPCWorkbench';
 import * as api from '../../utils/grpcApi';
 import { advance, lostAnswer } from '../../test/lostFrames';
+import { InFrontWhen } from '../../contexts/InFrontContext';
 vi.mock('../../utils/grpcApi', () => ({ grpcRequest: vi.fn(), grpcBundlePath: () => '/bundle' }));
 const catalog = {
   descriptorSet: '',
@@ -159,6 +160,41 @@ describe('when the relay loses a frame', () => {
     await advance(1000);
     expect(reads).toBeGreaterThanOrEqual(3);
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('reads nothing while the view is hidden, and reads at once when it is in front again', async () => {
+    // Contract 0.18: a hidden view sends no frame.
+    let reads = 0;
+    vi.mocked(api.grpcRequest).mockImplementation(() => {
+      reads++;
+      return Promise.resolve(recording as any);
+    });
+    const noop = vi.fn();
+    const view = (shown: boolean) => (
+      <InFrontWhen shown={shown}>
+        <GRPCWorkbench
+          open
+          initialMode="record"
+          onOpenChange={noop}
+          onAdd={noop}
+        />
+      </InFrontWhen>
+    );
+    const { rerender, unmount } = render(view(true));
+    await advance(0);
+    await advance(1000);
+    expect(reads).toBe(2);
+
+    rerender(view(false));
+    await advance(60_000);
+    expect(reads).toBe(2);
+
+    rerender(view(true));
+    await advance(0);
+    expect(reads).toBe(3);
+    // The dialog closes on the fake clock, so no timer of it is left for later.
+    unmount();
+    await advance(0);
   });
 
   it('reads the state after a start with no answer, and sends start one time', async () => {

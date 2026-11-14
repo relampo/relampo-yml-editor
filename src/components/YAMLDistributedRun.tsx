@@ -7,6 +7,7 @@ import { FolderOpen, Loader2, Play } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { fingerprint } from '../utils/studioRunStore';
 import { timerRead } from '../utils/agentTransport';
+import { useInFront } from '../hooks/useInFront';
 import {
   distributedRequest,
   uploadDistributedFile,
@@ -124,8 +125,12 @@ export function YAMLDistributedRun({
       /* Session persistence is optional. */
     }
   }, [documentReady, yamlCode]);
+  // ponytail: a hidden view reads nothing (contract, section 8), so the chart
+  // of one node has no points for that time. The global history comes whole
+  // from the agent. Upgrade path: the agent sends the history of each scope.
+  const [inFront] = useInFront();
   useEffect(() => {
-    if (!runId) return;
+    if (!runId || !inFront) return;
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout>;
     let cancelled = false;
@@ -173,7 +178,7 @@ export function YAMLDistributedRun({
       controller.abort();
       clearTimeout(timer);
     };
-  }, [runId]);
+  }, [runId, inFront]);
 
   function config(script: string): DistributedConfig {
     return {

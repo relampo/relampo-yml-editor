@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { InFrontWhen } from '../contexts/InFrontContext';
 import { YAMLDistributedRun } from './YAMLDistributedRun';
 import { splitWebSocketConversation } from '../utils/websocketConversation';
 import type { SearchScope } from './yaml-tree-view/search';
@@ -197,14 +198,16 @@ export function YAMLEditorDetailsPanel({
               aria-labelledby="run-mode-distributed"
               className={runMode === 'distributed' ? 'min-h-0 min-w-0 flex-1 overflow-hidden' : 'hidden'}
             >
-              <YAMLDistributedRun
-                enabled={distributedRunEnabled}
-                fileName={fileName}
-                yamlCode={yamlCode}
-                flushPendingEdits={flushPendingEdits}
-                documentReady={documentReady && runExecutionAvailable}
-                validationErrors={validationErrors}
-              />
+              <InFrontWhen shown={isRunViewActive && runMode === 'distributed'}>
+                <YAMLDistributedRun
+                  enabled={distributedRunEnabled}
+                  fileName={fileName}
+                  yamlCode={yamlCode}
+                  flushPendingEdits={flushPendingEdits}
+                  documentReady={documentReady && runExecutionAvailable}
+                  validationErrors={validationErrors}
+                />
+              </InFrontWhen>
             </div>
           </div>
         )}

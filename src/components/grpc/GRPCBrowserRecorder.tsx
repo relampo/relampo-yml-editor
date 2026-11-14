@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ArrowRight, Download, Globe, Square } from 'lucide-react';
 import { grpcRequest, GRPC_BROWSER_CA_PATH, type GRPCBrowserRecording } from '../../utils/grpcApi';
 import { stateAfterLostAnswer, timerRead, timerReadError } from '../../utils/agentTransport';
+import { useInFront } from '../../hooks/useInFront';
 import { AgentFileLink } from '../AgentFileLink';
 
 const empty: GRPCBrowserRecording = {
@@ -63,12 +64,13 @@ export function GRPCBrowserRecorder({
       action.current?.abort();
     };
   }, []);
+  const [inFront, cameBack] = useInFront();
   useEffect(() => {
-    if (!state.active) return;
+    if (!state.active || !inFront) return;
     let pending = false;
     const report = timerReadError(setError);
     const controller = new AbortController();
-    const timer = setInterval(() => {
+    const read = () => {
       if (pending) return;
       pending = true;
       timerRead(readState, controller.signal)
@@ -83,12 +85,14 @@ export function GRPCBrowserRecorder({
         .finally(() => {
           pending = false;
         });
-    }, 1000);
+    };
+    const timer = setInterval(read, 1000);
+    if (cameBack()) read();
     return () => {
       clearInterval(timer);
       controller.abort();
     };
-  }, [state.active]);
+  }, [state.active, inFront, cameBack]);
   async function run(task: (signal: AbortSignal) => Promise<void>) {
     if (busy) return;
     action.current?.abort();

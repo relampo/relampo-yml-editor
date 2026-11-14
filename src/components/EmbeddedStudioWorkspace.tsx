@@ -1,6 +1,7 @@
 import { HistoricalScriptWorkspace } from './HistoricalScriptWorkspace';
 import { persistEmbeddedScript } from '../utils/embeddedFileStorage';
 import { buildDownloadContent } from '../hooks/useYAMLPersistence';
+import { InFrontWhen } from '../contexts/InFrontContext';
 import { PlanScriptsContext } from '../contexts/PlanScriptsContext';
 import {
   addPlanScript,
@@ -379,13 +380,15 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
           hidden={view === 'record' || view === 'correlation'}
           style={{ display: view === 'record' || view === 'correlation' ? 'none' : undefined }}
         >
-          <YAMLEditor
-            controllerRef={controller}
-            onImport={importScript}
-            onFileNameChange={fileNameChanged}
-            onReady={setReady}
-            onNavigateToScripting={goToScripting}
-          />
+          <InFrontWhen shown={view !== 'record' && view !== 'correlation'}>
+            <YAMLEditor
+              controllerRef={controller}
+              onImport={importScript}
+              onFileNameChange={fileNameChanged}
+              onReady={setReady}
+              onNavigateToScripting={goToScripting}
+            />
+          </InFrontWhen>
         </div>
         <div
           className="flex min-h-0 flex-1 flex-col"
@@ -420,11 +423,13 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
               style={{ display: protocol !== 'http' ? 'none' : undefined }}
               data-studio-tool="http-recorder"
             >
-              <HTTPRecorderPage
-                embedded
-                onImport={importRecording}
-                onActivityChange={trackHTTP}
-              />
+              <InFrontWhen shown={view === 'record' && protocol === 'http'}>
+                <HTTPRecorderPage
+                  embedded
+                  onImport={importRecording}
+                  onActivityChange={trackHTTP}
+                />
+              </InFrontWhen>
             </div>
           )}
           {openedGRPC && (
@@ -434,14 +439,16 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
               style={{ display: protocol !== 'grpc' ? 'none' : undefined }}
               data-studio-tool="grpc-recorder"
             >
-              <GRPCRecorderPage
-                embedded
-                onGoToScripting={goToScripting}
-                onAdd={yaml => {
-                  void importRecording(yaml, 'grpc-recording.yaml').catch(report);
-                }}
-                onActivityChange={trackGRPC}
-              />
+              <InFrontWhen shown={view === 'record' && protocol === 'grpc'}>
+                <GRPCRecorderPage
+                  embedded
+                  onGoToScripting={goToScripting}
+                  onAdd={yaml => {
+                    void importRecording(yaml, 'grpc-recording.yaml').catch(report);
+                  }}
+                  onActivityChange={trackGRPC}
+                />
+              </InFrontWhen>
             </div>
           )}
         </div>

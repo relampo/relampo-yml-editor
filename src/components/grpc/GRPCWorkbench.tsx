@@ -18,6 +18,7 @@ import {
   type GRPCRecording,
 } from '../../utils/grpcApi';
 import { stateAfterLostAnswer, timerRead, timerReadError } from '../../utils/agentTransport';
+import { useInFront } from '../../hooks/useInFront';
 import { AgentFileLink } from '../AgentFileLink';
 import { useGRPCSchema } from '../../hooks/useGRPCSchema';
 import type { YAMLValue } from '../../types/yaml';
@@ -54,19 +55,21 @@ async function recordingAfterLostAnswer(cause: unknown, active: boolean): Promis
   if (now.active !== active) throw cause;
   return now;
 }
-/** Reads the native recording each second while it is active. */
+/** Reads the native recording each second while it is active and `shown`. */
 function useRecordingPoll(
   active: boolean,
+  shown: boolean,
   setRecording: (value: GRPCRecording) => void,
   setError: (update: (shown: string) => string) => void,
 ) {
+  const [inFront, cameBack] = useInFront(shown);
   useEffect(() => {
-    if (!active) return;
+    if (!active || !inFront) return;
     let cancelled = false;
     // One poll at a time: a slow agent must not collect open requests (it serves 64 at a time).
     let pending = false;
     const report = timerReadError(setError);
-    const timer = setInterval(() => {
+    const read = () => {
       if (pending) return;
       pending = true;
       timerRead(readRecording)
@@ -81,12 +84,14 @@ function useRecordingPoll(
         .finally(() => {
           pending = false;
         });
-    }, 1000);
+    };
+    const timer = setInterval(read, 1000);
+    if (cameBack()) read();
     return () => {
       cancelled = true;
       clearInterval(timer);
     };
-  }, [active, setRecording, setError]);
+  }, [active, inFront, cameBack, setRecording, setError]);
 }
 // After a stop with no answer, the state has the last script in `generated`.
 // This text is for an agent that keeps none.
@@ -162,7 +167,7 @@ export function GRPCWorkbench({
       cancelled = true;
     };
   }, [open]);
-  useRecordingPoll(recording.active, setRecording, setError);
+  useRecordingPoll(recording.active, open, setRecording, setError);
   async function run(task: (signal: AbortSignal) => Promise<void>) {
     if (busy) return;
     abortRef.current?.abort();

@@ -1,6 +1,7 @@
 import { ExternalLink } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { timerRead } from '../../utils/agentTransport';
+import { useInFront } from '../../hooks/useInFront';
 import { distributedRequest, safeProviderURL } from '../../utils/distributedApi';
 
 export interface ProviderConnection {
@@ -166,8 +167,9 @@ export function DistributedConnection({
     // Account changes invalidate all provider data; callback identity does not.
   }, [key, enabled]);
 
+  const [inFront] = useInFront();
   useEffect(() => {
-    if (!login) return;
+    if (!login || !inFront) return;
     let cancelled = false;
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout>;
@@ -208,7 +210,7 @@ export function DistributedConnection({
       controller.abort();
       clearTimeout(timer);
     };
-  }, [login]);
+  }, [login, inFront]);
 
   async function action(fn: () => Promise<void>) {
     const current = generation.current;

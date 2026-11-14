@@ -4,6 +4,7 @@ import { LanguageProvider } from '../contexts/LanguageContext';
 import { YAMLDistributedRun } from './YAMLDistributedRun';
 import { selectOption } from '../test/selectOption';
 import { advance, lostAnswer } from '../test/lostFrames';
+import { InFrontWhen } from '../contexts/InFrontContext';
 
 const mocks = vi.hoisted(() => ({
   probe: vi.fn(),
@@ -36,6 +37,7 @@ async function selectRepository() {
   fireEvent.change(selector, { target: { value: 'owner/repo' } });
 }
 
+const noErrors: string[] = [];
 function mount(code = yaml, enabled = true) {
   return render(
     <LanguageProvider>
@@ -409,6 +411,51 @@ it('gives up a read of the run state after 10 seconds and reads again at the nex
     await advance(5000);
     expect(reads).toBeGreaterThanOrEqual(3);
     expect(screen.queryByText(/The machine did not answer in time\./)).not.toBeInTheDocument();
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+// Contract 0.18, section 8, "Lost frames": a hidden view sends no frame.
+it('reads no run state while the view is hidden, and reads at once when it is in front again', async () => {
+  sessionStorage.setItem(
+    'relampo.studio.distributedRun',
+    JSON.stringify({ id: 'drun-1', fp: (await import('../utils/studioRunStore')).fingerprint(yaml) }),
+  );
+  vi.useFakeTimers();
+  try {
+    let reads = 0;
+    const original = mocks.request.getMockImplementation()!;
+    mocks.request.mockImplementation(async (path: string, body: unknown, signal?: AbortSignal) => {
+      if (!path.startsWith('run/')) return original(path, body, signal);
+      reads++;
+      return { ...(await original(path, body, signal)), status: 'running', reports_ready: false };
+    });
+    const view = (shown: boolean) => (
+      <LanguageProvider>
+        <InFrontWhen shown={shown}>
+          <YAMLDistributedRun
+            enabled
+            yamlCode={yaml}
+            flushPendingEdits={flush}
+            documentReady
+            validationErrors={noErrors}
+          />
+        </InFrontWhen>
+      </LanguageProvider>
+    );
+    const { rerender } = render(view(true));
+    await advance(0);
+    await advance(2500);
+    expect(reads).toBe(2);
+
+    rerender(view(false));
+    await advance(60_000);
+    expect(reads).toBe(2);
+
+    rerender(view(true));
+    await advance(0);
+    expect(reads).toBe(3);
   } finally {
     vi.useRealTimers();
   }

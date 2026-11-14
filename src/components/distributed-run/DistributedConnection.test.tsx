@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { DistributedConnection } from './DistributedConnection';
 import { advance, lostAnswer } from '../../test/lostFrames';
+import { InFrontWhen } from '../../contexts/InFrontContext';
 const request = vi.hoisted(() => vi.fn());
 vi.mock('../../utils/distributedApi', async original => ({
   ...(await original<typeof import('../../utils/distributedApi')>()),
@@ -246,6 +247,45 @@ it('gives up a read of the authorization after 10 seconds and reads again at the
     expect(reads).toBeGreaterThanOrEqual(3);
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(screen.getByText('ABCD-1234')).toBeInTheDocument();
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+// Contract 0.18, section 8, "Lost frames": a hidden view sends no frame.
+it('reads no authorization while the view is hidden, and reads at once when it is in front again', async () => {
+  vi.useFakeTimers();
+  try {
+    let reads = 0;
+    request.mockImplementation((path: string) => {
+      if (path === 'requirements') return Promise.resolve(connection({ ...connected, authenticated: false }));
+      if (path === 'connect') return Promise.resolve({ id: 'auth-1' });
+      reads++;
+      return Promise.resolve({
+        status: 'running',
+        connection: { ...connected, authenticated: false, code: 'ABCD-1234' },
+      });
+    });
+    const values = props();
+    const view = (shown: boolean) => (
+      <InFrontWhen shown={shown}>
+        <DistributedConnection {...values} />
+      </InFrontWhen>
+    );
+    const { rerender } = render(view(true));
+    await advance(350);
+    fireEvent.click(screen.getByRole('button', { name: 'Conectar con GitHub' }));
+    await advance(0);
+    await advance(1000);
+    expect(reads).toBe(2);
+
+    rerender(view(false));
+    await advance(60_000);
+    expect(reads).toBe(2);
+
+    rerender(view(true));
+    await advance(0);
+    expect(reads).toBe(3);
   } finally {
     vi.useRealTimers();
   }
