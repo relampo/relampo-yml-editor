@@ -1,8 +1,10 @@
 import { studioEditorId } from '../../utils/studioEditorSession';
 import type { ComponentCapabilities } from '../../utils/componentConfiguration';
 import { logStatsigEvent } from '../../utils/analytics';
-import { useEffect, useRef, useState } from 'react';
-import { probeStudio } from '../../utils/debugApi';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useAgentState } from '../../hooks/useAgentState';
+import { usesRelay } from '../../utils/agentTransport';
+import { probeStudio, type StudioInfo } from '../../utils/debugApi';
 import { getActiveDraft } from '../../utils/yamlDraftStorage';
 import { getDraftRestoreError, normalizeYamlFileName } from '../yamlEditorHelpers';
 import type { EditorViewMode } from '../EditorViewModeTabs';
@@ -86,6 +88,35 @@ export function useYamlDocumentLifecycle({
     syncCodeToTreeRef.current = syncCodeToTree;
   });
 
+  const applyCapabilities = useCallback((studioInfo: StudioInfo) => {
+    setComponentCapabilities(studioInfo.capabilities?.componentConfiguration);
+    setMultiScenarioDebugEnabled(studioInfo.capabilities?.multiScenarioDebug === true);
+    setMultiScenarioRunEnabled(studioInfo.capabilities?.multiScenarioRun === true);
+    setDistributedRunEnabled(studioInfo.capabilities?.distributedRun === true);
+    setDataSourceFileBrowseEnabled(studioInfo.capabilities?.dataSourceFiles === true);
+    setGrpcAuthoringEnabled(studioInfo.capabilities?.grpcAuthoring === true);
+    setCorrelateEnabled(studioInfo.capabilities?.correlate === true);
+    setHttpRecorderEnabled(studioInfo.capabilities?.httpRecorder === true);
+    setGrpcRecorderTabsEnabled(studioInfo.capabilities?.grpcRecorderTabs === true);
+    setGrpcBrowserRecordingEnabled(studioInfo.capabilities?.grpcBrowserRecording === true);
+    if (!DEBUG_VIEW_FORCED && studioInfo.capabilities?.debug === true) setDebugViewEnabled(true);
+    if (!RUN_VIEW_FORCED && studioInfo.capabilities?.loadRun) setRunViewEnabled(true);
+  }, []);
+
+  // Through the relay the machine can connect after Studio opened. The web app
+  // sends `relampo:agent-state`, and each new state asks the agent again.
+  const agentState = useAgentState();
+  useEffect(() => {
+    if (!usesRelay() || agentState?.connected === false) return;
+    let cancelled = false;
+    void probeStudio().then(studioInfo => {
+      if (!cancelled && studioInfo?.studio) applyCapabilities(studioInfo);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [agentState, applyCapabilities]);
+
   // Initialize on mount
   useEffect(() => {
     if (isInitialized) return;
@@ -113,22 +144,13 @@ export function useYamlDocumentLifecycle({
       // `relampo studio` probe: unlock Debug, and mount a CLI-passed script
       // (`relampo studio file.yaml`) — it wins over the restored draft. A
       // standalone editor returns null here, leaving the draft untouched.
-      const studioInfo = await probeStudio();
+      // Through the relay the editor does not wait for the machine: the
+      // effect below asks for the capabilities on every machine state.
+      const studioInfo = usesRelay() ? null : await probeStudio();
       if (isCancelled) return;
 
       if (studioInfo?.studio) {
-        setComponentCapabilities(studioInfo.capabilities?.componentConfiguration);
-        setMultiScenarioDebugEnabled(studioInfo.capabilities?.multiScenarioDebug === true);
-        setMultiScenarioRunEnabled(studioInfo.capabilities?.multiScenarioRun === true);
-        setDistributedRunEnabled(studioInfo.capabilities?.distributedRun === true);
-        setDataSourceFileBrowseEnabled(studioInfo.capabilities?.dataSourceFiles === true);
-        setGrpcAuthoringEnabled(studioInfo.capabilities?.grpcAuthoring === true);
-        setCorrelateEnabled(studioInfo.capabilities?.correlate === true);
-        setHttpRecorderEnabled(studioInfo.capabilities?.httpRecorder === true);
-        setGrpcRecorderTabsEnabled(studioInfo.capabilities?.grpcRecorderTabs === true);
-        setGrpcBrowserRecordingEnabled(studioInfo.capabilities?.grpcBrowserRecording === true);
-        if (!DEBUG_VIEW_FORCED && studioInfo.capabilities?.debug === true) setDebugViewEnabled(true);
-        if (!RUN_VIEW_FORCED && studioInfo.capabilities?.loadRun) setRunViewEnabled(true);
+        applyCapabilities(studioInfo);
         setDefaultViewMode(studioInfo.defaultView);
       }
       if (studioInfo?.initialScript && !independentStudio) {
@@ -170,6 +192,7 @@ export function useYamlDocumentLifecycle({
     // flips to true any later change to a listed dependency just re-fires
     // this effect into an immediate no-op return — never duplicate init work.
   }, [
+    applyCapabilities,
     isInitialized,
     setYamlContent,
     fallbackRootNameRef,

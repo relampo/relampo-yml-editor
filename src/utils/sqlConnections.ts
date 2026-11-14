@@ -1,6 +1,6 @@
 import type { YAMLNode, YAMLNodeData } from '../types/yaml';
 import { treeToYAML } from './yamlParser';
-import { agentRequest } from './agentTransport';
+import { agentRequest, usesRelay } from './agentTransport';
 
 export function sqlDefaults(tree?: YAMLNode | null): YAMLNodeData {
   return tree?.children?.find(node => node.type === 'sql_defaults')?.data ?? {};
@@ -24,7 +24,10 @@ export async function testSQLConnection(
     body: JSON.stringify({ yaml: treeToYAML(tree), connection_ref: reference }),
     signal,
   });
+  // The backend has no /api/sql/test-connection yet: the agent answers 404.
   if (response.status === 404) return { ok: false, code: 'unsupported' };
+  // Inside the web app a 403 is the plan: the route needs the `debug` feature.
+  if (response.status === 403 && usesRelay()) return { ok: false, code: 'plan' };
   if (response.status === 401 || response.status === 403) return { ok: false, code: 'session' };
   const result = await response.json();
   return {

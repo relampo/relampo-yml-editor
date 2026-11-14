@@ -3,6 +3,7 @@ import { expect, it, vi } from 'vitest';
 import { LanguageProvider } from '../../contexts/LanguageContext';
 import { HTTPRecorderControlPage } from './HTTPRecorderControlPage';
 import { httpRecorderRequest } from '../../utils/httpRecorderApi';
+import { advance, lostAnswer } from '../../test/lostFrames';
 vi.mock('../../utils/httpRecorderApi', () => ({ httpRecorderRequest: vi.fn() }));
 it('changes prefix and transaction independently and stops from the popup', async () => {
   let state: any = {
@@ -61,4 +62,37 @@ it('keeps startup traffic empty until the tester presses Start recording', async
   fireEvent.click(await screen.findByRole('button', { name: 'Start recording' }));
   await waitFor(() => expect(httpRecorderRequest).toHaveBeenCalledWith('record', {}));
   expect(screen.getByText(/Recording · 0 requests/)).toBeInTheDocument();
+});
+
+it('gives up a state read after 10 seconds and reads again at the next tick', async () => {
+  vi.useFakeTimers();
+  try {
+    let reads = 0;
+    vi.mocked(httpRecorderRequest).mockImplementation((_path, _body, signal) =>
+      ++reads === 2
+        ? lostAnswer(signal)
+        : Promise.resolve({
+            active: true,
+            requests: [],
+            totalRequests: reads,
+            transaction: { id: 0, name: '' },
+          } as any),
+    );
+    render(
+      <LanguageProvider>
+        <HTTPRecorderControlPage />
+      </LanguageProvider>,
+    );
+    await advance(500);
+    expect(reads).toBe(2);
+
+    await advance(10_000);
+    expect(screen.getByRole('alert')).toHaveTextContent('The machine did not answer in time.');
+
+    await advance(500);
+    expect(reads).toBeGreaterThanOrEqual(3);
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  } finally {
+    vi.useRealTimers();
+  }
 });

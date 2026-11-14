@@ -4,11 +4,20 @@
 // same shapes the browser gives: a fetch Response, an EventSource-like stream,
 // or a link (see AgentFileLink). An upload is a request with a FormData body.
 //
-// Today there is one transport: same-origin HTTP with the Studio session token.
-// Step 2 of the web and CLI contract adds a second one that speaks the relay
-// protocol (section 8). It implements AgentTransport and replaces the
-// `transport` constant below. No caller changes.
+// There are two transports:
+// - Inside the frame of the Relampo web app: the relay (relayTransport.ts,
+//   section 8 of the web and CLI contract). The agent listens on no port.
+// - Everywhere else: same-origin HTTP with the Studio session token. This is
+//   the Studio that a CLI serves on loopback (`relampo studio`).
 
+import {
+  getAgentState,
+  isEmbeddedStudio,
+  markRelayRefused,
+  requestRelayTicket,
+  subscribeAgentState,
+} from './agentHost';
+import { createRelayTransport } from './relayTransport';
 import { getRuntimeConfig } from './runtimeConfig';
 import { studioAuthHeaders, withStudioToken } from './studioAuth';
 
@@ -31,7 +40,7 @@ export interface AgentTransport {
   eventStream(path: string): AgentEventStream;
   /**
    * A URL the browser can open by itself (a report in a new tab, a download).
-   * Null when the transport has no such URL.
+   * Null when the transport has no such URL: read the file with `request`.
    */
   fileUrl(path: string): string | null;
 }
@@ -48,31 +57,90 @@ const httpTransport: AgentTransport = {
   fileUrl: path => withStudioToken(url(path)),
 };
 
-const transport: AgentTransport = httpTransport;
+// ponytail: the HTTP transport stays for the stable CLI, which still serves
+// Studio and its HTTP API, and for the browser tests. Delete it, studioAuth.ts
+// and the standalone recorder and Correlate pages at the cut-over, when no CLI
+// serves Studio.
+const relayTransport = createRelayTransport({ getTicket: requestRelayTicket, onRefused: markRelayRefused });
+// A connection belongs to one machine. When the machine is not available, also
+// when the user picks another one, Studio closes the connection. A new state,
+// or "Retry", ends the reconnect wait: the next request asks for a new ticket.
+subscribeAgentState(() => {
+  if (getAgentState()?.connected === false) relayTransport.disconnect();
+  else relayTransport.resetBackoff();
+});
+
+/** True when the agent is reached through the relay and not over HTTP. */
+export function usesRelay(): boolean {
+  return isEmbeddedStudio();
+}
+
+function transport(): AgentTransport {
+  return usesRelay() ? relayTransport : httpTransport;
+}
 
 export function agentRequest(path: string, init?: RequestInit): Promise<Response> {
-  return transport.request(path, init);
+  return transport().request(path, init);
 }
 
 export function agentEventStream(path: string): AgentEventStream {
-  return transport.eventStream(path);
+  return transport().eventStream(path);
 }
 
 export function agentFileUrl(path: string): string | null {
-  return transport.fileUrl(path);
+  return transport().fileUrl(path);
 }
 
-// A saved recording is served by a second Studio process on its own loopback
-// port, with its own token in `editorURL`. This reads its /api/studio/info.
-// ponytail: this does not use the transport, because the target is another
-// process. Step 2 has no second process (the agent listens on no port), so the
-// backend route must then return the script itself and this function goes away.
-export function requestSavedStudioInfo(editorURL: string): Promise<Response> {
-  const address = new URL(editorURL);
-  const token = address.searchParams.get('token');
-  return fetch(new URL('/api/studio/info', address.origin), {
-    headers: token ? { 'X-Relampo-Studio-Token': token } : {},
-    signal: AbortSignal.timeout(10000),
-    credentials: 'omit',
-  });
+// Contract, section 8, "Lost frames": the relay can lose a frame and tell
+// nobody, so no read on a timer and no action waits with no time limit.
+const TIMER_READ_MS = 10_000;
+
+/**
+ * One read that Studio repeats on a timer. It fails after 10 seconds; the
+ * caller reads again at its next tick.
+ */
+export async function timerRead<T>(read: (signal: AbortSignal) => Promise<T>, signal?: AbortSignal): Promise<T> {
+  const limit = new AbortController();
+  const late = Object.assign(new Error('The machine did not answer in time.'), { name: 'TimeoutError' });
+  const timer = setTimeout(() => limit.abort(late), TIMER_READ_MS);
+  try {
+    return await read(signal ? AbortSignal.any([signal, limit.signal]) : limit.signal);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * The error of a read on a timer. Call the result with the error of a failed
+ * read, and with nothing after a good read. A good read removes the error of
+ * a read; it does not remove the error of an action.
+ */
+export function timerReadError(setError: (update: (shown: string) => string) => void) {
+  let last = '';
+  return (cause?: unknown) => {
+    const previous = last;
+    const message = cause === undefined ? '' : cause instanceof Error ? cause.message : String(cause);
+    last = message;
+    if (message) setError(() => message);
+    else if (previous) setError(shown => (shown === previous ? '' : shown));
+  };
+}
+
+/** True when a request got no answer: the agent can have done the work. */
+export function isLostAnswer(cause: unknown): boolean {
+  return cause instanceof TypeError || (cause as { name?: unknown } | null)?.name === 'TimeoutError';
+}
+
+/**
+ * Studio does not repeat a POST by itself. After a POST with no answer it
+ * reads the state again before it shows the error. This returns that state.
+ * It throws `cause` when the POST got an answer or when the read fails too.
+ */
+export async function stateAfterLostAnswer<T>(cause: unknown, read: (signal: AbortSignal) => Promise<T>): Promise<T> {
+  if (!isLostAnswer(cause)) throw cause;
+  try {
+    return await timerRead(read);
+  } catch {
+    throw cause;
+  }
 }

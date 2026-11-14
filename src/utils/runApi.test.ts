@@ -15,6 +15,10 @@ afterEach(() => {
 
 describe('startLoadRun', () => {
   it('posts only the YAML (load config comes from the script) and returns the run id', async () => {
+    // Studio chooses the id of a run (contract 0.16). An agent that does not
+    // know this rule answers with its own id, and Studio uses that one.
+    const id = '00000000-0000-4000-8000-000000000000';
+    vi.spyOn(crypto, 'randomUUID').mockReturnValue(id);
     mockFetch({ id: 'lrun-3' });
 
     await expect(startLoadRun('test:\n  name: load\n')).resolves.toBe('lrun-3');
@@ -23,7 +27,7 @@ describe('startLoadRun', () => {
       '/api/run',
       expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({ yaml: 'test:\n  name: load\n' }),
+        body: JSON.stringify({ yaml: 'test:\n  name: load\n', id }),
       }),
     );
   });

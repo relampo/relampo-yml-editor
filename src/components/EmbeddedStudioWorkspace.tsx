@@ -1,6 +1,7 @@
 import { HistoricalScriptWorkspace } from './HistoricalScriptWorkspace';
 import { persistEmbeddedScript } from '../utils/embeddedFileStorage';
 import { buildDownloadContent } from '../hooks/useYAMLPersistence';
+import { InFrontWhen } from '../contexts/InFrontContext';
 import { PlanScriptsContext } from '../contexts/PlanScriptsContext';
 import {
   addPlanScript,
@@ -14,8 +15,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import type { CorrelateDocument } from '../utils/correlateBridge';
 import type { EmbeddedStudioController, EmbeddedStudioView } from '../utils/embeddedStudioController';
-import { validateSavedEditorURL } from '../utils/recorderTabs';
-import { requestSavedStudioInfo } from '../utils/agentTransport';
+import { AgentUnavailableNotice } from './AgentUnavailableNotice';
 import { YAMLEditor } from './YAMLEditor';
 import { HTTPRecorderPage } from './recorder/HTTPRecorderPage';
 import { GRPCRecorderPage } from './grpc/GRPCRecorderPage';
@@ -331,28 +331,24 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
     return () => window.removeEventListener('message', receive);
   }, [flush, goToScripting, protocol, ready, importScript, catalog.scripts.length, language]);
 
+  // A recording becomes a new script of the test plan. It does not replace
+  // the open script, so there is nothing to confirm. Only an empty open
+  // script is used, as for an imported script.
   async function importRecording(yaml: string, fileName: string) {
     if (!controller.current) throw new Error('The test plan is not ready.');
-    if (
-      controller.current.document().yaml.trim() &&
-      !window.confirm(
-        language === 'es'
-          ? '¿Reemplazar el script de este plan por la grabación?'
-          : 'Replace this test plan script with the recording?',
-      )
-    )
-      return;
-    await controller.current.replace(yaml, fileName);
-    await persistEmbeddedScript(scriptId, { yaml, fileName });
+    // The web app refuses a second script with the same file name, and a
+    // recording has a fixed name (for example grpc-recording.yaml).
+    const openIsEmpty = !controller.current.document().yaml.trim();
+    const taken = new Set(
+      catalog.scripts
+        .filter(script => !openIsEmpty || script.id !== scriptId)
+        .map(script => script.fileName.toLowerCase()),
+    );
+    const [, base, extension] = /^(.*?)(\.ya?ml)?$/i.exec(fileName)!;
+    let name = fileName;
+    for (let copy = 2; taken.has(name.toLowerCase()); copy++) name = `${base}-${copy}${extension ?? '.yaml'}`;
+    await importScript(yaml, name);
     goToScripting();
-  }
-  async function openSavedRecording(editorURL: string) {
-    const response = await requestSavedStudioInfo(validateSavedEditorURL(editorURL));
-    if (!response.ok) throw new Error('Could not load the saved recording from Studio.');
-    const info = await response.json();
-    if (typeof info.initialScript?.yaml !== 'string' || typeof info.initialScript?.name !== 'string')
-      throw new Error('Studio did not return the saved recording.');
-    await importRecording(info.initialScript.yaml, info.initialScript.name);
   }
   return (
     <PlanScriptsContext.Provider
@@ -377,18 +373,22 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
             {error}
           </p>
         )}
+        {/* Editing needs no machine. Record, Correlation, Debug and Run do. */}
+        {view !== 'scripting' && <AgentUnavailableNotice language={language} />}
         <div
           className="min-h-0 flex-1"
           hidden={view === 'record' || view === 'correlation'}
           style={{ display: view === 'record' || view === 'correlation' ? 'none' : undefined }}
         >
-          <YAMLEditor
-            controllerRef={controller}
-            onImport={importScript}
-            onFileNameChange={fileNameChanged}
-            onReady={setReady}
-            onNavigateToScripting={goToScripting}
-          />
+          <InFrontWhen shown={view !== 'record' && view !== 'correlation'}>
+            <YAMLEditor
+              controllerRef={controller}
+              onImport={importScript}
+              onFileNameChange={fileNameChanged}
+              onReady={setReady}
+              onNavigateToScripting={goToScripting}
+            />
+          </InFrontWhen>
         </div>
         <div
           className="flex min-h-0 flex-1 flex-col"
@@ -423,11 +423,13 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
               style={{ display: protocol !== 'http' ? 'none' : undefined }}
               data-studio-tool="http-recorder"
             >
-              <HTTPRecorderPage
-                embedded
-                onOpenSaved={openSavedRecording}
-                onActivityChange={trackHTTP}
-              />
+              <InFrontWhen shown={view === 'record' && protocol === 'http'}>
+                <HTTPRecorderPage
+                  embedded
+                  onImport={importRecording}
+                  onActivityChange={trackHTTP}
+                />
+              </InFrontWhen>
             </div>
           )}
           {openedGRPC && (
@@ -437,14 +439,16 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
               style={{ display: protocol !== 'grpc' ? 'none' : undefined }}
               data-studio-tool="grpc-recorder"
             >
-              <GRPCRecorderPage
-                embedded
-                onGoToScripting={goToScripting}
-                onAdd={yaml => {
-                  void importRecording(yaml, 'grpc-recording.yaml').catch(report);
-                }}
-                onActivityChange={trackGRPC}
-              />
+              <InFrontWhen shown={view === 'record' && protocol === 'grpc'}>
+                <GRPCRecorderPage
+                  embedded
+                  onGoToScripting={goToScripting}
+                  onAdd={yaml => {
+                    void importRecording(yaml, 'grpc-recording.yaml').catch(report);
+                  }}
+                  onActivityChange={trackGRPC}
+                />
+              </InFrontWhen>
             </div>
           )}
         </div>

@@ -1,7 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { GRPCWorkbench } from './GRPCWorkbench';
 import * as api from '../../utils/grpcApi';
+import { advance, lostAnswer } from '../../test/lostFrames';
+import { InFrontWhen } from '../../contexts/InFrontContext';
 vi.mock('../../utils/grpcApi', () => ({ grpcRequest: vi.fn(), grpcBundlePath: () => '/bundle' }));
 const catalog = {
   descriptorSet: '',
@@ -120,4 +122,131 @@ it('shows the protobuf response shape after discovery before any RPC execution',
     JSON.stringify({ token: '', expiresIn: 0 }, null, 2),
   );
   expect(api.grpcRequest).not.toHaveBeenCalledWith('generate', expect.anything(), expect.anything());
+});
+
+// Contract 0.15, section 8, "Lost frames".
+describe('when the relay loses a frame', () => {
+  const recording = { active: true, listen: '127.0.0.1:50051', calls: [] };
+  const mount = () =>
+    render(
+      <GRPCWorkbench
+        open
+        initialMode="record"
+        onOpenChange={() => {}}
+        onAdd={vi.fn()}
+      />,
+    );
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.mocked(api.grpcRequest).mockReset();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('gives up a state read after 10 seconds and reads again at the next tick', async () => {
+    let reads = 0;
+    vi.mocked(api.grpcRequest).mockImplementation((_path, _body, signal) =>
+      ++reads === 2 ? lostAnswer(signal) : Promise.resolve(recording as any),
+    );
+    mount();
+    await advance(0);
+    await advance(1000);
+    expect(reads).toBe(2);
+
+    await advance(10_000);
+    expect(screen.getByRole('alert')).toHaveTextContent('The machine did not answer in time.');
+
+    await advance(1000);
+    expect(reads).toBeGreaterThanOrEqual(3);
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('reads nothing while the view is hidden, and reads at once when it is in front again', async () => {
+    // Contract 0.18: a hidden view sends no frame.
+    let reads = 0;
+    vi.mocked(api.grpcRequest).mockImplementation(() => {
+      reads++;
+      return Promise.resolve(recording as any);
+    });
+    const noop = vi.fn();
+    const view = (shown: boolean) => (
+      <InFrontWhen shown={shown}>
+        <GRPCWorkbench
+          open
+          initialMode="record"
+          onOpenChange={noop}
+          onAdd={noop}
+        />
+      </InFrontWhen>
+    );
+    const { rerender, unmount } = render(view(true));
+    await advance(0);
+    await advance(1000);
+    expect(reads).toBe(2);
+
+    rerender(view(false));
+    await advance(60_000);
+    expect(reads).toBe(2);
+
+    rerender(view(true));
+    await advance(0);
+    expect(reads).toBe(3);
+    // The dialog closes on the fake clock, so no timer of it is left for later.
+    unmount();
+    await advance(0);
+  });
+
+  it('reads the state after a start with no answer, and sends start one time', async () => {
+    let active = false;
+    const posts: string[] = [];
+    vi.mocked(api.grpcRequest).mockImplementation(async (path, body) => {
+      if (body === undefined) return (active ? recording : { active: false, calls: [] }) as any;
+      // The agent did the work. Its answer did not arrive.
+      posts.push(path);
+      active = true;
+      throw new TypeError('no answer');
+    });
+    mount();
+    await advance(0);
+    fireEvent.change(screen.getByLabelText('Server address'), { target: { value: 'host:443' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Start recording' }));
+    await advance(0);
+
+    expect(screen.getByText('Recording at 127.0.0.1:50051')).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(posts).toEqual(['recordings']);
+  });
+
+  // Contract 0.16: the agent keeps the last script in `generated` after a stop.
+  it.each([
+    ['takes the script from the state', { id: 'bundle', yaml: 'recorded-yaml', warnings: [] }],
+    ['says that the script is lost when the state has none', undefined],
+    ['says that the script is lost when the state has an empty one', { id: 'bundle', yaml: '', warnings: [] }],
+  ])('after a stop with no answer, %s', async (_name, generated) => {
+    let active = true;
+    const posts: string[] = [];
+    vi.mocked(api.grpcRequest).mockImplementation(async (path, body) => {
+      if (body === undefined) return (active ? recording : { active: false, calls: [], generated }) as any;
+      posts.push(path);
+      active = false;
+      throw new TypeError('no answer');
+    });
+    mount();
+    await advance(0);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Stop and review recording' }));
+    await advance(0);
+
+    if (generated?.yaml) {
+      expect(screen.getByText('recorded-yaml')).toBeInTheDocument();
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    } else {
+      expect(screen.getByRole('alert')).toHaveTextContent('The recording stopped, but its script did not arrive.');
+      expect(screen.queryByText('Preview generated YAML')).not.toBeInTheDocument();
+    }
+    expect(screen.getByRole('button', { name: 'Start recording' })).toBeInTheDocument();
+    expect(posts).toEqual(['recordings/stop']);
+  });
 });

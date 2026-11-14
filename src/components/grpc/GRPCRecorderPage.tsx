@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { CircleDot, Zap } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { useAgentState } from '../../hooks/useAgentState';
+import { agentUnavailableText } from '../../utils/agentHost';
+import { usesRelay } from '../../utils/agentTransport';
 import { probeStudio } from '../../utils/debugApi';
 import { openStudioEditorTab } from '../../utils/recorderTabs';
 import { GRPCWorkbench } from './GRPCWorkbench';
@@ -19,6 +22,8 @@ export function GRPCRecorderPage({
   const { language, setLanguage } = useLanguage();
   const [capabilities, setCapabilities] = useState<{ browser: boolean; tabs: boolean } | null>(null),
     [error, setError] = useState('');
+  // Through the relay the machine can connect later: a new state asks again.
+  const agentState = useAgentState();
   useEffect(() => {
     const previous = document.title;
     document.title = 'Relampo Recorder · gRPC';
@@ -34,9 +39,16 @@ export function GRPCRecorderPage({
       .then(value => {
         if (cancelled) return;
         if (!value?.studio || !value.capabilities?.grpcAuthoring) {
-          setError('A compatible local Relampo Studio is required.');
+          setError(
+            !usesRelay()
+              ? 'A compatible local Relampo Studio is required.'
+              : value
+                ? 'The gRPC recorder is not available with your plan or your agent version.'
+                : agentUnavailableText(),
+          );
           return;
         }
+        setError('');
         setCapabilities({
           browser: value.capabilities.grpcBrowserRecording === true,
           tabs: value.capabilities.grpcRecorderTabs === true,
@@ -48,7 +60,7 @@ export function GRPCRecorderPage({
     return () => {
       cancelled = true;
     };
-  }, [setLanguage]);
+  }, [setLanguage, agentState]);
   return (
     <div className="flex h-full min-h-0 flex-col bg-[#0a0a0a]">
       {!embedded && (
@@ -102,7 +114,10 @@ export function GRPCRecorderPage({
           language={language}
           onOpenChange={() => {}}
           onGoToStudio={() => {
-            if (onGoToScripting) { onGoToScripting(); return; }
+            if (onGoToScripting) {
+              onGoToScripting();
+              return;
+            }
             if (!openStudioEditorTab())
               setError(
                 language === 'es' ? 'Permite abrir Studio en otra pestaña.' : 'Allow opening Studio in another tab.',

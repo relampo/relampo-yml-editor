@@ -1,15 +1,15 @@
 import { useEffect, useState } from 'react';
-import { CircleDot, Square, Tag, Layers, ArrowLeft } from 'lucide-react';
+import { CircleDot, ArrowLeft } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { timerRead, timerReadError } from '../../utils/agentTransport';
 import { httpRecorderRequest, type HTTPRecordingState } from '../../utils/httpRecorderApi';
-import { recorderCompactButton, recorderCompactInput } from './HTTPRecorderSettings';
+import { recorderCompactButton } from './HTTPRecorderSettings';
+import { HTTPRecorderControls } from './HTTPRecorderControls';
 import { returnToHTTPRecorderTab } from '../../utils/recorderTabs';
 export function HTTPRecorderControlPage() {
   const { language, setLanguage } = useLanguage();
   const text = (en: string, es: string) => (language === 'es' ? es : en);
   const [state, setState] = useState<HTTPRecordingState | null>(null),
-    [prefix, setPrefix] = useState(''),
-    [transaction, setTransaction] = useState(''),
     [busy, setBusy] = useState(''),
     [error, setError] = useState('');
   useEffect(() => {
@@ -21,15 +21,20 @@ export function HTTPRecorderControlPage() {
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout>;
     let seenActive = !new URLSearchParams(location.search).has('waiting');
+    const report = timerReadError(setError);
     async function poll() {
       try {
-        const value = await httpRecorderRequest<HTTPRecordingState>('current', undefined, controller.signal);
+        const value = await timerRead(
+          signal => httpRecorderRequest<HTTPRecordingState>('current', undefined, signal),
+          controller.signal,
+        );
         if (!controller.signal.aborted) {
           if (value.active) seenActive = true;
           if (seenActive) setState(value);
+          report();
         }
       } catch (cause) {
-        if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : String(cause));
+        if (!controller.signal.aborted) report(cause);
       }
       if (!controller.signal.aborted) timer = setTimeout(poll, 500);
     }
@@ -94,161 +99,17 @@ export function HTTPRecorderControlPage() {
         </p>
       )}
       {state?.active && (
-        <div className="space-y-2">
-          {state.prefixEnabled && (
-            <form
-              className="rounded border border-white/10 bg-white/[0.02] p-2"
-              onSubmit={e => {
-                e.preventDefault();
-                void action('prefix', { prefix });
-              }}
-            >
-              <label
-                htmlFor="recording-prefix"
-                className="mb-1 flex items-center gap-1.5 text-zinc-300"
-              >
-                <Tag className="h-3 w-3 text-yellow-300" />
-                Prefix
-              </label>
-              <div className="flex gap-1.5">
-                <input
-                  id="recording-prefix"
-                  aria-label="Prefix"
-                  className={recorderCompactInput}
-                  value={prefix}
-                  onChange={e => setPrefix(e.target.value)}
-                />
-                <button
-                  type="submit"
-                  disabled={!!busy}
-                  className={recorderCompactButton}
-                  aria-label={text('Apply prefix', 'Aplicar prefix')}
-                >
-                  {text('Apply', 'Aplicar')}
-                </button>
-              </div>
-              <p
-                className="mt-1 truncate text-[11px] text-yellow-300"
-                title={state.prefix || undefined}
-              >
-                {text('Active prefix: ', 'Prefix activo: ')}
-                {state.prefix || '—'}
-              </p>
-            </form>
+        <HTTPRecorderControls
+          state={state}
+          busy={busy}
+          language={language}
+          stopLabel={busy === 'stop' ? text('Saving…', 'Guardando…') : text('Stop and save', 'Detener y guardar')}
+          stopHelp={text(
+            'Closing this window keeps recording. Stop ends the active transaction and saves.',
+            'Cerrar esta ventana mantiene la grabación. Detener cierra la transacción activa y guarda.',
           )}
-          {state.transactionsEnabled && (
-            <section className="rounded border border-white/10 bg-white/[0.02] p-2">
-              <form
-                onSubmit={e => {
-                  e.preventDefault();
-                  void action('transaction', { action: 'start', name: transaction });
-                }}
-              >
-                <label
-                  htmlFor="recording-transaction"
-                  className="mb-1 flex items-center gap-1.5 text-zinc-300"
-                >
-                  <Layers className="h-3 w-3 text-violet-300" />
-                  {text('Transaction', 'Transacción')}
-                </label>
-                <div className="flex gap-1.5">
-                  <input
-                    id="recording-transaction"
-                    aria-label="Transaction name"
-                    className={recorderCompactInput}
-                    value={transaction}
-                    disabled={!!state.transaction?.id}
-                    onChange={e => setTransaction(e.target.value)}
-                  />
-                  {state.transaction?.id ? (
-                    <button
-                      type="button"
-                      disabled={!!busy}
-                      className={recorderCompactButton}
-                      aria-label={text('End transaction', 'Terminar transacción')}
-                      onClick={() => void action('transaction', { action: 'end' })}
-                    >
-                      {text('End', 'Terminar')}
-                    </button>
-                  ) : (
-                    <button
-                      type="submit"
-                      disabled={!!busy || !transaction.trim()}
-                      className={recorderCompactButton}
-                      aria-label={text('Start transaction', 'Iniciar transacción')}
-                    >
-                      {text('Start', 'Iniciar')}
-                    </button>
-                  )}
-                </div>
-              </form>
-              <p
-                className="mt-1 truncate text-[11px] text-violet-300"
-                title={state.transaction?.name || undefined}
-              >
-                {text('Active transaction: ', 'Transacción activa: ')}
-                {state.transaction?.name || '—'}
-              </p>
-            </section>
-          )}
-          <div className="sticky bottom-0 space-y-1.5 bg-[#0a0a0a] py-1">
-            {state.recording === false && (
-              <>
-                <p className="text-[11px] text-zinc-400">
-                  {text(
-                    'Ready. Capture starts when you press Record.',
-                    'Todo listo. Pulsa Grabar para empezar a capturar.',
-                  )}
-                </p>
-                <button
-                  type="button"
-                  disabled={!!busy}
-                  className={
-                    recorderCompactButton + ' w-full border-yellow-400/60 bg-yellow-400 text-black! hover:bg-yellow-300'
-                  }
-                  onClick={() => void action('record', {})}
-                >
-                  <CircleDot className="h-3 w-3" />
-                  {text('Start recording', 'Grabar')}
-                </button>
-              </>
-            )}
-            <button
-              type="button"
-              disabled={!!busy}
-              className={
-                recorderCompactButton + ' w-full border-red-400/30 bg-red-400/10 text-red-200 hover:bg-red-400/20'
-              }
-              onClick={() => void action('stop', {})}
-            >
-              <Square className="h-3 w-3" />
-              {busy === 'stop' ? text('Saving…', 'Guardando…') : text('Stop and save', 'Detener y guardar')}
-            </button>
-          </div>
-          <details className="text-[11px] text-zinc-500">
-            <summary className="cursor-pointer hover:text-zinc-300">{text('Help', 'Ayuda')}</summary>
-            <div className="mt-1 space-y-1 leading-relaxed">
-              <p>
-                {text(
-                  'Prefix names upcoming requests. Clear and apply to remove it.',
-                  'El prefix nombra los próximos requests. Vacía y aplica para quitarlo.',
-                )}
-              </p>
-              <p>
-                {text(
-                  'Transactions group requests until you end them. Changing prefix keeps the transaction open.',
-                  'La transacción agrupa requests hasta terminarla. Cambiar el prefix la mantiene abierta.',
-                )}
-              </p>
-              <p>
-                {text(
-                  'Closing this window keeps recording. Stop ends the active transaction and saves.',
-                  'Cerrar esta ventana mantiene la grabación. Detener cierra la transacción activa y guarda.',
-                )}
-              </p>
-            </div>
-          </details>
-        </div>
+          onAction={action}
+        />
       )}
       {state?.savedPath && (
         <p

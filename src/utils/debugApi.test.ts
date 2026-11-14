@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   AGENT_UNREACHABLE_MESSAGE,
   previewStudioDataSourceFile,
@@ -100,12 +100,18 @@ describe('probeStudio', () => {
 });
 
 describe('startDebugRun', () => {
+  // Studio chooses the id of a run (contract 0.16).
+  const id = '00000000-0000-4000-8000-000000000000';
+  beforeEach(() => {
+    vi.spyOn(crypto, 'randomUUID').mockReturnValue(id);
+  });
+
   it('posts full YAML with an explicit scenario selection', async () => {
     mockFetch({ id: 'selected-2' });
     const yaml = 'test: {scenario_mode: parallel}\nscenarios: [{name: first}, {name: second}]\n';
     await expect(startDebugRun(yaml, { vus: 2, scenarioName: 'second' })).resolves.toBe('selected-2');
     expect(fetch).toHaveBeenCalledWith('/api/debug/runs', expect.objectContaining({
-      body: JSON.stringify({ yaml, vus: 2, scenarioName: 'second' }),
+      body: JSON.stringify({ yaml, vus: 2, scenarioName: 'second', id }),
     }));
   });
 
@@ -118,7 +124,7 @@ describe('startDebugRun', () => {
       '/api/debug/runs',
       expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({ yaml: 'test:\n  name: debug\n', vus: 2 }),
+        body: JSON.stringify({ yaml: 'test:\n  name: debug\n', vus: 2, id }),
       }),
     );
   });
@@ -218,7 +224,7 @@ describe('streamDebugRun', () => {
     expect(handlers.onConnectionError).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps a transient SSE loss within the reconnect grace period', () => {
+  it('reports a lost connection after 5 failed tries in a row, not after a time', () => {
     vi.useFakeTimers();
 
     class FakeEventSource {
@@ -247,13 +253,19 @@ describe('streamDebugRun', () => {
     const stop = streamDebugRun('debug-1', handlers);
     const source = FakeEventSource.instances[0];
 
-    source.onerror?.();
-    vi.advanceTimersByTime(9_999);
+    // The stream never opened: 4 failed tries, and a long wait, report nothing.
+    for (let tries = 0; tries < 4; tries++) source.onerror?.();
+    vi.advanceTimersByTime(600_000);
     expect(handlers.onConnectionError).not.toHaveBeenCalled();
 
+    // An open stream starts the count again. Its first error is a break, not a failed try.
     source.emitOpen();
-    vi.advanceTimersByTime(1);
+    for (let errors = 0; errors < 5; errors++) source.onerror?.();
     expect(handlers.onConnectionError).not.toHaveBeenCalled();
+
+    source.onerror?.();
+    expect(handlers.onConnectionError).toHaveBeenCalledTimes(1);
+    expect(source.close).toHaveBeenCalledTimes(1);
 
     stop();
     vi.useRealTimers();

@@ -52,7 +52,7 @@ it('keeps live identities and selects exact final scenario results', async () =>
   render(<YAMLLoadRunSession {...props} multiScenarioRunEnabled />);
   fireEvent.click(screen.getByRole('button', { name: 'Run load test' }));
   await waitFor(() => expect(ServerStream.instance).toBeDefined());
-  expect(fetch).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ body: JSON.stringify({ yaml, multi_scenario_contract_version: 1 }) }));
+  expect(JSON.parse(vi.mocked(fetch).mock.calls[0][1]!.body as string)).toEqual({ yaml, multi_scenario_contract_version: 1, id: expect.any(String) });
   act(() => ServerStream.instance.emit('metrics', {
     ts: 1, ts_ms: 1000, elapsed_ms: 1000, rps: 2, active_users: 1, executed_vus: 2,
     avg_latency: 0, p95_latency: 0, total_requests: 2, total_failures: 0, errors: 0,
