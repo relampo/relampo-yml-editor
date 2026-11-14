@@ -54,6 +54,8 @@ export interface GRPCRecording {
   active: boolean;
   listen?: string;
   calls: { method: string; type: string; status: string; messages: number; durationMs: number; truncated: boolean }[];
+  /** After a stop: the last script, until the next start. */
+  generated?: GRPCGenerated;
   truncated?: boolean;
 }
 export async function grpcRequest<T>(path: string, body?: unknown, signal?: AbortSignal): Promise<T> {

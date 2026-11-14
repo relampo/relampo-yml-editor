@@ -88,10 +88,8 @@ function useRecordingPoll(
     };
   }, [active, setRecording, setError]);
 }
-// ponytail: the script comes only in the answer of stop. With no answer, the
-// state can show that the agent stopped, but the script is lost. Upgrade path:
-// the agent keeps the last script for a later read (contract diff proposed
-// with 0.15).
+// After a stop with no answer, the state has the last script in `generated`.
+// This text is for an agent that keeps none.
 const LOST_SCRIPT = [
   'The recording stopped, but its script did not arrive. Record again.',
   'La grabación se detuvo, pero su script no llegó. Graba de nuevo.',
@@ -525,7 +523,10 @@ export function GRPCWorkbench({
             onStop={() =>
               run(async signal => {
                 const value = await grpcRequest<GRPCGenerated>('recordings/stop', {}, signal).catch(async cause => {
-                  setRecording(await recordingAfterLostAnswer(cause, false));
+                  const now = await recordingAfterLostAnswer(cause, false);
+                  setRecording(now);
+                  // The agent keeps the last script after a stop.
+                  if (now.generated?.yaml) return { ...now.generated, warnings: now.generated.warnings ?? [] };
                   throw new Error(LOST_SCRIPT[language === 'es' ? 1 : 0]);
                 });
                 setGenerated(value);

@@ -183,11 +183,16 @@ describe('when the relay loses a frame', () => {
     expect(posts).toEqual(['recordings']);
   });
 
-  it('says that the script is lost after a stop with no answer', async () => {
+  // Contract 0.16: the agent keeps the last script in `generated` after a stop.
+  it.each([
+    ['takes the script from the state', { id: 'bundle', yaml: 'recorded-yaml', warnings: [] }],
+    ['says that the script is lost when the state has none', undefined],
+    ['says that the script is lost when the state has an empty one', { id: 'bundle', yaml: '', warnings: [] }],
+  ])('after a stop with no answer, %s', async (_name, generated) => {
     let active = true;
     const posts: string[] = [];
     vi.mocked(api.grpcRequest).mockImplementation(async (path, body) => {
-      if (body === undefined) return (active ? recording : { active: false, calls: [] }) as any;
+      if (body === undefined) return (active ? recording : { active: false, calls: [], generated }) as any;
       posts.push(path);
       active = false;
       throw new TypeError('no answer');
@@ -198,7 +203,13 @@ describe('when the relay loses a frame', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Stop and review recording' }));
     await advance(0);
 
-    expect(screen.getByRole('alert')).toHaveTextContent('The recording stopped, but its script did not arrive.');
+    if (generated?.yaml) {
+      expect(screen.getByText('recorded-yaml')).toBeInTheDocument();
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    } else {
+      expect(screen.getByRole('alert')).toHaveTextContent('The recording stopped, but its script did not arrive.');
+      expect(screen.queryByText('Preview generated YAML')).not.toBeInTheDocument();
+    }
     expect(screen.getByRole('button', { name: 'Start recording' })).toBeInTheDocument();
     expect(posts).toEqual(['recordings/stop']);
   });
