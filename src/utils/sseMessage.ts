@@ -66,7 +66,8 @@ const FIND_RUN_MS = 10_000;
  * start with no answer can be found again. A start has 30 seconds before its
  * answer. After that, or after a lost answer, the events of that id tell:
  * - the stream opens: the agent has the run, and this returns null;
- * - `404`: the run did not start;
+ * - `404`: the run did not start. The agent knows the id, so the start is safe
+ *   to repeat: Studio sends it once more, and reports the error after that;
  * - no answer in 10 seconds: the first error.
  * A start that got an answer returns it.
  */
@@ -74,21 +75,24 @@ export async function startRun(
   send: (signal: AbortSignal) => Promise<Response>,
   eventsPath: string,
 ): Promise<Response | null> {
-  const limit = new AbortController();
-  const late = new AgentAnswerLost(
-    'The machine did not confirm the start. It can have done the work: check before you try again.',
-  );
-  const timer = setTimeout(() => limit.abort(late), START_LIMIT_MS);
-  try {
-    return await send(limit.signal).finally(() => clearTimeout(timer));
-  } catch (cause) {
-    if (!(cause instanceof AgentAnswerLost)) throw cause;
-    await runStarted(cause, eventsPath);
-    return null;
+  for (let tries = 2; ; tries--) {
+    const limit = new AbortController();
+    const late = new AgentAnswerLost(
+      'The machine did not confirm the start. It can have done the work: check before you try again.',
+    );
+    const timer = setTimeout(() => limit.abort(late), START_LIMIT_MS);
+    try {
+      return await send(limit.signal).finally(() => clearTimeout(timer));
+    } catch (cause) {
+      if (!(cause instanceof AgentAnswerLost)) throw cause;
+      if (await runStarted(cause, eventsPath)) return null;
+      if (tries === 1) throw new Error('The run did not start. Try again.');
+    }
   }
 }
 
-function runStarted(cause: AgentAnswerLost, eventsPath: string): Promise<void> {
+/** True when the agent has the run, false when it has not (`404`). */
+function runStarted(cause: AgentAnswerLost, eventsPath: string): Promise<boolean> {
   return new Promise((resolve, reject) => {
     const source = agentEventStream(eventsPath);
     const settle = (end: () => void) => {
@@ -97,10 +101,9 @@ function runStarted(cause: AgentAnswerLost, eventsPath: string): Promise<void> {
       end();
     };
     const timer = setTimeout(() => settle(() => reject(cause)), FIND_RUN_MS);
-    source.addEventListener('open', () => settle(resolve));
+    source.addEventListener('open', () => settle(() => resolve(true)));
     source.onerror = () => {
-      if (source.readyState === AGENT_STREAM_CLOSED)
-        settle(() => reject(new Error('The run did not start. Try again.')));
+      if (source.readyState === AGENT_STREAM_CLOSED) settle(() => resolve(false));
     };
   });
 }
