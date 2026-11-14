@@ -58,12 +58,14 @@ export default tseslint.config(
     },
   },
   {
-    // Backend calls go through src/utils/agentTransport.ts. The other two files
-    // call their own origin (runtime-config.json) and Statsig, not the backend.
+    // Backend calls go through src/utils/agentTransport.ts and its relay
+    // implementation. The other two files call their own origin
+    // (runtime-config.json) and Statsig, not the backend.
     files: ['src/**/*.{ts,tsx}'],
     ignores: [
       'src/**/*.test.{ts,tsx}',
       'src/utils/agentTransport.ts',
+      'src/utils/relayTransport.ts',
       'src/utils/runtimeConfig.ts',
       'src/utils/analytics.ts',
     ],
@@ -72,6 +74,7 @@ export default tseslint.config(
         'error',
         { name: 'fetch', message: 'Use agentRequest from utils/agentTransport.' },
         { name: 'EventSource', message: 'Use agentEventStream from utils/agentTransport.' },
+        { name: 'WebSocket', message: 'Only utils/relayTransport opens the relay connection.' },
       ],
     },
   },

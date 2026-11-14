@@ -2,7 +2,7 @@ import '@testing-library/jest-dom';
 import { afterEach, beforeEach, vi } from 'vitest';
 
 // Radix Select scrolls the selected option into view; jsdom has no layout API.
-HTMLElement.prototype.scrollIntoView ??= () => {};
+if (typeof HTMLElement !== 'undefined') HTMLElement.prototype.scrollIntoView ??= () => {};
 
 type ExpectedConsoleError = string | RegExp;
 
