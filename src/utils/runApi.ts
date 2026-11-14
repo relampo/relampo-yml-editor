@@ -8,14 +8,9 @@ import { trackStudioRunStarted, trackStudioRunCompleted } from './analytics';
 // `relampo studio` the API lives on the same origin; during `vite dev` point
 // VITE_DEBUG_API_URL at a running studio.
 
-import { studioAuthHeaders, withStudioToken } from './studioAuth';
-import { getRuntimeConfig } from './runtimeConfig';
+import { agentRequest } from './agentTransport';
 import { createValidatedEventStream, isRecord } from './sseMessage';
 import { load } from 'js-yaml';
-
-function apiBase(): string {
-  return getRuntimeConfig().apiBaseUrl;
-}
 
 // EventSource auto-reconnects on transient drops; a multi-minute load run will
 // hit some. Only surface a connection error if the stream stays down this long.
@@ -336,9 +331,9 @@ export function hasMultipleRunScenarios(yaml: string): boolean {
 export async function startLoadRun(yaml: string, componentCapabilities?: ComponentCapabilities): Promise<string> {
   const compatibilityError = componentCapabilityError(yaml, componentCapabilities);
   if (compatibilityError) throw new Error(compatibilityError);
-  const response = await fetch(`${apiBase()}/api/run`, {
+  const response = await agentRequest('/api/run', {
     method: 'POST',
-    headers: studioAuthHeaders({ 'Content-Type': 'application/json' }),
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(hasMultipleRunScenarios(yaml) ? { yaml, multi_scenario_contract_version: 1 } : { yaml }),
   });
   if (!response.ok) {
@@ -359,26 +354,25 @@ export async function startLoadRun(yaml: string, componentCapabilities?: Compone
   return body.id;
 }
 
-// URL of the standalone HTML report the studio generates when a run finishes
-// (the same report `relampo run` writes). Open it in a new tab.
-export function loadRunReportUrl(runId: string, language: 'en' | 'es' = 'en'): string {
-  // Opened in a new tab, so it cannot send the token header — carry it in the
-  // query string, which the studio server also accepts.
-  return withStudioToken(`${apiBase()}/api/run/${runId}/report?lang=${language}`);
+// Backend path of the standalone HTML report the studio generates when a run
+// finishes (the same report `relampo run` writes). Open it in a new tab with
+// AgentFileLink.
+export function loadRunReportPath(runId: string, language: 'en' | 'es' = 'en'): string {
+  return `/api/run/${runId}/report?lang=${language}`;
 }
 
 // Asks the studio to cancel a running load run. The engine drains its VUs and
 // the run finishes with status "stopped" carrying partial metrics. Best-effort:
 // stopping an unknown/finished run is a no-op on the server.
 export async function stopLoadRun(runId: string): Promise<void> {
-  await fetch(`${apiBase()}/api/run/${runId}/stop`, { method: 'POST', headers: studioAuthHeaders() });
+  await agentRequest(`/api/run/${runId}/stop`, { method: 'POST' });
 }
 
 // Streams a run's state, metric snapshots, and terminal summary over SSE.
 // Returns a function that closes the stream.
 export function streamLoadRun(runId: string, handlers: RunStreamHandlers): () => void {
   const stream = createValidatedEventStream(
-    withStudioToken(`${apiBase()}/api/run/${runId}/events`),
+    `/api/run/${runId}/events`,
     RECONNECT_GRACE_MS,
     handlers.onConnectionError,
   );

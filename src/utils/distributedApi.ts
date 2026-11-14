@@ -1,5 +1,4 @@
-import { studioAuthHeaders, withStudioToken } from './studioAuth';
-import { getRuntimeConfig } from './runtimeConfig';
+import { agentRequest } from './agentTransport';
 
 export interface DistributedConfig {
   provider: 'github' | 'gitlab';
@@ -97,13 +96,10 @@ interface OperationEvent {
   data?: DistributedPlan;
 }
 
-function base() {
-  return getRuntimeConfig().apiBaseUrl;
-}
 export async function distributedRequest<T>(path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
-  const response = await fetch(`${base()}/api/distributed/${path}`, {
+  const response = await agentRequest(`/api/distributed/${path}`, {
     method: body === undefined ? 'GET' : 'POST',
-    headers: studioAuthHeaders(body === undefined ? undefined : { 'Content-Type': 'application/json' }),
+    headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
     body: body === undefined ? undefined : JSON.stringify(body),
     signal,
     cache: 'no-store',
@@ -126,10 +122,8 @@ export async function prepareDistributed(
   if (!event?.data || !event.repository) throw new Error('Incomplete distributed preflight response');
   return { plan: event.data, repository: event.repository };
 }
-export function distributedReportUrl(id: string, format: string, download = false): string {
-  return withStudioToken(
-    `${base()}/api/distributed/run/${encodeURIComponent(id)}/report/${encodeURIComponent(format)}${download ? '?download=1' : ''}`,
-  );
+export function distributedReportPath(id: string, format: string, download = false): string {
+  return `/api/distributed/run/${encodeURIComponent(id)}/report/${encodeURIComponent(format)}${download ? '?download=1' : ''}`;
 }
 export function safeProviderURL(value?: string): string | undefined {
   if (!value) return undefined;
@@ -146,9 +140,8 @@ export function safeProviderURL(value?: string): string | undefined {
 export async function uploadDistributedFile(file: File): Promise<string> {
   const form = new FormData();
   form.append('file', file);
-  const response = await fetch(`${base()}/api/distributed/upload`, {
+  const response = await agentRequest('/api/distributed/upload', {
     method: 'POST',
-    headers: studioAuthHeaders(),
     body: form,
     cache: 'no-store',
   });

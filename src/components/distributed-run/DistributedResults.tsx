@@ -2,13 +2,14 @@ import { useMemo } from 'react';
 import { ChevronDown, ExternalLink, RotateCcw, Square, Terminal } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import {
-  distributedReportUrl,
+  distributedReportPath,
   distributedStatus,
   safeProviderURL,
   type DistributedState,
   type DistributedPlan,
   type DistributedPoint,
 } from '../../utils/distributedApi';
+import { AgentFileLink } from '../AgentFileLink';
 import { parseYAMLToTree } from '../../utils/yamlParser';
 import type { YAMLNode } from '../../types/yaml';
 import { LoadVisualization } from '../yaml-node-details/LoadVisualization';
@@ -61,7 +62,7 @@ export function DistributedResults({
   const remoteURL = safeProviderURL(state.url),
     reportsURL = safeProviderURL(state.reports_url);
   const formats = state.report_formats ?? ['html', 'json', 'csv', 'txt'];
-  const htmlURL = state.reports_ready && formats.includes('html') ? distributedReportUrl(runId, 'html') : undefined;
+  const htmlPath = state.reports_ready && formats.includes('html') ? distributedReportPath(runId, 'html') : undefined;
   const finished = ['completed', 'errored', 'stopped'].includes(state.status);
   const errorMessage =
     state.error &&
@@ -219,7 +220,7 @@ export function DistributedResults({
         state={state}
         plan={plan}
         scope={scope}
-        reportURL={htmlURL}
+        reportPath={htmlPath}
         hasTransactions={profile.hasTransactions}
         es={es}
       />
@@ -311,13 +312,13 @@ export function DistributedResults({
         <div className="flex flex-wrap gap-2 border border-white/10 p-3">
           {state.reports_ready &&
             formats.map(format => (
-              <a
+              <AgentFileLink
                 key={format}
                 className={buttonClass}
-                href={distributedReportUrl(runId, format, true)}
+                path={distributedReportPath(runId, format, true)}
               >
                 {t('Descargar', 'Download')} {format.toUpperCase()}
-              </a>
+              </AgentFileLink>
             ))}
           {reportsURL && (
             <a

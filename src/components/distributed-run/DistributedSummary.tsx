@@ -5,19 +5,20 @@ import {
   type DistributedScope,
   type DistributedState,
 } from '../../utils/distributedApi';
+import { AgentFileLink } from '../AgentFileLink';
 
 export function DistributedSummary({
   state,
   plan,
   scope,
-  reportURL,
+  reportPath,
   hasTransactions,
   es,
 }: {
   state: DistributedState;
   plan: DistributedPlan | null;
   scope: string;
-  reportURL?: string;
+  reportPath?: string;
   hasTransactions?: boolean;
   es: boolean;
 }) {
@@ -89,16 +90,16 @@ export function DistributedSummary({
           <CheckCircle2 className="h-4 w-4 text-emerald-300" />
         )}
         <h3 className="text-sm font-semibold text-zinc-100">{t('Resumen de la ejecución', 'Execution summary')}</h3>
-        {reportURL && (
-          <a
-            href={reportURL}
+        {reportPath && (
+          <AgentFileLink
+            path={reportPath}
             target="_blank"
             rel="noreferrer"
             className="ml-auto inline-flex items-center gap-1.5 rounded border border-yellow-400/40 bg-yellow-400/10 px-2.5 py-1 text-xs font-semibold text-yellow-300 hover:bg-yellow-400/20"
           >
             <ExternalLink size={14} />
             {t('Abrir el reporte completo', 'Open full report')}
-          </a>
+          </AgentFileLink>
         )}
       </div>
       <div className="grid grid-cols-2 gap-px bg-white/5 sm:grid-cols-3 xl:grid-cols-5">

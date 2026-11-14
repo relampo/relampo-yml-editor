@@ -10,8 +10,7 @@ import { trackStudioRunStarted, trackStudioRunCompleted, setAnalyticsVersion, in
 // When the editor is served by `relampo studio` the API lives on the same
 // origin; during `vite dev` point VITE_DEBUG_API_URL at a running studio.
 
-import { studioAuthHeaders, withStudioToken } from './studioAuth';
-import { getRuntimeConfig } from './runtimeConfig';
+import { agentRequest } from './agentTransport';
 import { createValidatedEventStream, isRecord } from './sseMessage';
 import { name, type Named } from '@gdp-ts/core';
 import { supportedDataSourceFile, type SupportedDataSourceFile } from '../proofs/supportedDataSourceFile';
@@ -124,10 +123,6 @@ export interface StartDebugRunOptions {
   vus?: DebugVUs;
 }
 
-function apiBase(): string {
-  return getRuntimeConfig().apiBaseUrl;
-}
-
 const RECONNECT_GRACE_MS = 10_000;
 
 // When the local agent is not running, fetch rejects with a TypeError (Chrome:
@@ -145,9 +140,9 @@ function isConnectionFailure(error: unknown): boolean {
   return error instanceof TypeError;
 }
 
-async function fetchAgent(input: string, init?: RequestInit): Promise<Response> {
+async function fetchAgent(path: string, init?: RequestInit): Promise<Response> {
   try {
-    return await fetch(input, { ...init, headers: studioAuthHeaders(init?.headers) });
+    return await agentRequest(path, init);
   } catch (error) {
     if (isConnectionFailure(error)) throw new Error(AGENT_UNREACHABLE_MESSAGE);
     throw error;
@@ -208,10 +203,7 @@ export interface StudioDataSourcePreview {
 // a script (`relampo studio file.yaml`) it is returned so the editor mounts it.
 export async function probeStudio(): Promise<StudioInfo | null> {
   try {
-    const response = await fetch(`${apiBase()}/api/studio/info`, {
-      signal: AbortSignal.timeout(2000),
-      headers: studioAuthHeaders(),
-    });
+    const response = await agentRequest('/api/studio/info', { signal: AbortSignal.timeout(2000) });
     if (!response.ok) return null;
     const body = await response.json();
     if (body?.studio !== true) return null;
@@ -263,7 +255,7 @@ export async function startDebugRun(yaml: string, options: StartDebugRunOptions 
   const compatibilityError = componentCapabilityError(yaml, options.componentCapabilities);
   if (compatibilityError) throw new Error(compatibilityError);
   const vus = options.vus ?? 1;
-  const response = await fetchAgent(`${apiBase()}/api/debug/runs`, {
+  const response = await fetchAgent('/api/debug/runs', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ yaml, vus, ...(options.scenarioName ? { scenarioName: options.scenarioName } : {}) }),
@@ -300,7 +292,7 @@ export async function uploadSupportedStudioDataSourceFile<F>(
 ): Promise<StudioDataSourceUpload> {
   const form = new FormData();
   form.append('file', file.value);
-  const response = await fetchAgent(`${apiBase()}/api/studio/data-source-files`, {
+  const response = await fetchAgent('/api/studio/data-source-files', {
     method: 'POST',
     body: form,
   });
@@ -326,7 +318,7 @@ export async function previewStudioDataSourceFile(
   signal?: AbortSignal,
 ): Promise<StudioDataSourcePreview> {
   const params = new URLSearchParams({ path });
-  const response = await fetchAgent(`${apiBase()}/api/studio/data-source-preview?${params.toString()}`, { signal });
+  const response = await fetchAgent(`/api/studio/data-source-preview?${params.toString()}`, { signal });
   if (!response.ok) {
     let message = `data source preview failed (HTTP ${response.status})`;
     try {
@@ -348,7 +340,7 @@ export async function previewStudioDataSourceFile(
 // Streams a run's events over SSE. Returns a function that closes the stream.
 export function streamDebugRun(runId: string, handlers: DebugStreamHandlers): () => void {
   const stream = createValidatedEventStream(
-    withStudioToken(`${apiBase()}/api/debug/runs/${runId}/events`),
+    `/api/debug/runs/${runId}/events`,
     RECONNECT_GRACE_MS,
     handlers.onConnectionError,
   );

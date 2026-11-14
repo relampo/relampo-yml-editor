@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { GRPCWorkbench } from './GRPCWorkbench';
 import * as api from '../../utils/grpcApi';
-vi.mock('../../utils/grpcApi', () => ({ grpcRequest: vi.fn(), grpcBundleURL: () => '/bundle' }));
+vi.mock('../../utils/grpcApi', () => ({ grpcRequest: vi.fn(), grpcBundlePath: () => '/bundle' }));
 const catalog = {
   descriptorSet: '',
   messages: { Request: { name: 'Request', fields: [{ name: 'name', type: 'string' }] } },

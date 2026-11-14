@@ -15,6 +15,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import type { CorrelateDocument } from '../utils/correlateBridge';
 import type { EmbeddedStudioController, EmbeddedStudioView } from '../utils/embeddedStudioController';
 import { validateSavedEditorURL } from '../utils/recorderTabs';
+import { requestSavedStudioInfo } from '../utils/agentTransport';
 import { YAMLEditor } from './YAMLEditor';
 import { HTTPRecorderPage } from './recorder/HTTPRecorderPage';
 import { GRPCRecorderPage } from './grpc/GRPCRecorderPage';
@@ -346,14 +347,7 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
     goToScripting();
   }
   async function openSavedRecording(editorURL: string) {
-    const address = new URL(validateSavedEditorURL(editorURL));
-    const infoURL = new URL('/api/studio/info', address.origin);
-    const token = address.searchParams.get('token');
-    const response = await fetch(infoURL, {
-      headers: token ? { 'X-Relampo-Studio-Token': token } : {},
-      signal: AbortSignal.timeout(10000),
-      credentials: 'omit',
-    });
+    const response = await requestSavedStudioInfo(validateSavedEditorURL(editorURL));
     if (!response.ok) throw new Error('Could not load the saved recording from Studio.');
     const info = await response.json();
     if (typeof info.initialScript?.yaml !== 'string' || typeof info.initialScript?.name !== 'string')
