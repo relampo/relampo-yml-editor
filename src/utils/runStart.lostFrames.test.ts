@@ -81,31 +81,35 @@ describe.each(starts)('the start of %s', (_name, path, start) => {
     expect(relay.sent('req').at(-1)).toMatchObject({ method: 'GET', path: `${path}/${id}/events` });
   });
 
-  it('says that the run did not start when the agent does not know the id', async () => {
+  it('says that the run did not start about 30 seconds after a lost req, not 150', async () => {
+    // Contract 0.17: a start has 30 seconds before `res`. The id makes this safe.
     lose('req', text => text === path);
+    let message = '';
+    void start().catch((error: Error) => (message = error.message));
 
-    const failure = expect(start()).rejects.toThrow('The run did not start. Try again.');
-    await vi.advanceTimersByTimeAsync(160_000);
+    await vi.advanceTimersByTimeAsync(29_900);
+    expect(message).toBe('');
+    expect(relay.sent('req')).toHaveLength(1);
 
-    await failure;
+    await vi.advanceTimersByTimeAsync(10_100);
+    expect(message).toBe('The run did not start. Try again.');
     expect([...runs]).toEqual([]);
     expect(posts()).toHaveLength(1);
+    // Studio gave up the start: the agent must not hold it.
+    expect(relay.sent('cancel')).toContainEqual({ t: 'cancel', id: posts()[0].id });
   });
 
   it('keeps the first error when the events give no answer in 10 seconds', async () => {
     // The start and the read of the events lose their `req`.
     lose('req', () => true);
+    let message = '';
+    void start().catch((error: Error) => (message = error.message));
 
-    const failure = expect(start()).rejects.toThrow(/can have done the work/);
-    await vi.advanceTimersByTimeAsync(150_000);
-    await vi.advanceTimersByTimeAsync(9_900);
-    let settled = false;
-    void failure.then(() => (settled = true));
-    await vi.advanceTimersByTimeAsync(0);
-    expect(settled).toBe(false);
+    await vi.advanceTimersByTimeAsync(30_000 + 9_900);
+    expect(message).toBe('');
 
     await vi.advanceTimersByTimeAsync(100);
-    await failure;
+    expect(message).toMatch(/did not confirm the start. It can have done the work/);
     expect(posts()).toHaveLength(1);
   });
 });

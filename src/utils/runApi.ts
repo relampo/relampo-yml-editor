@@ -9,7 +9,7 @@ import { trackStudioRunStarted, trackStudioRunCompleted } from './analytics';
 // VITE_DEBUG_API_URL at a running studio.
 
 import { agentRequest } from './agentTransport';
-import { createValidatedEventStream, isRecord, runAfterLostStart } from './sseMessage';
+import { createValidatedEventStream, isRecord, startRun } from './sseMessage';
 import { load } from 'js-yaml';
 
 // EventSource auto-reconnects on transient drops; a multi-minute load run will
@@ -333,19 +333,21 @@ export async function startLoadRun(yaml: string, componentCapabilities?: Compone
   if (compatibilityError) throw new Error(compatibilityError);
   // Studio chooses the id, so a start with no answer can be found again.
   const id = crypto.randomUUID();
-  let response: Response;
-  try {
-    response = await agentRequest('/api/run', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        yaml,
-        ...(hasMultipleRunScenarios(yaml) ? { multi_scenario_contract_version: 1 } : {}),
-        id,
+  const response = await startRun(
+    signal =>
+      agentRequest('/api/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          yaml,
+          ...(hasMultipleRunScenarios(yaml) ? { multi_scenario_contract_version: 1 } : {}),
+          id,
+        }),
+        signal,
       }),
-    });
-  } catch (cause) {
-    await runAfterLostStart(cause, `/api/run/${id}/events`);
+    `/api/run/${id}/events`,
+  );
+  if (!response) {
     trackStudioRunStarted(id, 'load');
     return id;
   }
