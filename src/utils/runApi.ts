@@ -12,10 +12,6 @@ import { agentRequest } from './agentTransport';
 import { createValidatedEventStream, isRecord, startRun } from './sseMessage';
 import { load } from 'js-yaml';
 
-// EventSource auto-reconnects on transient drops; a multi-minute load run will
-// hit some. Only surface a connection error if the stream stays down this long.
-const RECONNECT_GRACE_MS = 10_000;
-
 export type RunStatus = 'running' | 'completed' | 'stopped' | 'errored';
 
 // One ~1s aggregate sample (mirrors the backend loadRunSnapshot /
@@ -388,7 +384,6 @@ export async function stopLoadRun(runId: string): Promise<void> {
 export function streamLoadRun(runId: string, handlers: RunStreamHandlers): () => void {
   const stream = createValidatedEventStream(
     `/api/run/${runId}/events`,
-    RECONNECT_GRACE_MS,
     handlers.onConnectionError,
   );
   const { source } = stream;

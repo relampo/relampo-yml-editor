@@ -28,6 +28,8 @@ const EARLY_FRAMES_MS = 30_000;
 const BODY_IDLE_MS = 30_000;
 /** The agent sends a frame on an open stream at least every 15 seconds. */
 const STREAM_IDLE_MS = 45_000;
+/** The agent answers a stream at once: a try to open one with no `res` for this long is a failed try. */
+const STREAM_OPEN_MS = 10_000;
 /** A later frame or `end` came, and a `data` frame before it is still missing. */
 const MISSING_FRAME_MS = 5_000;
 /** A quiet connection was closed after about 60 seconds between a customer and the cloud. */
@@ -159,7 +161,8 @@ class Exchange {
     if (this.done) return;
     // Always, also with no body: the agent accepts the `end` that follows a request.
     this.send({ t: 'end', id: this.id, frames });
-    if (!this.responded) this.wait('response', RESPONSE_TIMEOUT_MS, 'no_response');
+    if (!this.responded)
+      this.wait('response', this.handlers.stream ? STREAM_OPEN_MS : RESPONSE_TIMEOUT_MS, 'no_response');
   }
 
   private wait(name: keyof Exchange['timers'], milliseconds: number, reason: Failure): void {

@@ -224,7 +224,7 @@ describe('streamDebugRun', () => {
     expect(handlers.onConnectionError).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps a transient SSE loss within the reconnect grace period', () => {
+  it('reports a lost connection after 5 failed tries in a row, not after a time', () => {
     vi.useFakeTimers();
 
     class FakeEventSource {
@@ -253,13 +253,19 @@ describe('streamDebugRun', () => {
     const stop = streamDebugRun('debug-1', handlers);
     const source = FakeEventSource.instances[0];
 
-    source.onerror?.();
-    vi.advanceTimersByTime(9_999);
+    // The stream never opened: 4 failed tries, and a long wait, report nothing.
+    for (let tries = 0; tries < 4; tries++) source.onerror?.();
+    vi.advanceTimersByTime(600_000);
     expect(handlers.onConnectionError).not.toHaveBeenCalled();
 
+    // An open stream starts the count again. Its first error is a break, not a failed try.
     source.emitOpen();
-    vi.advanceTimersByTime(1);
+    for (let errors = 0; errors < 5; errors++) source.onerror?.();
     expect(handlers.onConnectionError).not.toHaveBeenCalled();
+
+    source.onerror?.();
+    expect(handlers.onConnectionError).toHaveBeenCalledTimes(1);
+    expect(source.close).toHaveBeenCalledTimes(1);
 
     stop();
     vi.useRealTimers();

@@ -624,7 +624,8 @@ describe('eventStream', () => {
     expect(events).toEqual([{ type: 'state', data: 'early', id: 'a-1' }]);
   });
 
-  it('asks again when the stream gets no res in 150 seconds', async () => {
+  it('asks again when the stream gets no res in 10 seconds', async () => {
+    // Contract 0.18: the agent answers a stream at once, so 10 seconds with no `res` is a failed try.
     const { source, streams } = open();
     const agent = relay.agent!;
     const receive = agent.receive.bind(agent);
@@ -632,7 +633,9 @@ describe('eventStream', () => {
     await flush();
     expect(streams).toHaveLength(0);
 
-    await vi.advanceTimersByTimeAsync(150_000);
+    await vi.advanceTimersByTimeAsync(9_900);
+    expect(relay.sent('cancel')).toHaveLength(0);
+    await vi.advanceTimersByTimeAsync(100);
     expect(relay.sent('cancel')).toHaveLength(1);
     agent.receive = receive;
     await vi.advanceTimersByTimeAsync(1_000);

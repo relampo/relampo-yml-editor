@@ -125,8 +125,6 @@ export interface StartDebugRunOptions {
   vus?: DebugVUs;
 }
 
-const RECONNECT_GRACE_MS = 10_000;
-
 // When the local agent is not running, fetch rejects with a TypeError (Chrome:
 // "Failed to fetch", Firefox: "NetworkError when attempting to fetch resource")
 // before any HTTP status exists. That browser-internal string tells the user
@@ -362,7 +360,6 @@ export async function previewStudioDataSourceFile(
 export function streamDebugRun(runId: string, handlers: DebugStreamHandlers): () => void {
   const stream = createValidatedEventStream(
     `/api/debug/runs/${runId}/events`,
-    RECONNECT_GRACE_MS,
     handlers.onConnectionError,
   );
   const { source } = stream;

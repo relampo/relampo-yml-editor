@@ -17,23 +17,19 @@ function parseSSEMessage<T>(message: Event, isValid: (value: unknown) => value i
   }
 }
 
-export function createValidatedEventStream(
-  path: string,
-  reconnectGraceMs: number,
-  onConnectionError: () => void,
-) {
+/** Contract, section 8, "Lost frames": a view reports a lost connection only after 5 failed tries in a row. */
+const FAILED_TRIES = 5;
+
+export function createValidatedEventStream(path: string, onConnectionError: () => void) {
   const source = agentEventStream(path);
   let finished = false;
-  let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  // An error on an open stream is a break. The stream opens again by itself;
+  // every error after that, until it is open, is a failed try.
+  let open = false;
+  let failedTries = 0;
 
-  const clearReconnectTimer = () => {
-    if (reconnectTimer === null) return;
-    clearTimeout(reconnectTimer);
-    reconnectTimer = null;
-  };
   const close = () => {
     finished = true;
-    clearReconnectTimer();
     source.close();
   };
   const fail = () => {
@@ -48,16 +44,15 @@ export function createValidatedEventStream(
     return parsed;
   };
 
-  source.addEventListener('open', clearReconnectTimer);
+  source.addEventListener('open', () => {
+    open = true;
+    failedTries = 0;
+  });
   source.onerror = () => {
     if (finished) return;
-    if (source.readyState === AGENT_STREAM_CLOSED) {
-      fail();
-      return;
-    }
-    if (reconnectTimer === null) {
-      reconnectTimer = setTimeout(fail, reconnectGraceMs);
-    }
+    if (source.readyState === AGENT_STREAM_CLOSED) fail();
+    else if (open) open = false;
+    else if (++failedTries >= FAILED_TRIES) fail();
   };
 
   return { source, close, isFinished: () => finished, parse };
