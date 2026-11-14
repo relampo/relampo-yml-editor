@@ -478,6 +478,21 @@ describe('connection', () => {
     // The relay answers with `pong`. Studio does not wait for it.
     expect(relay.sent('ping')).toHaveLength(1);
   });
+
+  it('keeps a connection that works when every pong is lost', async () => {
+    // Contract 0.16: a `pong` can be lost, so no missing `pong` closes a connection.
+    relay.drop = frame => frame.t === 'pong';
+    await transport.request('/api/studio/info');
+
+    await vi.advanceTimersByTimeAsync(10 * 60_000);
+    await flush();
+
+    expect(relay.sent('ping')).toHaveLength(20);
+    expect(relay.sockets[0].readyState).toBe(1);
+    expect((await transport.request('/api/studio/info')).status).toBe(200);
+    expect(relay.sockets).toHaveLength(1);
+    expect(relay.ticketsIssued).toBe(1);
+  });
 });
 
 describe('eventStream', () => {
