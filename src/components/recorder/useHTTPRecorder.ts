@@ -77,6 +77,10 @@ export function useHTTPRecorder(embedded = false) {
     if (!ready) return;
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout>;
+    // ponytail: one poll each second. Through the relay that is about 6
+    // messages each second while this view is open (accepted cost: about
+    // 5 cents each hour). Upgrade path: an event stream from the agent with
+    // the recorder state, read with agentEventStream.
     async function poll() {
       try {
         await refresh(controller.signal);
