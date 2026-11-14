@@ -717,6 +717,19 @@ describe('lost frames', () => {
     expect(relay.agent!.requests).toEqual([]);
   });
 
+  it('says that the machine can have done the work when a POST gets no answer', async () => {
+    loseOnce('web', frame => frame.t === 'res');
+
+    const result = transport.request('/api/run', { method: 'POST', body: '{}' });
+    const failure = expect(result).rejects.toThrow(/did not confirm this action. It can have done the work/);
+    await flush();
+    await vi.advanceTimersByTimeAsync(30_000);
+
+    await failure;
+    expect(relay.agent!.requests).toHaveLength(1);
+    expect(relay.sent('req')).toHaveLength(1);
+  });
+
   it('fails a request 30 seconds after its first frame when res is lost', async () => {
     relay.agent!.handle = () => ({ body: 'state' });
     loseOnce('web', frame => frame.t === 'res');

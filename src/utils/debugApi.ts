@@ -12,6 +12,7 @@ import { trackStudioRunStarted, trackStudioRunCompleted, setAnalyticsVersion, in
 
 import { agentUnavailableText } from './agentHost';
 import { agentRequest, usesRelay } from './agentTransport';
+import { AgentAnswerLost } from './relayTransport';
 import { createValidatedEventStream, isRecord } from './sseMessage';
 import { name, type Named } from '@gdp-ts/core';
 import { supportedDataSourceFile, type SupportedDataSourceFile } from '../proofs/supportedDataSourceFile';
@@ -145,6 +146,8 @@ async function fetchAgent(path: string, init?: RequestInit): Promise<Response> {
   try {
     return await agentRequest(path, init);
   } catch (error) {
+    // A POST with no answer: the agent can have done the work. Keep that text.
+    if (error instanceof AgentAnswerLost && init?.method === 'POST') throw error;
     if (isConnectionFailure(error)) throw new Error(usesRelay() ? agentUnavailableText() : AGENT_UNREACHABLE_MESSAGE);
     throw error;
   }

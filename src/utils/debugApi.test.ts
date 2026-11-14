@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { AgentAnswerLost } from './relayTransport';
 import {
   AGENT_UNREACHABLE_MESSAGE,
   previewStudioDataSourceFile,
@@ -128,6 +129,13 @@ describe('startDebugRun', () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
 
     await expect(startDebugRun('test:\n  name: debug\n')).rejects.toThrow(AGENT_UNREACHABLE_MESSAGE);
+  });
+
+  it('keeps the text of a start with no answer: the run can be active on the machine', async () => {
+    // Contract 0.15, "Lost frames". The run id comes only in the lost answer.
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new AgentAnswerLost('It can have done the work')));
+
+    await expect(startDebugRun('test:\n  name: debug\n')).rejects.toThrow('It can have done the work');
   });
 
   it('passes through HTTP error bodies without the connection message', async () => {

@@ -108,6 +108,12 @@ function unreachable(detail: string): TypeError {
  */
 export class AgentAnswerLost extends TypeError {}
 
+// ponytail: the start of a run returns the run id only in its answer, and the
+// agent has no route that lists its runs. After a lost answer Studio cannot
+// read the state again, so the error says that the work can be done. Upgrade
+// path: a run id chosen by Studio (contract diff proposed with 0.15).
+const LOST_ACTION = 'The machine did not confirm this action. It can have done the work: check before you try again.';
+
 /** One request and its response on the connection. */
 class Exchange {
   // Receiving side.
@@ -582,7 +588,12 @@ async function request(connection: Connection, path: string, init: RequestInit =
       const refusal = REFUSALS[reason];
       if (signal?.aborted) settle.reject(signal.reason);
       else if (refusal) settle.resolve(errorResponse(...refusal));
-      else settle.reject(new AgentAnswerLost(unreachable(FAILURE_DETAILS[reason] ?? reason).message));
+      else {
+        const action = outgoing.method !== 'GET' && (reason === 'no_response' || reason === 'stalled');
+        settle.reject(
+          new AgentAnswerLost(action ? LOST_ACTION : unreachable(FAILURE_DETAILS[reason] ?? reason).message),
+        );
+      }
     },
   });
 
