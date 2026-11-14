@@ -330,19 +330,23 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
     return () => window.removeEventListener('message', receive);
   }, [flush, goToScripting, protocol, ready, importScript, catalog.scripts.length, language]);
 
+  // A recording becomes a new script of the test plan. It does not replace
+  // the open script, so there is nothing to confirm. Only an empty open
+  // script is used, as for an imported script.
   async function importRecording(yaml: string, fileName: string) {
     if (!controller.current) throw new Error('The test plan is not ready.');
-    if (
-      controller.current.document().yaml.trim() &&
-      !window.confirm(
-        language === 'es'
-          ? '¿Reemplazar el script de este plan por la grabación?'
-          : 'Replace this test plan script with the recording?',
-      )
-    )
-      return;
-    await controller.current.replace(yaml, fileName);
-    await persistEmbeddedScript(scriptId, { yaml, fileName });
+    // The web app refuses a second script with the same file name, and a
+    // recording has a fixed name (for example grpc-recording.yaml).
+    const openIsEmpty = !controller.current.document().yaml.trim();
+    const taken = new Set(
+      catalog.scripts
+        .filter(script => !openIsEmpty || script.id !== scriptId)
+        .map(script => script.fileName.toLowerCase()),
+    );
+    const [, base, extension] = /^(.*?)(\.ya?ml)?$/i.exec(fileName)!;
+    let name = fileName;
+    for (let copy = 2; taken.has(name.toLowerCase()); copy++) name = `${base}-${copy}${extension ?? '.yaml'}`;
+    await importScript(yaml, name);
     goToScripting();
   }
   return (
