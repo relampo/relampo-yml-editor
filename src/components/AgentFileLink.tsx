@@ -1,9 +1,23 @@
 import { useEffect, useState, type ComponentProps } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { agentFileUrl, agentRequest } from '../utils/agentTransport';
+import { AgentAnswerLost } from '../utils/relayTransport';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from './ui/dialog';
 
 type AgentFileLinkProps = Omit<ComponentProps<'a'>, 'href'> & { path: string };
+
+/**
+ * Contract, section 8, "Lost frames": the user waits for this file. After a
+ * lost answer Studio reads it once more before it shows the error.
+ */
+async function readFile(path: string): Promise<Response> {
+  try {
+    return await agentRequest(path);
+  } catch (cause) {
+    if (!(cause instanceof AgentAnswerLost)) throw cause;
+    return agentRequest(path);
+  }
+}
 
 // A link to a file that the Relampo backend serves: a report or a download.
 // Over HTTP it is a plain link. Through the relay a file has no URL, so Studio
@@ -42,7 +56,7 @@ function AgentFileButton({ path, download, className, children }: AgentFileLinkP
     setBusy(true);
     setError('');
     try {
-      const response = await agentRequest(path);
+      const response = await readFile(path);
       if (!response.ok) {
         const body = await response.json().catch(() => null);
         throw new Error(typeof body?.error === 'string' ? body.error : '');
