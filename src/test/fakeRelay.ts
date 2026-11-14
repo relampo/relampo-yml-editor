@@ -151,6 +151,9 @@ export class FakeAgent {
     const reply = (extra: RelayFrame) => this.toRelay({ ...extra, id: frame.id, to: frame.from });
 
     if (frame.t === 'req') {
+      for (const name of Object.keys((frame.headers ?? {}) as object)) {
+        if (name !== name.toLowerCase()) this.violations.push(`header name ${name} is not in lowercase`);
+      }
       this.incoming.set(key, { frame, chunks: new Map(), next: 0, acked: 0 });
       return;
     }

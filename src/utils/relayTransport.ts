@@ -161,7 +161,7 @@ class Exchange {
       this.responded = true;
       clearTimeout(this.responseTimer);
       this.handlers.onResponse(status, headers);
-      this.acknowledge();
+      this.deliver();
     } else if (frame.t === 'data') {
       this.receiveData(frame.seq, frame.b64);
     } else if (frame.t === 'end') {
@@ -209,7 +209,16 @@ class Exchange {
     }
     if (seq < this.next || this.buffered.has(seq)) return;
     this.buffered.set(seq, b64);
-    while (!this.done && this.buffered.has(this.next)) {
+    this.deliver();
+  }
+
+  /**
+   * Gives the body to the caller in order, after `res`. Frames can arrive out
+   * of order, so `data` and `end` can come before `res`: they wait here until
+   * `res` comes or the request ends (at the latest, the 150 seconds with no `res`).
+   */
+  private deliver(): void {
+    while (!this.done && this.responded && this.buffered.has(this.next)) {
       const text = this.buffered.get(this.next)!;
       this.buffered.delete(this.next);
       this.next++;
@@ -233,7 +242,6 @@ class Exchange {
       this.acknowledged = this.next;
       this.send({ t: 'ack', id: this.id, seq: this.next - 1 });
     }
-    // `end` can come before `res`, because the order of frames is not guaranteed.
     if (complete && this.responded) {
       this.finish();
       this.handlers.onEnd();
@@ -401,6 +409,16 @@ function errorResponse(status: number, error: string): Response {
   return new Response(JSON.stringify({ error }), { status, headers: { 'Content-Type': 'application/json' } });
 }
 
+/** The agent refuses a plan with status 403 and a JSON body with `code: plan_not_allowed`. */
+function isPlanRefusal(status: number, body: Uint8Array): boolean {
+  if (status !== 403) return false;
+  try {
+    return (JSON.parse(new TextDecoder().decode(body)) as { code?: unknown } | null)?.code === 'plan_not_allowed';
+  } catch {
+    return false;
+  }
+}
+
 const REFUSALS: Partial<Record<Failure, [status: number, error: string]>> = {
   plan_not_allowed: [403, 'Your plan does not include this feature.'],
   not_found: [404, 'The Relampo agent does not serve this route.'],
@@ -465,6 +483,11 @@ async function request(connection: Connection, path: string, init: RequestInit =
         offset += chunk.length;
       }
       const empty = status === 204 || status === 205 || status === 304;
+      // One lock text for the plan, from the relay (`err`) or from the agent (403).
+      if (isPlanRefusal(status, bytes)) {
+        settle.resolve(errorResponse(...REFUSALS.plan_not_allowed!));
+        return;
+      }
       try {
         settle.resolve(new Response(empty ? null : bytes, { status, headers }));
       } catch {
@@ -494,6 +517,7 @@ async function request(connection: Connection, path: string, init: RequestInit =
   const abort = () => exchange.cancel();
   signal?.addEventListener('abort', abort);
   // A failure of the body reaches the caller through onFailure.
+  // A Headers object gives its names in lowercase, as the relay protocol asks.
   void exchange
     .sendRequest(outgoing.method, agentPath(path), Object.fromEntries(outgoing.headers), body)
     .catch(() => undefined);
@@ -604,7 +628,8 @@ class RelayEventStream implements AgentEventStream {
       return;
     }
     this.exchange = exchange;
-    const headers = { accept: 'text/event-stream', ...(this.lastEventId ? { 'Last-Event-ID': this.lastEventId } : {}) };
+    // Header names go in lowercase. The event id is opaque text: Studio only sends it back.
+    const headers = { accept: 'text/event-stream', ...(this.lastEventId ? { 'last-event-id': this.lastEventId } : {}) };
     void exchange.sendRequest('GET', agentPath(this.path), headers, new Uint8Array()).catch(() => undefined);
   }
 

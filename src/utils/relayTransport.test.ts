@@ -228,6 +228,58 @@ describe('request', () => {
     expect(relay.agent!.cancelled).toEqual([relay.sent('req')[0].id]);
   });
 
+  it('sends header names in lowercase', async () => {
+    await transport.request('/api/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Trace': 'a' },
+      body: '{}',
+    });
+
+    expect(relay.sent('req')[0].headers).toEqual({ 'content-type': 'application/json', 'x-trace': 'a' });
+  });
+
+  it('keeps data and end that arrive before res', async () => {
+    relay.agent!.receive = () => undefined;
+    const result = transport.request('/api/run/7/report');
+    await flush();
+    const id = relay.sent('req')[0].id;
+
+    relay.toWeb(relay.sockets[0], { t: 'data', id, seq: 0, b64: btoa('report') });
+    await flush();
+    relay.toWeb(relay.sockets[0], { t: 'end', id, frames: 1 });
+    await vi.advanceTimersByTimeAsync(20_000);
+    relay.toWeb(relay.sockets[0], { t: 'res', id, status: 200, headers: { 'Content-Type': 'text/plain' } });
+
+    const response = await result;
+    expect(response.headers.get('content-type')).toBe('text/plain');
+    expect(await response.text()).toBe('report');
+    await flush();
+    expect(relay.sent('ack')).toEqual([{ t: 'ack', id, seq: 0 }]);
+  });
+
+  it('gives the same answer when the agent or the relay refuses the plan', async () => {
+    relay.agent!.handle = () => ({
+      status: 403,
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ code: 'plan_not_allowed', error: 'multi_scenario' }),
+    });
+    const fromAgent = await transport.request('/api/debug/runs', { method: 'POST', body: '{}' });
+    relay.features.delete('local_run');
+    const fromRelay = await transport.request('/api/run', { method: 'POST', body: '{}' });
+
+    expect(fromAgent.status).toBe(403);
+    expect(fromRelay.status).toBe(403);
+    expect(await fromAgent.json()).toEqual(await fromRelay.json());
+  });
+
+  it('does not change another 403 answer of the agent', async () => {
+    relay.agent!.handle = () => ({ status: 403, body: JSON.stringify({ error: 'The run is locked.' }) });
+
+    const response = await transport.request('/api/run/7/stop', { method: 'POST' });
+
+    expect(await response.json()).toEqual({ error: 'The run is locked.' });
+  });
+
   it('cancels a request that gets no res in 150 seconds', async () => {
     // The relay drops an invalid frame with no answer, so only a timeout ends the request.
     relay.agent!.receive = () => undefined;
@@ -456,7 +508,7 @@ describe('eventStream', () => {
     expect(relay.ticketsIssued).toBe(2);
     expect(streams).toHaveLength(2);
     expect(streams[1].lastEventId).toBe('41');
-    expect(relay.sent('req')[1].headers).toMatchObject({ 'Last-Event-ID': '41' });
+    expect(relay.sent('req')[1].headers).toMatchObject({ 'last-event-id': '41' });
     expect(source.readyState).toBe(1);
     expect(opened).toHaveBeenCalledTimes(2);
 
@@ -487,6 +539,22 @@ describe('eventStream', () => {
     streams[0].send('event: done\ndata: {}\n\n');
     await flush();
     expect(events).toHaveLength(1);
+  });
+
+  it('delivers the events of data frames that arrive before res', async () => {
+    const { events, opened } = open();
+    relay.agent!.receive = () => undefined;
+    await flush();
+    const id = relay.sent('req')[0].id;
+
+    relay.toWeb(relay.sockets[0], { t: 'data', id, seq: 0, b64: btoa('id: a-1\nevent: state\ndata: early\n\n') });
+    await flush();
+    expect(events).toEqual([]);
+    relay.toWeb(relay.sockets[0], { t: 'res', id, status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+    await flush();
+
+    expect(opened).toHaveBeenCalledTimes(1);
+    expect(events).toEqual([{ type: 'state', data: 'early', id: 'a-1' }]);
   });
 
   it('asks again when the stream gets no res in 150 seconds', async () => {
