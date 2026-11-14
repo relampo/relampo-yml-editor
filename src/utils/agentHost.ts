@@ -18,8 +18,6 @@ export interface AgentState {
 }
 
 const REASONS: unknown[] = ['plan', 'license', 'offline', 'not_selected'];
-/** A ticket error of the web app is a short code. Studio repeats nothing else. */
-const ERROR_CODE = /^[a-z][a-z0-9_]{0,63}$/;
 const TICKET_TIMEOUT_MS = 10_000;
 
 let state: AgentState | null = null;
@@ -103,9 +101,8 @@ export function requestRelayTicket(): Promise<RelayTicket> {
       if (typeof relayUrl === 'string' && relayUrl.length <= 2048 && typeof ticket === 'string' && ticket.length <= 4096) {
         resolve({ relayUrl, ticket });
       } else {
-        reject(
-          new Error(typeof error === 'string' && ERROR_CODE.test(error) ? error : 'The web app sent no relay ticket.'),
-        );
+        // A sentence, not the code. A TypeError, like a fetch that cannot connect: the views show it as it is.
+        reject(new TypeError(UNAVAILABLE[TICKET_ERRORS.get(error) ?? 'refused'][0]));
       }
     };
     const timer = window.setTimeout(() => {
@@ -137,6 +134,21 @@ const UNAVAILABLE: Record<AgentUnavailableReason | 'refused' | 'unknown', [en: s
     'No se pudo conectar con tu máquina. Revisa que `relampo connect` esté en ejecución.',
   ],
 };
+
+/**
+ * The ticket errors of the web app (contract, section 9) that have their own
+ * text. Every other one, for example `timeout` or `relay_not_configured`, can
+ * go away: the text asks the user to try again.
+ */
+const TICKET_ERRORS = new Map<unknown, AgentUnavailableReason>([
+  ['plan_not_allowed', 'plan'],
+  ['feature_not_enabled', 'plan'],
+  ['license_revoked', 'license'],
+  ['license_expired', 'license'],
+  ['not_selected', 'not_selected'],
+  ['activation_not_found', 'not_selected'],
+  ['agent_offline', 'offline'],
+]);
 
 /** A short text that says why the machine is not available. */
 export function agentUnavailableText(language: string = 'en'): string {

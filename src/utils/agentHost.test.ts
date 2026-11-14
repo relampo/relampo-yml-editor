@@ -83,34 +83,27 @@ describe('requestRelayTicket', () => {
   });
 
   it.each([
-    'plan_not_allowed',
-    'not_selected',
-    'agent_offline',
-    'timeout',
-    'invalid_request',
-    'activation_not_found',
-    'feature_not_enabled',
-    'license_revoked',
-    'license_expired',
-    'relay_not_configured',
-  ])('rejects with the error code %s of the web app', async code => {
+    ['plan_not_allowed', 'Your plan does not include a connected machine.'],
+    ['feature_not_enabled', 'Your plan does not include a connected machine.'],
+    ['license_revoked', 'Your Relampo license is not active.'],
+    ['license_expired', 'Your Relampo license is not active.'],
+    ['not_selected', 'No machine is selected. Select one in Relampo.'],
+    ['activation_not_found', 'No machine is selected. Select one in Relampo.'],
+    ['agent_offline', 'Your machine is offline. Start `relampo connect` on it.'],
+    ['timeout', 'Relampo could not connect to your machine. Try again.'],
+    ['relay_not_configured', 'Relampo could not connect to your machine. Try again.'],
+    ['invalid_request', 'Relampo could not connect to your machine. Try again.'],
+    ['<b>Token eyJhbGciOi</b>', 'Relampo could not connect to your machine. Try again.'],
+    [404, 'Relampo could not connect to your machine. Try again.'],
+    [{ code: 'x' }, 'Relampo could not connect to your machine. Try again.'],
+    [undefined, 'Relampo could not connect to your machine. Try again.'],
+  ])('rejects with a sentence, not the error %j of the web app', async (error, sentence) => {
     const result = requestRelayTicket();
 
-    fromHost({ type: 'relampo:relay-ticket', requestId: ticketRequestId(), error: code });
+    fromHost({ type: 'relampo:relay-ticket', requestId: ticketRequestId(), error });
 
-    await expect(result).rejects.toThrow(new Error(code));
+    await expect(result).rejects.toThrow(new TypeError(sentence));
   });
-
-  it.each(['<b>Token eyJhbGciOi</b>', 'x'.repeat(65), 404, { code: 'x' }])(
-    'does not repeat an error that is not a short code',
-    async error => {
-      const result = requestRelayTicket();
-
-      fromHost({ type: 'relampo:relay-ticket', requestId: ticketRequestId(), error });
-
-      await expect(result).rejects.toThrow(new Error('The web app sent no relay ticket.'));
-    },
-  );
 
   it('rejects when the web app does not answer', async () => {
     const result = requestRelayTicket();
