@@ -193,6 +193,19 @@ describe('request', () => {
     await second;
   });
 
+  it('does not say offline after agent_offline: the web app gives the reason', async () => {
+    // The agent also stops when the plan loses `connect`. Only the web app knows why.
+    relay.agent!.handle = () => new FakeStream();
+    const lost = transport.request('/api/recorder/http/current').catch((error: Error) => error.message);
+    await flush();
+
+    relay.agentGoesOffline();
+
+    expect(await lost).toBe('Your machine does not answer now. Relampo is connecting again.');
+    const next = await transport.request('/api/recorder/http/current').catch((error: Error) => error.message);
+    expect(next).toBe('Your machine does not answer now. Relampo is connecting again.');
+  });
+
   it.each([
     ['plan_not_allowed', '/api/distributed/run', 403],
     ['not_found', '/api/unknown', 404],

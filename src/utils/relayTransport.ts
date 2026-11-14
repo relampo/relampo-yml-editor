@@ -108,10 +108,15 @@ function unreachable(detail: string): TypeError {
  */
 export class AgentAnswerLost extends TypeError {}
 
-// ponytail: the start of a run returns the run id only in its answer, and the
-// agent has no route that lists its runs. After a lost answer Studio cannot
-// read the state again, so the error says that the work can be done. Upgrade
-// path: a run id chosen by Studio (contract diff proposed with 0.15).
+// The relay says `agent_offline` also when the agent stops because the plan
+// lost `connect`. Only the web app knows the reason, and it sends it with
+// `relampo:agent-state`. Until then this text names no reason.
+const AGENT_GONE = 'Your machine does not answer now. Relampo is connecting again.';
+
+// ponytail: some answers carry data that no later read gives, for example
+// the id of a distributed run. After a lost answer Studio cannot read the
+// state again, so the error says that the work can be done. Upgrade path:
+// step 4 (contract, section 8, "Lost frames": accepted limit).
 const LOST_ACTION = 'The machine did not confirm this action. It can have done the work: check before you try again.';
 
 /** One request and its response on the connection. */
@@ -520,7 +525,6 @@ const FAILURE_DETAILS: Partial<Record<Failure, string>> = {
   ack_timeout: 'the agent did not confirm the data in 30 seconds',
   no_response: 'the agent did not answer in 150 seconds',
   stalled: 'a part of the answer did not arrive',
-  agent_offline: 'the machine is offline',
 };
 
 /** The path as fetch sends it: no `.` or `..` part, and the query string. The relay refuses other forms. */
@@ -590,9 +594,8 @@ async function request(connection: Connection, path: string, init: RequestInit =
       else if (refusal) settle.resolve(errorResponse(...refusal));
       else {
         const action = outgoing.method !== 'GET' && (reason === 'no_response' || reason === 'stalled');
-        settle.reject(
-          new AgentAnswerLost(action ? LOST_ACTION : unreachable(FAILURE_DETAILS[reason] ?? reason).message),
-        );
+        const text = reason === 'agent_offline' ? AGENT_GONE : action ? LOST_ACTION : null;
+        settle.reject(new AgentAnswerLost(text ?? unreachable(FAILURE_DETAILS[reason] ?? reason).message));
       }
     },
   });
