@@ -82,13 +82,35 @@ describe('requestRelayTicket', () => {
     await expect(result).resolves.toEqual({ relayUrl: 'wss://relay.test', ticket: 't1' });
   });
 
-  it('rejects with the error of the web app', async () => {
+  it.each([
+    'plan_not_allowed',
+    'not_selected',
+    'agent_offline',
+    'timeout',
+    'invalid_request',
+    'activation_not_found',
+    'feature_not_enabled',
+    'license_revoked',
+    'license_expired',
+    'relay_not_configured',
+  ])('rejects with the error code %s of the web app', async code => {
     const result = requestRelayTicket();
 
-    fromHost({ type: 'relampo:relay-ticket', requestId: ticketRequestId(), error: 'No machine is selected.' });
+    fromHost({ type: 'relampo:relay-ticket', requestId: ticketRequestId(), error: code });
 
-    await expect(result).rejects.toThrow('No machine is selected.');
+    await expect(result).rejects.toThrow(new Error(code));
   });
+
+  it.each(['<b>Token eyJhbGciOi</b>', 'x'.repeat(65), 404, { code: 'x' }])(
+    'does not repeat an error that is not a short code',
+    async error => {
+      const result = requestRelayTicket();
+
+      fromHost({ type: 'relampo:relay-ticket', requestId: ticketRequestId(), error });
+
+      await expect(result).rejects.toThrow(new Error('The web app sent no relay ticket.'));
+    },
+  );
 
   it('rejects when the web app does not answer', async () => {
     const result = requestRelayTicket();
@@ -166,5 +188,22 @@ describe('a connection that the relay refused', () => {
     fromHost({ type: 'relampo:agent-state', connected: false, reason: 'refused' });
 
     expect(getAgentState()).toEqual({ connected: false });
+  });
+});
+
+describe('reasons of the web app', () => {
+  it('has a text for a license that is not active', () => {
+    fromHost({ type: 'relampo:agent-state', connected: false, reason: 'license' });
+
+    expect(getAgentState()).toEqual({ connected: false, reason: 'license' });
+    expect(agentUnavailableText()).toBe('Your Relampo license is not active.');
+    expect(agentUnavailableText('es')).toBe('Tu licencia de Relampo no está activa.');
+  });
+
+  it('shows a generic text for a reason that it does not know', () => {
+    fromHost({ type: 'relampo:agent-state', connected: false, reason: 'maintenance' });
+
+    expect(getAgentState()).toEqual({ connected: false });
+    expect(agentUnavailableText('es')).toMatch(/^No se pudo conectar con tu máquina\./);
   });
 });

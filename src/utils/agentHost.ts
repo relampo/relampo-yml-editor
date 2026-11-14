@@ -6,7 +6,7 @@
 
 import type { RelayTicket } from './relayTransport';
 
-export type AgentUnavailableReason = 'plan' | 'offline' | 'not_selected';
+export type AgentUnavailableReason = 'plan' | 'license' | 'offline' | 'not_selected';
 
 export interface AgentState {
   connected: boolean;
@@ -17,7 +17,9 @@ export interface AgentState {
   reason?: AgentUnavailableReason | 'refused';
 }
 
-const REASONS: unknown[] = ['plan', 'offline', 'not_selected'];
+const REASONS: unknown[] = ['plan', 'license', 'offline', 'not_selected'];
+/** A ticket error of the web app is a short code. Studio repeats nothing else. */
+const ERROR_CODE = /^[a-z][a-z0-9_]{0,63}$/;
 const TICKET_TIMEOUT_MS = 10_000;
 
 let state: AgentState | null = null;
@@ -101,7 +103,9 @@ export function requestRelayTicket(): Promise<RelayTicket> {
       if (typeof relayUrl === 'string' && relayUrl.length <= 2048 && typeof ticket === 'string' && ticket.length <= 4096) {
         resolve({ relayUrl, ticket });
       } else {
-        reject(new Error(typeof error === 'string' ? error.slice(0, 300) : 'The web app sent no relay ticket.'));
+        reject(
+          new Error(typeof error === 'string' && ERROR_CODE.test(error) ? error : 'The web app sent no relay ticket.'),
+        );
       }
     };
     const timer = window.setTimeout(() => {
@@ -115,6 +119,7 @@ export function requestRelayTicket(): Promise<RelayTicket> {
 
 const UNAVAILABLE: Record<AgentUnavailableReason | 'refused' | 'unknown', [en: string, es: string]> = {
   plan: ['Your plan does not include a connected machine.', 'Tu plan no incluye una máquina conectada.'],
+  license: ['Your Relampo license is not active.', 'Tu licencia de Relampo no está activa.'],
   offline: [
     'Your machine is offline. Start `relampo connect` on it.',
     'Tu máquina está desconectada. Ejecuta `relampo connect` en ella.',
