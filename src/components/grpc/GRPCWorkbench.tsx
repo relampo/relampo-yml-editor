@@ -114,13 +114,20 @@ export function GRPCWorkbench({
   useEffect(() => {
     if (!recording.active) return;
     let cancelled = false;
+    // One poll at a time: a slow agent must not collect open requests (it serves 64 at a time).
+    let pending = false;
     const timer = setInterval(() => {
+      if (pending) return;
+      pending = true;
       grpcRequest<GRPCRecording>('recordings/current')
         .then(value => {
           if (!cancelled) setRecording(value);
         })
         .catch(cause => {
           if (!cancelled) setError(String(cause.message));
+        })
+        .finally(() => {
+          pending = false;
         });
     }, 1000);
     return () => {
