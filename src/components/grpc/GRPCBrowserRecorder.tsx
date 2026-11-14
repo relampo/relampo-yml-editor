@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowRight, Download, Globe, Square } from 'lucide-react';
-import { grpcRequest, grpcBrowserCAURL, type GRPCBrowserRecording } from '../../utils/grpcApi';
+import { grpcRequest, GRPC_BROWSER_CA_PATH, type GRPCBrowserRecording } from '../../utils/grpcApi';
+import { AgentFileLink } from '../AgentFileLink';
 
 const empty: GRPCBrowserRecording = {
   active: false,
@@ -265,14 +266,14 @@ export function GRPCBrowserRecorder({
                 'El certificado público está disponible para diagnóstico o para navegadores configurados fuera de Relampo. El Firefox que abre Relampo se prepara automáticamente.',
               )}
             </p>
-            <a
+            <AgentFileLink
               className={button + ' mt-2'}
-              href={grpcBrowserCAURL()}
+              path={GRPC_BROWSER_CA_PATH}
               download
             >
               <Download className="h-4 w-4" />
               {text('Download recorder certificate', 'Descargar certificado del grabador')}
-            </a>
+            </AgentFileLink>
           </details>
         </div>
       )}

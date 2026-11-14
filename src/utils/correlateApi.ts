@@ -1,5 +1,4 @@
-import { studioAuthHeaders } from './studioAuth';
-import { getRuntimeConfig } from './runtimeConfig';
+import { agentRequest } from './agentTransport';
 export interface CorrelateLocation {
   StepIndex: number;
   RequestID: number;
@@ -26,9 +25,9 @@ export interface CorrelateReport {
   candidates: CorrelateCandidate[];
 }
 export async function correlateRequest<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> {
-  const response = await fetch(getRuntimeConfig().apiBaseUrl + '/api/correlate/' + path, {
+  const response = await agentRequest('/api/correlate/' + path, {
     method: 'POST',
-    headers: studioAuthHeaders({ 'Content-Type': 'application/json' }),
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
     signal: signal ?? AbortSignal.timeout(120000),
   });

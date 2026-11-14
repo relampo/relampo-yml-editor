@@ -48,7 +48,7 @@ it('shows merged request percentiles, total RPS and real per-node resource peaks
       state={state}
       plan={null}
       scope="global"
-      reportURL="/report"
+      reportPath="/report"
       hasTransactions={false}
       es
     />,
