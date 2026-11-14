@@ -223,6 +223,7 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
               typeof copy.yaml !== 'string' ||
               copy.yaml.length > 20 * 1024 * 1024 ||
               typeof copy.fileName !== 'string' ||
+              // eslint-disable-next-line no-control-regex -- the file name must not contain control characters
               !/^[^/\\\x00-\x1f]{1,180}\.ya?ml$/i.test(copy.fileName) ||
               copy.fileName.startsWith('.') ||
               typeof copy.scriptId !== 'string' ||
