@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { LanguageProvider } from '../contexts/LanguageContext';
 import { YAMLDistributedRun } from './YAMLDistributedRun';
 import { selectOption } from '../test/selectOption';
+import { advance, lostAnswer } from '../test/lostFrames';
 
 const mocks = vi.hoisted(() => ({
   probe: vi.fn(),
@@ -380,4 +381,35 @@ it.each(['completed', 'errored', 'stopped'])('clears a %s run and removes its sa
   expect(screen.queryByRole('region', { name: 'Resultados distribuidos' })).not.toBeInTheDocument();
   expect(sessionStorage.getItem('relampo.studio.distributedRun')).toBeNull();
   expect(screen.getByRole('combobox', { name: 'Repositorio' })).toBeInTheDocument();
+});
+
+// Contract 0.15, section 8, "Lost frames".
+it('gives up a read of the run state after 10 seconds and reads again at the next tick', async () => {
+  sessionStorage.setItem(
+    'relampo.studio.distributedRun',
+    JSON.stringify({ id: 'drun-1', fp: (await import('../utils/studioRunStore')).fingerprint(yaml) }),
+  );
+  vi.useFakeTimers();
+  try {
+    let reads = 0;
+    const original = mocks.request.getMockImplementation()!;
+    mocks.request.mockImplementation(async (path: string, body: unknown, signal?: AbortSignal) => {
+      if (!path.startsWith('run/')) return original(path, body, signal);
+      if (++reads === 2) return lostAnswer(signal);
+      return { ...(await original(path, body, signal)), status: 'running', reports_ready: false };
+    });
+    mount();
+    await advance(0);
+    await advance(2500);
+    expect(reads).toBe(2);
+
+    await advance(10_000);
+    expect(screen.getByText(/The machine did not answer in time\./)).toBeInTheDocument();
+
+    await advance(5000);
+    expect(reads).toBeGreaterThanOrEqual(3);
+    expect(screen.queryByText(/The machine did not answer in time\./)).not.toBeInTheDocument();
+  } finally {
+    vi.useRealTimers();
+  }
 });

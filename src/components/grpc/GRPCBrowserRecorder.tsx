@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowRight, Download, Globe, Square } from 'lucide-react';
 import { grpcRequest, GRPC_BROWSER_CA_PATH, type GRPCBrowserRecording } from '../../utils/grpcApi';
+import { stateAfterLostAnswer, timerRead, timerReadError } from '../../utils/agentTransport';
 import { AgentFileLink } from '../AgentFileLink';
 
 const empty: GRPCBrowserRecording = {
@@ -13,6 +14,8 @@ const empty: GRPCBrowserRecording = {
   grpcWebReplaySupported: false,
   firefoxAvailable: false,
 };
+const readState = (signal: AbortSignal) =>
+  grpcRequest<GRPCBrowserRecording>('browser-recordings/current', undefined, signal);
 const input =
   'w-full h-9.5 rounded border border-white/10 bg-white/5 px-3 py-2 text-sm text-zinc-300 font-mono focus:outline-none focus:ring-2 focus:ring-yellow-400/40';
 const button =
@@ -63,16 +66,19 @@ export function GRPCBrowserRecorder({
   useEffect(() => {
     if (!state.active) return;
     let pending = false;
+    const report = timerReadError(setError);
     const controller = new AbortController();
     const timer = setInterval(() => {
       if (pending) return;
       pending = true;
-      grpcRequest<GRPCBrowserRecording>('browser-recordings/current', undefined, controller.signal)
+      timerRead(readState, controller.signal)
         .then(value => {
-          if (!controller.signal.aborted) setState(value);
+          if (controller.signal.aborted) return;
+          setState(value);
+          report();
         })
         .catch(cause => {
-          if (!controller.signal.aborted) setError(String(cause.message));
+          if (!controller.signal.aborted) report(cause);
         })
         .finally(() => {
           pending = false;
@@ -161,7 +167,12 @@ export function GRPCBrowserRecorder({
                   'browser-recordings',
                   { applicationUrl: applicationURL, listen },
                   signal,
-                );
+                ).catch(async cause => {
+                  // With no answer, the agent can have started: the state decides.
+                  const now = await stateAfterLostAnswer(cause, readState);
+                  if (!now.active) throw cause;
+                  return now;
+                });
                 if (mounted.current) setState(value);
               })
             }
@@ -206,7 +217,14 @@ export function GRPCBrowserRecorder({
               disabled={busy}
               onClick={() =>
                 run(async signal => {
-                  const value = await grpcRequest<GRPCBrowserRecording>('browser-recordings/stop', {}, signal);
+                  const value = await grpcRequest<GRPCBrowserRecording>('browser-recordings/stop', {}, signal).catch(
+                    async cause => {
+                      // With no answer, the agent can have stopped: the state decides.
+                      const now = await stateAfterLostAnswer(cause, readState);
+                      if (now.active) throw cause;
+                      return now;
+                    },
+                  );
                   if (mounted.current) setState(value);
                 })
               }

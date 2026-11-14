@@ -90,3 +90,57 @@ export function agentEventStream(path: string): AgentEventStream {
 export function agentFileUrl(path: string): string | null {
   return transport().fileUrl(path);
 }
+
+// Contract, section 8, "Lost frames": the relay can lose a frame and tell
+// nobody, so no read on a timer and no action waits with no time limit.
+const TIMER_READ_MS = 10_000;
+
+/**
+ * One read that Studio repeats on a timer. It fails after 10 seconds; the
+ * caller reads again at its next tick.
+ */
+export async function timerRead<T>(read: (signal: AbortSignal) => Promise<T>, signal?: AbortSignal): Promise<T> {
+  const limit = new AbortController();
+  const late = Object.assign(new Error('The machine did not answer in time.'), { name: 'TimeoutError' });
+  const timer = setTimeout(() => limit.abort(late), TIMER_READ_MS);
+  try {
+    return await read(signal ? AbortSignal.any([signal, limit.signal]) : limit.signal);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * The error of a read on a timer. Call the result with the error of a failed
+ * read, and with nothing after a good read. A good read removes the error of
+ * a read; it does not remove the error of an action.
+ */
+export function timerReadError(setError: (update: (shown: string) => string) => void) {
+  let last = '';
+  return (cause?: unknown) => {
+    const previous = last;
+    const message = cause === undefined ? '' : cause instanceof Error ? cause.message : String(cause);
+    last = message;
+    if (message) setError(() => message);
+    else if (previous) setError(shown => (shown === previous ? '' : shown));
+  };
+}
+
+/** True when a request got no answer: the agent can have done the work. */
+function isLostAnswer(cause: unknown): boolean {
+  return cause instanceof TypeError || (cause as { name?: unknown } | null)?.name === 'TimeoutError';
+}
+
+/**
+ * Studio does not repeat a POST by itself. After a POST with no answer it
+ * reads the state again before it shows the error. This returns that state.
+ * It throws `cause` when the POST got an answer or when the read fails too.
+ */
+export async function stateAfterLostAnswer<T>(cause: unknown, read: (signal: AbortSignal) => Promise<T>): Promise<T> {
+  if (!isLostAnswer(cause)) throw cause;
+  try {
+    return await timerRead(read);
+  } catch {
+    throw cause;
+  }
+}

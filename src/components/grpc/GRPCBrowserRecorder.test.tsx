@@ -1,7 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GRPCBrowserRecorder } from './GRPCBrowserRecorder';
 import { grpcRequest } from '../../utils/grpcApi';
+import { advance, lostAnswer } from '../../test/lostFrames';
 vi.mock('../../utils/grpcApi', () => ({ grpcRequest: vi.fn(), GRPC_BROWSER_CA_PATH: '/certificate' }));
 const initial = {
   active: false,
@@ -104,4 +105,77 @@ it('explains that Relampo manages the recording Firefox certificate automaticall
     await screen.findByText(/Relampo automatically prepares and verifies the recorder certificate/i),
   ).toBeInTheDocument();
   expect(screen.queryByText(/import this certificate in Firefox Settings/i)).not.toBeInTheDocument();
+});
+
+// Contract 0.15, section 8, "Lost frames".
+describe('when the relay loses a frame', () => {
+  const mount = () =>
+    render(
+      <GRPCBrowserRecorder
+        onDiscover={vi.fn()}
+        onImport={vi.fn()}
+      />,
+    );
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  it('gives up a state read after 10 seconds and reads again at the next tick', async () => {
+    let reads = 0;
+    vi.mocked(grpcRequest).mockImplementation((_path, _body, signal) =>
+      ++reads === 2 ? lostAnswer(signal) : Promise.resolve({ ...initial, active: true, totalRequests: reads } as any),
+    );
+    mount();
+    await advance(0);
+    await advance(1000);
+    expect(reads).toBe(2);
+
+    await advance(10_000);
+    expect(screen.getByRole('alert')).toHaveTextContent('The machine did not answer in time.');
+
+    await advance(1000);
+    expect(reads).toBeGreaterThanOrEqual(3);
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('reads the state after a start and a stop with no answer, and sends each one time', async () => {
+    let active = false;
+    const posts: string[] = [];
+    vi.mocked(grpcRequest).mockImplementation(async (path, body) => {
+      if (body === undefined) return { ...initial, active } as any;
+      // The agent did the work. Its answer did not arrive.
+      posts.push(path);
+      active = path === 'browser-recordings';
+      throw new TypeError('no answer');
+    });
+    mount();
+    await advance(0);
+    fireEvent.change(screen.getByLabelText('Application URL'), { target: { value: 'https://example.test' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Start browser recording' }));
+    await advance(0);
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Stop browser recording' }));
+    await advance(0);
+    expect(screen.getByRole('button', { name: 'Start browser recording' })).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(posts).toEqual(['browser-recordings', 'browser-recordings/stop']);
+  });
+
+  it('shows the error of a start with no answer when the agent did not start', async () => {
+    vi.mocked(grpcRequest).mockImplementation(async (_path, body) => {
+      if (body === undefined) return initial as any;
+      throw new TypeError('no answer');
+    });
+    mount();
+    await advance(0);
+    fireEvent.change(screen.getByLabelText('Application URL'), { target: { value: 'https://example.test' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Start browser recording' }));
+    await advance(0);
+
+    expect(screen.getByRole('alert')).toHaveTextContent('no answer');
+    expect(screen.getByRole('button', { name: 'Start browser recording' })).toBeEnabled();
+  });
 });

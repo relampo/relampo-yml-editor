@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAgentState } from '../../hooks/useAgentState';
 import { agentUnavailableText } from '../../utils/agentHost';
-import { usesRelay } from '../../utils/agentTransport';
+import { stateAfterLostAnswer, timerRead, timerReadError, usesRelay } from '../../utils/agentTransport';
 import { probeStudio } from '../../utils/debugApi';
 import {
   defaultHTTPRecordOptions,
@@ -81,11 +81,13 @@ export function useHTTPRecorder(embedded = false) {
     // messages each second while this view is open (accepted cost: about
     // 5 cents each hour). Upgrade path: an event stream from the agent with
     // the recorder state, read with agentEventStream.
+    const report = timerReadError(setError);
     async function poll() {
       try {
-        await refresh(controller.signal);
+        await timerRead(refresh, controller.signal);
+        report();
       } catch (cause) {
-        if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : String(cause));
+        if (!controller.signal.aborted) report(cause);
       }
       if (!controller.signal.aborted) timer = setTimeout(poll, 1000);
     }
@@ -100,13 +102,23 @@ export function useHTTPRecorder(embedded = false) {
     setError('');
     try {
       await httpRecorderRequest(name, body);
-      return await refresh();
+      return await timerRead(refresh);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      const message = cause instanceof Error ? cause.message : String(cause);
       try {
-        return await refresh();
+        // With no answer, the agent can have done the work: the state decides.
+        const current = await stateAfterLostAnswer(cause, refresh);
+        const done =
+          name === 'start' ? current.active : name === 'stop' && !current.active && (embedded || !!current.savedPath);
+        if (!done) setError(message);
+        return current;
       } catch {
-        /* Preserve the original operation error. */
+        setError(message);
+        try {
+          return await timerRead(refresh);
+        } catch {
+          /* Preserve the original operation error. */
+        }
       }
     } finally {
       setBusy('');

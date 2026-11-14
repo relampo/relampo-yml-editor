@@ -1,5 +1,6 @@
 import { ExternalLink } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { timerRead } from '../../utils/agentTransport';
 import { distributedRequest, safeProviderURL } from '../../utils/distributedApi';
 
 export interface ProviderConnection {
@@ -172,12 +173,18 @@ export function DistributedConnection({
     let timer: ReturnType<typeof setTimeout>;
     const poll = async () => {
       try {
-        const next = await distributedRequest<{ status: string; error?: string; connection?: ProviderConnection }>(
-          `run/${encodeURIComponent(login)}`,
-          undefined,
+        const next = await timerRead(
+          signal =>
+            distributedRequest<{ status: string; error?: string; connection?: ProviderConnection }>(
+              `run/${encodeURIComponent(login)}`,
+              undefined,
+              signal,
+            ),
           controller.signal,
         );
         if (cancelled) return;
+        // A good read removes the error of a failed read.
+        setError('');
         if (next.connection) publish(next.connection);
         if (next.status === 'running' || next.status === 'stopping') {
           timer = setTimeout(() => void poll(), 1000);

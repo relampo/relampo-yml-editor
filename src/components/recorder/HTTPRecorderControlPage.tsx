@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { CircleDot, ArrowLeft } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { timerRead, timerReadError } from '../../utils/agentTransport';
 import { httpRecorderRequest, type HTTPRecordingState } from '../../utils/httpRecorderApi';
 import { recorderCompactButton } from './HTTPRecorderSettings';
 import { HTTPRecorderControls } from './HTTPRecorderControls';
@@ -20,15 +21,20 @@ export function HTTPRecorderControlPage() {
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout>;
     let seenActive = !new URLSearchParams(location.search).has('waiting');
+    const report = timerReadError(setError);
     async function poll() {
       try {
-        const value = await httpRecorderRequest<HTTPRecordingState>('current', undefined, controller.signal);
+        const value = await timerRead(
+          signal => httpRecorderRequest<HTTPRecordingState>('current', undefined, signal),
+          controller.signal,
+        );
         if (!controller.signal.aborted) {
           if (value.active) seenActive = true;
           if (seenActive) setState(value);
+          report();
         }
       } catch (cause) {
-        if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : String(cause));
+        if (!controller.signal.aborted) report(cause);
       }
       if (!controller.signal.aborted) timer = setTimeout(poll, 500);
     }

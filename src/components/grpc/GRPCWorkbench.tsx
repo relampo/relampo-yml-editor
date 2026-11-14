@@ -17,6 +17,7 @@ import {
   type GRPCMethod,
   type GRPCRecording,
 } from '../../utils/grpcApi';
+import { stateAfterLostAnswer, timerRead, timerReadError } from '../../utils/agentTransport';
 import { AgentFileLink } from '../AgentFileLink';
 import { useGRPCSchema } from '../../hooks/useGRPCSchema';
 import type { YAMLValue } from '../../types/yaml';
@@ -43,6 +44,58 @@ function metadataFromHeaders(headers: { name: string; value: string }[]) {
     }
   return result;
 }
+const readRecording = (signal: AbortSignal) => grpcRequest<GRPCRecording>('recordings/current', undefined, signal);
+/**
+ * After a start or a stop with no answer, the agent can have done the work:
+ * its state decides. Throws `cause` when the state is not `active`.
+ */
+async function recordingAfterLostAnswer(cause: unknown, active: boolean): Promise<GRPCRecording> {
+  const now = await stateAfterLostAnswer(cause, readRecording);
+  if (now.active !== active) throw cause;
+  return now;
+}
+/** Reads the native recording each second while it is active. */
+function useRecordingPoll(
+  active: boolean,
+  setRecording: (value: GRPCRecording) => void,
+  setError: (update: (shown: string) => string) => void,
+) {
+  useEffect(() => {
+    if (!active) return;
+    let cancelled = false;
+    // One poll at a time: a slow agent must not collect open requests (it serves 64 at a time).
+    let pending = false;
+    const report = timerReadError(setError);
+    const timer = setInterval(() => {
+      if (pending) return;
+      pending = true;
+      timerRead(readRecording)
+        .then(value => {
+          if (cancelled) return;
+          setRecording(value);
+          report();
+        })
+        .catch(cause => {
+          if (!cancelled) report(cause);
+        })
+        .finally(() => {
+          pending = false;
+        });
+    }, 1000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [active, setRecording, setError]);
+}
+// ponytail: the script comes only in the answer of stop. With no answer, the
+// state can show that the agent stopped, but the script is lost. Upgrade path:
+// the agent keeps the last script for a later read (contract diff proposed
+// with 0.15).
+const LOST_SCRIPT = [
+  'The recording stopped, but its script did not arrive. Record again.',
+  'La grabación se detuvo, pero su script no llegó. Graba de nuevo.',
+];
 interface GRPCWorkbenchProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -111,30 +164,7 @@ export function GRPCWorkbench({
       cancelled = true;
     };
   }, [open]);
-  useEffect(() => {
-    if (!recording.active) return;
-    let cancelled = false;
-    // One poll at a time: a slow agent must not collect open requests (it serves 64 at a time).
-    let pending = false;
-    const timer = setInterval(() => {
-      if (pending) return;
-      pending = true;
-      grpcRequest<GRPCRecording>('recordings/current')
-        .then(value => {
-          if (!cancelled) setRecording(value);
-        })
-        .catch(cause => {
-          if (!cancelled) setError(String(cause.message));
-        })
-        .finally(() => {
-          pending = false;
-        });
-    }, 1000);
-    return () => {
-      cancelled = true;
-      clearInterval(timer);
-    };
-  }, [recording.active]);
+  useRecordingPoll(recording.active, setRecording, setError);
   async function run(task: (signal: AbortSignal) => Promise<void>) {
     if (busy) return;
     abortRef.current?.abort();
@@ -483,18 +513,22 @@ export function GRPCWorkbench({
             canStart={!!connection.target}
             onStart={() =>
               run(async signal => {
-                const value = await grpcRequest<{ listen: string }>(
+                const value = await grpcRequest<{ listen?: string }>(
                   'recordings',
                   { connection, listen, schemaId: imported?.id, metadata: metadata() },
                   signal,
-                );
+                ).catch(cause => recordingAfterLostAnswer(cause, true));
                 setRecording({ active: true, listen: value.listen, calls: [] });
                 setGenerated(null);
               })
             }
             onStop={() =>
               run(async signal => {
-                setGenerated(await grpcRequest<GRPCGenerated>('recordings/stop', {}, signal));
+                const value = await grpcRequest<GRPCGenerated>('recordings/stop', {}, signal).catch(async cause => {
+                  setRecording(await recordingAfterLostAnswer(cause, false));
+                  throw new Error(LOST_SCRIPT[language === 'es' ? 1 : 0]);
+                });
+                setGenerated(value);
                 setRecording({ active: false, calls: [] });
               })
             }

@@ -6,6 +6,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { FolderOpen, Loader2, Play } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { fingerprint } from '../utils/studioRunStore';
+import { timerRead } from '../utils/agentTransport';
 import {
   distributedRequest,
   uploadDistributedFile,
@@ -130,9 +131,8 @@ export function YAMLDistributedRun({
     let cancelled = false;
     const poll = async () => {
       try {
-        const next = await distributedRequest<DistributedState>(
-          `run/${encodeURIComponent(runId)}`,
-          undefined,
+        const next = await timerRead(
+          signal => distributedRequest<DistributedState>(`run/${encodeURIComponent(runId)}`, undefined, signal),
           controller.signal,
         );
         if (cancelled) return;

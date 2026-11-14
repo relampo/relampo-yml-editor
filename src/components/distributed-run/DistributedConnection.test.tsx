@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { DistributedConnection } from './DistributedConnection';
+import { advance, lostAnswer } from '../../test/lostFrames';
 const request = vi.hoisted(() => vi.fn());
 vi.mock('../../utils/distributedApi', async original => ({
   ...(await original<typeof import('../../utils/distributedApi')>()),
@@ -215,4 +216,37 @@ describe('distributed provider connection', () => {
     render(<DistributedConnection {...props()} />);
     await waitFor(() => expect(onRepository).toHaveBeenLastCalledWith('owner/first'));
   });
+});
+
+// Contract 0.15, section 8, "Lost frames".
+it('gives up a read of the authorization after 10 seconds and reads again at the next tick', async () => {
+  vi.useFakeTimers();
+  try {
+    let reads = 0;
+    request.mockImplementation((path: string, _body: unknown, signal?: AbortSignal) => {
+      if (path === 'requirements') return Promise.resolve(connection({ ...connected, authenticated: false }));
+      if (path === 'connect') return Promise.resolve({ id: 'auth-1' });
+      if (++reads === 2) return lostAnswer(signal);
+      return Promise.resolve({
+        status: 'running',
+        connection: { ...connected, authenticated: false, code: 'ABCD-1234' },
+      });
+    });
+    render(<DistributedConnection {...props()} />);
+    await advance(350);
+    fireEvent.click(screen.getByRole('button', { name: 'Conectar con GitHub' }));
+    await advance(0);
+    await advance(1000);
+    expect(reads).toBe(2);
+
+    await advance(10_000);
+    expect(screen.getByRole('alert')).toHaveTextContent('The machine did not answer in time.');
+
+    await advance(2000);
+    expect(reads).toBeGreaterThanOrEqual(3);
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.getByText('ABCD-1234')).toBeInTheDocument();
+  } finally {
+    vi.useRealTimers();
+  }
 });
