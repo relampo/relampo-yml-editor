@@ -9,7 +9,7 @@ import { trackStudioRunStarted, trackStudioRunCompleted } from './analytics';
 // VITE_DEBUG_API_URL at a running studio.
 
 import { agentRequest } from './agentTransport';
-import { createValidatedEventStream, isRecord } from './sseMessage';
+import { createValidatedEventStream, isRecord, runAfterLostStart } from './sseMessage';
 import { load } from 'js-yaml';
 
 // EventSource auto-reconnects on transient drops; a multi-minute load run will
@@ -331,11 +331,24 @@ export function hasMultipleRunScenarios(yaml: string): boolean {
 export async function startLoadRun(yaml: string, componentCapabilities?: ComponentCapabilities): Promise<string> {
   const compatibilityError = componentCapabilityError(yaml, componentCapabilities);
   if (compatibilityError) throw new Error(compatibilityError);
-  const response = await agentRequest('/api/run', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(hasMultipleRunScenarios(yaml) ? { yaml, multi_scenario_contract_version: 1 } : { yaml }),
-  });
+  // Studio chooses the id, so a start with no answer can be found again.
+  const id = crypto.randomUUID();
+  let response: Response;
+  try {
+    response = await agentRequest('/api/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        yaml,
+        ...(hasMultipleRunScenarios(yaml) ? { multi_scenario_contract_version: 1 } : {}),
+        id,
+      }),
+    });
+  } catch (cause) {
+    await runAfterLostStart(cause, `/api/run/${id}/events`);
+    trackStudioRunStarted(id, 'load');
+    return id;
+  }
   if (!response.ok) {
     let message = `load run failed to start (HTTP ${response.status})`;
     try {

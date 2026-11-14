@@ -1,5 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { AgentAnswerLost } from './relayTransport';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   AGENT_UNREACHABLE_MESSAGE,
   previewStudioDataSourceFile,
@@ -101,12 +100,18 @@ describe('probeStudio', () => {
 });
 
 describe('startDebugRun', () => {
+  // Studio chooses the id of a run (contract 0.16).
+  const id = '00000000-0000-4000-8000-000000000000';
+  beforeEach(() => {
+    vi.spyOn(crypto, 'randomUUID').mockReturnValue(id);
+  });
+
   it('posts full YAML with an explicit scenario selection', async () => {
     mockFetch({ id: 'selected-2' });
     const yaml = 'test: {scenario_mode: parallel}\nscenarios: [{name: first}, {name: second}]\n';
     await expect(startDebugRun(yaml, { vus: 2, scenarioName: 'second' })).resolves.toBe('selected-2');
     expect(fetch).toHaveBeenCalledWith('/api/debug/runs', expect.objectContaining({
-      body: JSON.stringify({ yaml, vus: 2, scenarioName: 'second' }),
+      body: JSON.stringify({ yaml, vus: 2, scenarioName: 'second', id }),
     }));
   });
 
@@ -119,7 +124,7 @@ describe('startDebugRun', () => {
       '/api/debug/runs',
       expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({ yaml: 'test:\n  name: debug\n', vus: 2 }),
+        body: JSON.stringify({ yaml: 'test:\n  name: debug\n', vus: 2, id }),
       }),
     );
   });
@@ -129,13 +134,6 @@ describe('startDebugRun', () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
 
     await expect(startDebugRun('test:\n  name: debug\n')).rejects.toThrow(AGENT_UNREACHABLE_MESSAGE);
-  });
-
-  it('keeps the text of a start with no answer: the run can be active on the machine', async () => {
-    // Contract 0.15, "Lost frames". The run id comes only in the lost answer.
-    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new AgentAnswerLost('It can have done the work')));
-
-    await expect(startDebugRun('test:\n  name: debug\n')).rejects.toThrow('It can have done the work');
   });
 
   it('passes through HTTP error bodies without the connection message', async () => {

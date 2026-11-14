@@ -1,4 +1,5 @@
 import { AGENT_STREAM_CLOSED, agentEventStream } from './agentTransport';
+import { AgentAnswerLost } from './relayTransport';
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -60,4 +61,31 @@ export function createValidatedEventStream(
   };
 
   return { source, close, isFinished: () => finished, parse };
+}
+
+const FIND_RUN_MS = 10_000;
+
+/**
+ * Contract, section 8, "Lost frames": Studio chooses the id of a run, so a
+ * start with no answer can be found again. The events of that id tell:
+ * - the stream opens: the agent has the run, and this resolves;
+ * - `404`: the run did not start;
+ * - no answer in 10 seconds, or a start that got an answer: `cause` again.
+ */
+export function runAfterLostStart(cause: unknown, eventsPath: string): Promise<void> {
+  if (!(cause instanceof AgentAnswerLost)) return Promise.reject(cause);
+  return new Promise((resolve, reject) => {
+    const source = agentEventStream(eventsPath);
+    const settle = (end: () => void) => {
+      clearTimeout(timer);
+      source.close();
+      end();
+    };
+    const timer = setTimeout(() => settle(() => reject(cause)), FIND_RUN_MS);
+    source.addEventListener('open', () => settle(resolve));
+    source.onerror = () => {
+      if (source.readyState === AGENT_STREAM_CLOSED)
+        settle(() => reject(new Error('The run did not start. Try again.')));
+    };
+  });
 }

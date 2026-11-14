@@ -13,7 +13,7 @@ import { trackStudioRunStarted, trackStudioRunCompleted, setAnalyticsVersion, in
 import { agentUnavailableText } from './agentHost';
 import { agentRequest, usesRelay } from './agentTransport';
 import { AgentAnswerLost } from './relayTransport';
-import { createValidatedEventStream, isRecord } from './sseMessage';
+import { createValidatedEventStream, isRecord, runAfterLostStart } from './sseMessage';
 import { name, type Named } from '@gdp-ts/core';
 import { supportedDataSourceFile, type SupportedDataSourceFile } from '../proofs/supportedDataSourceFile';
 
@@ -260,11 +260,20 @@ export async function startDebugRun(yaml: string, options: StartDebugRunOptions 
   const compatibilityError = componentCapabilityError(yaml, options.componentCapabilities);
   if (compatibilityError) throw new Error(compatibilityError);
   const vus = options.vus ?? 1;
-  const response = await fetchAgent('/api/debug/runs', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ yaml, vus, ...(options.scenarioName ? { scenarioName: options.scenarioName } : {}) }),
-  });
+  // Studio chooses the id, so a start with no answer can be found again.
+  const id = crypto.randomUUID();
+  let response: Response;
+  try {
+    response = await fetchAgent('/api/debug/runs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ yaml, vus, ...(options.scenarioName ? { scenarioName: options.scenarioName } : {}), id }),
+    });
+  } catch (cause) {
+    await runAfterLostStart(cause, `/api/debug/runs/${id}/events`);
+    trackStudioRunStarted(id, 'debug');
+    return id;
+  }
   if (!response.ok) {
     let message = `debug run failed to start (HTTP ${response.status})`;
     try {
