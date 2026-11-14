@@ -71,7 +71,7 @@ export function CorrelateDocumentPanel({
       <section
         role="region"
         aria-label="Correlation script"
-        className="flex min-h-0 min-w-0 flex-col overflow-hidden"
+        className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
       >
         <div className="flex h-9 shrink-0 border-b border-white/10 bg-[#111111] text-xs">
           {(['tree', 'code'] as const).map(mode => (

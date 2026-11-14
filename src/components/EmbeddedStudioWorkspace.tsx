@@ -374,7 +374,8 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
           </p>
         )}
         {/* Editing needs no machine. Record, Correlation, Debug and Run do. */}
-        {view !== 'scripting' && <AgentUnavailableNotice language={language} />}
+        {/* Scripting and Correlate need no machine: the cloud runs Correlate (contract, section 10). */}
+        {view !== 'scripting' && view !== 'correlation' && <AgentUnavailableNotice language={language} />}
         <div
           className="min-h-0 flex-1"
           hidden={view === 'record' || view === 'correlation'}

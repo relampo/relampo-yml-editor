@@ -37,6 +37,7 @@ vi.mock('./YAMLEditor', async () => {
     },
   };
 });
+vi.mock('./AgentUnavailableNotice', () => ({ AgentUnavailableNotice: () => <p>machine notice</p> }));
 vi.mock('./grpc/GRPCRecorderPage', () => ({ GRPCRecorderPage: () => null }));
 vi.mock('./correlate/CorrelatePage', () => ({ CorrelatePage: () => null }));
 vi.mock('../utils/planScriptStorage', () => ({
@@ -132,4 +133,16 @@ it('sends no frame while the browser tab is hidden', async () => {
   const before = reads();
   await showTab('visible');
   expect(reads()).toBe(before + 1);
+});
+
+// Contract 0.20, section 10: the cloud runs Correlate, so it needs no machine.
+it('shows the state of the machine in the views that need one, and not in Correlate', async () => {
+  expect(screen.getByText('machine notice')).toBeInTheDocument();
+  await show('run');
+  expect(screen.getByText('machine notice')).toBeInTheDocument();
+
+  await show('correlation');
+  expect(screen.queryByText('machine notice')).toBeNull();
+  await show('scripting');
+  expect(screen.queryByText('machine notice')).toBeNull();
 });
