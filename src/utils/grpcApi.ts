@@ -1,4 +1,5 @@
 import { agentRequest } from './agentTransport';
+import { agentErrorText } from './logicErrors';
 import type { YAMLValue } from '../types/yaml';
 export interface GRPCField {
   name: string;
@@ -58,17 +59,19 @@ export interface GRPCRecording {
   generated?: GRPCGenerated;
   truncated?: boolean;
 }
+/** Contract, section 10: these routes get their result from a job in the cloud. */
+const LOGIC_ROUTES = ['recordings/stop', 'generate', 'correlations'];
 export async function grpcRequest<T>(path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
   const response = await agentRequest('/api/grpc/' + path, {
     method: body === undefined ? 'GET' : 'POST',
     headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
     body: body === undefined ? undefined : JSON.stringify(body),
-    signal: signal ?? AbortSignal.timeout(30000),
+    // The pages give `generate` and `recordings/stop` a signal with no time limit: the 150 seconds apply also then.
+    signal: LOGIC_ROUTES.includes(path)
+      ? AbortSignal.any([AbortSignal.timeout(150_000), ...(signal ? [signal] : [])])
+      : (signal ?? AbortSignal.timeout(30000)),
   });
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'gRPC operation failed' }));
-    throw new Error(error.error || 'gRPC operation failed');
-  }
+  if (!response.ok) throw new Error(agentErrorText(await response.json().catch(() => null)) || 'gRPC operation failed');
   return response.json();
 }
 export function grpcBundlePath(id: string): string {

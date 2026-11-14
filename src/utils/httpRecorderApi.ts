@@ -1,4 +1,5 @@
 import { agentRequest } from './agentTransport';
+import { agentErrorText } from './logicErrors';
 export interface HTTPRecordOptions {
   paused: boolean;
   applicationUrl: string;
@@ -70,12 +71,11 @@ export async function httpRecorderRequest<T>(path: string, body?: unknown, signa
     method: body === undefined ? 'GET' : 'POST',
     headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
     body: body === undefined ? undefined : JSON.stringify(body),
-    signal: signal ?? AbortSignal.timeout(45000),
+    // Contract, section 10: `editor` and `correlations` get their result from a job in the cloud.
+    signal: signal ?? AbortSignal.timeout(path === 'editor' || path === 'correlations' ? 150_000 : 45000),
   });
-  if (!response.ok) {
-    const value = await response.json().catch(() => ({ error: 'Recorder operation failed' }));
-    throw new Error(value.error || 'Recorder operation failed');
-  }
+  if (!response.ok)
+    throw new Error(agentErrorText(await response.json().catch(() => null)) || 'Recorder operation failed');
   return response.json();
 }
 export const DEFAULT_EMBEDDED_EXCLUDE = String.raw`(?i).*\.(css|js|png|jpg|jpeg|gif|svg|ico|woff2?)(\?.*)?$`;

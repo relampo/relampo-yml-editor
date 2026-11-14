@@ -13,9 +13,12 @@
 import {
   getAgentState,
   isEmbeddedStudio,
+  LogicError,
   markRelayRefused,
+  requestLogic,
   requestRelayTicket,
   subscribeAgentState,
+  type LogicKind,
 } from './agentHost';
 import { createRelayTransport } from './relayTransport';
 import { getRuntimeConfig } from './runtimeConfig';
@@ -79,8 +82,28 @@ function transport(): AgentTransport {
   return usesRelay() ? relayTransport : httpTransport;
 }
 
+// Contract, section 10: the cloud runs these two routes, not the agent, so
+// they need no machine. Studio holds no token: inside the web app it asks the
+// web app to run the job. A Studio that a CLI serves still sends them to that
+// CLI, which keeps its own logic.
+const LOGIC_KINDS = new Map<string, LogicKind>([
+  ['/api/correlate/analyze', 'correlate.analyze'],
+  ['/api/correlate/apply', 'correlate.apply'],
+]);
+
+/** The answer of a logic job, in the shape of the old agent route. */
+async function logicResponse(kind: LogicKind, init?: RequestInit): Promise<Response> {
+  try {
+    return Response.json(await requestLogic(kind, JSON.parse(String(init?.body))));
+  } catch (cause) {
+    if (!(cause instanceof LogicError)) throw cause;
+    return Response.json({ error: cause.code, message: cause.detail }, { status: 422 });
+  }
+}
+
 export function agentRequest(path: string, init?: RequestInit): Promise<Response> {
-  return transport().request(path, init);
+  const kind = usesRelay() ? LOGIC_KINDS.get(path) : undefined;
+  return kind ? logicResponse(kind, init) : transport().request(path, init);
 }
 
 export function agentEventStream(path: string): AgentEventStream {

@@ -4,7 +4,9 @@ import {
   getAgentState,
   initializeAgentHost,
   isEmbeddedStudio,
+  LogicError,
   markRelayRefused,
+  requestLogic,
   requestRelayTicket,
   retryRelay,
   resetAgentHostForTests,
@@ -198,5 +200,86 @@ describe('reasons of the web app', () => {
 
     expect(getAgentState()).toEqual({ connected: false });
     expect(agentUnavailableText('es')).toMatch(/^No se pudo conectar con tu máquina\./);
+  });
+});
+
+// Contract 0.20, section 10, "Web app and Studio".
+describe('requestLogic', () => {
+  const input = { yaml: 'test: {}' };
+  const sent = () => parent.postMessage.mock.calls.find(([message]) => message.type === 'relampo:logic-request')![0];
+
+  it('sends the kind and the input document to the parent frame and returns the result document', async () => {
+    const result = requestLogic('correlate.analyze', input);
+
+    expect(parent.postMessage).toHaveBeenCalledWith(
+      { type: 'relampo:logic-request', requestId: expect.any(String), kind: 'correlate.analyze', input },
+      window.location.origin,
+    );
+    const document = { digest: 'd1', requests: 2, responses: 2, candidates: [] };
+    fromHost({ type: 'relampo:logic-result', requestId: sent().requestId, result: document });
+
+    await expect(result).resolves.toEqual(document);
+  });
+
+  it('rejects with the error code and the message of the web app', async () => {
+    const result = requestLogic('correlate.apply', input);
+
+    fromHost({ type: 'relampo:logic-result', requestId: sent().requestId, error: 'script_changed', message: 'changed' });
+
+    await expect(result).rejects.toEqual(new LogicError('script_changed', 'changed'));
+    await expect(result).rejects.toMatchObject({ code: 'script_changed', detail: 'changed' });
+  });
+
+  it.each([{}, { result: 'text' }, { result: null }, { error: 404 }])(
+    'rejects with internal for the answer %j, which has no result and no code',
+    async answer => {
+      const result = requestLogic('correlate.analyze', input);
+
+      fromHost({ type: 'relampo:logic-result', requestId: sent().requestId, ...answer });
+
+      await expect(result).rejects.toMatchObject({ code: 'internal' });
+    },
+  );
+
+  it('waits 160 seconds, then rejects with timeout and ignores a late answer', async () => {
+    const result = requestLogic('correlate.analyze', input);
+    let failure: unknown;
+    result.catch(cause => (failure = cause));
+
+    await vi.advanceTimersByTimeAsync(159_900);
+    expect(failure).toBeUndefined();
+    await vi.advanceTimersByTimeAsync(100);
+    expect(failure).toMatchObject({ code: 'timeout' });
+
+    fromHost({ type: 'relampo:logic-result', requestId: sent().requestId, result: { candidates: [] } });
+    await expect(result).rejects.toMatchObject({ code: 'timeout' });
+  });
+
+  it('ignores a result from another window, another origin or another request', async () => {
+    const result = requestLogic('correlate.analyze', input);
+    let finished = false;
+    void result.then(() => {
+      finished = true;
+    });
+    const wrong = { type: 'relampo:logic-result', result: { candidates: ['bad'] } };
+
+    fromHost({ ...wrong, requestId: sent().requestId }, window);
+    fromHost({ ...wrong, requestId: sent().requestId }, parent, 'https://other.test');
+    fromHost({ ...wrong, requestId: 'other' });
+    fromHost({ type: 'relampo:relay-ticket', requestId: sent().requestId, result: { candidates: ['bad'] } });
+    await Promise.resolve();
+    expect(finished).toBe(false);
+
+    fromHost({ type: 'relampo:logic-result', requestId: sent().requestId, result: { candidates: [] } });
+    await expect(result).resolves.toEqual({ candidates: [] });
+  });
+
+  it('needs no machine: it asks also when the web app said that the machine is not connected', async () => {
+    fromHost({ type: 'relampo:agent-state', connected: false, reason: 'offline' });
+
+    const result = requestLogic('correlate.analyze', input);
+    fromHost({ type: 'relampo:logic-result', requestId: sent().requestId, result: { candidates: [] } });
+
+    await expect(result).resolves.toEqual({ candidates: [] });
   });
 });

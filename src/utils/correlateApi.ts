@@ -1,4 +1,5 @@
 import { agentRequest } from './agentTransport';
+import { agentErrorText } from './logicErrors';
 export interface CorrelateLocation {
   StepIndex: number;
   RequestID: number;
@@ -32,7 +33,14 @@ export async function correlateRequest<T>(path: string, body: unknown, signal?: 
     signal: signal ?? AbortSignal.timeout(120000),
   });
   const value = await response.json().catch(() => ({}));
-  if (!response.ok) throw Error(value.error || `Correlate failed (HTTP ${response.status})`);
+  if (!response.ok)
+    throw Error(
+      agentErrorText(value) ||
+        // A Relampo that runs Correlate in the cloud does not serve this route.
+        (response.status === 404
+          ? 'This Relampo version runs Correlate in the Relampo web app. Open the script there.'
+          : `Correlate failed (HTTP ${response.status})`),
+    );
   return value;
 }
 export function correlatedFileName(name: string): string {

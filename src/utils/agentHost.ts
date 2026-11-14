@@ -84,34 +84,73 @@ export function resetAgentHostForTests(): void {
   state = null;
 }
 
-/** Asks the web app for a relay ticket. One ticket opens one connection. */
-export function requestRelayTicket(): Promise<RelayTicket> {
-  if (state?.connected === false) return Promise.reject(new Error(agentUnavailableText()));
+/**
+ * Sends one request to the web app and waits for the answer with the same
+ * `requestId`. Null when the web app does not answer in time. An answer from
+ * another window, another origin or another request is ignored.
+ */
+function askHost(
+  type: string,
+  answerType: string,
+  payload: Record<string, unknown>,
+  timeoutMs: number,
+): Promise<Record<string, unknown> | null> {
   const requestId = crypto.randomUUID();
-  return new Promise((resolve, reject) => {
-    const cleanup = () => {
+  return new Promise(resolve => {
+    const finish = (answer: Record<string, unknown> | null) => {
       window.clearTimeout(timer);
       window.removeEventListener('message', receive);
+      resolve(answer);
     };
     const receive = (event: MessageEvent) => {
       const message = messageFromHost(event);
-      if (message?.type !== 'relampo:relay-ticket' || message.requestId !== requestId) return;
-      cleanup();
-      const { relayUrl, ticket, error } = message;
-      if (typeof relayUrl === 'string' && relayUrl.length <= 2048 && typeof ticket === 'string' && ticket.length <= 4096) {
-        resolve({ relayUrl, ticket });
-      } else {
-        // A sentence, not the code. A TypeError, like a fetch that cannot connect: the views show it as it is.
-        reject(new TypeError(UNAVAILABLE[TICKET_ERRORS.get(error) ?? 'refused'][0]));
-      }
+      if (message?.type === answerType && message.requestId === requestId) finish(message);
     };
-    const timer = window.setTimeout(() => {
-      cleanup();
-      reject(new Error('The web app did not answer the relay ticket request.'));
-    }, TICKET_TIMEOUT_MS);
+    const timer = window.setTimeout(() => finish(null), timeoutMs);
     window.addEventListener('message', receive);
-    window.parent.postMessage({ type: 'relampo:relay-ticket-request', requestId }, window.location.origin);
+    window.parent.postMessage({ ...payload, type, requestId }, window.location.origin);
   });
+}
+
+/** Asks the web app for a relay ticket. One ticket opens one connection. */
+export async function requestRelayTicket(): Promise<RelayTicket> {
+  if (state?.connected === false) throw new Error(agentUnavailableText());
+  const answer = await askHost('relampo:relay-ticket-request', 'relampo:relay-ticket', {}, TICKET_TIMEOUT_MS);
+  if (!answer) throw new Error('The web app did not answer the relay ticket request.');
+  const { relayUrl, ticket, error } = answer;
+  if (typeof relayUrl === 'string' && relayUrl.length <= 2048 && typeof ticket === 'string' && ticket.length <= 4096)
+    return { relayUrl, ticket };
+  // A sentence, not the code. A TypeError, like a fetch that cannot connect: the views show it as it is.
+  throw new TypeError(UNAVAILABLE[TICKET_ERRORS.get(error) ?? 'refused'][0]);
+}
+
+/** The logic that the cloud runs for Studio (contract, section 10, "Kinds"). */
+export type LogicKind = 'correlate.analyze' | 'correlate.apply';
+
+/** A logic job gave no result. `code` is a short code of section 10, never a text for the user. */
+export class LogicError extends Error {
+  constructor(
+    readonly code: string,
+    readonly detail?: string,
+  ) {
+    super(code);
+  }
+}
+
+// The web app answers within 150 seconds. Studio waits 10 seconds more.
+const LOGIC_TIMEOUT_MS = 160_000;
+
+/**
+ * Asks the web app to run a logic job in the cloud (contract, section 10).
+ * `input` is the input document. Resolves with the result document, and
+ * rejects with a LogicError. Studio holds no token: the web app runs the job.
+ */
+export async function requestLogic(kind: LogicKind, input: unknown): Promise<object> {
+  const answer = await askHost('relampo:logic-request', 'relampo:logic-result', { kind, input }, LOGIC_TIMEOUT_MS);
+  if (!answer) throw new LogicError('timeout');
+  const { result, error, message } = answer;
+  if (typeof result === 'object' && result !== null) return result;
+  throw new LogicError(typeof error === 'string' ? error : 'internal', typeof message === 'string' ? message : undefined);
 }
 
 const UNAVAILABLE: Record<AgentUnavailableReason | 'refused' | 'unknown', [en: string, es: string]> = {
