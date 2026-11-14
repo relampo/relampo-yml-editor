@@ -45,7 +45,7 @@ describe('through the relay', () => {
   });
 
   function show(path: string, download?: boolean) {
-    render(
+    const view = render(
       <LanguageProvider>
         <AgentFileLink
           path={path}
@@ -58,6 +58,7 @@ describe('through the relay', () => {
       </LanguageProvider>,
     );
     fireEvent.click(screen.getByRole('button', { name: 'Open file' }));
+    return view;
   }
 
   it('downloads a file with the name that the agent gives', async () => {
@@ -98,6 +99,17 @@ describe('through the relay', () => {
     expect(frame).toHaveAttribute('src', 'blob:studio/1');
     expect(frame).toHaveAttribute('sandbox', 'allow-scripts allow-downloads');
     expect(clicked).toHaveLength(0);
+  });
+
+  it('frees a report that arrives after the link left the page', async () => {
+    let answer!: (response: Response) => void;
+    vi.spyOn(transport, 'agentRequest').mockReturnValue(new Promise(resolve => (answer = resolve)));
+
+    const { unmount } = show('/api/run/7/report?lang=en');
+    unmount();
+    answer(new Response('<h1>Report</h1>', { headers: { 'Content-Type': 'text/html' } }));
+
+    await waitFor(() => expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:studio/1'));
   });
 
   it('downloads an HTML report that the agent sends as an attachment', async () => {

@@ -1,4 +1,4 @@
-import { useEffect, useState, type ComponentProps } from 'react';
+import { useEffect, useRef, useState, type ComponentProps } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { agentFileUrl, agentRequest } from '../utils/agentTransport';
 import { AgentAnswerLost } from '../utils/relayTransport';
@@ -51,6 +51,15 @@ function AgentFileButton({ path, download, className, children }: AgentFileLinkP
     },
     [report],
   );
+  // A read can end after this link left the page. Then nothing revokes a new URL.
+  const gone = useRef(false);
+  useEffect(() => {
+    // Also false again: in development React runs an effect, its cleanup, and the effect again.
+    gone.current = false;
+    return () => {
+      gone.current = true;
+    };
+  }, []);
 
   async function open() {
     setBusy(true);
@@ -63,7 +72,12 @@ function AgentFileButton({ path, download, className, children }: AgentFileLinkP
       }
       const disposition = response.headers.get('content-disposition') ?? '';
       const html = (response.headers.get('content-type') ?? '').startsWith('text/html');
+      // react-doctor-disable-next-line react-doctor/no-create-object-url-without-revoke -- false positive: every path revokes this URL: just below, in the effect above (a report), or after the download.
       const url = URL.createObjectURL(await response.blob());
+      if (gone.current) {
+        URL.revokeObjectURL(url);
+        return;
+      }
       if (html && download === undefined && !disposition.startsWith('attachment')) {
         setReport(url);
         return;
