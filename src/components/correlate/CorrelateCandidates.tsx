@@ -104,7 +104,7 @@ export function CorrelateCandidates({
                 <td className="px-2 py-2 font-mono text-yellow-400">{row.id}</td>
                 <td className="max-w-48 break-words px-2 py-2 font-mono text-zinc-200">{row.variable}</td>
                 <td className="px-2 py-2 text-zinc-400">
-                  <div className="max-h-24 max-w-64 overflow-y-auto whitespace-pre-wrap break-all font-mono text-zinc-300">
+                  <div className="max-h-24 min-w-40 max-w-64 overflow-y-auto whitespace-pre-wrap break-all font-mono text-zinc-300">
                     {row.value ?? '—'}
                   </div>
                   {!row.applicable && (
