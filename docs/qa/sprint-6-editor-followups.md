@@ -30,7 +30,6 @@ Commands:
 
 ## Queue: reproduce before changing code
 
-- RLP-823: replace the loaded YAML after Debug and Run; inspect reset and late events.
 - RLP-809: verify Segment Load Pattern in execution results, including cumulative time and transitions.
 - RLP-819: verify resolved variable names and values from captured requests, without re-evaluating built-ins.
 - RLP-689: architecture investigation; do not implement unapproved inheritance rules.
@@ -44,3 +43,31 @@ Typecheck and lint pass (15 pre-existing size warnings); all 151 test files /
 1506 tests passed on the second full run. The first concurrent run had two
 failures in existing load/distributed tests; both passed when rerun individually.
 `bun run build` and the Chrome smoke pass. No deployment was performed.
+
+## RLP-823 — reproduced, corrected
+
+Before changing product code, Chrome loaded a first YAML, displayed a completed
+Debug or Run session, switched tabs (preserving that session), then imported a
+second YAML. Both tests failed: old Debug request details and the old Run table
+remained visible. Separate deferred-start tests also failed: resolving a start
+request after unmount still stored and subscribed to the discarded document.
+
+A document replacement now clears scoped stored Debug/Run IDs and remounts the
+execution/details sessions using a document generation key. This happens on valid
+file import, New confirmation, and controller/correlation replacement. Ordinary
+edits and tab changes retain their existing session. Invalid YAML imports retain
+the current document and its results. Unmount invalidates pending start tokens
+and disconnects the previous event stream without stopping a server-side run.
+
+Regression commands:
+
+- `bun run test src/components/YAMLDebugView.test.tsx src/components/YAMLRunView.test.tsx -t RLP-823`
+- `bun run test:browser browser-tests/document-execution-reset.local.spec.ts`
+
+Both deferred-start tests and both Chrome flows pass. Browser execution responses
+are deterministic local API fixtures; these tests verify UI lifecycle, not engine
+execution. No backend or Jira changes, no push and no new PR for this checkpoint.
+
+Final RLP-823 validation: `bun run validate` passes typecheck, lint (existing size
+warnings only), all 151 files / 1508 tests, and build. The combined Chrome run
+passes all three flows (RLP-822 plus Debug and Run document replacement).

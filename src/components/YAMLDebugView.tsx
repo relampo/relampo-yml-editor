@@ -520,7 +520,11 @@ export function YAMLDebugSession({
     [t],
   );
 
-  useEffect(() => () => stopStreamRef.current?.(), []);
+  useEffect(() => () => {
+    // A late start must not store or subscribe to a run for a discarded document.
+    startTokenRef.current += 1;
+    stopStreamRef.current?.();
+  }, []);
 
   // Re-attach to a run started before a reload — but only once the editor has
   // settled the document. A debug run belongs to a document, so if the
