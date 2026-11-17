@@ -1,6 +1,8 @@
 # Sprint 6: editor QA follow-ups
 
-Base: develop, d99498a. Changes remain isolated from the existing local checkouts.
+PR base: main, a5d549d. Only RLP-822, RLP-823 and RLP-819 are included.
+Original reproduction and validation below were performed on develop, d99498a;
+the final main-based validation is recorded at the end of this document.
 
 ## RLP-822 — reproduced, corrected
 
@@ -97,4 +99,22 @@ Validation:
 - `bun run validate`: typecheck, lint (15 existing warnings), all 151 files /
   1511 tests, and build pass. Existing bundle-size warning remains.
 
-No backend changes, push, PR, deployment or Jira transition.
+No backend changes, deployment or Jira transition.
+
+## Main-based PR validation — RLP-822, RLP-823, RLP-819
+
+The review branch starts from main rather than develop so it does not include
+the unrelated SaaS, relay, gRPC or SQL changes pending between those branches.
+Conflict resolution keeps main's document lifecycle and existing component APIs;
+only the three QA corrections are applied. The document replacement browser
+test uses main's visible result DOM rather than a panel marker added in develop.
+
+All five Chrome flows pass: Cache Manager add/edit/save, Debug and Run document
+replacement (including tab retention and invalid imports), and Variables with
+inline built-in or direct values. Tests use local API fixtures.
+
+An existing distributed-run test had a timing-sensitive assertion failure in the
+first full run; its unchanged file passes in isolation (15 tests). Final full
+validation passes: typecheck, lint (15 existing size warnings), all 122 test
+files / 1223 tests, and build. No unrelated test behavior was changed to mask
+the failure.

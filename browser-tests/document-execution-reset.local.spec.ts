@@ -63,7 +63,7 @@ for (const view of ['Debug', 'Run'] as const) {
     await page.goto('/');
     await page.getByRole('button', { name: view, exact: true }).click();
     await page.getByRole('button', { name: view === 'Debug' ? 'Run Debug' : 'Run load test', exact: true }).click();
-    const panel = page.locator('[data-editor-panel-heading]').locator('..');
+    const panel = page.locator('body');
     const previousResult =
       view === 'Debug'
         ? panel.getByText('/rlp823-first', { exact: true })
