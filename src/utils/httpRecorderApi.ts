@@ -41,6 +41,7 @@ export interface HTTPRecordingState {
   output?: string;
   saving?: boolean;
   applicationUrl?: string;
+  baseUrls?: string;
   proxyAddress?: string;
   firefoxRunning?: boolean;
   firefoxPreparing?: boolean;
@@ -106,12 +107,39 @@ export function normalizeRecorderBaseURLs(value: string): string {
     .split(',')
     .map(part => part.trim())
     .filter(Boolean)
-    .map(part => (/^[a-z][a-z0-9+.-]*:\/\//i.test(part) ? part : 'https://' + part))
+    .join(',');
+}
+export function applyRecorderDetectedURLs(value: string, resolved: string): string {
+  const schemes = new Map<string, string>();
+  for (const part of resolved.split(',').filter(Boolean)) {
+    try {
+      const url = new URL(part);
+      // Compare both authorities under the same scheme so explicit :80 / :443
+      // do not disappear only on one side during URL normalization.
+      schemes.set(new URL(part.replace(/^http:/i, 'https:')).host, url.protocol);
+    } catch {
+      // Older agents may not provide resolved base URLs.
+    }
+  }
+  return normalizeRecorderBaseURLs(value)
+    .split(',')
+    .map(part => {
+      if (!part || /^[a-z][a-z0-9+.-]*:\/\//i.test(part)) return part;
+      try {
+        const scheme = schemes.get(new URL('https://' + part).host);
+        return scheme ? scheme + '//' + part : part;
+      } catch {
+        return part;
+      }
+    })
     .join(',');
 }
 export function recorderURLProtocol(value: string): string {
+  const first = normalizeRecorderBaseURLs(value).split(',')[0];
+  if (!first) return '';
+  if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(first)) return 'AUTO';
   try {
-    const protocol = new URL(normalizeRecorderBaseURLs(value).split(',')[0]).protocol;
+    const protocol = new URL(first).protocol;
     return protocol === 'http:' ? 'HTTP' : protocol === 'https:' ? 'HTTPS' : '';
   } catch {
     return '';

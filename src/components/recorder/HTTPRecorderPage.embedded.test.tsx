@@ -89,6 +89,32 @@ it('starts with no output file and shows the recording controls inside the frame
   expect(await screen.findByText(/Active prefix: login/)).toBeInTheDocument();
 });
 
+it('sends a bare domain for detection and displays the HTTP address selected by the agent', async () => {
+  vi.mocked(httpRecorderRequest).mockImplementation(async (path, body: any) => {
+    if (path === 'options') return { port: 8888, firefoxAvailable: true, firefoxConfigured: true } as any;
+    if (path === 'start') {
+      expect(body.applicationUrl).toBe('app.test/login?q=keep');
+      expect(body.baseUrls).toBe('app.test/login?q=keep');
+      state = { ...idle, active: true, recording: false, protocol: 'HTTP', baseUrls: 'http://app.test' };
+    }
+    return state;
+  });
+  render(
+    <LanguageProvider>
+      <HTTPRecorderPage embedded />
+    </LanguageProvider>,
+  );
+  const input = await screen.findByLabelText('Base URL');
+  fireEvent.change(input, { target: { value: 'app.test/login?q=keep' } });
+  fireEvent.blur(input);
+  expect(input).toHaveValue('app.test/login?q=keep');
+  expect(screen.getByText('AUTO')).toBeInTheDocument();
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Open Firefox' })).toBeEnabled());
+  fireEvent.click(screen.getByRole('button', { name: 'Open Firefox' }));
+  await waitFor(() => expect(input).toHaveValue('http://app.test/login?q=keep'));
+  expect(screen.queryByText('AUTO')).not.toBeInTheDocument();
+});
+
 it('stops with no output and adds the script of the agent to the test plan', async () => {
   const onImport = await start();
 

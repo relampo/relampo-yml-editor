@@ -5,6 +5,7 @@ import { isLostAnswer, stateAfterLostAnswer, timerRead, timerReadError, usesRela
 import { useInFront } from '../../hooks/useInFront';
 import { probeStudio } from '../../utils/debugApi';
 import {
+  applyRecorderDetectedURLs,
   defaultHTTPRecordOptions,
   httpRecorderRequest,
   type HTTPRecordOptions,
@@ -142,15 +143,23 @@ export function useHTTPRecorder(embedded = false) {
     firefoxAvailable,
     firefoxConfigured,
     refresh,
-    start: () => {
+    start: async () => {
       const { output, force, ...kept } = options;
-      return action('start', {
+      const current = await action('start', {
         ...kept,
         // The agent of the web app takes no output and no force: it writes no file.
         ...(embedded ? {} : { output, force }),
         prefix: options.prefixEnabled ? options.prefix : '',
         grouping: options.transactionsEnabled ? 'none' : options.grouping,
       });
+      if (current?.active && current.baseUrls) {
+        setOptions(value => ({
+          ...value,
+          baseUrls: applyRecorderDetectedURLs(value.baseUrls, current.baseUrls!),
+          applicationUrl: applyRecorderDetectedURLs(value.applicationUrl, current.baseUrls!),
+        }));
+      }
+      return current;
     },
     stop: () => action('stop', state.active || embedded ? {} : { output: options.output, force: options.force }),
     /** Prefix, transaction and record: the controls of an active recording. */
