@@ -31,7 +31,6 @@ Commands:
 ## Queue: reproduce before changing code
 
 - RLP-809: verify Segment Load Pattern in execution results, including cumulative time and transitions.
-- RLP-819: verify resolved variable names and values from captured requests, without re-evaluating built-ins.
 - RLP-689: architecture investigation; do not implement unapproved inheritance rules.
 
 The exported report selector (RLP-817) and report redesign (RLP-800) belong to the
@@ -71,3 +70,31 @@ execution. No backend or Jira changes, no push and no new PR for this checkpoint
 Final RLP-823 validation: `bun run validate` passes typecheck, lint (existing size
 warnings only), all 151 files / 1508 tests, and build. The combined Chrome run
 passes all three flows (RLP-822 plus Debug and Run document replacement).
+
+## RLP-819 — reproduced, corrected
+
+The current branch still labeled an inline built-in by its expression
+(`_randomInt(1,10)`) instead of the request field (`password`). Changing that
+field to a direct value removed it from Variables. Three new regression cases
+failed before the fix, reproducing both QA screenshots and direct JSON scalars.
+
+Variables now labels inline built-in and captured literal body values by their
+request field name. Explicit variable references keep their declared names.
+The value comes from the captured request, never from another built-in evaluation
+or a literal in the currently edited YAML. Missing captured literal fields are
+not fabricated. Zero, false, empty strings and repeated form fields are retained.
+The Built-ins tab continues to show the original invocation and its result.
+Existing expectations that required the expression as the Variables row label
+were updated to the corrected RLP-819 behavior.
+
+Validation:
+
+- Focused debug mapping/inspector suite: 97 tests pass.
+- Chrome: both inline built-in and direct-value form requests show password
+  with the captured value, retain the user variable, and keep the Built-ins trace.
+  Events are deterministic local API fixtures; this verifies the UI, not a fresh
+  engine execution. Screenshots saved in output/playwright/results.
+- `bun run validate`: typecheck, lint (15 existing warnings), all 151 files /
+  1511 tests, and build pass. Existing bundle-size warning remains.
+
+No backend changes, push, PR, deployment or Jira transition.
