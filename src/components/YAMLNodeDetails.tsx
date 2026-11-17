@@ -80,7 +80,7 @@ const REQUEST_NODE_TYPES = [
   'options',
 ];
 // Node types that cannot be toggled on/off (mirrors the tree context menu).
-const NON_TOGGLEABLE_NODE_TYPES = ['root', 'test', 'scenarios', 'steps', 'grpc_defaults'];
+const NON_TOGGLEABLE_NODE_TYPES = ['root', 'test', 'scenarios', 'steps', 'grpc_defaults', 'cache_manager'];
 
 export function YAMLNodeDetails({
   node,
