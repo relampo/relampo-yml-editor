@@ -108,22 +108,22 @@ export function LoadDetails({ node, onNodeUpdate }: NodeDetailProps) {
           <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400">{t('studioControls.loadPattern')}</span>
           <span className="text-sm text-zinc-400">{t('studioControls.loadSelectionHelp')}</span>
         </legend>
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] gap-3">
+        <div className="flex flex-wrap gap-2">
           {LOAD_MODE_OPTIONS.map(option => {
             const Icon = option.icon;
             const isSelected = hasSelection && activeType === option.type;
             return (
-              <div key={option.type} className={`relative flex rounded-xl border bg-white/[0.02] ${isSelected ? 'border-yellow-400 bg-yellow-400/[0.04] ring-1 ring-yellow-400' : loadType === option.type ? 'border-zinc-400' : 'border-white/10'}`}>
-                {isSelected && <Check className="pointer-events-none absolute right-2 top-2 h-4 w-4 text-yellow-400" aria-hidden="true" />}
+              <div key={option.type} className={`relative flex shrink-0 rounded-lg border bg-white/[0.02] ${isSelected ? 'border-yellow-400 bg-yellow-400/[0.04] ring-1 ring-yellow-400' : loadType === option.type ? 'border-zinc-400' : 'border-white/10'}`}>
+                {isSelected && <Check className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-yellow-400" aria-hidden="true" />}
                 <button
                   type="button"
                   aria-pressed={loadType === option.type}
                   aria-describedby={isSelected ? activeModelId : undefined}
                   onClick={() => setPreview({ nodeId: node.id, type: option.type })}
-                  className="flex w-full flex-col items-center gap-3 rounded-xl px-3 py-5 text-center text-sm hover:bg-white/5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-yellow-400"
+                  className="inline-flex w-full items-center gap-2 whitespace-nowrap rounded-lg py-2.5 pl-3 pr-8 text-left text-sm hover:bg-white/5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-yellow-400"
                   aria-label={t(`studioControls.${option.type}`)}
                 >
-                  <Icon className={`h-6 w-6 ${isSelected ? 'text-yellow-400' : 'text-zinc-200'}`} aria-hidden="true" />
+                  <Icon className={`h-4 w-4 shrink-0 ${isSelected ? 'text-yellow-400' : 'text-zinc-200'}`} aria-hidden="true" />
                   <span className="font-semibold text-zinc-100">{t(`studioControls.${option.type}`)}</span>
                 </button>
               </div>

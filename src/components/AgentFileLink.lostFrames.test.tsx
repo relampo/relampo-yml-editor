@@ -11,6 +11,7 @@ import { AgentFileLink } from './AgentFileLink';
 
 let relay: FakeRelay;
 let transport: RelayTransport;
+let reportDocument: Document;
 
 vi.mock('../utils/agentTransport', async importOriginal => ({
   ...(await importOriginal<typeof import('../utils/agentTransport')>()),
@@ -32,6 +33,13 @@ async function openReport() {
 
 beforeEach(() => {
   vi.useFakeTimers();
+  reportDocument = document.implementation.createHTMLDocument('Report');
+  vi.spyOn(window, 'open').mockReturnValue({
+    document: reportDocument,
+    opener: null,
+    closed: false,
+    close: vi.fn(),
+  } as unknown as Window);
   vi.stubGlobal('URL', Object.assign(URL, { createObjectURL: vi.fn(() => 'blob:studio/1'), revokeObjectURL: vi.fn() }));
   relay = new FakeRelay();
   transport = createRelayTransport({ getTicket: relay.issueTicket, createSocket: relay.createSocket });
@@ -40,7 +48,9 @@ beforeEach(() => {
 
 afterEach(() => {
   expect(relay.agent?.violations ?? []).toEqual([]);
+  vi.clearAllTimers();
   vi.useRealTimers();
+  vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
 
@@ -59,7 +69,7 @@ it('reads the report once more when a data frame is lost', async () => {
   await advance(100);
 
   expect(reads()).toBe(2);
-  expect(screen.getByTitle('Report')).toHaveAttribute('src', 'blob:studio/1');
+  expect(reportDocument.querySelector('iframe')?.getAttribute('src')).toBe('blob:studio/1');
   expect(screen.queryByRole('alert')).toBeNull();
 });
 
