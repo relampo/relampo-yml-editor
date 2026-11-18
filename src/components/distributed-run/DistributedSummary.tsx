@@ -94,7 +94,7 @@ export function DistributedSummary({
           <CheckCircle2 className="h-4 w-4 text-emerald-300" />
         )}
         <h3 className="text-sm font-semibold text-zinc-100">{t('Resumen de la ejecución', 'Execution summary')}</h3>
-        {reportPath && (
+        {reportPath ? (
           <AgentFileLink
             path={reportPath}
             target="_blank"
@@ -104,6 +104,16 @@ export function DistributedSummary({
             <ExternalLink className="h-3.5 w-3.5" />
             {t('Abrir el reporte completo', 'Open full report')}
           </AgentFileLink>
+        ) : (
+          <button
+            type="button"
+            disabled
+            title={t('El reporte todavía no está disponible.', 'The report is not available yet.')}
+            className="ml-auto inline-flex cursor-not-allowed items-center gap-1.5 rounded border border-yellow-400/40 bg-yellow-400/10 px-2.5 py-1 text-xs font-semibold text-yellow-300 opacity-40"
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+            {t('Abrir el reporte completo', 'Open full report')}
+          </button>
         )}
       </div>
       <div className="grid grid-cols-2 gap-px bg-white/5 sm:grid-cols-3 xl:grid-cols-5">
