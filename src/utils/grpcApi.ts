@@ -46,6 +46,7 @@ export interface GRPCImported {
   descriptorPath: string;
 }
 export interface GRPCGenerated {
+  privateEvidence?: boolean;
   id: string;
   yaml: string;
   descriptorPath?: string;
@@ -73,7 +74,7 @@ export interface GRPCRecording {
   truncated?: boolean;
 }
 /** Contract, section 10: these routes get their result from a job in the cloud. */
-const LOGIC_ROUTES = ['recordings/stop', 'generate', 'correlations'];
+const LOGIC_ROUTES = ['recordings/stop', 'generate', 'browser-recordings/generate', 'correlations'];
 export async function grpcRequest<T>(path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
   const response = await agentRequest('/api/grpc/' + path, {
     method: body === undefined ? 'GET' : 'POST',
@@ -92,6 +93,11 @@ export function grpcBundlePath(id: string): string {
 }
 
 export interface GRPCBrowserRecording {
+  captureSupported?: boolean;
+  recordingPayloads?: boolean;
+  capturedCalls?: number;
+  pendingCalls?: number;
+  captureWarning?: string;
   active: boolean;
   applicationUrl?: string;
   proxyAddress?: string;

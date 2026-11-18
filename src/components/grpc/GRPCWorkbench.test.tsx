@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { GRPCWorkbench } from './GRPCWorkbench';
 import * as api from '../../utils/grpcApi';
+import { persistEmbeddedRecordingFiles } from '../../utils/embeddedFileStorage';
+vi.mock('../../utils/embeddedFileStorage', () => ({ persistEmbeddedRecordingFiles: vi.fn() }));
 import { advance, lostAnswer } from '../../test/lostFrames';
 import { InFrontWhen } from '../../contexts/InFrontContext';
 vi.mock('../../utils/grpcApi', () => ({ grpcRequest: vi.fn(), grpcBundlePath: () => '/bundle' }));
@@ -248,5 +250,146 @@ describe('when the relay loses a frame', () => {
     }
     expect(screen.getByRole('button', { name: 'Start recording' })).toBeInTheDocument();
     expect(posts).toEqual(['recordings/stop']);
+  });
+});
+
+it('keeps three imported operations selected when the third request has no fields', async () => {
+  const methods = [
+    { ...catalog.services[0].methods[0], name: 'StartSession', path: '/tienda.v1.TiendaService/StartSession' },
+    { ...catalog.services[0].methods[0], name: 'ListProducts', path: '/tienda.v1.TiendaService/ListProducts' },
+    {
+      ...catalog.services[0].methods[0],
+      name: 'CreateCart',
+      path: '/tienda.v1.TiendaService/CreateCart',
+      input: 'Empty',
+      template: {},
+    },
+  ];
+  vi.mocked(api.grpcRequest)
+    .mockReset()
+    .mockImplementation(async path => {
+      if (path === 'recordings/current') return { active: false, calls: [] } as any;
+      if (path === 'schema')
+        return {
+          id: 'tienda-schema',
+          descriptorPath: 'tienda.protoset',
+          catalog: {
+            ...catalog,
+            messages: { ...catalog.messages, Empty: { name: 'Empty', fields: null } },
+            services: [{ name: 'tienda.v1.TiendaService', methods }],
+          },
+        } as any;
+      if (path === 'generate') return { id: 'bundle', yaml: 'generated-yaml', warnings: [] } as any;
+      throw Error(path);
+    });
+  render(
+    <GRPCWorkbench
+      open
+      initialMode="import"
+      onOpenChange={() => {}}
+      onAdd={vi.fn()}
+    />,
+  );
+  fireEvent.change(screen.getByLabelText('Server address'), { target: { value: 'localhost:50051' } });
+  const proto = new File(['syntax="proto3";'], 'tienda.proto', { type: 'text/plain' });
+  fireEvent.change(screen.getByLabelText('Contract files'), { target: { files: [proto] } });
+  await screen.findByLabelText('Select StartSession');
+  fireEvent.click(screen.getByLabelText('Select StartSession'));
+  fireEvent.change(screen.getByLabelText('name'), { target: { value: 'saved-session-data' } });
+  fireEvent.click(screen.getByLabelText('Select ListProducts'));
+  fireEvent.click(screen.getByLabelText('Select CreateCart'));
+  expect(screen.getByText('This message has no fields. Nothing to fill in.')).toBeInTheDocument();
+  for (const method of methods) expect(screen.getByLabelText('Select ' + method.name)).toBeChecked();
+  fireEvent.click(screen.getByRole('button', { name: 'Generate scenario' }));
+  await waitFor(() =>
+    expect(api.grpcRequest).toHaveBeenCalledWith(
+      'generate',
+      expect.objectContaining({
+        methods: [
+          expect.objectContaining({ method: methods[0].path, message: { name: 'saved-session-data' } }),
+          expect.objectContaining({ method: methods[1].path }),
+          expect.objectContaining({ method: methods[2].path, message: {} }),
+        ],
+      }),
+      expect.anything(),
+    ),
+  );
+});
+
+describe('browser project import into a Test Plan', () => {
+  const project = { id: 'web-project', yaml: 'test: {name: Browser calls}', warnings: [], privateEvidence: true };
+  const assets = [{ path: '../Utilities/browser.protoset', data: 'ZGVzY3JpcHRvcg==' }];
+  beforeEach(() => {
+    vi.mocked(persistEmbeddedRecordingFiles).mockReset().mockResolvedValue();
+    vi.mocked(api.grpcRequest)
+      .mockReset()
+      .mockImplementation(async path => {
+        if (path === 'recordings/current') return { active: false, calls: [] } as any;
+        if (path === 'browser-recordings/current')
+          return {
+            active: false,
+            captureSupported: true,
+            recordingPayloads: true,
+            capturedCalls: 1,
+            counts: { http: 0, https: 0, grpcWeb: 1, grpcNative: 0 },
+            requests: [],
+            detected: 'grpc_web',
+            totalRequests: 1,
+            tlsFailures: 0,
+            grpcWebReplaySupported: true,
+            firefoxAvailable: true,
+          } as any;
+        if (path === 'schema') return { id: 'contract', catalog } as any;
+        if (path === 'browser-recordings/generate') return project as any;
+        if (path === 'projects/web-project/recording-files')
+          return {
+            yaml: 'test: {name: Portable browser calls}',
+            files: assets,
+          } as any;
+        throw Error(path);
+      });
+  });
+  async function prepare(
+    add: (yaml: string, afterSaved?: () => Promise<void>) => void,
+    close: (open: boolean) => void,
+  ) {
+    render(
+      <GRPCWorkbench
+        open
+        presentation="page"
+        initialMode="record"
+        browserRecordingEnabled
+        onOpenChange={close}
+        onAdd={add}
+      />,
+    );
+    const input = await screen.findByLabelText('Recording contract');
+    fireEvent.change(input, { target: { files: [new File(['syntax="proto3";'], 'shop.proto')] } });
+    await screen.findByText('shop.proto', { exact: true });
+    fireEvent.click(screen.getByRole('button', { name: 'Generate recorded scenario' }));
+    await screen.findByRole('button', { name: 'Add to scenario' });
+    fireEvent.click(screen.getByRole('button', { name: 'Add to scenario' }));
+  }
+  it('persists the descriptor before importing the portable script', async () => {
+    const add = vi.fn(),
+      close = vi.fn();
+    await prepare(add, close);
+    await waitFor(() => expect(close).toHaveBeenCalledWith(false));
+    expect(persistEmbeddedRecordingFiles).toHaveBeenCalledWith(assets);
+    expect(add).toHaveBeenCalledWith('test: {name: Portable browser calls}', expect.any(Function));
+    expect(vi.mocked(persistEmbeddedRecordingFiles).mock.invocationCallOrder[0]).toBeLessThan(
+      add.mock.invocationCallOrder[0],
+    );
+    expect(api.grpcRequest).not.toHaveBeenCalledWith('recordings/acknowledge', expect.anything());
+  });
+  it('keeps the project open when the Test Plan cannot save its contract', async () => {
+    vi.mocked(persistEmbeddedRecordingFiles).mockRejectedValue(Error('Could not save recording files.'));
+    const add = vi.fn(),
+      close = vi.fn();
+    await prepare(add, close);
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not save recording files.');
+    expect(add).not.toHaveBeenCalled();
+    expect(close).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Add to scenario' })).toBeEnabled();
   });
 });

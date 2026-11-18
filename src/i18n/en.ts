@@ -1409,6 +1409,7 @@ export const enTranslations = {
         oneTimeDesc: 'Initialize shared state once',
       },
       grpcDefaults: {
+        transport: 'Transport',
         target: 'Target',
         protoset: 'Protoset',
         timeout: 'Timeout',

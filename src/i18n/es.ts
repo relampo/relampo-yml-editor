@@ -1414,6 +1414,7 @@ export const esTranslations = {
         oneTimeDesc: 'Inicializa el estado compartido una sola vez',
       },
       grpcDefaults: {
+        transport: 'Transporte',
         target: 'Destino',
         protoset: 'Archivo Protoset',
         timeout: 'Tiempo límite',

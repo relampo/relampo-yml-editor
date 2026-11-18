@@ -50,3 +50,25 @@ describe('descriptor-backed gRPC message forms', () => {
     expect(update).toHaveBeenCalledWith({ seats: [], phone: '' });
   });
 });
+
+it.each([{ fields: null }, { fields: undefined }, { fields: [] }])(
+  'renders a valid empty protobuf message with fields=$fields',
+  ({ fields }) => {
+    const emptyCatalog = {
+      ...catalog,
+      messages: { Empty: { name: 'Empty', fields } },
+    } as unknown as GRPCCatalog;
+    const change = vi.fn();
+    render(
+      <GRPCMessageForm
+        catalog={emptyCatalog}
+        messageType="Empty"
+        value={{}}
+        onChange={change}
+      />,
+    );
+    expect(screen.getByText('This message has no fields. Nothing to fill in.')).toBeInTheDocument();
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+    expect(change).not.toHaveBeenCalled();
+  },
+);
