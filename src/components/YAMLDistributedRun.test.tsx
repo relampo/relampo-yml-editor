@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { LanguageProvider } from '../contexts/LanguageContext';
 import { YAMLDistributedRun } from './YAMLDistributedRun';
+import { DistributedRequestError } from '../utils/distributedApi';
 import { selectOption } from '../test/selectOption';
 import { advance, lostAnswer } from '../test/lostFrames';
 import { InFrontWhen } from '../contexts/InFrontContext';
@@ -554,4 +555,70 @@ it('requires Apply again when the script or selected files change', async () => 
   fireEvent.click(screen.getByRole('button', { name: 'Aplicar acción a los archivos' }));
   await waitFor(() => expect(run).toBeEnabled());
   expect(mocks.prepare).not.toHaveBeenCalled();
+});
+
+it('stops reconnecting to a missing pre-restart run without relaunching the remote test', async () => {
+  sessionStorage.setItem(
+    'relampo.studio.distributedRun',
+    JSON.stringify({ id: 'drun-old', fp: (await import('../utils/studioRunStore')).fingerprint(yaml) }),
+  );
+  const original = mocks.request.getMockImplementation()!;
+  let reads = 0;
+  mocks.request.mockImplementation(async (path: string, body: unknown, signal?: AbortSignal) => {
+    if (!path.startsWith('run/')) return original(path, body, signal);
+    reads++;
+    throw new DistributedRequestError('distributed run not found', 404);
+  });
+  vi.useFakeTimers();
+  try {
+    mount();
+    await advance(0);
+    expect(screen.getByText(/El agente ya no conserva el seguimiento/)).toBeInTheDocument();
+    expect(screen.queryByText(/Reconectando;/)).not.toBeInTheDocument();
+    await advance(60_000);
+    expect(reads).toBe(1);
+    expect(mocks.request).not.toHaveBeenCalledWith('run', expect.anything());
+    expect(JSON.parse(sessionStorage.getItem('relampo.studio.distributedRun')!).lost).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Volver a configurar' }));
+    expect(sessionStorage.getItem('relampo.studio.distributedRun')).toBeNull();
+    expect(screen.queryByText(/El agente ya no conserva el seguimiento/)).not.toBeInTheDocument();
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it('retains the verified remote link when the agent loses an observed run', async () => {
+  sessionStorage.setItem(
+    'relampo.studio.distributedRun',
+    JSON.stringify({ id: 'drun-old', fp: (await import('../utils/studioRunStore')).fingerprint(yaml) }),
+  );
+  const original = mocks.request.getMockImplementation()!;
+  let reads = 0;
+  mocks.request.mockImplementation(async (path: string, body: unknown, signal?: AbortSignal) => {
+    if (!path.startsWith('run/')) return original(path, body, signal);
+    if (++reads > 1) throw new DistributedRequestError('distributed run not found', 404);
+    return {
+      ...(await original(path, body, signal)),
+      status: 'running',
+      url: 'https://github.com/owner/repo/actions/runs/42',
+    };
+  });
+  vi.useFakeTimers();
+  try {
+    const view = mount();
+    await advance(0);
+    await advance(1000);
+    expect(screen.getByRole('link', { name: 'Ver ejecución remota' })).toHaveAttribute(
+      'href',
+      'https://github.com/owner/repo/actions/runs/42',
+    );
+    expect(screen.getAllByText('Sin seguimiento').length).toBeGreaterThan(0);
+    view.unmount();
+    mount();
+    await advance(60_000);
+    expect(reads).toBe(2);
+    expect(screen.getByRole('link', { name: 'Ver ejecución remota' })).toBeInTheDocument();
+  } finally {
+    vi.useRealTimers();
+  }
 });

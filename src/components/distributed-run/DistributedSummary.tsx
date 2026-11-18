@@ -1,4 +1,4 @@
-import { Activity, CheckCircle2, ExternalLink, XCircle } from 'lucide-react';
+import { Activity, AlertTriangle, CheckCircle2, ExternalLink, XCircle } from 'lucide-react';
 import {
   distributedStatus,
   type DistributedPlan,
@@ -82,7 +82,9 @@ export function DistributedSummary({
       className="border border-white/10 bg-[#111111]"
     >
       <div className="flex flex-wrap items-center gap-2 border-b border-white/5 px-4 py-3">
-        {state.status === 'running' ? (
+        {state.status === 'unavailable' ? (
+          <AlertTriangle className="h-4 w-4 text-amber-300" />
+        ) : state.status === 'running' ? (
           <Activity className="h-4 w-4 text-blue-300" />
         ) : state.status === 'errored' ? (
           <XCircle className="h-4 w-4 text-red-300" />

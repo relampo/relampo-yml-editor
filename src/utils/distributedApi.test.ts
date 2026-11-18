@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { distributedRequest, safeProviderURL, uploadDistributedFile } from './distributedApi';
+import { distributedRequest, DistributedRequestError, safeProviderURL, uploadDistributedFile } from './distributedApi';
 import { resetStudioSessionForTests } from './studioAuth';
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -17,6 +17,17 @@ describe('distributed API', () => {
     await expect(distributedRequest('preflight', { nodes: 9 })).rejects.toThrow('license limit exceeded');
     expect(new Headers(fetch.mock.calls[0][1].headers).get('X-Relampo-Studio-Token')).toBe('session-test');
     expect(fetch.mock.calls[0][0]).not.toContain('session-test');
+  });
+  it('distinguishes a missing run from a temporary connection failure', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(async () => Response.json({ error: 'distributed run not found' }, { status: 404 })),
+    );
+    await expect(distributedRequest('run/drun-old')).rejects.toBeInstanceOf(DistributedRequestError);
+    await expect(distributedRequest('run/drun-old')).rejects.toMatchObject({
+      status: 404,
+      message: 'distributed run not found',
+    });
   });
   it('rejects executable URLs and embedded credentials', () => {
     expect(safeProviderURL('javascript:alert(1)')).toBeUndefined();

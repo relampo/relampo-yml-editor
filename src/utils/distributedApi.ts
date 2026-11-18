@@ -1,8 +1,8 @@
-import type {ExecutionProject} from './executionProject';
+import type { ExecutionProject } from './executionProject';
 import { agentRequest } from './agentTransport';
 
 export interface DistributedConfig {
-  workspace?: Pick<ExecutionProject,'scriptPath'|'files'>;
+  workspace?: Pick<ExecutionProject, 'scriptPath' | 'files'>;
   provider: 'github' | 'gitlab';
   repository: string;
   host?: string;
@@ -65,7 +65,7 @@ export interface DistributedNode {
   };
 }
 export interface DistributedState {
-  scope_history?: Record<string,DistributedPoint[]>;
+  scope_history?: Record<string, DistributedPoint[]>;
   id: string;
   status: string;
   stage: string;
@@ -99,6 +99,16 @@ interface OperationEvent {
   data?: DistributedPlan;
 }
 
+export class DistributedRequestError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+  ) {
+    super(message);
+    this.name = 'DistributedRequestError';
+  }
+}
+
 export async function distributedRequest<T>(path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
   const response = await agentRequest(`/api/distributed/${path}`, {
     method: body === undefined ? 'GET' : 'POST',
@@ -109,10 +119,11 @@ export async function distributedRequest<T>(path: string, body?: unknown, signal
   });
   if (!response.ok) {
     const payload: unknown = await response.json().catch(() => null);
-    throw new Error(
+    throw new DistributedRequestError(
       payload && typeof payload === 'object' && 'error' in payload && typeof payload.error === 'string'
         ? payload.error
         : `Distributed request failed (${response.status})`,
+      response.status,
     );
   }
   return response.json() as Promise<T>;
@@ -161,6 +172,7 @@ export function distributedStatus(status: string, es: boolean) {
     stopping: ['Deteniendo', 'Stopping'],
     running: ['Ejecutando', 'Running'],
     errored: ['Fallida', 'Failed'],
+    unavailable: ['Sin seguimiento', 'Tracking unavailable'],
   };
   return labels[status]?.[es ? 0 : 1] ?? (es ? 'Fallida' : 'Failed');
 }

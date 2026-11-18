@@ -124,7 +124,7 @@ export function DistributedResults({
             {t('Cancelar ejecución remota', 'Cancel remote execution')}
           </button>
         )}
-        {finished && !active && (
+        {(finished || state.status === 'unavailable') && !active && (
           <button
             className={`${buttonClass} ml-auto`}
             disabled={busy}

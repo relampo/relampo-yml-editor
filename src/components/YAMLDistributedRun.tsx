@@ -13,6 +13,8 @@ import { timerRead } from '../utils/agentTransport';
 import { useInFront } from '../hooks/useInFront';
 import {
   distributedRequest,
+  DistributedRequestError,
+  safeProviderURL,
   uploadDistributedFile,
   prepareDistributed,
   type DistributedConfig,
@@ -97,6 +99,8 @@ export function YAMLDistributedRun({
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [runId, setRunId] = useState('');
+  const [trackingLost, setTrackingLost] = useState(false);
+  const [remoteURL, setRemoteURL] = useState<string | undefined>();
   const [state, setState] = useState<DistributedState | null>(null);
   const [scope, setScope] = useState('global');
   const [files, setFiles] = useState('');
@@ -136,7 +140,7 @@ export function YAMLDistributedRun({
   }, []);
   const [reviewed, setReviewed] = useState(false);
   const [connectionError, setConnectionError] = useState('');
-  const active = !!runId && (!state || state.status === 'running' || state.status === 'stopping');
+  const active = !!runId && !trackingLost && (!state || state.status === 'running' || state.status === 'stopping');
   const mounted = useRef(true);
   const reattached = useRef(false);
   const histories = useRef<Map<string, DistributedPoint[]>>(new Map());
@@ -153,6 +157,8 @@ export function YAMLDistributedRun({
     if (!embeddedScriptDraftKey()) return;
     reattached.current = false;
     setRunId('');
+    setTrackingLost(false);
+    setRemoteURL(undefined);
     setState(null);
     histories.current.clear();
     historyStamp.current = '';
@@ -171,6 +177,8 @@ export function YAMLDistributedRun({
         saved.fp === fingerprint(yamlCode)
       ) {
         setRunId(saved.id);
+        setTrackingLost('lost' in saved && saved.lost === true);
+        setRemoteURL('url' in saved && typeof saved.url === 'string' ? safeProviderURL(saved.url) : undefined);
         setShowSettings(false);
       }
     } catch {
@@ -180,7 +188,7 @@ export function YAMLDistributedRun({
   // Hidden views pause reads. Every scope recovers its history from the agent.
   const [inFront] = useInFront();
   useEffect(() => {
-    if (!runId || !inFront) return;
+    if (!runId || !inFront || trackingLost) return;
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout>;
     let cancelled = false;
@@ -193,6 +201,17 @@ export function YAMLDistributedRun({
         if (cancelled) return;
         setState(next);
         setConnectionError('');
+        const url = safeProviderURL(next.url);
+        if (url) {
+          setRemoteURL(url);
+          try {
+            const saved = JSON.parse(sessionStorage.getItem(executionContext) ?? 'null');
+            if (saved?.id === runId && saved.url !== url)
+              sessionStorage.setItem(executionContext, JSON.stringify({ ...saved, url }));
+          } catch {
+            /* Session persistence is optional. */
+          }
+        }
         const stamp = next.history?.at(-1)?.at;
         if (stamp && stamp !== historyStamp.current) {
           historyStamp.current = stamp;
@@ -217,6 +236,21 @@ export function YAMLDistributedRun({
         if (next.status === 'running' || next.status === 'stopping') timer = setTimeout(() => void poll(), 1000);
       } catch (e) {
         if (!cancelled) {
+          if (e instanceof DistributedRequestError && e.status === 404) {
+            setTrackingLost(true);
+            setConnectionError('');
+            setState(current =>
+              current ? { ...current, status: 'unavailable', error: undefined, warning: undefined } : null,
+            );
+            try {
+              const saved = JSON.parse(sessionStorage.getItem(executionContext) ?? 'null');
+              if (saved?.id === runId)
+                sessionStorage.setItem(executionContext, JSON.stringify({ ...saved, lost: true }));
+            } catch {
+              /* Session persistence is optional. */
+            }
+            return;
+          }
           setConnectionError(e instanceof Error ? e.message : 'Connection lost');
           timer = setTimeout(() => void poll(), 5000);
         }
@@ -228,7 +262,7 @@ export function YAMLDistributedRun({
       controller.abort();
       clearTimeout(timer);
     };
-  }, [runId, inFront]);
+  }, [runId, inFront, trackingLost, executionContext]);
 
   function config(script: string, snapshot = project): DistributedConfig {
     return {
@@ -309,6 +343,8 @@ export function YAMLDistributedRun({
           ),
         );
       const result = await distributedRequest<{ id: string }>('run', { ...request, prepare_only: prepareOnly });
+      setTrackingLost(false);
+      setRemoteURL(undefined);
       setState(null);
       setScope('global');
       histories.current.clear();
@@ -329,8 +365,10 @@ export function YAMLDistributedRun({
     reviewedProjectFiles.current === JSON.stringify(projectFiles);
   const disabled = busy || active || available !== true;
   function clearResults() {
-    if (active || !state || !['completed', 'errored', 'stopped'].includes(state.status)) return;
+    if (active || (!trackingLost && (!state || !['completed', 'errored', 'stopped'].includes(state.status)))) return;
     setRunId('');
+    setTrackingLost(false);
+    setRemoteURL(undefined);
     setState(null);
     setScope('global');
     histories.current.clear();
@@ -443,6 +481,36 @@ export function YAMLDistributedRun({
         )}
         {error && <Notice alert>{error}</Notice>}
         {notice && <Notice>{notice}</Notice>}
+        {trackingLost && (
+          <Notice alert>
+            <div className="space-y-2">
+              <p>
+                {text(
+                  'El agente ya no conserva el seguimiento de esta ejecución. Su estado remoto es desconocido; no se iniciará otra prueba automáticamente.',
+                  'The agent no longer has tracking information for this run. Its remote status is unknown; another test will not start automatically.',
+                )}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {remoteURL && (
+                  <a
+                    className={buttonClass}
+                    href={remoteURL}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {text('Ver ejecución remota', 'View remote execution')}
+                  </a>
+                )}
+                <button
+                  className={buttonClass}
+                  onClick={clearResults}
+                >
+                  {text('Volver a configurar', 'Back to settings')}
+                </button>
+              </div>
+            </div>
+          </Notice>
+        )}
         {connectionError && (
           <Notice alert>
             {connectionError} ·{' '}
