@@ -1,4 +1,4 @@
-import { useMemo, useState, type PointerEvent } from 'react';
+import { useMemo, useState, type PointerEvent, type ReactNode } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import type { DistributedPoint } from '../../utils/distributedApi';
 
@@ -28,7 +28,9 @@ export function DistributedTimeline({
   startedAt,
   durationSeconds,
   configuredUsers,
+  headerAction,
 }: {
+  headerAction?: ReactNode;
   points: DistributedPoint[];
   startedAt?: string;
   durationSeconds?: number;
@@ -107,7 +109,7 @@ export function DistributedTimeline({
       aria-label={t('Línea de tiempo en vivo', 'Live timeline')}
       className="border border-white/10 bg-[#111111] p-4"
     >
-      <div className="mb-3 flex items-start justify-between gap-3">
+      <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className="text-sm font-semibold text-zinc-100">{t('Línea de tiempo', 'Timeline')}</h3>
           <p className="mt-1 text-xs text-zinc-400">
@@ -117,17 +119,20 @@ export function DistributedTimeline({
             )}
           </p>
         </div>
-        {zoom && (
-          <button
-            className="shrink-0 rounded border border-white/15 px-2 py-1 text-xs text-zinc-200 hover:bg-white/5"
-            onClick={() => {
-              setZoom(null);
-              setHover(null);
-            }}
-          >
-            {t('Restablecer', 'Reset')}
-          </button>
-        )}
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          {headerAction}
+          {zoom && (
+            <button
+              className="shrink-0 rounded border border-white/15 px-2 py-1 text-xs text-zinc-200 hover:bg-white/5"
+              onClick={() => {
+                setZoom(null);
+                setHover(null);
+              }}
+            >
+              {t('Restablecer', 'Reset')}
+            </button>
+          )}
+        </div>
       </div>
       <div className="mb-3 flex flex-wrap gap-2">
         {series.map(metric => (
