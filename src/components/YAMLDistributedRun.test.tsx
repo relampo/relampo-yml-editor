@@ -460,3 +460,57 @@ it('reads no run state while the view is hidden, and reads at once when it is in
     vi.useRealTimers();
   }
 });
+
+it('updates counters before completion and retains received metrics when report generation fails', async () => {
+  sessionStorage.setItem(
+    'relampo.studio.distributedRun',
+    JSON.stringify({ id: 'drun-live', fp: (await import('../utils/studioRunStore')).fingerprint(yaml) }),
+  );
+  const original = mocks.request.getMockImplementation()!;
+  let reads = 0;
+  mocks.request.mockImplementation(async (path: string, body: unknown, signal?: AbortSignal) => {
+    if (!path.startsWith('run/')) return original(path, body, signal);
+    reads++;
+    const requests = Math.min(reads, 2) * 10;
+    const stats = {
+      requests,
+      failures: 0,
+      latency_samples: requests,
+      elapsed_seconds: 5,
+      rps: 2,
+      min_ms: 1,
+      max_ms: 9,
+      avg_ms: 4,
+      p95_ms: 8,
+    };
+    return {
+      id: 'drun-live',
+      run_id: 42,
+      status: reads < 3 ? 'running' : 'errored',
+      stage: reads < 3 ? 'in_progress' : 'generating_report',
+      error: reads < 3 ? undefined : 'Report generation failed',
+      reports_ready: false,
+      repository: 'owner/repo',
+      started_at: new Date().toISOString(),
+      nodes: [],
+      scopes: [{ key: 'global', total: stats, window: stats }],
+      history: [{ at: new Date().toISOString(), requests, failures: 0, rps: 2, active_vus: 1, avg_ms: 4, p95_ms: 8 }],
+    };
+  });
+  vi.useFakeTimers();
+  try {
+    mount();
+    await advance(0);
+    const summary = screen.getByRole('region', { name: 'Resumen de la ejecución' });
+    expect(within(summary).getByText('10', { exact: true })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cancelar ejecución remota' })).toBeEnabled();
+    await advance(2500);
+    expect(within(summary).getByText('20', { exact: true })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cancelar ejecución remota' })).toBeEnabled();
+    await advance(2500);
+    expect(screen.getByText(/La ejecución distribuida terminó con un error/)).toBeInTheDocument();
+    expect(within(summary).getByText('20', { exact: true })).toBeInTheDocument();
+  } finally {
+    vi.useRealTimers();
+  }
+});
