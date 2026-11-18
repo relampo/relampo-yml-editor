@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import type { DistributedPoint } from '../../utils/distributedApi';
 export function DistributedNotice({ children, alert = false }: { children: ReactNode; alert?: boolean }) {
@@ -34,16 +34,23 @@ export function DistributedChart({
   field: 'rps' | 'p95_ms' | 'active_vus';
   color: string;
 }) {
+  const gradientId = useId();
   const values = points.map(point => point[field]);
-  const max = Math.max(1, ...values.filter((value): value is number => value !== null));
+  const times = points.map(point => Date.parse(point.at));
+  const first = times[0];
+  const span = times.length ? times[times.length - 1] - first : 0;
+  const timed = span > 0 && times.every((time, index) => Number.isFinite(time) && (!index || time >= times[index - 1]));
+  const x = (index: number) =>
+    timed ? ((times[index] - first) / span) * 300 : (index / Math.max(1, values.length - 1)) * 300;
+  const max = Math.max(1, ...values.filter((value): value is number => value !== null && Number.isFinite(value)));
   let path = '';
   let connected = false;
   values.forEach((value, index) => {
-    if (value === null) {
+    if (value === null || !Number.isFinite(value)) {
       connected = false;
       return;
     }
-    path += `${connected ? 'L' : 'M'}${(index / Math.max(1, values.length - 1)) * 300},${88 - (value / max) * 80} `;
+    path += `${connected ? 'L' : 'M'}${x(index)},${88 - (value / max) * 80} `;
     connected = true;
   });
   return (
@@ -63,8 +70,35 @@ export function DistributedChart({
         role="img"
         aria-label={label}
         viewBox="0 0 300 95"
-        className="w-full"
+        preserveAspectRatio="none"
+        className="mt-2 h-16 w-full"
       >
+        <defs>
+          <linearGradient
+            id={gradientId}
+            x1="0"
+            y1="0"
+            x2="0"
+            y2="1"
+          >
+            <stop
+              offset="0%"
+              stopColor={color}
+              stopOpacity="0.3"
+            />
+            <stop
+              offset="100%"
+              stopColor={color}
+              stopOpacity="0"
+            />
+          </linearGradient>
+        </defs>
+        {path && !values.some(value => value === null || !Number.isFinite(value)) && (
+          <path
+            d={`${path} L300,88 L0,88 Z`}
+            fill={`url(#${gradientId})`}
+          />
+        )}
         <path
           d="M0 88H300"
           stroke="#333"
@@ -73,7 +107,8 @@ export function DistributedChart({
           d={path}
           fill="none"
           stroke={color}
-          strokeWidth="2"
+          strokeWidth="1.5"
+          vectorEffect="non-scaling-stroke"
         />
       </svg>
     </div>

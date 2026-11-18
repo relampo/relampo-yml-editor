@@ -214,7 +214,7 @@ export function YAMLDistributedRun({
             histories.current.set(item.key, points.slice(-300));
           }
         }
-        if (next.status === 'running' || next.status === 'stopping') timer = setTimeout(() => void poll(), 2500);
+        if (next.status === 'running' || next.status === 'stopping') timer = setTimeout(() => void poll(), 1000);
       } catch (e) {
         if (!cancelled) {
           setConnectionError(e instanceof Error ? e.message : 'Connection lost');

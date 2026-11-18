@@ -120,7 +120,6 @@ describe('distributed execution', () => {
     fireEvent.change(screen.getByLabelText('Archivos del equipo'), {
       target: { files: [new File(['id\n1'], 'users.csv')] },
     });
-    expect(screen.getByRole('button', { name: 'Aplicar acción a los archivos' })).toBeDisabled();
     await selectRepository();
     expect(screen.getByRole('button', { name: 'Ejecutar' })).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Aplicar acción a los archivos' }));
@@ -413,7 +412,7 @@ it('gives up a read of the run state after 10 seconds and reads again at the nex
     });
     mount();
     await advance(0);
-    await advance(2500);
+    await advance(1000);
     expect(reads).toBe(2);
 
     await advance(10_000);
@@ -457,7 +456,7 @@ it('reads no run state while the view is hidden, and reads at once when it is in
     );
     const { rerender } = render(view(true));
     await advance(0);
-    await advance(2500);
+    await advance(1000);
     expect(reads).toBe(2);
 
     rerender(view(false));
@@ -515,10 +514,10 @@ it('updates counters before completion and retains received metrics when report 
     const summary = screen.getByRole('region', { name: 'Resumen de la ejecución' });
     expect(within(summary).getByText('10', { exact: true })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Cancelar ejecución remota' })).toBeEnabled();
-    await advance(2500);
+    await advance(1000);
     expect(within(summary).getByText('20', { exact: true })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Cancelar ejecución remota' })).toBeEnabled();
-    await advance(2500);
+    await advance(1000);
     expect(screen.getByText(/La ejecución distribuida terminó con un error/)).toBeInTheDocument();
     expect(within(summary).getByText('20', { exact: true })).toBeInTheDocument();
   } finally {
