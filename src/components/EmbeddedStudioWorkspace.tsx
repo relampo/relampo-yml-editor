@@ -1,3 +1,4 @@
+import { correlatedFileName } from '../utils/correlateApi';
 import { HistoricalScriptWorkspace } from './HistoricalScriptWorkspace';
 import { persistEmbeddedScript } from '../utils/embeddedFileStorage';
 import { buildDownloadContent } from '../hooks/useYAMLPersistence';
@@ -74,7 +75,6 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
   const [openedGRPC, setOpenedGRPC] = useState(false);
   const [source, setSource] = useState<CorrelateDocument | null>(null);
   const sourceRef = useRef(source);
-  sourceRef.current = source;
   const draft = useRef({ yaml: '', fileName: '', changed: false });
   const activity = useRef({ http: false, grpc: false, httpPending: false, grpcPending: false });
   const [error, setError] = useState('');
@@ -83,6 +83,7 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
   const goToScripting = useCallback(() => {
     draft.current.changed = false;
     setView('scripting');
+    sourceRef.current = null;
     setSource(null);
     window.parent.postMessage({ type: 'relampo:navigate-host', view: 'scripting' }, window.location.origin);
   }, []);
@@ -140,6 +141,41 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
       }
     },
     [ready, scriptId],
+  );
+  const saveCorrelation = useCallback(
+    async (yaml: string, name: string, asNew: boolean) => {
+      if (!ready || !controller.current || switchingRef.current) throw new Error('Studio is still loading.');
+      let ok = false;
+      let error = '';
+      try {
+        if (!asNew) {
+          await commitCorrelation(yaml, name);
+          await flush('save');
+        } else {
+          const fileName = correlatedFileName(name);
+          // eslint-disable-next-line no-control-regex -- reject control characters in filenames
+          if (!/^[^/\\\x00-\x1f]{1,180}\.yaml$/i.test(fileName) || fileName.startsWith('.'))
+            throw new Error('Use a YAML filename without path separators.');
+          const latest = await loadPlanScripts();
+          if (latest.scripts.some(script => script.fileName.toLowerCase() === fileName.toLowerCase()))
+            throw new Error('A script with this filename already exists. Choose another name.');
+          const newId = crypto.randomUUID();
+          // Persist the copy before selecting it. Never flush correlations into the original.
+          const saved = await persistEmbeddedScript(newId, { yaml, fileName }, true, true);
+          await addPlanScript({ yaml: saved?.yaml ?? yaml, fileName, updatedAt: new Date().toISOString() }, newId);
+          const address = new URL(window.location.href);
+          address.searchParams.set('script', newId);
+          window.setTimeout(() => window.location.replace(address.href), 50);
+        }
+        ok = true;
+      } catch (cause) {
+        error = cause instanceof Error ? cause.message : String(cause);
+        throw cause;
+      } finally {
+        window.parent.postMessage({ type: 'relampo:plan-saved', ok, error }, window.location.origin);
+      }
+    },
+    [ready, commitCorrelation, flush],
   );
   const fileNameChanged = useCallback(
     (fileName: string) => {
@@ -302,6 +338,7 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
             current.yaml !== sourceRef.current.yaml ||
             current.fileName !== sourceRef.current.fileName
           ) {
+            sourceRef.current = current;
             setSource(current);
             draft.current.changed = false;
           }
@@ -474,6 +511,7 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
               key={source.revision + ':' + source.fileName}
               source={source}
               onCommit={commitCorrelation}
+              onSave={saveCorrelation}
               onGoToScripting={goToScripting}
               onDraftChange={trackDraft}
               saveRef={correlation}

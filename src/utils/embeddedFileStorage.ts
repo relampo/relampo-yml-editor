@@ -4,6 +4,7 @@ export function persistEmbeddedScript(
   scriptId: string,
   document: { yaml: string; fileName: string },
   publish = false,
+  createOnly = false,
 ): Promise<{ yaml?: string } | void> {
   if (window.parent === window) return Promise.resolve();
   const requestId = crypto.randomUUID();
@@ -46,7 +47,7 @@ export function persistEmbeddedScript(
     let timer = window.setTimeout(timeout, publish ? 60000 : 8000);
     window.addEventListener('message', receive);
     window.parent.postMessage(
-      { type: 'relampo:persist-script', requestId, scriptId, ...document, publish },
+      { type: 'relampo:persist-script', requestId, scriptId, ...document, publish, createOnly },
       window.location.origin,
     );
   });

@@ -20,6 +20,7 @@ import type { AppliedCorrelation, CorrelatedDocument } from '../../utils/correla
 export function CorrelatePage({
   source,
   onCommit,
+  onSave,
   onGoToScripting,
   onDraftChange,
   saveRef,
@@ -27,6 +28,7 @@ export function CorrelatePage({
   saveRef?: Ref<{ save: () => Promise<void> }>;
   source?: CorrelateDocument;
   onCommit?: (yaml: string, name: string) => Promise<void>;
+  onSave?: (yaml: string, name: string, asNew: boolean) => Promise<void>;
   onGoToScripting?: () => void;
   onDraftChange?: (draft: { yaml: string; fileName: string; changed: boolean }) => void;
 } = {}) {
@@ -34,6 +36,9 @@ export function CorrelatePage({
   const { language, setLanguage } = useLanguage();
   const es = language === 'es',
     text = (en: string, spanish: string) => (es ? spanish : en);
+  const [copyName, setCopyName] = useState('');
+  const [showCopyName, setShowCopyName] = useState(false);
+  const [saveMessage, setSaveMessage] = useState('');
   const [yaml, setYaml] = useState(''),
     [name, setName] = useState(''),
     [output, setOutput] = useState(''),
@@ -71,6 +76,7 @@ export function CorrelatePage({
     setSavedYaml('');
     setConflict(false);
     setError('');
+    setSaveMessage('');
   };
   function edit(value: string) {
     invalidate();
@@ -269,6 +275,23 @@ export function CorrelatePage({
     setChanged(false);
   };
   useImperativeHandle(saveRef, () => ({ save: commitEmbedded }));
+  async function saveEmbedded(asNew: boolean) {
+    if (!onSave || busy) return;
+    setBusy('save');
+    setError('');
+    setSaveMessage('');
+    try {
+      const target = asNew ? correlatedFileName(copyName.trim() || name) : name;
+      await onSave(yaml, target, asNew);
+      setChanged(false);
+      setSaveMessage(text('Script saved in the Test Plan.', 'Script guardado en el Test Plan.'));
+    } catch (cause) {
+      if (!(cause instanceof Error && cause.name === 'ScriptSaveCancelled'))
+        setError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setBusy('');
+    }
+  }
   async function saveAndReturn() {
     if (onCommit) {
       setBusy('save');
@@ -608,6 +631,53 @@ export function CorrelatePage({
           language={language}
         />
       </div>
+      {embedded && onSave && (
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-white/10 bg-[#111111] px-3 py-2">
+          {saveMessage && (
+            <span
+              role="status"
+              className="mr-auto text-xs text-zinc-300"
+            >
+              {saveMessage}
+            </span>
+          )}
+          {showCopyName && (
+            <label className="flex items-center gap-2 text-xs">
+              {text('New script', 'Nuevo script')}
+              <input
+                aria-label={text('New script filename', 'Nombre del nuevo script')}
+                className={input}
+                value={copyName}
+                disabled={!!busy}
+                onChange={event => setCopyName(event.target.value)}
+              />
+            </label>
+          )}
+          <button
+            type="button"
+            className={button}
+            disabled={!!busy || !yaml.trim()}
+            onClick={() => void saveEmbedded(false)}
+          >
+            <Save className="h-3.5 w-3.5" />
+            {text('Overwrite script with correlations', 'Sobrescribir script con las correlaciones')}
+          </button>
+          <button
+            type="button"
+            className={button}
+            disabled={!!busy || !yaml.trim()}
+            onClick={() => {
+              if (!showCopyName) {
+                setCopyName(correlatedFileName(name));
+                setShowCopyName(true);
+              } else void saveEmbedded(true);
+            }}
+          >
+            <Save className="h-3.5 w-3.5" />
+            {text('Save as new script', 'Guardar como nuevo script')}
+          </button>
+        </div>
+      )}
     </RecorderShell>
   );
 }
