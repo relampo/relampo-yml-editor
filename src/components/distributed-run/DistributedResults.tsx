@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { ChevronDown, ExternalLink, RotateCcw, Square, Terminal } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import {
@@ -20,7 +20,7 @@ import { DistributedNotice as Notice } from './DistributedFeedback';
 import { DistributedSummary } from './DistributedSummary';
 import { DistributedTimeline } from './DistributedTimeline';
 const buttonClass =
-  'inline-flex items-center justify-center gap-2 rounded-lg border border-white/15 px-3 py-2 text-sm text-zinc-200 hover:bg-white/5 disabled:opacity-40';
+  'inline-flex items-center justify-center gap-1.5 rounded-lg border border-white/15 h-8 px-2.5 text-xs text-zinc-200 hover:bg-white/5 disabled:opacity-40';
 const stages: Record<string, [string, string]> = {
   preparing: ['Preparando archivos y publicación', 'Preparing files and publication'],
   prepared: ['Preparación completada', 'Preparation completed'],
@@ -44,7 +44,9 @@ export function DistributedResults({
   onStop,
   onClear,
   yamlCode,
+  settingsAction,
 }: {
+  settingsAction?: ReactNode;
   state: DistributedState;
   runId: string;
   plan: DistributedPlan | null;
@@ -116,9 +118,10 @@ export function DistributedResults({
       className="space-y-4"
       aria-label={t('Resultados distribuidos', 'Distributed results')}
     >
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex items-center justify-end gap-2 overflow-x-auto whitespace-nowrap [&>*]:shrink-0">
+        {settingsAction}
         <span
-          className={`rounded-full border px-3 py-1 text-sm ${state.status === 'errored' ? 'border-red-400/30 text-red-300' : finished ? 'border-emerald-400/30 text-emerald-300' : 'border-white/15 text-zinc-300'}`}
+          className={`rounded-full border px-2.5 py-1 text-xs ${state.status === 'errored' ? 'border-red-400/30 text-red-300' : finished ? 'border-emerald-400/30 text-emerald-300' : 'border-white/15 text-zinc-300'}`}
         >
           {state.status === 'running'
             ? (stages[state.stage]?.[es ? 0 : 1] ?? t('Ejecutando', 'Running'))
@@ -147,13 +150,37 @@ export function DistributedResults({
         )}
         {(finished || state.status === 'unavailable') && !active && (
           <button
-            className={`${buttonClass} ml-auto`}
+            className={buttonClass}
             disabled={busy}
             onClick={onClear}
           >
             <RotateCcw size={15} />
             Clear
           </button>
+        )}
+        {(state.reports_ready || reportsURL) && (
+          <div className="flex items-center gap-2">
+            {state.reports_ready &&
+              formats.map(format => (
+                <AgentFileLink
+                  key={format}
+                  className={buttonClass}
+                  path={distributedReportPath(runId, format, true)}
+                >
+                  {t('Descargar', 'Download')} {format.toUpperCase()}
+                </AgentFileLink>
+              ))}
+            {reportsURL && (
+              <a
+                className={buttonClass}
+                href={reportsURL}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {t('Ver reportes en el repositorio', 'View reports in repository')}
+              </a>
+            )}
+          </div>
         )}
       </div>
       {errorMessage && <Notice alert>{errorMessage}</Notice>}
@@ -217,14 +244,12 @@ export function DistributedResults({
         .map(item => (
           <div
             key={item.node.id}
-            className="border border-white/10 bg-[#111111] p-4"
+            className="border border-white/10 bg-[#111111] p-3"
           >
-            <h3 className="mb-3 text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">
-              {t('Perfil de carga planificado', 'Planned load profile')}
-              {profile.loads.length > 1 ? ` · ${item.scenario}` : ''}
-            </h3>
             <LoadIterationLimitNotice data={toLoadData(item.node.data as Record<string, unknown> | undefined)} />
             <LoadVisualization
+              compact
+              title={`${t('Perfil de carga planificado', 'Planned load profile')}${profile.loads.length > 1 ? ` · ${item.scenario}` : ''}`}
               data={toLoadData(item.node.data as Record<string, unknown> | undefined)}
               loadType={normalizeLoadType(item.node.data?.type)}
               progressSeconds={active ? selected?.total.elapsed_seconds : undefined}
@@ -323,30 +348,6 @@ export function DistributedResults({
           'Percentiles are approximated from combined histograms. The full report retains canonical results.',
         )}
       </p>
-      {(state.reports_ready || reportsURL) && (
-        <div className="flex flex-wrap gap-2 border border-white/10 p-3">
-          {state.reports_ready &&
-            formats.map(format => (
-              <AgentFileLink
-                key={format}
-                className={buttonClass}
-                path={distributedReportPath(runId, format, true)}
-              >
-                {t('Descargar', 'Download')} {format.toUpperCase()}
-              </AgentFileLink>
-            ))}
-          {reportsURL && (
-            <a
-              className={buttonClass}
-              href={reportsURL}
-              target="_blank"
-              rel="noreferrer"
-            >
-              {t('Ver reportes en el repositorio', 'View reports in repository')}
-            </a>
-          )}
-        </div>
-      )}
     </section>
   );
 }

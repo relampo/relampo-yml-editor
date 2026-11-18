@@ -520,14 +520,6 @@ export function YAMLDistributedRun({
             )}
           </Notice>
         )}
-        {runId && (
-          <button
-            className={buttonClass}
-            onClick={() => setShowSettings(value => !value)}
-          >
-            {showSettings ? text('Ocultar configuración', 'Hide settings') : text('Ver configuración', 'View settings')}
-          </button>
-        )}
         <div className={showSettings ? 'space-y-5' : 'hidden'}>
           <div className="grid items-stretch gap-3 @[56rem]:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1.25fr)]">
             <DistributedConnection
@@ -834,6 +826,18 @@ export function YAMLDistributedRun({
         </div>
         {state && (
           <DistributedResults
+            settingsAction={
+              runId ? (
+                <button
+                  className="inline-flex h-8 items-center justify-center rounded-lg border border-white/15 px-2.5 text-xs text-zinc-200 hover:bg-white/5"
+                  onClick={() => setShowSettings(value => !value)}
+                >
+                  {showSettings
+                    ? text('Ocultar configuración', 'Hide settings')
+                    : text('Ver configuración', 'View settings')}
+                </button>
+              ) : undefined
+            }
             state={state}
             runId={runId}
             plan={plan}

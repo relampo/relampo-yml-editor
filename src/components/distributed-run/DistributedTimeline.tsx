@@ -154,170 +154,208 @@ export function DistributedTimeline({
         ))}
       </div>
       <div className="overflow-x-auto">
-        <svg
-          role="img"
-          aria-label={t('Línea de tiempo de RPS, VUs, latencia y errores', 'Timeline of RPS, VUs, latency and errors')}
-          viewBox={`0 0 ${W} ${H}`}
-          className="w-full min-w-[640px] touch-none"
-          tabIndex={0}
-          onPointerDown={event => {
-            if (event.button !== 0) return;
-            const at = pointerTime(event);
-            setDrag([at, at]);
-            event.currentTarget.setPointerCapture?.(event.pointerId);
-          }}
-          onPointerMove={event => {
-            const at = pointerTime(event);
-            setHover(at);
-            if (drag) setDrag([drag[0], at]);
-          }}
-          onPointerUp={event => {
-            if (drag) {
-              const to = pointerTime(event);
-              const from = Math.min(drag[0], to),
-                end = Math.max(drag[0], to);
-              if (end - from >= 1000 && samples.filter(p => p.time >= from && p.time <= end).length >= 2)
-                setZoom([from, end]);
-            }
-            setDrag(null);
-          }}
-          onPointerCancel={() => setDrag(null)}
-          onPointerLeave={() => {
-            if (!drag) setHover(null);
-          }}
-          onDoubleClick={() => {
-            setZoom(null);
-            setHover(null);
-          }}
-          onKeyDown={event => {
-            if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
-            event.preventDefault();
-            const index = inspected ? visible.indexOf(inspected) : visible.length - 1;
-            const next =
-              visible[Math.max(0, Math.min(visible.length - 1, index + (event.key === 'ArrowLeft' ? -1 : 1)))];
-            if (next) setHover(next.time);
-          }}
-        >
-          {Array.from({ length: 6 }, (_, i) => (
-            <line
-              key={`grid-${i}`}
-              x1={L}
-              x2={W - R}
-              y1={T + (plotHeight * i) / 5}
-              y2={T + (plotHeight * i) / 5}
-              stroke="#ffffff"
-              strokeOpacity={i === 5 ? 0.2 : 0.07}
-            />
-          ))}
-          {axes
-            .filter(axis => series.some(metric => metric.axis === axis.key && !hidden.has(metric.key)))
-            .map(axis => (
-              <g
-                key={axis.key}
-                fill={axis.color}
-                fontSize="11"
-                textAnchor={axis.anchor}
-              >
-                <text
-                  x={axis.x}
-                  y={T - 14}
-                  fontWeight="700"
-                >
-                  {axis.title}
-                </text>
-                {Array.from({ length: 6 }, (_, i) => (
-                  <text
-                    key={i}
-                    x={axis.x}
-                    y={T + (plotHeight * i) / 5}
-                    dominantBaseline="middle"
-                  >
-                    {number(
-                      axis.key === 'vus' || axis.key === 'errors'
-                        ? Math.round(axis.max * (1 - i / 5))
-                        : axis.max * (1 - i / 5),
-                    )}
-                  </text>
-                ))}
-              </g>
-            ))}
-          {Array.from({ length: 7 }, (_, i) => {
-            const at = range[0] + ((range[1] - range[0]) * i) / 6;
-            return (
-              <text
-                key={`time-${i}`}
-                x={x(at)}
-                y={H - 12}
-                textAnchor="middle"
-                fill="#a1a1aa"
-                fontSize="11"
-              >
-                {elapsed(at - origin)}
-              </text>
-            );
-          })}
-          {series
-            .filter(metric => !hidden.has(metric.key))
-            .map(metric => {
-              let path = '',
-                connected = false;
-              for (const point of visible) {
-                const value = point[metric.key];
-                if (value == null || !Number.isFinite(value)) {
-                  connected = false;
-                  continue;
-                }
-                path += `${connected ? 'L' : 'M'}${x(point.time).toFixed(1)},${y(value, metric.axis).toFixed(1)} `;
-                connected = true;
+        <div className="relative min-w-[640px]">
+          <svg
+            role="img"
+            aria-label={t(
+              'Línea de tiempo de RPS, VUs, latencia y errores',
+              'Timeline of RPS, VUs, latency and errors',
+            )}
+            viewBox={`0 0 ${W} ${H}`}
+            className="w-full min-w-[640px] touch-none"
+            tabIndex={0}
+            onPointerDown={event => {
+              if (event.button !== 0) return;
+              const at = pointerTime(event);
+              setDrag([at, at]);
+              event.currentTarget.setPointerCapture?.(event.pointerId);
+            }}
+            onPointerMove={event => {
+              const at = pointerTime(event);
+              setHover(at);
+              if (drag) setDrag([drag[0], at]);
+            }}
+            onPointerUp={event => {
+              if (drag) {
+                const to = pointerTime(event);
+                const from = Math.min(drag[0], to),
+                  end = Math.max(drag[0], to);
+                if (end - from >= 1000 && samples.filter(p => p.time >= from && p.time <= end).length >= 2)
+                  setZoom([from, end]);
               }
+              setDrag(null);
+            }}
+            onPointerCancel={() => setDrag(null)}
+            onPointerLeave={() => {
+              if (!drag) setHover(null);
+            }}
+            onDoubleClick={() => {
+              setZoom(null);
+              setHover(null);
+            }}
+            onKeyDown={event => {
+              if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+              event.preventDefault();
+              const index = inspected ? visible.indexOf(inspected) : visible.length - 1;
+              const next =
+                visible[Math.max(0, Math.min(visible.length - 1, index + (event.key === 'ArrowLeft' ? -1 : 1)))];
+              if (next) setHover(next.time);
+            }}
+          >
+            {Array.from({ length: 6 }, (_, i) => (
+              <line
+                key={`grid-${i}`}
+                x1={L}
+                x2={W - R}
+                y1={T + (plotHeight * i) / 5}
+                y2={T + (plotHeight * i) / 5}
+                stroke="#ffffff"
+                strokeOpacity={i === 5 ? 0.2 : 0.07}
+              />
+            ))}
+            {axes
+              .filter(axis => series.some(metric => metric.axis === axis.key && !hidden.has(metric.key)))
+              .map(axis => (
+                <g
+                  key={axis.key}
+                  fill={axis.color}
+                  fontSize="11"
+                  textAnchor={axis.anchor}
+                >
+                  <text
+                    x={axis.x}
+                    y={T - 14}
+                    fontWeight="700"
+                  >
+                    {axis.title}
+                  </text>
+                  {Array.from({ length: 6 }, (_, i) => (
+                    <text
+                      key={i}
+                      x={axis.x}
+                      y={T + (plotHeight * i) / 5}
+                      dominantBaseline="middle"
+                    >
+                      {number(
+                        axis.key === 'vus' || axis.key === 'errors'
+                          ? Math.round(axis.max * (1 - i / 5))
+                          : axis.max * (1 - i / 5),
+                      )}
+                    </text>
+                  ))}
+                </g>
+              ))}
+            {Array.from({ length: 7 }, (_, i) => {
+              const at = range[0] + ((range[1] - range[0]) * i) / 6;
               return (
-                <path
-                  key={metric.key}
-                  data-metric={metric.key}
-                  d={path}
-                  fill="none"
-                  stroke={metric.color}
-                  strokeWidth={metric.key === 'active_vus' ? 2.5 : 1.8}
-                  strokeLinejoin="round"
-                  vectorEffect="non-scaling-stroke"
-                />
+                <text
+                  key={`time-${i}`}
+                  x={x(at)}
+                  y={H - 12}
+                  textAnchor="middle"
+                  fill="#a1a1aa"
+                  fontSize="11"
+                >
+                  {elapsed(at - origin)}
+                </text>
               );
             })}
-          {inspected && (
-            <line
-              x1={x(inspected.time)}
-              x2={x(inspected.time)}
-              y1={T}
-              y2={T + plotHeight}
-              stroke="#facc15"
-              strokeDasharray="3 3"
-              strokeOpacity="0.6"
-            />
-          )}
-          {drag && (
-            <rect
-              x={x(Math.min(...drag))}
-              y={T}
-              width={Math.abs(x(drag[1]) - x(drag[0]))}
-              height={plotHeight}
-              fill="#facc15"
-              fillOpacity="0.12"
-              stroke="#facc15"
-              pointerEvents="none"
-            />
-          )}
-          {!samples.length && (
-            <text
-              x={W / 2}
-              y={H / 2}
-              textAnchor="middle"
-              fill="#a1a1aa"
-              fontSize="14"
+            {series
+              .filter(metric => !hidden.has(metric.key))
+              .map(metric => {
+                let path = '',
+                  connected = false;
+                for (const point of visible) {
+                  const value = point[metric.key];
+                  if (value == null || !Number.isFinite(value)) {
+                    connected = false;
+                    continue;
+                  }
+                  path += `${connected ? 'L' : 'M'}${x(point.time).toFixed(1)},${y(value, metric.axis).toFixed(1)} `;
+                  connected = true;
+                }
+                return (
+                  <path
+                    key={metric.key}
+                    data-metric={metric.key}
+                    d={path}
+                    fill="none"
+                    stroke={metric.color}
+                    strokeWidth={metric.key === 'active_vus' ? 2.5 : 1.8}
+                    strokeLinejoin="round"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                );
+              })}
+            {inspected && (
+              <line
+                x1={x(inspected.time)}
+                x2={x(inspected.time)}
+                y1={T}
+                y2={T + plotHeight}
+                stroke="#facc15"
+                strokeDasharray="3 3"
+                strokeOpacity="0.6"
+              />
+            )}
+            {drag && (
+              <rect
+                x={x(Math.min(...drag))}
+                y={T}
+                width={Math.abs(x(drag[1]) - x(drag[0]))}
+                height={plotHeight}
+                fill="#facc15"
+                fillOpacity="0.12"
+                stroke="#facc15"
+                pointerEvents="none"
+              />
+            )}
+            {!samples.length && (
+              <text
+                x={W / 2}
+                y={H / 2}
+                textAnchor="middle"
+                fill="#a1a1aa"
+                fontSize="14"
+              >
+                {t('Esperando muestras confirmadas…', 'Waiting for confirmed measurements…')}
+              </text>
+            )}
+          </svg>
+          {hover != null && inspected && (
+            <div
+              role="tooltip"
+              className="pointer-events-none absolute top-2 z-10 min-w-40 rounded-lg border border-white/15 bg-[#181818] px-3 py-2 text-xs shadow-xl"
+              style={{
+                left: `${Math.min(98, Math.max(2, (x(inspected.time) / W) * 100))}%`,
+                transform: x(inspected.time) > W / 2 ? 'translateX(calc(-100% - 12px))' : 'translateX(12px)',
+              }}
             >
-              {t('Esperando muestras confirmadas…', 'Waiting for confirmed measurements…')}
-            </text>
+              <div className="mb-2 border-b border-white/10 pb-1 font-medium tabular-nums text-zinc-200">
+                {elapsed(inspected.time - origin)}
+              </div>
+              {series
+                .filter(metric => !hidden.has(metric.key))
+                .map(metric => (
+                  <div
+                    key={metric.key}
+                    className="flex items-center justify-between gap-6 py-0.5"
+                  >
+                    <span className="inline-flex items-center gap-2 text-zinc-300">
+                      <span
+                        className="h-0.5 w-3"
+                        style={{ backgroundColor: metric.color }}
+                      />
+                      {metric.key === 'errors' ? t('Errores', 'Errors') : metric.label}
+                    </span>
+                    <strong className="font-medium tabular-nums text-zinc-100">
+                      {number(inspected[metric.key] ?? null)} {metric.unit}
+                    </strong>
+                  </div>
+                ))}
+            </div>
           )}
-        </svg>
+        </div>
       </div>
       <div
         role="group"

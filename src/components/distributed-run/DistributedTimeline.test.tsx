@@ -72,3 +72,21 @@ it('supports drag zoom, reset, and keyboard inspection of confirmed values', () 
   fireEvent.keyDown(chart, { key: 'ArrowLeft' });
   expect(screen.getByRole('group', { name: 'Timeline values' })).toHaveTextContent('0:10');
 });
+it('shows a floating report-style tooltip for the hovered sample and hides it on leave', () => {
+  vi.stubGlobal('PointerEvent', MouseEvent);
+  render(view([point(1), point(10, 2), point(20, 3)]));
+  const chart = screen.getByRole('img');
+  vi.spyOn(chart, 'getBoundingClientRect').mockReturnValue({ left: 0, width: 1000 } as DOMRect);
+  expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+  fireEvent.pointerMove(chart, { clientX: 238 });
+  const tooltip = screen.getByRole('tooltip');
+  expect(tooltip).toHaveTextContent('0:10');
+  expect(tooltip).toHaveTextContent('RPS10 req/s');
+  expect(tooltip).toHaveTextContent('VUs1 VUs');
+  expect(tooltip).toHaveTextContent('Errors2');
+  expect(tooltip).not.toHaveTextContent('P95');
+  fireEvent.click(screen.getByRole('button', { name: 'P95' }));
+  expect(screen.getByRole('tooltip')).toHaveTextContent('P9530 ms');
+  fireEvent.pointerLeave(chart);
+  expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+});
