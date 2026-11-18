@@ -45,8 +45,10 @@ export function DistributedResults({
   onClear,
   yamlCode,
   settingsAction,
+  runControls,
 }: {
   settingsAction?: ReactNode;
+  runControls?: ReactNode;
   state: DistributedState;
   runId: string;
   plan: DistributedPlan | null;
@@ -118,7 +120,8 @@ export function DistributedResults({
       className="space-y-4"
       aria-label={t('Resultados distribuidos', 'Distributed results')}
     >
-      <div className="flex items-center justify-end gap-2 overflow-x-auto whitespace-nowrap [&>*]:shrink-0">
+      <div className="flex items-center gap-2 whitespace-nowrap [&>*]:shrink-0">
+        {runControls}
         {settingsAction}
         <span
           className={`rounded-full border px-2.5 py-1 text-xs ${state.status === 'errored' ? 'border-red-400/30 text-red-300' : finished ? 'border-emerald-400/30 text-emerald-300' : 'border-white/15 text-zinc-300'}`}

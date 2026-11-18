@@ -484,6 +484,7 @@ it('updates counters before completion and retains received metrics when report 
     if (!path.startsWith('run/')) return original(path, body, signal);
     reads++;
     const requests = Math.min(reads, 2) * 10;
+    const measuredAt = new Date().toISOString();
     const stats = {
       requests,
       failures: 0,
@@ -504,10 +505,35 @@ it('updates counters before completion and retains received metrics when report 
       warning: reads < 3 ? undefined : 'Live metrics temporarily unavailable; the remote execution continues.',
       reports_ready: false,
       repository: 'owner/repo',
-      started_at: new Date().toISOString(),
+      started_at: measuredAt,
       nodes: [],
       scopes: [{ key: 'global', total: stats, window: stats }],
-      history: [{ at: new Date().toISOString(), requests, failures: 0, rps: 2, active_vus: 1, avg_ms: 4, p95_ms: 8 }],
+      history: [
+        {
+          at: measuredAt,
+          requests,
+          failures: 0,
+          rps: reads < 3 ? 2 : 0,
+          active_vus: reads < 3 ? 1 : 0,
+          avg_ms: 4,
+          p95_ms: 8,
+        },
+      ],
+      // Legacy coordinators retained the finished workers' short closing
+      // windows in scoped history. Global charts must match the live log.
+      scope_history: {
+        global: [
+          {
+            at: measuredAt,
+            requests,
+            failures: 0,
+            rps: reads < 3 ? 2 : 62.3,
+            active_vus: reads < 3 ? 1 : 0,
+            avg_ms: 4,
+            p95_ms: 8,
+          },
+        ],
+      },
     };
   });
   vi.useFakeTimers();
@@ -526,6 +552,8 @@ it('updates counters before completion and retains received metrics when report 
     await advance(1000);
     expect(screen.getByText(/La carga terminó; falló la generación o publicación del reporte/)).toBeInTheDocument();
     expect(screen.queryByText(/remote execution continues/)).not.toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Valores del timeline' })).toHaveTextContent('RPS: 0 req/s');
+    expect(screen.getByRole('group', { name: 'Valores del timeline' })).not.toHaveTextContent('62.3');
     expect(within(summary).getByText('20', { exact: true })).toBeInTheDocument();
   } finally {
     vi.useRealTimers();

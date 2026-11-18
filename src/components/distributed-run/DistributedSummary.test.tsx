@@ -55,8 +55,7 @@ it('shows merged request percentiles, total RPS and real per-node resource peaks
   );
   const table = screen.getByRole('table', { name: 'Resumen por petición' });
   expect(within(table).getAllByRole('row')).toHaveLength(2);
-  for (const value of ['15.0ms', '30.0ms', '40.0ms', '80.0ms'])
-    expect(within(table).getByText(value)).toBeInTheDocument();
+  for (const value of ['15ms', '30ms', '40ms', '80ms']) expect(within(table).getByText(value)).toBeInTheDocument();
   expect(screen.getByText('RPS').parentElement).toHaveTextContent('10.0');
   expect(screen.getByText('34 MiB')).toBeInTheDocument();
   expect(screen.getByText('0.4%')).toBeInTheDocument();

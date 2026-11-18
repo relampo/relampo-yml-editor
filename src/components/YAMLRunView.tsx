@@ -1,3 +1,4 @@
+import { formatRunDuration as formatDurationNs, formatRunLatency as formatMs } from '../utils/runPresentation';
 import { RunExecutionOptions } from './RunExecutionOptions';
 import { downloadLocalRunReport, type RunOverrides } from '../utils/runApi';
 import { SQLResultTable } from './SQLResultTable';
@@ -115,10 +116,6 @@ function formatRps(value: number): string {
   return value.toFixed(1);
 }
 
-function formatMs(value: number): string {
-  if (!value) return '0ms';
-  return value < 10 ? `${value.toFixed(1)}ms` : `${Math.round(value)}ms`;
-}
 
 function formatErrorRate(totalRequests: number, totalFailures: number): string {
   if (totalRequests <= 0) return '0%';
@@ -126,14 +123,6 @@ function formatErrorRate(totalRequests: number, totalFailures: number): string {
 }
 
 // Go time.Duration serializes as integer nanoseconds.
-function formatDurationNs(nanoseconds: number): string {
-  const totalSeconds = nanoseconds / 1e9;
-  if (totalSeconds < 1) return `${Math.round(nanoseconds / 1e6)}ms`;
-  if (totalSeconds < 60) return `${totalSeconds.toFixed(totalSeconds < 10 ? 1 : 0)}s`;
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = Math.round(totalSeconds % 60);
-  return `${minutes}m ${seconds.toString().padStart(2, '0')}s`;
-}
 
 function formatSummaryRate(value: number | null | undefined, unavailable: string): string {
   return value == null || !Number.isFinite(value) ? unavailable : formatRps(value);

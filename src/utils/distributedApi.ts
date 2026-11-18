@@ -178,3 +178,14 @@ export function distributedStatus(status: string, es: boolean, stage?: string) {
   };
   return labels[status]?.[es ? 0 : 1] ?? (es ? 'Fallida' : 'Failed');
 }
+
+// Preserve the complete scoped history while reconciling its recent samples
+// with the canonical global live log (older agents retained final window rates).
+export function distributedGlobalHistory(state: DistributedState | null): DistributedPoint[] {
+  const full = state?.scope_history?.global;
+  const canonical = state?.history ?? [];
+  if (!full?.length) return canonical;
+  const key = (point: DistributedPoint) => JSON.stringify([point.at, point.requests, point.failures]);
+  const confirmed = new Map(canonical.map(point => [key(point), point]));
+  return full.map(point => confirmed.get(key(point)) ?? point);
+}
