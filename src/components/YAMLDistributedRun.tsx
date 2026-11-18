@@ -393,86 +393,90 @@ export function YAMLDistributedRun({
       ? distributedGlobalHistory(state)
       : (state?.scope_history?.[scope] ?? histories.current.get(scope) ?? []);
 
+  const runControls = (
+    <div className="flex flex-wrap items-center justify-end gap-3">
+      <DistributedNodes
+        selected={selectedNodes}
+        onChange={setSelectedNodes}
+        capacity={40}
+        maxSelected={10}
+        disabled={disabled}
+        es={es}
+      />
+      <details
+        ref={reportsMenu}
+        className="relative text-xs"
+      >
+        <summary
+          className={`${buttonClass} cursor-pointer !py-2 text-xs`}
+          aria-label={text('Reportes', 'Reports')}
+        >
+          {text('Reportes', 'Reports')} · {formats.map(f => f.toUpperCase()).join(', ') || '—'}
+        </summary>
+        <div className="absolute right-0 z-20 mt-2 min-w-36 space-y-2 rounded-lg border border-white/15 bg-[#171717] p-3 shadow-xl">
+          {['html', 'json', 'csv', 'txt'].map(format => (
+            <label
+              className="flex items-center gap-2"
+              key={format}
+            >
+              <input
+                type="checkbox"
+                aria-label={format.toUpperCase()}
+                checked={formats.includes(format)}
+                disabled={disabled}
+                onChange={e =>
+                  setFormats(current => (e.target.checked ? [...current, format] : current.filter(f => f !== format)))
+                }
+              />
+              {format.toUpperCase()}
+            </label>
+          ))}
+        </div>
+      </details>
+      <button
+        className="inline-flex h-9 items-center gap-2 rounded border border-yellow-400/40 bg-yellow-400 px-3 text-sm font-semibold text-black transition-colors hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-50"
+        onClick={() => void (planCurrent && reviewed ? start(false) : validate())}
+        disabled={
+          disabled ||
+          !documentReady ||
+          !filesApplied ||
+          !yamlCode.trim() ||
+          validationErrors.length > 0 ||
+          !repository.trim() ||
+          !connected ||
+          formats.length === 0 ||
+          nodes < 1
+        }
+      >
+        {busy ? (
+          <Loader2
+            size={16}
+            className="animate-spin"
+          />
+        ) : (
+          <Play className="h-4 w-4" />
+        )}
+        {text('Ejecutar', 'Run')}
+      </button>
+    </div>
+  );
+
   return (
     <div className="@container h-full min-h-0 overflow-y-auto p-4 text-zinc-200">
       <div className="mx-auto max-w-6xl space-y-5">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/5 pb-3">
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">
-              {text('Prueba de carga', 'Load test')}
-            </p>
-            <h2 className="mt-1 text-base font-semibold text-zinc-100">
-              {text('Prueba distribuida', 'Distributed test')}
-            </h2>
+        {!state && (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/5 pb-3">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">
+                {text('Prueba de carga', 'Load test')}
+              </p>
+              <h2 className="mt-1 text-base font-semibold text-zinc-100">
+                {text('Prueba distribuida', 'Distributed test')}
+              </h2>
+            </div>
+            {runControls}
           </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <DistributedNodes
-              selected={selectedNodes}
-              onChange={setSelectedNodes}
-              capacity={40}
-              maxSelected={10}
-              disabled={disabled}
-              es={es}
-            />
-            <details
-              ref={reportsMenu}
-              className="relative text-xs"
-            >
-              <summary
-                className={`${buttonClass} cursor-pointer !py-2 text-xs`}
-                aria-label={text('Reportes', 'Reports')}
-              >
-                {text('Reportes', 'Reports')} · {formats.map(f => f.toUpperCase()).join(', ') || '—'}
-              </summary>
-              <div className="absolute right-0 z-20 mt-2 min-w-36 space-y-2 rounded-lg border border-white/15 bg-[#171717] p-3 shadow-xl">
-                {['html', 'json', 'csv', 'txt'].map(format => (
-                  <label
-                    className="flex items-center gap-2"
-                    key={format}
-                  >
-                    <input
-                      type="checkbox"
-                      aria-label={format.toUpperCase()}
-                      checked={formats.includes(format)}
-                      disabled={disabled}
-                      onChange={e =>
-                        setFormats(current =>
-                          e.target.checked ? [...current, format] : current.filter(f => f !== format),
-                        )
-                      }
-                    />
-                    {format.toUpperCase()}
-                  </label>
-                ))}
-              </div>
-            </details>
-            <button
-              className="inline-flex h-9 items-center gap-2 rounded border border-yellow-400/40 bg-yellow-400 px-3 text-sm font-semibold text-black transition-colors hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-50"
-              onClick={() => void (planCurrent && reviewed ? start(false) : validate())}
-              disabled={
-                disabled ||
-                !documentReady ||
-                !filesApplied ||
-                !yamlCode.trim() ||
-                validationErrors.length > 0 ||
-                !repository.trim() ||
-                !connected ||
-                formats.length === 0 ||
-                nodes < 1
-              }
-            >
-              {busy ? (
-                <Loader2
-                  size={16}
-                  className="animate-spin"
-                />
-              ) : (
-                <Play className="h-4 w-4" />
-              )}
-              {text('Ejecutar', 'Run')}
-            </button>
-          </div>
-        </div>
+        )}
         {available === false && (
           <Notice>
             {text(
@@ -828,6 +832,7 @@ export function YAMLDistributedRun({
         </div>
         {state && (
           <DistributedResults
+            runControls={runControls}
             settingsAction={
               runId ? (
                 <button
