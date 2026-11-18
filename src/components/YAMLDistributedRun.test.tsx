@@ -500,6 +500,7 @@ it('updates counters before completion and retains received metrics when report 
       status: reads < 3 ? 'running' : 'errored',
       stage: reads < 3 ? 'in_progress' : 'generating_report',
       error: reads < 3 ? undefined : 'Report generation failed',
+      warning: reads < 3 ? undefined : 'Live metrics temporarily unavailable; the remote execution continues.',
       reports_ready: false,
       repository: 'owner/repo',
       started_at: new Date().toISOString(),
@@ -519,7 +520,8 @@ it('updates counters before completion and retains received metrics when report 
     expect(within(summary).getByText('20', { exact: true })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Cancelar ejecución remota' })).toBeEnabled();
     await advance(1000);
-    expect(screen.getByText(/La ejecución distribuida terminó con un error/)).toBeInTheDocument();
+    expect(screen.getByText(/La carga terminó; falló la generación o publicación del reporte/)).toBeInTheDocument();
+    expect(screen.queryByText(/remote execution continues/)).not.toBeInTheDocument();
     expect(within(summary).getByText('20', { exact: true })).toBeInTheDocument();
   } finally {
     vi.useRealTimers();

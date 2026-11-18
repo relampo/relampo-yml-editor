@@ -50,7 +50,7 @@ export function DistributedSummary({
   const metrics = [
     {
       label: t('Estado', 'Status'),
-      value: state.stage === 'prepared' ? t('Preparada', 'Prepared') : distributedStatus(state.status, es),
+      value: state.stage === 'prepared' ? t('Preparada', 'Prepared') : distributedStatus(state.status, es, state.stage),
     },
     { label: t('Duración', 'Duration'), value: total ? `${total.elapsed_seconds.toFixed(1)}s` : '—' },
     {

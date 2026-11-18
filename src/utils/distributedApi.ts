@@ -165,7 +165,8 @@ export async function uploadDistributedFile(file: File): Promise<string> {
   return body.path;
 }
 
-export function distributedStatus(status: string, es: boolean) {
+export function distributedStatus(status: string, es: boolean, stage?: string) {
+  if (status === 'errored' && stage === 'generating_report') return es ? 'Error en el reporte' : 'Report failed';
   const labels: Record<string, [string, string]> = {
     completed: ['Completada', 'Completed'],
     stopped: ['Detenida', 'Stopped'],

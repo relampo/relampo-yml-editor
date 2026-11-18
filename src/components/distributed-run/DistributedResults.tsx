@@ -64,14 +64,22 @@ export function DistributedResults({
   const formats = state.report_formats ?? ['html', 'json', 'csv', 'txt'];
   const htmlPath = state.reports_ready && formats.includes('html') ? distributedReportPath(runId, 'html') : undefined;
   const finished = ['completed', 'errored', 'stopped'].includes(state.status);
+  const reportFailed = state.status === 'errored' && state.stage === 'generating_report';
+  const latestSample = points.at(-1)?.at;
+  const sampleTime = latestSample ? new Date(latestSample) : null;
   const errorMessage =
     state.error &&
-    (state.run_id || state.error.length > 300 || /[\r\n]/.test(state.error)
+    (reportFailed
       ? t(
-          'La ejecución distribuida terminó con un error. Consulta Ver ejecución para ver el detalle.',
-          'The distributed execution ended with an error. Open View execution for details.',
+          'La carga terminó; falló la generación o publicación del reporte. Consulta la ejecución del reporte en GitHub o GitLab.',
+          'The load finished; report generation or publication failed. Check the report execution in GitHub or GitLab.',
         )
-      : state.error);
+      : state.run_id || state.error.length > 300 || /[\r\n]/.test(state.error)
+        ? t(
+            'La ejecución distribuida terminó con un error. Consulta Ver ejecución para ver el detalle.',
+            'The distributed execution ended with an error. Open View execution for details.',
+          )
+        : state.error);
   const profile = useMemo(() => {
     try {
       const tree = parseYAMLToTree(yamlCode);
@@ -101,7 +109,7 @@ export function DistributedResults({
         >
           {state.status === 'running'
             ? (stages[state.stage]?.[es ? 0 : 1] ?? t('Ejecutando', 'Running'))
-            : distributedStatus(state.status, es)}
+            : distributedStatus(state.status, es, state.stage)}
         </span>
         {remoteURL && (
           <a
@@ -136,7 +144,7 @@ export function DistributedResults({
         )}
       </div>
       {errorMessage && <Notice alert>{errorMessage}</Notice>}
-      {state.warning && <Notice>{state.warning}</Notice>}
+      {active && state.warning && <Notice>{state.warning}</Notice>}
       {stale && active && (
         <Notice>
           {t(
@@ -188,13 +196,19 @@ export function DistributedResults({
           color="#a1a1aa"
         />
       </div>
+      {sampleTime && Number.isFinite(sampleTime.getTime()) && (
+        <p className="text-xs text-zinc-400">
+          {t('Última muestra confirmada:', 'Last confirmed sample:')}{' '}
+          <time dateTime={latestSample}>{sampleTime.toLocaleTimeString(es ? 'es-ES' : 'en-US')}</time>
+        </p>
+      )}
       {!state.history.length && (
         <p
           role="status"
           className="text-sm text-zinc-400"
         >
           {active
-            ? t('Esperando las primeras muestras de los workers…', 'Waiting for the first worker samples…')
+            ? t('Sincronizando las métricas de los workers…', 'Synchronizing worker metrics…')
             : t('No se recibieron muestras de los workers.', 'No worker samples were received.')}
         </p>
       )}
