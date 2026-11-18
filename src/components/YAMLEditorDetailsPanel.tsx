@@ -182,6 +182,7 @@ export function YAMLEditorDetailsPanel({
               className={runMode === 'local' ? 'min-h-0 min-w-0 flex-1 overflow-hidden' : 'hidden'}
             >
               <YAMLLoadRunSession
+                fileName={fileName}
                 multiScenarioRunEnabled={multiScenarioRunEnabled}
                 componentCapabilities={componentCapabilities}
                 tree={yamlTree}

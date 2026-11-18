@@ -183,7 +183,7 @@ export function DistributedResults({
         />
         <LiveChart
           label={t('VUs activos', 'Active VUs')}
-          points={selected?.scenario ? [] : points}
+          points={points}
           field="active_vus"
           color="#a1a1aa"
         />

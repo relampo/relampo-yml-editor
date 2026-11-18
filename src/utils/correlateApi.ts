@@ -20,6 +20,7 @@ export interface CorrelateCandidate {
   targets: CorrelateLocation[] | null;
 }
 export interface CorrelateReport {
+  scores?: Record<string,number>;
   digest: string;
   requests: number;
   responses: number;

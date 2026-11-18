@@ -1,3 +1,6 @@
+import { useAgentState } from '../hooks/useAgentState';
+import { requestExecutionProject, type ExecutionProject } from '../utils/executionProject';
+import { embeddedScriptDraftKey } from '../utils/embeddedPlanDraft';
 import { DistributedNodes } from './distributed-run/DistributedNodes';
 import { DistributedConnection, type ProviderConnection } from './distributed-run/DistributedConnection';
 import { DistributedResults } from './distributed-run/DistributedResults';
@@ -44,6 +47,39 @@ export function YAMLDistributedRun({
   const es = language === 'es';
   const text = (spanish: string, english: string) => (es ? spanish : english);
   const available = enabled;
+  const agentContext = useAgentState()?.contextId;
+  const [project, setProject] = useState<ExecutionProject>();
+  const [projectReady, setProjectReady] = useState(!embeddedScriptDraftKey());
+  useEffect(() => {
+    if (!embeddedScriptDraftKey()) return;
+    setProjectReady(false);
+    setProject(undefined);
+    let live = true;
+    void requestExecutionProject(fileName).then(
+      value => {
+        if (!live) return;
+        setProject(value);
+        if (value?.provider) setProvider(value.provider);
+        if (value?.repository) setRepository(value.repository);
+        setProjectReady(true);
+      },
+      cause => {
+        if (live) {
+          setError(String(cause.message || cause));
+          setProjectReady(true);
+        }
+      },
+    );
+    return () => {
+      live = false;
+    };
+  }, [fileName, agentContext]);
+  const storageKey = () => {
+    const script = embeddedScriptDraftKey();
+    return script
+      ? `${savedRunKey}:${script}:${project?.identity || 'unready'}:${provider}:${host}:${repository}`
+      : savedRunKey;
+  };
   const [provider, setProvider] = useState<'github' | 'gitlab'>('github');
   const [repository, setRepository] = useState('');
   const [host, setHost] = useState('gitlab.com');
@@ -105,11 +141,20 @@ export function YAMLDistributedRun({
       mounted.current = false;
     };
   }, []);
+  const executionContext = storageKey();
   useEffect(() => {
-    if (!documentReady || reattached.current || !yamlCode.trim()) return;
+    if (!embeddedScriptDraftKey()) return;
+    reattached.current = false;
+    setRunId('');
+    setState(null);
+    histories.current.clear();
+    historyStamp.current = '';
+  }, [executionContext]);
+  useEffect(() => {
+    if (!documentReady || reattached.current || !yamlCode.trim() || (embeddedScriptDraftKey() && !projectReady)) return;
     reattached.current = true;
     try {
-      const saved: unknown = JSON.parse(sessionStorage.getItem(savedRunKey) ?? 'null');
+      const saved: unknown = JSON.parse(sessionStorage.getItem(storageKey()) ?? 'null');
       if (
         saved &&
         typeof saved === 'object' &&
@@ -124,10 +169,8 @@ export function YAMLDistributedRun({
     } catch {
       /* Session persistence is optional. */
     }
-  }, [documentReady, yamlCode]);
-  // ponytail: a hidden view reads nothing (contract, section 8), so the chart
-  // of one node has no points for that time. The global history comes whole
-  // from the agent. Upgrade path: the agent sends the history of each scope.
+  }, [documentReady, yamlCode, projectReady, executionContext]);
+  // Hidden views pause reads. Every scope recovers its history from the agent.
   const [inFront] = useInFront();
   useEffect(() => {
     if (!runId || !inFront) return;
@@ -180,8 +223,9 @@ export function YAMLDistributedRun({
     };
   }, [runId, inFront]);
 
-  function config(script: string): DistributedConfig {
+  function config(script: string, snapshot = project): DistributedConfig {
     return {
+      ...(snapshot ? { workspace: { scriptPath: snapshot.scriptPath, files: snapshot.files } } : {}),
       provider,
       repository: repository.trim(),
       yaml: script,
@@ -215,7 +259,9 @@ export function YAMLDistributedRun({
   }
   async function validate() {
     await perform(async () => {
-      const request = config(flushPendingEdits());
+      const snapshot = await requestExecutionProject(fileName);
+      setProject(snapshot);
+      const request = config(flushPendingEdits(), snapshot);
       const result = await prepareDistributed(request);
       planRequest.current = request;
       reviewedProjectFiles.current = JSON.stringify(projectFiles);
@@ -233,7 +279,9 @@ export function YAMLDistributedRun({
   }
   async function start(prepareOnly: boolean) {
     await perform(async () => {
-      const request = config(flushPendingEdits());
+      const snapshot = await requestExecutionProject(fileName);
+      setProject(snapshot);
+      const request = config(flushPendingEdits(), snapshot);
       if (
         !planRequest.current ||
         JSON.stringify(planRequest.current) !== JSON.stringify(request) ||
@@ -253,7 +301,7 @@ export function YAMLDistributedRun({
       setRunId(result.id);
       setShowSettings(false);
       try {
-        sessionStorage.setItem(savedRunKey, JSON.stringify({ id: result.id, fp: fingerprint(request.yaml) }));
+        sessionStorage.setItem(storageKey(), JSON.stringify({ id: result.id, fp: fingerprint(request.yaml) }));
       } catch {
         /* Optional. */
       }
@@ -281,12 +329,14 @@ export function YAMLDistributedRun({
     setReviewed(false);
     setShowSettings(true);
     try {
-      sessionStorage.removeItem(savedRunKey);
+      sessionStorage.removeItem(storageKey());
     } catch {
       /* Optional. */
     }
   }
-  const points = scope === 'global' ? (state?.history ?? []) : (histories.current.get(scope) ?? []);
+  const points =
+    state?.scope_history?.[scope] ??
+    (scope === 'global' ? (state?.history ?? []) : (histories.current.get(scope) ?? []));
 
   return (
     <div className="@container h-full min-h-0 overflow-y-auto p-4 text-zinc-200">

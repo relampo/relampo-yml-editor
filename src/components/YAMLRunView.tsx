@@ -1,3 +1,5 @@
+import { RunExecutionOptions } from './RunExecutionOptions';
+import { downloadLocalRunReport, type RunOverrides } from '../utils/runApi';
 import { SQLResultTable } from './SQLResultTable';
 import { AgentFileLink } from './AgentFileLink';
 import { GRPCRequestMetrics } from './grpc/GRPCRequestMetrics';
@@ -49,7 +51,6 @@ import { collectDebugEventTargets, matchDebugEventTarget } from './debugRequests
 // The live sparklines only need a recent window; keeping every snapshot for a
 // long run would bloat state and slow re-render. Cumulative totals live on the
 // latest snapshot, so trimming the head never loses the running totals.
-const MAX_LIVE_POINTS = 600;
 
 // The live log feed keeps the most recent lines; older ones scroll off. The
 // server already caps emission, but a long run still produces many lines.
@@ -241,11 +242,7 @@ function loadRunReducer(state: LoadRunState, action: LoadRunAction): LoadRunStat
         isStopping: action.status === 'running' ? state.isStopping : false,
       };
     case 'metrics_received': {
-      const trimmed =
-        state.snapshots.length >= MAX_LIVE_POINTS
-          ? state.snapshots.slice(state.snapshots.length - MAX_LIVE_POINTS + 1)
-          : state.snapshots;
-      return { ...state, snapshots: [...trimmed, action.snapshot] };
+      return { ...state, snapshots: [...state.snapshots, action.snapshot] };
     }
     case 'log_received': {
       const knownSequences = new Set(state.logs.map(line => line.seq));
@@ -287,6 +284,7 @@ function loadRunReducer(state: LoadRunState, action: LoadRunAction): LoadRunStat
 }
 
 interface YAMLLoadRunSessionProps {
+  fileName?: string;
   tree: YAMLNode | null;
   yamlCode: string;
   // Flushes any pending debounced tree→code serialization and returns the
@@ -300,6 +298,7 @@ interface YAMLLoadRunSessionProps {
 }
 
 export function YAMLLoadRunSession({
+  fileName,
   tree,
   yamlCode,
   flushPendingEdits,
@@ -310,6 +309,9 @@ export function YAMLLoadRunSession({
   componentCapabilities,
 }: YAMLLoadRunSessionProps) {
   const { t, language } = useLanguage();
+  const [executionOptions, setExecutionOptions] = useState<RunOverrides>();
+  const [optionsError, setOptionsError] = useState('');
+  const [exportError, setExportError] = useState('');
   const [runState, dispatch] = useReducer(loadRunReducer, initialLoadRunState);
   const { snapshots, isRunning, isStopping, runError, runStatus, summary, logs, sqlResults } = runState;
 
@@ -439,9 +441,13 @@ export function YAMLLoadRunSession({
     stopRequestedRef.current = false;
     dispatch({ type: 'run_started' });
     try {
-      const runId = componentCapabilities
-        ? await startLoadRun(scriptAtStart, componentCapabilities)
-        : await startLoadRun(scriptAtStart);
+      if (optionsError) throw Error(optionsError);
+      const runId =
+        executionOptions || fileName
+          ? await startLoadRun(scriptAtStart, componentCapabilities, executionOptions, fileName)
+          : componentCapabilities
+            ? await startLoadRun(scriptAtStart, componentCapabilities)
+            : await startLoadRun(scriptAtStart);
       if (token !== startTokenRef.current) return;
       runStore.store({ id: runId, fp: fingerprint(scriptAtStart) });
       subscribe(runId, false);
@@ -492,13 +498,40 @@ export function YAMLLoadRunSession({
         isStopping={isStopping}
         isRunning={isRunning}
         documentReady={documentReady}
-        hasValidationErrors={hasValidationErrors || incompatibleMulti}
+        hasValidationErrors={hasValidationErrors || incompatibleMulti || Boolean(optionsError)}
         yamlCode={yamlCode}
         multiScenario={isMultiScenario}
         onStartRun={startRun}
         onStopRun={stopRun}
       />
 
+      <RunExecutionOptions
+        disabled={isRunning || isStopping}
+        multi={isMultiScenario}
+        onChange={setExecutionOptions}
+        onError={setOptionsError}
+      />
+      {optionsError && <RunErrorBanner message={optionsError} />}
+      {summary && activeRunIdRef.current && (
+        <div className="flex flex-wrap items-center gap-2 border-b border-white/10 px-4 py-2 text-xs">
+          <span>{language === 'es' ? 'Exportar resultados:' : 'Export results:'}</span>
+          {['json', 'csv', 'txt', 'json-all'].map(format => (
+            <button
+              key={format}
+              className="rounded border border-white/15 px-2 py-1 hover:border-yellow-400"
+              onClick={() => {
+                setExportError('');
+                void downloadLocalRunReport(activeRunIdRef.current!, format).catch(cause =>
+                  setExportError(String(cause.message || cause)),
+                );
+              }}
+            >
+              {format === 'json-all' ? (language === 'es' ? 'JSON completo' : 'Full JSON') : format.toUpperCase()}
+            </button>
+          ))}
+          {exportError && <span role="alert">{exportError}</span>}
+        </div>
+      )}
       {(usesOnlyFallbackLoad || fallbackScenarioNames.length > 0) && (
         <p
           role="status"
@@ -705,7 +738,10 @@ function RunToolbar({
 }) {
   const { t } = useLanguage();
   return (
-    <div data-studio-execution-toolbar className="border-b border-white/5 px-5 py-3">
+    <div
+      data-studio-execution-toolbar
+      className="border-b border-white/5 px-5 py-3"
+    >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">

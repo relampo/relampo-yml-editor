@@ -55,8 +55,7 @@ export function normalizeLoadSegments(value: unknown, fallback: LoadSegmentData[
     return fallback.map(segment => ({ ...segment }));
   }
   const segments = value.filter(
-    (segment): segment is LoadSegmentData =>
-      segment !== null && typeof segment === 'object' && !Array.isArray(segment),
+    (segment): segment is LoadSegmentData => segment !== null && typeof segment === 'object' && !Array.isArray(segment),
   );
   return segments.length > 0 ? segments : fallback.map(segment => ({ ...segment }));
 }
@@ -197,7 +196,14 @@ const loadTypeDefaults: Record<LoadType, LoadData> = {
     iterations: '0',
     segments: [
       { name: 'baseline', duration: '15m', transition: 'constant', target_rps: '5', min_vus: '0', max_vus: '20' },
-      { name: 'checkout_pressure', duration: '15m', transition: 'constant', target_rps: '25', min_vus: '5', max_vus: '100' },
+      {
+        name: 'checkout_pressure',
+        duration: '15m',
+        transition: 'constant',
+        target_rps: '25',
+        min_vus: '5',
+        max_vus: '100',
+      },
       { name: 'fixed_users', duration: '15m', transition: 'ramp_down', target_vus: '50' },
       { name: 'recovery', duration: '15m', transition: 'constant', target_rps: '5', min_vus: '0', max_vus: '20' },
     ],
@@ -279,7 +285,11 @@ export function isValidDuration(value: unknown): boolean {
 export function areDurationsEqual(leftSeconds: number, rightSeconds: number): boolean {
   const leftNanoseconds = Math.round(leftSeconds * 1_000_000_000);
   const rightNanoseconds = Math.round(rightSeconds * 1_000_000_000);
-  return Number.isSafeInteger(leftNanoseconds) && Number.isSafeInteger(rightNanoseconds) && leftNanoseconds === rightNanoseconds;
+  return (
+    Number.isSafeInteger(leftNanoseconds) &&
+    Number.isSafeInteger(rightNanoseconds) &&
+    leftNanoseconds === rightNanoseconds
+  );
 }
 
 export function sumDurationSeconds(seconds: number[]): number {
@@ -295,10 +305,7 @@ export function sumDurationSeconds(seconds: number[]): number {
     return { coefficient: BigInt(integer + fraction), scale: fraction.length - Number(exponent) };
   });
   const scale = decimals.reduce((maximum, decimal) => Math.max(maximum, decimal.scale), 0);
-  const total = decimals.reduce(
-    (sum, decimal) => sum + decimal.coefficient * 10n ** BigInt(scale - decimal.scale),
-    0n,
-  );
+  const total = decimals.reduce((sum, decimal) => sum + decimal.coefficient * 10n ** BigInt(scale - decimal.scale), 0n);
   return Number(`${total}e-${scale}`);
 }
 
@@ -317,8 +324,14 @@ export interface SegmentDurationSummary {
 export function isTerminalZeroSegment(segments: LoadSegmentData[], index: number): boolean {
   const segment = segments[index];
   const target = String(segment?.target_vus ?? '').trim();
-  return index > 0 && index === segments.length - 1 && segment?.transition === 'constant' &&
-    target !== '' && Number(target) === 0 && String(segment.target_rps ?? '').trim() === '';
+  return (
+    index > 0 &&
+    index === segments.length - 1 &&
+    segment?.transition === 'constant' &&
+    target !== '' &&
+    Number(target) === 0 &&
+    String(segment.target_rps ?? '').trim() === ''
+  );
 }
 
 export function getSegmentDurationSummary(rootDuration: unknown, segments: LoadSegmentData[]): SegmentDurationSummary {
@@ -328,15 +341,18 @@ export function getSegmentDurationSummary(rootDuration: unknown, segments: LoadS
   const explicitDurationCount = segmentDurationValues.filter(value => value !== '').length;
   const hasSegmentDurations = explicitDurationCount > 0;
   const allSegmentDurationsValid = segmentDurationValues.every(
-    (value, index) => value !== '' && isValidDuration(value) && (parseTimeToSeconds(value) > 0 ||
-      isTerminalZeroSegment(segments, index)),
+    (value, index) =>
+      value !== '' &&
+      isValidDuration(value) &&
+      (parseTimeToSeconds(value) > 0 || isTerminalZeroSegment(segments, index)),
   );
   const hasMixedDurations = hasSegmentDurations && explicitDurationCount !== segments.length;
-  const rootDurationValid =
-    rootDurationValue === '' || (isValidDuration(rootDurationValue) && rootSeconds > 0);
+  const rootDurationValid = rootDurationValue === '' || (isValidDuration(rootDurationValue) && rootSeconds > 0);
   const segmentSeconds = sumDurationSeconds(segmentDurationValues.map(duration => parseTimeToSeconds(duration)));
   const matches =
-    segments.length > 0 && rootDurationValid && allSegmentDurationsValid &&
+    segments.length > 0 &&
+    rootDurationValid &&
+    allSegmentDurationsValid &&
     (rootDurationValue === '' || areDurationsEqual(rootSeconds, segmentSeconds));
 
   return {
@@ -610,9 +626,21 @@ export function buildLoadDataForType(
 }
 
 export function normalizeLoadDataForYaml(data: LoadData | Record<string, unknown> = {}): LoadData {
-  const rawData = data as Record<string, unknown>;
+  const rawData = Object.fromEntries(Object.entries(data).filter(([key]) => !key.startsWith('__'))) as Record<
+    string,
+    unknown
+  >;
   const scalarData = toLoadData(rawData);
   const loadType = normalizeLoadType(rawData.type);
+  const owned = new Set([
+    ...Object.values(loadTypeAllowedKeys).flat(),
+    'target',
+    'latency',
+    'error_rate',
+    'vusers',
+    'control_window',
+  ]);
+  const extra = Object.fromEntries(Object.entries(rawData).filter(([key]) => !key.startsWith('__') && !owned.has(key)));
 
   if (loadType === 'intent') {
     const normalizedIntent = buildLoadDataForType(loadType, scalarData, {
@@ -637,7 +665,7 @@ export function normalizeLoadDataForYaml(data: LoadData | Record<string, unknown
     if (Array.isArray(rawData.stages)) {
       (normalizedIntent as Record<string, unknown>).stages = rawData.stages;
     }
-    return normalizedIntent;
+    return { ...extra, ...normalizedIntent } as LoadData;
   }
 
   if (loadType === 'segments') {
@@ -651,7 +679,7 @@ export function normalizeLoadDataForYaml(data: LoadData | Record<string, unknown
         isTerminalZeroSegment(segments, index) ? { ...segment, target_vus: 0 } : segment,
       );
     }
-    return normalizedSegments;
+    return { ...extra, ...normalizedSegments } as LoadData;
   }
   const normalized = {
     ...rawData,

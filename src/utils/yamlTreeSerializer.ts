@@ -1,7 +1,7 @@
 import { protocolData } from './protocolChildren';
 import { authoredNodeData } from './yamlAuthoredData';
 import type { YAMLNode } from '../types/yaml';
-import { normalizeLoadDataForYaml, toLoadData } from '../components/yaml-node-details/loadUtils';
+import { normalizeLoadDataForYaml } from '../components/yaml-node-details/loadUtils';
 import {
   isBalancedLoadBearingChild,
   normalizeBalancedDistributionType,
@@ -200,7 +200,7 @@ function scenarioNodeToObject(node: YAMLNode): any {
   for (const child of node.children) {
     if (child.type === 'load') {
       if (child.data?.__loadSelected !== false) {
-        scenario.load = normalizeLoadDataForYaml(toLoadData(child.data as Record<string, unknown> | undefined));
+        scenario.load = normalizeLoadDataForYaml(child.data as Record<string, unknown> | undefined);
       }
       if (child.data?.__loadProfiles && typeof child.data.__loadProfiles === 'object') {
         scenario['x-studio-load-profiles'] = child.data.__loadProfiles;

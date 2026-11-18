@@ -9,6 +9,8 @@ import type { RelayTicket } from './relayTransport';
 export type AgentUnavailableReason = 'plan' | 'license' | 'offline' | 'not_selected';
 
 export interface AgentState {
+  /** Opaque plan/machine identity supplied by the host; never a credential. */
+  contextId?: string;
   connected: boolean;
   /**
    * Why the machine is not available. `refused` does not come from the web
@@ -39,6 +41,9 @@ function receiveAgentState(event: MessageEvent): void {
   if (message?.type !== 'relampo:agent-state' || typeof message.connected !== 'boolean') return;
   setState({
     connected: message.connected,
+    ...(typeof message.contextId === 'string' && message.contextId.length <= 1024
+      ? { contextId: message.contextId }
+      : {}),
     ...(REASONS.includes(message.reason) ? { reason: message.reason as AgentUnavailableReason } : {}),
   });
 }
@@ -150,7 +155,10 @@ export async function requestLogic(kind: LogicKind, input: unknown): Promise<obj
   if (!answer) throw new LogicError('timeout');
   const { result, error, message } = answer;
   if (typeof result === 'object' && result !== null) return result;
-  throw new LogicError(typeof error === 'string' ? error : 'internal', typeof message === 'string' ? message : undefined);
+  throw new LogicError(
+    typeof error === 'string' ? error : 'internal',
+    typeof message === 'string' ? message : undefined,
+  );
 }
 
 const UNAVAILABLE: Record<AgentUnavailableReason | 'refused' | 'unknown', [en: string, es: string]> = {

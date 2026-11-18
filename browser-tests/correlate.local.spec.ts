@@ -110,14 +110,14 @@ async function setup(context: BrowserContext) {
   );
   return { count: () => analysisCalls, analyzed: () => lastAnalysis, applied: () => lastApply };
 }
-async function openCorrelate(page: Page) {
+async function openCorrelate(page: Page, candidateId='1') {
   const pending = page.waitForEvent('popup');
   await page.getByRole('button', { name: 'Correlate', exact: true }).click();
   const tab = await pending;
   await expect(tab).toHaveURL(/\/correlate/);
   await expect(tab.getByLabel('Select candidate 1')).toHaveCount(0);
   await tab.getByRole('button', { name: 'Analyze', exact: true }).click();
-  await expect(tab.getByLabel('Select candidate 1')).toBeVisible();
+  await expect(tab.getByLabel(`Select candidate ${candidateId}`)).toBeVisible();
   return tab;
 }
 test('Correlate analyzes the current script, applies selected rows, saves and updates the source before closing', async ({
@@ -282,4 +282,17 @@ test('loading from Studio or a file waits for Analyze and the right panel is wid
   const right = await tab.getByRole('region', { name: 'Correlation candidates' }).boundingBox();
   expect(right!.width).toBeGreaterThan(left!.width * 2);
   await tab.close();
+});
+
+test('confidence filtering preserves the original candidate ID when applying',async({page,context})=>{
+ const state=await setup(context);
+ await context.route('**/api/correlate/analyze',route=>route.fulfill({json:{digest:'filtered',requests:2,responses:1,scores:{'42':0.4,'99':0.95},candidates:[{...candidate,id:'42',variable:'low_confidence'},{...candidate,id:'99',variable:'high_confidence'}]}}));
+ await page.goto('/');
+ await expect(page.getByRole('treeitem',{name:/Original script/})).toBeVisible();
+ const tab=await openCorrelate(page,'42');
+ await tab.getByLabel('Minimum confidence').fill('0.9');
+ await expect(tab.getByLabel('Select candidate 42')).toHaveCount(0);
+ await tab.getByLabel('Select candidate 99').check();
+ await tab.getByRole('button',{name:'Correlate',exact:true}).click();
+ await expect.poll(()=>state.applied()?.selectedIds).toEqual(['99']);
 });

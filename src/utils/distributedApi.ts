@@ -1,6 +1,8 @@
+import type {ExecutionProject} from './executionProject';
 import { agentRequest } from './agentTransport';
 
 export interface DistributedConfig {
+  workspace?: Pick<ExecutionProject,'scriptPath'|'files'>;
   provider: 'github' | 'gitlab';
   repository: string;
   host?: string;
@@ -63,6 +65,7 @@ export interface DistributedNode {
   };
 }
 export interface DistributedState {
+  scope_history?: Record<string,DistributedPoint[]>;
   id: string;
   status: string;
   stage: string;
