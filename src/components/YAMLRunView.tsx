@@ -1,5 +1,3 @@
-import { RunExecutionOptions } from './RunExecutionOptions';
-import { downloadLocalRunReport, type RunOverrides } from '../utils/runApi';
 import { SQLResultTable } from './SQLResultTable';
 import { AgentFileLink } from './AgentFileLink';
 import { GRPCRequestMetrics } from './grpc/GRPCRequestMetrics';
@@ -310,9 +308,6 @@ export function YAMLLoadRunSession({
   componentCapabilities,
 }: YAMLLoadRunSessionProps) {
   const { t, language } = useLanguage();
-  const [executionOptions, setExecutionOptions] = useState<RunOverrides>();
-  const [optionsError, setOptionsError] = useState('');
-  const [exportError, setExportError] = useState('');
   const [runState, dispatch] = useReducer(loadRunReducer, initialLoadRunState);
   const { snapshots, isRunning, isStopping, runError, runStatus, summary, logs, sqlResults } = runState;
 
@@ -442,10 +437,8 @@ export function YAMLLoadRunSession({
     stopRequestedRef.current = false;
     dispatch({ type: 'run_started' });
     try {
-      if (optionsError) throw Error(optionsError);
-      const runId =
-        executionOptions || fileName
-          ? await startLoadRun(scriptAtStart, componentCapabilities, executionOptions, fileName)
+      const runId = fileName
+          ? await startLoadRun(scriptAtStart, componentCapabilities, undefined, fileName)
           : componentCapabilities
             ? await startLoadRun(scriptAtStart, componentCapabilities)
             : await startLoadRun(scriptAtStart);
@@ -499,40 +492,13 @@ export function YAMLLoadRunSession({
         isStopping={isStopping}
         isRunning={isRunning}
         documentReady={documentReady}
-        hasValidationErrors={hasValidationErrors || incompatibleMulti || Boolean(optionsError)}
+        hasValidationErrors={hasValidationErrors || incompatibleMulti}
         yamlCode={yamlCode}
         multiScenario={isMultiScenario}
         onStartRun={startRun}
         onStopRun={stopRun}
       />
 
-      <RunExecutionOptions
-        disabled={isRunning || isStopping}
-        multi={isMultiScenario}
-        onChange={setExecutionOptions}
-        onError={setOptionsError}
-      />
-      {optionsError && <RunErrorBanner message={optionsError} />}
-      {summary && activeRunIdRef.current && (
-        <div className="flex flex-wrap items-center gap-2 border-b border-white/10 px-4 py-2 text-xs">
-          <span>{language === 'es' ? 'Exportar resultados:' : 'Export results:'}</span>
-          {['json', 'csv', 'txt', 'json-all'].map(format => (
-            <button
-              key={format}
-              className="rounded border border-white/15 px-2 py-1 hover:border-yellow-400"
-              onClick={() => {
-                setExportError('');
-                void downloadLocalRunReport(activeRunIdRef.current!, format).catch(cause =>
-                  setExportError(String(cause.message || cause)),
-                );
-              }}
-            >
-              {format === 'json-all' ? (language === 'es' ? 'JSON completo' : 'Full JSON') : format.toUpperCase()}
-            </button>
-          ))}
-          {exportError && <span role="alert">{exportError}</span>}
-        </div>
-      )}
       {(usesOnlyFallbackLoad || fallbackScenarioNames.length > 0) && (
         <p
           role="status"
