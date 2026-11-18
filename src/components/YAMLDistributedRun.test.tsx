@@ -149,7 +149,7 @@ describe('distributed execution', () => {
       expect.stringContaining('/api/distributed/run/drun-1/report/csv?download=1'),
     );
     expect(screen.queryByRole('link', { name: 'Descargar JSON' })).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Ver reportes en el repositorio' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Ver reportes' })).toHaveAttribute(
       'href',
       expect.stringContaining('relampo-report-42-1'),
     );

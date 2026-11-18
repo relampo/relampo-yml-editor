@@ -1,4 +1,3 @@
-import { DistributedLogPanel } from './DistributedLogPanel';
 import { useMemo, type ReactNode } from 'react';
 import { ExternalLink, RotateCcw, Square } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -68,6 +67,7 @@ export function DistributedResults({
   const selected = state.scopes.find(item => item.key === scope) ?? state.scopes.find(item => item.key === 'global');
   const remoteURL = safeProviderURL(state.url),
     reportsURL = safeProviderURL(state.reports_url);
+  const logProvider = remoteURL && new URL(remoteURL).pathname.includes('/actions/runs/') ? 'GitHub' : 'GitLab';
   const formats = state.report_formats ?? ['html', 'json', 'csv', 'txt'];
   const htmlPath = state.reports_ready && formats.includes('html') ? distributedReportPath(runId, 'html') : undefined;
   const finished = ['completed', 'errored', 'stopped'].includes(state.status);
@@ -81,8 +81,8 @@ export function DistributedResults({
     !reportFailed &&
     (state.run_id || state.error.length > 300 || /[\r\n]/.test(state.error)
       ? t(
-          'La ejecución distribuida terminó con un error. Consulta Ver ejecución para ver el detalle.',
-          'The distributed execution ended with an error. Open View execution for details.',
+          'La ejecución distribuida terminó con un error. Consulta los logs de la ejecución para ver el detalle.',
+          'The distributed execution ended with an error. Open the execution logs for details.',
         )
       : state.error);
   const profile = useMemo(() => {
@@ -152,7 +152,18 @@ export function DistributedResults({
                 className={buttonClass}
               >
                 <ExternalLink size={15} />
-                {t('Ver ejecución', 'View execution')}
+                {t('Ver logs en', 'View logs in')} {logProvider}
+              </a>
+            )}
+            {state.reports_ready && reportsURL && (
+              <a
+                href={reportsURL}
+                target="_blank"
+                rel="noreferrer"
+                className={buttonClass}
+              >
+                <ExternalLink size={15} />
+                {t('Ver reportes', 'View reports')}
               </a>
             )}
             {active && state.run_id && (
@@ -188,7 +199,7 @@ export function DistributedResults({
                     {t('Descargar', 'Download')} {format.toUpperCase()}
                   </AgentFileLink>
                 ))}
-              {reportsURL && (
+              {reportsURL && !state.reports_ready && (
                 <a
                   className="inline-flex items-center gap-1.5 text-xs text-zinc-400 underline decoration-white/20 underline-offset-4 hover:text-yellow-300"
                   href={reportsURL}
@@ -347,7 +358,6 @@ export function DistributedResults({
           </div>
         </details>
       )}
-      <DistributedLogPanel history={state.history} />
       <p className="text-xs text-zinc-500">
         {t(
           'Percentiles aproximados por histogramas combinados. El reporte completo conserva los resultados canónicos.',
