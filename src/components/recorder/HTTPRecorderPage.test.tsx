@@ -227,7 +227,7 @@ it('passes every configured CLI option to the recorder and opens only the saved 
     target: { value: 'https://app.test/home' },
   });
   fireEvent.change(screen.getByLabelText('Grouping'), { target: { value: 'transaction' } });
-  fireEvent.click(screen.getByLabelText('Mask sensitive values in YAML and previews'));
+  fireEvent.click(screen.getByLabelText('Mask sensitive values in recording previews'));
   fireEvent.click(screen.getByLabelText('Keep original compressed response bodies (legacy)'));
   fireEvent.click(screen.getByLabelText('Overwrite the output YAML if it already exists'));
   fireEvent.click(screen.getByLabelText('Configure and open Firefox automatically'));
