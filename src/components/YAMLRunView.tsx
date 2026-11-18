@@ -42,6 +42,7 @@ import {
   type RunStatus,
   type RunSummary,
 } from '../utils/runApi';
+import { LoadIterationLimitNotice } from './yaml-node-details/LoadIterationLimitNotice';
 import { LoadVisualization } from './yaml-node-details/LoadVisualization';
 import { normalizeLoadType, parseTimeToSeconds, toLoadData, type LoadType } from './yaml-node-details/loadUtils';
 import { normalizeBalancedExecutionMode } from '../utils/balancedController';
@@ -936,6 +937,9 @@ function PlannedLoadProfilePanel({
           </span>
         )}
       </div>
+      {!iterationBudgetCapsDuration && (
+        <LoadIterationLimitNotice data={toLoadData(plannedLoadNode.data as Record<string, unknown> | undefined)} />
+      )}
       {iterationBudgetCapsDuration && (
         <div className="mb-3 flex items-start gap-2 rounded border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-[11px] text-amber-200">
           <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />

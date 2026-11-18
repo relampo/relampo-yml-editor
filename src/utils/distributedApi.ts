@@ -56,6 +56,7 @@ export interface DistributedNode {
   state: string;
   updated_at: string;
   progress: {
+    started_at?: string;
     final: boolean;
     active_vus: number;
     peak_vus: number;

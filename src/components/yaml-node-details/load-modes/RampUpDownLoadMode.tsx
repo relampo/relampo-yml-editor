@@ -7,7 +7,13 @@ export function RampUpDownLoadMode({ data, onChange }: LoadModeProps) {
   const fields = [
     { field: 'users', label: t('studioControls.users'), placeholder: '50', type: 'number' },
     { field: 'duration', label: t('studioControls.duration'), placeholder: '10m', helpText: durationHelp },
-    { field: 'iterations', label: t('studioControls.iterations'), placeholder: '0', type: 'number' },
+    {
+      field: 'iterations',
+      label: t('studioControls.iterations'),
+      placeholder: '0',
+      type: 'number',
+      helpText: t('studioControls.iterationsHelp'),
+    },
     { field: 'ramp_up', label: t('studioControls.rampUp'), placeholder: '1m', helpText: durationHelp },
     { field: 'ramp_down', label: t('yamlEditor.nodeDetails.load.rampDown'), placeholder: '1m', helpText: durationHelp },
   ] as const;

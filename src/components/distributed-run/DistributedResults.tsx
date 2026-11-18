@@ -12,11 +12,13 @@ import {
 import { AgentFileLink } from '../AgentFileLink';
 import { parseYAMLToTree } from '../../utils/yamlParser';
 import type { YAMLNode } from '../../types/yaml';
+import { LoadIterationLimitNotice } from '../yaml-node-details/LoadIterationLimitNotice';
 import { LoadVisualization } from '../yaml-node-details/LoadVisualization';
-import { normalizeLoadType, toLoadData } from '../yaml-node-details/loadUtils';
+import { normalizeLoadType, parseTimeToSeconds, toLoadData } from '../yaml-node-details/loadUtils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { DistributedNotice as Notice, DistributedChart as LiveChart } from './DistributedFeedback';
+import { DistributedNotice as Notice } from './DistributedFeedback';
 import { DistributedSummary } from './DistributedSummary';
+import { DistributedTimeline } from './DistributedTimeline';
 const buttonClass =
   'inline-flex items-center justify-center gap-2 rounded-lg border border-white/15 px-3 py-2 text-sm text-zinc-200 hover:bg-white/5 disabled:opacity-40';
 const stages: Record<string, [string, string]> = {
@@ -97,6 +99,17 @@ export function DistributedResults({
       return { loads: [], hasTransactions: undefined };
     }
   }, [yamlCode]);
+  const singleLoad = profile.loads.length === 1 ? profile.loads[0].node.data : undefined;
+  const durationSeconds = parseTimeToSeconds(plan?.duration ?? String(singleLoad?.duration ?? ''));
+  const fixedType = normalizeLoadType(singleLoad?.type);
+  const rawUsers =
+    singleLoad && ['constant', 'linear', 'ramp_up_down'].includes(fixedType)
+      ? Math.max(Number(singleLoad.users ?? 0), Number(singleLoad.start_users ?? 0), Number(singleLoad.end_users ?? 0))
+      : undefined;
+  const configuredUsers =
+    scope === 'global' ? (plan?.users ?? (Number.isFinite(rawUsers) ? rawUsers : undefined)) : undefined;
+  const starts = state.nodes.map(node => Date.parse(node.progress.started_at ?? '')).filter(Number.isFinite);
+  const startedAt = starts.length ? new Date(Math.min(...starts)).toISOString() : undefined;
   const stale = state.nodes.some(node => !node.progress.final && Date.now() - Date.parse(node.updated_at) > 60000);
   return (
     <section
@@ -176,26 +189,13 @@ export function DistributedResults({
             ))}
         </SelectContent>
       </Select>
-      <div className="grid gap-3 lg:grid-cols-3">
-        <LiveChart
-          label={t('Tasa de peticiones (intervalo)', 'Request rate (interval)')}
-          points={points}
-          field="rps"
-          color="#facc15"
-        />
-        <LiveChart
-          label={t('Latencia P95', 'P95 latency')}
-          points={points}
-          field="p95_ms"
-          color="#60a5fa"
-        />
-        <LiveChart
-          label={t('VUs activos', 'Active VUs')}
-          points={points}
-          field="active_vus"
-          color="#a1a1aa"
-        />
-      </div>
+      <DistributedTimeline
+        key={runId}
+        points={points}
+        startedAt={startedAt}
+        durationSeconds={durationSeconds}
+        configuredUsers={configuredUsers}
+      />
       {sampleTime && Number.isFinite(sampleTime.getTime()) && (
         <p className="text-xs text-zinc-400">
           {t('Última muestra confirmada:', 'Last confirmed sample:')}{' '}
@@ -223,6 +223,7 @@ export function DistributedResults({
               {t('Perfil de carga planificado', 'Planned load profile')}
               {profile.loads.length > 1 ? ` · ${item.scenario}` : ''}
             </h3>
+            <LoadIterationLimitNotice data={toLoadData(item.node.data as Record<string, unknown> | undefined)} />
             <LoadVisualization
               data={toLoadData(item.node.data as Record<string, unknown> | undefined)}
               loadType={normalizeLoadType(item.node.data?.type)}

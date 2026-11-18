@@ -6,8 +6,19 @@ export function RampLoadMode({ data, onChange }: LoadModeProps) {
   const fields = [
     { field: 'start_users', label: t('yamlEditor.nodeDetails.load.startUsers'), placeholder: '1', type: 'number' },
     { field: 'end_users', label: t('yamlEditor.nodeDetails.load.endUsers'), placeholder: '100', type: 'number' },
-    { field: 'duration', label: t('studioControls.duration'), placeholder: '10m', helpText: t('studioControls.durationHelp') },
-    { field: 'iterations', label: t('studioControls.iterations'), placeholder: '0', type: 'number' },
+    {
+      field: 'duration',
+      label: t('studioControls.duration'),
+      placeholder: '10m',
+      helpText: t('studioControls.durationHelp'),
+    },
+    {
+      field: 'iterations',
+      label: t('studioControls.iterations'),
+      placeholder: '0',
+      type: 'number',
+      helpText: t('studioControls.iterationsHelp'),
+    },
   ] as const;
   return (
     <LoadSection

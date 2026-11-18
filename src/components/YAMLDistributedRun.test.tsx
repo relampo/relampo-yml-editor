@@ -222,7 +222,8 @@ describe('distributed execution', () => {
     expect(
       within(screen.getByRole('region', { name: 'Resumen de la ejecución' })).getByText('9.4'),
     ).toBeInTheDocument();
-    expect(screen.getByRole('img', { name: 'Latencia P95' }).parentElement).toHaveTextContent('—');
+    fireEvent.click(screen.getByRole('button', { name: 'P95' }));
+    expect(screen.getByRole('group', { name: 'Valores del timeline' })).toHaveTextContent('P95: —');
   });
   it('keeps nodes out of Connection and invalidates the plan when report selection changes', async () => {
     mount();
@@ -516,6 +517,9 @@ it('updates counters before completion and retains received metrics when report 
     const summary = screen.getByRole('region', { name: 'Resumen de la ejecución' });
     expect(within(summary).getByText('10', { exact: true })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Cancelar ejecución remota' })).toBeEnabled();
+    expect(screen.queryByRole('img', { name: 'Tasa de peticiones (intervalo)' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: 'Latencia P95' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: 'VUs activos' })).not.toBeInTheDocument();
     await advance(1000);
     expect(within(summary).getByText('20', { exact: true })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Cancelar ejecución remota' })).toBeEnabled();

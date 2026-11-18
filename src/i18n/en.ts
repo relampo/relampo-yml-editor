@@ -47,7 +47,7 @@ export const enTranslations = {
     rampUp: 'Ramp Up',
     usersHelp: 'Number of concurrent virtual users.',
     durationHelp: 'Default unit: seconds. Examples: 500ms, 5s, 5m.',
-    iterationsHelp: 'Optional limit for how many times each virtual user repeats the scenario.',
+    iterationsHelp: '0 means no iteration limit. A positive value stops each user after that many repetitions, even if the configured duration has not ended.',
     selectedLoadModel: 'Active load model',
     loadSelectionHelp: 'Explore and edit any mode. Activate it when you are ready.',
     activateLoadModel: 'Activate this mode',

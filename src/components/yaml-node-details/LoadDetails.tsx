@@ -2,6 +2,7 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { Check, Crosshair, Gauge, ListTree, Mountain, TrendingUp, Users } from 'lucide-react';
 import { useId, useState } from 'react';
 import { LoadVisualization } from './LoadVisualization';
+import { LoadIterationLimitNotice } from './LoadIterationLimitNotice';
 import {
   buildLoadDataForType,
   getIntentAutoConfig,
@@ -149,6 +150,8 @@ export function LoadDetails({ node, onNodeUpdate }: NodeDetailProps) {
         loadType={loadType}
         onChange={handleChange}
       />
+
+      <LoadIterationLimitNotice data={loadData} onUseDuration={() => saveProfile({ ...loadData, iterations: '0' })} />
 
       {loadType !== 'intent' && loadType !== 'segments' && (
         <ManualStopControl
