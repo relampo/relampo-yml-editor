@@ -550,7 +550,10 @@ it('updates counters before completion and retains received metrics when report 
     expect(within(summary).getByText('20', { exact: true })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Cancelar ejecución remota' })).toBeEnabled();
     await advance(1000);
-    expect(screen.getByText(/La carga terminó; falló la generación o publicación del reporte/)).toBeInTheDocument();
+    expect(
+      screen.queryByText(/La carga terminó; falló la generación o publicación del reporte/),
+    ).not.toBeInTheDocument();
+    expect(screen.getAllByText('Error en el reporte').length).toBeGreaterThan(0);
     expect(screen.queryByText(/remote execution continues/)).not.toBeInTheDocument();
     expect(screen.getByRole('group', { name: 'Valores del timeline' })).toHaveTextContent('RPS: 0 req/s');
     expect(screen.getByRole('group', { name: 'Valores del timeline' })).not.toHaveTextContent('62.3');

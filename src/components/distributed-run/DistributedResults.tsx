@@ -72,19 +72,17 @@ export function DistributedResults({
   const reportFailed = state.status === 'errored' && state.stage === 'generating_report';
   const latestSample = points.at(-1)?.at;
   const sampleTime = latestSample ? new Date(latestSample) : null;
+  // Temporarily suppress the report-generation banner; the real report status
+  // and execution links remain available, and load failures still show errors.
   const errorMessage =
     state.error &&
-    (reportFailed
+    !reportFailed &&
+    (state.run_id || state.error.length > 300 || /[\r\n]/.test(state.error)
       ? t(
-          'La carga terminó; falló la generación o publicación del reporte. Consulta la ejecución del reporte en GitHub o GitLab.',
-          'The load finished; report generation or publication failed. Check the report execution in GitHub or GitLab.',
+          'La ejecución distribuida terminó con un error. Consulta Ver ejecución para ver el detalle.',
+          'The distributed execution ended with an error. Open View execution for details.',
         )
-      : state.run_id || state.error.length > 300 || /[\r\n]/.test(state.error)
-        ? t(
-            'La ejecución distribuida terminó con un error. Consulta Ver ejecución para ver el detalle.',
-            'The distributed execution ended with an error. Open View execution for details.',
-          )
-        : state.error);
+      : state.error);
   const profile = useMemo(() => {
     try {
       const tree = parseYAMLToTree(yamlCode);
