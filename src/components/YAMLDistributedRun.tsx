@@ -101,7 +101,15 @@ export function YAMLDistributedRun({
   const [scope, setScope] = useState('global');
   const [files, setFiles] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [fileAction, setFileAction] = useState('upload');
   const projectKey = `${provider}:${host}:${repository}`;
+  const [appliedProject, setAppliedProject] = useState<string | null>(null);
+  const projectApplyKey = (script: string) =>
+    JSON.stringify([projectKey, fileName || 'studio.yaml', fingerprint(script)]);
+  const filesApplied =
+    appliedProject === projectApplyKey(yamlCode) &&
+    selectedFiles.length === 0 &&
+    !(fileAction === 'remove' && files.trim());
   const [publishedFiles, setPublishedFiles] = useState<
     { action: string; path: string; target: string; repositoryKey: string }[]
   >([]);
@@ -126,7 +134,6 @@ export function YAMLDistributedRun({
       document.removeEventListener('keydown', closeOnEscape);
     };
   }, []);
-  const [fileAction, setFileAction] = useState('upload');
   const [reviewed, setReviewed] = useState(false);
   const [connectionError, setConnectionError] = useState('');
   const active = !!runId && (!state || state.status === 'running' || state.status === 'stopping');
@@ -262,6 +269,10 @@ export function YAMLDistributedRun({
       const snapshot = await requestExecutionProject(fileName);
       setProject(snapshot);
       const request = config(flushPendingEdits(), snapshot);
+      if (!filesApplied || appliedProject !== projectApplyKey(request.yaml))
+        throw new Error(
+          text('Aplica el proyecto y los archivos antes de ejecutar.', 'Apply the project and files before running.'),
+        );
       const result = await prepareDistributed(request);
       planRequest.current = request;
       reviewedProjectFiles.current = JSON.stringify(projectFiles);
@@ -282,6 +293,10 @@ export function YAMLDistributedRun({
       const snapshot = await requestExecutionProject(fileName);
       setProject(snapshot);
       const request = config(flushPendingEdits(), snapshot);
+      if (!filesApplied || appliedProject !== projectApplyKey(request.yaml))
+        throw new Error(
+          text('Aplica el proyecto y los archivos antes de ejecutar.', 'Apply the project and files before running.'),
+        );
       if (
         !planRequest.current ||
         JSON.stringify(planRequest.current) !== JSON.stringify(request) ||
@@ -397,6 +412,7 @@ export function YAMLDistributedRun({
               disabled={
                 disabled ||
                 !documentReady ||
+                !filesApplied ||
                 !yamlCode.trim() ||
                 validationErrors.length > 0 ||
                 !repository.trim() ||
@@ -643,6 +659,7 @@ export function YAMLDistributedRun({
                           ...current.filter(file => file.repositoryKey !== projectKey || !targets.has(file.target)),
                           ...changes,
                         ]);
+                        if (fileAction !== 'remove') setAppliedProject(projectApplyKey(request.yaml));
                         setPlan(null);
                         setSelectedFiles([]);
                         setFiles('');
@@ -652,6 +669,14 @@ export function YAMLDistributedRun({
                     {text('Aplicar', 'Apply')}
                   </button>
                 </div>
+                {!filesApplied && (
+                  <p className="text-xs text-zinc-400">
+                    {text(
+                      'Aplica el proyecto y los archivos antes de ejecutar.',
+                      'Apply the project and files before running.',
+                    )}
+                  </p>
+                )}
                 {projectFiles.length > 0 && (
                   <p
                     className="text-xs text-yellow-400/80"
@@ -722,14 +747,14 @@ export function YAMLDistributedRun({
               <div className="flex flex-wrap gap-2">
                 <button
                   className={buttonClass}
-                  disabled={disabled || !connected || !planCurrent || !reviewed}
+                  disabled={disabled || !connected || !filesApplied || !planCurrent || !reviewed}
                   onClick={() => void start(true)}
                 >
                   {text('Preparar sin ejecutar', 'Prepare without running')}
                 </button>
                 <button
                   className={`${buttonClass} !border-yellow-400 !bg-yellow-400 !text-black`}
-                  disabled={disabled || !connected || !planCurrent || !reviewed}
+                  disabled={disabled || !connected || !filesApplied || !planCurrent || !reviewed}
                   onClick={() => void start(false)}
                 >
                   <Play size={16} />

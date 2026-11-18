@@ -122,6 +122,8 @@ describe('distributed execution', () => {
     });
     expect(screen.getByRole('button', { name: 'Aplicar acción a los archivos' })).toBeDisabled();
     await selectRepository();
+    expect(screen.getByRole('button', { name: 'Ejecutar' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Aplicar acción a los archivos' }));
     await waitFor(() => expect(screen.getByRole('button', { name: 'Ejecutar' })).toBeEnabled());
     fireEvent.click(screen.getByRole('button', { name: 'Ejecutar' }));
     await screen.findByText('scenarios/data/users.csv');
@@ -155,6 +157,8 @@ describe('distributed execution', () => {
   it('invalidates preparation when load settings change', async () => {
     mount();
     await selectRepository();
+    expect(screen.getByRole('button', { name: 'Ejecutar' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Aplicar acción a los archivos' }));
     await waitFor(() => expect(screen.getByRole('button', { name: 'Ejecutar' })).toBeEnabled());
     fireEvent.click(screen.getByRole('button', { name: 'Ejecutar' }));
     await screen.findByText('scenarios/test.yaml');
@@ -168,6 +172,9 @@ describe('distributed execution', () => {
   it('uses authored resource settings without execution overrides', async () => {
     mount();
     await selectRepository();
+    expect(screen.getByRole('button', { name: 'Ejecutar' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Aplicar acción a los archivos' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Ejecutar' })).toBeEnabled());
     fireEvent.click(screen.getByRole('button', { name: 'Ejecutar' }));
     await waitFor(() => expect(mocks.prepare).toHaveBeenCalled());
     expect(screen.queryByRole('checkbox', { name: /Sobrescribir recursos embebidos/ })).not.toBeInTheDocument();
@@ -220,6 +227,9 @@ describe('distributed execution', () => {
   it('keeps nodes out of Connection and invalidates the plan when report selection changes', async () => {
     mount();
     await selectRepository();
+    expect(screen.getByRole('button', { name: 'Ejecutar' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Aplicar acción a los archivos' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Ejecutar' })).toBeEnabled());
     const nodes = screen.getByRole('button', { name: 'Nodos' });
     expect(nodes.closest('fieldset')).toBeNull();
     expect(nodes).toHaveTextContent('2');
@@ -332,6 +342,7 @@ describe('distributed execution', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Aplicar acción a los archivos' }));
     await screen.findByText('Publication failed');
     expect(screen.queryByText(/archivos subidos/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Ejecutar' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'users.csv' })).toBeInTheDocument();
     await waitFor(() => expect(screen.getByRole('button', { name: 'Aplicar acción a los archivos' })).toBeEnabled());
     expect(mocks.request).not.toHaveBeenCalledWith('run', expect.anything());
@@ -513,4 +524,35 @@ it('updates counters before completion and retains received metrics when report 
   } finally {
     vi.useRealTimers();
   }
+});
+
+it('requires Apply again when the script or selected files change', async () => {
+  const view = (code: string) => (
+    <LanguageProvider>
+      <YAMLDistributedRun
+        enabled
+        yamlCode={code}
+        flushPendingEdits={() => code}
+        documentReady
+        validationErrors={[]}
+      />
+    </LanguageProvider>
+  );
+  const { rerender } = render(view(yaml));
+  await selectRepository();
+  const run = screen.getByRole('button', { name: 'Ejecutar' });
+  expect(run).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: 'Aplicar acción a los archivos' }));
+  await waitFor(() => expect(run).toBeEnabled());
+  rerender(view(yaml.replace('qa', 'changed')));
+  expect(run).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: 'Aplicar acción a los archivos' }));
+  await waitFor(() => expect(run).toBeEnabled());
+  fireEvent.change(screen.getByLabelText('Archivos del equipo'), {
+    target: { files: [new File(['a,b'], 'new-data.csv')] },
+  });
+  expect(run).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: 'Aplicar acción a los archivos' }));
+  await waitFor(() => expect(run).toBeEnabled());
+  expect(mocks.prepare).not.toHaveBeenCalled();
 });
