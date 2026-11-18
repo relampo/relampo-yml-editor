@@ -309,7 +309,7 @@ it('clears the captured list and response selection while preserving recording c
         firefoxConfigured: true,
         configuredPort: 8888,
       } as any;
-    if (path === 'requests/0')
+    if (path === 'requests/0?showSensitive=true')
       return { request: { body: { username: 'demo' } }, response: { body: { eventId: 12 } } } as any;
     if (path === 'clear') state = { ...idle };
     return state;

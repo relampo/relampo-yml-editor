@@ -57,7 +57,11 @@ it('filters only the view and inspects the selected request and response', async
   expect(await screen.findByText(/username/)).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Response' }));
   expect(screen.getByText(/eventId/)).toBeInTheDocument();
-  expect(httpRecorderRequest).toHaveBeenCalledExactlyOnceWith('requests/1', undefined, expect.any(AbortSignal));
+  expect(httpRecorderRequest).toHaveBeenCalledExactlyOnceWith(
+    'requests/1?showSensitive=true',
+    undefined,
+    expect.any(AbortSignal),
+  );
 });
 it('explains uncaptured responses and reports request preview errors', async () => {
   vi.mocked(httpRecorderRequest).mockRejectedValue(new Error('Request unavailable'));
@@ -102,7 +106,6 @@ it('shows headers, repeated parameters and empty bodies, and reveals HTML as tex
   expect(screen.getByText('This request has no body.')).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Response' }));
   expect(screen.getByText('text/html')).toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: 'Show full content' }));
   expect(await screen.findByText(/<script>window.captured=true/)).toBeInTheDocument();
   expect(container.querySelector('script')).toBeNull();
   expect(container.querySelector('b')).toBeNull();
@@ -111,9 +114,15 @@ it('shows headers, repeated parameters and empty bodies, and reveals HTML as tex
     undefined,
     expect.any(AbortSignal),
   );
+  fireEvent.click(screen.getByRole('button', { name: 'Mask sensitive data' }));
+  expect(await screen.findByText(/Non-JSON body hidden/)).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'https://api.test/events' }));
-  expect(await screen.findByRole('button', { name: 'Show full content' })).toHaveAttribute('aria-pressed', 'false');
-  expect(httpRecorderRequest).toHaveBeenLastCalledWith('requests/1', undefined, expect.any(AbortSignal));
+  expect(await screen.findByRole('button', { name: 'Mask sensitive data' })).toHaveAttribute('aria-pressed', 'true');
+  expect(httpRecorderRequest).toHaveBeenLastCalledWith(
+    'requests/1?showSensitive=true',
+    undefined,
+    expect.any(AbortSignal),
+  );
 });
 it('keeps response headers visible even when response bodies were not captured', async () => {
   vi.mocked(httpRecorderRequest).mockResolvedValue({

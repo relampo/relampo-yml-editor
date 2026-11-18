@@ -114,7 +114,6 @@ for (const mode of ['always-on-top', 'popup fallback'] as const) {
     await details.getByRole('button', { name: 'Response', exact: true }).click();
     await expect(details.locator('pre')).toContainText('live-response');
     await expect(details.getByText('text/html', { exact: true })).toBeVisible();
-    await details.getByRole('button', { name: 'Show full content', exact: true }).click();
     await expect(details.locator('pre')).toHaveText('<html><body>live-response</body></html>');
     await expect(details.locator('iframe,script')).toHaveCount(0);
     expect(calls).not.toContain('stop');

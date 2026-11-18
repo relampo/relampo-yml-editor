@@ -24,8 +24,8 @@ export function HTTPRecorderRequests({
     [preview, setPreview] = useState<HTTPRecordingPreview | null>(null),
     [error, setError] = useState('');
   const { leftPanelWidth, setIsResizing } = useResizePanel(55);
-  const [revealedRequest, setRevealedRequest] = useState<number | null>(null);
-  const showSensitive = selected !== null && revealedRequest === selected;
+  const [maskedRequest, setMaskedRequest] = useState<number | null>(null);
+  const showSensitive = selected !== null && maskedRequest !== selected;
   const es = language === 'es',
     text = (en: string, spanish: string) => (es ? spanish : en);
   const hosts = Array.from(
@@ -146,13 +146,13 @@ export function HTTPRecorderRequests({
                   tabIndex={0}
                   aria-selected={selected === row.id}
                   onClick={() => {
-                    if (selected !== row.id) setRevealedRequest(null);
+                    if (selected !== row.id) setMaskedRequest(null);
                     setSelected(row.id);
                   }}
                   onKeyDown={event => {
                     if (event.key === 'Enter' || event.key === ' ') {
                       event.preventDefault();
-                      if (selected !== row.id) setRevealedRequest(null);
+                      if (selected !== row.id) setMaskedRequest(null);
                       setSelected(row.id);
                     }
                   }}
@@ -169,7 +169,7 @@ export function HTTPRecorderRequests({
                       type="button"
                       className="w-full truncate text-left hover:text-yellow-300"
                       onClick={() => {
-                        if (selected !== row.id) setRevealedRequest(null);
+                        if (selected !== row.id) setMaskedRequest(null);
                         setSelected(row.id);
                       }}
                     >
@@ -209,7 +209,7 @@ export function HTTPRecorderRequests({
       </div>
       <HTTPRecorderExchangeDetails
         showSensitive={showSensitive}
-        onToggleSensitive={() => setRevealedRequest(showSensitive ? null : selected)}
+        onToggleSensitive={() => setMaskedRequest(showSensitive ? selected : null)}
         row={rows.find(row => row.id === selected)}
         preview={preview}
         error={error}
