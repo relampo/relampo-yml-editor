@@ -5,8 +5,8 @@ import { recorderCompactButton, recorderCompactInput } from './HTTPRecorderSetti
 
 /**
  * The controls of an active recording: prefix, transaction, record and stop.
- * The standalone Studio shows them in a popup. Inside the web app they are a
- * view in the frame, because Studio opens no window of its own there.
+ * Both standalone Studio and the web app show them in a separate window.
+ * The web app keeps their state and relay authorization in its owning frame.
  */
 export function HTTPRecorderControls({
   state,
@@ -15,6 +15,7 @@ export function HTTPRecorderControls({
   stopLabel,
   stopHelp,
   onAction,
+  compact = false,
 }: {
   state: HTTPRecordingState;
   busy: string;
@@ -22,6 +23,7 @@ export function HTTPRecorderControls({
   stopLabel: string;
   stopHelp: string;
   onAction: (path: string, body: unknown) => Promise<unknown>;
+  compact?: boolean;
 }) {
   const text = (en: string, es: string) => (language === 'es' ? es : en);
   const [prefix, setPrefix] = useState(''),
@@ -124,15 +126,17 @@ export function HTTPRecorderControls({
           </p>
         </section>
       )}
-      <div className="sticky bottom-0 space-y-1.5 bg-[#0a0a0a] py-1">
+      <div className={compact ? 'grid grid-cols-2 gap-2 py-1' : 'sticky bottom-0 space-y-1.5 bg-[#0a0a0a] py-1'}>
         {state.recording === false && (
           <>
-            <p className="text-[11px] text-zinc-400">
-              {text(
-                'Ready. Capture starts when you press Record.',
-                'Todo listo. Pulsa Grabar para empezar a capturar.',
-              )}
-            </p>
+            {!compact && (
+              <p className="text-[11px] text-zinc-400">
+                {text(
+                  'Ready. Capture starts when you press Record.',
+                  'Todo listo. Pulsa Grabar para empezar a capturar.',
+                )}
+              </p>
+            )}
             <button
               type="button"
               disabled={!!busy}
@@ -149,7 +153,11 @@ export function HTTPRecorderControls({
         <button
           type="button"
           disabled={!!busy}
-          className={recorderCompactButton + ' w-full border-red-400/30 bg-red-400/10 text-red-200 hover:bg-red-400/20'}
+          className={
+            recorderCompactButton +
+            ' w-full border-red-400/30 bg-red-400/10 text-red-200 hover:bg-red-400/20' +
+            (compact && state.recording !== false ? ' col-span-2' : '')
+          }
           onClick={() => void onAction('stop', {})}
         >
           <Square className="h-3 w-3" />

@@ -1,6 +1,6 @@
 import { HTTPRecorderSetup } from './HTTPRecorderSetup';
 import { HTTPRecorderSaved } from './HTTPRecorderSaved';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { CircleDot, Play, Square, Eraser, ExternalLink as ControlsIcon } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { validateSavedEditorURL, openHTTPRecordingControls } from '../../utils/recorderTabs';
@@ -9,13 +9,14 @@ import { RecorderShell } from './RecorderShell';
 import { useHTTPRecorder } from './useHTTPRecorder';
 import { recorderCompactInput as recorderInput, recorderCompactButton as recorderButton } from './HTTPRecorderSettings';
 import { HTTPRecorderRequests } from './HTTPRecorderRequests';
-import { HTTPRecorderControls } from './HTTPRecorderControls';
+import { HTTPRecorderFloatingControls } from './HTTPRecorderFloatingControls';
+import { openRecorderControlWindow } from '../../utils/recorderControlWindow';
 export function HTTPRecorderPage({
   embedded = false,
   onImport,
   onActivityChange,
 }: {
-  /** Inside the web app: no popup, no output file, and the recording goes to the test plan. */
+  /** Inside the web app: floating controls, no output file; recording goes to the test plan. */
   embedded?: boolean;
   onImport?: (yaml: string, name: string) => Promise<void>;
   onActivityChange?: (active: boolean) => void;
@@ -23,7 +24,9 @@ export function HTTPRecorderPage({
   const { language, setLanguage } = useLanguage();
   const es = language === 'es',
     text = (en: string, spanish: string) => (es ? spanish : en);
-  const recorder = useHTTPRecorder(embedded),
+  const [controlsWindow, setControlsWindow] = useState<Window | null>(null);
+  const closeControls = useCallback(() => setControlsWindow(null), []);
+  const recorder = useHTTPRecorder(embedded, controlsWindow),
     { options, update, state, error, setError, busy, ready, firefoxAvailable, firefoxConfigured } = recorder;
   const [opening, setOpening] = useState(false),
     [seconds, setSeconds] = useState(0);
@@ -52,8 +55,13 @@ export function HTTPRecorderPage({
   }, [recording, state.startedAt, state.recordingStartedAt]);
   async function startRecording() {
     if (embedded) {
-      // The controls are a view below. Studio opens no window inside the web app.
-      await recorder.start();
+      const popup = await showEmbeddedControls();
+      if (!popup) return;
+      const current = await recorder.start();
+      if (!current?.active) {
+        popup.close();
+        closeControls();
+      }
       return;
     }
     const popup = openHTTPRecordingControls(language);
@@ -65,6 +73,19 @@ export function HTTPRecorderPage({
     }
     const current = await recorder.start();
     if (!current?.active) popup.close();
+  }
+  async function showEmbeddedControls() {
+    if (controlsWindow && !controlsWindow.closed) {
+      controlsWindow.focus();
+      return controlsWindow;
+    }
+    const popup = await openRecorderControlWindow();
+    if (!popup) {
+      setError(text('Allow the recording control popup.', 'Permite el popup de control de grabación.'));
+      return null;
+    }
+    setControlsWindow(popup);
+    return popup;
   }
   async function openSaved() {
     if (onImport) {
@@ -189,11 +210,15 @@ export function HTTPRecorderPage({
                 {text('Open Firefox', 'Abrir Firefox')}
               </button>
             )}
-            {state.active && !embedded && (
+            {state.active && (
               <button
                 type="button"
                 className={recorderButton}
                 onClick={() => {
+                  if (embedded) {
+                    void showEmbeddedControls();
+                    return;
+                  }
                   if (!openHTTPRecordingControls(language))
                     setError(text('Allow the recording control popup.', 'Permite el popup de control.'));
                 }}
@@ -286,20 +311,16 @@ export function HTTPRecorderPage({
             />
           </label>
         )}
-        {embedded && state.active && (
-          <div className="max-w-md shrink-0 border-b border-white/10 px-3 py-2 text-xs">
-            <HTTPRecorderControls
-              state={{ ...state, recording }}
-              busy={busy}
-              language={language}
-              stopLabel={text('Stop recording', 'Detener grabación')}
-              stopHelp={text(
-                'Stop ends the active transaction. Then you can add the recording to the test plan.',
-                'Detener cierra la transacción activa. Después puedes agregar la grabación al plan de pruebas.',
-              )}
-              onAction={recorder.control}
-            />
-          </div>
+        {embedded && controlsWindow && (
+          <HTTPRecorderFloatingControls
+            target={controlsWindow}
+            state={{ ...state, recording }}
+            busy={busy}
+            error={error}
+            language={language}
+            onAction={recorder.control}
+            onClose={closeControls}
+          />
         )}
         <HTTPRecorderRequests
           key={state.startedAt || 'idle'}
