@@ -1,4 +1,3 @@
-import { formatRunDuration, formatRunLatency } from '../../utils/runPresentation';
 import { Activity, AlertTriangle, CheckCircle2, ExternalLink, XCircle } from 'lucide-react';
 import {
   distributedStatus,
@@ -53,7 +52,7 @@ export function DistributedSummary({
       label: t('Estado', 'Status'),
       value: state.stage === 'prepared' ? t('Preparada', 'Prepared') : distributedStatus(state.status, es, state.stage),
     },
-    { label: t('Duración', 'Duration'), value: total ? formatRunDuration(total.elapsed_seconds * 1e9) : '—' },
+    { label: t('Duración', 'Duration'), value: total ? `${total.elapsed_seconds.toFixed(1)}s` : '—' },
     {
       label: t('VUs (pico/conf.)', 'VUs (peak/conf.)'),
       value: `${observed && !selected?.scenario ? peakVUs : '—'}/${configured ?? '—'}`,
@@ -75,13 +74,8 @@ export function DistributedSummary({
   const requests: DistributedScope[] = selected?.node_id
     ? named.filter(item => item.node_id === selected.node_id)
     : (combined.length ? combined : named).filter(item => !selected?.scenario || item.scenario === selected.scenario);
-  requests.sort(
-    (a, b) =>
-      (a.scenario ?? '').localeCompare(b.scenario ?? '') ||
-      (a.name ?? '').localeCompare(b.name ?? '', undefined, { numeric: true }),
-  );
   const scenarios = new Set(requests.map(item => item.scenario));
-  const ms = (value: number | null | undefined) => (value == null ? '—' : formatRunLatency(value));
+  const ms = (value: number | null | undefined) => (value == null ? '—' : `${value.toFixed(1)}ms`);
   return (
     <section
       aria-label={t('Resumen de la ejecución', 'Execution summary')}
@@ -149,10 +143,9 @@ export function DistributedSummary({
           </thead>
           <tbody>
             {requests.map(item => {
-              const match =
-                /^(?:\[\d+\]\s*)?(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS|CONNECT|TRACE|GRPC|SQL)\s+(.+)$/i.exec(
-                  item.name ?? '',
-                );
+              const match = /^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS|CONNECT|TRACE|GRPC|SQL)\s+(.+)$/i.exec(
+                item.name ?? '',
+              );
               return (
                 <tr
                   key={item.key}
