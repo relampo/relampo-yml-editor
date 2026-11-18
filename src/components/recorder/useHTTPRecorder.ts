@@ -5,6 +5,7 @@ import { isLostAnswer, stateAfterLostAnswer, timerRead, timerReadError, usesRela
 import { useInFront } from '../../hooks/useInFront';
 import { probeStudio } from '../../utils/debugApi';
 import {
+  applyRecorderDetectedURLs,
   defaultHTTPRecordOptions,
   httpRecorderRequest,
   type HTTPRecordOptions,
@@ -15,7 +16,7 @@ const idle: HTTPRecordingState = { active: false, totalRequests: 0, requests: []
  * `embedded` is true inside the web app. There the agent keeps the recording
  * in memory: no output file, and the script goes to the test plan.
  */
-export function useHTTPRecorder(embedded = false) {
+export function useHTTPRecorder(embedded = false, floatingControlsWindow: Window | null = null) {
   // Through the relay the machine can connect later: a new state starts again.
   const agentState = useAgentState();
   const captureRevision = useRef(0);
@@ -65,6 +66,17 @@ export function useHTTPRecorder(embedded = false) {
       }));
       const current = await refresh(controller.signal);
       if (controller.signal.aborted) return;
+      setOptions(value => ({
+        ...value,
+        ...current.options,
+        ...(current.applicationUrl ? { applicationUrl: current.applicationUrl } : {}),
+        ...(current.baseUrls ? { baseUrls: current.baseUrls } : {}),
+        ...(current.responses !== undefined ? { responses: current.responses } : {}),
+        ...(current.prefixEnabled !== undefined ? { prefixEnabled: current.prefixEnabled } : {}),
+        ...(current.transactionsEnabled !== undefined ? { transactionsEnabled: current.transactionsEnabled } : {}),
+        ...(current.prefix !== undefined ? { prefix: current.prefix } : {}),
+        ...(embedded ? { output: '' } : {}),
+      }));
       if (current.output && !embedded) setOptions(value => ({ ...value, output: current.output! }));
       setError('');
       setReady(true);
@@ -76,9 +88,13 @@ export function useHTTPRecorder(embedded = false) {
   }, [refresh, generation, embedded, agentState]);
   const [inFront, cameBack] = useInFront();
   useEffect(() => {
-    if (!ready || !inFront) return;
+    // Floating controls remain visible while the SaaS tab is behind Firefox.
+    if (!ready || (!inFront && !floatingControlsWindow)) return;
+    // Timers belong to the visible controls window. Keeping the flag true
+    // alone still lets Chrome throttle the hidden SaaS frame to one tick/minute.
+    const timerHost = floatingControlsWindow ?? window;
     const controller = new AbortController();
-    let timer: ReturnType<typeof setTimeout>;
+    let timer: number;
     // ponytail: one poll each second. Through the relay that is about 6
     // messages each second while this view is in front (accepted cost: about
     // 5 cents each hour). Upgrade path: an event stream from the agent with
@@ -91,14 +107,14 @@ export function useHTTPRecorder(embedded = false) {
       } catch (cause) {
         if (!controller.signal.aborted) report(cause);
       }
-      if (!controller.signal.aborted) timer = setTimeout(poll, 1000);
+      if (!controller.signal.aborted) timer = timerHost.setTimeout(poll, 1000);
     }
-    timer = setTimeout(poll, cameBack() ? 0 : 1000);
+    timer = timerHost.setTimeout(poll, cameBack() ? 0 : 1000);
     return () => {
-      clearTimeout(timer);
+      timerHost.clearTimeout(timer);
       controller.abort();
     };
-  }, [refresh, ready, inFront, cameBack]);
+  }, [refresh, ready, inFront, cameBack, floatingControlsWindow]);
   async function action(name: string, body: unknown) {
     setBusy(name);
     setError('');
@@ -142,15 +158,23 @@ export function useHTTPRecorder(embedded = false) {
     firefoxAvailable,
     firefoxConfigured,
     refresh,
-    start: () => {
+    start: async () => {
       const { output, force, ...kept } = options;
-      return action('start', {
+      const current = await action('start', {
         ...kept,
         // The agent of the web app takes no output and no force: it writes no file.
         ...(embedded ? {} : { output, force }),
         prefix: options.prefixEnabled ? options.prefix : '',
         grouping: options.transactionsEnabled ? 'none' : options.grouping,
       });
+      if (current?.active && current.baseUrls) {
+        setOptions(value => ({
+          ...value,
+          baseUrls: applyRecorderDetectedURLs(value.baseUrls, current.baseUrls!),
+          applicationUrl: applyRecorderDetectedURLs(value.applicationUrl, current.baseUrls!),
+        }));
+      }
+      return current;
     },
     stop: () => action('stop', state.active || embedded ? {} : { output: options.output, force: options.force }),
     /** Prefix, transaction and record: the controls of an active recording. */

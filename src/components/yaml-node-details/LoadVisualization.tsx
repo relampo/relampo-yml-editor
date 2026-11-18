@@ -13,6 +13,8 @@ import {
 } from './loadUtils';
 
 interface LoadVisualizationProps {
+  compact?: boolean;
+  title?: string;
   data: LoadData;
   loadType: LoadType;
   // Elapsed seconds into a live run. When set, a vertical playhead glides across
@@ -20,7 +22,7 @@ interface LoadVisualizationProps {
   progressSeconds?: number;
 }
 
-export function LoadVisualization({ data, loadType, progressSeconds }: LoadVisualizationProps) {
+export function LoadVisualization({ data, loadType, progressSeconds, compact = false, title }: LoadVisualizationProps) {
   const { t } = useLanguage();
   if (loadType === 'intent') {
     return (
@@ -48,12 +50,12 @@ export function LoadVisualization({ data, loadType, progressSeconds }: LoadVisua
 
   return (
     <div>
-      <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
+      {!compact && <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
         {t('yamlEditor.loadVisualization.title')}
-      </div>
-      <div className="bg-zinc-900/50 border border-white/10 rounded-lg p-3">
+      </div>}
+      <div className={compact ? '' : 'bg-zinc-900/50 border border-white/10 rounded-lg p-3'}>
         <div className="mb-2 flex items-center justify-between text-[11px] text-zinc-500">
-          <span>{t('yamlEditor.loadVisualization.preview')}</span>
+          <span className={compact ? 'font-semibold text-zinc-300' : ''}>{compact ? title : t('yamlEditor.loadVisualization.preview')}</span>
           <span className="font-mono">
             {format('yamlEditor.loadVisualization.summary', {
               axis: yAxisLabel,
@@ -62,7 +64,7 @@ export function LoadVisualization({ data, loadType, progressSeconds }: LoadVisua
             })}
           </span>
         </div>
-        <div className="mb-2 text-[11px] text-zinc-400">{t('yamlEditor.loadVisualization.reference')}</div>
+        {!compact && <div className="mb-2 text-[11px] text-zinc-400">{t('yamlEditor.loadVisualization.reference')}</div>}
         {loadType === 'throughput' && (
           <div className="mb-2 text-[11px] text-zinc-400">
             {format('yamlEditor.loadVisualization.throughputTarget', { value: throughputPerMinute.toFixed(0) })}
@@ -86,6 +88,7 @@ export function LoadVisualization({ data, loadType, progressSeconds }: LoadVisua
           />
         )}
         <LoadChartSvg
+          compact={compact}
           model={model}
           t={t}
         />
@@ -537,14 +540,14 @@ function IntentPhasesPanel({ model, t }: { model: LoadVisualizationModel; t: (ke
   );
 }
 
-function LoadChartSvg({ model, t }: { model: LoadVisualizationModel; t: (key: string) => string }) {
+function LoadChartSvg({ model, t, compact }: { model: LoadVisualizationModel; t: (key: string) => string; compact?: boolean }) {
   const { chartHeightPx, vizColor } = model;
 
   return (
     <svg
       viewBox="0 0 400 200"
       className="w-full"
-      style={{ height: `${chartHeightPx}px` }}
+      style={{ height: `${compact ? 140 : chartHeightPx}px` }}
     >
       <defs>
         <linearGradient

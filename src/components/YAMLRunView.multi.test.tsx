@@ -1,3 +1,4 @@
+vi.mock('../utils/localRunReports', async original => ({ ...(await original<typeof import('../utils/localRunReports')>()), persistLocalRunReports: vi.fn(async () => {}) }));
 import { selectOption } from '../test/selectOption';
 import { afterEach, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react';

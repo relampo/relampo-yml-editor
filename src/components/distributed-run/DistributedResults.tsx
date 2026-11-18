@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { ChevronDown, ExternalLink, RotateCcw, Square, Terminal } from 'lucide-react';
+import { useMemo, type ReactNode } from 'react';
+import { ExternalLink, Eraser, Square } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import {
   distributedReportPath,
@@ -12,13 +12,15 @@ import {
 import { AgentFileLink } from '../AgentFileLink';
 import { parseYAMLToTree } from '../../utils/yamlParser';
 import type { YAMLNode } from '../../types/yaml';
+import { LoadIterationLimitNotice } from '../yaml-node-details/LoadIterationLimitNotice';
 import { LoadVisualization } from '../yaml-node-details/LoadVisualization';
-import { normalizeLoadType, toLoadData } from '../yaml-node-details/loadUtils';
+import { normalizeLoadType, parseTimeToSeconds, toLoadData } from '../yaml-node-details/loadUtils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { DistributedNotice as Notice, DistributedChart as LiveChart } from './DistributedFeedback';
+import { DistributedNotice as Notice } from './DistributedFeedback';
 import { DistributedSummary } from './DistributedSummary';
+import { DistributedTimeline } from './DistributedTimeline';
 const buttonClass =
-  'inline-flex items-center justify-center gap-2 rounded-lg border border-white/15 px-3 py-2 text-sm text-zinc-200 hover:bg-white/5 disabled:opacity-40';
+  'inline-flex items-center justify-center gap-1.5 rounded-lg border border-white/15 h-8 px-2.5 text-xs text-zinc-200 hover:bg-white/5 disabled:opacity-40';
 const stages: Record<string, [string, string]> = {
   preparing: ['Preparando archivos y publicación', 'Preparing files and publication'],
   prepared: ['Preparación completada', 'Preparation completed'],
@@ -42,7 +44,11 @@ export function DistributedResults({
   onStop,
   onClear,
   yamlCode,
+  settingsAction,
+  runControls,
 }: {
+  settingsAction?: ReactNode;
+  runControls?: ReactNode;
   state: DistributedState;
   runId: string;
   plan: DistributedPlan | null;
@@ -61,15 +67,22 @@ export function DistributedResults({
   const selected = state.scopes.find(item => item.key === scope) ?? state.scopes.find(item => item.key === 'global');
   const remoteURL = safeProviderURL(state.url),
     reportsURL = safeProviderURL(state.reports_url);
+  const logProvider = remoteURL && new URL(remoteURL).pathname.includes('/actions/runs/') ? 'GitHub' : 'GitLab';
   const formats = state.report_formats ?? ['html', 'json', 'csv', 'txt'];
   const htmlPath = state.reports_ready && formats.includes('html') ? distributedReportPath(runId, 'html') : undefined;
   const finished = ['completed', 'errored', 'stopped'].includes(state.status);
+  const reportFailed = state.status === 'errored' && state.stage === 'generating_report';
+  const latestSample = points.at(-1)?.at;
+  const sampleTime = latestSample ? new Date(latestSample) : null;
+  // Temporarily suppress the report-generation banner; the real report status
+  // and execution links remain available, and load failures still show errors.
   const errorMessage =
     state.error &&
+    !reportFailed &&
     (state.run_id || state.error.length > 300 || /[\r\n]/.test(state.error)
       ? t(
-          'La ejecución distribuida terminó con un error. Consulta Ver ejecución para ver el detalle.',
-          'The distributed execution ended with an error. Open View execution for details.',
+          'La ejecución distribuida terminó con un error. Consulta los logs de la ejecución para ver el detalle.',
+          'The distributed execution ended with an error. Open the execution logs for details.',
         )
       : state.error);
   const profile = useMemo(() => {
@@ -89,54 +102,149 @@ export function DistributedResults({
       return { loads: [], hasTransactions: undefined };
     }
   }, [yamlCode]);
+  const singleLoad = profile.loads.length === 1 ? profile.loads[0].node.data : undefined;
+  const durationSeconds = parseTimeToSeconds(plan?.duration ?? String(singleLoad?.duration ?? ''));
+  const fixedType = normalizeLoadType(singleLoad?.type);
+  const rawUsers =
+    singleLoad && ['constant', 'linear', 'ramp_up_down'].includes(fixedType)
+      ? Math.max(Number(singleLoad.users ?? 0), Number(singleLoad.start_users ?? 0), Number(singleLoad.end_users ?? 0))
+      : undefined;
+  const configuredUsers =
+    scope === 'global' ? (plan?.users ?? (Number.isFinite(rawUsers) ? rawUsers : undefined)) : undefined;
+  const starts = state.nodes.map(node => Date.parse(node.progress.started_at ?? '')).filter(Number.isFinite);
+  const startedAt = starts.length ? new Date(Math.min(...starts)).toISOString() : undefined;
   const stale = state.nodes.some(node => !node.progress.final && Date.now() - Date.parse(node.updated_at) > 60000);
   return (
     <section
       className="space-y-4"
       aria-label={t('Resultados distribuidos', 'Distributed results')}
     >
-      <div className="flex flex-wrap items-center gap-3">
-        <span
-          className={`rounded-full border px-3 py-1 text-sm ${state.status === 'errored' ? 'border-red-400/30 text-red-300' : finished ? 'border-emerald-400/30 text-emerald-300' : 'border-white/15 text-zinc-300'}`}
+      <div className="grid items-stretch gap-4 @[58rem]:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+        <section
+          aria-label={t('Controles de ejecución distribuida', 'Distributed execution controls')}
+          className="flex min-h-60 min-w-0 flex-col gap-4 border border-white/10 bg-[#111111] p-4"
         >
-          {state.status === 'running'
-            ? (stages[state.stage]?.[es ? 0 : 1] ?? t('Ejecutando', 'Running'))
-            : distributedStatus(state.status, es)}
-        </span>
-        {remoteURL && (
-          <a
-            href={remoteURL}
-            target="_blank"
-            rel="noreferrer"
-            className={buttonClass}
-          >
-            <ExternalLink size={15} />
-            {t('Ver ejecución', 'View execution')}
-          </a>
-        )}
-        {active && state.run_id && (
-          <button
-            className={buttonClass}
-            disabled={busy || state.status === 'stopping'}
-            onClick={onStop}
-          >
-            <Square size={15} />
-            {t('Cancelar ejecución remota', 'Cancel remote execution')}
-          </button>
-        )}
-        {finished && !active && (
-          <button
-            className={`${buttonClass} ml-auto`}
-            disabled={busy}
-            onClick={onClear}
-          >
-            <RotateCcw size={15} />
-            Clear
-          </button>
-        )}
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">
+                {t('Prueba de carga', 'Load test')}
+              </p>
+              <h2 className="mt-1 text-base font-semibold text-zinc-100">
+                {t('Prueba distribuida', 'Distributed test')}
+              </h2>
+            </div>
+            <span
+              className={`rounded-full border px-2.5 py-1 text-xs ${state.status === 'errored' ? 'border-red-400/30 text-red-300' : finished ? 'border-emerald-400/30 text-emerald-300' : 'border-white/15 text-zinc-300'}`}
+            >
+              {state.status === 'running'
+                ? (stages[state.stage]?.[es ? 0 : 1] ?? t('Ejecutando', 'Running'))
+                : distributedStatus(state.status, es, state.stage)}
+            </span>
+          </div>
+          {runControls}
+          <div className="flex flex-wrap items-center gap-2">
+            {settingsAction}
+            {remoteURL && (
+              <a
+                href={remoteURL}
+                target="_blank"
+                rel="noreferrer"
+                className={buttonClass}
+              >
+                <ExternalLink size={15} />
+                {t('Ver logs en', 'View logs in')} {logProvider}
+              </a>
+            )}
+            {state.reports_ready && reportsURL && (
+              <a
+                href={reportsURL}
+                target="_blank"
+                rel="noreferrer"
+                className={buttonClass}
+              >
+                <ExternalLink size={15} />
+                {t('Ver reportes', 'View reports')}
+              </a>
+            )}
+            {active && state.run_id && (
+              <button
+                className={buttonClass}
+                disabled={busy || state.status === 'stopping'}
+                onClick={onStop}
+              >
+                <Square size={15} />
+                {t('Cancelar ejecución remota', 'Cancel remote execution')}
+              </button>
+            )}
+            {(finished || state.status === 'unavailable') && !active && (
+              <button
+                className={buttonClass}
+                disabled={busy}
+                onClick={onClear}
+              >
+                <Eraser size={14} />
+                Clear
+              </button>
+            )}
+          </div>
+          {(state.reports_ready || reportsURL) && (
+            <div className="mt-auto flex flex-wrap items-center gap-2 border-t border-white/10 pt-3">
+              {state.reports_ready &&
+                formats.map(format => (
+                  <AgentFileLink
+                    key={format}
+                    className={buttonClass}
+                    path={distributedReportPath(runId, format, true)}
+                  >
+                    {t('Descargar', 'Download')} {format.toUpperCase()}
+                  </AgentFileLink>
+                ))}
+              {reportsURL && !state.reports_ready && (
+                <a
+                  className="inline-flex items-center gap-1.5 text-xs text-zinc-400 underline decoration-white/20 underline-offset-4 hover:text-yellow-300"
+                  href={reportsURL}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <ExternalLink size={14} />
+                  {t('Ver reportes en el repositorio', 'View reports in repository')}
+                </a>
+              )}
+            </div>
+          )}
+        </section>
+        <section
+          aria-label={t('Perfil de carga planificado', 'Planned load profile')}
+          className="min-h-60 min-w-0 border border-white/10 bg-[#111111] p-4"
+        >
+          <div className="max-h-72 space-y-3 overflow-y-auto">
+            {profile.loads
+              .filter(item => !selected?.scenario || item.scenario === selected.scenario)
+              .map(item => (
+                <div
+                  key={item.node.id}
+                  className="[&_svg]:!h-44"
+                >
+                  <LoadIterationLimitNotice data={toLoadData(item.node.data as Record<string, unknown> | undefined)} />
+                  <LoadVisualization
+                    compact
+                    title={`${t('Perfil de carga planificado', 'Planned load profile')}${profile.loads.length > 1 ? ` · ${item.scenario}` : ''}`}
+                    data={toLoadData(item.node.data as Record<string, unknown> | undefined)}
+                    loadType={normalizeLoadType(item.node.data?.type)}
+                    progressSeconds={active ? selected?.total.elapsed_seconds : undefined}
+                  />
+                </div>
+              ))}
+            {!profile.loads.length && (
+              <p className="text-xs text-zinc-400">
+                {t('Sin perfil de carga disponible.', 'No load profile available.')}
+              </p>
+            )}
+          </div>
+        </section>
       </div>
       {errorMessage && <Notice alert>{errorMessage}</Notice>}
-      {state.warning && <Notice>{state.warning}</Notice>}
+      {active && state.warning && <Notice>{state.warning}</Notice>}
       {stale && active && (
         <Notice>
           {t(
@@ -145,78 +253,58 @@ export function DistributedResults({
           )}
         </Notice>
       )}
-      <Select
-        value={scope}
-        onValueChange={onScopeChange}
-      >
-        <SelectTrigger aria-label={t('Alcance del resultado distribuido', 'Distributed result scope')}>
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="global">Global</SelectItem>
-          {state.scopes
-            .filter(item => item.key !== 'global' && !item.name)
-            .map(item => (
-              <SelectItem
-                key={item.key}
-                value={item.key}
-              >
-                {item.node_id
-                  ? `${t('Nodo', 'Node')} ${item.node_id}`
-                  : item.scenario || t('Sin escenario', 'No scenario')}
-              </SelectItem>
-            ))}
-        </SelectContent>
-      </Select>
-      <div className="grid gap-3 lg:grid-cols-3">
-        <LiveChart
-          label={t('Tasa de peticiones (intervalo)', 'Request rate (interval)')}
-          points={points}
-          field="rps"
-          color="#facc15"
-        />
-        <LiveChart
-          label={t('Latencia P95', 'P95 latency')}
-          points={points}
-          field="p95_ms"
-          color="#60a5fa"
-        />
-        <LiveChart
-          label={t('VUs activos', 'Active VUs')}
-          points={selected?.scenario ? [] : points}
-          field="active_vus"
-          color="#a1a1aa"
-        />
-      </div>
+      <DistributedTimeline
+        headerAction={
+          <div className="w-full min-w-40 sm:w-52">
+            <Select
+              value={scope}
+              onValueChange={onScopeChange}
+            >
+              <SelectTrigger aria-label={t('Alcance del resultado distribuido', 'Distributed result scope')}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="global">Global</SelectItem>
+                {state.scopes
+                  .filter(item => item.key !== 'global' && !item.name)
+                  .map(item => (
+                    <SelectItem
+                      key={item.key}
+                      value={item.key}
+                    >
+                      {item.node_id
+                        ? `${t('Nodo', 'Node')} ${item.node_id}`
+                        : item.scenario || t('Sin escenario', 'No scenario')}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
+        }
+        key={runId}
+        points={points}
+        startedAt={startedAt}
+        durationSeconds={durationSeconds}
+        configuredUsers={configuredUsers}
+      />
+      {sampleTime && Number.isFinite(sampleTime.getTime()) && (
+        <p className="text-xs text-zinc-400">
+          {t('Última muestra confirmada:', 'Last confirmed sample:')}{' '}
+          <time dateTime={latestSample}>{sampleTime.toLocaleTimeString(es ? 'es-ES' : 'en-US')}</time>
+        </p>
+      )}
       {!state.history.length && (
         <p
           role="status"
           className="text-sm text-zinc-400"
         >
           {active
-            ? t('Esperando las primeras muestras de los workers…', 'Waiting for the first worker samples…')
+            ? t('Sincronizando las métricas de los workers…', 'Synchronizing worker metrics…')
             : t('No se recibieron muestras de los workers.', 'No worker samples were received.')}
         </p>
       )}
-      {profile.loads
-        .filter(item => !selected?.scenario || item.scenario === selected.scenario)
-        .map(item => (
-          <div
-            key={item.node.id}
-            className="border border-white/10 bg-[#111111] p-4"
-          >
-            <h3 className="mb-3 text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">
-              {t('Perfil de carga planificado', 'Planned load profile')}
-              {profile.loads.length > 1 ? ` · ${item.scenario}` : ''}
-            </h3>
-            <LoadVisualization
-              data={toLoadData(item.node.data as Record<string, unknown> | undefined)}
-              loadType={normalizeLoadType(item.node.data?.type)}
-              progressSeconds={active ? selected?.total.elapsed_seconds : undefined}
-            />
-          </div>
-        ))}
       <DistributedSummary
+        scenarioOrder={profile.loads.map(item => item.scenario)}
         state={state}
         plan={plan}
         scope={scope}
@@ -270,68 +358,12 @@ export function DistributedResults({
           </div>
         </details>
       )}
-      <details
-        open
-        className="border border-white/10 bg-[#080808]"
-      >
-        <summary className="flex cursor-pointer items-center gap-2 border-b border-white/5 px-4 py-3 text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">
-          <ChevronDown size={14} />
-          <Terminal
-            size={15}
-            className="text-emerald-300"
-          />
-          {t('Logs en vivo', 'Live logs')}
-          <span className="ml-auto font-normal tracking-normal">
-            {state.history.length} {t('actualizaciones', 'updates')}
-          </span>
-        </summary>
-        <div className="max-h-60 overflow-auto px-4 py-3 font-mono text-xs text-zinc-300">
-          {state.history.length ? (
-            state.history.map((point, index) => (
-              <p
-                key={`${point.at}-${index}`}
-                className={point.failures > 0 ? 'text-red-300' : ''}
-              >
-                <span className="mr-3 text-zinc-600">{new Date(point.at).toLocaleTimeString(language)}</span>
-                {point.requests} {t('peticiones', 'requests')} · {point.failures} {t('errores', 'failures')} ·{' '}
-                {point.rps.toFixed(1)} req/s
-              </p>
-            ))
-          ) : (
-            <p className="text-zinc-500">{t('Sin actualizaciones recibidas.', 'No updates received.')}</p>
-          )}
-        </div>
-      </details>
       <p className="text-xs text-zinc-500">
         {t(
           'Percentiles aproximados por histogramas combinados. El reporte completo conserva los resultados canónicos.',
           'Percentiles are approximated from combined histograms. The full report retains canonical results.',
         )}
       </p>
-      {(state.reports_ready || reportsURL) && (
-        <div className="flex flex-wrap gap-2 border border-white/10 p-3">
-          {state.reports_ready &&
-            formats.map(format => (
-              <AgentFileLink
-                key={format}
-                className={buttonClass}
-                path={distributedReportPath(runId, format, true)}
-              >
-                {t('Descargar', 'Download')} {format.toUpperCase()}
-              </AgentFileLink>
-            ))}
-          {reportsURL && (
-            <a
-              className={buttonClass}
-              href={reportsURL}
-              target="_blank"
-              rel="noreferrer"
-            >
-              {t('Ver reportes en el repositorio', 'View reports in repository')}
-            </a>
-          )}
-        </div>
-      )}
     </section>
   );
 }

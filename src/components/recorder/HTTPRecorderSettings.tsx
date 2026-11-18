@@ -114,7 +114,7 @@ export function HTTPRecorderSettings({
             </label>
           </div>
           {toggle(
-            text('Mask sensitive values in YAML and previews', 'Enmascarar valores sensibles en YAML y vistas previas'),
+            text('Mask sensitive values in recording previews', 'Enmascarar datos sensibles en la vista previa'),
             'maskSensitive',
           )}
           {toggle(
@@ -130,8 +130,8 @@ export function HTTPRecorderSettings({
           )}
           <p className="text-xs text-zinc-500 md:col-span-2">
             {text(
-              'Responses and masking are enabled in this UI. Masked credentials must be supplied before replay. These choices are explicit; the CLI defaults remain unchanged.',
-              'Esta interfaz activa respuestas y enmascarado. Debes proporcionar las credenciales enmascaradas antes de ejecutar. Los valores predeterminados de la CLI se mantienen.',
+              'Preview masking only changes what is shown in the recorder. Scripting and Correlation keep the original recorded values.',
+              'El enmascarado solo cambia la vista previa del grabador. Scripting y Correlation conservan los valores originales de la grabación.',
             )}
           </p>
         </fieldset>

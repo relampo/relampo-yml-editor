@@ -57,7 +57,11 @@ it('filters only the view and inspects the selected request and response', async
   expect(await screen.findByText(/username/)).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Response' }));
   expect(screen.getByText(/eventId/)).toBeInTheDocument();
-  expect(httpRecorderRequest).toHaveBeenCalledExactlyOnceWith('requests/1', undefined, expect.any(AbortSignal));
+  expect(httpRecorderRequest).toHaveBeenCalledExactlyOnceWith(
+    'requests/1?showSensitive=true',
+    undefined,
+    expect.any(AbortSignal),
+  );
 });
 it('explains uncaptured responses and reports request preview errors', async () => {
   vi.mocked(httpRecorderRequest).mockRejectedValue(new Error('Request unavailable'));
@@ -73,4 +77,117 @@ it('explains uncaptured responses and reports request preview errors', async () 
   expect(await screen.findByRole('alert')).toHaveTextContent('Request unavailable');
   fireEvent.click(screen.getByRole('button', { name: 'Response' }));
   expect(screen.getByText(/Response bodies were not captured/)).toBeInTheDocument();
+});
+it('shows headers, repeated parameters and empty bodies, and reveals HTML as text only', async () => {
+  vi.mocked(httpRecorderRequest).mockImplementation(async path => ({
+    url: 'https://app.test/login?tag=one&tag=two',
+    method: 'GET',
+    status: 200,
+    request: { headers: { 'X-Request': ['captured-request'] }, body: '' },
+    response: {
+      headers: { 'Content-Type': ['text/html'] },
+      body: path.includes('showSensitive=true')
+        ? '<script>window.captured=true</script><b>Captured HTML</b>'
+        : '[Non-JSON body hidden while sensitive-data masking is enabled]',
+    },
+  }));
+  const { container } = render(
+    <HTTPRecorderRequests
+      rows={rows}
+      total={2}
+      responses
+      language="en"
+    />,
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'https://app.test/login' }));
+  expect(await screen.findByText('captured-request')).toBeInTheDocument();
+  expect(screen.getByText('one')).toBeInTheDocument();
+  expect(screen.getByText('two')).toBeInTheDocument();
+  expect(screen.getByText('This request has no body.')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Response' }));
+  expect(screen.getByText('text/html')).toBeInTheDocument();
+  expect(await screen.findByText(/<script>window.captured=true/)).toBeInTheDocument();
+  expect(container.querySelector('script')).toBeNull();
+  expect(container.querySelector('b')).toBeNull();
+  expect(httpRecorderRequest).toHaveBeenLastCalledWith(
+    'requests/0?showSensitive=true',
+    undefined,
+    expect.any(AbortSignal),
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Mask sensitive data' }));
+  expect(await screen.findByText(/Non-JSON body hidden/)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'https://api.test/events' }));
+  expect(await screen.findByRole('button', { name: 'Mask sensitive data' })).toHaveAttribute('aria-pressed', 'true');
+  expect(httpRecorderRequest).toHaveBeenLastCalledWith(
+    'requests/1?showSensitive=true',
+    undefined,
+    expect.any(AbortSignal),
+  );
+});
+it('keeps response headers visible even when response bodies were not captured', async () => {
+  vi.mocked(httpRecorderRequest).mockResolvedValue({
+    request: { body: '' },
+    response: { headers: { Server: ['test-server'] }, body: '' },
+  });
+  render(
+    <HTTPRecorderRequests
+      rows={rows}
+      total={2}
+      responses={false}
+      language="en"
+    />,
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'https://app.test/login' }));
+  await screen.findByText('This request has no body.');
+  fireEvent.click(screen.getByRole('button', { name: 'Response' }));
+  expect(screen.getByText('test-server')).toBeInTheDocument();
+  expect(screen.getByText(/Response bodies were not captured/)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Headers' }));
+  expect(screen.getByText('test-server')).toBeInTheDocument();
+});
+it('loads older recorded requests and preserves distinct query URLs', async () => {
+  const recent = [{ ...rows[0], id: 500, url: 'https://app.test/product?id=501' }];
+  vi.mocked(httpRecorderRequest).mockResolvedValue({
+    requests: [{ ...rows[0], id: 0, url: 'https://app.test/product?id=1' }],
+  });
+  render(
+    <HTTPRecorderRequests
+      rows={recent}
+      total={501}
+      responses
+      language="en"
+    />,
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Load earlier requests' }));
+  expect(await screen.findByRole('button', { name: 'https://app.test/product?id=1' })).toBeInTheDocument();
+  expect(httpRecorderRequest).toHaveBeenCalledWith('requests?before=500&limit=500');
+  expect(screen.getByRole('button', { name: 'https://app.test/product?id=501' })).toHaveAttribute(
+    'title',
+    'https://app.test/product?id=501',
+  );
+});
+it('shows recorded WebSocket messages rather than only the upgrade response', async () => {
+  vi.mocked(httpRecorderRequest).mockResolvedValue({
+    request: { body: '' },
+    response: { body: '' },
+    webSocket: {
+      messages: [
+        { direction: 'server_to_client', type: 'text', payload: 'order-confirmed', sizeBytes: 15, timestamp: 'now' },
+      ],
+      subprotocol: 'orders',
+      closeCode: 1000,
+      closeReason: 'done',
+    },
+  });
+  render(
+    <HTTPRecorderRequests
+      rows={rows}
+      total={2}
+      responses
+      language="en"
+    />,
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'https://app.test/login' }));
+  expect(await screen.findByText('order-confirmed')).toBeInTheDocument();
+  expect(screen.getByText(/Received.*text/)).toBeInTheDocument();
 });

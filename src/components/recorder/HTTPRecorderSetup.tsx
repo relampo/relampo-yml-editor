@@ -85,10 +85,10 @@ export function HTTPRecorderSetup({
           <input
             aria-label="Base URL"
             className={input}
-            placeholder="https://my-app.example"
+            placeholder="my-app.example"
             title={text(
-              'Comma-separated application, API or authentication URLs.',
-              'URLs de aplicación, API o autenticación separadas por coma.',
+              'Application, API or authentication URLs, separated by commas. Without a protocol, Relampo detects HTTPS or HTTP when opening Firefox.',
+              'URLs de aplicación, API o autenticación separadas por coma. Sin protocolo, Relampo detecta HTTPS o HTTP al abrir Firefox.',
             )}
             value={options.baseUrls}
             onBlur={() => {

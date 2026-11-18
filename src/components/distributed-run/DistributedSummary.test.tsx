@@ -24,7 +24,7 @@ it('shows merged request percentiles, total RPS and real per-node resource peaks
     stage: 'reports_ready',
     scopes: [
       { key: 'global', total: stats, window: { ...stats, rps: 0 } },
-      { key: 'request-global:login', scenario: 'A', name: 'GET /login', total: stats, window: stats },
+      { key: 'request-global:login', scenario: 'A', name: '[11] GET /login', total: stats, window: stats },
       {
         key: 'request:1:login',
         scenario: 'A',
@@ -55,6 +55,8 @@ it('shows merged request percentiles, total RPS and real per-node resource peaks
   );
   const table = screen.getByRole('table', { name: 'Resumen por petición' });
   expect(within(table).getAllByRole('row')).toHaveLength(2);
+  expect(within(table).getByText('GET', { exact: true })).toBeInTheDocument();
+  expect(within(table).getByText('[11] /login', { exact: true })).toHaveAttribute('title', '[11] GET /login');
   for (const value of ['15.0ms', '30.0ms', '40.0ms', '80.0ms'])
     expect(within(table).getByText(value)).toBeInTheDocument();
   expect(screen.getByText('RPS').parentElement).toHaveTextContent('10.0');

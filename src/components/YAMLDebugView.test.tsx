@@ -10,6 +10,34 @@ import type { EngineEvent } from '../utils/debugApi';
 const render = (ui: Parameters<typeof rtlRender>[0], options?: Parameters<typeof rtlRender>[1]) =>
   rtlRender(ui, { wrapper: LanguageProvider, ...options });
 
+it('RLP-823 cannot restore a stale Debug start after its document is unmounted', async () => {
+  sessionStorage.clear();
+  let finish!: (id: string) => void;
+  debugApiMock.startDebugRun.mockImplementationOnce(
+    () => new Promise<string>(resolve => {
+      finish = resolve;
+    }),
+  );
+  const view = render(
+    <YAMLDebugSession
+      tree={null}
+      yamlCode={'scenarios:\n- name: Flow\n  steps: [{get: /first}]\n'}
+      documentReady
+      validationErrors={[]}
+      onSelectNode={vi.fn()}
+      onEditNode={vi.fn()}
+    />,
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+  await waitFor(() => expect(debugApiMock.startDebugRun).toHaveBeenCalledTimes(1));
+  view.unmount();
+  await act(async () => {
+    finish('stale-debug');
+  });
+  expect(debugApiMock.streamDebugRun).not.toHaveBeenCalled();
+  expect(sessionStorage.getItem('relampo.studio.debugRun')).toBeNull();
+});
+
 const debugApiMock = vi.hoisted(() => {
   const handlers: Array<{
     onEvent: (event: EngineEvent) => void;
@@ -990,4 +1018,23 @@ it('shows the returned SQL row values in the debug response inspector', async ()
   expect(await screen.findByRole('table', { name: 'Returned SQL rows' })).toHaveTextContent('SQL event');
  fireEvent.click(screen.getByRole('button',{name:'variables'}));
  expect(await screen.findByText('event_id (RES)')).toBeInTheDocument();
+});
+
+it('clears finished debug results and the saved run without changing the script', async () => {
+  sessionStorage.clear();
+  const onEditNode = vi.fn();
+  render(<YAMLDebugSession tree={null} yamlCode={'test:\n  name: clear-debug\n'} documentReady validationErrors={[]} onSelectNode={vi.fn()} onEditNode={onEditNode} />);
+  expect(screen.getByRole('button', { name: 'Clear' })).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+  await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
+  act(() => debugApiMock.handlers[0].onEvent(event({ name: 'Request to clear', path: '/clear-debug' })));
+  expect(screen.getByRole('button', { name: 'Clear' })).toBeDisabled();
+  act(() => debugApiMock.handlers[0].onDone(null));
+  expect(screen.getAllByText('/clear-debug').length).toBeGreaterThan(0);
+  fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
+  expect(screen.queryByText('/clear-debug')).not.toBeInTheDocument();
+  expect(sessionStorage.getItem('relampo.studio.debugRun')).toBeNull();
+  expect(screen.getByRole('button', { name: 'Run Debug' })).toBeEnabled();
+  expect(screen.getByRole('button', { name: 'Clear' })).toBeDisabled();
+  expect(onEditNode).not.toHaveBeenCalled();
 });

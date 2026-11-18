@@ -11,6 +11,8 @@ import { EmbeddedStudioWorkspace } from './EmbeddedStudioWorkspace';
 
 const RECORDING = 'test:\n  name: recording\n';
 let controller: EmbeddedStudioController;
+let confirmImport = vi.fn(async () => {});
+let pendingChanged: ((pending: boolean) => void) | undefined;
 let open: { yaml: string; fileName: string };
 
 vi.mock('./YAMLEditor', async () => {
@@ -26,14 +28,17 @@ vi.mock('./YAMLEditor', async () => {
   };
 });
 vi.mock('./recorder/HTTPRecorderPage', () => ({
-  HTTPRecorderPage: ({ onImport }: any) => (
-    <button
-      type="button"
-      onClick={() => void onImport(RECORDING, 'recording.yaml')}
-    >
-      add http recording
-    </button>
-  ),
+  HTTPRecorderPage: ({ onImport, onPendingChange }: any) => {
+    pendingChanged = onPendingChange;
+    return (
+      <button
+        type="button"
+        onClick={() => void onImport(RECORDING, 'recording.yaml', confirmImport)}
+      >
+        add http recording
+      </button>
+    );
+  },
 }));
 vi.mock('./grpc/GRPCRecorderPage', () => ({ GRPCRecorderPage: () => null }));
 vi.mock('./correlate/CorrelatePage', () => ({ CorrelatePage: () => null }));
@@ -53,7 +58,7 @@ function catalog(...fileNames: string[]): PlanScripts {
   };
 }
 
-async function addRecording(scripts: PlanScripts) {
+async function addRecording(scripts: PlanScripts, click = true) {
   vi.mocked(loadPlanScripts).mockResolvedValue(scripts);
   vi.mocked(addPlanScript).mockResolvedValue({ ...scripts, activeScriptId: 'new' });
   render(
@@ -74,10 +79,11 @@ async function addRecording(scripts: PlanScripts) {
     });
     expect(screen.getByRole('button', { name: 'add http recording' })).toBeInTheDocument();
   });
-  fireEvent.click(screen.getByRole('button', { name: 'add http recording' }));
+  if (click) fireEvent.click(screen.getByRole('button', { name: 'add http recording' }));
 }
 
 beforeEach(() => {
+  confirmImport = vi.fn(async () => {});
   open = { yaml: 'test:\n  name: checkout\n', fileName: 'checkout.yaml' };
   controller = {
     document: () => ({ ...open, revision: 1 }),
@@ -130,4 +136,65 @@ it('uses the open script when it is empty, and asks nothing', async () => {
   expect(persistEmbeddedScript).toHaveBeenCalledWith('s1', { yaml: RECORDING, fileName: 'recording.yaml' });
   expect(addPlanScript).not.toHaveBeenCalled();
   expect(window.confirm).not.toHaveBeenCalled();
+});
+it('keeps a stopped pending recording attached to its Test Plan until it is imported or discarded', async () => {
+  await addRecording(catalog('checkout.yaml'), false);
+  const answer = vi.spyOn(window.parent, 'postMessage');
+  act(() => pendingChanged?.(true));
+  act(() =>
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        origin: location.origin,
+        source: window.parent,
+        data: { type: 'relampo:save-plan', requestId: 'pending-plan', reason: 'switch-plan' },
+      }),
+    ),
+  );
+  await waitFor(() =>
+    expect(answer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'relampo:plan-saved',
+        requestId: 'pending-plan',
+        ok: false,
+        error: expect.stringContaining('pending recording'),
+      }),
+      location.origin,
+    ),
+  );
+  act(() => pendingChanged?.(false));
+  act(() =>
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        origin: location.origin,
+        source: window.parent,
+        data: { type: 'relampo:save-plan', requestId: 'imported-plan', reason: 'switch-plan' },
+      }),
+    ),
+  );
+  await waitFor(() =>
+    expect(answer).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'relampo:plan-saved', requestId: 'imported-plan', ok: true }),
+      location.origin,
+    ),
+  );
+});
+
+it('confirms import after the script is durable and before leaving the recorder', async () => {
+  const steps: string[] = [];
+  vi.mocked(persistEmbeddedScript).mockImplementation(async () => {
+    steps.push('persist');
+  });
+  confirmImport = vi.fn(async () => {
+    steps.push('confirm');
+  });
+  const post = vi.spyOn(window.parent, 'postMessage');
+  await addRecording(catalog('checkout.yaml'));
+  await waitFor(() => expect(confirmImport).toHaveBeenCalledOnce());
+  await waitFor(() =>
+    expect(post).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'relampo:navigate-host', view: 'scripting' }),
+      location.origin,
+    ),
+  );
+  expect(steps.indexOf('persist')).toBeLessThan(steps.indexOf('confirm'));
 });

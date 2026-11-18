@@ -1,3 +1,4 @@
+import { correlatedFileName } from '../utils/correlateApi';
 import { HistoricalScriptWorkspace } from './HistoricalScriptWorkspace';
 import { persistEmbeddedScript } from '../utils/embeddedFileStorage';
 import { buildDownloadContent } from '../hooks/useYAMLPersistence';
@@ -74,20 +75,26 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
   const [openedGRPC, setOpenedGRPC] = useState(false);
   const [source, setSource] = useState<CorrelateDocument | null>(null);
   const sourceRef = useRef(source);
-  sourceRef.current = source;
   const draft = useRef({ yaml: '', fileName: '', changed: false });
-  const activity = useRef({ http: false, grpc: false });
+  const activity = useRef({ http: false, grpc: false, httpPending: false, grpcPending: false });
   const [error, setError] = useState('');
   const { language } = useLanguage();
   const report = (cause: unknown) => setError(cause instanceof Error ? cause.message : String(cause));
   const goToScripting = useCallback(() => {
     draft.current.changed = false;
     setView('scripting');
+    sourceRef.current = null;
     setSource(null);
     window.parent.postMessage({ type: 'relampo:navigate-host', view: 'scripting' }, window.location.origin);
   }, []);
   const trackDraft = useCallback((value: typeof draft.current) => {
     draft.current = value;
+  }, []);
+  const trackHTTPPending = useCallback((pending: boolean) => {
+    activity.current.httpPending = pending;
+  }, []);
+  const trackGRPCPending = useCallback((pending: boolean) => {
+    activity.current.grpcPending = pending;
   }, []);
   const trackHTTP = useCallback((active: boolean) => {
     activity.current.http = active;
@@ -111,6 +118,8 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
     async (reason?: string) => {
       if (!ready || !controller.current) throw new Error('Studio is still loading. Try again when the plan is ready.');
       if (switchingRef.current && reason !== 'switch-script') throw new Error('A script is already loading.');
+      if (reason === 'switch-plan' && (activity.current.httpPending || activity.current.grpcPending))
+        throw new Error('Add or discard the pending recording before switching Test Plans.');
       if (reason === 'switch-plan' && (activity.current.http || activity.current.grpc)) {
         throw new Error('Stop the recording before switching test plans.');
       }
@@ -133,6 +142,41 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
     },
     [ready, scriptId],
   );
+  const saveCorrelation = useCallback(
+    async (yaml: string, name: string, asNew: boolean) => {
+      if (!ready || !controller.current || switchingRef.current) throw new Error('Studio is still loading.');
+      let ok = false;
+      let error = '';
+      try {
+        if (!asNew) {
+          await commitCorrelation(yaml, name);
+          await flush('save');
+        } else {
+          const fileName = correlatedFileName(name);
+          // eslint-disable-next-line no-control-regex -- reject control characters in filenames
+          if (!/^[^/\\\x00-\x1f]{1,180}\.yaml$/i.test(fileName) || fileName.startsWith('.'))
+            throw new Error('Use a YAML filename without path separators.');
+          const latest = await loadPlanScripts();
+          if (latest.scripts.some(script => script.fileName.toLowerCase() === fileName.toLowerCase()))
+            throw new Error('A script with this filename already exists. Choose another name.');
+          const newId = crypto.randomUUID();
+          // Persist the copy before selecting it. Never flush correlations into the original.
+          const saved = await persistEmbeddedScript(newId, { yaml, fileName }, true, true);
+          await addPlanScript({ yaml: saved?.yaml ?? yaml, fileName, updatedAt: new Date().toISOString() }, newId);
+          const address = new URL(window.location.href);
+          address.searchParams.set('script', newId);
+          window.setTimeout(() => window.location.replace(address.href), 50);
+        }
+        ok = true;
+      } catch (cause) {
+        error = cause instanceof Error ? cause.message : String(cause);
+        throw cause;
+      } finally {
+        window.parent.postMessage({ type: 'relampo:plan-saved', ok, error }, window.location.origin);
+      }
+    },
+    [ready, commitCorrelation, flush],
+  );
   const fileNameChanged = useCallback(
     (fileName: string) => {
       setCatalog(current => ({
@@ -143,7 +187,7 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
     [scriptId],
   );
   const changeScript = useCallback(
-    async (nextId?: string, document?: { yaml: string; fileName: string }) => {
+    async (nextId?: string, document?: { yaml: string; fileName: string }, afterPersist?: () => Promise<void>) => {
       if (switchingRef.current) throw new Error('A script is already loading.');
       if (activity.current.http || activity.current.grpc)
         throw new Error('Stop the recording before switching scripts.');
@@ -158,6 +202,7 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
         const next = document
           ? await addPlanScript({ ...document, updatedAt: new Date().toISOString() }, newId)
           : await selectPlanScript(nextId!);
+        await afterPersist?.();
         // A fresh workspace restores only this script's draft and execution sessions.
         const address = new URL(window.location.href);
         address.searchParams.set('script', next.activeScriptId);
@@ -172,7 +217,7 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
     [flush],
   );
   const importScript = useCallback(
-    async (yaml: string, fileName: string) => {
+    async (yaml: string, fileName: string, afterPersist?: () => Promise<void>) => {
       if (!controller.current) throw new Error('The script is not ready.');
       if (activity.current.http || activity.current.grpc)
         throw new Error('Stop the recording before importing a script.');
@@ -182,7 +227,8 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
         await renamePlanScript(scriptId, fileName);
         fileNameChanged(fileName);
         await persistEmbeddedScript(scriptId, { yaml, fileName });
-      } else await changeScript(undefined, { yaml, fileName });
+        await afterPersist?.();
+      } else await changeScript(undefined, { yaml, fileName }, afterPersist);
     },
     [changeScript, fileNameChanged, scriptId],
   );
@@ -292,6 +338,7 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
             current.yaml !== sourceRef.current.yaml ||
             current.fileName !== sourceRef.current.fileName
           ) {
+            sourceRef.current = current;
             setSource(current);
             draft.current.changed = false;
           }
@@ -334,7 +381,7 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
   // A recording becomes a new script of the test plan. It does not replace
   // the open script, so there is nothing to confirm. Only an empty open
   // script is used, as for an imported script.
-  async function importRecording(yaml: string, fileName: string) {
+  async function importRecording(yaml: string, fileName: string, afterPersist?: () => Promise<void>) {
     if (!controller.current) throw new Error('The test plan is not ready.');
     // The web app refuses a second script with the same file name, and a
     // recording has a fixed name (for example grpc-recording.yaml).
@@ -347,7 +394,7 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
     const [, base, extension] = /^(.*?)(\.ya?ml)?$/i.exec(fileName)!;
     let name = fileName;
     for (let copy = 2; taken.has(name.toLowerCase()); copy++) name = `${base}-${copy}${extension ?? '.yaml'}`;
-    await importScript(yaml, name);
+    await importScript(yaml, name, afterPersist);
     goToScripting();
   }
   return (
@@ -429,6 +476,7 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
                   embedded
                   onImport={importRecording}
                   onActivityChange={trackHTTP}
+                  onPendingChange={trackHTTPPending}
                 />
               </InFrontWhen>
             </div>
@@ -444,10 +492,9 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
                 <GRPCRecorderPage
                   embedded
                   onGoToScripting={goToScripting}
-                  onAdd={yaml => {
-                    void importRecording(yaml, 'grpc-recording.yaml').catch(report);
-                  }}
+                  onAdd={(yaml, afterSaved) => importRecording(yaml, 'grpc-recording.yaml', afterSaved)}
                   onActivityChange={trackGRPC}
+                  onPendingChange={trackGRPCPending}
                 />
               </InFrontWhen>
             </div>
@@ -464,6 +511,7 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
               key={source.revision + ':' + source.fileName}
               source={source}
               onCommit={commitCorrelation}
+              onSave={saveCorrelation}
               onGoToScripting={goToScripting}
               onDraftChange={trackDraft}
               saveRef={correlation}

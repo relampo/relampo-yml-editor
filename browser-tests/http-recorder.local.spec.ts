@@ -2,6 +2,35 @@ import { expect, test } from '@playwright/test';
 const original = 'test: {name: Original editor}\nscenarios:\n- name: Original\n  steps: [{get: /health}]\n';
 const saved =
   'test: {name: Recorded booking}\nscenarios:\n- name: Booking\n  steps:\n  - request: {name: Login, method: POST, url: /login}\n';
+test('detects a bare base URL through the agent and shows the selected protocol', async ({ page, context }) => {
+  let state: any = { active: false, totalRequests: 0, requests: [] };
+  await context.route('**/api/studio/info', route =>
+    route.fulfill({ json: { studio: true, capabilities: { httpRecorder: true } } }),
+  );
+  await context.route('**/api/recorder/http/options', route =>
+    route.fulfill({
+      json: {
+        directory: '/private/tmp/recordings',
+        port: 8888,
+        firefoxAvailable: true,
+        firefoxConfigured: true,
+      },
+    }),
+  );
+  await context.route('**/api/recorder/http/current', route => route.fulfill({ json: state }));
+  await context.route('**/api/recorder/http/start', route => {
+    expect(route.request().postDataJSON().applicationUrl).toBe('app.test/login');
+    state = { ...state, active: true, recording: false, protocol: 'HTTP', baseUrls: 'http://app.test' };
+    return route.fulfill({ json: state });
+  });
+  await page.goto('/recorder/http');
+  await page.getByLabel('Base URL', { exact: true }).fill('app.test/login');
+  await page.getByLabel('Base URL', { exact: true }).blur();
+  await expect(page.getByText('AUTO', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Open Firefox', exact: true }).click();
+  await expect(page.getByLabel('Base URL', { exact: true })).toHaveValue('http://app.test/login');
+  await expect(page.getByText('AUTO', { exact: true })).toHaveCount(0);
+});
 test('HTTP Recorder opens a tab, configures Firefox, records prefixes and opens only the saved script', async ({
   page,
   context,

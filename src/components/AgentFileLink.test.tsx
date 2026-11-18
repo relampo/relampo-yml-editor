@@ -34,14 +34,38 @@ it('renders a plain link to the backend file and keeps the anchor attributes', (
 
 describe('through the relay', () => {
   let clicked: HTMLAnchorElement[];
+  let reportTab: { document: Document; opener: unknown; closed: boolean; close: () => void };
+  const timers: number[] = [];
 
   beforeEach(() => {
     vi.spyOn(transport, 'agentFileUrl').mockReturnValue(null);
-    vi.stubGlobal('URL', Object.assign(URL, { createObjectURL: vi.fn(() => 'blob:studio/1'), revokeObjectURL: vi.fn() }));
+    reportTab = {
+      document: document.implementation.createHTMLDocument('Report'),
+      opener: window,
+      closed: false,
+      close: () => {
+        reportTab.closed = true;
+      },
+    };
+    vi.spyOn(window, 'open').mockReturnValue(reportTab as unknown as Window);
+    const schedule = globalThis.setInterval;
+    vi.spyOn(globalThis, 'setInterval').mockImplementation(((callback: TimerHandler, delay?: number) => {
+      const timer = schedule(callback, delay);
+      timers.push(timer);
+      return timer;
+    }) as typeof setInterval);
+    vi.stubGlobal(
+      'URL',
+      Object.assign(URL, { createObjectURL: vi.fn(() => 'blob:studio/1'), revokeObjectURL: vi.fn() }),
+    );
     clicked = [];
     vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
       clicked.push(this);
     });
+  });
+
+  afterEach(() => {
+    for (const timer of timers.splice(0)) clearInterval(timer);
   });
 
   function show(path: string, download?: boolean) {
@@ -88,17 +112,22 @@ describe('through the relay', () => {
     expect(clicked[0].download).toBe('b1');
   });
 
-  it('shows an HTML report in a frame that cannot reach the web app', async () => {
+  it('opens an HTML report in a new tab isolated from the web app', async () => {
     vi.spyOn(transport, 'agentRequest').mockResolvedValue(
       new Response('<h1>Report</h1>', { headers: { 'Content-Type': 'text/html; charset=utf-8' } }),
     );
 
     show('/api/run/7/report?lang=en');
 
-    const frame = await screen.findByTitle('Report');
-    expect(frame).toHaveAttribute('src', 'blob:studio/1');
-    expect(frame).toHaveAttribute('sandbox', 'allow-scripts allow-downloads');
+    await waitFor(() => expect(reportTab.document.querySelector('iframe')).not.toBeNull());
+    const frame = reportTab.document.querySelector('iframe');
+    expect(window.open).toHaveBeenCalledWith('about:blank', '_blank');
+    expect(reportTab.opener).toBeNull();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(frame?.getAttribute('src')).toBe('blob:studio/1');
+    expect(frame?.getAttribute('sandbox')).toBe('allow-scripts allow-downloads');
     expect(clicked).toHaveLength(0);
+    reportTab.closed = true;
   });
 
   it('frees a report that arrives after the link left the page', async () => {
@@ -143,5 +172,12 @@ describe('through the relay', () => {
     show('/api/run/7/report');
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Could not read the file from your machine.');
+  });
+  it('explains a blocked tab without requesting or losing the report', async () => {
+    vi.mocked(window.open).mockReturnValue(null);
+    const request = vi.spyOn(transport, 'agentRequest');
+    show('/api/run/7/report');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Allow pop-ups');
+    expect(request).not.toHaveBeenCalled();
   });
 });

@@ -1,3 +1,7 @@
+import { distributedGlobalHistory } from '../utils/distributedApi';
+import { useAgentState } from '../hooks/useAgentState';
+import { requestExecutionProject, type ExecutionProject } from '../utils/executionProject';
+import { embeddedScriptDraftKey } from '../utils/embeddedPlanDraft';
 import { DistributedNodes } from './distributed-run/DistributedNodes';
 import { DistributedConnection, type ProviderConnection } from './distributed-run/DistributedConnection';
 import { DistributedResults } from './distributed-run/DistributedResults';
@@ -10,6 +14,8 @@ import { timerRead } from '../utils/agentTransport';
 import { useInFront } from '../hooks/useInFront';
 import {
   distributedRequest,
+  DistributedRequestError,
+  safeProviderURL,
   uploadDistributedFile,
   prepareDistributed,
   type DistributedConfig,
@@ -44,6 +50,39 @@ export function YAMLDistributedRun({
   const es = language === 'es';
   const text = (spanish: string, english: string) => (es ? spanish : english);
   const available = enabled;
+  const agentContext = useAgentState()?.contextId;
+  const [project, setProject] = useState<ExecutionProject>();
+  const [projectReady, setProjectReady] = useState(!embeddedScriptDraftKey());
+  useEffect(() => {
+    if (!embeddedScriptDraftKey()) return;
+    setProjectReady(false);
+    setProject(undefined);
+    let live = true;
+    void requestExecutionProject(fileName).then(
+      value => {
+        if (!live) return;
+        setProject(value);
+        if (value?.provider) setProvider(value.provider);
+        if (value?.repository) setRepository(value.repository);
+        setProjectReady(true);
+      },
+      cause => {
+        if (live) {
+          setError(String(cause.message || cause));
+          setProjectReady(true);
+        }
+      },
+    );
+    return () => {
+      live = false;
+    };
+  }, [fileName, agentContext]);
+  const storageKey = () => {
+    const script = embeddedScriptDraftKey();
+    return script
+      ? `${savedRunKey}:${script}:${project?.identity || 'unready'}:${provider}:${host}:${repository}`
+      : savedRunKey;
+  };
   const [provider, setProvider] = useState<'github' | 'gitlab'>('github');
   const [repository, setRepository] = useState('');
   const [host, setHost] = useState('gitlab.com');
@@ -61,11 +100,21 @@ export function YAMLDistributedRun({
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [runId, setRunId] = useState('');
+  const [trackingLost, setTrackingLost] = useState(false);
+  const [remoteURL, setRemoteURL] = useState<string | undefined>();
   const [state, setState] = useState<DistributedState | null>(null);
   const [scope, setScope] = useState('global');
   const [files, setFiles] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [fileAction, setFileAction] = useState('upload');
   const projectKey = `${provider}:${host}:${repository}`;
+  const [appliedProject, setAppliedProject] = useState<string | null>(null);
+  const projectApplyKey = (script: string) =>
+    JSON.stringify([projectKey, fileName || 'studio.yaml', fingerprint(script)]);
+  const filesApplied =
+    appliedProject === projectApplyKey(yamlCode) &&
+    selectedFiles.length === 0 &&
+    !(fileAction === 'remove' && files.trim());
   const [publishedFiles, setPublishedFiles] = useState<
     { action: string; path: string; target: string; repositoryKey: string }[]
   >([]);
@@ -90,10 +139,9 @@ export function YAMLDistributedRun({
       document.removeEventListener('keydown', closeOnEscape);
     };
   }, []);
-  const [fileAction, setFileAction] = useState('upload');
   const [reviewed, setReviewed] = useState(false);
   const [connectionError, setConnectionError] = useState('');
-  const active = !!runId && (!state || state.status === 'running' || state.status === 'stopping');
+  const active = !!runId && !trackingLost && (!state || state.status === 'running' || state.status === 'stopping');
   const mounted = useRef(true);
   const reattached = useRef(false);
   const histories = useRef<Map<string, DistributedPoint[]>>(new Map());
@@ -105,11 +153,22 @@ export function YAMLDistributedRun({
       mounted.current = false;
     };
   }, []);
+  const executionContext = storageKey();
   useEffect(() => {
-    if (!documentReady || reattached.current || !yamlCode.trim()) return;
+    if (!embeddedScriptDraftKey()) return;
+    reattached.current = false;
+    setRunId('');
+    setTrackingLost(false);
+    setRemoteURL(undefined);
+    setState(null);
+    histories.current.clear();
+    historyStamp.current = '';
+  }, [executionContext]);
+  useEffect(() => {
+    if (!documentReady || reattached.current || !yamlCode.trim() || (embeddedScriptDraftKey() && !projectReady)) return;
     reattached.current = true;
     try {
-      const saved: unknown = JSON.parse(sessionStorage.getItem(savedRunKey) ?? 'null');
+      const saved: unknown = JSON.parse(sessionStorage.getItem(storageKey()) ?? 'null');
       if (
         saved &&
         typeof saved === 'object' &&
@@ -119,22 +178,23 @@ export function YAMLDistributedRun({
         saved.fp === fingerprint(yamlCode)
       ) {
         setRunId(saved.id);
+        setTrackingLost('lost' in saved && saved.lost === true);
+        setRemoteURL('url' in saved && typeof saved.url === 'string' ? safeProviderURL(saved.url) : undefined);
         setShowSettings(false);
       }
     } catch {
       /* Session persistence is optional. */
     }
-  }, [documentReady, yamlCode]);
-  // ponytail: a hidden view reads nothing (contract, section 8), so the chart
-  // of one node has no points for that time. The global history comes whole
-  // from the agent. Upgrade path: the agent sends the history of each scope.
+  }, [documentReady, yamlCode, projectReady, executionContext]);
+  // Hidden views pause reads. Every scope recovers its history from the agent.
   const [inFront] = useInFront();
   useEffect(() => {
-    if (!runId || !inFront) return;
+    if (!runId || !inFront || trackingLost) return;
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout>;
     let cancelled = false;
     const poll = async () => {
+      const readStarted = performance.now();
       try {
         const next = await timerRead(
           signal => distributedRequest<DistributedState>(`run/${encodeURIComponent(runId)}`, undefined, signal),
@@ -143,6 +203,17 @@ export function YAMLDistributedRun({
         if (cancelled) return;
         setState(next);
         setConnectionError('');
+        const url = safeProviderURL(next.url);
+        if (url) {
+          setRemoteURL(url);
+          try {
+            const saved = JSON.parse(sessionStorage.getItem(executionContext) ?? 'null');
+            if (saved?.id === runId && saved.url !== url)
+              sessionStorage.setItem(executionContext, JSON.stringify({ ...saved, url }));
+          } catch {
+            /* Session persistence is optional. */
+          }
+        }
         const stamp = next.history?.at(-1)?.at;
         if (stamp && stamp !== historyStamp.current) {
           historyStamp.current = stamp;
@@ -164,9 +235,25 @@ export function YAMLDistributedRun({
             histories.current.set(item.key, points.slice(-300));
           }
         }
-        if (next.status === 'running' || next.status === 'stopping') timer = setTimeout(() => void poll(), 2500);
+        if (next.status === 'running' || next.status === 'stopping')
+          timer = setTimeout(() => void poll(), Math.max(0, 1000 - (performance.now() - readStarted)));
       } catch (e) {
         if (!cancelled) {
+          if (e instanceof DistributedRequestError && e.status === 404) {
+            setTrackingLost(true);
+            setConnectionError('');
+            setState(current =>
+              current ? { ...current, status: 'unavailable', error: undefined, warning: undefined } : null,
+            );
+            try {
+              const saved = JSON.parse(sessionStorage.getItem(executionContext) ?? 'null');
+              if (saved?.id === runId)
+                sessionStorage.setItem(executionContext, JSON.stringify({ ...saved, lost: true }));
+            } catch {
+              /* Session persistence is optional. */
+            }
+            return;
+          }
           setConnectionError(e instanceof Error ? e.message : 'Connection lost');
           timer = setTimeout(() => void poll(), 5000);
         }
@@ -178,10 +265,11 @@ export function YAMLDistributedRun({
       controller.abort();
       clearTimeout(timer);
     };
-  }, [runId, inFront]);
+  }, [runId, inFront, trackingLost, executionContext]);
 
-  function config(script: string): DistributedConfig {
+  function config(script: string, snapshot = project): DistributedConfig {
     return {
+      ...(snapshot ? { workspace: { scriptPath: snapshot.scriptPath, files: snapshot.files } } : {}),
       provider,
       repository: repository.trim(),
       yaml: script,
@@ -215,7 +303,13 @@ export function YAMLDistributedRun({
   }
   async function validate() {
     await perform(async () => {
-      const request = config(flushPendingEdits());
+      const snapshot = await requestExecutionProject(fileName);
+      setProject(snapshot);
+      const request = config(flushPendingEdits(), snapshot);
+      if (!filesApplied || appliedProject !== projectApplyKey(request.yaml))
+        throw new Error(
+          text('Aplica el proyecto y los archivos antes de ejecutar.', 'Apply the project and files before running.'),
+        );
       const result = await prepareDistributed(request);
       planRequest.current = request;
       reviewedProjectFiles.current = JSON.stringify(projectFiles);
@@ -233,7 +327,13 @@ export function YAMLDistributedRun({
   }
   async function start(prepareOnly: boolean) {
     await perform(async () => {
-      const request = config(flushPendingEdits());
+      const snapshot = await requestExecutionProject(fileName);
+      setProject(snapshot);
+      const request = config(flushPendingEdits(), snapshot);
+      if (!filesApplied || appliedProject !== projectApplyKey(request.yaml))
+        throw new Error(
+          text('Aplica el proyecto y los archivos antes de ejecutar.', 'Apply the project and files before running.'),
+        );
       if (
         !planRequest.current ||
         JSON.stringify(planRequest.current) !== JSON.stringify(request) ||
@@ -246,6 +346,8 @@ export function YAMLDistributedRun({
           ),
         );
       const result = await distributedRequest<{ id: string }>('run', { ...request, prepare_only: prepareOnly });
+      setTrackingLost(false);
+      setRemoteURL(undefined);
       setState(null);
       setScope('global');
       histories.current.clear();
@@ -253,7 +355,7 @@ export function YAMLDistributedRun({
       setRunId(result.id);
       setShowSettings(false);
       try {
-        sessionStorage.setItem(savedRunKey, JSON.stringify({ id: result.id, fp: fingerprint(request.yaml) }));
+        sessionStorage.setItem(storageKey(), JSON.stringify({ id: result.id, fp: fingerprint(request.yaml) }));
       } catch {
         /* Optional. */
       }
@@ -266,8 +368,10 @@ export function YAMLDistributedRun({
     reviewedProjectFiles.current === JSON.stringify(projectFiles);
   const disabled = busy || active || available !== true;
   function clearResults() {
-    if (active || !state || !['completed', 'errored', 'stopped'].includes(state.status)) return;
+    if (active || (!trackingLost && (!state || !['completed', 'errored', 'stopped'].includes(state.status)))) return;
     setRunId('');
+    setTrackingLost(false);
+    setRemoteURL(undefined);
     setState(null);
     setScope('global');
     histories.current.clear();
@@ -281,92 +385,100 @@ export function YAMLDistributedRun({
     setReviewed(false);
     setShowSettings(true);
     try {
-      sessionStorage.removeItem(savedRunKey);
+      sessionStorage.removeItem(storageKey());
     } catch {
       /* Optional. */
     }
   }
-  const points = scope === 'global' ? (state?.history ?? []) : (histories.current.get(scope) ?? []);
+  const points =
+    scope === 'global'
+      ? distributedGlobalHistory(state)
+      : (state?.scope_history?.[scope] ?? histories.current.get(scope) ?? []);
+
+  const runControls = (
+    <div className="flex flex-wrap items-center gap-3">
+      <DistributedNodes
+        selected={selectedNodes}
+        onChange={setSelectedNodes}
+        capacity={40}
+        maxSelected={10}
+        disabled={disabled}
+        es={es}
+      />
+      <details
+        ref={reportsMenu}
+        className="relative text-xs"
+      >
+        <summary
+          className={`${buttonClass} cursor-pointer !py-2 text-xs`}
+          aria-label={text('Reportes', 'Reports')}
+        >
+          {text('Reportes', 'Reports')} · {formats.map(f => f.toUpperCase()).join(', ') || '—'}
+        </summary>
+        <div className="absolute right-0 z-20 mt-2 min-w-36 space-y-2 rounded-lg border border-white/15 bg-[#171717] p-3 shadow-xl">
+          {['html', 'json', 'csv', 'txt'].map(format => (
+            <label
+              className="flex items-center gap-2"
+              key={format}
+            >
+              <input
+                type="checkbox"
+                aria-label={format.toUpperCase()}
+                checked={formats.includes(format)}
+                disabled={disabled}
+                onChange={e =>
+                  setFormats(current => (e.target.checked ? [...current, format] : current.filter(f => f !== format)))
+                }
+              />
+              {format.toUpperCase()}
+            </label>
+          ))}
+        </div>
+      </details>
+      <button
+        className="inline-flex h-9 items-center gap-2 rounded border border-yellow-400/40 bg-yellow-400 px-3 text-sm font-semibold text-black transition-colors hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-50"
+        onClick={() => void (planCurrent && reviewed ? start(false) : validate())}
+        disabled={
+          disabled ||
+          !documentReady ||
+          !filesApplied ||
+          !yamlCode.trim() ||
+          validationErrors.length > 0 ||
+          !repository.trim() ||
+          !connected ||
+          formats.length === 0 ||
+          nodes < 1
+        }
+      >
+        {busy ? (
+          <Loader2
+            size={16}
+            className="animate-spin"
+          />
+        ) : (
+          <Play className="h-4 w-4" />
+        )}
+        {text('Ejecutar', 'Run')}
+      </button>
+    </div>
+  );
 
   return (
     <div className="@container h-full min-h-0 overflow-y-auto p-4 text-zinc-200">
       <div className="mx-auto max-w-6xl space-y-5">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/5 pb-3">
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">
-              {text('Prueba de carga', 'Load test')}
-            </p>
-            <h2 className="mt-1 text-base font-semibold text-zinc-100">
-              {text('Prueba distribuida', 'Distributed test')}
-            </h2>
+        {!state && (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/5 pb-3">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">
+                {text('Prueba de carga', 'Load test')}
+              </p>
+              <h2 className="mt-1 text-base font-semibold text-zinc-100">
+                {text('Prueba distribuida', 'Distributed test')}
+              </h2>
+            </div>
+            {runControls}
           </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <DistributedNodes
-              selected={selectedNodes}
-              onChange={setSelectedNodes}
-              capacity={40}
-              maxSelected={10}
-              disabled={disabled}
-              es={es}
-            />
-            <details
-              ref={reportsMenu}
-              className="relative text-xs"
-            >
-              <summary
-                className={`${buttonClass} cursor-pointer !py-2 text-xs`}
-                aria-label={text('Reportes', 'Reports')}
-              >
-                {text('Reportes', 'Reports')} · {formats.map(f => f.toUpperCase()).join(', ') || '—'}
-              </summary>
-              <div className="absolute right-0 z-20 mt-2 min-w-36 space-y-2 rounded-lg border border-white/15 bg-[#171717] p-3 shadow-xl">
-                {['html', 'json', 'csv', 'txt'].map(format => (
-                  <label
-                    className="flex items-center gap-2"
-                    key={format}
-                  >
-                    <input
-                      type="checkbox"
-                      aria-label={format.toUpperCase()}
-                      checked={formats.includes(format)}
-                      disabled={disabled}
-                      onChange={e =>
-                        setFormats(current =>
-                          e.target.checked ? [...current, format] : current.filter(f => f !== format),
-                        )
-                      }
-                    />
-                    {format.toUpperCase()}
-                  </label>
-                ))}
-              </div>
-            </details>
-            <button
-              className="inline-flex h-9 items-center gap-2 rounded border border-yellow-400/40 bg-yellow-400 px-3 text-sm font-semibold text-black transition-colors hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-50"
-              onClick={() => void (planCurrent && reviewed ? start(false) : validate())}
-              disabled={
-                disabled ||
-                !documentReady ||
-                !yamlCode.trim() ||
-                validationErrors.length > 0 ||
-                !repository.trim() ||
-                !connected ||
-                formats.length === 0 ||
-                nodes < 1
-              }
-            >
-              {busy ? (
-                <Loader2
-                  size={16}
-                  className="animate-spin"
-                />
-              ) : (
-                <Play className="h-4 w-4" />
-              )}
-              {text('Ejecutar', 'Run')}
-            </button>
-          </div>
-        </div>
+        )}
         {available === false && (
           <Notice>
             {text(
@@ -377,6 +489,36 @@ export function YAMLDistributedRun({
         )}
         {error && <Notice alert>{error}</Notice>}
         {notice && <Notice>{notice}</Notice>}
+        {trackingLost && (
+          <Notice alert>
+            <div className="space-y-2">
+              <p>
+                {text(
+                  'El agente ya no conserva el seguimiento de esta ejecución. Su estado remoto es desconocido; no se iniciará otra prueba automáticamente.',
+                  'The agent no longer has tracking information for this run. Its remote status is unknown; another test will not start automatically.',
+                )}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {remoteURL && (
+                  <a
+                    className={buttonClass}
+                    href={remoteURL}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {text('Ver ejecución remota', 'View remote execution')}
+                  </a>
+                )}
+                <button
+                  className={buttonClass}
+                  onClick={clearResults}
+                >
+                  {text('Volver a configurar', 'Back to settings')}
+                </button>
+              </div>
+            </div>
+          </Notice>
+        )}
         {connectionError && (
           <Notice alert>
             {connectionError} ·{' '}
@@ -385,14 +527,6 @@ export function YAMLDistributedRun({
               'Reconnecting; the remote test may still be running.',
             )}
           </Notice>
-        )}
-        {runId && (
-          <button
-            className={buttonClass}
-            onClick={() => setShowSettings(value => !value)}
-          >
-            {showSettings ? text('Ocultar configuración', 'Hide settings') : text('Ver configuración', 'View settings')}
-          </button>
         )}
         <div className={showSettings ? 'space-y-5' : 'hidden'}>
           <div className="grid items-stretch gap-3 @[56rem]:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1.25fr)]">
@@ -593,6 +727,7 @@ export function YAMLDistributedRun({
                           ...current.filter(file => file.repositoryKey !== projectKey || !targets.has(file.target)),
                           ...changes,
                         ]);
+                        if (fileAction !== 'remove') setAppliedProject(projectApplyKey(request.yaml));
                         setPlan(null);
                         setSelectedFiles([]);
                         setFiles('');
@@ -602,6 +737,14 @@ export function YAMLDistributedRun({
                     {text('Aplicar', 'Apply')}
                   </button>
                 </div>
+                {!filesApplied && (
+                  <p className="text-xs text-zinc-400">
+                    {text(
+                      'Aplica el proyecto y los archivos antes de ejecutar.',
+                      'Apply the project and files before running.',
+                    )}
+                  </p>
+                )}
                 {projectFiles.length > 0 && (
                   <p
                     className="text-xs text-yellow-400/80"
@@ -672,14 +815,14 @@ export function YAMLDistributedRun({
               <div className="flex flex-wrap gap-2">
                 <button
                   className={buttonClass}
-                  disabled={disabled || !connected || !planCurrent || !reviewed}
+                  disabled={disabled || !connected || !filesApplied || !planCurrent || !reviewed}
                   onClick={() => void start(true)}
                 >
                   {text('Preparar sin ejecutar', 'Prepare without running')}
                 </button>
                 <button
                   className={`${buttonClass} !border-yellow-400 !bg-yellow-400 !text-black`}
-                  disabled={disabled || !connected || !planCurrent || !reviewed}
+                  disabled={disabled || !connected || !filesApplied || !planCurrent || !reviewed}
                   onClick={() => void start(false)}
                 >
                   <Play size={16} />
@@ -691,6 +834,19 @@ export function YAMLDistributedRun({
         </div>
         {state && (
           <DistributedResults
+            runControls={runControls}
+            settingsAction={
+              runId ? (
+                <button
+                  className="inline-flex h-8 items-center justify-center rounded-lg border border-white/15 px-2.5 text-xs text-zinc-200 hover:bg-white/5"
+                  onClick={() => setShowSettings(value => !value)}
+                >
+                  {showSettings
+                    ? text('Ocultar configuración', 'Hide settings')
+                    : text('Ver configuración', 'View settings')}
+                </button>
+              ) : undefined
+            }
             state={state}
             runId={runId}
             plan={plan}

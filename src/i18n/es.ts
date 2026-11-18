@@ -47,7 +47,7 @@ export const esTranslations = {
     rampUp: 'Incremento gradual',
     usersHelp: 'Número de usuarios virtuales simultáneos.',
     durationHelp: 'Unidad predeterminada: segundos. Ejemplos: 500ms, 5s, 5m.',
-    iterationsHelp: 'Límite opcional de repeticiones del escenario por usuario virtual.',
+    iterationsHelp: '0 significa sin límite de iteraciones. Un valor positivo detiene a cada usuario tras esas repeticiones, aunque aún no termine la duración configurada.',
     selectedLoadModel: 'Modelo de carga activo',
     loadSelectionHelp: 'Explora y edita cualquier modo. Actívalo cuando esté listo.',
     activateLoadModel: 'Activar este modo',
@@ -1414,6 +1414,7 @@ export const esTranslations = {
         oneTimeDesc: 'Inicializa el estado compartido una sola vez',
       },
       grpcDefaults: {
+        transport: 'Transporte',
         target: 'Destino',
         protoset: 'Archivo Protoset',
         timeout: 'Tiempo límite',

@@ -1,6 +1,8 @@
+import type { ExecutionProject } from './executionProject';
 import { agentRequest } from './agentTransport';
 
 export interface DistributedConfig {
+  workspace?: Pick<ExecutionProject, 'scriptPath' | 'files'>;
   provider: 'github' | 'gitlab';
   repository: string;
   host?: string;
@@ -54,6 +56,7 @@ export interface DistributedNode {
   state: string;
   updated_at: string;
   progress: {
+    started_at?: string;
     final: boolean;
     active_vus: number;
     peak_vus: number;
@@ -63,6 +66,7 @@ export interface DistributedNode {
   };
 }
 export interface DistributedState {
+  scope_history?: Record<string, DistributedPoint[]>;
   id: string;
   status: string;
   stage: string;
@@ -96,6 +100,16 @@ interface OperationEvent {
   data?: DistributedPlan;
 }
 
+export class DistributedRequestError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+  ) {
+    super(message);
+    this.name = 'DistributedRequestError';
+  }
+}
+
 export async function distributedRequest<T>(path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
   const response = await agentRequest(`/api/distributed/${path}`, {
     method: body === undefined ? 'GET' : 'POST',
@@ -106,10 +120,11 @@ export async function distributedRequest<T>(path: string, body?: unknown, signal
   });
   if (!response.ok) {
     const payload: unknown = await response.json().catch(() => null);
-    throw new Error(
+    throw new DistributedRequestError(
       payload && typeof payload === 'object' && 'error' in payload && typeof payload.error === 'string'
         ? payload.error
         : `Distributed request failed (${response.status})`,
+      response.status,
     );
   }
   return response.json() as Promise<T>;
@@ -151,13 +166,26 @@ export async function uploadDistributedFile(file: File): Promise<string> {
   return body.path;
 }
 
-export function distributedStatus(status: string, es: boolean) {
+export function distributedStatus(status: string, es: boolean, stage?: string) {
+  if (status === 'errored' && stage === 'generating_report') return es ? 'Error en el reporte' : 'Report failed';
   const labels: Record<string, [string, string]> = {
     completed: ['Completada', 'Completed'],
     stopped: ['Detenida', 'Stopped'],
     stopping: ['Deteniendo', 'Stopping'],
     running: ['Ejecutando', 'Running'],
     errored: ['Fallida', 'Failed'],
+    unavailable: ['Sin seguimiento', 'Tracking unavailable'],
   };
   return labels[status]?.[es ? 0 : 1] ?? (es ? 'Fallida' : 'Failed');
+}
+
+// Preserve the complete scoped history while reconciling its recent samples
+// with the canonical global live log (older agents retained final window rates).
+export function distributedGlobalHistory(state: DistributedState | null): DistributedPoint[] {
+  const full = state?.scope_history?.global;
+  const canonical = state?.history ?? [];
+  if (!full?.length) return canonical;
+  const key = (point: DistributedPoint) => JSON.stringify([point.at, point.requests, point.failures]);
+  const confirmed = new Map(canonical.map(point => [key(point), point]));
+  return full.map(point => confirmed.get(key(point)) ?? point);
 }

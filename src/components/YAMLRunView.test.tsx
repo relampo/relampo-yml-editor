@@ -1,3 +1,5 @@
+import { persistLocalRunReports } from '../utils/localRunReports';
+vi.mock('../utils/localRunReports', async original => ({ ...(await original<typeof import('../utils/localRunReports')>()), persistLocalRunReports: vi.fn(async () => {}) }));
 import { parseYAMLToTree, treeToYAML } from '../utils/yamlParser';
 import { addNodeToTree, insertNodesAfterTarget } from './yaml-tree-view/treeOperations';
 import { createNodeByType } from './yaml-tree-view/nodeFactory';
@@ -97,6 +99,24 @@ const baseProps = {
   validationErrors: [],
 };
 
+it('RLP-823 cannot restore a stale load start after its document is unmounted', async () => {
+  let finish!: (id: string) => void;
+  runApiMock.startLoadRun.mockImplementationOnce(
+    () => new Promise<string>(resolve => {
+      finish = resolve;
+    }),
+  );
+  const view = render(<YAMLLoadRunSession {...baseProps} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Run load test' }));
+  await waitFor(() => expect(runApiMock.startLoadRun).toHaveBeenCalledTimes(1));
+  view.unmount();
+  await act(async () => {
+    finish('stale-run');
+  });
+  expect(runApiMock.streamLoadRun).not.toHaveBeenCalled();
+  expect(sessionStorage.getItem('relampo.studio.loadRun')).toBeNull();
+});
+
 describe('YAMLLoadRunSession', () => {
   it.each([false, true])('keeps summary cards without the duplicate details block (zero=%s)', async zero => {
     render(<YAMLLoadRunSession {...baseProps} />);
@@ -145,7 +165,7 @@ describe('YAMLLoadRunSession', () => {
     expect(screen.getByText('Memory').parentElement).toHaveTextContent('80 MiB (a)');
     expect(screen.getByText('CPU').parentElement).toHaveTextContent('40.0% (b)');
     expect(screen.queryByText('Goroutines Peak')).not.toBeInTheDocument();
-    expect(screen.getByText('RPS').parentElement).toHaveTextContent('66.7');
+    expect(within(screen.getByText('Run summary').parentElement!.parentElement!).getByText('RPS').parentElement).toHaveTextContent('66.7');
   });
 
   it.each([
@@ -1225,7 +1245,7 @@ ${scenario}${mode === 'single' ? '' : scenario.replace('name: first','name: seco
  act(()=>runApiMock.handlers[0].onDone({status:'completed',error:null,summary:summary({scenario_mode:mode})}));
  expect(screen.getAllByText('Planned load profile')).toHaveLength(mode==='single'?1:2);
  expect(screen.getAllByText(/Peak Users: 2.*Total: 20s/)).toHaveLength(mode==='single'?1:2);
- for (const field of ['Status','Duration','VUs (exec/conf)','Total Requests','Error %','RPS','TPS','Memory','CPU','Execution mode']) expect(screen.getByText(field)).toBeInTheDocument();
+ for (const field of ['Status','Duration','VUs (exec/conf)','Total Requests','Error %','RPS','TPS','Memory','CPU','Execution mode']) expect(screen.getAllByText(field).length).toBeGreaterThan(0);
  expect(screen.queryByText('Goroutines Peak')).not.toBeInTheDocument();
  expect(screen.queryByText('Request p95')).not.toBeInTheDocument();
  expect(screen.getByText('Execution mode').parentElement).toHaveTextContent(mode==='single'?'Single':mode==='parallel'?'Parallel':'Sequential');
@@ -1265,4 +1285,32 @@ it('keeps SQL response samples after log rotation and completion, then clears th
   fireEvent.click(screen.getByRole('button', { name: 'Run load test' }));
   await waitFor(() => expect(runApiMock.handlers).toHaveLength(2));
   expect(screen.queryByRole('table', { name: 'Returned SQL rows' })).not.toBeInTheDocument();
+});
+
+it('clears completed local results and attachment without stopping or editing the script', async () => {
+  render(<YAMLLoadRunSession {...baseProps} />);
+  expect(screen.getByRole('button', { name: 'Clear' })).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: 'Run load test' }));
+  await waitFor(() => expect(runApiMock.handlers).toHaveLength(1));
+  expect(screen.getByRole('button', { name: 'Clear' })).toBeDisabled();
+  act(() => runApiMock.handlers[0].onDone({ status: 'completed', error: null, summary: summary() }));
+  fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
+  expect(screen.queryByText('Run summary')).not.toBeInTheDocument();
+  expect(sessionStorage.getItem('relampo.studio.loadRun')).toBeNull();
+  expect(runApiMock.stopLoadRun).not.toHaveBeenCalled();
+  expect(screen.getByRole('button', { name: 'Run load test' })).toBeEnabled();
+});
+
+it('announces Downloads before Run and generates selected reports when Stop returns partial results', async () => {
+  vi.mocked(persistLocalRunReports).mockClear();
+  render(<YAMLLoadRunSession {...baseProps} />);
+  expect(screen.getByText(/Reports will be saved to Downloads/)).toBeInTheDocument();
+  for (const format of ['JSON', 'CSV', 'TXT']) fireEvent.click(screen.getByLabelText(format));
+  fireEvent.click(screen.getByRole('button', { name: 'Run load test' }));
+  await waitFor(() => expect(runApiMock.handlers).toHaveLength(1));
+  fireEvent.click(screen.getByRole('button', { name: 'Stop' }));
+  expect(runApiMock.stopLoadRun).toHaveBeenCalled();
+  act(() => runApiMock.handlers[0].onDone({ status: 'stopped', error: null, summary: summary({ total_requests: 3, duration: 1000000000 }) }));
+  await waitFor(() => expect(persistLocalRunReports).toHaveBeenCalledWith('lrun-1', ['html', 'json', 'csv', 'txt'], expect.any(String), 'en', undefined, 'downloads'));
+  expect(screen.getByText('View reports', { exact: true })).toBeInTheDocument();
 });

@@ -2,7 +2,6 @@ import { useEffect, useRef, useState, type ComponentProps } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { agentFileUrl, agentRequest } from '../utils/agentTransport';
 import { AgentAnswerLost } from '../utils/relayTransport';
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from './ui/dialog';
 
 type AgentFileLinkProps = Omit<ComponentProps<'a'>, 'href'> & { path: string };
 
@@ -39,18 +38,11 @@ export function AgentFileLink({ path, ...anchor }: AgentFileLinkProps) {
   );
 }
 
-function AgentFileButton({ path, download, className, children }: AgentFileLinkProps) {
+function AgentFileButton({ path, download, target, className, children }: AgentFileLinkProps) {
   const { language } = useLanguage();
   const text = (en: string, es: string) => (language === 'es' ? es : en);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [report, setReport] = useState('');
-  useEffect(
-    () => () => {
-      if (report) URL.revokeObjectURL(report);
-    },
-    [report],
-  );
   // A read can end after this link left the page. Then nothing revokes a new URL.
   const gone = useRef(false);
   useEffect(() => {
@@ -64,7 +56,26 @@ function AgentFileButton({ path, download, className, children }: AgentFileLinkP
   async function open() {
     setBusy(true);
     setError('');
+    let tab: Window | null = null;
+    const wantsTab =
+      download === undefined &&
+      !/[?&]download=/.test(path) &&
+      (target === '_blank' || /\/report(?:\?|$)|\/report\/html(?:\?|$)/.test(path));
     try {
+      // Reserve a browser tab during the click, before the asynchronous relay read.
+      if (wantsTab) {
+        tab = window.open('about:blank', '_blank');
+        if (!tab)
+          throw Error(
+            text(
+              'Allow pop-ups to open the report in a new tab.',
+              'Permite las ventanas emergentes para abrir el reporte en otra pestaña.',
+            ),
+          );
+        tab.opener = null;
+        tab.document.title = text('Report', 'Reporte');
+        tab.document.body.textContent = text('Opening report…', 'Abriendo reporte…');
+      }
       const response = await readFile(path);
       if (!response.ok) {
         const body = await response.json().catch(() => null);
@@ -76,12 +87,34 @@ function AgentFileButton({ path, download, className, children }: AgentFileLinkP
       const url = URL.createObjectURL(await response.blob());
       if (gone.current) {
         URL.revokeObjectURL(url);
+        tab?.close();
         return;
       }
       if (html && download === undefined && !disposition.startsWith('attachment')) {
-        setReport(url);
+        tab ??= window.open('about:blank', '_blank');
+        if (!tab || tab.closed) {
+          URL.revokeObjectURL(url);
+          throw Error(text('Could not open the report tab.', 'No se pudo abrir la pestaña del reporte.'));
+        }
+        tab.opener = null;
+        const frame = tab.document.createElement('iframe');
+        frame.title = text('Report', 'Reporte');
+        // Keep the same isolation as the former dialog. Report scripts cannot access Studio.
+        frame.setAttribute('sandbox', 'allow-scripts allow-downloads');
+        frame.src = url;
+        frame.style.cssText = 'width:100%;height:100vh;border:0;display:block;background:white';
+        tab.document.body.style.margin = '0';
+        tab.document.body.replaceChildren(frame);
+        const reportTab = tab;
+        const cleanup = setInterval(() => {
+          if (reportTab.closed) {
+            clearInterval(cleanup);
+            URL.revokeObjectURL(url);
+          }
+        }, 1000);
         return;
       }
+      tab?.close();
       const link = document.createElement('a');
       link.href = url;
       link.download =
@@ -92,6 +125,8 @@ function AgentFileButton({ path, download, className, children }: AgentFileLinkP
       // The browser starts the download from the URL after the click returns.
       setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } catch (cause) {
+      tab?.close();
+      if (gone.current) return;
       setError(
         (cause instanceof Error && !(cause instanceof TypeError) && cause.message) ||
           text('Could not read the file from your machine.', 'No se pudo leer el archivo de tu máquina.'),
@@ -119,27 +154,6 @@ function AgentFileButton({ path, download, className, children }: AgentFileLinkP
           {error}
         </span>
       )}
-      <Dialog
-        open={!!report}
-        onOpenChange={next => {
-          if (!next) setReport('');
-        }}
-      >
-        <DialogContent className="h-[90vh] max-w-[95vw]! grid-rows-[auto_1fr] gap-2 p-3">
-          <DialogTitle className="text-sm">{text('Report', 'Reporte')}</DialogTitle>
-          <DialogDescription className="sr-only">
-            {text('The report from your machine.', 'El reporte de tu máquina.')}
-          </DialogDescription>
-          {/* The report is a file from the customer's machine. Without
-              allow-same-origin it cannot read the web app that frames Studio. */}
-          <iframe
-            title={text('Report', 'Reporte')}
-            src={report}
-            sandbox="allow-scripts allow-downloads"
-            className="h-full w-full rounded border-0 bg-white"
-          />
-        </DialogContent>
-      </Dialog>
     </>
   );
 }

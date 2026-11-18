@@ -62,11 +62,12 @@ for (const studio of [false, true]) {
         await page.getByRole('treeitem', { name: /^(?:Collapse |Expand )?Scenarios$/ }).click({ button: 'right' });
         await page.getByRole('button', { name: 'Scenario New load scenario' }).click();
         await page.getByRole('treeitem', { name: /^(?:Collapse |Expand )?Test Plan$/ }).click();
-        await page.getByLabel('Scenario scheduling').selectOption(mode);
+        await page.getByLabel('Scenario scheduling').click();
+      await page.getByRole('option', { name: mode === 'parallel' ? 'Parallel' : 'Sequential', exact: true }).click();
         const freshPlan = yaml.load(await downloadYaml(page)) as any;
         expect(freshPlan.test.scenario_mode).toBe(mode);
         expect(freshPlan.scenarios.map((item: any) => item.name)).toEqual(['New Scenario', 'New Scenario 2']);
-        await page.locator('input[type="file"]').setInputFiles({
+        await page.locator('input[type="file"][accept=".yaml,.yml"]').setInputFiles({
           name: 'scenarios.yaml', mimeType: 'text/yaml', buffer: Buffer.from(sourceYaml),
         });
       }
@@ -91,7 +92,8 @@ for (const studio of [false, true]) {
       ]);
 
       await page.getByRole('treeitem', { name: /^(?:Collapse |Expand )?Scenario authoring$/ }).click();
-      await page.getByLabel('Scenario scheduling').selectOption(mode);
+      await page.getByLabel('Scenario scheduling').click();
+      await page.getByRole('option', { name: mode === 'parallel' ? 'Parallel' : 'Sequential', exact: true }).click();
       await expect(page.getByText('Choose sequential or parallel scenario scheduling for multiple scenarios.', { exact: true })).toHaveCount(0);
       await source.click({ button: 'right' });
       await page.getByRole('button', { name: 'Copy', exact: true }).click();
@@ -117,11 +119,11 @@ for (const studio of [false, true]) {
         await expect(page.getByRole('treeitem', { name: /^(?:Collapse |Expand )?Renamed$/ })).toBeVisible();
         expect(yaml.load(await downloadYaml(page))).toEqual(parsed);
       }
-      await page.locator('input[type="file"]').setInputFiles({
+      await page.locator('input[type="file"][accept=".yaml,.yml"]').setInputFiles({
         name: 'round-trip.yaml', mimeType: 'text/yaml', buffer: Buffer.from(exported),
       });
       await page.getByRole('treeitem', { name: /^(?:Collapse |Expand )?Scenario authoring$/ }).click();
-      await expect(page.getByLabel('Scenario scheduling')).toHaveValue(mode);
+      await expect(page.getByLabel('Scenario scheduling')).toHaveText(mode === 'parallel' ? 'Parallel' : 'Sequential');
       expect(yaml.load(await downloadYaml(page))).toEqual(parsed);
       expect(errors).toEqual([]);
     });

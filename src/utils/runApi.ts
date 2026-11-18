@@ -1,3 +1,4 @@
+import { requestExecutionProject } from './executionProject';
 import { isSQLResult, type SQLResult } from './sqlResults';
 import { componentCapabilityError, type ComponentCapabilities } from './componentConfiguration';
 import { trackStudioRunStarted, trackStudioRunCompleted } from './analytics';
@@ -324,10 +325,24 @@ export function hasMultipleRunScenarios(yaml: string): boolean {
   }
 }
 
-export async function startLoadRun(yaml: string, componentCapabilities?: ComponentCapabilities): Promise<string> {
+export interface RunOverrides {
+  captureDetails?: boolean;
+  vus?: number;
+  duration?: string;
+  rps?: number;
+  variables?: Record<string, unknown>;
+  variablesFile?: Record<string, unknown>;
+}
+export async function startLoadRun(
+  yaml: string,
+  componentCapabilities?: ComponentCapabilities,
+  overrides?: RunOverrides,
+  fileName?: string,
+): Promise<string> {
   const compatibilityError = componentCapabilityError(yaml, componentCapabilities);
   if (compatibilityError) throw new Error(compatibilityError);
   // Studio chooses the id, so a start with no answer can be found again.
+  const workspace = await requestExecutionProject(fileName);
   const id = crypto.randomUUID();
   const response = await startRun(
     signal =>
@@ -336,6 +351,8 @@ export async function startLoadRun(yaml: string, componentCapabilities?: Compone
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           yaml,
+          ...(workspace ? { workspace: { scriptPath: workspace.scriptPath, files: workspace.files } } : {}),
+          ...(overrides ? { overrides } : {}),
           ...(hasMultipleRunScenarios(yaml) ? { multi_scenario_contract_version: 1 } : {}),
           id,
         }),
@@ -382,10 +399,7 @@ export async function stopLoadRun(runId: string): Promise<void> {
 // Streams a run's state, metric snapshots, and terminal summary over SSE.
 // Returns a function that closes the stream.
 export function streamLoadRun(runId: string, handlers: RunStreamHandlers): () => void {
-  const stream = createValidatedEventStream(
-    `/api/run/${runId}/events`,
-    handlers.onConnectionError,
-  );
+  const stream = createValidatedEventStream(`/api/run/${runId}/events`, handlers.onConnectionError);
   const { source } = stream;
   const seenLogSequences = new Set<number>();
   const seenMetricTimestamps = new Set<string>();
@@ -726,4 +740,18 @@ function isRunDonePayload(value: unknown): value is RunDonePayload {
     (value.error === undefined || value.error === null || typeof value.error === 'string') &&
     (value.summary === undefined || value.summary === null || isRunSummary(value.summary))
   );
+}
+
+export async function downloadLocalRunReport(id: string, format: string): Promise<void> {
+  const response = await agentRequest(`/api/run/${encodeURIComponent(id)}/report/${encodeURIComponent(format)}`);
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw Error(error.error || 'Could not export report.');
+  }
+  const url = URL.createObjectURL(await response.blob());
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `report.${format === 'json-all' ? 'full.json' : format}`;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

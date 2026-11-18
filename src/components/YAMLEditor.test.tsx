@@ -1,3 +1,5 @@
+import { createRef } from 'react';
+import type { EmbeddedStudioController } from '../utils/embeddedStudioController';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { LanguageProvider } from '../contexts/LanguageContext';
@@ -205,6 +207,27 @@ describe('YAMLEditor draft restoration', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Code' }));
 
     expect(screen.getByTestId('code-editor')).toHaveAttribute('data-large-file-mode', 'true');
+  });
+
+  it('RLP-823 clears execution IDs when the SaaS replaces the document through its controller', async () => {
+    const controller = createRef<EmbeddedStudioController>();
+    render(
+      <LanguageProvider><YAMLProvider><YAMLEditor controllerRef={controller} /></YAMLProvider></LanguageProvider>,
+    );
+    await waitFor(() => expect(getActiveDraftMock).toHaveBeenCalled());
+    sessionStorage.setItem('relampo.studio.debugRun', JSON.stringify({ id: 'old-debug', fp: 'old' }));
+    sessionStorage.setItem('relampo.studio.loadRun', JSON.stringify({ id: 'old-load', fp: 'old' }));
+    const otherKey = 'relampo.studio.debugRun:other-plan';
+    sessionStorage.setItem(otherKey, 'other-plan-run');
+    try {
+      await act(async () => { await controller.current!.replace('test: {name: replacement}', 'replacement.yaml'); });
+      expect(sessionStorage.getItem('relampo.studio.debugRun')).toBeNull();
+      expect(sessionStorage.getItem('relampo.studio.loadRun')).toBeNull();
+      expect(sessionStorage.getItem(otherKey)).toBe('other-plan-run');
+      expect(saveActiveDraftMock).toHaveBeenCalledWith(expect.objectContaining({ fileName: 'replacement.yaml' }));
+    } finally {
+      sessionStorage.removeItem(otherKey);
+    }
   });
 
   it('starts empty when IndexedDB has no active draft', async () => {

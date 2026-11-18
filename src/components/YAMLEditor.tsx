@@ -10,6 +10,7 @@ import type { SearchScope } from './yaml-tree-view/search';
 import { useEffect, useImperativeHandle, useMemo, useRef, useState, type Ref } from 'react';
 import type { EmbeddedStudioController } from '../utils/embeddedStudioController';
 import { getActiveDraft } from '../utils/yamlDraftStorage';
+import { createStoredRunStore } from '../utils/studioRunStore';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useYAML } from '../contexts/YAMLContext';
 import { useResizePanel } from '../hooks/useResizePanel';
@@ -51,6 +52,12 @@ export function YAMLEditor({
   onNavigateToScripting?: () => void;
 } = {}) {
   const [activeProtocol, setActiveProtocol] = useState<StudioProtocol | null>(null);
+  const [executionSessionKey, setExecutionSessionKey] = useState(0);
+  const resetExecutionSessions = () => {
+    createStoredRunStore('relampo.studio.debugRun').clear();
+    createStoredRunStore('relampo.studio.loadRun').clear();
+    setExecutionSessionKey(key => key + 1);
+  };
   const [treeSearchScope, setTreeSearchScope] = useState<SearchScope | null>(null);
   const { language, setLanguage, t } = useLanguage();
   const embedded = useEmbeddedHost(setLanguage);
@@ -203,6 +210,7 @@ export function YAMLEditor({
       parseDebounceRef,
       serializeDebounceRef,
       invalidatePendingDraft: () => {
+        resetExecutionSessions();
         setSearchResetSignal(signal => signal + 1);
         setTreeSearchQuery('');
         setTreeSearchScope(null);
@@ -288,6 +296,7 @@ export function YAMLEditor({
   };
 
   const replaceDocument = async (yaml: string, name: string) => {
+    resetExecutionSessions();
     // The correlated result is now this tab's document, including after reload.
     const address = new URL(window.location.href);
     if (!embedded && !address.searchParams.has('editor')) {
@@ -330,6 +339,7 @@ export function YAMLEditor({
   }));
 
   const handleNewConfirm = () => {
+    resetExecutionSessions();
     resetDocument();
     resetIdentityForNewDocument();
     setViewMode('tree');
@@ -452,6 +462,7 @@ export function YAMLEditor({
         embedded={embedded}
         debugExecutionAvailable={debugViewEnabled}
         runExecutionAvailable={runViewEnabled}
+        executionSessionKey={executionSessionKey}
         leftPanelWidth={leftPanelWidth}
         onResizeStart={() => setIsResizing(true)}
         activeViewMode={activeViewMode}

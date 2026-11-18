@@ -467,3 +467,15 @@ it('does not select an imported scenario without load when its default form is e
   expect(screen.getByLabelText('Virtual Users')).toHaveValue(9);
   expect(treeToYAML(tree)).not.toMatch(/^ {4}load:/m);
 });
+
+it('offers full-duration repetition without changing users or ramp settings', () => {
+  let node: YAMLNode = { id: 'ramp-limit', type: 'load', name: 'Load: Ramp', data: { type: 'ramp_up_down', users: 10, duration: '1m', ramp_up: '20s', ramp_down: '20s', iterations: 1 } };
+  const update = (id: string, data: Record<string, unknown>) => { node = applyNodeUpdateToTree(node, id, data); };
+  const view = renderWithLanguage(<LoadDetails node={node} onNodeUpdate={update} />);
+  expect(screen.getByText(/Active limit: 1 iteration per user/)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Repeat for the full duration' }));
+  view.rerender(<LanguageProvider><LoadDetails node={node} onNodeUpdate={update} /></LanguageProvider>);
+  expect(node.data).toMatchObject({ users: 10, duration: '1m', ramp_up: '20s', ramp_down: '20s', iterations: '0' });
+  expect(normalizeLoadDataForYaml(toLoadData({ ...node.data }))).toMatchObject({ users: 10, duration: '1m', iterations: '0' });
+  expect(screen.queryByText(/Active limit:/)).not.toBeInTheDocument();
+});

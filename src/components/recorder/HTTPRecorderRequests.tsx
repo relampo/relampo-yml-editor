@@ -4,7 +4,7 @@ import { recorderCompactInput as recorderInput } from './HTTPRecorderSettings';
 import { useResizePanel } from '../../hooks/useResizePanel';
 import { HTTPRecorderExchangeDetails } from './HTTPRecorderExchangeDetails';
 export function HTTPRecorderRequests({
-  rows,
+  rows: liveRows,
   total,
   responses,
   language,
@@ -16,6 +16,29 @@ export function HTTPRecorderRequests({
   language: string;
   transactionsEnabled?: boolean;
 }) {
+  const [history, setHistory] = useState<HTTPRecordedRow[]>([]);
+  const [historyError, setHistoryError] = useState('');
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const rows = Array.from(new Map([...history, ...liveRows].map(row => [row.id, row])).values()).sort(
+    (a, b) => a.id - b.id,
+  );
+  useEffect(() => {
+    setHistory(previous => Array.from(new Map([...previous, ...liveRows].map(row => [row.id, row])).values()));
+  }, [liveRows]);
+  async function loadEarlier() {
+    setLoadingHistory(true);
+    setHistoryError('');
+    try {
+      const page = await httpRecorderRequest<{ requests: HTTPRecordedRow[] }>(
+        'requests?before=' + Math.min(...rows.map(row => row.id)) + '&limit=500',
+      );
+      setHistory(previous => [...page.requests, ...previous]);
+    } catch (cause) {
+      setHistoryError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setLoadingHistory(false);
+    }
+  }
   const [search, setSearch] = useState(''),
     [method, setMethod] = useState(''),
     [status, setStatus] = useState(''),
@@ -24,6 +47,8 @@ export function HTTPRecorderRequests({
     [preview, setPreview] = useState<HTTPRecordingPreview | null>(null),
     [error, setError] = useState('');
   const { leftPanelWidth, setIsResizing } = useResizePanel(55);
+  const [maskedRequest, setMaskedRequest] = useState<number | null>(null);
+  const showSensitive = selected !== null && maskedRequest !== selected;
   const es = language === 'es',
     text = (en: string, spanish: string) => (es ? spanish : en);
   const hosts = Array.from(
@@ -42,7 +67,11 @@ export function HTTPRecorderRequests({
     const controller = new AbortController();
     setPreview(null);
     setError('');
-    httpRecorderRequest<HTTPRecordingPreview>('requests/' + selected, undefined, controller.signal)
+    httpRecorderRequest<HTTPRecordingPreview>(
+      'requests/' + selected + (showSensitive ? '?showSensitive=true' : ''),
+      undefined,
+      controller.signal,
+    )
       .then(value => {
         if (!controller.signal.aborted) setPreview(value);
       })
@@ -50,7 +79,7 @@ export function HTTPRecorderRequests({
         if (!controller.signal.aborted) setError(cause.message);
       });
     return () => controller.abort();
-  }, [selected]);
+  }, [selected, showSensitive]);
   const visible = rows.filter(
     row =>
       (!search || (row.name + ' ' + row.url).toLowerCase().includes(search.toLowerCase())) &&
@@ -120,6 +149,24 @@ export function HTTPRecorderRequests({
               )
             : `${total} requests`}
         </p>
+        {rows.length > 0 && rows[0].id > 0 && (
+          <button
+            type="button"
+            className="shrink-0 p-2 text-xs text-yellow-300"
+            disabled={loadingHistory}
+            onClick={() => void loadEarlier()}
+          >
+            {text('Load earlier requests', 'Cargar requests anteriores')}
+          </button>
+        )}
+        {historyError && (
+          <p
+            role="alert"
+            className="p-2 text-xs text-red-300"
+          >
+            {historyError}
+          </p>
+        )}
         <div className="min-h-0 flex-1 overflow-auto">
           <table className="w-full text-left text-xs">
             <thead className="sticky top-0 bg-[#1a1a1a] text-xs text-zinc-400">
@@ -139,10 +186,14 @@ export function HTTPRecorderRequests({
                   key={row.id}
                   tabIndex={0}
                   aria-selected={selected === row.id}
-                  onClick={() => setSelected(row.id)}
+                  onClick={() => {
+                    if (selected !== row.id) setMaskedRequest(null);
+                    setSelected(row.id);
+                  }}
                   onKeyDown={event => {
                     if (event.key === 'Enter' || event.key === ' ') {
                       event.preventDefault();
+                      if (selected !== row.id) setMaskedRequest(null);
                       setSelected(row.id);
                     }
                   }}
@@ -157,8 +208,12 @@ export function HTTPRecorderRequests({
                   <td className="max-w-[240px] truncate px-2 py-1.5">
                     <button
                       type="button"
+                      title={row.url}
                       className="w-full truncate text-left hover:text-yellow-300"
-                      onClick={() => setSelected(row.id)}
+                      onClick={() => {
+                        if (selected !== row.id) setMaskedRequest(null);
+                        setSelected(row.id);
+                      }}
                     >
                       {row.url}
                     </button>
@@ -195,6 +250,8 @@ export function HTTPRecorderRequests({
         <div className="absolute inset-y-0 -left-1 -right-1" />
       </div>
       <HTTPRecorderExchangeDetails
+        showSensitive={showSensitive}
+        onToggleSensitive={() => setMaskedRequest(showSensitive ? selected : null)}
         row={rows.find(row => row.id === selected)}
         preview={preview}
         error={error}

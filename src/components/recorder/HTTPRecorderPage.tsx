@@ -1,6 +1,7 @@
+import { persistEmbeddedRecordingFiles, type RecordingAsset } from '../../utils/embeddedFileStorage';
 import { HTTPRecorderSetup } from './HTTPRecorderSetup';
 import { HTTPRecorderSaved } from './HTTPRecorderSaved';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { CircleDot, Play, Square, Eraser, ExternalLink as ControlsIcon } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { validateSavedEditorURL, openHTTPRecordingControls } from '../../utils/recorderTabs';
@@ -9,21 +10,26 @@ import { RecorderShell } from './RecorderShell';
 import { useHTTPRecorder } from './useHTTPRecorder';
 import { recorderCompactInput as recorderInput, recorderCompactButton as recorderButton } from './HTTPRecorderSettings';
 import { HTTPRecorderRequests } from './HTTPRecorderRequests';
-import { HTTPRecorderControls } from './HTTPRecorderControls';
+import { HTTPRecorderFloatingControls } from './HTTPRecorderFloatingControls';
+import { openRecorderControlWindow } from '../../utils/recorderControlWindow';
 export function HTTPRecorderPage({
   embedded = false,
   onImport,
   onActivityChange,
+  onPendingChange,
 }: {
-  /** Inside the web app: no popup, no output file, and the recording goes to the test plan. */
+  /** Inside the web app: floating controls, no output file; recording goes to the test plan. */
   embedded?: boolean;
-  onImport?: (yaml: string, name: string) => Promise<void>;
+  onImport?: (yaml: string, name: string, afterSaved?: () => Promise<void>) => Promise<void>;
   onActivityChange?: (active: boolean) => void;
+  onPendingChange?: (pending: boolean) => void;
 } = {}) {
   const { language, setLanguage } = useLanguage();
   const es = language === 'es',
     text = (en: string, spanish: string) => (es ? spanish : en);
-  const recorder = useHTTPRecorder(embedded),
+  const [controlsWindow, setControlsWindow] = useState<Window | null>(null);
+  const closeControls = useCallback(() => setControlsWindow(null), []);
+  const recorder = useHTTPRecorder(embedded, controlsWindow),
     { options, update, state, error, setError, busy, ready, firefoxAvailable, firefoxConfigured } = recorder;
   const [opening, setOpening] = useState(false),
     [seconds, setSeconds] = useState(0);
@@ -39,6 +45,9 @@ export function HTTPRecorderPage({
   useEffect(() => {
     onActivityChange?.(state.active);
   }, [state.active, onActivityChange]);
+  useEffect(() => {
+    onPendingChange?.(state.pending === true);
+  }, [state.pending, onPendingChange]);
   // Inside the web app only `recording: true` is a recording: with `false`, or
   // with no value, the proxy forwards the traffic and records nothing.
   const recording = state.active && (embedded ? state.recording === true : state.recording !== false);
@@ -52,8 +61,13 @@ export function HTTPRecorderPage({
   }, [recording, state.startedAt, state.recordingStartedAt]);
   async function startRecording() {
     if (embedded) {
-      // The controls are a view below. Studio opens no window inside the web app.
-      await recorder.start();
+      const popup = await showEmbeddedControls();
+      if (!popup) return;
+      const current = await recorder.start();
+      if (!current?.active) {
+        popup.close();
+        closeControls();
+      }
       return;
     }
     const popup = openHTTPRecordingControls(language);
@@ -66,18 +80,53 @@ export function HTTPRecorderPage({
     const current = await recorder.start();
     if (!current?.active) popup.close();
   }
+  async function showEmbeddedControls() {
+    if (controlsWindow && !controlsWindow.closed) {
+      controlsWindow.focus();
+      return controlsWindow;
+    }
+    const popup = await openRecorderControlWindow();
+    if (!popup) {
+      setError(text('Allow the recording control popup.', 'Permite el popup de control de grabación.'));
+      return null;
+    }
+    setControlsWindow(popup);
+    return popup;
+  }
   async function openSaved() {
     if (onImport) {
       setOpening(true);
       setError('');
       try {
         // The agent returns the script. It has no second Studio process to open.
-        const result = await httpRecorderRequest<{ name?: unknown; yaml?: unknown }>('editor', {});
+        const result = await httpRecorderRequest<{
+          name?: unknown;
+          yaml?: unknown;
+          files?: RecordingAsset[];
+          captureId?: string;
+        }>('editor', {});
         if (typeof result.yaml !== 'string' || !result.yaml.trim())
           throw new Error(text('The agent returned no recording.', 'El agente no devolvió la grabación.'));
         // eslint-disable-next-line no-control-regex -- the file name must not contain control characters
         const valid = typeof result.name === 'string' && /^[^/\\\x00-\x1f]{1,180}\.ya?ml$/i.test(result.name);
-        await onImport(result.yaml, valid ? (result.name as string) : 'recording.yaml');
+        await persistEmbeddedRecordingFiles(result.files ?? []);
+        let acknowledged = false;
+        const confirmImport = async () => {
+          if (!result.captureId || acknowledged) return;
+          const confirmed = await recorder.control('acknowledge', { captureId: result.captureId });
+          if (confirmed?.pending !== false)
+            throw new Error(
+              text(
+                'The script was saved but the recording import was not confirmed. Retry the import.',
+                'El script se guardó pero no se confirmó la importación de la grabación. Reintenta importar.',
+              ),
+            );
+          acknowledged = true;
+        };
+        if (result.captureId)
+          await onImport(result.yaml, valid ? (result.name as string) : 'recording.yaml', confirmImport);
+        else await onImport(result.yaml, valid ? (result.name as string) : 'recording.yaml');
+        await confirmImport();
       } catch (cause) {
         setError(cause instanceof Error ? cause.message : String(cause));
       } finally {
@@ -189,11 +238,15 @@ export function HTTPRecorderPage({
                 {text('Open Firefox', 'Abrir Firefox')}
               </button>
             )}
-            {state.active && !embedded && (
+            {state.active && (
               <button
                 type="button"
                 className={recorderButton}
                 onClick={() => {
+                  if (embedded) {
+                    void showEmbeddedControls();
+                    return;
+                  }
                   if (!openHTTPRecordingControls(language))
                     setError(text('Allow the recording control popup.', 'Permite el popup de control.'));
                 }}
@@ -222,6 +275,7 @@ export function HTTPRecorderPage({
                 disabled={
                   !ready ||
                   !!busy ||
+                  state.pending === true ||
                   !options.applicationUrl.trim() ||
                   (!embedded && !options.output.trim()) ||
                   (options.openFirefox && (!firefoxAvailable || !firefoxConfigured))
@@ -286,20 +340,16 @@ export function HTTPRecorderPage({
             />
           </label>
         )}
-        {embedded && state.active && (
-          <div className="max-w-md shrink-0 border-b border-white/10 px-3 py-2 text-xs">
-            <HTTPRecorderControls
-              state={{ ...state, recording }}
-              busy={busy}
-              language={language}
-              stopLabel={text('Stop recording', 'Detener grabación')}
-              stopHelp={text(
-                'Stop ends the active transaction. Then you can add the recording to the test plan.',
-                'Detener cierra la transacción activa. Después puedes agregar la grabación al plan de pruebas.',
-              )}
-              onAction={recorder.control}
-            />
-          </div>
+        {embedded && controlsWindow && (
+          <HTTPRecorderFloatingControls
+            target={controlsWindow}
+            state={{ ...state, recording }}
+            busy={busy}
+            error={error}
+            language={language}
+            onAction={recorder.control}
+            onClose={closeControls}
+          />
         )}
         <HTTPRecorderRequests
           key={state.startedAt || 'idle'}

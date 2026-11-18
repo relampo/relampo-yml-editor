@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MousePointer2 } from 'lucide-react';
+import { Eye, EyeOff, MousePointer2 } from 'lucide-react';
 import type { HTTPRecordedRow, HTTPRecordingPreview } from '../../utils/httpRecorderApi';
 export function HTTPRecorderExchangeDetails({
   row,
@@ -7,24 +7,67 @@ export function HTTPRecorderExchangeDetails({
   error,
   responses,
   language,
+  showSensitive,
+  onToggleSensitive,
 }: {
   row?: HTTPRecordedRow;
   preview: HTTPRecordingPreview | null;
   error: string;
   responses: boolean;
   language: string;
+  showSensitive: boolean;
+  onToggleSensitive: () => void;
 }) {
   const [tab, setTab] = useState<'request' | 'response'>('request'),
-    [part, setPart] = useState<'body' | 'headers' | 'parameters'>('body');
+    [part, setPart] = useState<'overview' | 'body' | 'headers' | 'parameters'>('overview');
   const text = (en: string, es: string) => (language === 'es' ? es : en);
   const exchange = preview?.[tab] as { headers?: unknown; body?: unknown } | undefined;
-  let parameters: Record<string, string> = {};
+  let parameters: [string, string][] = [];
   try {
-    parameters = Object.fromEntries(new URL(preview?.url || row?.url || '').searchParams.entries());
+    parameters = Array.from(new URL(preview?.url || row?.url || '').searchParams.entries());
   } catch {
     /* Await a selected URL. */
   }
-  const value = part === 'parameters' ? parameters : exchange?.[part];
+  const value = part === 'parameters' ? parameters : part === 'overview' ? undefined : exchange?.[part];
+  const headers = exchange?.headers && typeof exchange.headers === 'object' ? Object.entries(exchange.headers) : [];
+  const body = exchange?.body;
+  const bodyMissing = body === '' || body === null || body === undefined;
+  const bodyContent =
+    tab === 'response' && !responses ? (
+      <p className="text-xs text-zinc-400">
+        {text(
+          'Response bodies were not captured. Enable Capture responses before starting a new recording.',
+          'No se capturaron cuerpos de respuesta. Activa Capturar respuestas antes de iniciar otra grabación.',
+        )}
+      </p>
+    ) : bodyMissing ? (
+      <p className="text-xs text-zinc-400">
+        {tab === 'request'
+          ? text('This request has no body.', 'Este request no tiene cuerpo.')
+          : text('This response has no body.', 'Esta respuesta no tiene cuerpo.')}
+      </p>
+    ) : (
+      <pre className="whitespace-pre-wrap break-all font-mono text-xs leading-relaxed text-zinc-300">
+        {typeof body === 'string' ? body : JSON.stringify(body, null, 2)}
+      </pre>
+    );
+  const headerContent = headers.length ? (
+    <dl className="space-y-1 text-xs">
+      {headers.map(([name, headerValue]) => (
+        <div
+          key={name}
+          className="grid grid-cols-[minmax(90px,1fr)_2fr] gap-3 border-b border-white/5 py-1"
+        >
+          <dt className="break-all font-medium text-zinc-300">{name}</dt>
+          <dd className="whitespace-pre-wrap break-all font-mono text-zinc-300">
+            {Array.isArray(headerValue) ? headerValue.join('\n') : String(headerValue)}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  ) : (
+    <p className="text-xs text-zinc-400">{text('No headers captured.', 'No se capturaron headers.')}</p>
+  );
   return (
     <section
       role="region"
@@ -73,20 +116,39 @@ export function HTTPRecorderExchangeDetails({
               </button>
             ))}
           </div>
-          <div className="flex shrink-0 gap-1 border-b border-white/5 px-3 py-2">
-            {(['body', 'headers', ...(tab === 'request' ? (['parameters'] as const) : [])] as const).map(value => (
-              <button
-                type="button"
-                key={value}
-                onClick={() => setPart(value)}
-                className={
-                  'rounded px-2 py-1 text-xs ' +
-                  (part === value ? 'bg-white/10 text-zinc-200' : 'text-zinc-500 hover:text-zinc-300')
-                }
-              >
-                {value === 'body' ? 'Body' : value === 'headers' ? 'Headers' : text('Parameters', 'Parámetros')}
-              </button>
-            ))}
+          <div className="flex shrink-0 flex-wrap gap-1 border-b border-white/5 px-3 py-2">
+            {(['overview', 'body', 'headers', ...(tab === 'request' ? (['parameters'] as const) : [])] as const).map(
+              value => (
+                <button
+                  type="button"
+                  key={value}
+                  onClick={() => setPart(value)}
+                  className={
+                    'rounded px-2 py-1 text-xs ' +
+                    (part === value ? 'bg-white/10 text-zinc-200' : 'text-zinc-500 hover:text-zinc-300')
+                  }
+                >
+                  {value === 'overview'
+                    ? text('Overview', 'Resumen')
+                    : value === 'body'
+                      ? 'Body'
+                      : value === 'headers'
+                        ? 'Headers'
+                        : text('Parameters', 'Parámetros')}
+                </button>
+              ),
+            )}
+            <button
+              type="button"
+              aria-pressed={showSensitive}
+              onClick={onToggleSensitive}
+              className="ml-auto flex items-center gap-1 rounded px-2 py-1 text-xs text-zinc-300 hover:bg-white/10"
+            >
+              {showSensitive ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+              {showSensitive
+                ? text('Mask sensitive data', 'Enmascarar datos sensibles')
+                : text('Show full content', 'Mostrar contenido completo')}
+            </button>
           </div>
           <div className="min-h-0 flex-1 overflow-auto p-4">
             {error && (
@@ -97,13 +159,76 @@ export function HTTPRecorderExchangeDetails({
                 {error}
               </p>
             )}
-            {tab === 'response' && !responses ? (
-              <p className="text-xs text-zinc-400">
-                {text(
-                  'Response bodies were not captured. Enable Capture responses before starting a new recording.',
-                  'No se capturaron cuerpos de respuesta. Activa Capturar respuestas antes de iniciar otra grabación.',
+            {preview?.webSocket && (
+              <div className="mb-4 space-y-2 text-xs text-zinc-300">
+                <h3 className="font-semibold text-yellow-300">
+                  WebSocket · {preview.webSocket.subprotocol || text('Messages', 'Mensajes')}
+                </h3>
+                {preview.webSocket.messages.map((message, index) => (
+                  <div
+                    key={index}
+                    className="rounded border border-white/10 p-2"
+                  >
+                    <p>
+                      {index + 1} ·{' '}
+                      {message.direction === 'client_to_server'
+                        ? text('Sent', 'Enviado')
+                        : text('Received', 'Recibido')}{' '}
+                      · {message.type} · {message.sizeBytes} B
+                    </p>
+                    <pre className="mt-1 whitespace-pre-wrap break-all font-mono">
+                      {message.payloadBase64 ??
+                        (typeof message.payload === 'string'
+                          ? message.payload
+                          : JSON.stringify(message.payload, null, 2))}
+                    </pre>
+                  </div>
+                ))}
+                <p>
+                  {text('Close code', 'Código de cierre')}: {preview.webSocket.closeCode}{' '}
+                  {preview.webSocket.closeReason}
+                </p>
+                {preview.webSocket.incomplete && <p className="text-amber-300">{preview.webSocket.incompleteReason}</p>}
+              </div>
+            )}
+            {part === 'overview' ? (
+              <div className="space-y-4">
+                <div className="text-xs text-zinc-300">
+                  {tab === 'request'
+                    ? text('Method', 'Método') + ': ' + (preview?.method || row.method)
+                    : text('Status', 'Estado') + ': ' + (preview?.status ?? row.status)}
+                </div>
+                <div>
+                  <h3 className="mb-2 text-xs font-semibold text-zinc-300">Headers</h3>
+                  {headerContent}
+                </div>
+                {tab === 'request' && parameters.length > 0 && (
+                  <div>
+                    <h3 className="mb-2 text-xs font-semibold text-zinc-300">{text('Parameters', 'Parámetros')}</h3>
+                    <dl className="space-y-1 text-xs text-zinc-300">
+                      {parameters.map(([name, parameterValue], index) => (
+                        <div
+                          key={index}
+                          className="flex gap-3"
+                        >
+                          <dt>{name}</dt>
+                          <dd className="break-all font-mono">{parameterValue}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  </div>
                 )}
-              </p>
+                <div>
+                  <h3 className="mb-2 text-xs font-semibold text-zinc-300">Body</h3>
+                  {preview || (tab === 'response' && !responses)
+                    ? bodyContent
+                    : !error && text('Loading…', 'Cargando…')}
+                </div>
+              </div>
+            ) : part === 'body' && preview ? (
+              bodyContent
+            ) : part === 'headers' && preview ? (
+              headerContent
             ) : (
               <pre className="whitespace-pre-wrap break-all font-mono text-xs leading-relaxed text-zinc-300">
                 {preview

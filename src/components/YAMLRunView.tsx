@@ -1,3 +1,11 @@
+import { DistributedTimeline } from './distributed-run/DistributedTimeline';
+import {
+  localReportContext,
+  localReportStorageAvailable,
+  persistLocalRunReports,
+  type LocalReportContext,
+  type LocalReportFormat,
+} from '../utils/localRunReports';
 import { SQLResultTable } from './SQLResultTable';
 import { AgentFileLink } from './AgentFileLink';
 import { GRPCRequestMetrics } from './grpc/GRPCRequestMetrics';
@@ -14,6 +22,7 @@ import {
   Gauge,
   OctagonX,
   Play,
+  Eraser,
   Square,
   Terminal,
   TimerReset,
@@ -40,6 +49,7 @@ import {
   type RunStatus,
   type RunSummary,
 } from '../utils/runApi';
+import { LoadIterationLimitNotice } from './yaml-node-details/LoadIterationLimitNotice';
 import { LoadVisualization } from './yaml-node-details/LoadVisualization';
 import { normalizeLoadType, parseTimeToSeconds, toLoadData, type LoadType } from './yaml-node-details/loadUtils';
 import { normalizeBalancedExecutionMode } from '../utils/balancedController';
@@ -49,7 +59,6 @@ import { collectDebugEventTargets, matchDebugEventTarget } from './debugRequests
 // The live sparklines only need a recent window; keeping every snapshot for a
 // long run would bloat state and slow re-render. Cumulative totals live on the
 // latest snapshot, so trimming the head never loses the running totals.
-const MAX_LIVE_POINTS = 600;
 
 // The live log feed keeps the most recent lines; older ones scroll off. The
 // server already caps emission, but a long run still produces many lines.
@@ -202,6 +211,7 @@ const initialLoadRunState: LoadRunState = {
 };
 
 type LoadRunAction =
+  | { type: 'cleared' }
   | { type: 'run_started' }
   | { type: 'run_start_failed'; error: string }
   | { type: 'flush_failed'; error: string }
@@ -215,6 +225,8 @@ type LoadRunAction =
 
 function loadRunReducer(state: LoadRunState, action: LoadRunAction): LoadRunState {
   switch (action.type) {
+    case 'cleared':
+      return initialLoadRunState;
     case 'run_started':
       return {
         ...state,
@@ -241,11 +253,7 @@ function loadRunReducer(state: LoadRunState, action: LoadRunAction): LoadRunStat
         isStopping: action.status === 'running' ? state.isStopping : false,
       };
     case 'metrics_received': {
-      const trimmed =
-        state.snapshots.length >= MAX_LIVE_POINTS
-          ? state.snapshots.slice(state.snapshots.length - MAX_LIVE_POINTS + 1)
-          : state.snapshots;
-      return { ...state, snapshots: [...trimmed, action.snapshot] };
+      return { ...state, snapshots: [...state.snapshots, action.snapshot] };
     }
     case 'log_received': {
       const knownSequences = new Set(state.logs.map(line => line.seq));
@@ -287,6 +295,7 @@ function loadRunReducer(state: LoadRunState, action: LoadRunAction): LoadRunStat
 }
 
 interface YAMLLoadRunSessionProps {
+  fileName?: string;
   tree: YAMLNode | null;
   yamlCode: string;
   // Flushes any pending debounced tree→code serialization and returns the
@@ -300,6 +309,7 @@ interface YAMLLoadRunSessionProps {
 }
 
 export function YAMLLoadRunSession({
+  fileName,
   tree,
   yamlCode,
   flushPendingEdits,
@@ -313,6 +323,24 @@ export function YAMLLoadRunSession({
   const [runState, dispatch] = useReducer(loadRunReducer, initialLoadRunState);
   const { snapshots, isRunning, isStopping, runError, runStatus, summary, logs, sqlResults } = runState;
 
+  const [reportFormats, setReportFormats] = useState<LocalReportFormat[]>(['html']);
+  const selectedFormats = useRef<LocalReportFormat[]>(['html']);
+  const reportContext = useRef<LocalReportContext | undefined>(undefined);
+  const savedReports = useRef<string | null>(null);
+  const [hasReportStorage, setHasReportStorage] = useState(false);
+  const reportPlanKey = localReportContext()?.planKey;
+  const reportDestination = useRef<'plan' | 'downloads'>('downloads');
+  useEffect(() => {
+    let alive = true;
+    void localReportStorageAvailable().then(available => {
+      if (alive) setHasReportStorage(available);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [fileName, reportPlanKey]);
+  const [reportSave, setReportSave] = useState('');
+  const [reportSaveError, setReportSaveError] = useState('');
   const logScrollRef = useRef<HTMLDivElement | null>(null);
   const stopStreamRef = useRef<(() => void) | null>(null);
   const startTokenRef = useRef(0);
@@ -348,6 +376,63 @@ export function YAMLLoadRunSession({
   const visibleSummary = selectedResult?.result ?? summary ?? liveSummary;
   const intentTicks = useMemo(() => collectIntentTicks(snapshots, summary), [snapshots, summary]);
   const hasRunActivity = snapshots.length > 0 || logs.length > 0 || summary != null;
+
+  const saveReports = useCallback(
+    async (id: string, result: RunSummary) => {
+      const toPlan = reportDestination.current === 'plan';
+      if (toPlan) setReportSave('saving');
+      setReportSaveError('');
+      try {
+        await persistLocalRunReports(
+          id,
+          selectedFormats.current,
+          result.start_time,
+          language,
+          reportContext.current,
+          reportDestination.current,
+        );
+        if (toPlan && activeRunIdRef.current === id) setReportSave('saved');
+      } catch (error) {
+        if (activeRunIdRef.current !== id) return;
+        setReportSave('failed');
+        setReportSaveError(error instanceof Error ? error.message : String(error));
+      }
+    },
+    [language],
+  );
+  useEffect(() => {
+    const id = activeRunIdRef.current;
+    if (!summary || !id || savedReports.current === id) return;
+    savedReports.current = id;
+    void saveReports(id, summary);
+  }, [summary, saveReports]);
+  const clearRun = () => {
+    if (isRunning || isStopping) return;
+    startTokenRef.current += 1;
+    stopStreamRef.current?.();
+    stopStreamRef.current = null;
+    activeRunIdRef.current = null;
+    storedRunRef.current = null;
+    savedReports.current = null;
+    runStore.clear();
+    setResultScope('');
+    setReportSave('');
+    setReportSaveError('');
+    dispatch({ type: 'cleared' });
+  };
+  const timelinePoints = useMemo(() => {
+    let failures = 0;
+    const history = summary?.history ?? snapshots;
+    return history.map(point => ({
+      at: new Date(point.ts_ms ?? point.ts * 1000).toISOString(),
+      requests: 'total_requests' in point ? Number(point.total_requests) : 0,
+      failures: 'total_failures' in point ? Number(point.total_failures) : (failures += point.errors),
+      rps: point.rps,
+      active_vus: point.active_users,
+      avg_ms: point.avg_latency,
+      p95_ms: point.p95_latency,
+    }));
+  }, [summary, snapshots]);
 
   // Wires a run's SSE stream into the dashboard. Shared by a fresh Run and by
   // re-attaching to a stored run after a reload. `quiet` suppresses the error
@@ -389,7 +474,14 @@ export function YAMLLoadRunSession({
     [t],
   );
 
-  useEffect(() => () => stopStreamRef.current?.(), []);
+  useEffect(
+    () => () => {
+      // Invalidate pending starts as well as disconnecting the previous document's stream.
+      startTokenRef.current += 1;
+      stopStreamRef.current?.();
+    },
+    [],
+  );
 
   // Auto-scroll the log panel to the newest line as logs stream in.
   useEffect(() => {
@@ -423,6 +515,7 @@ export function YAMLLoadRunSession({
     let scriptAtStart: string;
     try {
       scriptAtStart = flushPendingEdits ? flushPendingEdits() : yamlCode;
+      reportContext.current = localReportContext();
     } catch (error) {
       dispatch({ type: 'flush_failed', error: error instanceof Error ? error.message : String(error) });
       return;
@@ -433,15 +526,21 @@ export function YAMLLoadRunSession({
       return;
     }
     setResultScope('');
+    selectedFormats.current = [...reportFormats];
+    reportDestination.current = hasReportStorage ? 'plan' : 'downloads';
+    setReportSave('');
+    setReportSaveError('');
     const token = (startTokenRef.current += 1);
     stopStreamRef.current?.();
     activeRunIdRef.current = null;
     stopRequestedRef.current = false;
     dispatch({ type: 'run_started' });
     try {
-      const runId = componentCapabilities
-        ? await startLoadRun(scriptAtStart, componentCapabilities)
-        : await startLoadRun(scriptAtStart);
+      const runId = fileName
+        ? await startLoadRun(scriptAtStart, componentCapabilities, undefined, fileName)
+        : componentCapabilities
+          ? await startLoadRun(scriptAtStart, componentCapabilities)
+          : await startLoadRun(scriptAtStart);
       if (token !== startTokenRef.current) return;
       runStore.store({ id: runId, fp: fingerprint(scriptAtStart) });
       subscribe(runId, false);
@@ -479,7 +578,7 @@ export function YAMLLoadRunSession({
   const errorRate = latest ? formatErrorRate(latest.total_requests, latest.total_failures) : '0%';
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-[#0d0d0d]">
+    <div className="@container flex h-full min-h-0 flex-col overflow-y-auto bg-[#0d0d0d]">
       {storedRunRef.current && (
         <span
           ref={reattachStoredRun}
@@ -487,17 +586,143 @@ export function YAMLLoadRunSession({
           aria-hidden="true"
         />
       )}
-      <RunToolbar
-        runStatus={runStatus}
-        isStopping={isStopping}
-        isRunning={isRunning}
-        documentReady={documentReady}
-        hasValidationErrors={hasValidationErrors || incompatibleMulti}
-        yamlCode={yamlCode}
-        multiScenario={isMultiScenario}
-        onStartRun={startRun}
-        onStopRun={stopRun}
-      />
+      <div className="grid items-stretch gap-4 p-4 @[58rem]:grid-cols-2">
+        <section className="min-h-60 min-w-0 border border-white/10 bg-[#111111]">
+          <RunToolbar
+            runStatus={runStatus}
+            isStopping={isStopping}
+            isRunning={isRunning}
+            documentReady={documentReady}
+            hasValidationErrors={hasValidationErrors || incompatibleMulti}
+            yamlCode={yamlCode}
+            multiScenario={isMultiScenario}
+            onStartRun={startRun}
+            onStopRun={stopRun}
+          />
+          <div className="flex flex-wrap items-center gap-2 px-5 py-3">
+            <details className="relative text-xs">
+              <summary className="cursor-pointer rounded-lg border border-white/15 px-2.5 py-2">
+                {language === 'es' ? 'Reportes' : 'Reports'} · {reportFormats.map(f => f.toUpperCase()).join(', ')}
+              </summary>
+              <div className="absolute z-20 mt-1 space-y-2 rounded border border-white/15 bg-[#111111] p-3">
+                {(['html', 'json', 'csv', 'txt'] as LocalReportFormat[]).map(format => (
+                  <label
+                    key={format}
+                    className="flex items-center gap-2"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={reportFormats.includes(format)}
+                      disabled={isRunning}
+                      onChange={event =>
+                        setReportFormats(current =>
+                          event.target.checked
+                            ? [...current, format]
+                            : current.length > 1
+                              ? current.filter(f => f !== format)
+                              : current,
+                        )
+                      }
+                    />
+                    {format.toUpperCase()}
+                  </label>
+                ))}
+              </div>
+            </details>
+            <button
+              type="button"
+              onClick={clearRun}
+              disabled={isRunning || isStopping || (!hasRunActivity && !runError)}
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-white/15 px-2.5 text-xs disabled:opacity-40"
+            >
+              <Eraser size={14} />
+              Clear
+            </button>
+            {summary && activeRunIdRef.current && (
+              <details className="relative text-xs">
+                <summary className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-white/15 px-2.5">
+                  <ExternalLink size={15} />
+                  {language === 'es' ? 'Ver reportes' : 'View reports'}
+                </summary>
+                <div className="absolute z-20 mt-1 grid min-w-36 gap-2 rounded border border-white/15 bg-[#111111] p-3">
+                  {selectedFormats.current.map(format => (
+                    <AgentFileLink
+                      key={format}
+                      path={
+                        format === 'html'
+                          ? loadRunReportPath(activeRunIdRef.current!, language)
+                          : `/api/run/${encodeURIComponent(activeRunIdRef.current!)}/report/${format}`
+                      }
+                      target="_blank"
+                      rel="noreferrer"
+                      className="rounded px-2 py-1 hover:bg-white/5"
+                    >
+                      {format.toUpperCase()} ↗
+                    </AgentFileLink>
+                  ))}
+                </div>
+              </details>
+            )}
+          </div>
+          {!hasReportStorage && (
+            <p
+              role="status"
+              className="px-5 pb-3 text-xs text-zinc-400"
+            >
+              {language === 'es'
+                ? 'Este Test Plan no tiene una ubicación de guardado. Los reportes se descargarán en Descargas, incluso si detienes la prueba.'
+                : 'This Test Plan has no storage location. Reports will be saved to Downloads, including when you stop the test.'}
+            </p>
+          )}
+          {reportSave === 'saving' && (
+            <p
+              role="status"
+              className="px-5 pb-3 text-xs text-zinc-400"
+            >
+              {language === 'es' ? 'Guardando reportes en el Test Plan…' : 'Saving reports to the Test Plan…'}
+            </p>
+          )}
+          {reportSaveError && (
+            <div
+              role="alert"
+              className="px-5 pb-3 text-xs text-red-300"
+            >
+              {reportSaveError}
+              <button
+                className="ml-2 underline"
+                onClick={() => {
+                  if (summary && activeRunIdRef.current) void saveReports(activeRunIdRef.current, summary);
+                }}
+              >
+                {language === 'es' ? 'Reintentar' : 'Retry'}
+              </button>
+            </div>
+          )}
+        </section>
+        <section className="min-h-60 min-w-0 border border-white/10 bg-[#111111] p-4 [&_svg]:!h-44">
+          <div className="max-h-72 space-y-3 overflow-y-auto">
+            {loadNodes
+              .filter(node => normalizeLoadType(node.data?.type) !== 'intent')
+              .map(node => {
+                const scenario = loadScenarios.get(node.id);
+                if (resultScope && scenario?.data?.name !== resultScope && scenario?.name !== resultScope) return null;
+                return (
+                  <div key={node.id}>
+                    {isMultiScenario && <p className="mb-2 text-sm text-zinc-300">{scenario?.name}</p>}
+                    <PlannedLoadProfilePanel
+                      plannedLoadNode={node}
+                      plannedLoadType={normalizeLoadType(node.data?.type)}
+                      scenarioCount={1}
+                      iterationBudgetCapsDuration={!isMultiScenario && iterationBudgetCapsDuration}
+                      isRunning={isRunning && !isMultiScenario}
+                      elapsedMs={latest?.elapsed_ms ?? 0}
+                    />
+                  </div>
+                );
+              })}
+          </div>
+        </section>
+      </div>
 
       {(usesOnlyFallbackLoad || fallbackScenarioNames.length > 0) && (
         <p
@@ -529,14 +754,19 @@ export function YAMLLoadRunSession({
         />
       )}
 
-      <div className="min-h-0 flex-1 overflow-y-auto p-4">
+      <div className="p-4">
         {!hasRunActivity ? (
           <div className="flex h-full items-center justify-center px-8 text-center text-sm text-zinc-500">
             {isRunning ? t('yamlEditor.runDebug.run.waiting') : t('yamlEditor.runDebug.run.idle')}
           </div>
         ) : (
           <div className="space-y-4">
-            <MetricsCharts snapshots={summary?.history ?? snapshots} />
+            <DistributedTimeline
+              points={timelinePoints}
+              startedAt={summary?.start_time}
+              durationSeconds={parseTimeToSeconds(String(plannedLoadNode?.data?.duration ?? ''))}
+              configuredUsers={Number(plannedLoadNode?.data?.users ?? 0)}
+            />
             {latest?.scenarios && (
               <table
                 aria-label={t('yamlEditor.runDebug.run.scenarioProgress')}
@@ -602,26 +832,6 @@ export function YAMLLoadRunSession({
                 {selectedResult.error && ` ${selectedResult.error}`}
               </p>
             )}
-
-            {loadNodes
-              .filter(node => normalizeLoadType(node.data?.type) !== 'intent')
-              .map(node => {
-                const scenario = loadScenarios.get(node.id);
-                if (resultScope && scenario?.data?.name !== resultScope && scenario?.name !== resultScope) return null;
-                return (
-                  <div key={node.id}>
-                    {isMultiScenario && <p className="mb-2 text-sm text-zinc-300">{scenario?.name}</p>}
-                    <PlannedLoadProfilePanel
-                      plannedLoadNode={node}
-                      plannedLoadType={normalizeLoadType(node.data?.type)}
-                      scenarioCount={1}
-                      iterationBudgetCapsDuration={!isMultiScenario && iterationBudgetCapsDuration}
-                      isRunning={isRunning && !isMultiScenario}
-                      elapsedMs={latest?.elapsed_ms ?? 0}
-                    />
-                  </div>
-                );
-              })}
 
             {intentTicks.length > 0 && (
               <IntentRuntimeTimeline
@@ -703,17 +913,21 @@ function RunToolbar({
   onStartRun: () => void;
   onStopRun: () => void;
 }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   return (
-    <div data-studio-execution-toolbar className="border-b border-white/5 px-5 py-3">
+    <div
+      data-studio-execution-toolbar
+      className="border-b border-white/5 px-5 py-3"
+    >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">
             {t('yamlEditor.runDebug.run.session')}
           </p>
           <h2 className="mt-1 text-base font-semibold text-zinc-100">
-            {multiScenario ? t('yamlEditor.runDebug.run.titleAll') : t('yamlEditor.runDebug.run.titleSingle')}
+            {language === 'es' ? 'Prueba local' : 'Local test'}
           </h2>
+          {multiScenario && <p className="mt-1 text-xs text-zinc-400">{t('yamlEditor.runDebug.run.titleAll')}</p>}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {runStatus && (
@@ -839,39 +1053,6 @@ function StatsRow({
 }
 
 // Throughput / p95 latency / active VUs sparkline row.
-function MetricsCharts({
-  snapshots,
-}: {
-  snapshots: Pick<RunMetricsSnapshot, 'rps' | 'p95_latency' | 'active_users'>[];
-}) {
-  const { t } = useLanguage();
-  return (
-    <div className="grid gap-3 lg:grid-cols-3">
-      <Sparkline
-        title={t('yamlEditor.runDebug.run.charts.throughput')}
-        unit="req/s"
-        color="#fde047"
-        values={snapshots.map(s => s.rps)}
-        format={formatRps}
-      />
-      <Sparkline
-        title={t('yamlEditor.runDebug.run.charts.latencyP95')}
-        unit="ms"
-        color="#60a5fa"
-        values={snapshots.map(s => s.p95_latency)}
-        format={v => (v < 10 ? v.toFixed(1) : String(Math.round(v)))}
-      />
-      <Sparkline
-        title={t('yamlEditor.runDebug.run.charts.activeVus')}
-        unit="VUs"
-        color="#a3a3a3"
-        values={snapshots.map(s => s.active_users)}
-        format={v => String(Math.round(v))}
-      />
-    </div>
-  );
-}
-
 function PlannedLoadProfilePanel({
   plannedLoadNode,
   plannedLoadType,
@@ -889,7 +1070,7 @@ function PlannedLoadProfilePanel({
 }) {
   const { t } = useLanguage();
   return (
-    <div className="border border-white/10 bg-[#111111] p-4">
+    <div>
       <div className="mb-3 flex items-center justify-between">
         <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">
           {t('yamlEditor.runDebug.run.planned.title')}
@@ -900,6 +1081,9 @@ function PlannedLoadProfilePanel({
           </span>
         )}
       </div>
+      {!iterationBudgetCapsDuration && (
+        <LoadIterationLimitNotice data={toLoadData(plannedLoadNode.data as Record<string, unknown> | undefined)} />
+      )}
       {iterationBudgetCapsDuration && (
         <div className="mb-3 flex items-start gap-2 rounded border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-[11px] text-amber-200">
           <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
@@ -907,6 +1091,7 @@ function PlannedLoadProfilePanel({
         </div>
       )}
       <LoadVisualization
+        compact
         data={toLoadData(plannedLoadNode.data as Record<string, unknown> | undefined)}
         loadType={plannedLoadType ?? normalizeLoadType(plannedLoadNode.data?.type)}
         progressSeconds={isRunning ? elapsedMs / 1000 : undefined}
@@ -1446,89 +1631,6 @@ function StatCell({ icon, label, value, tone }: { icon: ReactNode; label: string
         <p className={`text-lg font-semibold ${tone ?? 'text-zinc-100'}`}>{value}</p>
       </div>
       <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-500">{label}</p>
-    </div>
-  );
-}
-
-// A minimal inline-SVG sparkline. No charting dependency — the same hand-rolled
-// approach the load profile visualization uses.
-function Sparkline({
-  title,
-  unit,
-  color,
-  values,
-  format,
-}: {
-  title: string;
-  unit: string;
-  color: string;
-  values: number[];
-  format: (value: number) => string;
-}) {
-  const width = 280;
-  const height = 72;
-  const max = Math.max(1, ...values);
-  const last = values.length ? values[values.length - 1] : 0;
-  const points = values.length
-    ? values
-        .map((value, index) => {
-          const x = values.length === 1 ? width : (index / (values.length - 1)) * width;
-          const y = height - (value / max) * (height - 6) - 3;
-          return `${x.toFixed(1)},${y.toFixed(1)}`;
-        })
-        .join(' ')
-    : '';
-  const gradientId = `spark-${title.replace(/\s+/g, '-').toLowerCase()}`;
-
-  return (
-    <div className="border border-white/10 bg-[#111111] p-3">
-      <div className="flex items-baseline justify-between">
-        <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-500">{title}</p>
-        <p className="font-mono text-sm text-zinc-200">
-          {format(last)} <span className="text-[10px] text-zinc-500">{unit}</span>
-        </p>
-      </div>
-      <svg
-        viewBox={`0 0 ${width} ${height}`}
-        preserveAspectRatio="none"
-        className="mt-2 h-16 w-full"
-      >
-        <defs>
-          <linearGradient
-            id={gradientId}
-            x1="0"
-            y1="0"
-            x2="0"
-            y2="1"
-          >
-            <stop
-              offset="0%"
-              stopColor={color}
-              stopOpacity="0.3"
-            />
-            <stop
-              offset="100%"
-              stopColor={color}
-              stopOpacity="0"
-            />
-          </linearGradient>
-        </defs>
-        {points && (
-          <>
-            <polygon
-              points={`0,${height} ${points} ${width},${height}`}
-              fill={`url(#${gradientId})`}
-            />
-            <polyline
-              points={points}
-              fill="none"
-              stroke={color}
-              strokeWidth="1.5"
-              vectorEffect="non-scaling-stroke"
-            />
-          </>
-        )}
-      </svg>
     </div>
   );
 }

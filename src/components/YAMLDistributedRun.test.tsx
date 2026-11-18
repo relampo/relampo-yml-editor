@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { LanguageProvider } from '../contexts/LanguageContext';
 import { YAMLDistributedRun } from './YAMLDistributedRun';
+import { DistributedRequestError } from '../utils/distributedApi';
 import { selectOption } from '../test/selectOption';
 import { advance, lostAnswer } from '../test/lostFrames';
 import { InFrontWhen } from '../contexts/InFrontContext';
@@ -120,8 +121,9 @@ describe('distributed execution', () => {
     fireEvent.change(screen.getByLabelText('Archivos del equipo'), {
       target: { files: [new File(['id\n1'], 'users.csv')] },
     });
-    expect(screen.getByRole('button', { name: 'Aplicar acción a los archivos' })).toBeDisabled();
     await selectRepository();
+    expect(screen.getByRole('button', { name: 'Ejecutar' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Aplicar acción a los archivos' }));
     await waitFor(() => expect(screen.getByRole('button', { name: 'Ejecutar' })).toBeEnabled());
     fireEvent.click(screen.getByRole('button', { name: 'Ejecutar' }));
     await screen.findByText('scenarios/data/users.csv');
@@ -147,7 +149,7 @@ describe('distributed execution', () => {
       expect.stringContaining('/api/distributed/run/drun-1/report/csv?download=1'),
     );
     expect(screen.queryByRole('link', { name: 'Descargar JSON' })).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Ver reportes en el repositorio' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Ver reportes' })).toHaveAttribute(
       'href',
       expect.stringContaining('relampo-report-42-1'),
     );
@@ -155,6 +157,8 @@ describe('distributed execution', () => {
   it('invalidates preparation when load settings change', async () => {
     mount();
     await selectRepository();
+    expect(screen.getByRole('button', { name: 'Ejecutar' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Aplicar acción a los archivos' }));
     await waitFor(() => expect(screen.getByRole('button', { name: 'Ejecutar' })).toBeEnabled());
     fireEvent.click(screen.getByRole('button', { name: 'Ejecutar' }));
     await screen.findByText('scenarios/test.yaml');
@@ -168,6 +172,9 @@ describe('distributed execution', () => {
   it('uses authored resource settings without execution overrides', async () => {
     mount();
     await selectRepository();
+    expect(screen.getByRole('button', { name: 'Ejecutar' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Aplicar acción a los archivos' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Ejecutar' })).toBeEnabled());
     fireEvent.click(screen.getByRole('button', { name: 'Ejecutar' }));
     await waitFor(() => expect(mocks.prepare).toHaveBeenCalled());
     expect(screen.queryByRole('checkbox', { name: /Sobrescribir recursos embebidos/ })).not.toBeInTheDocument();
@@ -215,11 +222,15 @@ describe('distributed execution', () => {
     expect(
       within(screen.getByRole('region', { name: 'Resumen de la ejecución' })).getByText('9.4'),
     ).toBeInTheDocument();
-    expect(screen.getByRole('img', { name: 'Latencia P95' }).parentElement).toHaveTextContent('—');
+    fireEvent.click(screen.getByRole('button', { name: 'P95' }));
+    expect(screen.getByRole('group', { name: 'Valores del timeline' })).toHaveTextContent('P95: —');
   });
   it('keeps nodes out of Connection and invalidates the plan when report selection changes', async () => {
     mount();
     await selectRepository();
+    expect(screen.getByRole('button', { name: 'Ejecutar' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Aplicar acción a los archivos' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Ejecutar' })).toBeEnabled());
     const nodes = screen.getByRole('button', { name: 'Nodos' });
     expect(nodes.closest('fieldset')).toBeNull();
     expect(nodes).toHaveTextContent('2');
@@ -332,6 +343,7 @@ describe('distributed execution', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Aplicar acción a los archivos' }));
     await screen.findByText('Publication failed');
     expect(screen.queryByText(/archivos subidos/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Ejecutar' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'users.csv' })).toBeInTheDocument();
     await waitFor(() => expect(screen.getByRole('button', { name: 'Aplicar acción a los archivos' })).toBeEnabled());
     expect(mocks.request).not.toHaveBeenCalledWith('run', expect.anything());
@@ -402,7 +414,7 @@ it('gives up a read of the run state after 10 seconds and reads again at the nex
     });
     mount();
     await advance(0);
-    await advance(2500);
+    await advance(1000);
     expect(reads).toBe(2);
 
     await advance(10_000);
@@ -446,7 +458,7 @@ it('reads no run state while the view is hidden, and reads at once when it is in
     );
     const { rerender } = render(view(true));
     await advance(0);
-    await advance(2500);
+    await advance(1000);
     expect(reads).toBe(2);
 
     rerender(view(false));
@@ -457,6 +469,222 @@ it('reads no run state while the view is hidden, and reads at once when it is in
     await advance(0);
     expect(reads).toBe(3);
   } finally {
+    vi.useRealTimers();
+  }
+});
+
+it('updates counters before completion and retains received metrics when report generation fails', async () => {
+  sessionStorage.setItem(
+    'relampo.studio.distributedRun',
+    JSON.stringify({ id: 'drun-live', fp: (await import('../utils/studioRunStore')).fingerprint(yaml) }),
+  );
+  const original = mocks.request.getMockImplementation()!;
+  let reads = 0;
+  mocks.request.mockImplementation(async (path: string, body: unknown, signal?: AbortSignal) => {
+    if (!path.startsWith('run/')) return original(path, body, signal);
+    reads++;
+    const requests = Math.min(reads, 2) * 10;
+    const measuredAt = new Date().toISOString();
+    const stats = {
+      requests,
+      failures: 0,
+      latency_samples: requests,
+      elapsed_seconds: 5,
+      rps: 2,
+      min_ms: 1,
+      max_ms: 9,
+      avg_ms: 4,
+      p95_ms: 8,
+    };
+    return {
+      id: 'drun-live',
+      run_id: 42,
+      status: reads < 3 ? 'running' : 'errored',
+      stage: reads < 3 ? 'in_progress' : 'generating_report',
+      error: reads < 3 ? undefined : 'Report generation failed',
+      warning: reads < 3 ? undefined : 'Live metrics temporarily unavailable; the remote execution continues.',
+      reports_ready: false,
+      repository: 'owner/repo',
+      started_at: measuredAt,
+      nodes: [],
+      scopes: [{ key: 'global', total: stats, window: stats }],
+      history: [
+        {
+          at: measuredAt,
+          requests,
+          failures: 0,
+          rps: reads < 3 ? 2 : 0,
+          active_vus: reads < 3 ? 1 : 0,
+          avg_ms: 4,
+          p95_ms: 8,
+        },
+      ],
+      // Legacy coordinators retained the finished workers' short closing
+      // windows in scoped history. Global charts must match the live log.
+      scope_history: {
+        global: [
+          {
+            at: measuredAt,
+            requests,
+            failures: 0,
+            rps: reads < 3 ? 2 : 62.3,
+            active_vus: reads < 3 ? 1 : 0,
+            avg_ms: 4,
+            p95_ms: 8,
+          },
+        ],
+      },
+    };
+  });
+  vi.useFakeTimers();
+  try {
+    mount();
+    await advance(0);
+    const summary = screen.getByRole('region', { name: 'Resumen de la ejecución' });
+    expect(within(summary).getByText('10', { exact: true })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cancelar ejecución remota' })).toBeEnabled();
+    expect(screen.queryByRole('img', { name: 'Tasa de peticiones (intervalo)' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: 'Latencia P95' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: 'VUs activos' })).not.toBeInTheDocument();
+    await advance(1000);
+    expect(within(summary).getByText('20', { exact: true })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cancelar ejecución remota' })).toBeEnabled();
+    await advance(1000);
+    expect(
+      screen.queryByText(/La carga terminó; falló la generación o publicación del reporte/),
+    ).not.toBeInTheDocument();
+    expect(screen.getAllByText('Error en el reporte').length).toBeGreaterThan(0);
+    expect(screen.queryByText(/remote execution continues/)).not.toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Valores del timeline' })).toHaveTextContent('RPS: 0 req/s');
+    expect(screen.getByRole('group', { name: 'Valores del timeline' })).not.toHaveTextContent('62.3');
+    expect(within(summary).getByText('20', { exact: true })).toBeInTheDocument();
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it('requires Apply again when the script or selected files change', async () => {
+  const view = (code: string) => (
+    <LanguageProvider>
+      <YAMLDistributedRun
+        enabled
+        yamlCode={code}
+        flushPendingEdits={() => code}
+        documentReady
+        validationErrors={[]}
+      />
+    </LanguageProvider>
+  );
+  const { rerender } = render(view(yaml));
+  await selectRepository();
+  const run = screen.getByRole('button', { name: 'Ejecutar' });
+  expect(run).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: 'Aplicar acción a los archivos' }));
+  await waitFor(() => expect(run).toBeEnabled());
+  rerender(view(yaml.replace('qa', 'changed')));
+  expect(run).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: 'Aplicar acción a los archivos' }));
+  await waitFor(() => expect(run).toBeEnabled());
+  fireEvent.change(screen.getByLabelText('Archivos del equipo'), {
+    target: { files: [new File(['a,b'], 'new-data.csv')] },
+  });
+  expect(run).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: 'Aplicar acción a los archivos' }));
+  await waitFor(() => expect(run).toBeEnabled());
+  expect(mocks.prepare).not.toHaveBeenCalled();
+});
+
+it('stops reconnecting to a missing pre-restart run without relaunching the remote test', async () => {
+  sessionStorage.setItem(
+    'relampo.studio.distributedRun',
+    JSON.stringify({ id: 'drun-old', fp: (await import('../utils/studioRunStore')).fingerprint(yaml) }),
+  );
+  const original = mocks.request.getMockImplementation()!;
+  let reads = 0;
+  mocks.request.mockImplementation(async (path: string, body: unknown, signal?: AbortSignal) => {
+    if (!path.startsWith('run/')) return original(path, body, signal);
+    reads++;
+    throw new DistributedRequestError('distributed run not found', 404);
+  });
+  vi.useFakeTimers();
+  try {
+    mount();
+    await advance(0);
+    expect(screen.getByText(/El agente ya no conserva el seguimiento/)).toBeInTheDocument();
+    expect(screen.queryByText(/Reconectando;/)).not.toBeInTheDocument();
+    await advance(60_000);
+    expect(reads).toBe(1);
+    expect(mocks.request).not.toHaveBeenCalledWith('run', expect.anything());
+    expect(JSON.parse(sessionStorage.getItem('relampo.studio.distributedRun')!).lost).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Volver a configurar' }));
+    expect(sessionStorage.getItem('relampo.studio.distributedRun')).toBeNull();
+    expect(screen.queryByText(/El agente ya no conserva el seguimiento/)).not.toBeInTheDocument();
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it('retains the verified remote link when the agent loses an observed run', async () => {
+  sessionStorage.setItem(
+    'relampo.studio.distributedRun',
+    JSON.stringify({ id: 'drun-old', fp: (await import('../utils/studioRunStore')).fingerprint(yaml) }),
+  );
+  const original = mocks.request.getMockImplementation()!;
+  let reads = 0;
+  mocks.request.mockImplementation(async (path: string, body: unknown, signal?: AbortSignal) => {
+    if (!path.startsWith('run/')) return original(path, body, signal);
+    if (++reads > 1) throw new DistributedRequestError('distributed run not found', 404);
+    return {
+      ...(await original(path, body, signal)),
+      status: 'running',
+      url: 'https://github.com/owner/repo/actions/runs/42',
+    };
+  });
+  vi.useFakeTimers();
+  try {
+    const view = mount();
+    await advance(0);
+    await advance(1000);
+    expect(screen.getByRole('link', { name: 'Ver ejecución remota' })).toHaveAttribute(
+      'href',
+      'https://github.com/owner/repo/actions/runs/42',
+    );
+    expect(screen.getAllByText('Sin seguimiento').length).toBeGreaterThan(0);
+    view.unmount();
+    mount();
+    await advance(60_000);
+    expect(reads).toBe(2);
+    expect(screen.getByRole('link', { name: 'Ver ejecución remota' })).toBeInTheDocument();
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it('keeps one-second polling cadence including relay response time without overlapping reads', async () => {
+  sessionStorage.setItem(
+    'relampo.studio.distributedRun',
+    JSON.stringify({ id: 'drun-1', fp: (await import('../utils/studioRunStore')).fingerprint(yaml) }),
+  );
+  vi.useFakeTimers();
+  const now = vi.spyOn(performance, 'now').mockImplementation(() => Date.now());
+  try {
+    const original = mocks.request.getMockImplementation()!;
+    const reads: number[] = [];
+    mocks.request.mockImplementation(async (path: string, body: unknown, signal?: AbortSignal) => {
+      if (!path.startsWith('run/')) return original(path, body, signal);
+      reads.push(Date.now());
+      await new Promise(resolve => setTimeout(resolve, 600));
+      return { ...(await original(path, body, signal)), status: 'running', reports_ready: false };
+    });
+    mount();
+    await advance(0);
+    await advance(600);
+    expect(reads).toHaveLength(1);
+    await advance(400);
+    expect(reads).toHaveLength(2);
+    expect(reads[1] - reads[0]).toBe(1000);
+  } finally {
+    now.mockRestore();
     vi.useRealTimers();
   }
 });
