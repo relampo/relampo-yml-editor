@@ -1,5 +1,5 @@
 import type { CorrelateDocument } from '../../utils/correlateBridge';
-import { useEffect, useMemo, useImperativeHandle, useRef, useState, type Ref } from 'react';
+import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
 import { Link2, FolderOpen, Eraser, Play, Check, Save, X, ExternalLink } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { RecorderShell } from '../recorder/RecorderShell';
@@ -38,18 +38,10 @@ export function CorrelatePage({
     [name, setName] = useState(''),
     [output, setOutput] = useState(''),
     [overwrite, setOverwrite] = useState(false);
-  const [minimumConfidence, setMinimumConfidence] = useState(0);
   const [results, setResults] = useState<AppliedCorrelation[] | null>(null);
   const [report, setReport] = useState<CorrelateReport | null>(null),
     [selected, setSelected] = useState<string[]>([]),
     [locate, setLocate] = useState<CorrelateCandidate | null>(null);
-  const filteredCandidates = useMemo(
-    () =>
-      report?.candidates.filter(
-        row => row.kind !== 'auto' || minimumConfidence === 0 || (report.scores?.[row.id] ?? 0) >= minimumConfidence,
-      ) ?? null,
-    [report, minimumConfidence],
-  );
   const [busy, setBusy] = useState(''),
     [error, setError] = useState(''),
     [applied, setApplied] = useState(false),
@@ -389,29 +381,6 @@ export function CorrelatePage({
       >
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-3 text-xs">
-            <label className="flex items-center gap-2">
-              {text('Minimum confidence', 'Confianza mínima')}
-              <input
-                aria-label={text('Minimum confidence', 'Confianza mínima')}
-                type="number"
-                min="0"
-                max="1"
-                step="0.05"
-                value={minimumConfidence}
-                disabled={!!busy || !report?.scores}
-                className={input + ' w-20'}
-                onChange={event => {
-                  const threshold = Math.max(0, Math.min(1, Number(event.target.value) || 0));
-                  setMinimumConfidence(threshold);
-                  setSelected(current =>
-                    current.filter(id => {
-                      const row = report?.candidates.find(row => row.id === id);
-                      return row?.kind !== 'auto' || (report?.scores?.[id] ?? 0) >= threshold;
-                    }),
-                  );
-                }}
-              />
-            </label>
             <button
               className={button}
               disabled={!report || !!busy}
@@ -631,7 +600,7 @@ export function CorrelatePage({
         />
         <CorrelateResults
           results={results}
-          rows={filteredCandidates}
+          rows={report?.candidates ?? null}
           selected={selected}
           onSelected={setSelected}
           onLocate={row => setLocate({ ...row })}
