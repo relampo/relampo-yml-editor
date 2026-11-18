@@ -145,7 +145,7 @@ describe('YAMLLoadRunSession', () => {
     expect(screen.getByText('Memory').parentElement).toHaveTextContent('80 MiB (a)');
     expect(screen.getByText('CPU').parentElement).toHaveTextContent('40.0% (b)');
     expect(screen.queryByText('Goroutines Peak')).not.toBeInTheDocument();
-    expect(screen.getByText('RPS').parentElement).toHaveTextContent('66.7');
+    expect(within(screen.getByText('Run summary').parentElement!.parentElement!).getByText('RPS').parentElement).toHaveTextContent('66.7');
   });
 
   it.each([
@@ -1225,7 +1225,7 @@ ${scenario}${mode === 'single' ? '' : scenario.replace('name: first','name: seco
  act(()=>runApiMock.handlers[0].onDone({status:'completed',error:null,summary:summary({scenario_mode:mode})}));
  expect(screen.getAllByText('Planned load profile')).toHaveLength(mode==='single'?1:2);
  expect(screen.getAllByText(/Peak Users: 2.*Total: 20s/)).toHaveLength(mode==='single'?1:2);
- for (const field of ['Status','Duration','VUs (exec/conf)','Total Requests','Error %','RPS','TPS','Memory','CPU','Execution mode']) expect(screen.getByText(field)).toBeInTheDocument();
+ for (const field of ['Status','Duration','VUs (exec/conf)','Total Requests','Error %','RPS','TPS','Memory','CPU','Execution mode']) expect(screen.getAllByText(field).length).toBeGreaterThan(0);
  expect(screen.queryByText('Goroutines Peak')).not.toBeInTheDocument();
  expect(screen.queryByText('Request p95')).not.toBeInTheDocument();
  expect(screen.getByText('Execution mode').parentElement).toHaveTextContent(mode==='single'?'Single':mode==='parallel'?'Parallel':'Sequential');
@@ -1265,4 +1265,18 @@ it('keeps SQL response samples after log rotation and completion, then clears th
   fireEvent.click(screen.getByRole('button', { name: 'Run load test' }));
   await waitFor(() => expect(runApiMock.handlers).toHaveLength(2));
   expect(screen.queryByRole('table', { name: 'Returned SQL rows' })).not.toBeInTheDocument();
+});
+
+it('clears completed local results and attachment without stopping or editing the script', async () => {
+  render(<YAMLLoadRunSession {...baseProps} />);
+  expect(screen.getByRole('button', { name: 'Clear' })).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: 'Run load test' }));
+  await waitFor(() => expect(runApiMock.handlers).toHaveLength(1));
+  expect(screen.getByRole('button', { name: 'Clear' })).toBeDisabled();
+  act(() => runApiMock.handlers[0].onDone({ status: 'completed', error: null, summary: summary() }));
+  fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
+  expect(screen.queryByText('Run summary')).not.toBeInTheDocument();
+  expect(sessionStorage.getItem('relampo.studio.loadRun')).toBeNull();
+  expect(runApiMock.stopLoadRun).not.toHaveBeenCalled();
+  expect(screen.getByRole('button', { name: 'Run load test' })).toBeEnabled();
 });
