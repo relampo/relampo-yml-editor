@@ -59,3 +59,29 @@ it('never writes an old execution into another plan or script after navigation',
   expect(mocks.request).not.toHaveBeenCalled();
   expect(parent.postMessage).not.toHaveBeenCalled();
 });
+
+it('downloads every selected format when the plan has no report storage', async () => {
+  mocks.request.mockImplementation(async () => new Response('partial results'));
+  const parent = { postMessage: vi.fn() };
+  vi.stubGlobal('parent', parent);
+  vi.stubGlobal('URL', Object.assign(URL, { createObjectURL: vi.fn(() => 'blob:report'), revokeObjectURL: vi.fn() }));
+  const downloads: string[] = [];
+  const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+    downloads.push(this.download);
+  });
+  try {
+    await persistLocalRunReports(
+      'stopped-1',
+      ['html', 'json', 'csv', 'txt'],
+      '2026-11-18T20:00:00Z',
+      'en',
+      undefined,
+      'downloads',
+    );
+    expect(mocks.request).toHaveBeenCalledTimes(4);
+    expect(downloads.map(name => name.split('.').pop())).toEqual(['html', 'json', 'csv', 'txt']);
+    expect(parent.postMessage).not.toHaveBeenCalled();
+  } finally {
+    click.mockRestore();
+  }
+});

@@ -1,3 +1,5 @@
+import { persistLocalRunReports } from '../utils/localRunReports';
+vi.mock('../utils/localRunReports', async original => ({ ...(await original<typeof import('../utils/localRunReports')>()), persistLocalRunReports: vi.fn(async () => {}) }));
 import { parseYAMLToTree, treeToYAML } from '../utils/yamlParser';
 import { addNodeToTree, insertNodesAfterTarget } from './yaml-tree-view/treeOperations';
 import { createNodeByType } from './yaml-tree-view/nodeFactory';
@@ -1279,4 +1281,18 @@ it('clears completed local results and attachment without stopping or editing th
   expect(sessionStorage.getItem('relampo.studio.loadRun')).toBeNull();
   expect(runApiMock.stopLoadRun).not.toHaveBeenCalled();
   expect(screen.getByRole('button', { name: 'Run load test' })).toBeEnabled();
+});
+
+it('announces Downloads before Run and generates selected reports when Stop returns partial results', async () => {
+  vi.mocked(persistLocalRunReports).mockClear();
+  render(<YAMLLoadRunSession {...baseProps} />);
+  expect(screen.getByText(/Reports will be saved to Downloads/)).toBeInTheDocument();
+  for (const format of ['JSON', 'CSV', 'TXT']) fireEvent.click(screen.getByLabelText(format));
+  fireEvent.click(screen.getByRole('button', { name: 'Run load test' }));
+  await waitFor(() => expect(runApiMock.handlers).toHaveLength(1));
+  fireEvent.click(screen.getByRole('button', { name: 'Stop' }));
+  expect(runApiMock.stopLoadRun).toHaveBeenCalled();
+  act(() => runApiMock.handlers[0].onDone({ status: 'stopped', error: null, summary: summary({ total_requests: 3, duration: 1000000000 }) }));
+  await waitFor(() => expect(persistLocalRunReports).toHaveBeenCalledWith('lrun-1', ['html', 'json', 'csv', 'txt'], expect.any(String), 'en', undefined, 'downloads'));
+  expect(screen.getByText('View reports', { exact: true })).toBeInTheDocument();
 });

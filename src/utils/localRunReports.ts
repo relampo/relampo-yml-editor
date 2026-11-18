@@ -12,18 +12,51 @@ export function localReportContext(): LocalReportContext | undefined {
   if (!planKey || window.parent === window) return undefined;
   return { planKey, scriptId: new URLSearchParams(location.search).get('script') || 'default' };
 }
+/** Probe storage before Run; an unbound/example plan uses browser downloads. */
+export async function localReportStorageAvailable(): Promise<boolean> {
+  const context = localReportContext();
+  if (!context) return false;
+  const requestId = crypto.randomUUID();
+  return new Promise(resolve => {
+    const cleanup = () => {
+      clearTimeout(timer);
+      window.removeEventListener('message', receive);
+    };
+    const receive = (event: MessageEvent) => {
+      if (
+        event.origin !== location.origin ||
+        event.source !== window.parent ||
+        event.data?.type !== 'relampo:report-storage-result' ||
+        event.data.requestId !== requestId
+      )
+        return;
+      cleanup();
+      resolve(event.data.available === true);
+    };
+    const timer = setTimeout(() => {
+      cleanup();
+      resolve(false);
+    }, 2000);
+    window.addEventListener('message', receive);
+    window.parent.postMessage({ type: 'relampo:report-storage', requestId, ...context }, location.origin);
+  });
+}
+
 export async function persistLocalRunReports(
   id: string,
   formats: LocalReportFormat[],
   startedAt: string,
   language: 'en' | 'es',
   context = localReportContext(),
+  destination: 'plan' | 'downloads' = context ? 'plan' : 'downloads',
 ): Promise<void> {
-  if (!context) return;
-  const { planKey, scriptId } = context;
   const current = localReportContext();
-  if (current?.planKey !== planKey || current?.scriptId !== scriptId)
+  if (
+    destination === 'plan' &&
+    (!context || current?.planKey !== context.planKey || current?.scriptId !== context.scriptId)
+  )
     throw Error('Return to the original Test Plan and script to save these reports.');
+  const { planKey, scriptId } = context ?? { planKey: '', scriptId: 'default' };
   const stamp = new Date(startedAt).toISOString().replace(/[:.]/g, '-');
   const folder = `${stamp}-${id.replace(/[^a-zA-Z0-9_-]/g, '')}`;
   const files = await Promise.all(
@@ -41,6 +74,18 @@ export async function persistLocalRunReports(
       return { path: `Reports/${folder}/report.${format}`, data: btoa(binary) };
     }),
   );
+  if (destination === 'downloads') {
+    for (const file of files) {
+      const bytes = Uint8Array.from(atob(file.data), c => c.charCodeAt(0));
+      const url = URL.createObjectURL(new Blob([bytes]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `report-${folder}.${file.path.split('.').pop()}`;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    }
+    return;
+  }
   const requestId = crypto.randomUUID();
   await new Promise<void>((resolve, reject) => {
     const cleanup = () => {

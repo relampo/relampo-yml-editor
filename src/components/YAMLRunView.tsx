@@ -1,6 +1,7 @@
 import { DistributedTimeline } from './distributed-run/DistributedTimeline';
 import {
   localReportContext,
+  localReportStorageAvailable,
   persistLocalRunReports,
   type LocalReportContext,
   type LocalReportFormat,
@@ -326,6 +327,18 @@ export function YAMLLoadRunSession({
   const selectedFormats = useRef<LocalReportFormat[]>(['html']);
   const reportContext = useRef<LocalReportContext | undefined>(undefined);
   const savedReports = useRef<string | null>(null);
+  const [hasReportStorage, setHasReportStorage] = useState(false);
+  const reportPlanKey = localReportContext()?.planKey;
+  const reportDestination = useRef<'plan' | 'downloads'>('downloads');
+  useEffect(() => {
+    let alive = true;
+    void localReportStorageAvailable().then(available => {
+      if (alive) setHasReportStorage(available);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [fileName, reportPlanKey]);
   const [reportSave, setReportSave] = useState('');
   const [reportSaveError, setReportSaveError] = useState('');
   const logScrollRef = useRef<HTMLDivElement | null>(null);
@@ -366,12 +379,19 @@ export function YAMLLoadRunSession({
 
   const saveReports = useCallback(
     async (id: string, result: RunSummary) => {
-      if (window.parent === window) return;
-      setReportSave('saving');
+      const toPlan = reportDestination.current === 'plan';
+      if (toPlan) setReportSave('saving');
       setReportSaveError('');
       try {
-        await persistLocalRunReports(id, selectedFormats.current, result.start_time, language, reportContext.current);
-        if (activeRunIdRef.current === id) setReportSave('saved');
+        await persistLocalRunReports(
+          id,
+          selectedFormats.current,
+          result.start_time,
+          language,
+          reportContext.current,
+          reportDestination.current,
+        );
+        if (toPlan && activeRunIdRef.current === id) setReportSave('saved');
       } catch (error) {
         if (activeRunIdRef.current !== id) return;
         setReportSave('failed');
@@ -500,6 +520,7 @@ export function YAMLLoadRunSession({
     }
     setResultScope('');
     selectedFormats.current = [...reportFormats];
+    reportDestination.current = hasReportStorage ? 'plan' : 'downloads';
     setReportSave('');
     setReportSaveError('');
     const token = (startTokenRef.current += 1);
@@ -636,6 +657,16 @@ export function YAMLLoadRunSession({
               </details>
             )}
           </div>
+          {!hasReportStorage && (
+            <p
+              role="status"
+              className="px-5 pb-3 text-xs text-zinc-400"
+            >
+              {language === 'es'
+                ? 'Este Test Plan no tiene una ubicación de guardado. Los reportes se descargarán en Descargas, incluso si detienes la prueba.'
+                : 'This Test Plan has no storage location. Reports will be saved to Downloads, including when you stop the test.'}
+            </p>
+          )}
           {reportSave === 'saving' && (
             <p
               role="status"
