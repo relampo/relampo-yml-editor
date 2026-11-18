@@ -20,6 +20,7 @@ import {
   CircleSlash,
   Clock3,
   Edit3,
+  Eraser,
   Eye,
   Play,
   RotateCcw,
@@ -270,6 +271,7 @@ type RunState = {
 };
 
 type RunAction =
+  | { type: 'cleared' }
   | { type: 'run_started' }
   | { type: 'reattach_started' }
   | { type: 'event_received'; event: EngineEvent }
@@ -288,6 +290,8 @@ const initialRunState: RunState = {
 
 function runStateReducer(state: RunState, action: RunAction): RunState {
   switch (action.type) {
+    case 'cleared':
+      return initialRunState;
     case 'run_started':
       return { entryEvents: [], pendingSparkLogs: [], isRunning: true, runCompleted: false, runError: null };
     case 'reattach_started':
@@ -637,6 +641,20 @@ export function YAMLDebugSession({
     dispatchRunState({ type: 'run_stopped' });
   };
 
+  const clearRun = () => {
+    if (isRunning) return;
+    startTokenRef.current += 1;
+    stopStreamRef.current?.();
+    stopStreamRef.current = null;
+    storedRunRef.current = null;
+    runStore.clear();
+    setActiveId(null);
+    setDetailTab('overview');
+    setTimelineFilter('requests');
+    setRunDebugEventTargets(null);
+    dispatchRunState({ type: 'cleared' });
+  };
+
   const selectEntry = (entry: DebugEntry) => {
     setActiveId(entry.id);
     onSelectNode(entry.node);
@@ -679,6 +697,8 @@ export function YAMLDebugSession({
         yamlCode={yamlCode}
         onRun={startRun}
         onStop={stopRun}
+        onClear={clearRun}
+        canClear={!isRunning && (entryEvents.length > 0 || runCompleted || !!runError)}
         debugVUs={debugVUs}
         onDebugVUsChange={setDebugVUs}
         selectionBlocked={selectionBlocked}
@@ -771,6 +791,8 @@ function DebugToolbar({
   yamlCode,
   onRun,
   onStop,
+  onClear,
+  canClear,
   debugVUs,
   onDebugVUsChange,
   selectionBlocked,
@@ -781,13 +803,18 @@ function DebugToolbar({
   yamlCode: string;
   onRun: () => void;
   onStop: () => void;
+  onClear: () => void;
+  canClear: boolean;
   debugVUs: DebugVUs;
   onDebugVUsChange: (vus: DebugVUs) => void;
   selectionBlocked: boolean;
 }) {
   const { t } = useLanguage();
   return (
-    <div data-studio-execution-toolbar className="border-b border-white/5 px-5 py-3">
+    <div
+      data-studio-execution-toolbar
+      className="border-b border-white/5 px-5 py-3"
+    >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">
@@ -823,6 +850,15 @@ function DebugToolbar({
             title={t('yamlEditor.runDebug.debug.rerun')}
           >
             <RotateCcw className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={onClear}
+            disabled={!canClear}
+            className="inline-flex h-9 items-center gap-2 rounded border border-white/10 bg-white/3 px-3 text-sm text-zinc-300 transition-colors hover:bg-white/6 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <Eraser className="h-3.5 w-3.5" />
+            Clear
           </button>
           <fieldset className="m-0 inline-flex h-9 min-w-0 items-center rounded border border-white/10 bg-[#161616] p-0 text-xs text-zinc-400">
             <legend className="sr-only">{t('yamlEditor.runDebug.debug.vusLegend')}</legend>

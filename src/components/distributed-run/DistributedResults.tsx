@@ -1,5 +1,5 @@
 import { useMemo, type ReactNode } from 'react';
-import { ExternalLink, RotateCcw, Square } from 'lucide-react';
+import { ExternalLink, Eraser, Square } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import {
   distributedReportPath,
@@ -182,7 +182,7 @@ export function DistributedResults({
                 disabled={busy}
                 onClick={onClear}
               >
-                <RotateCcw size={15} />
+                <Eraser size={14} />
                 Clear
               </button>
             )}

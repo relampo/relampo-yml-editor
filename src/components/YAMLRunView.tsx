@@ -22,7 +22,7 @@ import {
   Gauge,
   OctagonX,
   Play,
-  RotateCcw,
+  Eraser,
   Square,
   Terminal,
   TimerReset,
@@ -628,7 +628,7 @@ export function YAMLLoadRunSession({
               disabled={isRunning || isStopping || (!hasRunActivity && !runError)}
               className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-white/15 px-2.5 text-xs disabled:opacity-40"
             >
-              <RotateCcw size={15} />
+              <Eraser size={14} />
               Clear
             </button>
             {summary && activeRunIdRef.current && (
