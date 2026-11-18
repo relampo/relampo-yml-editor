@@ -1,5 +1,7 @@
-import { useMemo, type ReactNode } from 'react';
-import { ChevronDown, ExternalLink, RotateCcw, Square, Terminal } from 'lucide-react';
+import { LiveLogPanel } from '../LiveLogPanel';
+import type { RunLogLine } from '../../utils/runApi';
+import { useMemo, useRef, useEffect, type ReactNode } from 'react';
+import { ExternalLink, RotateCcw, Square } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import {
   distributedReportPath,
@@ -64,6 +66,21 @@ export function DistributedResults({
   const { language } = useLanguage();
   const es = language === 'es';
   const t = (a: string, b: string) => (es ? a : b);
+  const logScrollRef = useRef<HTMLDivElement | null>(null);
+  const logs = useMemo<RunLogLine[]>(
+    () =>
+      state.history.map((point, index) => ({
+        seq: index,
+        ts: Date.parse(point.at),
+        level: point.failures > (state.history[index - 1]?.failures ?? 0) ? 'error' : 'request',
+        message: `${point.requests} ${es ? 'peticiones' : 'requests'} · ${point.failures} ${es ? 'errores' : 'failures'} · ${point.rps.toFixed(1)} req/s`,
+      })),
+    [state.history, es],
+  );
+  useEffect(() => {
+    const element = logScrollRef.current;
+    if (element) element.scrollTop = element.scrollHeight;
+  }, [logs]);
   const selected = state.scopes.find(item => item.key === scope) ?? state.scopes.find(item => item.key === 'global');
   const remoteURL = safeProviderURL(state.url),
     reportsURL = safeProviderURL(state.reports_url);
@@ -313,38 +330,10 @@ export function DistributedResults({
           </div>
         </details>
       )}
-      <details
-        open
-        className="border border-white/10 bg-[#080808]"
-      >
-        <summary className="flex cursor-pointer items-center gap-2 border-b border-white/5 px-4 py-3 text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">
-          <ChevronDown size={14} />
-          <Terminal
-            size={15}
-            className="text-emerald-300"
-          />
-          {t('Logs en vivo', 'Live logs')}
-          <span className="ml-auto font-normal tracking-normal">
-            {state.history.length} {t('actualizaciones', 'updates')}
-          </span>
-        </summary>
-        <div className="max-h-60 overflow-auto px-4 py-3 font-mono text-xs text-zinc-300">
-          {state.history.length ? (
-            state.history.map((point, index) => (
-              <p
-                key={`${point.at}-${index}`}
-                className={point.failures > 0 ? 'text-red-300' : ''}
-              >
-                <span className="mr-3 text-zinc-600">{new Date(point.at).toLocaleTimeString(language)}</span>
-                {point.requests} {t('peticiones', 'requests')} · {point.failures} {t('errores', 'failures')} ·{' '}
-                {point.rps.toFixed(1)} req/s
-              </p>
-            ))
-          ) : (
-            <p className="text-zinc-500">{t('Sin actualizaciones recibidas.', 'No updates received.')}</p>
-          )}
-        </div>
-      </details>
+      <LiveLogPanel
+        logs={logs}
+        scrollRef={logScrollRef}
+      />
       <p className="text-xs text-zinc-500">
         {t(
           'Percentiles aproximados por histogramas combinados. El reporte completo conserva los resultados canónicos.',
