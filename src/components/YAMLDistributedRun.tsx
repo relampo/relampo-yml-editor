@@ -194,6 +194,7 @@ export function YAMLDistributedRun({
     let timer: ReturnType<typeof setTimeout>;
     let cancelled = false;
     const poll = async () => {
+      const readStarted = performance.now();
       try {
         const next = await timerRead(
           signal => distributedRequest<DistributedState>(`run/${encodeURIComponent(runId)}`, undefined, signal),
@@ -234,7 +235,8 @@ export function YAMLDistributedRun({
             histories.current.set(item.key, points.slice(-300));
           }
         }
-        if (next.status === 'running' || next.status === 'stopping') timer = setTimeout(() => void poll(), 1000);
+        if (next.status === 'running' || next.status === 'stopping')
+          timer = setTimeout(() => void poll(), Math.max(0, 1000 - (performance.now() - readStarted)));
       } catch (e) {
         if (!cancelled) {
           if (e instanceof DistributedRequestError && e.status === 404) {

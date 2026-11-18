@@ -5,6 +5,7 @@ import {
   type DistributedScope,
   type DistributedState,
 } from '../../utils/distributedApi';
+import { orderDistributedRequests } from '../../utils/distributedRequestOrder';
 import { AgentFileLink } from '../AgentFileLink';
 
 export function DistributedSummary({
@@ -13,6 +14,7 @@ export function DistributedSummary({
   scope,
   reportPath,
   hasTransactions,
+  scenarioOrder,
   es,
 }: {
   state: DistributedState;
@@ -20,6 +22,7 @@ export function DistributedSummary({
   scope: string;
   reportPath?: string;
   hasTransactions?: boolean;
+  scenarioOrder?: string[];
   es: boolean;
 }) {
   const t = (a: string, b: string) => (es ? a : b);
@@ -71,9 +74,10 @@ export function DistributedSummary({
   ];
   const named = state.scopes.filter(item => !!item.name);
   const combined = named.filter(item => !item.node_id);
-  const requests: DistributedScope[] = selected?.node_id
+  const requestScopes: DistributedScope[] = selected?.node_id
     ? named.filter(item => item.node_id === selected.node_id)
     : (combined.length ? combined : named).filter(item => !selected?.scenario || item.scenario === selected.scenario);
+  const requests = orderDistributedRequests(requestScopes, scenarioOrder);
   const scenarios = new Set(requests.map(item => item.scenario));
   const ms = (value: number | null | undefined) => (value == null ? '—' : `${value.toFixed(1)}ms`);
   return (

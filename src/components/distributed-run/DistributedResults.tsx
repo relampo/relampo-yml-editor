@@ -293,6 +293,7 @@ export function DistributedResults({
         </p>
       )}
       <DistributedSummary
+        scenarioOrder={profile.loads.map(item => item.scenario)}
         state={state}
         plan={plan}
         scope={scope}

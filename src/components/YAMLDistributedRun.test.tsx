@@ -659,3 +659,32 @@ it('retains the verified remote link when the agent loses an observed run', asyn
     vi.useRealTimers();
   }
 });
+
+it('keeps one-second polling cadence including relay response time without overlapping reads', async () => {
+  sessionStorage.setItem(
+    'relampo.studio.distributedRun',
+    JSON.stringify({ id: 'drun-1', fp: (await import('../utils/studioRunStore')).fingerprint(yaml) }),
+  );
+  vi.useFakeTimers();
+  const now = vi.spyOn(performance, 'now').mockImplementation(() => Date.now());
+  try {
+    const original = mocks.request.getMockImplementation()!;
+    const reads: number[] = [];
+    mocks.request.mockImplementation(async (path: string, body: unknown, signal?: AbortSignal) => {
+      if (!path.startsWith('run/')) return original(path, body, signal);
+      reads.push(Date.now());
+      await new Promise(resolve => setTimeout(resolve, 600));
+      return { ...(await original(path, body, signal)), status: 'running', reports_ready: false };
+    });
+    mount();
+    await advance(0);
+    await advance(600);
+    expect(reads).toHaveLength(1);
+    await advance(400);
+    expect(reads).toHaveLength(2);
+    expect(reads[1] - reads[0]).toBe(1000);
+  } finally {
+    now.mockRestore();
+    vi.useRealTimers();
+  }
+});
