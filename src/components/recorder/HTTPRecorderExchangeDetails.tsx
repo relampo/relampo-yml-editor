@@ -159,6 +159,38 @@ export function HTTPRecorderExchangeDetails({
                 {error}
               </p>
             )}
+            {preview?.webSocket && (
+              <div className="mb-4 space-y-2 text-xs text-zinc-300">
+                <h3 className="font-semibold text-yellow-300">
+                  WebSocket · {preview.webSocket.subprotocol || text('Messages', 'Mensajes')}
+                </h3>
+                {preview.webSocket.messages.map((message, index) => (
+                  <div
+                    key={index}
+                    className="rounded border border-white/10 p-2"
+                  >
+                    <p>
+                      {index + 1} ·{' '}
+                      {message.direction === 'client_to_server'
+                        ? text('Sent', 'Enviado')
+                        : text('Received', 'Recibido')}{' '}
+                      · {message.type} · {message.sizeBytes} B
+                    </p>
+                    <pre className="mt-1 whitespace-pre-wrap break-all font-mono">
+                      {message.payloadBase64 ??
+                        (typeof message.payload === 'string'
+                          ? message.payload
+                          : JSON.stringify(message.payload, null, 2))}
+                    </pre>
+                  </div>
+                ))}
+                <p>
+                  {text('Close code', 'Código de cierre')}: {preview.webSocket.closeCode}{' '}
+                  {preview.webSocket.closeReason}
+                </p>
+                {preview.webSocket.incomplete && <p className="text-amber-300">{preview.webSocket.incompleteReason}</p>}
+              </div>
+            )}
             {part === 'overview' ? (
               <div className="space-y-4">
                 <div className="text-xs text-zinc-300">

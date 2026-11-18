@@ -1,3 +1,4 @@
+import { embeddedPlanDraftKey } from './embeddedPlanDraft';
 /** The same-origin SaaS owns the chosen local directory; Studio sends only its document. */
 export function persistEmbeddedScript(
   scriptId: string,
@@ -47,6 +48,43 @@ export function persistEmbeddedScript(
     window.parent.postMessage(
       { type: 'relampo:persist-script', requestId, scriptId, ...document, publish },
       window.location.origin,
+    );
+  });
+}
+
+export interface RecordingAsset {
+  path: string;
+  data: string;
+}
+/** The host owns the plan's folder/repository. It verifies these assets before accepting the script. */
+export function persistEmbeddedRecordingFiles(files: RecordingAsset[]): Promise<void> {
+  if (!files.length || window.parent === window) return Promise.resolve();
+  const requestId = crypto.randomUUID();
+  return new Promise((resolve, reject) => {
+    const cleanup = () => {
+      clearTimeout(timer);
+      window.removeEventListener('message', receive);
+    };
+    const receive = (event: MessageEvent) => {
+      if (
+        event.origin !== location.origin ||
+        event.source !== window.parent ||
+        event.data?.requestId !== requestId ||
+        event.data?.type !== 'relampo:recording-assets-persisted'
+      )
+        return;
+      cleanup();
+      if (event.data.ok === true) resolve();
+      else reject(new Error(event.data.error || 'Could not save recording files.'));
+    };
+    const timer = window.setTimeout(() => {
+      cleanup();
+      reject(new Error('The Test Plan did not confirm its recording files. Retry the import.'));
+    }, 150000);
+    window.addEventListener('message', receive);
+    window.parent.postMessage(
+      { type: 'relampo:persist-recording-assets', requestId, files, planKey: embeddedPlanDraftKey() },
+      location.origin,
     );
   });
 }

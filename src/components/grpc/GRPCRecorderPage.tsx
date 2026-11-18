@@ -13,11 +13,13 @@ export function GRPCRecorderPage({
   onAdd,
   onGoToScripting,
   onActivityChange,
+  onPendingChange,
 }: {
   embedded?: boolean;
-  onAdd?: (yaml: string) => void;
+  onAdd?: (yaml: string, afterSaved?: () => Promise<void>) => Promise<void> | void;
   onGoToScripting?: () => void;
   onActivityChange?: (active: boolean) => void;
+  onPendingChange?: (pending: boolean) => void;
 } = {}) {
   const { language, setLanguage } = useLanguage();
   const [capabilities, setCapabilities] = useState<{ browser: boolean; tabs: boolean } | null>(null),
@@ -108,6 +110,7 @@ export function GRPCRecorderPage({
           presentation="page"
           onAdd={onAdd}
           onActivityChange={onActivityChange}
+          onPendingChange={onPendingChange}
           initialMode="record"
           browserRecordingEnabled={capabilities.browser}
           saveProjectEnabled={!embedded && capabilities.tabs}

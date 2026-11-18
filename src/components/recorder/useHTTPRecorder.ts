@@ -66,6 +66,17 @@ export function useHTTPRecorder(embedded = false, floatingControlsWindow: Window
       }));
       const current = await refresh(controller.signal);
       if (controller.signal.aborted) return;
+      setOptions(value => ({
+        ...value,
+        ...current.options,
+        ...(current.applicationUrl ? { applicationUrl: current.applicationUrl } : {}),
+        ...(current.baseUrls ? { baseUrls: current.baseUrls } : {}),
+        ...(current.responses !== undefined ? { responses: current.responses } : {}),
+        ...(current.prefixEnabled !== undefined ? { prefixEnabled: current.prefixEnabled } : {}),
+        ...(current.transactionsEnabled !== undefined ? { transactionsEnabled: current.transactionsEnabled } : {}),
+        ...(current.prefix !== undefined ? { prefix: current.prefix } : {}),
+        ...(embedded ? { output: '' } : {}),
+      }));
       if (current.output && !embedded) setOptions(value => ({ ...value, output: current.output! }));
       setError('');
       setReady(true);

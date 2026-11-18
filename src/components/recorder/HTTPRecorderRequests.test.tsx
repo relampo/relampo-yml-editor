@@ -145,3 +145,49 @@ it('keeps response headers visible even when response bodies were not captured',
   fireEvent.click(screen.getByRole('button', { name: 'Headers' }));
   expect(screen.getByText('test-server')).toBeInTheDocument();
 });
+it('loads older recorded requests and preserves distinct query URLs', async () => {
+  const recent = [{ ...rows[0], id: 500, url: 'https://app.test/product?id=501' }];
+  vi.mocked(httpRecorderRequest).mockResolvedValue({
+    requests: [{ ...rows[0], id: 0, url: 'https://app.test/product?id=1' }],
+  });
+  render(
+    <HTTPRecorderRequests
+      rows={recent}
+      total={501}
+      responses
+      language="en"
+    />,
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Load earlier requests' }));
+  expect(await screen.findByRole('button', { name: 'https://app.test/product?id=1' })).toBeInTheDocument();
+  expect(httpRecorderRequest).toHaveBeenCalledWith('requests?before=500&limit=500');
+  expect(screen.getByRole('button', { name: 'https://app.test/product?id=501' })).toHaveAttribute(
+    'title',
+    'https://app.test/product?id=501',
+  );
+});
+it('shows recorded WebSocket messages rather than only the upgrade response', async () => {
+  vi.mocked(httpRecorderRequest).mockResolvedValue({
+    request: { body: '' },
+    response: { body: '' },
+    webSocket: {
+      messages: [
+        { direction: 'server_to_client', type: 'text', payload: 'order-confirmed', sizeBytes: 15, timestamp: 'now' },
+      ],
+      subprotocol: 'orders',
+      closeCode: 1000,
+      closeReason: 'done',
+    },
+  });
+  render(
+    <HTTPRecorderRequests
+      rows={rows}
+      total={2}
+      responses
+      language="en"
+    />,
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'https://app.test/login' }));
+  expect(await screen.findByText('order-confirmed')).toBeInTheDocument();
+  expect(screen.getByText(/Received.*text/)).toBeInTheDocument();
+});

@@ -22,6 +22,7 @@ export interface HTTPRecordOptions {
   openFirefox: boolean;
 }
 export interface HTTPRecordedRow {
+  webSocket?: boolean;
   id: number;
   name: string;
   method: string;
@@ -33,6 +34,9 @@ export interface HTTPRecordedRow {
   transactionId?: number;
 }
 export interface HTTPRecordingState {
+  captureId?: string;
+  pending?: boolean;
+  options?: Partial<HTTPRecordOptions>;
   active: boolean;
   recording?: boolean;
   recordingStartedAt?: string;
@@ -60,6 +64,21 @@ export interface HTTPRecordingState {
 }
 export interface HTTPRecordingPreview {
   masked?: boolean;
+  webSocket?: {
+    messages: {
+      direction: string;
+      type: string;
+      payload: unknown;
+      payloadBase64?: string;
+      sizeBytes: number;
+      timestamp: string;
+    }[];
+    subprotocol: string;
+    closeCode: number;
+    closeReason: string;
+    incomplete: boolean;
+    incompleteReason: string;
+  };
   name: string;
   method: string;
   url: string;

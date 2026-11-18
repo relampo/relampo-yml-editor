@@ -6,6 +6,11 @@ import '../../src/styles/globals.css';
 
 createRoot(document.getElementById('root')!).render(
   <LanguageProvider>
-    <HTTPRecorderPage embedded />
+    <HTTPRecorderPage
+      embedded
+      onImport={async () => {
+        document.body.dataset.recordingImported = 'true';
+      }}
+    />
   </LanguageProvider>,
 );

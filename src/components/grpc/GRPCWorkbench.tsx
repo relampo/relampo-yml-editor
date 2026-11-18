@@ -1,3 +1,4 @@
+import { persistEmbeddedRecordingFiles, type RecordingAsset } from '../../utils/embeddedFileStorage';
 import { GRPCNativeRecorder } from './GRPCNativeRecorder';
 import { GRPCBrowserRecorder } from './GRPCBrowserRecorder';
 import { useEffect, useRef, useState } from 'react';
@@ -102,8 +103,9 @@ const LOST_SCRIPT = [
 interface GRPCWorkbenchProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onAdd?: (yaml: string) => void;
+  onAdd?: (yaml: string, afterSaved?: () => Promise<void>) => Promise<void> | void;
   onActivityChange?: (active: boolean) => void;
+  onPendingChange?: (pending: boolean) => void;
   presentation?: 'dialog' | 'page';
   initialMode?: 'discover' | 'import' | 'record';
   saveProjectEnabled?: boolean;
@@ -117,6 +119,7 @@ export function GRPCWorkbench({
   onOpenChange,
   onAdd,
   onActivityChange,
+  onPendingChange,
   onGoToStudio,
   language = 'en',
   browserRecordingEnabled = false,
@@ -159,7 +162,10 @@ export function GRPCWorkbench({
       .then(value => {
         if (!cancelled) {
           setRecording(value);
-          if (value.active) setRecordingSource('native');
+          if (value.connection) setConnection(value.connection);
+          if (value.listen) setListen(value.listen);
+          if (value.active || value.generated) setRecordingSource('native');
+          if (value.generated) setGenerated(value.generated);
         }
       })
       .catch(() => {});
@@ -288,6 +294,9 @@ export function GRPCWorkbench({
   useEffect(() => {
     onActivityChange?.(recording.active || browserActive);
   }, [recording.active, browserActive, onActivityChange]);
+  useEffect(() => {
+    onPendingChange?.(recording.pending === true);
+  }, [recording.pending, onPendingChange]);
   return (
     <GRPCWorkbenchFrame
       page={presentation === 'page'}
@@ -509,19 +518,28 @@ export function GRPCWorkbench({
         )}
         {mode === 'record' && !browserMode && (
           <GRPCNativeRecorder
+            key={recording.captureId || 'recording'}
             recording={recording}
             listen={listen}
             onListenChange={setListen}
             busy={busy}
-            canStart={!!connection.target}
+            canStart={!!connection.target && !recording.pending}
+            language={language}
+            onDiscard={() =>
+              void run(async () => {
+                await grpcRequest('recordings/discard', {});
+                setRecording({ active: false, calls: [] });
+                setGenerated(null);
+              })
+            }
             onStart={() =>
               run(async signal => {
-                const value = await grpcRequest<{ listen?: string }>(
+                const value = await grpcRequest<{ listen?: string; captureId?: string }>(
                   'recordings',
                   { connection, listen, schemaId: imported?.id, metadata: metadata() },
                   signal,
                 ).catch(cause => recordingAfterLostAnswer(cause, true));
-                setRecording({ active: true, listen: value.listen, calls: [] });
+                setRecording({ active: true, captureId: value.captureId, listen: value.listen, calls: [] });
                 setGenerated(null);
               })
             }
@@ -535,7 +553,7 @@ export function GRPCWorkbench({
                   throw new Error(LOST_SCRIPT[language === 'es' ? 1 : 0]);
                 });
                 setGenerated(value);
-                setRecording({ active: false, calls: [] });
+                setRecording(await grpcRequest<GRPCRecording>('recordings/current', undefined, signal));
               })
             }
           />
@@ -725,14 +743,30 @@ export function GRPCWorkbench({
                 <button
                   type="button"
                   className={primaryButton}
-                  onClick={() => {
-                    try {
-                      onAdd?.(generated.yaml);
+                  disabled={busy}
+                  onClick={() =>
+                    void run(async () => {
+                      if (onAdd) {
+                        let acknowledged = false;
+                        const confirmImport = async () => {
+                          if (!recording.pending || acknowledged) return;
+                          await grpcRequest('recordings/acknowledge', { id: generated.id });
+                          acknowledged = true;
+                          setRecording(value => ({ ...value, pending: false }));
+                        };
+                        if (presentation !== 'page') await onAdd(generated.yaml);
+                        else {
+                          const bundle = await grpcRequest<{ yaml: string; files: RecordingAsset[] }>(
+                            'projects/' + encodeURIComponent(generated.id) + '/recording-files',
+                          );
+                          await persistEmbeddedRecordingFiles(bundle.files);
+                          await onAdd(bundle.yaml, confirmImport);
+                        }
+                        await confirmImport();
+                      }
                       onOpenChange(false);
-                    } catch (cause) {
-                      setError(cause instanceof Error ? cause.message : String(cause));
-                    }
-                  }}
+                    })
+                  }
                 >
                   Add to scenario
                 </button>

@@ -27,9 +27,19 @@ for (const mode of ['always-on-top', 'popup fallback'] as const) {
             method: 'GET',
             status: 200,
             request: { headers: { 'X-Request': ['request-header-live'] }, body: { action: 'live-request' } },
-            response: { headers: { 'Content-Type': ['text/html'] }, body: route.request().url().includes('showSensitive=true') ? '<html><body>live-response</body></html>' : { message: 'live-response' } },
+            response: {
+              headers: { 'Content-Type': ['text/html'] },
+              body: route.request().url().includes('showSensitive=true')
+                ? '<html><body>live-response</body></html>'
+                : { message: 'live-response' },
+            },
           },
         });
+      if (path === 'editor')
+        return route.fulfill({
+          json: { name: 'recording.yaml', yaml: 'test: {name: recorded}', files: [], captureId: 'browser-capture' },
+        });
+      if (path === 'acknowledge') state = { ...state, pending: false };
       if (path === 'options')
         return route.fulfill({ json: { port: 8888, firefoxAvailable: true, firefoxConfigured: true } });
       if (route.request().method() === 'POST') calls.push(path);
@@ -40,7 +50,7 @@ for (const mode of ['always-on-top', 'popup fallback'] as const) {
       if (path === 'prefix') state = { ...state, prefix: body.prefix };
       if (path === 'transaction')
         state = { ...state, transaction: body.action === 'start' ? { id: 1, name: body.name } : { id: 0, name: '' } };
-      if (path === 'stop') state = { ...state, active: false, recording: false, totalRequests: 3 };
+      if (path === 'stop') state = { ...state, active: false, recording: false, totalRequests: 3, pending: true };
       return route.fulfill({ json: state });
     });
     await page.goto('/floating-host');
@@ -127,6 +137,10 @@ for (const mode of ['always-on-top', 'popup fallback'] as const) {
     controls = await reopened;
     await controls.getByRole('button', { name: 'Stop recording', exact: true }).click();
     await expect.poll(() => state.active).toBe(false);
+    await expect(editor.getByRole('button', { name: 'Open Firefox', exact: true })).toBeDisabled();
+    await editor.getByRole('button', { name: 'Add recording to the test plan' }).click();
+    await expect.poll(() => state.pending).toBe(false);
+    await expect(editor.locator('body')).toHaveAttribute('data-recording-imported', 'true');
     expect(calls.filter(path => path === 'start')).toHaveLength(1);
     expect(calls.filter(path => path === 'transaction')).toHaveLength(2);
   });

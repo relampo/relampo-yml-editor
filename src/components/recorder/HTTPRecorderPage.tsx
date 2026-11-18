@@ -1,3 +1,4 @@
+import { persistEmbeddedRecordingFiles, type RecordingAsset } from '../../utils/embeddedFileStorage';
 import { HTTPRecorderSetup } from './HTTPRecorderSetup';
 import { HTTPRecorderSaved } from './HTTPRecorderSaved';
 import { useCallback, useEffect, useState } from 'react';
@@ -15,11 +16,13 @@ export function HTTPRecorderPage({
   embedded = false,
   onImport,
   onActivityChange,
+  onPendingChange,
 }: {
   /** Inside the web app: floating controls, no output file; recording goes to the test plan. */
   embedded?: boolean;
-  onImport?: (yaml: string, name: string) => Promise<void>;
+  onImport?: (yaml: string, name: string, afterSaved?: () => Promise<void>) => Promise<void>;
   onActivityChange?: (active: boolean) => void;
+  onPendingChange?: (pending: boolean) => void;
 } = {}) {
   const { language, setLanguage } = useLanguage();
   const es = language === 'es',
@@ -42,6 +45,9 @@ export function HTTPRecorderPage({
   useEffect(() => {
     onActivityChange?.(state.active);
   }, [state.active, onActivityChange]);
+  useEffect(() => {
+    onPendingChange?.(state.pending === true);
+  }, [state.pending, onPendingChange]);
   // Inside the web app only `recording: true` is a recording: with `false`, or
   // with no value, the proxy forwards the traffic and records nothing.
   const recording = state.active && (embedded ? state.recording === true : state.recording !== false);
@@ -93,12 +99,34 @@ export function HTTPRecorderPage({
       setError('');
       try {
         // The agent returns the script. It has no second Studio process to open.
-        const result = await httpRecorderRequest<{ name?: unknown; yaml?: unknown }>('editor', {});
+        const result = await httpRecorderRequest<{
+          name?: unknown;
+          yaml?: unknown;
+          files?: RecordingAsset[];
+          captureId?: string;
+        }>('editor', {});
         if (typeof result.yaml !== 'string' || !result.yaml.trim())
           throw new Error(text('The agent returned no recording.', 'El agente no devolvió la grabación.'));
         // eslint-disable-next-line no-control-regex -- the file name must not contain control characters
         const valid = typeof result.name === 'string' && /^[^/\\\x00-\x1f]{1,180}\.ya?ml$/i.test(result.name);
-        await onImport(result.yaml, valid ? (result.name as string) : 'recording.yaml');
+        await persistEmbeddedRecordingFiles(result.files ?? []);
+        let acknowledged = false;
+        const confirmImport = async () => {
+          if (!result.captureId || acknowledged) return;
+          const confirmed = await recorder.control('acknowledge', { captureId: result.captureId });
+          if (confirmed?.pending !== false)
+            throw new Error(
+              text(
+                'The script was saved but the recording import was not confirmed. Retry the import.',
+                'El script se guardó pero no se confirmó la importación de la grabación. Reintenta importar.',
+              ),
+            );
+          acknowledged = true;
+        };
+        if (result.captureId)
+          await onImport(result.yaml, valid ? (result.name as string) : 'recording.yaml', confirmImport);
+        else await onImport(result.yaml, valid ? (result.name as string) : 'recording.yaml');
+        await confirmImport();
       } catch (cause) {
         setError(cause instanceof Error ? cause.message : String(cause));
       } finally {
@@ -247,6 +275,7 @@ export function HTTPRecorderPage({
                 disabled={
                   !ready ||
                   !!busy ||
+                  state.pending === true ||
                   !options.applicationUrl.trim() ||
                   (!embedded && !options.output.trim()) ||
                   (options.openFirefox && (!firefoxAvailable || !firefoxConfigured))

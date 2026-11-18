@@ -52,9 +52,22 @@ export interface GRPCGenerated {
   warnings: string[];
 }
 export interface GRPCRecording {
+  captureId?: string;
+  connection?: GRPCConnection;
+  pending?: boolean;
+  totalCalls?: number;
   active: boolean;
   listen?: string;
-  calls: { method: string; type: string; status: string; messages: number; durationMs: number; truncated: boolean }[];
+  calls: {
+    id?: number;
+    active?: boolean;
+    method: string;
+    type: string;
+    status: string;
+    messages: number;
+    durationMs: number;
+    truncated: boolean;
+  }[];
   /** After a stop: the last script, until the next start. */
   generated?: GRPCGenerated;
   truncated?: boolean;
@@ -96,3 +109,23 @@ export interface GRPCBrowserRecording {
   firefoxCertificateReady?: boolean;
 }
 export const GRPC_BROWSER_CA_PATH = '/api/grpc/browser-recordings/ca';
+
+export interface GRPCCallPreview {
+  method: string;
+  type: string;
+  status: string;
+  statusMessage?: string;
+  durationMs: number;
+  request: { metadata: unknown; body: unknown };
+  response: { metadata: unknown; trailers: unknown; body: unknown };
+  messages: {
+    direction: string;
+    sequence: number;
+    atMs: number;
+    message?: unknown;
+    payloadBase64?: string;
+    sizeBytes: number;
+  }[];
+  truncated: boolean;
+  responsesCaptured: boolean;
+}

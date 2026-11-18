@@ -51,6 +51,7 @@ beforeEach(() => {
         transactionsEnabled: true,
         startedAt: '2026-11-14T06:00:00Z',
       };
+    if (path === 'acknowledge') state = { ...state, pending: false };
     if (path === 'record') state = { ...state, recording: true };
     if (path === 'prefix') state = { ...state, prefix: body.prefix };
     if (path === 'transaction')
@@ -65,7 +66,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-async function start(onImport = vi.fn(async () => undefined)) {
+async function start(onImport: (yaml: string, name: string) => Promise<void> = vi.fn(async () => undefined)) {
   render(
     <LanguageProvider>
       <HTTPRecorderPage
@@ -231,4 +232,21 @@ it('shows a recording only when the state says recording: true', async () => {
   state = { ...state, recording: true };
   await waitFor(() => expect(screen.getByText('Recording')).toBeInTheDocument(), { timeout: 4000 });
   expect(floatingControls().queryByRole('button', { name: 'Start recording' })).not.toBeInTheDocument();
+});
+it('acknowledges a stopped capture only after the Test Plan accepts its script', async () => {
+  script = { name: 'checkout.yaml', yaml: 'test:\n  name: checkout\n', files: [], captureId: 'capture-fixture' };
+  let accept: () => void = () => {};
+  const imported = vi.fn(
+    () =>
+      new Promise<void>(resolve => {
+        accept = resolve;
+      }),
+  );
+  await start(imported);
+  fireEvent.click(screen.getByRole('button', { name: 'Stop recording' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Add recording to the test plan' }));
+  await waitFor(() => expect(imported).toHaveBeenCalledOnce());
+  expect(calls.some(([path]) => path === 'acknowledge')).toBe(false);
+  accept();
+  await waitFor(() => expect(calls).toContainEqual(['acknowledge', { captureId: 'capture-fixture' }]));
 });
