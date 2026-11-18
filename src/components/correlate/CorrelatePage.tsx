@@ -276,7 +276,7 @@ export function CorrelatePage({
   };
   useImperativeHandle(saveRef, () => ({ save: commitEmbedded }));
   async function saveEmbedded(asNew: boolean) {
-    if (!onSave || busy) return;
+    if (!onSave || busy || !applied) return;
     setBusy('save');
     setError('');
     setSaveMessage('');
@@ -648,7 +648,7 @@ export function CorrelatePage({
                 aria-label={text('New script filename', 'Nombre del nuevo script')}
                 className={input}
                 value={copyName}
-                disabled={!!busy}
+                disabled={!!busy || !applied}
                 onChange={event => setCopyName(event.target.value)}
               />
             </label>
@@ -656,7 +656,7 @@ export function CorrelatePage({
           <button
             type="button"
             className={button}
-            disabled={!!busy || !yaml.trim()}
+            disabled={!!busy || !applied || !yaml.trim()}
             onClick={() => void saveEmbedded(false)}
           >
             <Save className="h-3.5 w-3.5" />
@@ -665,7 +665,7 @@ export function CorrelatePage({
           <button
             type="button"
             className={button}
-            disabled={!!busy || !yaml.trim()}
+            disabled={!!busy || !applied || !yaml.trim()}
             onClick={() => {
               if (!showCopyName) {
                 setCopyName(correlatedFileName(name));
