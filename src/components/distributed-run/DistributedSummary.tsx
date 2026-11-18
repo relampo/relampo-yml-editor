@@ -1,4 +1,4 @@
-import { Activity, AlertTriangle, CheckCircle2, ExternalLink, XCircle } from 'lucide-react';
+import { Activity, AlertTriangle, CheckCircle2, ExternalLink, TimerReset, XCircle } from 'lucide-react';
 import {
   distributedStatus,
   type DistributedPlan,
@@ -81,9 +81,11 @@ export function DistributedSummary({
       aria-label={t('Resumen de la ejecución', 'Execution summary')}
       className="border border-white/10 bg-[#111111]"
     >
-      <div className="flex flex-wrap items-center gap-2 border-b border-white/5 px-4 py-3">
+      <div className="flex items-center gap-2 border-b border-white/5 px-4 py-3">
         {state.status === 'unavailable' ? (
           <AlertTriangle className="h-4 w-4 text-amber-300" />
+        ) : state.status === 'stopped' ? (
+          <TimerReset className="h-4 w-4 text-amber-300" />
         ) : state.status === 'running' ? (
           <Activity className="h-4 w-4 text-blue-300" />
         ) : state.status === 'errored' ? (
@@ -97,9 +99,9 @@ export function DistributedSummary({
             path={reportPath}
             target="_blank"
             rel="noreferrer"
-            className="ml-auto inline-flex items-center gap-1.5 rounded border border-yellow-400/40 bg-yellow-400/10 px-2.5 py-1 text-xs font-semibold text-yellow-300 hover:bg-yellow-400/20"
+            className="ml-auto inline-flex items-center gap-1.5 rounded border border-yellow-400/40 bg-yellow-400/10 px-2.5 py-1 text-xs font-semibold text-yellow-300 transition-colors hover:bg-yellow-400/20"
           >
-            <ExternalLink size={14} />
+            <ExternalLink className="h-3.5 w-3.5" />
             {t('Abrir el reporte completo', 'Open full report')}
           </AgentFileLink>
         )}
@@ -143,9 +145,10 @@ export function DistributedSummary({
           </thead>
           <tbody>
             {requests.map(item => {
-              const match = /^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS|CONNECT|TRACE|GRPC|SQL)\s+(.+)$/i.exec(
-                item.name ?? '',
-              );
+              const match =
+                /^(\[\d+\]\s*)?(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS|CONNECT|TRACE|GRPC|SQL)\s+(.+)$/i.exec(
+                  item.name ?? '',
+                );
               return (
                 <tr
                   key={item.key}
@@ -157,14 +160,14 @@ export function DistributedSummary({
                   >
                     {match && (
                       <span className="mr-2 rounded border border-blue-400/25 bg-blue-400/10 px-1.5 py-0.5 text-[10px] font-semibold text-blue-300">
-                        {match[1]}
+                        {match[2]}
                       </span>
                     )}
                     {scenarios.size > 1 && <span className="mr-2 text-zinc-400">{item.scenario}</span>}
                     {!combined.length && !selected?.node_id && item.node_id && (
                       <span className="mr-2 text-zinc-500">N{item.node_id}</span>
                     )}
-                    {match?.[2] ?? item.name}
+                    {match ? `${match[1] ?? ''}${match[3]}` : item.name}
                   </td>
                   <td className="px-3 py-2 text-right font-mono text-zinc-300">
                     {item.total.requests.toLocaleString()}
