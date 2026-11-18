@@ -59,6 +59,7 @@ export interface HTTPRecordingState {
   responses?: boolean;
 }
 export interface HTTPRecordingPreview {
+  masked?: boolean;
   name: string;
   method: string;
   url: string;

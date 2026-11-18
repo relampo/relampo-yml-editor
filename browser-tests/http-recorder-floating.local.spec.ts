@@ -26,8 +26,8 @@ for (const mode of ['always-on-top', 'popup fallback'] as const) {
             url: 'http://app.test/live',
             method: 'GET',
             status: 200,
-            request: { body: { action: 'live-request' } },
-            response: { body: { message: 'live-response' } },
+            request: { headers: { 'X-Request': ['request-header-live'] }, body: { action: 'live-request' } },
+            response: { headers: { 'Content-Type': ['text/html'] }, body: route.request().url().includes('showSensitive=true') ? '<html><body>live-response</body></html>' : { message: 'live-response' } },
           },
         });
       if (path === 'options')
@@ -110,8 +110,13 @@ for (const mode of ['always-on-top', 'popup fallback'] as const) {
     await traffic.click();
     const details = editor.getByRole('region', { name: 'Request details' });
     await expect(details.locator('pre')).toContainText('live-request');
+    await expect(details.getByText('request-header-live', { exact: true })).toBeVisible();
     await details.getByRole('button', { name: 'Response', exact: true }).click();
     await expect(details.locator('pre')).toContainText('live-response');
+    await expect(details.getByText('text/html', { exact: true })).toBeVisible();
+    await details.getByRole('button', { name: 'Show full content', exact: true }).click();
+    await expect(details.locator('pre')).toHaveText('<html><body>live-response</body></html>');
+    await expect(details.locator('iframe,script')).toHaveCount(0);
     expect(calls).not.toContain('stop');
     await expect(controls.getByRole('button', { name: 'Stop recording', exact: true })).toBeInViewport();
     expect(await controls.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

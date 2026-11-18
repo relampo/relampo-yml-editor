@@ -24,6 +24,8 @@ export function HTTPRecorderRequests({
     [preview, setPreview] = useState<HTTPRecordingPreview | null>(null),
     [error, setError] = useState('');
   const { leftPanelWidth, setIsResizing } = useResizePanel(55);
+  const [revealedRequest, setRevealedRequest] = useState<number | null>(null);
+  const showSensitive = selected !== null && revealedRequest === selected;
   const es = language === 'es',
     text = (en: string, spanish: string) => (es ? spanish : en);
   const hosts = Array.from(
@@ -42,7 +44,11 @@ export function HTTPRecorderRequests({
     const controller = new AbortController();
     setPreview(null);
     setError('');
-    httpRecorderRequest<HTTPRecordingPreview>('requests/' + selected, undefined, controller.signal)
+    httpRecorderRequest<HTTPRecordingPreview>(
+      'requests/' + selected + (showSensitive ? '?showSensitive=true' : ''),
+      undefined,
+      controller.signal,
+    )
       .then(value => {
         if (!controller.signal.aborted) setPreview(value);
       })
@@ -50,7 +56,7 @@ export function HTTPRecorderRequests({
         if (!controller.signal.aborted) setError(cause.message);
       });
     return () => controller.abort();
-  }, [selected]);
+  }, [selected, showSensitive]);
   const visible = rows.filter(
     row =>
       (!search || (row.name + ' ' + row.url).toLowerCase().includes(search.toLowerCase())) &&
@@ -139,10 +145,14 @@ export function HTTPRecorderRequests({
                   key={row.id}
                   tabIndex={0}
                   aria-selected={selected === row.id}
-                  onClick={() => setSelected(row.id)}
+                  onClick={() => {
+                    if (selected !== row.id) setRevealedRequest(null);
+                    setSelected(row.id);
+                  }}
                   onKeyDown={event => {
                     if (event.key === 'Enter' || event.key === ' ') {
                       event.preventDefault();
+                      if (selected !== row.id) setRevealedRequest(null);
                       setSelected(row.id);
                     }
                   }}
@@ -158,7 +168,10 @@ export function HTTPRecorderRequests({
                     <button
                       type="button"
                       className="w-full truncate text-left hover:text-yellow-300"
-                      onClick={() => setSelected(row.id)}
+                      onClick={() => {
+                        if (selected !== row.id) setRevealedRequest(null);
+                        setSelected(row.id);
+                      }}
                     >
                       {row.url}
                     </button>
@@ -195,6 +208,8 @@ export function HTTPRecorderRequests({
         <div className="absolute inset-y-0 -left-1 -right-1" />
       </div>
       <HTTPRecorderExchangeDetails
+        showSensitive={showSensitive}
+        onToggleSensitive={() => setRevealedRequest(showSensitive ? null : selected)}
         row={rows.find(row => row.id === selected)}
         preview={preview}
         error={error}

@@ -74,3 +74,65 @@ it('explains uncaptured responses and reports request preview errors', async () 
   fireEvent.click(screen.getByRole('button', { name: 'Response' }));
   expect(screen.getByText(/Response bodies were not captured/)).toBeInTheDocument();
 });
+it('shows headers, repeated parameters and empty bodies, and reveals HTML as text only', async () => {
+  vi.mocked(httpRecorderRequest).mockImplementation(async path => ({
+    url: 'https://app.test/login?tag=one&tag=two',
+    method: 'GET',
+    status: 200,
+    request: { headers: { 'X-Request': ['captured-request'] }, body: '' },
+    response: {
+      headers: { 'Content-Type': ['text/html'] },
+      body: path.includes('showSensitive=true')
+        ? '<script>window.captured=true</script><b>Captured HTML</b>'
+        : '[Non-JSON body hidden while sensitive-data masking is enabled]',
+    },
+  }));
+  const { container } = render(
+    <HTTPRecorderRequests
+      rows={rows}
+      total={2}
+      responses
+      language="en"
+    />,
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'https://app.test/login' }));
+  expect(await screen.findByText('captured-request')).toBeInTheDocument();
+  expect(screen.getByText('one')).toBeInTheDocument();
+  expect(screen.getByText('two')).toBeInTheDocument();
+  expect(screen.getByText('This request has no body.')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Response' }));
+  expect(screen.getByText('text/html')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Show full content' }));
+  expect(await screen.findByText(/<script>window.captured=true/)).toBeInTheDocument();
+  expect(container.querySelector('script')).toBeNull();
+  expect(container.querySelector('b')).toBeNull();
+  expect(httpRecorderRequest).toHaveBeenLastCalledWith(
+    'requests/0?showSensitive=true',
+    undefined,
+    expect.any(AbortSignal),
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'https://api.test/events' }));
+  expect(await screen.findByRole('button', { name: 'Show full content' })).toHaveAttribute('aria-pressed', 'false');
+  expect(httpRecorderRequest).toHaveBeenLastCalledWith('requests/1', undefined, expect.any(AbortSignal));
+});
+it('keeps response headers visible even when response bodies were not captured', async () => {
+  vi.mocked(httpRecorderRequest).mockResolvedValue({
+    request: { body: '' },
+    response: { headers: { Server: ['test-server'] }, body: '' },
+  });
+  render(
+    <HTTPRecorderRequests
+      rows={rows}
+      total={2}
+      responses={false}
+      language="en"
+    />,
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'https://app.test/login' }));
+  await screen.findByText('This request has no body.');
+  fireEvent.click(screen.getByRole('button', { name: 'Response' }));
+  expect(screen.getByText('test-server')).toBeInTheDocument();
+  expect(screen.getByText(/Response bodies were not captured/)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Headers' }));
+  expect(screen.getByText('test-server')).toBeInTheDocument();
+});
