@@ -12,6 +12,7 @@ interface YAMLEditorMainLayoutProps {
   embedded?: boolean;
   debugExecutionAvailable?: boolean;
   runExecutionAvailable?: boolean;
+  executionSessionKey?: number;
   leftPanelWidth: number;
   onResizeStart: () => void;
   activeViewMode: EditorViewMode;
@@ -65,6 +66,7 @@ export function YAMLEditorMainLayout({
   embedded = false,
   debugExecutionAvailable = true,
   runExecutionAvailable = true,
+  executionSessionKey = 0,
   leftPanelWidth,
   onResizeStart,
   activeViewMode,
@@ -159,6 +161,7 @@ export function YAMLEditorMainLayout({
         <YAMLEditorDetailsPanel
           debugExecutionAvailable={debugExecutionAvailable}
           runExecutionAvailable={runExecutionAvailable}
+          key={executionSessionKey}
           onTreeChange={onTreeChange}
           isDebugViewActive={isDebugViewActive}
           isRunViewActive={isRunViewActive}

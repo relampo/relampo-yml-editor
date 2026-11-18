@@ -474,7 +474,14 @@ export function YAMLLoadRunSession({
     [t],
   );
 
-  useEffect(() => () => stopStreamRef.current?.(), []);
+  useEffect(
+    () => () => {
+      // Invalidate pending starts as well as disconnecting the previous document's stream.
+      startTokenRef.current += 1;
+      stopStreamRef.current?.();
+    },
+    [],
+  );
 
   // Auto-scroll the log panel to the newest line as logs stream in.
   useEffect(() => {

@@ -389,7 +389,6 @@ export function createNodeByType(
         type: 'cache_manager',
         name: 'Cache Manager',
         data: {
-          enabled: true,
           clear_each_iteration: true,
           max_elements: 1000,
         },
