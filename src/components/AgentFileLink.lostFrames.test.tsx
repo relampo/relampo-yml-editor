@@ -12,6 +12,7 @@ import { AgentFileLink } from './AgentFileLink';
 let relay: FakeRelay;
 let transport: RelayTransport;
 let reportDocument: Document;
+let navigateReport: ReturnType<typeof vi.fn>;
 
 vi.mock('../utils/agentTransport', async importOriginal => ({
   ...(await importOriginal<typeof import('../utils/agentTransport')>()),
@@ -34,8 +35,10 @@ async function openReport() {
 beforeEach(() => {
   vi.useFakeTimers();
   reportDocument = document.implementation.createHTMLDocument('Report');
+  navigateReport = vi.fn();
   vi.spyOn(window, 'open').mockReturnValue({
     document: reportDocument,
+    location: { replace: navigateReport },
     opener: null,
     closed: false,
     close: vi.fn(),
@@ -69,7 +72,8 @@ it('reads the report once more when a data frame is lost', async () => {
   await advance(100);
 
   expect(reads()).toBe(2);
-  expect(reportDocument.querySelector('iframe')?.getAttribute('src')).toBe('blob:studio/1');
+  expect(navigateReport).toHaveBeenCalledWith('blob:studio/1');
+  expect(URL.createObjectURL).toHaveBeenCalledTimes(2);
   expect(screen.queryByRole('alert')).toBeNull();
 });
 

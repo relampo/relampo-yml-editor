@@ -57,6 +57,8 @@ function AgentFileButton({ path, download, target, className, children }: AgentF
     setBusy(true);
     setError('');
     let tab: Window | null = null;
+    const objectURLs: string[] = [];
+    const revokeURLs = () => objectURLs.splice(0).forEach(url => URL.revokeObjectURL(url));
     const wantsTab =
       download === undefined &&
       !/[?&]download=/.test(path) &&
@@ -85,31 +87,45 @@ function AgentFileButton({ path, download, target, className, children }: AgentF
       const html = (response.headers.get('content-type') ?? '').startsWith('text/html');
       // react-doctor-disable-next-line react-doctor/no-create-object-url-without-revoke -- false positive: every path revokes this URL: just below, in the effect above (a report), or after the download.
       const url = URL.createObjectURL(await response.blob());
+      objectURLs.push(url);
       if (gone.current) {
-        URL.revokeObjectURL(url);
+        revokeURLs();
         tab?.close();
         return;
       }
       if (html && download === undefined && !disposition.startsWith('attachment')) {
         tab ??= window.open('about:blank', '_blank');
         if (!tab || tab.closed) {
-          URL.revokeObjectURL(url);
+          revokeURLs();
           throw Error(text('Could not open the report tab.', 'No se pudo abrir la pestaña del reporte.'));
         }
         tab.opener = null;
-        const frame = tab.document.createElement('iframe');
+        // Chrome can store a separate zoom level for about:blank. Navigate to
+        // a real document instead of leaving the report inside that blank tab.
+        // The exported report keeps its original CSS and remains sandboxed.
+        const viewer = document.implementation.createHTMLDocument(text('Report', 'Reporte'));
+        viewer.documentElement.lang = language;
+        const viewport = viewer.createElement('meta');
+        viewport.name = 'viewport';
+        viewport.content = 'width=device-width, initial-scale=1';
+        viewer.head.append(viewport);
+        const frame = viewer.createElement('iframe');
         frame.title = text('Report', 'Reporte');
-        // Keep the same isolation as the former dialog. Report scripts cannot access Studio.
         frame.setAttribute('sandbox', 'allow-scripts allow-downloads');
         frame.src = url;
         frame.style.cssText = 'width:100%;height:100vh;border:0;display:block;background:white';
-        tab.document.body.style.margin = '0';
-        tab.document.body.replaceChildren(frame);
+        viewer.body.style.margin = '0';
+        viewer.body.append(frame);
+        const viewerURL = URL.createObjectURL(
+          new Blob(['<!doctype html>\n', viewer.documentElement.outerHTML], { type: 'text/html;charset=utf-8' }),
+        );
+        objectURLs.push(viewerURL);
+        tab.location.replace(viewerURL);
         const reportTab = tab;
         const cleanup = setInterval(() => {
           if (reportTab.closed) {
             clearInterval(cleanup);
-            URL.revokeObjectURL(url);
+            revokeURLs();
           }
         }, 1000);
         return;
@@ -123,8 +139,9 @@ function AgentFileButton({ path, download, target, className, children }: AgentF
         path.split('?')[0].split('/').pop()!;
       link.click();
       // The browser starts the download from the URL after the click returns.
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      setTimeout(revokeURLs, 60_000);
     } catch (cause) {
+      revokeURLs();
       tab?.close();
       if (gone.current) return;
       setError(
