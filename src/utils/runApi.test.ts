@@ -55,6 +55,11 @@ describe('startLoadRun', () => {
 });
 
 describe('stopLoadRun', () => {
+  it('surfaces a rejected cancellation instead of reporting success', async () => {
+    mockFetch({ error: 'Agent disconnected; retry Stop.' }, false);
+    await expect(stopLoadRun('lrun-7')).rejects.toThrow('Agent disconnected; retry Stop.');
+  });
+
   it('posts to the run stop endpoint', async () => {
     mockFetch({ stopping: true });
 

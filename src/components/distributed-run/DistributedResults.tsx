@@ -9,7 +9,6 @@ import {
   type DistributedPlan,
   type DistributedPoint,
 } from '../../utils/distributedApi';
-import { AgentFileLink } from '../AgentFileLink';
 import { parseYAMLToTree } from '../../utils/yamlParser';
 import type { YAMLNode } from '../../types/yaml';
 import { LoadIterationLimitNotice } from '../yaml-node-details/LoadIterationLimitNotice';
@@ -187,29 +186,17 @@ export function DistributedResults({
               </button>
             )}
           </div>
-          {(state.reports_ready || reportsURL) && (
-            <div className="mt-auto flex flex-wrap items-center gap-2 border-t border-white/10 pt-3">
-              {state.reports_ready &&
-                formats.map(format => (
-                  <AgentFileLink
-                    key={format}
-                    className={buttonClass}
-                    path={distributedReportPath(runId, format, true)}
-                  >
-                    {t('Descargar', 'Download')} {format.toUpperCase()}
-                  </AgentFileLink>
-                ))}
-              {reportsURL && !state.reports_ready && (
-                <a
-                  className="inline-flex items-center gap-1.5 text-xs text-zinc-400 underline decoration-white/20 underline-offset-4 hover:text-yellow-300"
-                  href={reportsURL}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <ExternalLink size={14} />
-                  {t('Ver reportes en el repositorio', 'View reports in repository')}
-                </a>
-              )}
+          {reportsURL && !state.reports_ready && (
+            <div className="mt-auto border-t border-white/10 pt-3">
+              <a
+                className="inline-flex items-center gap-1.5 text-xs text-zinc-400 underline decoration-white/20 underline-offset-4 hover:text-yellow-300"
+                href={reportsURL}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <ExternalLink size={14} />
+                {t('Ver reportes en el repositorio', 'View reports in repository')}
+              </a>
             </div>
           )}
         </section>
@@ -282,6 +269,7 @@ export function DistributedResults({
           </div>
         }
         key={runId}
+        live={active}
         points={points}
         startedAt={startedAt}
         durationSeconds={durationSeconds}

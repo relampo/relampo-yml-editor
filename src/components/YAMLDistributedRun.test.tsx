@@ -144,11 +144,10 @@ describe('distributed execution', () => {
       'run',
       expect.objectContaining({ yaml, repository: 'owner/repo', prepare_only: false }),
     );
-    expect(screen.getByRole('link', { name: 'Descargar CSV' })).toHaveAttribute(
-      'href',
-      expect.stringContaining('/api/distributed/run/drun-1/report/csv?download=1'),
-    );
-    expect(screen.queryByRole('link', { name: 'Descargar JSON' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Descargar|Download/ })).not.toBeInTheDocument();
+    const htmlReport = screen.getByRole('link', { name: 'Abrir el reporte completo' });
+    expect(htmlReport).toHaveAttribute('href', expect.stringContaining('/report/html'));
+    expect(htmlReport).toHaveAttribute('target', '_blank');
     expect(screen.getByRole('link', { name: 'Ver reportes' })).toHaveAttribute(
       'href',
       expect.stringContaining('relampo-report-42-1'),
