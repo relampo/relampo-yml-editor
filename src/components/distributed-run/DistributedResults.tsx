@@ -269,6 +269,7 @@ export function DistributedResults({
           </div>
         }
         key={runId}
+        live={active}
         points={points}
         startedAt={startedAt}
         durationSeconds={durationSeconds}

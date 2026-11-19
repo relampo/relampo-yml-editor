@@ -6,6 +6,7 @@ import type { DistributedPoint } from '../../utils/distributedApi';
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 const start = '2026-11-18T16:00:00Z';
 const point = (seconds: number, failures = 0, p95: number | null = 30): DistributedPoint => ({
@@ -89,4 +90,126 @@ it('shows a floating report-style tooltip for the hovered sample and hides it on
   expect(screen.getByRole('tooltip')).toHaveTextContent('P9530 ms');
   fireEvent.pointerLeave(chart);
   expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+});
+
+function animationClock() {
+  let now = 0;
+  let id = 0;
+  const frames = new Map<number, FrameRequestCallback>();
+  vi.spyOn(performance, 'now').mockImplementation(() => now);
+  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+    frames.set(++id, callback);
+    return id;
+  });
+  vi.stubGlobal('cancelAnimationFrame', (frame: number) => frames.delete(frame));
+  return {
+    frames,
+    set: (time: number) => {
+      now = time;
+    },
+    frame: (time: number) => {
+      now = time;
+      const pending = [...frames.values()];
+      frames.clear();
+      pending.forEach(callback => callback(time));
+    },
+  };
+}
+const liveView = (points: DistributedPoint[], live = true) => (
+  <LanguageProvider>
+    <DistributedTimeline
+      points={points}
+      startedAt={start}
+      durationSeconds={60}
+      live={live}
+    />
+  </LanguageProvider>
+);
+
+it('advances between confirmed samples on animation frames and stops at the last real measurement', () => {
+  const clock = animationClock();
+  const points = [point(1), point(2)];
+  const { rerender } = render(liveView(points));
+  const chart = screen.getByRole('img');
+  const reveal = chart.querySelector('clipPath rect')!;
+  const initial = Number(reveal.getAttribute('width'));
+  clock.set(1000);
+  const next = [...points, { ...point(3), rps: 25 }];
+  const evidence = JSON.stringify(next);
+  rerender(liveView(next));
+  expect(Number(reveal.getAttribute('width'))).toBe(initial);
+  clock.frame(1500);
+  const halfway = Number(reveal.getAttribute('width'));
+  expect(halfway).toBeGreaterThan(initial);
+  clock.frame(1750);
+  expect(Number(reveal.getAttribute('width'))).toBeGreaterThan(halfway);
+  clock.frame(2100);
+  const final = Number(reveal.getAttribute('width'));
+  expect(final).toBeCloseTo(110 + (3 / 60) * 770);
+  clock.frame(6000);
+  expect(Number(reveal.getAttribute('width'))).toBe(final);
+  expect(clock.frames.size).toBe(0);
+  expect(JSON.stringify(next)).toBe(evidence);
+  expect(screen.getByRole('group', { name: 'Timeline values' })).toHaveTextContent('RPS: 25 req/s');
+});
+
+it('shows the exact finished series immediately and cancels animation on completion or unmount', () => {
+  const clock = animationClock();
+  const { rerender, unmount } = render(liveView([point(1), point(2)]));
+  clock.set(1000);
+  const points = [point(1), point(2), point(3)];
+  rerender(liveView(points));
+  clock.frame(1400);
+  expect(clock.frames.size).toBe(1);
+  rerender(liveView(points, false));
+  expect(Number(screen.getByRole('img').querySelector('clipPath rect')!.getAttribute('width'))).toBeCloseTo(148.5);
+  expect(clock.frames.size).toBe(0);
+  unmount();
+  expect(clock.frames.size).toBe(0);
+});
+
+it('honors reduced-motion preferences instead of delaying confirmed measurements', () => {
+  const clock = animationClock();
+  vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
+  const { rerender } = render(liveView([point(1), point(2)]));
+  clock.set(1000);
+  rerender(liveView([point(1), point(2), point(3)]));
+  expect(Number(screen.getByRole('img').querySelector('clipPath rect')!.getAttribute('width'))).toBeCloseTo(148.5);
+  expect(clock.frames.size).toBe(0);
+});
+
+it('continues from the current position when a new sample arrives mid-animation', () => {
+  const clock = animationClock();
+  const { rerender, unmount } = render(liveView([point(1), point(2)]));
+  clock.set(1000);
+  rerender(liveView([point(1), point(2), point(3)]));
+  clock.frame(1900);
+  const reveal = screen.getByRole('img').querySelector('clipPath rect')!;
+  const before = Number(reveal.getAttribute('width'));
+  clock.set(2000);
+  rerender(liveView([point(1), point(2), point(3), point(4)]));
+  expect(Number(reveal.getAttribute('width'))).toBe(before);
+  clock.frame(2200);
+  expect(Number(reveal.getAttribute('width'))).toBeGreaterThan(before);
+  expect(Number(reveal.getAttribute('width'))).toBeLessThan(110 + (4 / 60) * 770);
+  unmount();
+  expect(clock.frames.size).toBe(0);
+});
+
+it('keeps tooltips tied to measured values and shows exact history while zooming', () => {
+  const clock = animationClock();
+  vi.stubGlobal('PointerEvent', MouseEvent);
+  const { rerender } = render(liveView([point(1), point(2)]));
+  clock.set(1000);
+  rerender(liveView([point(1), point(2), { ...point(3), rps: 25 }]));
+  const chart = screen.getByRole('img');
+  vi.spyOn(chart, 'getBoundingClientRect').mockReturnValue({ left: 0, width: 1000 } as DOMRect);
+  clock.frame(1400);
+  fireEvent.pointerMove(chart, { clientX: 148.5 });
+  expect(screen.getByRole('tooltip')).toHaveTextContent('RPS25 req/s');
+  fireEvent.pointerDown(chart, { button: 0, clientX: 110 });
+  fireEvent.pointerMove(chart, { clientX: 160 });
+  fireEvent.pointerUp(chart, { clientX: 160 });
+  expect(screen.getByRole('button', { name: 'Reset' })).toBeInTheDocument();
+  expect(clock.frames.size).toBe(0);
 });

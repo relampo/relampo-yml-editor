@@ -1,4 +1,5 @@
-import { useMemo, useState, type PointerEvent, type ReactNode } from 'react';
+import { useTimelineReveal } from './useTimelineReveal';
+import { memo, useId, useMemo, useState, type PointerEvent, type ReactNode } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import type { DistributedPoint } from '../../utils/distributedApi';
 
@@ -23,14 +24,16 @@ const elapsed = (ms: number) =>
 const number = (value: number | null) =>
   value == null || !Number.isFinite(value) ? '—' : Number.isInteger(value) ? String(value) : value.toFixed(1);
 
-export function DistributedTimeline({
+export const DistributedTimeline = memo(function DistributedTimeline({
   points,
   startedAt,
   durationSeconds,
   configuredUsers,
   headerAction,
+  live = false,
 }: {
   headerAction?: ReactNode;
+  live?: boolean;
   points: DistributedPoint[];
   startedAt?: string;
   durationSeconds?: number;
@@ -62,6 +65,16 @@ export function DistributedTimeline({
     origin,
     Math.max(origin + 1000, lastTime, origin + (durationSeconds ?? 0) * 1000),
   ];
+  const clipId = useId();
+  const { clipRef, cursorRef } = useTimelineReveal({
+    live: live && zoom === null && drag === null,
+    first: firstTime,
+    latest: lastTime,
+    rangeStart: range[0],
+    rangeEnd: range[1],
+    left: L,
+    width: plotWidth,
+  });
   const visible = samples.filter(point => point.time >= range[0] && point.time <= range[1]);
   const axisMax = (keys: Metric[], minimum = 1) =>
     Math.max(
@@ -207,6 +220,17 @@ export function DistributedTimeline({
               if (next) setHover(next.time);
             }}
           >
+            <defs>
+              <clipPath id={clipId}>
+                <rect
+                  ref={clipRef}
+                  x="0"
+                  y="0"
+                  width={W}
+                  height={H}
+                />
+              </clipPath>
+            </defs>
             {Array.from({ length: 6 }, (_, i) => (
               <line
                 key={`grid-${i}`}
@@ -283,6 +307,7 @@ export function DistributedTimeline({
                   <path
                     key={metric.key}
                     data-metric={metric.key}
+                    clipPath={`url(#${clipId})`}
                     d={path}
                     fill="none"
                     stroke={metric.color}
@@ -294,6 +319,7 @@ export function DistributedTimeline({
               })}
             {inspected && (
               <line
+                ref={hover === null ? cursorRef : undefined}
                 x1={x(inspected.time)}
                 x2={x(inspected.time)}
                 y1={T}
@@ -388,4 +414,4 @@ export function DistributedTimeline({
       </p>
     </section>
   );
-}
+});

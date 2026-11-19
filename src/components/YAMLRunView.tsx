@@ -774,6 +774,7 @@ export function YAMLLoadRunSession({
         ) : (
           <div className="space-y-4">
             <DistributedTimeline
+              live={isRunning}
               points={timelinePoints}
               startedAt={summary?.start_time}
               durationSeconds={parseTimeToSeconds(String(plannedLoadNode?.data?.duration ?? ''))}
