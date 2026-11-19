@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest';
-import { persistLocalRunReports } from './localRunReports';
+import { persistDistributedRunReports, persistLocalRunReports } from './localRunReports';
 const mocks = vi.hoisted(() => ({ request: vi.fn() }));
 vi.mock('./agentTransport', () => ({ agentRequest: mocks.request }));
 vi.mock('./embeddedPlanDraft', () => ({ embeddedPlanDraftKey: () => 'saas-plan:qa:plan-1' }));
@@ -38,7 +38,9 @@ it('saves only selected formats, preserving report bytes and requiring acknowled
   expect([...atob(message.files[0].data)].map(c => c.charCodeAt(0))).toEqual([...bytes]);
 });
 it('does not publish partial reports when generation of a selected format fails', async () => {
-  mocks.request.mockResolvedValue(new Response(JSON.stringify({ error: 'report not available yet' }), { status: 409 }));
+  mocks.request.mockImplementation(
+    async () => new Response(JSON.stringify({ error: 'report not available yet' }), { status: 409 }),
+  );
   const parent = { postMessage: vi.fn() };
   vi.stubGlobal('parent', parent);
   await expect(persistLocalRunReports('lrun-1', ['txt'], '2026-11-18T20:00:00Z', 'en')).rejects.toThrow(
@@ -59,6 +61,57 @@ it('never writes an old execution into another plan or script after navigation',
   expect(mocks.request).not.toHaveBeenCalled();
   expect(parent.postMessage).not.toHaveBeenCalled();
 });
+
+it('keeps an Analysis JSON even when only HTML was selected for the Test Plan', async () => {
+  mocks.request.mockImplementation(async () => new Response('report'));
+  const parent = {
+    postMessage: vi.fn(message =>
+      queueMicrotask(() =>
+        window.dispatchEvent(
+          new MessageEvent('message', {
+            origin: location.origin,
+            source: parent as unknown as Window,
+            data: { type: 'relampo:run-reports-persisted', requestId: message.requestId, ok: true },
+          }),
+        ),
+      ),
+    ),
+  };
+  vi.stubGlobal('parent', parent);
+  await persistLocalRunReports('lrun-1', ['html'], '2026-11-19T20:00:00Z', 'en');
+  expect(mocks.request.mock.calls.map(call => call[0])).toContain('/api/run/lrun-1/report/json');
+  expect(parent.postMessage.mock.calls[0][0].files).toHaveLength(2);
+});
+
+it.each(['github', 'gitlab'])(
+  'copies %s distributed reports through the agent into the original Test Plan',
+  async () => {
+    mocks.request.mockImplementation(async () => new Response('report'));
+    const parent = {
+      postMessage: vi.fn(message =>
+        queueMicrotask(() =>
+          window.dispatchEvent(
+            new MessageEvent('message', {
+              origin: location.origin,
+              source: parent as unknown as Window,
+              data: { type: 'relampo:run-reports-persisted', requestId: message.requestId, ok: true },
+            }),
+          ),
+        ),
+      ),
+    };
+    vi.stubGlobal('parent', parent);
+    await persistDistributedRunReports('drun-1', ['html'], '2026-11-19T20:00:00Z', 'en');
+    expect(mocks.request.mock.calls.map(call => call[0])).toEqual([
+      '/api/distributed/run/drun-1/report/html',
+      '/api/distributed/run/drun-1/report/json',
+    ]);
+    expect(parent.postMessage.mock.calls[0][0].files.map((file: { path: string }) => file.path)).toEqual([
+      'Reports/2026-11-19T20-00-00-000Z-drun-1/report.html',
+      'Reports/2026-11-19T20-00-00-000Z-drun-1/report.json',
+    ]);
+  },
+);
 
 it('downloads every selected format when the plan has no report storage', async () => {
   mocks.request.mockImplementation(async () => new Response('partial results'));

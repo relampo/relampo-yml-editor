@@ -1,4 +1,6 @@
 import { distributedGlobalHistory } from '../utils/distributedApi';
+import { useDistributedReportStorage } from '../hooks/useDistributedReportStorage';
+import { analysisReportFormats } from '../utils/localRunReports';
 import { useAgentState } from '../hooks/useAgentState';
 import { requestExecutionProject, type ExecutionProject } from '../utils/executionProject';
 import { embeddedScriptDraftKey } from '../utils/embeddedPlanDraft';
@@ -103,6 +105,7 @@ export function YAMLDistributedRun({
   const [trackingLost, setTrackingLost] = useState(false);
   const [remoteURL, setRemoteURL] = useState<string | undefined>();
   const [state, setState] = useState<DistributedState | null>(null);
+  const reportStorage = useDistributedReportStorage(state, runId, language);
   const [scope, setScope] = useState('global');
   const [files, setFiles] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -275,7 +278,7 @@ export function YAMLDistributedRun({
       yaml: script,
       file_name: fileName && /\.ya?ml$/i.test(fileName) ? fileName : 'studio.yaml',
       nodes,
-      report_formats: formats,
+      report_formats: analysisReportFormats(formats),
       files: projectFiles.filter(file => file.action !== 'remove').map(file => file.path),
       language,
       ...(provider === 'gitlab'
@@ -489,6 +492,21 @@ export function YAMLDistributedRun({
         )}
         {error && <Notice alert>{error}</Notice>}
         {notice && <Notice>{notice}</Notice>}
+        {reportStorage.saving && (
+          <Notice>{text('Guardando reportes en el Test Plan…', 'Saving reports to the Test Plan…')}</Notice>
+        )}
+        {reportStorage.error && (
+          <Notice alert>
+            {text('No se pudieron guardar los reportes en el Test Plan: ', 'Could not save reports to the Test Plan: ')}
+            {reportStorage.error}
+            <button
+              className={`${buttonClass} ml-2`}
+              onClick={reportStorage.retry}
+            >
+              {text('Reintentar', 'Retry')}
+            </button>
+          </Notice>
+        )}
         {trackingLost && (
           <Notice alert>
             <div className="space-y-2">

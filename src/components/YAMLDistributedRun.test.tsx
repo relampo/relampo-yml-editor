@@ -98,7 +98,7 @@ beforeEach(() => {
       status: 'completed',
       stage: 'reports_ready',
       reports_ready: true,
-      report_formats: ['html', 'csv'],
+      report_formats: ['html', 'csv', 'json'],
       run_id: 42,
       repository: 'owner/repo',
       url: 'https://github.com/owner/repo/actions/runs/42',
@@ -128,7 +128,7 @@ describe('distributed execution', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Ejecutar' }));
     await screen.findByText('scenarios/data/users.csv');
     expect(mocks.prepare).toHaveBeenCalledWith(
-      expect.objectContaining({ yaml, nodes: 2, provider: 'github', report_formats: ['html'] }),
+      expect.objectContaining({ yaml, nodes: 2, provider: 'github', report_formats: ['html', 'json'] }),
     );
     expect(mocks.prepare.mock.calls[0][0]).not.toHaveProperty('vus');
     expect(mocks.prepare.mock.calls[0][0]).not.toHaveProperty('duration');
@@ -242,7 +242,9 @@ describe('distributed execution', () => {
     expect(screen.getByText(/preparación quedó desactualizada/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Ejecutar' }));
     await waitFor(() =>
-      expect(mocks.prepare).toHaveBeenLastCalledWith(expect.objectContaining({ report_formats: ['html', 'csv'] })),
+      expect(mocks.prepare).toHaveBeenLastCalledWith(
+        expect.objectContaining({ report_formats: ['html', 'csv', 'json'] }),
+      ),
     );
     fireEvent.click(screen.getByRole('checkbox', { name: 'HTML' }));
     fireEvent.click(screen.getByRole('checkbox', { name: 'CSV' }));

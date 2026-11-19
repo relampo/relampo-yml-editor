@@ -7,6 +7,32 @@ export interface LocalReportContext {
   planKey: string;
   scriptId: string;
 }
+/** JSON is internal Analysis evidence, independent of optional user-facing exports. */
+export function analysisReportFormats(formats: readonly string[]): LocalReportFormat[] {
+  return [
+    ...new Set([
+      ...formats.filter((f): f is LocalReportFormat => ['html', 'json', 'csv', 'txt'].includes(f)),
+      'json' as const,
+    ]),
+  ];
+}
+export function persistDistributedRunReports(
+  id: string,
+  formats: string[],
+  startedAt: string,
+  language: 'en' | 'es',
+  context = localReportContext(),
+): Promise<void> {
+  return persistLocalRunReports(
+    id,
+    analysisReportFormats(formats),
+    startedAt,
+    language,
+    context,
+    'plan',
+    'distributed',
+  );
+}
 export function localReportContext(): LocalReportContext | undefined {
   const planKey = embeddedPlanDraftKey();
   if (!planKey || window.parent === window) return undefined;
@@ -49,6 +75,7 @@ export async function persistLocalRunReports(
   language: 'en' | 'es',
   context = localReportContext(),
   destination: 'plan' | 'downloads' = context ? 'plan' : 'downloads',
+  execution: 'local' | 'distributed' = 'local',
 ): Promise<void> {
   const current = localReportContext();
   if (
@@ -60,9 +87,13 @@ export async function persistLocalRunReports(
   const stamp = new Date(startedAt).toISOString().replace(/[:.]/g, '-');
   const folder = `${stamp}-${id.replace(/[^a-zA-Z0-9_-]/g, '')}`;
   const files = await Promise.all(
-    formats.map(async format => {
+    (destination === 'plan' ? analysisReportFormats(formats) : formats).map(async format => {
       const path =
-        format === 'html' ? loadRunReportPath(id, language) : `/api/run/${encodeURIComponent(id)}/report/${format}`;
+        execution === 'distributed'
+          ? `/api/distributed/run/${encodeURIComponent(id)}/report/${format}`
+          : format === 'html'
+            ? loadRunReportPath(id, language)
+            : `/api/run/${encodeURIComponent(id)}/report/${format}`;
       const response = await agentRequest(path);
       if (!response.ok)
         throw Error(
@@ -86,6 +117,9 @@ export async function persistLocalRunReports(
     }
     return;
   }
+  const afterFetch = localReportContext();
+  if (afterFetch?.planKey !== context?.planKey || afterFetch?.scriptId !== context?.scriptId)
+    throw Error('Return to the original Test Plan and script to save these reports.');
   const requestId = crypto.randomUUID();
   await new Promise<void>((resolve, reject) => {
     const cleanup = () => {
