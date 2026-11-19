@@ -693,11 +693,11 @@ describe('YAMLLoadRunSession', () => {
     });
 
     const table = await screen.findByRole('table');
-    expect(within(table).getByText('/login?vu=1')).toBeInTheDocument();
-    expect(within(table).getByText('/callback?code=runtime-value-3')).toBeInTheDocument();
+    expect(within(table).getByTitle(title => title.includes('/login?vu=1'))).toBeInTheDocument();
+    expect(within(table).getByTitle(title => title.includes('/callback?code=runtime-value-3'))).toBeInTheDocument();
     expect(within(table).queryByText('/login?vu={{__vu_idx}}')).not.toBeInTheDocument();
     expect(within(table).queryByText('/callback?code={{code}}')).not.toBeInTheDocument();
-    expect(within(table).getByText('/unknown?token=runtime-value-3')).toBeInTheDocument();
+    expect(within(table).getByTitle(title => title.includes('/unknown?token=runtime-value-3'))).toBeInTheDocument();
     expect(within(table).queryByText('Redirect 1 from Unexpected redirect')).not.toBeInTheDocument();
     expect(within(table).getAllByText('3')).toHaveLength(3);
     expect(within(table).getAllByRole('row')).toHaveLength(4);
@@ -741,8 +741,8 @@ describe('YAMLLoadRunSession', () => {
     });
 
     const completedTable = await screen.findByRole('table');
-    expect(within(completedTable).getByText('/login?vu=1')).toBeInTheDocument();
-    expect(within(completedTable).getByText('/callback?code=runtime-value-3')).toBeInTheDocument();
+    expect(within(completedTable).getByTitle(title => title.includes('/login?vu=1'))).toBeInTheDocument();
+    expect(within(completedTable).getByTitle(title => title.includes('/callback?code=runtime-value-3'))).toBeInTheDocument();
     expect(within(completedTable).queryByText('/login?vu={{__vu_idx}}')).not.toBeInTheDocument();
     expect(within(completedTable).queryByText('/callback?code={{code}}')).not.toBeInTheDocument();
   });
@@ -958,11 +958,11 @@ describe('YAMLLoadRunSession', () => {
     const table = await screen.findByRole('table');
     const rows = within(table).getAllByRole('row');
     expect(rows).toHaveLength(3);
-    expect(within(rows[1]).getByText('/user/signIdentities/download?idGroup=first')).toBeInTheDocument();
+    expect(within(rows[1]).getByTitle(title => title.includes('/user/signIdentities/download?idGroup=first'))).toBeInTheDocument();
     expect(within(rows[1]).queryByText('/user/signIdentities/download?idGroup={{idGroup}}')).not.toBeInTheDocument();
     expect(within(rows[1]).getByText('11')).toBeInTheDocument();
     expect(within(rows[1]).getByText('1')).toBeInTheDocument();
-    expect(within(rows[2]).getByText('/user/auth')).toBeInTheDocument();
+    expect(within(rows[2]).getByTitle(title => title.includes('/user/auth'))).toBeInTheDocument();
   });
 
   it('orders balanced-controller branches by their structural step paths', async () => {
@@ -1061,9 +1061,9 @@ describe('YAMLLoadRunSession', () => {
     const table = await screen.findByRole('table');
     const rows = within(table).getAllByRole('row');
     expect(rows).toHaveLength(4);
-    expect(within(rows[1]).getByText('/user/utilities')).toBeInTheDocument();
-    expect(within(rows[2]).getByText('/user/signIdentities')).toBeInTheDocument();
-    expect(within(rows[3]).getByText('/user/auth')).toBeInTheDocument();
+    expect(within(rows[1]).getByTitle(title => title.includes('/user/utilities'))).toBeInTheDocument();
+    expect(within(rows[2]).getByTitle(title => title.includes('/user/signIdentities'))).toBeInTheDocument();
+    expect(within(rows[3]).getByTitle(title => title.includes('/user/auth'))).toBeInTheDocument();
   });
 
   it('falls back to the final summary rows when snapshots carry no per-request aggregate', async () => {
@@ -1100,6 +1100,21 @@ describe('YAMLLoadRunSession', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Stop' }));
     await waitFor(() => expect(runApiMock.stopLoadRun).toHaveBeenCalledWith('lrun-1'));
+  });
+
+  it('keeps the run active and allows retrying Stop after a failed cancellation', async () => {
+    runApiMock.stopLoadRun.mockRejectedValueOnce(new Error('Agent disconnected; retry Stop.'));
+    render(<YAMLLoadRunSession {...baseProps} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Run load test' }));
+    await waitFor(() => expect(runApiMock.handlers).toHaveLength(1));
+    fireEvent.click(screen.getByRole('button', { name: 'Stop' }));
+    expect(await screen.findByText('Agent disconnected; retry Stop.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Stop' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Run load test' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Stop' }));
+    await waitFor(() => expect(runApiMock.stopLoadRun).toHaveBeenCalledTimes(2));
+    act(() => runApiMock.handlers[0].onDone({ status: 'stopped', error: null, summary: summary() }));
+    expect(await screen.findByText('Run stopped — partial summary')).toBeInTheDocument();
   });
 
   it('labels a stopped run as a partial summary', async () => {

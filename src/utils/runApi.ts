@@ -393,7 +393,15 @@ export function loadRunReportPath(runId: string, language: 'en' | 'es' = 'en'): 
 // the run finishes with status "stopped" carrying partial metrics. Best-effort:
 // stopping an unknown/finished run is a no-op on the server.
 export async function stopLoadRun(runId: string): Promise<void> {
-  await agentRequest(`/api/run/${runId}/stop`, { method: 'POST' });
+  const response = await agentRequest(`/api/run/${runId}/stop`, { method: 'POST' });
+  if (!response.ok) {
+    const body: unknown = await response.json().catch(() => null);
+    throw new Error(
+      isRecord(body) && typeof body.error === 'string'
+        ? body.error
+        : `Could not stop the load test (HTTP ${response.status}).`,
+    );
+  }
 }
 
 // Streams a run's state, metric snapshots, and terminal summary over SSE.

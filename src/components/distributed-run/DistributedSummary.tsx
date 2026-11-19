@@ -1,3 +1,5 @@
+import { RunRequestTable } from '../RunRequestTable';
+import { runRequestPresentation } from '../../utils/runRequestPresentation';
 import { Activity, AlertTriangle, CheckCircle2, ExternalLink, TimerReset, XCircle } from 'lucide-react';
 import {
   distributedStatus,
@@ -131,87 +133,35 @@ export function DistributedSummary({
           </div>
         ))}
       </div>
-      <div className="overflow-x-auto">
-        <table
-          aria-label={t('Resumen por petición', 'Request summary')}
-          className="w-full min-w-150 text-left text-xs"
-        >
-          <thead>
-            <tr className="border-b border-white/5 text-[10px] font-bold uppercase tracking-[0.12em] text-zinc-500">
-              {[
-                t('Petición', 'Request'),
-                t('Cantidad', 'Count'),
-                t('Fallos', 'Failures'),
-                t('Prom.', 'Avg.'),
-                'P50 ≈',
-                'P90 ≈',
-                'P95 ≈',
-                'P99 ≈',
-              ].map((label, index) => (
-                <th
-                  key={label}
-                  className={index === 0 ? 'px-4 py-2' : 'px-3 py-2 text-right'}
-                >
-                  {label}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {requests.map(item => {
-              const match =
-                /^(\[\d+\]\s*)?(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS|CONNECT|TRACE|GRPC|SQL)\s+(.+)$/i.exec(
-                  item.name ?? '',
-                );
-              return (
-                <tr
-                  key={item.key}
-                  className="border-b border-white/5 last:border-b-0"
-                >
-                  <td
-                    className="max-w-72 truncate px-4 py-2 text-zinc-200"
-                    title={item.name}
-                  >
-                    {match && (
-                      <span className="mr-2 rounded border border-blue-400/25 bg-blue-400/10 px-1.5 py-0.5 text-[10px] font-semibold text-blue-300">
-                        {match[2]}
-                      </span>
-                    )}
-                    {scenarios.size > 1 && <span className="mr-2 text-zinc-400">{item.scenario}</span>}
-                    {!combined.length && !selected?.node_id && item.node_id && (
-                      <span className="mr-2 text-zinc-500">N{item.node_id}</span>
-                    )}
-                    {match ? `${match[1] ?? ''}${match[3]}` : item.name}
-                  </td>
-                  <td className="px-3 py-2 text-right font-mono text-zinc-300">
-                    {item.total.requests.toLocaleString()}
-                  </td>
-                  <td
-                    className={`px-3 py-2 text-right font-mono ${item.total.failures > 0 ? 'text-red-300' : 'text-zinc-500'}`}
-                  >
-                    {item.total.failures.toLocaleString()}
-                  </td>
-                  {[item.total.avg_ms, item.total.p50_ms, item.total.p90_ms, item.total.p95_ms, item.total.p99_ms].map(
-                    (value, index) => (
-                      <td
-                        key={index}
-                        className="px-3 py-2 text-right font-mono text-zinc-300"
-                      >
-                        {ms(value)}
-                      </td>
-                    ),
-                  )}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-        {requests.length === 0 && (
-          <p className="px-4 py-3 text-xs text-zinc-500">
-            {t('Sin métricas de peticiones recibidas.', 'No request metrics received.')}
-          </p>
-        )}
-      </div>
+      <RunRequestTable
+        es={es}
+        approximate
+        formatLatency={ms}
+        rows={requests.map(item => {
+          return {
+            key: item.key,
+            ...runRequestPresentation({ name: item.name ?? '', method: '', path: '' }),
+            scenario: [
+              scenarios.size > 1 ? item.scenario : '',
+              !combined.length && !selected?.node_id && item.node_id ? `N${item.node_id}` : '',
+            ]
+              .filter(Boolean)
+              .join(' · '),
+            count: item.total.requests,
+            failures: item.total.failures,
+            avg: item.total.avg_ms,
+            p50: item.total.p50_ms,
+            p90: item.total.p90_ms,
+            p95: item.total.p95_ms,
+            p99: item.total.p99_ms,
+          };
+        })}
+      />
+      {requests.length === 0 && (
+        <p className="px-4 py-3 text-xs text-zinc-500">
+          {t('Sin métricas de peticiones recibidas.', 'No request metrics received.')}
+        </p>
+      )}
     </section>
   );
 }

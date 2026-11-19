@@ -61,7 +61,7 @@ it('keeps live identities and selects exact final scenario results', async () =>
     requests: ['A', 'B'].map(name => ({ ...request, scenario_name: name, step_path: 'scenarios[0].steps[0]', request_key: name })),
   }));
   expect(screen.getByRole('table', { name: 'Scenario progress' })).toHaveTextContent('Afinished110Brunning110');
-  expect(screen.getAllByText('/same')).toHaveLength(2);
+  expect(screen.getAllByTitle(title => title.includes('/same'))).toHaveLength(2);
   act(() => ServerStream.instance.emit('done', { status: 'errored', error: 'A failed', summary: {
     ...child('all'), status: 'failed', partial: false, complete: true, total_requests: 2,
     total_elapsed: 3e9, workload_duration: 2e9, request_latency: { ...latency, count: 2 },

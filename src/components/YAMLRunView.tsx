@@ -1,3 +1,5 @@
+import { RunRequestTable } from './RunRequestTable';
+import { runRequestPresentation } from '../utils/runRequestPresentation';
 import { DistributedTimeline } from './distributed-run/DistributedTimeline';
 import {
   localReportContext,
@@ -221,7 +223,8 @@ type LoadRunAction =
   | { type: 'log_received'; lines: RunLogLine[] }
   | { type: 'run_done'; status: RunStatus; summary: RunSummary | null; error: string | null; fallbackError: string }
   | { type: 'connection_error'; quiet: boolean; message: string }
-  | { type: 'stop_requested' };
+  | { type: 'stop_requested' }
+  | { type: 'stop_failed'; error: string };
 
 function loadRunReducer(state: LoadRunState, action: LoadRunAction): LoadRunState {
   switch (action.type) {
@@ -288,7 +291,9 @@ function loadRunReducer(state: LoadRunState, action: LoadRunAction): LoadRunStat
         ? { ...state, isRunning: false, isStopping: false, snapshots: [], logs: [], runStatus: null }
         : { ...state, isRunning: false, isStopping: false, runError: action.message };
     case 'stop_requested':
-      return { ...state, isStopping: true };
+      return { ...state, isStopping: true, runError: null };
+    case 'stop_failed':
+      return state.isRunning ? { ...state, isStopping: false, runError: action.error } : state;
     default:
       return state;
   }
@@ -510,6 +515,17 @@ export function YAMLLoadRunSession({
     [documentReady, subscribe, yamlCode],
   );
 
+  const requestStop = async (runId: string) => {
+    try {
+      await stopLoadRun(runId);
+    } catch (error) {
+      if (activeRunIdRef.current === runId) {
+        stopRequestedRef.current = false;
+        dispatch({ type: 'stop_failed', error: error instanceof Error ? error.message : String(error) });
+      }
+    }
+  };
+
   const startRun = async () => {
     if (!documentReady || hasValidationErrors || isRunning) return;
     let scriptAtStart: string;
@@ -548,7 +564,7 @@ export function YAMLLoadRunSession({
       // exists on the server, so cancel it (the SSE delivers the stopped summary).
       if (stopRequestedRef.current) {
         dispatch({ type: 'stop_requested' });
-        void stopLoadRun(runId);
+        void requestStop(runId);
       }
     } catch (error) {
       if (token !== startTokenRef.current) return;
@@ -568,11 +584,7 @@ export function YAMLLoadRunSession({
       stopRequestedRef.current = true;
       return;
     }
-    try {
-      await stopLoadRun(runId);
-    } catch {
-      // The run may already be finishing; the done event still settles the UI.
-    }
+    await requestStop(runId);
   };
 
   const errorRate = latest ? formatErrorRate(latest.total_requests, latest.total_failures) : '0%';
@@ -1742,9 +1754,9 @@ function RunSummaryPanel({
   scenarioResult?: boolean;
   scenarioMode: 'single' | 'parallel' | 'sequential';
 }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const unavailable = t('yamlEditor.runDebug.unavailable');
-  const requests = summary.requests ?? [];
+  const requests = sortRunSummaryRequests(summary.requests ?? []);
   const durationSeconds = summary.duration / 1e9;
   const completed =
     summary.overview?.completed_transactions ??
@@ -1855,67 +1867,34 @@ function RunSummaryPanel({
       </div>
 
       {requests.length > 0 && (
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-150 text-left text-xs">
-            <thead>
-              <tr className="border-b border-white/5 text-[10px] font-bold uppercase tracking-[0.12em] text-zinc-500">
-                <th className="px-4 py-2">{t('yamlEditor.runDebug.run.summary.request')}</th>
-                <th className="px-3 py-2 text-right">{t('yamlEditor.runDebug.run.summary.count')}</th>
-                <th className="px-3 py-2 text-right">{t('yamlEditor.runDebug.run.summary.fail')}</th>
-                <th className="px-3 py-2 text-right">{t('yamlEditor.runDebug.run.summary.avg')}</th>
-                <th className="px-3 py-2 text-right">p50</th>
-                <th className="px-3 py-2 text-right">p90</th>
-                <th className="px-3 py-2 text-right">p95</th>
-                <th className="px-3 py-2 text-right">p99</th>
-              </tr>
-            </thead>
-            <tbody>
-              {/* The index is part of the key on purpose: this table is a static,
-                  never-reordered snapshot, and the same request can legitimately
-                  appear twice (reached through two scenarios), which would make a
-                  purely field-derived key collide. */}
-              {requests.map((request, index) => (
-                <tr
-                  key={`${request.method}-${request.name}-${request.path ?? ''}-${request.step_path ?? ''}-${index}`}
-                  className="border-b border-white/5 last:border-b-0"
-                >
-                  <td
-                    className="max-w-72 truncate px-4 py-2 text-zinc-200"
-                    title={request.name}
-                  >
-                    <span className="mr-2 rounded border border-blue-400/25 bg-blue-400/10 px-1.5 py-0.5 text-[10px] font-semibold text-blue-300">
-                      {request.method}
-                    </span>
-                    {request.scenario_name && <span className="mr-2 text-zinc-400">{request.scenario_name}</span>}
-                    {request.method === 'SQL' ? request.name : request.path || request.name}
-                    <GRPCRequestMetrics request={request} />
-                    {request.method === 'SQL' && (
-                      <span className="mt-1 block text-zinc-400">
-                        {t('yamlEditor.sqlResults.returned')}: {request.rows_returned ?? 0} ·{' '}
-                        {t('yamlEditor.sqlResults.affected')}: {request.rows_affected ?? 0}
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-3 py-2 text-right font-mono text-zinc-300">{request.count.toLocaleString()}</td>
-                  <td
-                    className={`px-3 py-2 text-right font-mono ${request.failures > 0 ? 'text-red-300' : 'text-zinc-500'}`}
-                  >
-                    {request.failures.toLocaleString()}
-                  </td>
-                  <td className="px-3 py-2 text-right font-mono text-zinc-300">{formatMs(request.avg_ms)}</td>
-                  <td className="px-3 py-2 text-right font-mono text-zinc-300">
-                    {request.p50_ms == null ? unavailable : formatMs(request.p50_ms)}
-                  </td>
-                  <td className="px-3 py-2 text-right font-mono text-zinc-300">{formatMs(request.p90_ms)}</td>
-                  <td className="px-3 py-2 text-right font-mono text-zinc-300">{formatMs(request.p95_ms)}</td>
-                  <td className="px-3 py-2 text-right font-mono text-zinc-300">
-                    {request.p99_ms != null ? formatMs(request.p99_ms) : '—'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <RunRequestTable
+          es={language === 'es'}
+          formatLatency={value => (value == null ? unavailable : formatMs(value))}
+          rows={requests.map((request, index) => ({
+            key: `${request.method}-${request.name}-${request.path ?? ''}-${request.step_path ?? ''}-${index}`,
+            ...runRequestPresentation(request),
+            method: request.method,
+            scenario: request.scenario_name,
+            count: request.count,
+            failures: request.failures,
+            avg: request.avg_ms,
+            p50: request.p50_ms,
+            p90: request.p90_ms,
+            p95: request.p95_ms,
+            p99: request.p99_ms,
+            details: (
+              <>
+                <GRPCRequestMetrics request={request} />
+                {request.method === 'SQL' && (
+                  <span className="mt-1 block text-zinc-400">
+                    {t('yamlEditor.sqlResults.returned')}: {request.rows_returned ?? 0} ·{' '}
+                    {t('yamlEditor.sqlResults.affected')}: {request.rows_affected ?? 0}
+                  </span>
+                )}
+              </>
+            ),
+          }))}
+        />
       )}
     </div>
   );
@@ -1972,7 +1951,13 @@ function sortRunSummaryRequests(requests: RunRequestStat[]): RunRequestStat[] {
     .sort((left, right) => {
       const leftPath = left.request.step_path;
       const rightPath = right.request.step_path;
-      if (!leftPath && !rightPath) return left.index - right.index;
+      if (!leftPath && !rightPath) {
+        const leftNumber = left.request.request_id ?? Number(/^\[(\d+)\]/.exec(left.request.name)?.[1]);
+        const rightNumber = right.request.request_id ?? Number(/^\[(\d+)\]/.exec(right.request.name)?.[1]);
+        return Number.isFinite(leftNumber) && Number.isFinite(rightNumber)
+          ? leftNumber - rightNumber || left.index - right.index
+          : left.index - right.index;
+      }
       if (!leftPath) return 1;
       if (!rightPath) return -1;
       return leftPath.localeCompare(rightPath, undefined, { numeric: true });
