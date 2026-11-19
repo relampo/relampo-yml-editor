@@ -1,3 +1,4 @@
+import { DistributedIntentRuntime } from './DistributedIntentRuntime';
 import { useMemo, type ReactNode } from 'react';
 import { ExternalLink, Eraser, Square } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -274,6 +275,10 @@ export function DistributedResults({
         startedAt={startedAt}
         durationSeconds={durationSeconds}
         configuredUsers={configuredUsers}
+      />
+      <DistributedIntentRuntime
+        state={state}
+        scope={scope}
       />
       {sampleTime && Number.isFinite(sampleTime.getTime()) && (
         <p className="text-xs text-zinc-400">

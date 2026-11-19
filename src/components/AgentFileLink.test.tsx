@@ -34,7 +34,14 @@ it('renders a plain link to the backend file and keeps the anchor attributes', (
 
 describe('through the relay', () => {
   let clicked: HTMLAnchorElement[];
-  let reportTab: { document: Document; opener: unknown; closed: boolean; close: () => void };
+  let reportTab: {
+    document: Document;
+    opener: unknown;
+    closed: boolean;
+    close: () => void;
+    location: { replace: ReturnType<typeof vi.fn> };
+  };
+  let blobs: Blob[];
   const timers: number[] = [];
 
   beforeEach(() => {
@@ -42,6 +49,7 @@ describe('through the relay', () => {
     reportTab = {
       document: document.implementation.createHTMLDocument('Report'),
       opener: window,
+      location: { replace: vi.fn() },
       closed: false,
       close: () => {
         reportTab.closed = true;
@@ -54,9 +62,16 @@ describe('through the relay', () => {
       timers.push(timer);
       return timer;
     }) as typeof setInterval);
+    blobs = [];
     vi.stubGlobal(
       'URL',
-      Object.assign(URL, { createObjectURL: vi.fn(() => 'blob:studio/1'), revokeObjectURL: vi.fn() }),
+      Object.assign(URL, {
+        createObjectURL: vi.fn((blob: Blob) => {
+          blobs.push(blob);
+          return `blob:studio/${blobs.length}`;
+        }),
+        revokeObjectURL: vi.fn(),
+      }),
     );
     clicked = [];
     vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
@@ -119,15 +134,52 @@ describe('through the relay', () => {
 
     show('/api/run/7/report?lang=en');
 
-    await waitFor(() => expect(reportTab.document.querySelector('iframe')).not.toBeNull());
-    const frame = reportTab.document.querySelector('iframe');
+    await waitFor(() => expect(reportTab.location.replace).toHaveBeenCalledWith('blob:studio/2'));
     expect(window.open).toHaveBeenCalledWith('about:blank', '_blank');
     expect(reportTab.opener).toBeNull();
     expect(screen.queryByRole('dialog')).toBeNull();
+    const viewerHTML = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = reject;
+      reader.readAsText(blobs[1]);
+    });
+    const viewer = new DOMParser().parseFromString(viewerHTML, 'text/html');
+    const frame = viewer.querySelector('iframe');
+    expect(viewer.doctype?.name).toBe('html');
+    expect(viewer.querySelector('meta[name="viewport"]')?.getAttribute('content')).toBe(
+      'width=device-width, initial-scale=1',
+    );
     expect(frame?.getAttribute('src')).toBe('blob:studio/1');
     expect(frame?.getAttribute('sandbox')).toBe('allow-scripts allow-downloads');
+    expect(viewerHTML).not.toMatch(/zoom:|transform:|scale\(/);
     expect(clicked).toHaveLength(0);
     reportTab.closed = true;
+  });
+
+  it('releases both blobs when the report tab closes', async () => {
+    vi.spyOn(transport, 'agentRequest').mockResolvedValue(
+      new Response('<h1>Report</h1>', { headers: { 'Content-Type': 'text/html' } }),
+    );
+    show('/api/run/7/report');
+    await waitFor(() => expect(reportTab.location.replace).toHaveBeenCalled());
+    reportTab.closed = true;
+    await waitFor(() => expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:studio/2'), { timeout: 2000 });
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:studio/1');
+  });
+
+  it('releases both blobs if the report tab cannot navigate', async () => {
+    vi.spyOn(transport, 'agentRequest').mockResolvedValue(
+      new Response('<h1>Report</h1>', { headers: { 'Content-Type': 'text/html' } }),
+    );
+    reportTab.location.replace.mockImplementation(() => {
+      throw Error('Navigation failed');
+    });
+    show('/api/run/7/report');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Navigation failed');
+    expect(reportTab.closed).toBe(true);
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:studio/1');
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:studio/2');
   });
 
   it('frees a report that arrives after the link left the page', async () => {
