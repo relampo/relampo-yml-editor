@@ -1,3 +1,4 @@
+import type { RunIntentTick } from './runApi';
 import type { ExecutionProject } from './executionProject';
 import { agentRequest } from './agentTransport';
 
@@ -65,7 +66,13 @@ export interface DistributedNode {
     resource_measurements?: { rss_peak_mib?: number; cpu_percent_peak?: number };
   };
 }
+export interface DistributedIntentTick extends RunIntentTick {
+  node_id: number;
+  scenario?: string;
+  at: string;
+}
 export interface DistributedState {
+  intent_ticks?: DistributedIntentTick[];
   scope_history?: Record<string, DistributedPoint[]>;
   id: string;
   status: string;
