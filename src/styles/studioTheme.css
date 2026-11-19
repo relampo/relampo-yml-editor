@@ -1,27 +1,27 @@
 /* Shared embedded Studio palette. Standalone Studio retains its original dark theme. */
 :root[data-studio-theme='light'] {
   color-scheme: light;
-  --background: #fff;
-  --foreground: #202020;
+  --background: #f4f4f1;
+  --foreground: #171717;
   --card: #fff;
-  --card-foreground: #202020;
+  --card-foreground: #171717;
   --popover: #fff;
-  --popover-foreground: #202020;
-  --secondary: #ffffff;
+  --popover-foreground: #171717;
+  --secondary: #f2f2ef;
   --secondary-foreground: #303030;
-  --muted: #ffffff;
-  --muted-foreground: #505050;
+  --muted: #f2f2ef;
+  --muted-foreground: #52524e;
   --accent: #ffffff;
   --accent-foreground: #202020;
-  --border: #dedede;
-  --input: #909090;
-  --studio-control-border: #909090;
-  --studio-muted: #505050;
+  --border: #deded8;
+  --input: #d2d2ca;
+  --studio-control-border: #d2d2ca;
+  --studio-muted: #52524e;
   --input-background: #fff;
   --ring: #d4a800;
   --studio-caret: #202020;
   --studio-text: #202020;
-  --studio-panel: #ffffff;
+  --studio-panel: #f4f4f1;
   --studio-surface: #fff;
   --color-zinc-50: #111111;
   --color-zinc-100: #171717;
@@ -472,4 +472,30 @@
 }
 :root[data-studio-theme='light'] [data-editor-view-tab]:hover {
   background-color: #fffbed;
+}
+
+/* Quiet section surfaces and clear fields, using the SaaS light palette only. */
+:root[data-studio-theme='light'] [data-editor-view-tabs],
+:root[data-studio-theme='light'] [data-editor-panel-heading] {
+  background-color: #f4f4f1;
+}
+:root[data-studio-theme='light'] [class~='bg-zinc-900'],
+:root[data-studio-theme='light'] [class~='bg-zinc-800'] {
+  background-color: #f4f4f1;
+}
+:root[data-studio-theme='light'] [data-editor-view-tab][aria-pressed='true'] {
+  background-color: #fff8dc;
+  color: #171717;
+  border-bottom-color: #eab308;
+}
+:root[data-studio-theme='light'] :is(input, textarea, select):focus {
+  border-color: #c08a00;
+  outline-color: #eab308;
+}
+:root[data-studio-theme='light'] [role='treeitem'][aria-selected='true'] {
+  background-color: #fff8dc;
+  border-color: #eab308;
+}
+:root[data-studio-theme='light'] button[class*='border-white']:not(:disabled):hover {
+  background-color: #f2f2ef;
 }
