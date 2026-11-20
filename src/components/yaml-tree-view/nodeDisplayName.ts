@@ -7,6 +7,8 @@ const FIXED_NAMES: Record<string, string> = {
   'variables|Variables': 'variables',
   'error_policy|Error Policy': 'errorPolicy',
   'http_defaults|HTTP Defaults': 'httpDefaults',
+  'grpc_defaults|gRPC Defaults': 'grpcDefaults',
+  'assertion|Assertion': 'assert',
   'scenarios|Scenarios': 'scenarios',
   'metrics|Metrics': 'metrics',
   'cookies|Cookie Manager': 'cookieManager',

@@ -263,6 +263,7 @@ export interface RunScenarioResult {
 }
 
 export interface RunSummary {
+  scenario_mode?: 'single' | 'parallel' | 'sequential';
   complete?: boolean;
   total_elapsed?: number;
   workload_duration?: number;
@@ -353,10 +354,10 @@ export async function startLoadRun(yaml: string, componentCapabilities?: Compone
 
 // URL of the standalone HTML report the studio generates when a run finishes
 // (the same report `relampo run` writes). Open it in a new tab.
-export function loadRunReportUrl(runId: string): string {
+export function loadRunReportUrl(runId: string, language: 'en' | 'es' = 'en'): string {
   // Opened in a new tab, so it cannot send the token header — carry it in the
   // query string, which the studio server also accepts.
-  return withStudioToken(`${apiBase()}/api/run/${runId}/report`);
+  return withStudioToken(`${apiBase()}/api/run/${runId}/report?lang=${language}`);
 }
 
 // Asks the studio to cancel a running load run. The engine drains its VUs and

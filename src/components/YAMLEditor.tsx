@@ -7,6 +7,7 @@ import { appendProtocolSteps, type StudioProtocol } from '../utils/protocolProje
 import { appendGRPCScenario } from '../utils/grpcProject';
 import type { SearchScope } from './yaml-tree-view/search';
 import { useMemo, useRef, useState } from 'react';
+import { createStoredRunStore } from '../utils/studioRunStore';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useYAML } from '../contexts/YAMLContext';
 import { useResizePanel } from '../hooks/useResizePanel';
@@ -36,6 +37,12 @@ import { useYamlViewMode } from './yaml-editor/useYamlViewMode';
 
 export function YAMLEditor() {
   const [activeProtocol, setActiveProtocol] = useState<StudioProtocol | null>(null);
+  const [executionSessionKey, setExecutionSessionKey] = useState(0);
+  const resetExecutionSessions = () => {
+    createStoredRunStore('relampo.studio.debugRun').clear();
+    createStoredRunStore('relampo.studio.loadRun').clear();
+    setExecutionSessionKey(key => key + 1);
+  };
   const [treeSearchScope, setTreeSearchScope] = useState<SearchScope | null>(null);
   const { language, setLanguage, t } = useLanguage();
   const { yamlContent, setYamlContent } = useYAML();
@@ -109,6 +116,7 @@ export function YAMLEditor() {
     multiScenarioDebugEnabled,
     runViewEnabled,
     multiScenarioRunEnabled,
+    distributedRunEnabled,
     componentCapabilities,
     dataSourceFileBrowseEnabled,
     grpcAuthoringEnabled,
@@ -185,6 +193,7 @@ export function YAMLEditor() {
       parseDebounceRef,
       serializeDebounceRef,
       invalidatePendingDraft: () => {
+        resetExecutionSessions();
         setSearchResetSignal(signal => signal + 1);
         setTreeSearchQuery('');
         setTreeSearchScope(null);
@@ -271,6 +280,7 @@ export function YAMLEditor() {
   const openCorrelate = useCorrelateSource(
     () => ({ yaml: retrieveYamlForSaving(), fileName: currentFileName, revision: editRevisionRef.current }),
     async (yaml, name) => {
+      resetExecutionSessions();
       // The correlated result is now this tab's document, including after reload.
       const address = new URL(window.location.href);
       if (!address.searchParams.has('editor')) {
@@ -288,6 +298,7 @@ export function YAMLEditor() {
   );
 
   const handleNewConfirm = () => {
+    resetExecutionSessions();
     resetDocument();
     resetIdentityForNewDocument();
     setViewMode('tree');
@@ -394,6 +405,7 @@ export function YAMLEditor() {
       />
 
       <YAMLEditorMainLayout
+        executionSessionKey={executionSessionKey}
         leftPanelWidth={leftPanelWidth}
         onResizeStart={() => setIsResizing(true)}
         activeViewMode={activeViewMode}
@@ -403,6 +415,7 @@ export function YAMLEditor() {
         multiScenarioDebugEnabled={multiScenarioDebugEnabled}
         runViewEnabled={runViewEnabled}
         multiScenarioRunEnabled={multiScenarioRunEnabled}
+        distributedRunEnabled={distributedRunEnabled}
         componentCapabilities={componentCapabilities}
         isDebugViewActive={isDebugViewActive}
         isRunViewActive={isRunViewActive}

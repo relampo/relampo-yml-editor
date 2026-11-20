@@ -1,3 +1,4 @@
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { WebSocketMetrics } from './WebSocketMetrics';
 import { componentCapabilityError, type ComponentCapabilities } from '../utils/componentConfiguration';
 import {
@@ -519,7 +520,11 @@ export function YAMLDebugSession({
     [t],
   );
 
-  useEffect(() => () => stopStreamRef.current?.(), []);
+  useEffect(() => () => {
+    // A late start must not store or subscribe to a run for a discarded document.
+    startTokenRef.current += 1;
+    stopStreamRef.current?.();
+  }, []);
 
   // Re-attach to a run started before a reload — but only once the editor has
   // settled the document. A debug run belongs to a document, so if the
@@ -687,23 +692,23 @@ export function YAMLDebugSession({
           {multiScenarioDebugEnabled ? (
             <label className="flex items-center gap-3">
               {t('yamlEditor.runDebug.debug.scenarioLabel')}
-              <select
-                aria-label={t('yamlEditor.runDebug.debug.scenarioLabel')}
-                value={scenarioName}
-                onChange={event => setScenarioName(event.target.value)}
+              <Select
+                value={scenarioName || 'unset'}
+                onValueChange={value => setScenarioName(value === 'unset' ? '' : value)}
                 disabled={isRunning}
-                className="rounded border border-white/20 bg-[#161616] px-3 py-2"
               >
-                <option value="">{t('yamlEditor.runDebug.debug.selectScenario')}</option>
-                {scenarios.map(node => (
-                  <option
-                    key={node.id}
-                    value={String(node.data?.name ?? '')}
-                  >
-                    {node.name}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger id="debug-scenario" aria-label={t('yamlEditor.runDebug.debug.scenarioLabel')}>
+                  <SelectValue placeholder={t('yamlEditor.runDebug.debug.selectScenario')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unset">{t('yamlEditor.runDebug.debug.selectScenario')}</SelectItem>
+                  {scenarios.map(node => (
+                    <SelectItem key={node.id} value={String(node.data?.name ?? '')}>
+                      {node.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </label>
           ) : (
             <p>{t('yamlEditor.runDebug.debug.scenarioUnsupported')}</p>

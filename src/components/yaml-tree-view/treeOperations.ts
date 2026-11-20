@@ -48,8 +48,11 @@ const REQUEST_TYPES = new Set<YAMLNode['type']>([
 function acceptsWebSocketHeaders(parent: YAMLNode, incoming: YAMLNode[], movingId?: string): boolean {
   if (parent.type !== 'websocket' || !incoming.some(node => node.type === 'headers')) return true;
   if (parent.data?.action && parent.data.action !== 'connect') return false;
-  return incoming.filter(node => node.type === 'headers').length +
-    (parent.children?.filter(child => child.type === 'headers' && child.id !== movingId).length ?? 0) <= 1;
+  return (
+    incoming.filter(node => node.type === 'headers').length +
+      (parent.children?.filter(child => child.type === 'headers' && child.id !== movingId).length ?? 0) <=
+    1
+  );
 }
 
 function ordinalAmong(siblings: YAMLNode[], index: number, predicate: (node: YAMLNode) => boolean): number {
@@ -86,8 +89,7 @@ function childPathFor(
 
   if (parent.type === 'steps') return [...parentPath, index];
 
-  if (parent.type === 'websocket' && child.type === 'headers')
-    return [...parentPath, 'websocket', 'headers'];
+  if (parent.type === 'websocket' && child.type === 'headers') return [...parentPath, 'websocket', 'headers'];
 
   if (STEP_CONTAINER_TYPES.has(parent.type)) return [...parentPath, 'steps', index];
 
@@ -610,9 +612,23 @@ export function addNodeToTree(
     }
     const insertedNode = prepareScenarioForInsertion(newNode, children);
 
+    if (['root', 'test'].includes(tree.type) && ['http_defaults', 'grpc_defaults'].includes(newNode.type)) {
+      const counterpart = newNode.type === 'http_defaults' ? 'grpc_defaults' : 'http_defaults';
+      const index = children.findIndex(child => child.type === counterpart);
+      if (index >= 0) {
+        const at = index + (newNode.type === 'grpc_defaults' ? 1 : 0);
+        return { ...tree, children: [...children.slice(0, at), insertedNode, ...children.slice(at)], expanded: true };
+      }
+    }
+
     return {
       ...tree,
-      children: newNode.type === 'scenario' ? [...children, insertedNode] : [insertedNode, ...children],
+      // Standalone assertions evaluate the previous response, so insert them
+      // after existing steps instead of before the first request.
+      children:
+        newNode.type === 'scenario' || (newNode.type === 'assertion' && canContain(tree.type, 'request'))
+          ? [...children, insertedNode]
+          : [insertedNode, ...children],
       expanded: true,
     };
   }

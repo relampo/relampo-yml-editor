@@ -113,6 +113,10 @@ const EXACT: Record<string, string> = {
   'HTTP or scoped configuration cannot apply to local SQL.': 'La configuración HTTP o con ámbito no se puede aplicar a SQL local.',
   'Effective criterion does not match SQL kind.': 'El criterio efectivo no coincide con el tipo de SQL.',
   'Unknown field is preserved and ignored.': 'El campo desconocido se conserva y se ignora.',
+  'cookies.jar_scope only supports vu; each virtual user has its own cookie jar.':
+    'cookies.jar_scope solo admite vu; cada usuario virtual tiene su propio almacén de cookies.',
+  'This backend cannot disable extractors. Update Relampo before running this script.':
+    'Este backend no permite desactivar extractores. Actualiza Relampo antes de ejecutar este script.',
   // Run and Debug capability errors
   'This backend does not support component configuration version 1. Update Relampo before running.':
     'Este backend no admite la configuración de componentes versión 1. Actualiza Relampo antes de ejecutar.',

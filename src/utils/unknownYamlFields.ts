@@ -7,6 +7,7 @@ import type { YAMLNode } from '../types/yaml';
 
 interface ContractManifest {
   known_fields: Record<string, string[]>;
+  editor_fields?: Record<string, string[]>;
 }
 
 const manifests = import.meta.glob<ContractManifest>('../contracts/backend/bundles/*/contract.json', {
@@ -18,7 +19,7 @@ function currentKnownFields(): Record<string, ReadonlySet<string>> {
   const suffix = `/bundles/${slots.current}/contract.json`;
   const manifest = Object.entries(manifests).find(([path]) => path.endsWith(suffix))?.[1];
   if (!manifest) return {};
-  return Object.fromEntries(Object.entries(manifest.known_fields).map(([scope, fields]) => [scope, new Set(fields)]));
+  return Object.fromEntries(Object.entries(manifest.known_fields).map(([scope, fields]) => [scope, new Set([...fields, ...(manifest.editor_fields?.[scope] ?? [])]) ]));
 }
 
 const knownFields = currentKnownFields();

@@ -95,3 +95,30 @@ it('does not write default JSON on focus and removes cleared inherited fields', 
   fireEvent.change(screen.getByLabelText('Target'), { target: { value: '' } });
   expect(update.mock.lastCall?.[1]).not.toHaveProperty('target');
 });
+
+it('translates gRPC defaults to Spanish while preserving technical YAML values', () => {
+  window.history.replaceState({}, '', '/?lang=es');
+  const update = vi.fn();
+  render(
+    <YAMLGRPCDetails
+      node={{
+        id: 'defaults',
+        type: 'grpc_defaults',
+        name: 'gRPC Defaults',
+        data: { target: 'localhost:50051', connection_scope: 'per_vu' },
+      }}
+      onNodeUpdate={update}
+    />,
+  );
+  window.history.replaceState({}, '', '/');
+  expect(screen.getByRole('heading', { name: 'Valores gRPC por defecto' })).toBeInTheDocument();
+  expect(screen.getByLabelText('Destino')).toHaveValue('localhost:50051');
+  expect(screen.getByLabelText('Tiempo límite')).toBeInTheDocument();
+  fireEvent.change(screen.getByRole('combobox', { name: 'Alcance de la conexión' }), { target: { value: 'run' } });
+  expect(update).toHaveBeenLastCalledWith(
+    'defaults',
+    expect.objectContaining({ target: 'localhost:50051', connection_scope: 'run' }),
+  );
+  expect(screen.getByRole('option', { name: 'Por usuario virtual' })).toHaveValue('per_vu');
+  expect(screen.getByLabelText('Metadatos (JSON)')).toBeInTheDocument();
+});

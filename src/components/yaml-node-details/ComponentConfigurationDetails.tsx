@@ -189,6 +189,7 @@ export function ComponentConfigurationDetails({ tree, node, capabilities, onNode
   const sampler = HTTP_TYPES.has(node.type) || node.type === 'sql';
   if (!owner && !sampler) return null;
   const adopted = tree.unknownData?.component_configuration_version === 1;
+  if (!root && !adopted) return null;
   const defaults = nodeDefaults(tree, node);
   const updateDefaults = (protocol: string, field: string, value: unknown) => {
     const next = structuredClone(defaults);
@@ -258,12 +259,8 @@ export function ComponentConfigurationDetails({ tree, node, capabilities, onNode
   };
   return (
     <section
-      aria-label={t('yamlEditor.nodeDetails.cc.title')}
       className="mt-6 space-y-4 border-t border-white/10 pt-4"
     >
-      <h3 className="text-sm font-semibold text-yellow-300">
-        {t('yamlEditor.nodeDetails.cc.title')}
-      </h3>
       {root && (
         <label className="flex items-center gap-2 text-sm text-zinc-300">
           <input
@@ -280,20 +277,8 @@ export function ComponentConfigurationDetails({ tree, node, capabilities, onNode
           {t('yamlEditor.nodeDetails.cc.adopt')}
         </label>
       )}
-      {root && !adopted && (
-        <p className="text-xs text-amber-300">
-          {t('yamlEditor.nodeDetails.cc.v1Info')}
-        </p>
-      )}
-      {!adopted ? (
-        <p className="text-xs text-zinc-400">
-          {t('yamlEditor.nodeDetails.cc.legacy')}
-        </p>
-      ) : (
+      {adopted && (
         <>
-          <p className="text-xs text-zinc-400">
-            {t('yamlEditor.nodeDetails.cc.inheritedNote')}
-          </p>
           {owner && rows('', ['data_source', 'think_time'])}
           {(owner || HTTP_TYPES.has(node.type)) && rows('http', HTTP_COMPONENT_FIELDS)}
           {(owner || node.type === 'sql') && rows('sql', SQL_COMPONENT_FIELDS)}

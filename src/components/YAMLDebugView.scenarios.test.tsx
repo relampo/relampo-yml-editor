@@ -1,3 +1,4 @@
+import { selectOption } from '../test/selectOption';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react';
 import { LanguageProvider } from '../contexts/LanguageContext';
@@ -51,7 +52,7 @@ describe('selected scenario Debug', () => {
   it(`requires selection and posts the full script with ${vus} VUs`, async () => {
    show();
    expect(screen.getByRole('button',{name:'Run Debug'})).toBeDisabled();
-   fireEvent.change(screen.getByRole('combobox',{name:'Debug scenario'}),{target:{value:'second'}});
+   await selectOption('Debug scenario', 'second');
    if(vus===2) fireEvent.click(screen.getByRole('button',{name:'2 VUs'}));
    fireEvent.click(screen.getByRole('button',{name:'Run Debug'}));
    await waitFor(()=>expect(api.start).toHaveBeenCalledWith(yaml,{vus,scenarioName:'second'}));
@@ -70,7 +71,7 @@ describe('selected scenario Debug', () => {
  });
  it('rejects a selection removed by flushed edits before posting',async()=>{
   show(true,()=>yaml.replace('name: second','name: renamed'));
-  fireEvent.change(screen.getByRole('combobox',{name:'Debug scenario'}),{target:{value:'second'}});
+  await selectOption('Debug scenario', 'second');
   fireEvent.click(screen.getByRole('button',{name:'Run Debug'}));
   await screen.findByText('Select a scenario from the current script before Debug.');
   expect(api.start).not.toHaveBeenCalled();

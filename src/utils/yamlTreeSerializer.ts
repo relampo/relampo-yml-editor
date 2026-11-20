@@ -492,9 +492,9 @@ function stepNodeToObject(node: YAMLNode): any {
   if (node.type === 'assertion') {
     const res: any = {
       ...(node.unknownData || {}),
-      assertion: normalizeAssertionForEngine(
-        sanitizeBalancedNodeData(node.data as Record<string, unknown> | undefined),
-      ),
+      assertions: [
+        normalizeAssertionForEngine(sanitizeBalancedNodeData(node.data as Record<string, unknown> | undefined)),
+      ],
     };
     if (node.data?.enabled === false) {
       res.enabled = false;
@@ -506,7 +506,7 @@ function stepNodeToObject(node: YAMLNode): any {
     const nextData = { ...(node.data || {}) };
     delete nextData.__lockedType;
     delete nextData.__allowTypeSelection;
-    const res: any = { ...(node.unknownData || {}), assertion: nextData };
+    const res: any = { ...(node.unknownData || {}), assertions: [normalizeAssertionForEngine(nextData)] };
     if (node.data?.enabled === false) {
       res.enabled = false;
     }

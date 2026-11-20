@@ -69,13 +69,14 @@ it('keeps live identities and selects exact final scenario results', async () =>
     scenarios: [{ name: 'A', outcome: 'failed', complete: true, error: 'A failed', result: { ...child('A'), status: 'failed' } }, { name: 'B', outcome: 'completed', complete: true, result: { ...child('B'), total_requests: 0, requests: [], request_latency: undefined } }],
   } }));
   expect(screen.getByText('Status').parentElement).toHaveTextContent('Failed');
-  expect(screen.getByText('Evidence').parentElement).toHaveTextContent('Complete');
-  expect(screen.getByText('Request p95').parentElement).toHaveTextContent('0ms');
-  expect(screen.getByText('RSS Peak').parentElement).toHaveTextContent('0 MiB');
+  expect(screen.queryByText('Evidence')).not.toBeInTheDocument();
+  expect(screen.getByText('Execution mode').parentElement).toHaveTextContent('Sequential');
+  expect(screen.queryByText('Request p95')).not.toBeInTheDocument();
+  expect(screen.getByText('Memory').parentElement).toHaveTextContent('0 MiB');
   await selectOption('Result scope', 'B');
   expect(screen.getByText('Total Requests').parentElement).toHaveTextContent('0');
-  expect(screen.getByText('Request p95').parentElement).toHaveTextContent('Unavailable');
-  expect(screen.getByText('RSS Peak').parentElement).toHaveTextContent('Unavailable');
+  expect(screen.getByText('Execution mode').parentElement).toHaveTextContent('Single');
+  expect(screen.getByText('Memory').parentElement).toHaveTextContent('Unavailable');
   await selectOption('Result scope', 'Global');
   expect(screen.getByText('Total Requests').parentElement).toHaveTextContent('2');
   expect(screen.getByRole('combobox', { name: 'Result scope' })).toHaveAttribute('data-slot', 'select-trigger');

@@ -133,11 +133,12 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
   const mode = String(data.mode || 'auto').toLowerCase();
   const normalizedMode = mode === 'manual' ? 'manual' : 'auto';
   const policy = String(data.policy || 'standard').toLowerCase();
-  const persistAcrossIterations = data.persist_across_iterations !== false;
-  const clearEachIteration = data.clear_each_iteration === true;
+  const clearEachIteration = typeof data.clear_each_iteration === 'boolean'
+    ? data.clear_each_iteration : data.persist_across_iterations === false;
+  const persistAcrossIterations = !clearEachIteration;
   const seedCookies = Array.isArray(data.cookies) ? data.cookies : [];
   const isIgnorePolicy = policy === 'ignore_cookies';
-  const effectiveClearEachIteration = persistAcrossIterations ? false : clearEachIteration;
+  const effectiveClearEachIteration = clearEachIteration;
   const summaryLine =
     normalizedMode === 'auto'
       ? t('yamlEditor.nodeDetails.ops.summaryAuto')
@@ -151,6 +152,11 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
     'rounded-full border border-transparent text-zinc-400 transition-all duration-200 hover:text-zinc-100 hover:bg-white/6';
 
   const handleChange = (field: string, value: any) => {
+    if (field === 'persist_across_iterations' || field === 'clear_each_iteration') {
+      const clear = field === 'clear_each_iteration' ? value : !value;
+      updateData({ ...data, clear_each_iteration: clear, persist_across_iterations: !clear });
+      return;
+    }
     updateField(field, value);
   };
 
@@ -331,7 +337,7 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
               onChange={handleChange}
               options={[
                 { label: 'vu', value: 'vu' },
-                { label: 'scenario', value: 'scenario' },
+                ...(data.jar_scope && data.jar_scope !== 'vu' ? [{ label: String(data.jar_scope), value: String(data.jar_scope) }] : []),
               ]}
               disabled={isIgnorePolicy}
               noMargin
@@ -355,42 +361,19 @@ export function CookiesDetails({ node, onNodeUpdate }: NodeDetailProps) {
 export function CacheManagerDetails({ node, onNodeUpdate }: NodeDetailProps) {
   const { t } = useLanguage();
   const { data, updateField } = createNodeDataUpdater(node, onNodeUpdate);
-  const enabled = data.enabled !== false;
   const clearEachIteration = data.clear_each_iteration !== false;
   const maxElements = String(data.max_elements ?? (data.max_size_mb ? parseInt(String(data.max_size_mb), 10) : 1000));
 
   return (
     <div className="space-y-6">
       <div>
-        <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">{t('yamlEditor.nodeDetails.ops.cache')}</div>
-        <div className="flex flex-wrap items-center gap-1">
-          <TogglePill
-            active={enabled}
-            label={t('yamlEditor.common.enabled')}
-            onClick={() => updateField('enabled', true)}
-            activeStyle={{
-              backgroundColor: 'rgba(250, 204, 21, 0.10)',
-              color: '#facc15',
-              borderColor: 'rgba(250, 204, 21, 0.35)',
-              boxShadow: '0 10px 22px rgba(250, 204, 21, 0.15)',
-            }}
-          />
-          <TogglePill
-            active={!enabled}
-            label={t('yamlEditor.common.disabled')}
-            onClick={() => updateField('enabled', false)}
-            activeStyle={{
-              backgroundColor: 'rgba(250, 204, 21, 0.10)',
-              color: '#facc15',
-              borderColor: 'rgba(250, 204, 21, 0.35)',
-              boxShadow: '0 10px 22px rgba(250, 204, 21, 0.15)',
-            }}
-          />
+        <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
+          {t('yamlEditor.nodeDetails.ops.cache')}
         </div>
       </div>
       <div className="h-px bg-white/10" />
 
-      <div className={!enabled ? 'opacity-60' : ''}>
+      <div>
         <div className="grid grid-cols-2 gap-4 mb-5">
           <SelectField
             label={t('yamlEditor.nodeDetails.ops.clearEach')}
@@ -400,7 +383,6 @@ export function CacheManagerDetails({ node, onNodeUpdate }: NodeDetailProps) {
               { label: 'true', value: 'true' },
               { label: 'false', value: 'false' },
             ]}
-            disabled={!enabled}
             onChange={(_, value) => updateField('clear_each_iteration', value === 'true')}
             noMargin
           />
@@ -415,7 +397,6 @@ export function CacheManagerDetails({ node, onNodeUpdate }: NodeDetailProps) {
               id="ops-max-elements"
               type="number"
               value={maxElements}
-              disabled={!enabled}
               onChange={event => updateField('max_elements', Math.max(1, parseInt(event.target.value || '1', 10) || 1))}
               className="w-full h-9.5 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono focus:border-white/30 transition-colors"
             />
@@ -424,8 +405,11 @@ export function CacheManagerDetails({ node, onNodeUpdate }: NodeDetailProps) {
 
         <div className="rounded border border-white/10 bg-black/20 px-3 py-2 text-xs text-zinc-300">
           {t('yamlEditor.nodeDetails.ops.cacheSummary')
-            .replace('{cache}', enabled ? t('yamlEditor.nodeDetails.ops.on') : t('yamlEditor.nodeDetails.ops.off'))
-            .replace('{clear}', clearEachIteration ? t('yamlEditor.nodeDetails.ops.on') : t('yamlEditor.nodeDetails.ops.off'))
+            .replace('{cache}', t('yamlEditor.nodeDetails.ops.on'))
+            .replace(
+              '{clear}',
+              clearEachIteration ? t('yamlEditor.nodeDetails.ops.on') : t('yamlEditor.nodeDetails.ops.off'),
+            )
             .replace('{max}', maxElements)}
         </div>
       </div>

@@ -744,20 +744,55 @@ function structuredBody(value: unknown): unknown {
   }
 }
 
-function builtinBodyRows(
+function capturedRequestVariables(node: YAMLNode, context: VariableValueContext): Map<string, string> {
+  const values = resolvedRequestUrlVariables(node, context);
+  const visit = (template: unknown, captured: unknown) => {
+    if (typeof template === 'string') {
+      // A complete placeholder can be attributed to its captured value without
+      // re-evaluating time/random functions or guessing mixed-string boundaries.
+      const match = template.match(/^\{\{([^{}]+)\}\}$|^\$\{([^{}]+)\}$/);
+      if (match && !isBuiltinExpression((match[1] ?? match[2]).trim()) && captured !== undefined) values.set((match[1] ?? match[2]).trim(), typeof captured === 'string' ? captured : JSON.stringify(captured));
+    } else if (template && typeof template === 'object' && captured && typeof captured === 'object') {
+      for (const [key, field] of Object.entries(template))
+        if (Object.hasOwn(captured, key)) visit(field, (captured as Record<string, unknown>)[key]);
+    }
+  };
+  let template = node.data?.body ?? node.data?.body_raw;
+  const contentType = Object.entries(context.requestHeaders ?? node.data?.headers ?? {}).find(([key]) => key.toLowerCase() === 'content-type')?.[1];
+  if (Array.isArray(template) && String(contentType).toLowerCase().startsWith('application/x-www-form-urlencoded')) {
+    const fields = new URLSearchParams();
+    for (const item of template) if (item && typeof item === 'object')
+      for (const [key, value] of Object.entries(item)) fields.append(key, String(value ?? ''));
+    template = fields.toString();
+  }
+  visit(structuredBody(template), structuredBody(context.requestBody));
+  for (const [name, templateValue] of Object.entries(node.data?.headers ?? {})) {
+    const captured = Object.entries(context.requestHeaders ?? {}).find(([key]) => key.toLowerCase() === name.toLowerCase())?.[1];
+    visit(templateValue, captured);
+  }
+  return values;
+}
+
+function requestBodyFieldRows(
   node: YAMLNode,
   variables: Record<string, string>,
   context: VariableValueContext,
 ): Array<[string, string]> {
   const rows: Array<[string, string]> = [];
   const visit = (template: unknown, captured: unknown, path: string[]) => {
-    if (typeof template === 'string') {
-      const hasBuiltin = [...template.matchAll(/\{\{([^{}]*)/g)].some(
+    if (typeof template === 'string' || typeof template === 'number' || typeof template === 'boolean') {
+      const text = String(template);
+      const hasBuiltin = [...text.matchAll(/\{\{([^{}]*)/g)].some(
         ([, expression]) => isBuiltinExpression(expression.trim()) && !Object.hasOwn(variables, expression.trim()),
       );
-      if (path.length && hasBuiltin) {
+      const isLiteral = !text.includes('{{') && !text.includes('${');
+      const name = [...path].reverse().find(part => !/^\d+$/.test(part));
+      if (name && (hasBuiltin || (isLiteral && captured !== undefined))) {
         const value = typeof captured === 'string' ? captured : JSON.stringify(captured);
-        rows.push([`Body.${path.join('.')} (REQ)`, value ?? context.missingValueLabel ?? MISSING_VARIABLE_VALUE]);
+        rows.push([
+          `${name} (REQ)`,
+          value ?? context.missingValueLabel ?? MISSING_VARIABLE_VALUE,
+        ]);
       }
       return;
     }
@@ -787,7 +822,9 @@ function builtinBodyRows(
         for (const [name, value] of Object.entries(item)) fields.append(name, String(value ?? ''));
     template = fields.toString();
   }
-  // ponytail: Decode JSON and URL-encoded fields; multipart needs a body parser.
+  // Use the sent field value and its request name. Never re-evaluate a built-in
+  // or substitute a literal from the currently edited YAML for missing evidence.
+  // Decode JSON and URL-encoded fields; multipart needs a body parser.
   visit(structuredBody(template), structuredBody(context.requestBody), []);
   return rows;
 }
@@ -807,7 +844,8 @@ export function variableRowsForRequestNode(
   if (!node) return [];
   const roles = requestVariableRoles(node, variables, context);
   const extracted = responseExtractorValues(node, context);
-  const sent = resolvedRequestUrlVariables(node, context);
+  const sent = capturedRequestVariables(node, context);
+  for (const name of sent.keys()) if (!roles.has(name)) roles.set(name, new Set(['REQ']));
   const missingValue = context.missingValueLabel ?? MISSING_VARIABLE_VALUE;
   const rows = [...roles].map<[string, string]>(([name, variableRoles]) => {
     const declaredValue = context.declaredBuiltinValues?.[name];
@@ -829,5 +867,5 @@ export function variableRowsForRequestNode(
       resolvedValue === undefined ? missingValue : displayVariableValue(resolvedValue),
     ];
   });
-  return [...rows, ...builtinBodyRows(node, variables, context)];
+  return [...rows, ...requestBodyFieldRows(node, variables, context)];
 }

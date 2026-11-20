@@ -51,7 +51,7 @@ describe('component configuration controls', () => {
   it('requires explicit adoption and writes only the selected declarations', () => {
     render(<Harness yaml={dump(base)} />);
     expect(written()).not.toHaveProperty('defaults');
-    fireEvent.click(screen.getByLabelText('Adopt component configuration version 1'));
+    fireEvent.click(screen.getByLabelText('Use shared defaults'));
     expect(written().component_configuration_version).toBe(1);
     expect(written()).not.toHaveProperty('defaults');
     fireEvent.change(screen.getByLabelText('data_source mode'), { target: { value: 'disable' } });
@@ -120,7 +120,7 @@ describe('component configuration controls', () => {
         supported={{ version: 1, features: ['sql_assertions'] }}
       />,
     );
-    expect(screen.getByLabelText('Adopt component configuration version 1')).toBeDisabled();
+    expect(screen.getByLabelText('Use shared defaults')).toBeDisabled();
     expect(screen.getByLabelText('sql.assertions mode')).toBeDisabled();
     expect(screen.getByLabelText('http.timeout mode')).toBeDisabled();
   });
