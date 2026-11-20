@@ -37,6 +37,7 @@ export function persistEmbeddedScript(
           typeof event.data.error === 'string' ? event.data.error : 'Could not save the script to its folder.',
         );
         if (event.data.cancelled === true) error.name = 'ScriptSaveCancelled';
+        else if (event.data.code === 'local_folder_access') error.name = 'LocalFolderAccess';
         reject(error);
       }
     };

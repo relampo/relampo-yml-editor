@@ -286,7 +286,7 @@ export function CorrelatePage({
       setChanged(false);
       setSaveMessage(text('Script saved in the Test Plan.', 'Script guardado en el Test Plan.'));
     } catch (cause) {
-      if (!(cause instanceof Error && cause.name === 'ScriptSaveCancelled'))
+      if (!(cause instanceof Error && (cause.name === 'ScriptSaveCancelled' || cause.name === 'LocalFolderAccess')))
         setError(cause instanceof Error ? cause.message : String(cause));
     } finally {
       setBusy('');
