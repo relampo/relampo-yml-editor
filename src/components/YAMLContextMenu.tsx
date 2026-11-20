@@ -84,7 +84,7 @@ export function YAMLContextMenu({
   const canAddChildren = addableItems.length > 0;
   const canShowNodeActions =
     node.type !== 'root' && node.type !== 'test' && node.type !== 'scenarios' && node.type !== 'steps';
-  const canToggleEnabled = canShowNodeActions && Boolean(onToggleEnabled);
+  const canToggleEnabled = canShowNodeActions && node.type !== 'cache_manager' && Boolean(onToggleEnabled);
   const canDuplicate = canShowNodeActions && Boolean(onDuplicate);
   const canCopy = canShowNodeActions && Boolean(onCopy);
   const canRemove = canShowNodeActions;

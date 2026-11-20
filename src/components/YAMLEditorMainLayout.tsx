@@ -9,6 +9,7 @@ import { YAMLEditorViewModeBody } from './YAMLEditorViewModeBody';
 import type { TreeSelection } from './yamlEditorHelpers';
 
 interface YAMLEditorMainLayoutProps {
+  executionSessionKey?: number;
   leftPanelWidth: number;
   onResizeStart: () => void;
   activeViewMode: EditorViewMode;
@@ -59,6 +60,7 @@ interface YAMLEditorMainLayoutProps {
 // The resizable two-panel body: the tree/code view-mode panel on the left,
 // the drag handle, and the details/debug/run panel on the right.
 export function YAMLEditorMainLayout({
+  executionSessionKey = 0,
   leftPanelWidth,
   onResizeStart,
   activeViewMode,
@@ -150,6 +152,7 @@ export function YAMLEditorMainLayout({
         </div>
 
         <YAMLEditorDetailsPanel
+          key={executionSessionKey}
           onTreeChange={onTreeChange}
           isDebugViewActive={isDebugViewActive}
           isRunViewActive={isRunViewActive}
