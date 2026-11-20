@@ -35,8 +35,9 @@ export function useTimelineReveal({
     const previous = playback.current;
     const sameSeries = previous?.first === first && latest >= previous.latest;
     const changed = sameSeries && latest > previous.latest;
-    // Small headroom absorbs normal arrival jitter so the trace does not pause between samples.
-    const duration = changed ? Math.min(2000, Math.max(100, (now - previous.receivedAt) * 1.1)) : 0;
+    // Replay confirmed measurement time at a steady speed. Capping a long
+    // provider batch at two seconds made it rush, then wait for the next batch.
+    const duration = changed ? Math.max(100, latest - previous.position) : 0;
     const state: Playback = {
       first,
       latest,
