@@ -57,11 +57,7 @@ it('filters only the view and inspects the selected request and response', async
   expect(await screen.findByText(/username/)).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Response' }));
   expect(screen.getByText(/eventId/)).toBeInTheDocument();
-  expect(httpRecorderRequest).toHaveBeenCalledExactlyOnceWith(
-    'requests/1?showSensitive=true',
-    undefined,
-    expect.any(AbortSignal),
-  );
+  expect(httpRecorderRequest).toHaveBeenCalledExactlyOnceWith('requests/1', undefined, expect.any(AbortSignal));
 });
 it('explains uncaptured responses and reports request preview errors', async () => {
   vi.mocked(httpRecorderRequest).mockRejectedValue(new Error('Request unavailable'));
@@ -78,8 +74,9 @@ it('explains uncaptured responses and reports request preview errors', async () 
   fireEvent.click(screen.getByRole('button', { name: 'Response' }));
   expect(screen.getByText(/Response bodies were not captured/)).toBeInTheDocument();
 });
-it('shows headers, repeated parameters and empty bodies, and reveals HTML as text only', async () => {
+it('masks each request by default and reveals HTML as text only on demand', async () => {
   vi.mocked(httpRecorderRequest).mockImplementation(async path => ({
+    masked: !path.includes('showSensitive=true'),
     url: 'https://app.test/login?tag=one&tag=two',
     method: 'GET',
     status: 200,
@@ -106,6 +103,9 @@ it('shows headers, repeated parameters and empty bodies, and reveals HTML as tex
   expect(screen.getByText('This request has no body.')).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Response' }));
   expect(screen.getByText('text/html')).toBeInTheDocument();
+  expect(screen.getByText(/Non-JSON body hidden/)).toBeInTheDocument();
+  expect(httpRecorderRequest).toHaveBeenLastCalledWith('requests/0', undefined, expect.any(AbortSignal));
+  fireEvent.click(screen.getByRole('button', { name: 'Show full content' }));
   expect(await screen.findByText(/<script>window.captured=true/)).toBeInTheDocument();
   expect(container.querySelector('script')).toBeNull();
   expect(container.querySelector('b')).toBeNull();
@@ -115,14 +115,35 @@ it('shows headers, repeated parameters and empty bodies, and reveals HTML as tex
     expect.any(AbortSignal),
   );
   fireEvent.click(screen.getByRole('button', { name: 'Mask sensitive data' }));
+  expect(screen.queryByText(/Captured HTML/)).not.toBeInTheDocument();
   expect(await screen.findByText(/Non-JSON body hidden/)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Show full content' }));
+  await screen.findByText(/Captured HTML/);
   fireEvent.click(screen.getByRole('button', { name: 'https://api.test/events' }));
-  expect(await screen.findByRole('button', { name: 'Mask sensitive data' })).toHaveAttribute('aria-pressed', 'true');
-  expect(httpRecorderRequest).toHaveBeenLastCalledWith(
-    'requests/1?showSensitive=true',
-    undefined,
-    expect.any(AbortSignal),
+  expect(screen.queryByText(/Captured HTML/)).not.toBeInTheDocument();
+  expect(await screen.findByText(/Non-JSON body hidden/)).toBeInTheDocument();
+  expect(httpRecorderRequest).toHaveBeenLastCalledWith('requests/1', undefined, expect.any(AbortSignal));
+  fireEvent.click(screen.getByRole('button', { name: 'https://app.test/login' }));
+  expect(await screen.findByText(/Non-JSON body hidden/)).toBeInTheDocument();
+  expect(httpRecorderRequest).toHaveBeenLastCalledWith('requests/0', undefined, expect.any(AbortSignal));
+});
+it('shows the full preview when the recording disabled masking', async () => {
+  vi.mocked(httpRecorderRequest).mockResolvedValue({
+    masked: false,
+    request: { body: 'Recorded body' },
+  });
+  render(
+    <HTTPRecorderRequests
+      rows={rows}
+      total={2}
+      responses
+      language="en"
+    />,
   );
+  fireEvent.click(screen.getByRole('button', { name: 'https://app.test/login' }));
+  expect(await screen.findByText('Recorded body')).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Show full content' })).not.toBeInTheDocument();
+  expect(httpRecorderRequest).toHaveBeenCalledExactlyOnceWith('requests/0', undefined, expect.any(AbortSignal));
 });
 it('keeps response headers visible even when response bodies were not captured', async () => {
   vi.mocked(httpRecorderRequest).mockResolvedValue({

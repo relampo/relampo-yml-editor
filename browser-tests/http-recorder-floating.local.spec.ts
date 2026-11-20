@@ -20,21 +20,24 @@ for (const mode of ['always-on-top', 'popup fallback'] as const) {
     await context.route('**/api/recorder/http/**', route => {
       const path = new URL(route.request().url()).pathname.split('/').pop()!;
       expect(route.request().frame().url()).toContain('floating-recorder.html');
-      if (route.request().url().includes('/requests/0'))
+      if (route.request().url().includes('/requests/0')) {
+        const revealed = new URL(route.request().url()).searchParams.get('showSensitive') === 'true';
         return route.fulfill({
           json: {
+            masked: !revealed,
             url: 'http://app.test/live',
             method: 'GET',
             status: 200,
             request: { headers: { 'X-Request': ['request-header-live'] }, body: { action: 'live-request' } },
             response: {
               headers: { 'Content-Type': ['text/html'] },
-              body: route.request().url().includes('showSensitive=true')
+              body: revealed
                 ? '<html><body>live-response</body></html>'
-                : { message: 'live-response' },
+                : '[Non-JSON body hidden while sensitive-data masking is enabled]',
             },
           },
         });
+      }
       if (path === 'editor')
         return route.fulfill({
           json: { name: 'recording.yaml', yaml: 'test: {name: recorded}', files: [], captureId: 'browser-capture' },
@@ -122,8 +125,9 @@ for (const mode of ['always-on-top', 'popup fallback'] as const) {
     await expect(details.locator('pre')).toContainText('live-request');
     await expect(details.getByText('request-header-live', { exact: true })).toBeVisible();
     await details.getByRole('button', { name: 'Response', exact: true }).click();
-    await expect(details.locator('pre')).toContainText('live-response');
+    await expect(details.locator('pre')).toContainText('Non-JSON body hidden while sensitive-data masking is enabled');
     await expect(details.getByText('text/html', { exact: true })).toBeVisible();
+    await details.getByRole('button', { name: 'Show full content', exact: true }).click();
     await expect(details.locator('pre')).toHaveText('<html><body>live-response</body></html>');
     await expect(details.locator('iframe,script')).toHaveCount(0);
     expect(calls).not.toContain('stop');

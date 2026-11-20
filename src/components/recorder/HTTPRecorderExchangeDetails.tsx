@@ -16,7 +16,7 @@ export function HTTPRecorderExchangeDetails({
   responses: boolean;
   language: string;
   showSensitive: boolean;
-  onToggleSensitive: () => void;
+  onToggleSensitive?: () => void;
 }) {
   const [tab, setTab] = useState<'request' | 'response'>('request'),
     [part, setPart] = useState<'overview' | 'body' | 'headers' | 'parameters'>('overview');
@@ -138,17 +138,19 @@ export function HTTPRecorderExchangeDetails({
                 </button>
               ),
             )}
-            <button
-              type="button"
-              aria-pressed={showSensitive}
-              onClick={onToggleSensitive}
-              className="ml-auto flex items-center gap-1 rounded px-2 py-1 text-xs text-zinc-300 hover:bg-white/10"
-            >
-              {showSensitive ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-              {showSensitive
-                ? text('Mask sensitive data', 'Enmascarar datos sensibles')
-                : text('Show full content', 'Mostrar contenido completo')}
-            </button>
+            {onToggleSensitive && (
+              <button
+                type="button"
+                aria-pressed={showSensitive}
+                onClick={onToggleSensitive}
+                className="ml-auto flex items-center gap-1 rounded px-2 py-1 text-xs text-zinc-300 hover:bg-white/10"
+              >
+                {showSensitive ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                {showSensitive
+                  ? text('Mask sensitive data', 'Enmascarar datos sensibles')
+                  : text('Show full content', 'Mostrar contenido completo')}
+              </button>
+            )}
           </div>
           <div className="min-h-0 flex-1 overflow-auto p-4">
             {error && (
