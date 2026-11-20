@@ -44,11 +44,17 @@ export function HTTPRecorderRequests({
     [status, setStatus] = useState(''),
     [domain, setDomain] = useState('');
   const [selected, setSelected] = useState<number | null>(null),
-    [preview, setPreview] = useState<HTTPRecordingPreview | null>(null),
+    [loadedPreview, setLoadedPreview] = useState<{ path: string; details: HTTPRecordingPreview } | null>(null),
     [error, setError] = useState('');
   const { leftPanelWidth, setIsResizing } = useResizePanel(55);
-  const [maskedRequest, setMaskedRequest] = useState<number | null>(null);
-  const showSensitive = selected !== null && maskedRequest !== selected;
+  const [revealedRequest, setRevealedRequest] = useState<number | null>(null);
+  const showSensitive = selected !== null && revealedRequest === selected;
+  const previewPath = selected === null ? null : 'requests/' + selected + (showSensitive ? '?showSensitive=true' : '');
+  const preview = loadedPreview?.path === previewPath ? loadedPreview.details : null;
+  const selectRequest = (id: number) => {
+    if (selected !== id) setRevealedRequest(null);
+    setSelected(id);
+  };
   const es = language === 'es',
     text = (en: string, spanish: string) => (es ? spanish : en);
   const hosts = Array.from(
@@ -63,23 +69,18 @@ export function HTTPRecorderRequests({
     ),
   );
   useEffect(() => {
-    if (selected === null) return;
+    if (previewPath === null) return;
     const controller = new AbortController();
-    setPreview(null);
     setError('');
-    httpRecorderRequest<HTTPRecordingPreview>(
-      'requests/' + selected + (showSensitive ? '?showSensitive=true' : ''),
-      undefined,
-      controller.signal,
-    )
-      .then(value => {
-        if (!controller.signal.aborted) setPreview(value);
+    httpRecorderRequest<HTTPRecordingPreview>(previewPath, undefined, controller.signal)
+      .then(details => {
+        if (!controller.signal.aborted) setLoadedPreview({ path: previewPath, details });
       })
       .catch(cause => {
         if (!controller.signal.aborted) setError(cause.message);
       });
     return () => controller.abort();
-  }, [selected, showSensitive]);
+  }, [previewPath]);
   const visible = rows.filter(
     row =>
       (!search || (row.name + ' ' + row.url).toLowerCase().includes(search.toLowerCase())) &&
@@ -186,15 +187,11 @@ export function HTTPRecorderRequests({
                   key={row.id}
                   tabIndex={0}
                   aria-selected={selected === row.id}
-                  onClick={() => {
-                    if (selected !== row.id) setMaskedRequest(null);
-                    setSelected(row.id);
-                  }}
+                  onClick={() => selectRequest(row.id)}
                   onKeyDown={event => {
                     if (event.key === 'Enter' || event.key === ' ') {
                       event.preventDefault();
-                      if (selected !== row.id) setMaskedRequest(null);
-                      setSelected(row.id);
+                      selectRequest(row.id);
                     }
                   }}
                   className={
@@ -210,10 +207,7 @@ export function HTTPRecorderRequests({
                       type="button"
                       title={row.url}
                       className="w-full truncate text-left hover:text-yellow-300"
-                      onClick={() => {
-                        if (selected !== row.id) setMaskedRequest(null);
-                        setSelected(row.id);
-                      }}
+                      onClick={() => selectRequest(row.id)}
                     >
                       {row.url}
                     </button>
@@ -251,7 +245,11 @@ export function HTTPRecorderRequests({
       </div>
       <HTTPRecorderExchangeDetails
         showSensitive={showSensitive}
-        onToggleSensitive={() => setMaskedRequest(showSensitive ? selected : null)}
+        onToggleSensitive={
+          showSensitive || (preview !== null && preview.masked !== false)
+            ? () => setRevealedRequest(showSensitive ? null : selected)
+            : undefined
+        }
         row={rows.find(row => row.id === selected)}
         preview={preview}
         error={error}
