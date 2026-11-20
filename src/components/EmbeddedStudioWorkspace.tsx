@@ -23,6 +23,20 @@ import { GRPCRecorderPage } from './grpc/GRPCRecorderPage';
 import { CorrelatePage } from './correlate/CorrelatePage';
 
 const views: EmbeddedStudioView[] = ['scripting', 'record', 'correlation', 'debug', 'run'];
+const folderMessages = {
+  permission: {
+    en: 'Relampo needs access to the plan folder to save.',
+    es: 'Relampo necesita acceso a la carpeta del plan para guardar.',
+  },
+  wrong_folder: {
+    en: 'Choose the folder containing this plan’s test-plan.yaml.',
+    es: 'Elige la carpeta que contiene el archivo test-plan.yaml de este plan.',
+  },
+  failed: {
+    en: 'Could not reconnect the folder. Try again.',
+    es: 'No se pudo reconectar la carpeta. Inténtalo de nuevo.',
+  },
+};
 export function EmbeddedStudioWorkspace() {
   if (new URLSearchParams(window.location.search).get('historical') === '1') return <HistoricalScriptWorkspace />;
   return <CurrentStudioWorkspace />;
@@ -77,9 +91,18 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
   const sourceRef = useRef(source);
   const draft = useRef({ yaml: '', fileName: '', changed: false });
   const activity = useRef({ http: false, grpc: false, httpPending: false, grpcPending: false });
-  const [error, setError] = useState('');
+  const [error, setError] = useState<{
+    message: string;
+    reconnectFolder: boolean;
+    reconnectError?: 'wrong_folder' | 'failed';
+  } | null>(null);
+  const [reconnectingFolder, setReconnectingFolder] = useState(false);
   const { language } = useLanguage();
-  const report = (cause: unknown) => setError(cause instanceof Error ? cause.message : String(cause));
+  const report = (cause: unknown) =>
+    setError({
+      message: cause instanceof Error ? cause.message : String(cause),
+      reconnectFolder: cause instanceof Error && cause.name === 'LocalFolderAccess',
+    });
   const goToScripting = useCallback(() => {
     draft.current.changed = false;
     setView('scripting');
@@ -191,7 +214,7 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
       if (switchingRef.current) throw new Error('A script is already loading.');
       if (activity.current.http || activity.current.grpc)
         throw new Error('Stop the recording before switching scripts.');
-      setError('');
+      setError(null);
       switchingRef.current = true;
       setSwitching(true);
       try {
@@ -245,6 +268,17 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
       )
         return;
       const message = event.data;
+      if (message.type === 'relampo:local-folder-reconnected') {
+        setReconnectingFolder(false);
+        const reconnectError = message.error === 'wrong_folder' || message.error === 'failed'
+          ? message.error
+          : undefined;
+        setError(current => {
+          if (!current?.reconnectFolder) return current;
+          return message.ok === true ? null : { ...current, reconnectError };
+        });
+        return;
+      }
       if (message.type === 'relampo:refresh-plan-scripts') {
         try {
           setCatalog(await loadPlanScripts());
@@ -313,11 +347,11 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
             }
             await flush(message.reason);
           }
-          setError('');
+          setError(null);
           ok = true;
         } catch (cause) {
           cancelled = cause instanceof Error && cause.name === 'ScriptSaveCancelled';
-          if (cancelled) setError('');
+          if (cancelled) setError(null);
           else {
             error = cause instanceof Error ? cause.message : String(cause);
             report(cause);
@@ -353,7 +387,7 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
       }
       if (message.type === 'relampo:editor-command') {
         try {
-          setError('');
+          setError(null);
           if (message.command === 'upload' || message.command === 'new') {
             if (activity.current.http || activity.current.grpc)
               throw new Error('Stop the recording before changing scripts.');
@@ -413,12 +447,26 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
         data-studio-workspace={view}
       >
         {error && (
-          <p
-            role="alert"
-            className="shrink-0 bg-red-500/10 px-4 py-2 text-xs text-red-300"
-          >
-            {error}
-          </p>
+          <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 bg-red-500/10 px-4 py-2 text-xs text-red-300">
+            <span role="alert">
+              {error.reconnectFolder ? folderMessages[error.reconnectError ?? 'permission'][language] : error.message}
+            </span>
+            {error.reconnectFolder && (
+              <button
+                type="button"
+                className="font-medium underline underline-offset-2 disabled:opacity-50"
+                disabled={reconnectingFolder}
+                onClick={() => {
+                  setReconnectingFolder(true);
+                  window.parent.postMessage({ type: 'relampo:reconnect-local-folder' }, window.location.origin);
+                }}
+              >
+                {language === 'es'
+                  ? reconnectingFolder ? 'Reconectando…' : 'Reconectar carpeta'
+                  : reconnectingFolder ? 'Reconnecting…' : 'Reconnect folder'}
+              </button>
+            )}
+          </div>
         )}
         {/* Editing needs no machine. Record, Correlation, Debug and Run do. */}
         {/* Scripting and Correlate need no machine: the cloud runs Correlate (contract, section 10). */}
