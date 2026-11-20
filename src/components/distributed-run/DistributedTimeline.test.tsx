@@ -196,6 +196,22 @@ it('continues from the current position when a new sample arrives mid-animation'
   expect(clock.frames.size).toBe(0);
 });
 
+it('reveals an eight-second provider batch at the measured cadence instead of rushing in two seconds', () => {
+  const clock = animationClock();
+  const { rerender } = render(liveView([point(1), point(2)]));
+  clock.set(8000);
+  rerender(liveView(Array.from({ length: 10 }, (_, i) => point(i + 1))));
+  const reveal = screen.getByRole('img').querySelector('clipPath rect')!;
+  clock.frame(10000);
+  const atTwo = Number(reveal.getAttribute('width'));
+  expect(atTwo).toBeLessThan(110 + (6 / 60) * 770);
+  clock.frame(12000);
+  expect(Number(reveal.getAttribute('width'))).toBeGreaterThan(atTwo);
+  expect(Number(reveal.getAttribute('width'))).toBeLessThan(110 + (10 / 60) * 770);
+  clock.frame(16000);
+  expect(Number(reveal.getAttribute('width'))).toBeCloseTo(110 + (10 / 60) * 770);
+});
+
 it('keeps tooltips tied to measured values and shows exact history while zooming', () => {
   const clock = animationClock();
   vi.stubGlobal('PointerEvent', MouseEvent);
