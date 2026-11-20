@@ -67,7 +67,7 @@ export async function grpcRequest<T>(path: string, body?: unknown, signal?: Abor
   });
   if (!response.ok) {
     const error = await response.json().catch(() => ({ error: 'gRPC operation failed' }));
-    throw new Error(error.error || 'gRPC operation failed');
+    throw Object.assign(new Error(error.error || 'gRPC operation failed'), { status: response.status });
   }
   return response.json();
 }

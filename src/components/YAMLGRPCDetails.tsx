@@ -99,7 +99,6 @@ export function YAMLGRPCDetails({ node, onNodeUpdate }: NodeDetailProps) {
       <section className="space-y-5">
         <h4 className="text-sm font-semibold text-cyan-300">gRPC Defaults</h4>
         {field('Target', 'target', 'host:port')}
-        {field('Transport', 'transport', 'grpc or grpc_web')}
         {field('Protoset', 'protoset', './api/service.protoset')}
         {field('Timeout', 'timeout', '30s')}
         <label className="flex gap-2 text-xs text-zinc-300">
@@ -136,6 +135,7 @@ export function YAMLGRPCDetails({ node, onNodeUpdate }: NodeDetailProps) {
           value={data.metadata}
           onCommit={value => update('metadata', value)}
         />
+        {field('Transport', 'transport', 'grpc or grpc_web')}
       </section>
     );
   }
