@@ -495,7 +495,10 @@ export function YAMLEditor({
         dataSourceFileBrowseEnabled={dataSourceFileBrowseEnabled}
         fileName={currentFileName}
         largeFileMode={isLargeFileMode}
-        onSelectionChange={handleTreeSelectionChange}
+        onSelectionChange={(node, nodeIds) => {
+          handleTreeSelectionChange(node, nodeIds);
+          if (node && embedded) onNavigateToScripting?.();
+        }}
         onTreeChange={handleTreeChange}
         onTreeViewChange={handleTreeViewChange}
         onContextMenuOpened={handleTreeContextMenuOpened}
