@@ -253,10 +253,12 @@ function SQLConnectionFields({
   connection,
   fields,
   onFieldChange,
+  onNumberFieldChange,
 }: {
   connection: any;
   fields: ConnectionTextFieldSpec[];
   onFieldChange: (field: string, value: string) => void;
+  onNumberFieldChange: (field: string, value: string) => void;
 }) {
   const { t } = useLanguage();
   return (
@@ -277,7 +279,11 @@ function SQLConnectionFields({
               id={f.id}
               type={f.type}
               value={f.useNullishFallback ? (connection[f.field] ?? '') : connection[f.field] || ''}
-              onChange={event => onFieldChange(f.field, event.target.value)}
+              onChange={event =>
+                f.field === 'port'
+                  ? onNumberFieldChange(f.field, event.target.value)
+                  : onFieldChange(f.field, event.target.value)
+              }
               placeholder={f.placeholder}
               className="w-full h-9.5 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm text-zinc-300 font-mono"
             />
@@ -604,6 +610,7 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
         connection={connection}
         fields={connectionTextFields}
         onFieldChange={handleConnectionChange}
+        onNumberFieldChange={handleConnectionNumberChange}
       />
 
       <EditableList
