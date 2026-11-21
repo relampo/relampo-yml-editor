@@ -6,7 +6,7 @@ Tree parsing, text serialization, draft writes, and Studio execution start async
 
 ## Decision
 
-- Mark the Tree outdated while code edits wait for parsing. Parse off the main thread where the worker is available. Keep the worker alive across normal edits and use the current callbacks when it replies. Treat the initial Studio probe and draft restore as one initialization. The script passed by the CLI wins over a browser draft.
+- Mark the Tree outdated while code edits wait for parsing. Parse off the main thread where the worker is available. Keep the worker alive across normal edits and use the current callbacks when it replies. Treat the initial Studio probe and draft restore as one initialization. The script passed by the CLI wins over the browser draft in the main Studio tab. A tab with its own `editor` identity starts empty or restores its own draft.
 - Validate an import before replacing the document. Commit Tree changes and selection together. Capture the current YAML immediately when saving or starting Debug or Run. Debounce updates to the other view only.
 - Keep one active draft per Studio tab. Serialize draft writes and invalidate them when a document is discarded. A late write cannot restore discarded content. Export keeps a reloadable draft when it cancels a queued autosave.
 - Leave Debug and Run mounted across tab switches. Tie each run to the YAML snapshot and Tree used at launch. Store the run ID and a fingerprint of the document in session storage. After reload, reattach only after initialization and when the document still matches. Clear obsolete sessions quietly. The runtime keeps its run data and replays it over server-sent events (SSE).
