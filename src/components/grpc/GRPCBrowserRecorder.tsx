@@ -43,6 +43,7 @@ export function GRPCBrowserRecorder({
 }) {
   const [state, setState] = useState<GRPCBrowserRecording>(empty);
   const [available, setAvailable] = useState<boolean | null>(null);
+  const [capabilityAttempt, setCapabilityAttempt] = useState(0);
   const [contract, setContract] = useState<GRPCImported | null>(null);
   const [contractNames, setContractNames] = useState('');
   const [preview, setPreview] = useState<{ name: string; message?: unknown; response?: unknown; metadata?: unknown }[]>(
@@ -66,7 +67,7 @@ export function GRPCBrowserRecorder({
     const controller = new AbortController();
     grpcRequest<GRPCBrowserRecording>('browser-recordings/current', undefined, controller.signal)
       .then(value => {
-        if (mounted.current) {
+        if (!controller.signal.aborted) {
           setAvailable(true);
           setState(value);
           if (value.applicationUrl) setApplicationURL(value.applicationUrl);
@@ -82,7 +83,7 @@ export function GRPCBrowserRecorder({
       controller.abort();
       action.current?.abort();
     };
-  }, []);
+  }, [capabilityAttempt]);
   const [inFront, cameBack] = useInFront();
   useEffect(() => {
     if ((!state.active && !state.pendingCalls) || !inFront) return;
@@ -619,12 +620,21 @@ export function GRPCBrowserRecorder({
         </div>
       )}
       {error && (
-        <p
-          role="alert"
-          className="rounded-md border border-red-400/20 bg-red-400/10 p-3 text-xs text-red-300"
-        >
-          {error}
-        </p>
+        <div className="rounded-md border border-red-400/20 bg-red-400/10 p-3 text-xs text-red-300">
+          <p role="alert">{error}</p>
+          {available === null && (
+            <button
+              type="button"
+              className={button + ' mt-2'}
+              onClick={() => {
+                setError('');
+                setCapabilityAttempt(attempt => attempt + 1);
+              }}
+            >
+              {text('Retry', 'Reintentar')}
+            </button>
+          )}
+        </div>
       )}
     </section>
   );

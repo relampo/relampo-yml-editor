@@ -280,7 +280,7 @@ function SQLConnectionFields({
               type={f.type}
               value={f.useNullishFallback ? (connection[f.field] ?? '') : connection[f.field] || ''}
               onChange={event =>
-                f.type === 'number'
+                f.field === 'port'
                   ? onNumberFieldChange(f.field, event.target.value)
                   : onFieldChange(f.field, event.target.value)
               }
@@ -504,7 +504,6 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
       field: 'port',
       label: t('yamlEditor.requestDetails.sqlPort'),
       placeholder: data.dialect === 'mysql' ? '3306' : '5432',
-      type: 'number',
       useNullishFallback: true,
     },
     {
