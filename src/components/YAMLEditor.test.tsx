@@ -403,6 +403,35 @@ describe('YAMLEditor draft restoration', () => {
     expect(treeToYAMLMock).not.toHaveBeenCalled();
   });
 
+  it('notifies the SaaS to activate Scripting when a tree node is selected', async () => {
+    const originalParent = window.parent;
+    Object.defineProperty(window, 'parent', { configurable: true, value: { postMessage: vi.fn() } });
+    window.history.replaceState({}, '', '/?embedded=1&account=qa&plan=plan');
+    const navigate = vi.fn();
+    getActiveDraftMock.mockResolvedValueOnce({
+      yaml: 'test: {name: restored}',
+      fileName: 'restored.yaml',
+      updatedAt: '2026-11-20T20:00:00Z',
+    });
+    try {
+      render(
+        <LanguageProvider>
+          <YAMLProvider>
+            <YAMLEditor onNavigateToScripting={navigate} />
+          </YAMLProvider>
+        </LanguageProvider>,
+      );
+      await screen.findByRole('button', { name: 'select tree root' });
+      fireEvent.click(screen.getByRole('button', { name: 'select tree root' }));
+      expect(navigate).toHaveBeenCalledTimes(1);
+      expect(screen.getByTestId('node-details')).toHaveTextContent('Restored plan');
+    } finally {
+      cleanup();
+      Object.defineProperty(window, 'parent', { configurable: true, value: originalParent });
+      window.history.replaceState({}, '', '/');
+    }
+  });
+
   it('keeps data source file browsing disabled when the editor is not served by Studio', async () => {
     getActiveDraftMock.mockResolvedValueOnce({
       yaml: 'test:\n  name: restored\n',
