@@ -1,8 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { ExternalLink, Check } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '../ui/dialog';
 import { HTTPDynamicReview } from './HTTPDynamicReview';
 import { recorderCompactButton as button } from './HTTPRecorderSettings';
+/** Inside the web app, the saved-recording actions sit at the right of the protocol tabs. */
+export const RECORDER_ACTIONS_SLOT = 'recorder-protocol-actions';
+
 export function HTTPRecorderSaved({
   path,
   total,
@@ -21,13 +25,25 @@ export function HTTPRecorderSaved({
   language: string;
 }) {
   const [review, setReview] = useState(false);
+  const [slot, setSlot] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    if (embedded) setSlot(document.getElementById(RECORDER_ACTIONS_SLOT));
+  }, [embedded]);
   const text = (en: string, es: string) => (language === 'es' ? es : en);
-  return (
-    <footer className="flex h-10 shrink-0 items-center gap-3 border-t border-white/10 bg-[#111111] px-3 text-xs">
+  const place = (content: ReactNode) =>
+    slot ? (
+      createPortal(<div className="flex min-w-0 items-center gap-2 text-xs">{content}</div>, slot)
+    ) : (
+      <footer className="flex h-10 shrink-0 items-center gap-3 border-t border-white/10 bg-[#111111] px-3 text-xs">
+        {content}
+      </footer>
+    );
+  return place(
+    <>
       <Check className="h-3.5 w-3.5 shrink-0 text-emerald-300" />
       <p
         role="status"
-        className="min-w-0 flex-1 truncate font-mono text-emerald-300"
+        className={'min-w-0 truncate font-mono text-emerald-300 ' + (slot ? '' : 'flex-1')}
         title={path}
       >
         {path || text('Recording ready', 'Grabación lista')}
@@ -42,6 +58,7 @@ export function HTTPRecorderSaved({
       </button>
       <button
         type="button"
+        data-recorder-add=""
         className={button + ' border-yellow-400/30! text-yellow-300!'}
         disabled={opening}
         onClick={onOpen}
@@ -74,6 +91,6 @@ export function HTTPRecorderSaved({
           </button>
         </DialogContent>
       </Dialog>
-    </footer>
+    </>,
   );
 }

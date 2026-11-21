@@ -304,8 +304,23 @@ export const DistributedTimeline = memo(function DistributedTimeline({
                   connected = true;
                 }
                 return (
+                  <g key={metric.key}>
+                  {/* Area under the line: the series color fading from 20% to 0. */}
+                  <defs>
+                    <linearGradient id={`${clipId}-area-${metric.key}`} x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0" stopColor={metric.color} stopOpacity={0.2} />
+                      <stop offset="1" stopColor={metric.color} stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
                   <path
-                    key={metric.key}
+                    className="relampo-chart-area"
+                    aria-hidden="true"
+                    clipPath={`url(#${clipId})`}
+                    d={areaFromLine(path, T + plotHeight)}
+                    fill={`url(#${clipId}-area-${metric.key})`}
+                    stroke="none"
+                  />
+                  <path
                     data-metric={metric.key}
                     clipPath={`url(#${clipId})`}
                     d={path}
@@ -315,6 +330,7 @@ export const DistributedTimeline = memo(function DistributedTimeline({
                     strokeLinejoin="round"
                     vectorEffect="non-scaling-stroke"
                   />
+                  </g>
                 );
               })}
             {inspected && (
@@ -415,3 +431,19 @@ export const DistributedTimeline = memo(function DistributedTimeline({
     </section>
   );
 });
+
+/** Closes each segment of a line path down to the baseline, for a filled area under the line. */
+function areaFromLine(line: string, baseline: number): string {
+  return line
+    .split('M')
+    .map(segment => segment.trim().replace(/^L/, ''))
+    .filter(Boolean)
+    .map(segment => {
+      const points = segment.split(/\s*L\s*|\s+/).filter(Boolean);
+      if (points.length < 2) return '';
+      const first = points[0].split(',')[0];
+      const last = points[points.length - 1].split(',')[0];
+      return `M${first},${baseline} L${points.join(' L')} L${last},${baseline} Z`;
+    })
+    .join(' ');
+}

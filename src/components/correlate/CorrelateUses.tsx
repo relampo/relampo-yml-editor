@@ -1,4 +1,5 @@
 import { correlationRequestLabel, type CorrelateLocation } from '../../utils/correlateApi';
+import { CorrelateRequestRef } from './CorrelateRequestRef';
 export function CorrelateUses({ targets, label }: { targets: CorrelateLocation[] | null; label: string }) {
   if (!targets?.length) return <span className="text-zinc-600">—</span>;
   return (
@@ -14,7 +15,9 @@ export function CorrelateUses({ targets, label }: { targets: CorrelateLocation[]
           className="flex h-10 shrink-0 flex-col justify-center"
           title={correlationRequestLabel(target) + ' · ' + target.Location + ' ' + target.Path}
         >
-          <span className="block truncate">{correlationRequestLabel(target)}</span>
+          <span className="block truncate" title={correlationRequestLabel(target)}>
+            <CorrelateRequestRef location={target} />
+          </span>
           <span className="block truncate font-mono text-[10px] text-zinc-500">
             {target.Location} {target.Path}
           </span>

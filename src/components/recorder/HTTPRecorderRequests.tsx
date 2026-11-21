@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { httpMethodAttr, httpStatusClass } from '../../utils/httpBadges';
 import { httpRecorderRequest, type HTTPRecordedRow, type HTTPRecordingPreview } from '../../utils/httpRecorderApi';
 import { recorderCompactInput as recorderInput } from './HTTPRecorderSettings';
 import { useResizePanel } from '../../hooks/useResizePanel';
@@ -89,10 +90,11 @@ export function HTTPRecorderRequests({
       (!domain || new URL(row.url).host === domain),
   );
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden border-t border-white/10">
+    <div data-recorder-panels="" className="flex min-h-0 min-w-0 flex-1 overflow-hidden border-t border-white/10">
       <section
         role="region"
         aria-label="Recorded traffic"
+        data-recorder-panel=""
         className="flex min-h-0 min-w-0 shrink-0 flex-col overflow-hidden bg-[#0a0a0a]"
         style={{ width: `${leftPanelWidth}%` }}
       >
@@ -194,6 +196,7 @@ export function HTTPRecorderRequests({
                       selectRequest(row.id);
                     }
                   }}
+                  data-selected={selected === row.id ? '' : undefined}
                   className={
                     'border-t border-white/5 hover:bg-white/5 ' + (selected === row.id ? 'bg-yellow-400/5' : '')
                   }
@@ -201,7 +204,9 @@ export function HTTPRecorderRequests({
                   <td className="px-2 py-1.5 font-mono text-yellow-400">{String(row.id + 1).padStart(2, '0')}</td>
                   <td className="px-2 py-1.5">{row.name.split(' - ' + row.method + ' ')[0] || '—'}</td>
                   {transactionsEnabled && <td className="px-2 py-1.5 text-violet-300">{row.transaction || '—'}</td>}
-                  <td className="px-2 py-1.5 font-mono text-emerald-300">{row.method}</td>
+                  <td className="px-2 py-1.5 font-mono text-emerald-300">
+                    <span data-method={httpMethodAttr(row.method)}>{row.method}</span>
+                  </td>
                   <td className="max-w-[240px] truncate px-2 py-1.5">
                     <button
                       type="button"
@@ -213,7 +218,7 @@ export function HTTPRecorderRequests({
                     </button>
                   </td>
                   <td className={'px-2 py-1.5 font-mono ' + (row.status >= 400 ? 'text-red-300' : 'text-emerald-300')}>
-                    {row.status}
+                    <span data-status-class={httpStatusClass(row.status)}>{row.status}</span>
                   </td>
                   <td className="px-2 py-1.5 font-mono text-zinc-400">{row.durationMs.toFixed(1)}</td>
                 </tr>
@@ -221,7 +226,7 @@ export function HTTPRecorderRequests({
             </tbody>
           </table>
           {!rows.length && (
-            <p className="p-8 text-center text-sm text-zinc-500">
+            <p data-recorder-empty="" className="p-8 text-center text-sm text-zinc-500">
               {text(
                 'Requests will appear here as you use your application.',
                 'Los requests aparecerán aquí mientras usas tu aplicación.',

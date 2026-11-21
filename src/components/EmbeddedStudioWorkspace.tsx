@@ -1,3 +1,4 @@
+import { RECORDER_ACTIONS_SLOT } from './recorder/HTTPRecorderSaved';
 import { correlatedFileName } from '../utils/correlateApi';
 import { HistoricalScriptWorkspace } from './HistoricalScriptWorkspace';
 import { persistEmbeddedScript } from '../utils/embeddedFileStorage';
@@ -495,7 +496,11 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
           style={{ display: view !== 'record' ? 'none' : undefined }}
         >
           <div
-            className="flex shrink-0 gap-2 border-b border-white/10 p-2"
+            data-recorder-toolbar=""
+            className="flex shrink-0 items-center gap-2 border-b border-white/10 p-2"
+          >
+          <div
+            className="flex gap-2"
             role="tablist"
             aria-label="Recorder protocol"
           >
@@ -514,6 +519,14 @@ function ScriptWorkspace({ initialCatalog }: { initialCatalog: PlanScripts }) {
                 {value === 'http' ? 'HTTP/HTTPS' : 'gRPC'}
               </button>
             ))}
+          </div>
+            {/* The HTTP recorder places its saved-recording actions here. */}
+            <div
+              id={RECORDER_ACTIONS_SLOT}
+              data-recorder-actions=""
+              className="ml-auto flex min-w-0 items-center gap-2"
+              style={{ display: protocol !== 'http' ? 'none' : undefined }}
+            />
           </div>
           {openedHTTP && (
             <div
