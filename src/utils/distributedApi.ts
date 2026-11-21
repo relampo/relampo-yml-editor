@@ -1,3 +1,5 @@
+import { embeddedPlanDraftKey } from './embeddedPlanDraft';
+import { uploadPlanDataSource } from './planDataSource';
 import type { RunIntentTick } from './runApi';
 import type { ExecutionProject } from './executionProject';
 import { agentRequest } from './agentTransport';
@@ -160,6 +162,10 @@ export function safeProviderURL(value?: string): string | undefined {
 // File inputs expose bytes, not absolute paths. Stage selected files in the
 // Studio session, then pass the returned paths to the existing CLI operation.
 export async function uploadDistributedFile(file: File): Promise<string> {
+  // Apply also uploads to CI, but CSV/TXT inputs belong to the Test Plan so
+  // the exact same script can run locally or from a freshly prepared worker.
+  if (window.parent !== window && embeddedPlanDraftKey() && /\.(csv|txt)$/i.test(file.name))
+    await uploadPlanDataSource(file);
   const form = new FormData();
   form.append('file', file);
   const response = await agentRequest('/api/distributed/upload', {
