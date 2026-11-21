@@ -1,3 +1,4 @@
+import { requestExecutionProject } from './executionProject';
 import { isSQLResult, type SQLResult } from './sqlResults';
 import type { WebSocketEventMetrics } from '../components/WebSocketMetrics';
 import {
@@ -206,7 +207,9 @@ export interface StudioDataSourcePreview {
 export async function probeStudio(): Promise<StudioInfo | null> {
   try {
     // Through the relay the first request also gets a ticket and opens the connection.
-    const response = await agentRequest('/api/studio/info', { signal: AbortSignal.timeout(usesRelay() ? 10_000 : 2000) });
+    const response = await agentRequest('/api/studio/info', {
+      signal: AbortSignal.timeout(usesRelay() ? 10_000 : 2000),
+    });
     if (!response.ok) return null;
     const body = await response.json();
     if (body?.studio !== true) return null;
@@ -258,6 +261,7 @@ export async function startDebugRun(yaml: string, options: StartDebugRunOptions 
   const compatibilityError = componentCapabilityError(yaml, options.componentCapabilities);
   if (compatibilityError) throw new Error(compatibilityError);
   const vus = options.vus ?? 1;
+  const workspace = await requestExecutionProject();
   // Studio chooses the id, so a start with no answer can be found again.
   const id = crypto.randomUUID();
   const response = await startRun(
@@ -267,6 +271,7 @@ export async function startDebugRun(yaml: string, options: StartDebugRunOptions 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           yaml,
+          ...(workspace ? { workspace: { scriptPath: workspace.scriptPath, files: workspace.files } } : {}),
           vus,
           ...(options.scenarioName ? { scenarioName: options.scenarioName } : {}),
           id,
@@ -358,10 +363,7 @@ export async function previewStudioDataSourceFile(
 
 // Streams a run's events over SSE. Returns a function that closes the stream.
 export function streamDebugRun(runId: string, handlers: DebugStreamHandlers): () => void {
-  const stream = createValidatedEventStream(
-    `/api/debug/runs/${runId}/events`,
-    handlers.onConnectionError,
-  );
+  const stream = createValidatedEventStream(`/api/debug/runs/${runId}/events`, handlers.onConnectionError);
   const { source } = stream;
   const seenEvents = new Set<string>();
 
