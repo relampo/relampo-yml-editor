@@ -19,13 +19,18 @@ function currentKnownFields(): Record<string, ReadonlySet<string>> {
   const suffix = `/bundles/${slots.current}/contract.json`;
   const manifest = Object.entries(manifests).find(([path]) => path.endsWith(suffix))?.[1];
   if (!manifest) return {};
-  return Object.fromEntries(Object.entries(manifest.known_fields).map(([scope, fields]) => [scope, new Set([...fields, ...(manifest.editor_fields?.[scope] ?? [])]) ]));
+  return Object.fromEntries(
+    Object.entries(manifest.known_fields).map(([scope, fields]) => [
+      scope,
+      new Set([...fields, ...(manifest.editor_fields?.[scope] ?? [])]),
+    ]),
+  );
 }
 
 const knownFields = currentKnownFields();
 // Adopt the gRPC contract scopes while keeping the current HTTP/component contract.
 for (const [scope, fields] of Object.entries(grpcContract.known_fields)) {
-  if (scope === 'grpc' || scope.startsWith('grpc_')) knownFields[scope] = new Set(fields);
+  if ((scope === 'grpc' || scope.startsWith('grpc_')) && !knownFields[scope]) knownFields[scope] = new Set(fields);
 }
 
 // Recorder fields are preserved document data, beyond the runtime contract.
@@ -127,11 +132,13 @@ function dataScope(
     case 'extractor':
     case 'extract':
       return {
-        scope: 'extractor',
+        scope: node.data?.type === 'sql' ? 'sql_extractor' : 'extractor',
         prefix:
-          parent && REQUEST_TYPES.has(parent.type)
-            ? [...(parent.path || []), 'request', 'extractors', childIndex(parent, node, EXTRACTOR_TYPES)]
-            : path,
+          parent?.type === 'sql'
+            ? [...(parent.path || []), 'extractors', childIndex(parent, node, EXTRACTOR_TYPES)]
+            : parent && REQUEST_TYPES.has(parent.type)
+              ? [...(parent.path || []), 'request', 'extractors', childIndex(parent, node, EXTRACTOR_TYPES)]
+              : path,
       };
     default:
       return null;

@@ -56,11 +56,11 @@ it('prevents duplicate headers and headers on a send-only step during add, paste
   ])
     expect(treeToYAML(result)).toBe(unchanged);
   expect(canAddNodeToTarget(send, 'headers')).toBe(false);
-  expect(getAddableItems('websocket', k => k, send)).toEqual([]);
-  expect(getAddableItems('websocket', k => k, ws)).toEqual([]);
+  expect(getAddableItems('websocket', k => k, send).find(i => i.type === 'headers')?.disabledReason).toBeTruthy();
+  expect(getAddableItems('websocket', k => k, ws).find(i => i.type === 'headers')?.disabledReason).toBeTruthy();
   const empty: YAMLNode = { ...ws, children: [] };
   expect(canAddNodeToTarget(empty, 'headers')).toBe(true);
-  expect(getAddableItems('websocket', k => k, empty).map(i => i.type)).toEqual(['headers']);
+  expect(getAddableItems('websocket', k => k, empty).find(i => i.type === 'headers')?.disabledReason).toBeUndefined();
   const refreshed = refreshTreePaths(tree);
   const refreshedWS = collectRequests(refreshed)[0];
   expect(refreshedWS.children![0].path).toEqual([...refreshedWS.path!, 'websocket', 'headers']);

@@ -1,9 +1,11 @@
 import type { YAMLNode } from '../../types/yaml';
 import type { YAMLAddableNodeType } from './addableItems';
+import { nativeChildUnavailable } from '../../utils/protocolChildren';
 import { canContain } from '../../utils/yamlDragDropRules';
 import { buildSearchIndex, nodeMatchExpandsDescendants, type SearchNodeState } from './search';
 
 export function canAddNodeToTarget(target: YAMLNode, nodeType: YAMLAddableNodeType) {
+  if (nativeChildUnavailable(target, nodeType)) return false;
   if (target.type === 'websocket' && nodeType === 'headers') {
     if (target.data?.action && target.data.action !== 'connect') return false;
     if (target.children?.some(child => child.type === 'headers')) return false;

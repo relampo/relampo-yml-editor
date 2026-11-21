@@ -20,7 +20,7 @@ const commonMimeTypes = [
   'audio/mpeg',
 ];
 
-export function FileDetails({ node, onNodeUpdate }: NodeDetailProps) {
+export function FileDetails({ node, onNodeUpdate, protocol }: NodeDetailProps & { protocol?: string }) {
   const { t } = useLanguage();
   const { data, updateData, updateField } = createNodeDataUpdater(node, onNodeUpdate);
   const pathValue = String(data.path || '').trim();
@@ -31,7 +31,7 @@ export function FileDetails({ node, onNodeUpdate }: NodeDetailProps) {
 
     if (field === 'path') {
       const nextData: YAMLNodeData = { ...data, path: raw };
-      if (!String(nextData.field || '').trim() && raw.trim()) {
+      if (!protocol && !String(nextData.field || '').trim() && raw.trim()) {
         nextData.field = 'file';
       }
       updateData(nextData);
@@ -49,6 +49,18 @@ export function FileDetails({ node, onNodeUpdate }: NodeDetailProps) {
 
   return (
     <>
+      {protocol === 'grpc' && (
+        <label className="block text-xs text-zinc-400 mb-4">
+          {t('yamlEditor.nodeDetails.nativeFile.grpcField')}
+          <input
+            className="w-full mt-2 px-3 py-2 rounded bg-white/5 border border-white/10 text-zinc-300 font-mono text-sm"
+            aria-label={t('yamlEditor.nodeDetails.nativeFile.grpcField')}
+            placeholder="payload.content"
+            value={data.field ?? ''}
+            onChange={event => handleChange('field', event.target.value)}
+          />
+        </label>
+      )}
       <div className="grid grid-cols-2 gap-3 mb-4">
         <div className="min-w-0">
           <FileField
@@ -60,45 +72,47 @@ export function FileDetails({ node, onNodeUpdate }: NodeDetailProps) {
           />
         </div>
 
-        <div className="min-w-0">
-          <label
-            htmlFor="file-detail-mime"
-            className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
-          >
-            {t('yamlEditor.nodeDetails.file.mimeType')}
-          </label>
-          <select
-            id="file-detail-mime"
-            value={mimeValue}
-            onChange={event => handleChange('mime', event.target.value)}
-            className="w-full px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono h-9.5 outline-none"
-          >
-            <option
-              value=""
-              className="bg-[#1a1a1a]"
+        {!protocol && (
+          <div className="min-w-0">
+            <label
+              htmlFor="file-detail-mime"
+              className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-2"
             >
-              application/octet-stream
-            </option>
-            {commonMimeTypes.map(mime => (
+              {t('yamlEditor.nodeDetails.file.mimeType')}
+            </label>
+            <select
+              id="file-detail-mime"
+              value={mimeValue}
+              onChange={event => handleChange('mime', event.target.value)}
+              className="w-full px-3 py-2 bg-[#1a1a1a] border border-white/10 rounded text-sm text-zinc-300 font-mono h-9.5 outline-none"
+            >
               <option
-                key={mime}
-                value={mime}
+                value=""
                 className="bg-[#1a1a1a]"
               >
-                {mime}
+                application/octet-stream
               </option>
-            ))}
-            {mimeValue && !commonMimeTypes.includes(mimeValue) && (
-              <option
-                value={mimeValue}
-                className="bg-[#1a1a1a]"
-              >
-                {mimeValue}
-              </option>
-            )}
-          </select>
-          <div className="mt-1 text-xs text-zinc-500">{t('yamlEditor.nodeDetails.file.commonTypes')}</div>
-        </div>
+              {commonMimeTypes.map(mime => (
+                <option
+                  key={mime}
+                  value={mime}
+                  className="bg-[#1a1a1a]"
+                >
+                  {mime}
+                </option>
+              ))}
+              {mimeValue && !commonMimeTypes.includes(mimeValue) && (
+                <option
+                  value={mimeValue}
+                  className="bg-[#1a1a1a]"
+                >
+                  {mimeValue}
+                </option>
+              )}
+            </select>
+            <div className="mt-1 text-xs text-zinc-500">{t('yamlEditor.nodeDetails.file.commonTypes')}</div>
+          </div>
+        )}
       </div>
 
       {!pathValue && (
@@ -108,7 +122,13 @@ export function FileDetails({ node, onNodeUpdate }: NodeDetailProps) {
       )}
 
       <div className="p-3 bg-amber-400/5 border border-amber-400/20 rounded text-xs text-zinc-400">
-        {t('yamlEditor.nodeDetails.file.uploadInfo')}
+        {t(
+          protocol === 'grpc'
+            ? 'yamlEditor.nodeDetails.nativeFile.grpcInfo'
+            : protocol === 'websocket'
+              ? 'yamlEditor.nodeDetails.nativeFile.wsInfo'
+              : 'yamlEditor.nodeDetails.file.uploadInfo',
+        )}
       </div>
     </>
   );

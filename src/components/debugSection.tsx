@@ -8,6 +8,7 @@ export function DebugSection({
   rows,
   body,
   bodyDownload,
+  bodyLabel,
   searchText = '',
   searchMode = 'text',
   currentMatchIndex = 0,
@@ -15,6 +16,7 @@ export function DebugSection({
 }: {
   rows: Array<[string, string]>;
   body?: string;
+  bodyLabel?: string;
   bodyDownload?: BinaryBodyDownload | null;
   searchText?: string;
   searchMode?: SearchMode;
@@ -71,7 +73,9 @@ export function DebugSection({
       {body !== undefined && (
         <div>
           <div className="mb-2 flex items-center gap-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">{t('yamlEditor.runDebug.debug.section.body')}</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
+              {bodyLabel ?? t('yamlEditor.runDebug.debug.section.body')}
+            </p>
             {bodyDownload && (
               <button
                 type="button"
@@ -80,7 +84,10 @@ export function DebugSection({
                 title={t('yamlEditor.runDebug.debug.section.downloadTitle')}
                 aria-label={t('yamlEditor.runDebug.debug.section.downloadAria')}
               >
-                <Download className="h-3.5 w-3.5" aria-hidden="true" />
+                <Download
+                  className="h-3.5 w-3.5"
+                  aria-hidden="true"
+                />
                 <span>{t('yamlEditor.runDebug.debug.section.downloadBody')}</span>
               </button>
             )}
@@ -181,7 +188,10 @@ function DebugRowsTable({
           .join('\n');
         const startOffset = previousText ? previousText.length + 1 : 0;
         return (
-          <div key={`${label}-${rowIndex}`} className="grid grid-cols-[minmax(100px,30%)_1fr] border-b border-white/10 last:border-b-0">
+          <div
+            key={`${label}-${rowIndex}`}
+            className="grid grid-cols-[minmax(100px,30%)_1fr] border-b border-white/10 last:border-b-0"
+          >
             <div
               className={`min-w-0 bg-white/3 px-3 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500 ${
                 hasActiveSearch || wrapLabels ? 'break-words' : 'truncate'
@@ -258,7 +268,11 @@ function HighlightedDebugText({
         key={`${range.start}-${range.end}`}
         ref={active ? activeMatchRef : undefined}
         data-match-index={precedingMatches + index}
-        className={active ? 'rounded-sm bg-yellow-300 text-black ring-2 ring-amber-500' : 'rounded-sm bg-blue-500/40 text-blue-100'}
+        className={
+          active
+            ? 'rounded-sm bg-yellow-300 text-black ring-2 ring-amber-500'
+            : 'rounded-sm bg-blue-500/40 text-blue-100'
+        }
       >
         {text.slice(range.start, range.end)}
       </mark>,

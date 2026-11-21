@@ -180,3 +180,16 @@ it('RLP-802 recognizes saved Studio load profiles while warning about unrelated 
   );
   expect(collectUnknownFieldPaths(tree)).toEqual(['scenarios[0].future_scenario']);
 });
+
+it('recognizes SQL extractor column and row fields while preserving future fields',()=>{
+ const tree=parseYAMLToTree(`scenarios:
+ - name: read
+   steps:
+    - sql:
+        kind: query
+        query: SELECT 1 AS event_id
+        extractors:
+          - {type: sql, var: event_id, column: event_id, row: 1, future_field: retained}
+`)!;
+ expect(collectUnknownFieldPaths(tree)).toEqual(['scenarios[0].steps[0].sql.extractors[0].future_field']);
+});

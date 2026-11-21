@@ -60,3 +60,13 @@ describe('Error policy editing and saving', () => {
   });
 
 });
+
+it('offers supported native error and timeout policies and saves the stop action',async()=>{
+ let saved:unknown;
+ render(<ErrorPolicyDetails nativeContext node={{id:'p',type:'error_policy',name:'Policy',data:{on_error:'continue'}}} onNodeUpdate={(_,data)=>{saved=data}}/>);
+ expect(screen.queryByRole('button',{name:'On 5xx'})).not.toBeInTheDocument();
+ const action=screen.getByRole('combobox',{name:'Other Errors Action'});
+ fireEvent.keyDown(action,{key:'Enter'});
+ fireEvent.click(await screen.findByRole('option',{name:'Stop'}));
+ expect(saved).toEqual({on_error:'stop'});
+});

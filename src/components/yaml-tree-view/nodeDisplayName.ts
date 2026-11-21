@@ -8,6 +8,8 @@ const FIXED_NAMES: Record<string, string> = {
   'error_policy|Error Policy': 'errorPolicy',
   'http_defaults|HTTP Defaults': 'httpDefaults',
   'grpc_defaults|gRPC Defaults': 'grpcDefaults',
+  'sql_defaults|SQL Defaults': 'sqlDefaults',
+  'sql|SQL Request': 'sqlRequest',
   'assertion|Assertion': 'assert',
   'scenarios|Scenarios': 'scenarios',
   'metrics|Metrics': 'metrics',

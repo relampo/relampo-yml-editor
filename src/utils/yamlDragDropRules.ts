@@ -48,6 +48,7 @@ const ROOT_LEVEL_ELEMENTS: YAMLNodeType[] = [
   'data_source',
   'http_defaults',
   'grpc_defaults',
+  'sql_defaults',
   'scenarios',
   'metrics',
   'error_policy',
@@ -152,6 +153,7 @@ const containmentRules: Partial<Record<YAMLNodeType, YAMLNodeType[]>> = {
   data_source: [],
   http_defaults: [],
   grpc_defaults: [],
+  sql_defaults: [],
   metrics: [],
 
   // Scenarios container
@@ -179,10 +181,10 @@ const containmentRules: Partial<Record<YAMLNodeType, YAMLNodeType[]>> = {
   head: SAMPLER_CHILDREN,
   options: SAMPLER_CHILDREN,
 
-  // SQL steps are leaf executable steps
-  sql: [],
-  grpc: [],
-  websocket: ['headers'],
+  // SQL queries can extract one cell into a variable.
+  sql: SAMPLER_CHILDREN.filter(type => !['file', 'headers'].includes(type)),
+  grpc: SAMPLER_CHILDREN,
+  websocket: SAMPLER_CHILDREN,
 
   // Logic Controllers - can contain steps and other controllers
   group: STEP_ELEMENTS,
