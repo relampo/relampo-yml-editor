@@ -7,7 +7,6 @@ import {
   withStudioToken,
 } from './studioAuth';
 
-// jsdom lets us vary the page URL (and thus ?token=) via history.replaceState.
 function setUrl(url: string) {
   window.history.replaceState({}, '', url);
 }

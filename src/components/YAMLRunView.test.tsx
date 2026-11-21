@@ -298,17 +298,13 @@ describe('YAMLLoadRunSession', () => {
       ]);
     });
 
-    // The req/s value appears on the stat card (and the sparkline header).
     expect(screen.getAllByText('123').length).toBeGreaterThan(0);
     expect(screen.getAllByText('200').length).toBeGreaterThan(0);
-    // The summary appears before onDone from the backend's exact cumulative
-    // aggregate rather than recounting the bounded log tail.
     expect(screen.getByText('Run summary')).toBeInTheDocument();
     expect(screen.queryByText('Executed requests')).not.toBeInTheDocument();
     const liveSummaryTable = screen.getByRole('table');
     expect(within(liveSummaryTable).getByText('/api/x')).toBeInTheDocument();
     expect(within(liveSummaryTable).getByText('200')).toBeInTheDocument();
-    // The live log feed still renders the streamed engine line.
     expect(screen.getByText('Live logs')).toBeInTheDocument();
     expect(screen.getAllByText(/GET \/api\/x/)).toHaveLength(2);
 
@@ -415,8 +411,6 @@ describe('YAMLLoadRunSession', () => {
     }));
     act(() => {
       runApiMock.handlers[0].onLog(lines);
-      // EventSource can replay the retained batch after a reconnect. The
-      // reducer must not append those sequence IDs a second time.
       runApiMock.handlers[0].onLog(lines);
     });
 
@@ -435,9 +429,6 @@ describe('YAMLLoadRunSession', () => {
       runApiMock.handlers[0].onLog(logLines(Array.from({ length: 1200 }, (_, seq) => seq)));
     });
 
-    // The panel auto-scrolls to the newest line on every batch, so a notice
-    // placed inside the scrolling body would sit ~1000 rows above the viewport
-    // exactly when it has something to say.
     const notice = screen.getByText(/Showing log lines/);
     const logBody = document.querySelector('.max-h-64.overflow-y-auto');
     expect(logBody).not.toBeNull();
@@ -454,8 +445,6 @@ describe('YAMLLoadRunSession', () => {
       runApiMock.handlers[0].onLog([...logLines([0, 1]), ...logLines([1, 2])]);
     });
 
-    // Duplicates within one batch must collapse too, otherwise the list renders
-    // the same line twice under a duplicated React key.
     expect(screen.getAllByText(/GET \/line-1 /)).toHaveLength(1);
     expect(screen.getAllByText(/GET \/line-/)).toHaveLength(3);
   });
@@ -745,12 +734,6 @@ describe('YAMLLoadRunSession', () => {
     expect(within(completedTable).queryByText('/callback?code={{code}}')).not.toBeInTheDocument();
   });
 
-  // RLP-655. An unexpected redirect chain — one the recording has no children
-  // for — must survive the summary as one resolved-URL row per hop, ordered
-  // under the step that spawned it. The rows are keyed by the runtime
-  // `...redirects[N]` step path, never by the resolved URL, so a chain that
-  // lands somewhere different on each iteration still collapses into a single
-  // row with the summed count instead of fanning out one row per landing.
   it('keeps every unexpected redirect hop as its own resolved-URL row under its parent step', async () => {
     const tree: YAMLNode = {
       id: 'root',
@@ -800,8 +783,6 @@ describe('YAMLLoadRunSession', () => {
               failures: 0,
               ...latency,
             },
-            // Hop 1 leaves the recorded origin entirely: the absolute URL is the
-            // only honest rendering of where the run actually went.
             {
               name: 'Authorize hop',
               method: 'GET',
@@ -815,9 +796,6 @@ describe('YAMLLoadRunSession', () => {
               failures: 0,
               ...latency,
             },
-            // Two landings for the SAME hop: correlation gave each iteration a
-            // different code, so the engine reports them as separate resolved
-            // URLs under one step path.
             {
               name: 'Landing',
               method: 'GET',
@@ -850,8 +828,6 @@ describe('YAMLLoadRunSession', () => {
     });
 
     const table = await screen.findByRole('table');
-    // One row per hop — never a synthetic "Redirect N from ..." label, and never
-    // an extra row for the second landing of the same hop.
     const rows = within(table)
       .getAllByRole('row')
       .slice(1)
@@ -862,7 +838,6 @@ describe('YAMLLoadRunSession', () => {
     expect(rows[2]).toContain('/callback?code=runtime-value-1');
     expect(within(table).queryByText('/callback?code=runtime-value-2')).not.toBeInTheDocument();
     expect(within(table).queryByText(/Redirect \d+ from/)).not.toBeInTheDocument();
-    // The two landings merged: 2 + 1 executions and 0 + 1 failures.
     const landingCells = within(table).getAllByRole('row')[3].querySelectorAll('td');
     expect(landingCells[1].textContent).toBe('3');
     expect(landingCells[2].textContent).toBe('1');
@@ -1065,10 +1040,6 @@ describe('YAMLLoadRunSession', () => {
   });
 
   it('falls back to the final summary rows when snapshots carry no per-request aggregate', async () => {
-    // A backend older than the RLP-629 contract streams metrics without the
-    // `requests` field. buildLiveRunSummary then yields no rows, so once the run
-    // finishes the completed view must fall back to the final summary's own rows
-    // instead of rendering an empty table.
     render(<YAMLLoadRunSession {...baseProps} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Run load test' }));
@@ -1076,7 +1047,6 @@ describe('YAMLLoadRunSession', () => {
 
     act(() => {
       runApiMock.handlers[0].onState({ status: 'running', started_at: '2026-06-23T00:00:00Z', elapsed_ms: 0 });
-      // metric() intentionally omits `requests` — the pre-contract snapshot shape.
       runApiMock.handlers[0].onMetrics(metric({ total_requests: 200 }));
       runApiMock.handlers[0].onDone({ status: 'completed', error: null, summary: summary() });
     });

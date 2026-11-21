@@ -146,9 +146,6 @@ describe('YAMLDebugSession RLP debug fixes', () => {
     await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
 
     act(() => {
-      // A 304 Not Modified and a standalone 302 (e.g. a sign-off) both carry a
-      // 3xx status but produce no labeled REDIRECTED step, so neither should be
-      // counted. Only the chain "final" landing is a follow-up step.
       debugApiMock.handlers[0].onEvent(event({ name: '[1] GET /', status: 304 }));
       debugApiMock.handlers[0].onEvent(event({ name: '[13] GET /logout', status: 302 }));
       debugApiMock.handlers[0].onEvent(
@@ -182,8 +179,6 @@ describe('YAMLDebugSession RLP debug fixes', () => {
     await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
 
     act(() => {
-      // The tree can badge this recorded child as REDIRECTED, but Debug reports
-      // the execution result family. A successful 200 remains Passed.
       debugApiMock.handlers[0].onEvent(
         event({
           name: '[14] GET /catalog',
@@ -245,7 +240,6 @@ describe('YAMLDebugSession RLP debug fixes', () => {
     });
 
     await screen.findByRole('heading', { name: '/home' });
-    // A plain 200 (no redirect role) is not labeled Redirect.
     expect(screen.queryByText('Redirect', { exact: true })).toBeNull();
   });
 
@@ -300,7 +294,6 @@ describe('YAMLDebugSession RLP debug fixes', () => {
     await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
     const context = { request_id: 12, step_path: 'scenarios[0].steps[0]', vu: 1 };
     act(() => {
-      // The runtime emits both Spark phases before the measured request event.
       debugApiMock.handlers[0].onEvent(event({ ...context, method: 'SPARK', name: 'spark-log: before value', spark_phase: 'before' }));
       debugApiMock.handlers[0].onEvent(event({ ...context, method: 'SPARK', name: 'spark-log: after value', spark_phase: 'after' }));
       debugApiMock.handlers[0].onEvent(event({ ...context, iteration: 1 }));
@@ -360,9 +353,6 @@ describe('YAMLDebugSession RLP debug fixes', () => {
     await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
 
     act(() => {
-      // Older/partial engine payload: the redirect final lands with only its
-      // recorded `...redirects[N]` step path — no chain_role or redirect_index.
-      // The tree still badges it REDIRECTED, so the summary must count it too.
       debugApiMock.handlers[0].onEvent(
         event({
           name: '[5] GET /catalog',
@@ -833,9 +823,7 @@ describe('YAMLDebugSession RLP debug fixes', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'logs' }));
 
-    // The full hop chain is shown for the final 200...
     expect(await screen.findByText(/followed 1 redirect before this 200 response/)).toBeInTheDocument();
-    // ...so the redundant "redirected request launched by" line is dropped.
     expect(screen.queryByText(/redirected request launched by/)).toBeNull();
   });
 
@@ -1221,9 +1209,6 @@ scenarios:
       data: {
         request_id: 3,
         method: 'GET',
-        // Recorded redirect children contain the capture-time values, not the
-        // original placeholders. The Variables tab must correlate those literal
-        // values with the runtime snapshot, as in the recorded request #3.
         url: '/oauth?state=captured-state&code=captured-code',
         enabled: false,
         chain_id: 'rc-2',
@@ -1439,10 +1424,6 @@ scenarios:
   });
 
   it('Overview shows the runtime URL, not the recorded one with the stale correlated value (RLP-593)', async () => {
-    // The recorded step name bakes in the capture-time value of the {{NROEXP}}
-    // placeholder. At runtime the extraction failed, so the request actually went
-    // out with NROEXP=Regex+value+not+found. Overview read the node name and
-    // showed the stale 2026-88-001-0168, contradicting the Request tab.
     const recordedName = 'Consulta Expediente - GET /servlet/exp?NROEXP=2026-88-001-0168';
     const request: YAMLNode = {
       id: 'exp',
@@ -1479,11 +1460,6 @@ scenarios:
   });
 
   it('weaves a skipped placeholder for a recorded redirect hop the run never followed (RLP-607)', async () => {
-    // The RLP-607 OAuth flow: [123] redirects to [124], which redirects to the
-    // cross-site callback [125]. The engine follows [124] but stops at the
-    // cross-site callback (redirect trust boundary, backend RLP-492), so [125]
-    // emits no event and used to vanish from the timeline (#124 then a jump to
-    // the next request). The recorded final must now show as a skipped #125.
     const parent: YAMLNode = {
       id: 'p123',
       type: 'request',
@@ -1536,8 +1512,6 @@ scenarios:
     await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
 
     act(() => {
-      // Parent (#123) and one hop (#124) fire; the callback [125] never does —
-      // the backend stamps the parent's request_id on every chain event.
       debugApiMock.handlers[0].onEvent(
         event({
           name: '[123] Firmar - POST /authentication',
@@ -1568,10 +1542,8 @@ scenarios:
       debugApiMock.handlers[0].onDone(null);
     });
 
-    // The recorded-but-unfollowed final is woven back in as a skipped #125 row.
     expect(await screen.findByText('#125')).toBeInTheDocument();
     expect(screen.getByText('Skipped · redirect not followed')).toBeInTheDocument();
-    // The two real rows are still there.
     expect(screen.getByText('#123')).toBeInTheDocument();
     expect(screen.getByText('#124')).toBeInTheDocument();
   });
@@ -1838,7 +1810,6 @@ scenarios:
     expect(
       await screen.findByText((_, el) => el?.tagName === 'PRE' && (el.textContent ?? '').includes(notice)),
     ).toBeInTheDocument();
-    // The raw mojibake is not dumped.
     expect(screen.queryByText((_, el) => (el?.textContent ?? '').includes(mojibake))).toBeNull();
     expect(screen.queryByRole('button', { name: 'Download response body bytes' })).not.toBeInTheDocument();
   });

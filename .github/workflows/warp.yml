@@ -1,20 +1,3 @@
-# ======================================================================================
-# Workflow: Respond to Comment
-# ======================================================================================
-# Usage:
-#   - Comment on a PR or Issue with "@warp-agent".
-#   - You can ask questions or request code changes (e.g., "@warp-agent fix this typo").
-#
-# Setup:
-#   - Ensure WARP_API_KEY is set in Repository Secrets.
-#
-# Expected Output:
-#   - The Agent replies to your comment with an answer or confirmation.
-#   - If code changes were requested, the Agent commits them directly to the PR branch.
-#
-# When to use:
-#   - Use this for interactive coding assistance during code review or issue triage.
-# ======================================================================================
 name: Respond to Comment
 
 on:
@@ -90,14 +73,12 @@ jobs:
               prNumber = context.payload.pull_request.number;
             }
 
-            // Fetch PR details to provide full context
             const { data: pr } = await github.rest.pulls.get({
               owner,
               repo,
               pull_number: prNumber,
             });
 
-            // Get the list of files changed in the PR
             const { data: files } = await github.rest.pulls.listFiles({
               owner,
               repo,
@@ -189,7 +170,6 @@ jobs:
           script: |
             const raw = process.env.AGENT_OUTPUT || '';
 
-            // Walk JSONL lines and capture the last agent text message, if any.
             let lastText = '';
             for (const line of raw.split('\n')) {
               const trimmed = line.trim();
@@ -200,7 +180,6 @@ jobs:
                   lastText = obj.text;
                 }
               } catch (e) {
-                // Ignore non-JSON lines
               }
             }
 

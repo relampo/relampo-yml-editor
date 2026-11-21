@@ -41,7 +41,6 @@ function JsonField({
           setError('');
         }}
         onBlur={() => {
-          // Focus alone must not write a default `{}`/`[]` into the YAML.
           if (draft === serialized) return;
           try {
             const parsed: YAMLValue = JSON.parse(draft);
@@ -86,8 +85,6 @@ export function YAMLGRPCDetails({ node, onNodeUpdate }: NodeDetailProps) {
         value={String(data[key] ?? '')}
         placeholder={placeholder}
         onChange={event => {
-          // An empty field removes the key so the value is inherited (for example from grpc_defaults).
-          // payload_base64 stays: its presence selects the binary payload mode.
           if (event.target.value || key === 'payload_base64') return update(key, event.target.value);
           const next = { ...data };
           delete next[key];

@@ -47,7 +47,6 @@ export function SegmentsLoadMode({ data, onChange }: LoadModeProps) {
   const [draggedKey, setDraggedKey] = useState<string | null>(null);
   const [dropKey, setDropKey] = useState<string | null>(null);
   const [moveAnnouncement, setMoveAnnouncement] = useState('');
-  // Do not let a reorder silently discard malformed imported entries filtered by the form.
   const canReorder = Array.isArray(data.segments) && data.segments.length === segments.length;
 
   const clearDrag = () => {
@@ -65,8 +64,6 @@ export function SegmentsLoadMode({ data, onChange }: LoadModeProps) {
     next.splice(to, 0, moved);
     nextKeys.splice(to, 0, nextKeys.splice(from, 1)[0]);
     rowKeysRef.current = nextKeys;
-    // Publish the entire ordered list so existing semantic validation and preview
-    // recompute every predecessor relationship. Values are never corrected here.
     onChange('segments', next);
     setMoveAnnouncement(
       t('yamlEditor.nodeDetails.load.segmentMoved').replace('{name}', moved.name || t('yamlEditor.nodeDetails.load.segment')).replace('{position}', String(to + 1)),

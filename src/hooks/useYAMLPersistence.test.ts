@@ -22,7 +22,6 @@ afterEach(() => {
   clearActiveDraftMock.mockReset();
 });
 
-// ─── helpers ──────────────────────────────────────────────────────────────
 
 function makeParams(overrides: Partial<Parameters<typeof useYAMLPersistence>[0]> = {}) {
   return {
@@ -41,7 +40,6 @@ function makeParams(overrides: Partial<Parameters<typeof useYAMLPersistence>[0]>
   };
 }
 
-// ─── handleSave ───────────────────────────────────────────────────────────
 
 describe('handleSave', () => {
   beforeEach(() => {
@@ -278,7 +276,6 @@ describe('handleSave', () => {
   });
 });
 
-// ─── handleDownload ───────────────────────────────────────────────────────
 
 describe('handleDownload', () => {
   it.each(['ramp_up_down', 'intent'])('RLP-804 RLP-805 blocks export of invalid %s phases', type => {
@@ -292,12 +289,10 @@ describe('handleDownload', () => {
 
   beforeEach(() => {
     vi.useFakeTimers();
-    // Stub URL API (not available in jsdom)
     vi.stubGlobal('URL', {
       createObjectURL: vi.fn(() => 'blob:fake'),
       revokeObjectURL: vi.fn(),
     });
-    // Stub document.createElement to intercept anchor clicks
     const originalCreate = document.createElement.bind(document);
     vi.spyOn(document, 'createElement').mockImplementation((tag: string) => {
       const el = originalCreate(tag);
@@ -476,7 +471,6 @@ describe('handleDownload', () => {
   });
 });
 
-// ─── autosave ─────────────────────────────────────────────────────────────
 
 describe('autosave', () => {
   beforeEach(() => {
@@ -536,7 +530,6 @@ describe('autosave', () => {
   });
 });
 
-// ─── keyboard shortcuts ───────────────────────────────────────────────────
 
 describe('keyboard shortcuts', () => {
   beforeEach(() => {
@@ -606,7 +599,6 @@ describe('keyboard shortcuts', () => {
   });
 });
 
-// ─── resetForNewDocument ────────────────────────────────────────────────────
 
 describe('resetForNewDocument', () => {
   it('clears the saved-at status and the stored draft', async () => {
@@ -629,8 +621,6 @@ describe('resetForNewDocument', () => {
     expect(clearActiveDraftMock).toHaveBeenCalled();
   });
 
-  // Regression: a save already in flight when the user starts a new document
-  // must not resurrect the discarded draft or stamp a stale "saved" status.
   it('does not commit a save that resolves after a reset', async () => {
     let resolveSave: (() => void) | undefined;
     saveActiveDraftMock.mockImplementationOnce(
@@ -648,24 +638,20 @@ describe('resetForNewDocument', () => {
       return useYAMLPersistence({ ...params, serializeDebounceRef });
     });
 
-    // Kick off a save and leave it pending (saveActiveDraft hasn't resolved).
     let savePromise: Promise<void> = Promise.resolve();
     act(() => {
       savePromise = result.current.handleSave();
     });
 
-    // User starts a new document while that save is still in flight.
     await act(async () => {
       await result.current.resetForNewDocument();
     });
 
-    // Now the stale save finally resolves.
     await act(async () => {
       resolveSave?.();
       await savePromise;
     });
 
-    // It undid its own write and committed no stale UI state.
     expect(clearActiveDraftMock).toHaveBeenCalled();
     expect(setHasDocumentActivity).not.toHaveBeenCalledWith(true);
     expect(result.current.lastSavedAt).toBeNull();

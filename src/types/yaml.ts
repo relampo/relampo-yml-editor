@@ -196,7 +196,6 @@ export interface YAMLNodeData {
   request?: YAMLNodeData;
 }
 
-/** Wrap a trusted header or variable map at the generic tree-node boundary. */
 export function yamlMapData(values: StringMap): YAMLNodeData {
   return values as unknown as YAMLNodeData;
 }
@@ -261,19 +260,16 @@ export interface YAMLNode {
   name: string;
   children?: YAMLNode[];
   data?: YAMLNodeData;
-  /** Semantic fields that the editor does not model, kept for lossless saves. */
   unknownData?: Record<string, YAMLValue>;
-  /** Original sampler input and display snapshot keep absence distinct from UI defaults. */
   authoredData?: YAMLNodeData;
   authoredChildTypes?: string[];
   initialData?: YAMLNodeData;
   componentEdits?: string[];
-  /** Native sampler child ownership; editor metadata, never emitted into YAML. */
   protocolChildrenManaged?: boolean;
   protocolScalar?: boolean;
   protocolTarget?: Array<string | number>;
   expanded?: boolean;
-  path?: Array<string | number>; // Path in the YAML tree for synchronization
+  path?: Array<string | number>;
 }
 
 export interface RedirectedRequestInfo {
@@ -286,11 +282,6 @@ export interface RedirectSourceInfo {
   targetNodeId: string;
   targetRequestLabel: string;
   matchedLocation: string;
-  /**
-   * True when the recorded follow-up (redirect target) request is disabled
-   * (`enabled: false`). The redirect linkage no longer applies, so the source
-   * request's "Follow Redirects" option becomes editable again.
-   */
   targetDisabled: boolean;
 }
 

@@ -3,7 +3,6 @@ import { isNativeSampler, protocolData } from '../utils/protocolChildren';
 type Data = Record<string, unknown>;
 const record = (value: unknown): Data =>
   value && typeof value === 'object' && !Array.isArray(value) ? (value as Data) : {};
-/** Execution configuration only: recorder examples are not requests or captures. */
 export function nativeDebugConfiguration(node: YAMLNode): Data | null {
   if (!isNativeSampler(node.type)) return null;
   const data = protocolData(node);

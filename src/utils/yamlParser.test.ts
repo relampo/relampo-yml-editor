@@ -129,7 +129,6 @@ scenarios:
             user_count: "jsonpath('$[0].count')"
 `;
 
-// ─── parseYAMLToTree ───────────────────────────────────────────────────────
 
 describe('parseYAMLToTree', () => {
   it('returns null for empty string', () => {
@@ -274,11 +273,8 @@ scenarios:
       .children!.find(c => c.type === 'scenarios')!
       .children![0].children!.find(c => c.type === 'steps')!.children!;
 
-    // All hosts are preserved as steps (not collapsed into a single host).
     expect(steps).toHaveLength(3);
 
-    // Auto-generated names are host-stripped paths; the absolute URL stays in data.url
-    // so the tree can surface the host separately as a badge.
     expect(steps.map(s => s.name)).toEqual(['GET: /home', 'GET: /v1/profile', 'GET: /assets/player/intro.mp4']);
     expect(steps[0].data!.url).toBe('https://host1.example.com/home');
     expect(steps[1].data!.url).toBe('https://api-business.example.org/v1/profile');
@@ -800,7 +796,6 @@ scenarios:
   });
 });
 
-// ─── treeToYAML ───────────────────────────────────────────────────────────
 
 describe('treeToYAML', () => {
   it('serializes a tree with scenarios to valid, re-parseable YAML', () => {
@@ -1573,10 +1568,6 @@ scenarios:
     expect(sqlSteps.filter(step => step.data!.allow_writes === true)).toHaveLength(4);
   });
 
-  // RLP-522: the backend recorder materializes redirect chains with flat
-  // `chain_id`/`chain_role` markers inside `request:`. The editor must preserve
-  // these unknown fields across a load → edit → save round-trip so it never
-  // silently drops the parent→child linkage the runtime relies on.
   it('round-trips redirect chain markers (chain_id / chain_role)', () => {
     const input = `
 test:
@@ -1614,9 +1605,6 @@ scenarios:
     expect(steps[1].data!.enabled).toBe(false);
   });
 
-  // RLP-522 / JMeter parity: the redirect modes are mutually exclusive. An
-  // imported file carrying both flags must be normalized on save even if the
-  // user never toggled either checkbox; "Redirect Automatically" wins.
   it('preserves authored follow_redirects when redirect_automatically is set', () => {
     const input = `
 test:
@@ -1636,9 +1624,6 @@ scenarios:
     expect(output).toContain('follow_redirects: false');
   });
 
-  // RLP-517: follow_redirects is opt-in per request, but when
-  // http_defaults.follow_redirects is true a request-level false is the
-  // documented override and must survive a load → save round trip.
   it('preserves an explicit follow_redirects: false override of a true global default', () => {
     const input = `
 test:
@@ -1677,9 +1662,6 @@ scenarios:
 `;
     const output = treeToYAML(parseYAMLToTree(input)!);
 
-    // The only follow_redirects in the output is the global default; the
-    // inheriting request must not gain an explicit flag (neither a fabricated
-    // false override nor a redundant true).
     expect(output.match(/follow_redirects/g)).toHaveLength(1);
     expect(output).toContain('follow_redirects: true');
   });
@@ -1704,7 +1686,6 @@ scenarios:
   });
 });
 
-// ─── parse → serialize → re-parse consistency ────────────────────────────
 
 describe('parse/serialize consistency', () => {
   const fullyFeaturedYAML = `
@@ -1744,26 +1725,20 @@ metrics:
   it('preserves key fields after double round-trip', () => {
     const tree1 = parseYAMLToTree(fullyFeaturedYAML)!;
 
-    // Test.name is preserved in the first-generation parsed tree
     expect(tree1.name).toBe('Full Test');
 
     const yaml1 = treeToYAML(tree1);
     const tree2 = parseYAMLToTree(yaml1)!;
     const yaml2 = treeToYAML(tree2);
 
-    // Variables survive the round-trip
     const vars = tree2.children!.find(c => c.type === 'variables');
     expect(yamlMapValue(vars!.data, 'HOST')).toBe('https://api.example.com');
 
-    // Scenarios survive the round-trip
     const scenarios = tree2.children!.find(c => c.type === 'scenarios');
     expect(scenarios!.children![0].name).toBe('Scenario A');
 
-    // YAML output is stable (no runaway growth)
     expect(yaml2.length).toBeLessThan(yaml1.length * 1.5);
 
-    // The straight-ramp load shape must round-trip as the schema's `type: ramp`,
-    // not the editor's internal `linear` alias (RLP-495).
     expect(yaml2).toMatch(/type: ramp\b/);
     expect(yaml2).not.toContain('linear');
   });
@@ -1781,10 +1756,8 @@ metrics:
   });
 });
 
-// ─── Extractor normalization ──────────────────────────────────────────────
 
 describe('extractor normalization (via request step)', () => {
-  // Pulse format uses `extractors:` (array) → produces children of type 'extractor'
   it('normalizes regex extractor with match_no=0 → capture_mode=all', () => {
     const yaml = `
 test:

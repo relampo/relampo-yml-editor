@@ -17,13 +17,6 @@ interface ValidationResult {
   line?: number;
 }
 
-/**
- * 🔥 Spark Code Editor
- * - Monaco Editor (VS Code)
- * - Full syntax highlighting
- * - Editable
- * - Manual syntax validation using Monaco diagnostics
- */
 export function SparkCodeEditor({ value, onChange, minHeight = '250px' }: SparkCodeEditorProps) {
   const { t } = useLanguage();
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
@@ -31,13 +24,11 @@ export function SparkCodeEditor({ value, onChange, minHeight = '250px' }: SparkC
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<Monaco | null>(null);
 
-  // Handle editor mount
   const handleEditorDidMount = (editor: editor.IStandaloneCodeEditor, monaco: Monaco) => {
     editorRef.current = editor;
     monacoRef.current = monaco;
   };
 
-  // Validate JavaScript syntax using Monaco markers
   const validateSyntax = () => {
     setIsValidating(true);
 
@@ -51,7 +42,6 @@ export function SparkCodeEditor({ value, onChange, minHeight = '250px' }: SparkC
         return;
       }
 
-      // Get Monaco markers (errors/warnings)
       if (monacoRef.current && editorRef.current) {
         const model = editorRef.current.getModel();
         if (model) {
@@ -80,9 +70,6 @@ export function SparkCodeEditor({ value, onChange, minHeight = '250px' }: SparkC
         }
       }
 
-      // Editor/model not ready yet — validation relies on Monaco's own JS
-      // diagnostics rather than executing the script, so there is nothing to
-      // check until the editor has mounted.
       setValidationResult({
         isValid: false,
         message: t('yamlEditor.requestDetails.sparkEditorLoading'),
@@ -95,21 +82,17 @@ export function SparkCodeEditor({ value, onChange, minHeight = '250px' }: SparkC
 
   const handleEditorChange = (newValue: string | undefined) => {
     onChange(newValue || '');
-    // Clear validation result when code changes
     setValidationResult(null);
   };
 
   return (
     <div className="relative">
-      {/* Editor Container */}
       <div className="rounded-lg border border-white/10 overflow-hidden">
-        {/* Toolbar */}
         <div className="flex items-center justify-between px-3 py-2 bg-[#1e1e1e] border-b border-white/10">
           <div className="flex items-center gap-2 text-xs text-zinc-500">
             <span className="text-zinc-400">{t('yamlEditor.requestDetails.lineCount').replace('{count}', String(lineCount))}</span>
           </div>
 
-          {/* Validate Button */}
           <button
             type="button"
             onClick={validateSyntax}
@@ -125,7 +108,6 @@ export function SparkCodeEditor({ value, onChange, minHeight = '250px' }: SparkC
           </button>
         </div>
 
-        {/* Monaco Editor */}
         <MonacoEditor
           height={minHeight}
           defaultLanguage="javascript"
@@ -150,7 +132,6 @@ export function SparkCodeEditor({ value, onChange, minHeight = '250px' }: SparkC
         />
       </div>
 
-      {/* Validation Result */}
       {validationResult && (
         <div
           className={`mt-2 px-3 py-2 rounded-lg text-xs flex items-center gap-2 ${
@@ -174,7 +155,6 @@ export function SparkCodeEditor({ value, onChange, minHeight = '250px' }: SparkC
         </div>
       )}
 
-      {/* Quick Reference */}
       <div className="mt-3 p-3 bg-zinc-900/50 rounded-lg border border-white/5">
         <div className="text-xs text-zinc-400 mb-2 font-semibold">{t('yamlEditor.spark.quickReference')}</div>
         <div className="grid grid-cols-2 gap-2 text-xs">

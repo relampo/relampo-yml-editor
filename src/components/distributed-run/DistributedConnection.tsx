@@ -77,17 +77,13 @@ export function DistributedConnection({
     if (!user) return;
     try {
       window.localStorage.setItem(storageKey(user), name);
-    } catch {
-      /* Storage is optional. */
-    }
+    } catch {}
   }
   function restoreRepository(next: Catalog, user: string) {
     let saved = '';
     try {
       saved = window.localStorage.getItem(storageKey(user)) ?? '';
-    } catch {
-      /* Storage is optional. */
-    }
+    } catch {}
     const previous = next.repositories.find(repo => repo.name === saved && repo.writable);
     selectRepository(previous?.name ?? next.repositories.find(repo => repo.writable)?.name ?? '', user);
   }
@@ -162,7 +158,6 @@ export function DistributedConnection({
       loginRef.current = '';
       if (id) void distributedRequest(`run/${encodeURIComponent(id)}/stop`, {}).catch(() => {});
     };
-    // Account changes invalidate all provider data; callback identity does not.
   }, [key, enabled]);
 
   useEffect(() => {

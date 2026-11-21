@@ -44,7 +44,6 @@ interface UseTreeMutationsParams {
   handleCloseContextMenu: () => void;
 }
 
-/** All tree-mutating handlers (add/duplicate/remove/move/toggle, bulk actions, copy/paste). */
 export function useTreeMutations({
   tree,
   onTreeChange,
@@ -67,8 +66,6 @@ export function useTreeMutations({
     treeClipboard.getSnapshot,
   );
 
-  // Commit the new tree and its selection together. Selecting before the parent
-  // accepts the tree can leave the details panel pointing at a stale node.
   const commitInsertedTree = (updatedTree: YAMLNode) => {
     const previousIds = buildParentMap(tree);
     const insertedNodes: YAMLNode[] = [];

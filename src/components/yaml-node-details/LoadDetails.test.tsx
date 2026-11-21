@@ -363,7 +363,6 @@ it.each([undefined, '2m'])('RLP-806 restores an imported profile with root durat
   const onNodeUpdate = (id: string, data: Record<string, unknown>) => { tree = applyNodeUpdateToTree(tree, id, data); };
   const view = renderWithLanguage(<LoadDetails node={loadNode()} onNodeUpdate={onNodeUpdate} />);
   expect(validateYAMLSemantics(tree)).toEqual([]);
-  // Switch immediately after import: a segment edit would derive the root duration.
   activateMode('Linear');
   view.rerender(<LanguageProvider><LoadDetails node={loadNode()} onNodeUpdate={onNodeUpdate} /></LanguageProvider>);
   activateMode('Segments');

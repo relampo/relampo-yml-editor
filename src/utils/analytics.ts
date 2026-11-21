@@ -44,7 +44,6 @@ export function setAnalyticsConsent(enabled: boolean): void {
     window.localStorage.setItem(CONSENT_KEY, enabled ? 'yes' : 'no');
     consentOverride = enabled;
   } catch {
-    // Opt-out remains effective in memory even if browser storage is blocked.
     if (enabled) return;
   }
   if (enabled) {
@@ -55,15 +54,12 @@ export function setAnalyticsConsent(enabled: boolean): void {
   const previous = statsigClient;
   statsigClient = null;
   if (previous) {
-    // Disable logging before shutdown: opt-out must discard queued events.
     previous.updateRuntimeOptions({ loggingEnabled: 'disabled' });
     void previous.shutdown().catch(() => undefined);
   }
   try {
     window.localStorage.removeItem(VISITOR_KEY);
-  } catch {
-    /* Consent remains off. */
-  }
+  } catch {}
 }
 
 export function initializeAnalytics(): StatsigClient | null {
@@ -124,7 +120,6 @@ export function initializeAnalytics(): StatsigClient | null {
   return client;
 }
 
-/** Only fixed product event names and bounded labels can reach the provider. */
 export function logStatsigEvent(eventName: string, metadata: EventMetadata = {}): void {
   if (!EVENTS.has(eventName) || !getAnalyticsConsent()) return;
   const client = statsigClient ?? initializeAnalytics();

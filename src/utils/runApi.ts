@@ -1,12 +1,6 @@
 import { isSQLResult, type SQLResult } from './sqlResults';
 import { componentCapabilityError, type ComponentCapabilities } from './componentConfiguration';
 import { trackStudioRunStarted, trackStudioRunCompleted } from './analytics';
-// Client for the relampo studio load-run API: a full `relampo run` load test
-// (the scenario's real load config) driven from the editor's Run view. Unlike
-// the debug API (one pass, 1-2 VUs, per-request events) this streams aggregated
-// per-second metric snapshots and a final summary. When the editor is served by
-// `relampo studio` the API lives on the same origin; during `vite dev` point
-// VITE_DEBUG_API_URL at a running studio.
 
 import { studioAuthHeaders, withStudioToken } from './studioAuth';
 import { getRuntimeConfig } from './runtimeConfig';
@@ -17,14 +11,10 @@ function apiBase(): string {
   return getRuntimeConfig().apiBaseUrl;
 }
 
-// EventSource auto-reconnects on transient drops; a multi-minute load run will
-// hit some. Only surface a connection error if the stream stays down this long.
 const RECONNECT_GRACE_MS = 10_000;
 
 export type RunStatus = 'running' | 'completed' | 'stopped' | 'errored';
 
-// One ~1s aggregate sample (mirrors the backend loadRunSnapshot /
-// reporter.TimePoint shape: latency in ms, ts in unix seconds).
 export interface RunScenarioProgress {
   name: string;
   status: 'pending' | 'running' | 'finished';
@@ -67,8 +57,6 @@ interface RunState {
 
 type RunLogLevel = 'request' | 'info' | 'error' | 'system';
 
-// One line of the live log feed. Request events carry the structured fields;
-// lifecycle/info events use `message`.
 export interface RunLogLine {
   sql_result?: SQLResult;
   name?: string;
@@ -77,7 +65,7 @@ export interface RunLogLine {
   scenario_name?: string;
   node_id?: string | number;
   seq: number;
-  ts: number; // unix milliseconds
+  ts: number;
   level: RunLogLevel;
   vu?: number;
   method?: string;
@@ -87,9 +75,6 @@ export interface RunLogLine {
   message?: string;
 }
 
-// Per-logical-request roll-up. Final summaries mirror reporter.RequestStat;
-// live snapshots additionally carry runtime identity fields so the editor can
-// map resolved URLs and redirects back to their stable YAML steps.
 export interface GRPCHistogram {
   count: number;
   average: number;
@@ -248,8 +233,6 @@ export interface RunNodeResource {
   go_peak: number;
 }
 
-// Final report (mirrors the subset of reporter.Summary the dashboard renders).
-// `duration` is a Go time.Duration serialized as integer nanoseconds.
 export interface RunLatency {
   count: number;
   avg_ms: number;
@@ -322,8 +305,6 @@ export interface RunStreamHandlers {
   onConnectionError: () => void;
 }
 
-// Starts a load run. The backend executes the scenario's real load config from
-// the YAML (no VU/duration override), so the payload is just the script.
 export function hasMultipleRunScenarios(yaml: string): boolean {
   try {
     const script = load(yaml);
@@ -346,9 +327,7 @@ export async function startLoadRun(yaml: string, componentCapabilities?: Compone
     try {
       const body = await response.json();
       if (body?.error) message = body.error;
-    } catch {
-      // keep the generic message
-    }
+    } catch {}
     throw new Error(message);
   }
   const body = await response.json();
@@ -359,23 +338,14 @@ export async function startLoadRun(yaml: string, componentCapabilities?: Compone
   return body.id;
 }
 
-// URL of the standalone HTML report the studio generates when a run finishes
-// (the same report `relampo run` writes). Open it in a new tab.
 export function loadRunReportUrl(runId: string, language: 'en' | 'es' = 'en'): string {
-  // Opened in a new tab, so it cannot send the token header — carry it in the
-  // query string, which the studio server also accepts.
   return withStudioToken(`${apiBase()}/api/run/${runId}/report?lang=${language}`);
 }
 
-// Asks the studio to cancel a running load run. The engine drains its VUs and
-// the run finishes with status "stopped" carrying partial metrics. Best-effort:
-// stopping an unknown/finished run is a no-op on the server.
 export async function stopLoadRun(runId: string): Promise<void> {
   await fetch(`${apiBase()}/api/run/${runId}/stop`, { method: 'POST', headers: studioAuthHeaders() });
 }
 
-// Streams a run's state, metric snapshots, and terminal summary over SSE.
-// Returns a function that closes the stream.
 export function streamLoadRun(runId: string, handlers: RunStreamHandlers): () => void {
   const stream = createValidatedEventStream(
     withStudioToken(`${apiBase()}/api/run/${runId}/events`),

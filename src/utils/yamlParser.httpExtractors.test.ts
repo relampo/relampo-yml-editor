@@ -208,7 +208,6 @@ scenarios:
     const parsed = yaml.load(exported) as any;
 
     const step = parsed.scenarios[0].steps[0];
-    // Promoted to long-form `request:` because it has children
     expect(step).toHaveProperty('request');
     expect(step.post).toBeUndefined();
 
@@ -217,7 +216,6 @@ scenarios:
     expect(request.url).toBe('https://example.com/authenticate');
     expect(request.body).toBe('{}');
 
-    // Extractors must be a sibling array under `request:`, not nested deeper
     expect(Array.isArray(request.extractors)).toBe(true);
     expect(request.extractors).toHaveLength(1);
 
@@ -228,7 +226,6 @@ scenarios:
     expect(extractor.pattern).toBe('token=(\\w+)');
     expect(extractor.group).toBe(1);
 
-    // The Pulse CLI keys `extractors` only once on the request — guard against duplication
     expect(request.extract).toBeUndefined();
     expect(step.extractors).toBeUndefined();
   });

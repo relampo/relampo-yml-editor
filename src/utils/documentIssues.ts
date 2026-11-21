@@ -4,33 +4,26 @@ import { authoredNodeData } from './yamlAuthoredData';
 
 export type IssueSeverity = 'error' | 'info';
 
-/** A document issue that belongs to a tree node. Syntax errors have no tree, so they are not listed here. */
 export interface DocumentIssue {
-  /** Unique within one document issue index. */
   id: string;
   kind: 'configuration' | 'unrecognized_field';
   severity: IssueSeverity;
   nodeId: string;
   message: string;
-  /** YAML path of an unrecognized field, from the document root. */
   path?: string;
-  /** The same path, from the owner node. */
   relativePath?: string;
   value?: unknown;
 }
 
 export interface IssueMarker {
-  /** Highest severity among the node's own issues. */
   severity?: IssueSeverity;
   issues: DocumentIssue[];
-  /** Highest severity among the issues of the node's descendants. */
   descendantSeverity?: IssueSeverity;
 }
 
 export interface DocumentIssueIndex {
   issues: DocumentIssue[];
   markers: Record<string, IssueMarker>;
-  /** Node ids with issues: errors first, then info, each group in tree order. */
   navigationOrder: string[];
   errorCount: number;
   infoCount: number;
@@ -38,9 +31,6 @@ export interface DocumentIssueIndex {
 
 const EMPTY_INDEX: DocumentIssueIndex = { issues: [], markers: {}, navigationOrder: [], errorCount: 0, infoCount: 0 };
 
-// Paths follow tree nodes, not the YAML document: a request path ends in
-// "request.<field>" while the node data has no "request" wrapper. Try the path
-// as is, then without its first segment.
 function valueFromNode(node: YAMLNode, relativePath: string): unknown {
   const local = { ...authoredNodeData(node), ...node.unknownData };
   return valueAtPath(local, relativePath) ?? valueAtPath(local, relativePath.replace(/^[^.[]+\./, ''));
@@ -50,10 +40,6 @@ function higher(a: IssueSeverity | undefined, b: IssueSeverity | undefined): Iss
   return a === 'error' || b === 'error' ? 'error' : (a ?? b);
 }
 
-/**
- * Joins configuration errors (already localized, paired with their node ids)
- * and unrecognized fields into one list, linked to tree nodes.
- */
 export function indexDocumentIssues(
   tree: YAMLNode | null,
   validationErrors: string[],
@@ -115,7 +101,6 @@ export function indexDocumentIssues(
   };
 }
 
-/** The next node to visit after `currentNodeId`, wrapping to the first. */
 export function nextIssueNodeId(navigationOrder: string[], currentNodeId: string | undefined): string | undefined {
   const index = currentNodeId ? navigationOrder.indexOf(currentNodeId) : -1;
   return navigationOrder[(index + 1) % navigationOrder.length];
@@ -126,10 +111,6 @@ export const DESCENDANT_ISSUE_LABEL: Record<IssueSeverity, string> = {
   info: 'Contains unrecognized fields',
 };
 
-/**
- * Text for the tree row's `aria-description`. The badge and dot are
- * hidden from assistive technology, so the row name stays the node name.
- */
 export function describeIssueMarker(
   marker: IssueMarker | undefined,
   collapsed: boolean,

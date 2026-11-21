@@ -141,7 +141,6 @@ describe('validateBalancedController with non-load-bearing children', () => {
   });
 
   it('flags an incomplete total once the think_time percentage is excluded', () => {
-    // 50 + 45 = 95 among load-bearing children; the think_time's 5 does not count.
     const result = validateBalancedController('total', [req('a', 50), req('b', 45), thinkTime('t', 5)]);
     expect(result.total).toBe(95);
     expect(result.validForType).toBe(false);
@@ -179,9 +178,7 @@ describe('distributeEvenPercentages', () => {
   });
 
   it('uses the largest remainder method so the gap between any two values is <= 1', () => {
-    // 6 requests: 100 / 6 = 16.66… → 4×17 + 2×16, never 5×16 + 1×20. See RLP-475.
     expect(distributeEvenPercentages(6)).toEqual([17, 17, 17, 17, 16, 16]);
-    // 3 requests: 34 + 33 + 33.
     expect(distributeEvenPercentages(3)).toEqual([34, 33, 33]);
   });
 
@@ -202,14 +199,11 @@ describe('distributeEvenPercentages', () => {
   });
 
   it('never assigns 0% to any item, even beyond 100 items', () => {
-    // 103 items: floor(100/103) = 0, so integers would give 0 to 3 items.
-    // With 1 decimal place: floor(1000/103) = 9, so 73 get 1.0 and 30 get 0.9.
     const result103 = distributeEvenPercentages(103);
     expect(result103).toHaveLength(103);
     expect(Math.min(...result103)).toBeGreaterThan(0);
     expect(Math.max(...result103) - Math.min(...result103)).toBeLessThanOrEqual(0.1);
 
-    // 200 items: 1 decimal place → all get 0.5.
     const result200 = distributeEvenPercentages(200);
     expect(result200).toHaveLength(200);
     expect(Math.min(...result200)).toBeGreaterThan(0);

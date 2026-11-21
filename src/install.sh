@@ -1,16 +1,13 @@
 #!/bin/bash
 
-# 🔥 Relampo - Auto-installer
-# Instalador automático para YAML Editor Standalone
 
 set -e
 
-# Colores
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
 echo ""
 echo -e "${YELLOW}⚡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━⚡${NC}"
@@ -18,18 +15,15 @@ echo -e "${YELLOW}   RELAMPO YAML EDITOR - AUTO INSTALLER${NC}"
 echo -e "${YELLOW}⚡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━⚡${NC}"
 echo ""
 
-# Verificar que estamos en el directorio correcto
 if [ ! -f "run.sh" ]; then
     echo -e "${RED}❌ Error: run.sh not found${NC}"
     echo "Please run this script from the relampo directory"
     exit 1
 fi
 
-# Dar permisos de ejecución
 echo -e "${BLUE}🔧 Setting permissions...${NC}"
 chmod +x run.sh
 
-# Verificar Python
 echo -e "${BLUE}🔍 Checking dependencies...${NC}"
 
 if command -v python3 &> /dev/null; then

@@ -18,9 +18,6 @@ function SeedCookiesEditor({
   onChange: (cookies: any[]) => void;
 }) {
   const { t } = useLanguage();
-  // Seed cookies have no id in the YAML, so we hold stable synthetic React keys
-  // in state, kept in lockstep with add/remove below. Reset when the node changes;
-  // fall back to length-syncing (append/trim) if the array changes some other way.
   const [rowKeys, setRowKeys] = useState<string[]>(() => cookies.map(() => crypto.randomUUID()));
   const [rowKeysNodeId, setRowKeysNodeId] = useState(() => nodeId);
   if (rowKeysNodeId !== nodeId) {

@@ -14,9 +14,6 @@ type EventInput = Parameters<typeof matchDebugEventTarget>[0] & { request_id?: n
 const event = (overrides: Partial<EventInput>): EventInput => ({ method: 'GET', name: 'evt', path: '/', ...overrides });
 
 describe('matchDebugEventTarget — redirect chain follow-ups', () => {
-  // A recorded chain like the one in RLP-570: an enabled parent that triggers
-  // redirects, followed by the disabled hops it walks through and the disabled
-  // final landing. The runtime re-walks them and emits redirect_index 1..N.
   const chainNodes = (): YAMLNode[] => {
     const parent: YAMLNode = {
       id: 'p17',
@@ -79,8 +76,6 @@ describe('matchDebugEventTarget — redirect chain follow-ups', () => {
 
   it('resolves a hop by chain position even when its live URL matches another node', () => {
     const nodes = chainNodes();
-    // Correlation rewrote the live URL so it now equals hop20's recorded URL,
-    // but redirect_index 1 must still resolve to the first hop, not /home.
     const match = matchDebugEventTarget(
       event({
         name: '[17] Home -> redirect',
@@ -127,8 +122,6 @@ describe('matchDebugEventTarget — redirect chain follow-ups', () => {
 
   it('maps a final event with no redirect_index to the recorded final child', () => {
     const nodes = chainNodes();
-    // chain_role 'final' but redirect_index omitted (the field is optional /
-    // omitempty drops a 0): must still resolve to the chain's final child.
     const match = matchDebugEventTarget(
       event({
         name: '[17] Home -> redirect',
@@ -159,8 +152,6 @@ describe('matchDebugEventTarget — redirect chain follow-ups', () => {
   });
 
   it('uses the matched Tree number for each redirect follow-up', () => {
-    // RLP-674: the runtime stamps the parent's request_id on every chain event,
-    // but Debug must display the recorded child number shown by the Tree.
     const nodes = chainNodes();
     const hopEvent = event({ chain_id: 'rc-17', chain_role: 'hop', redirect_index: 3, request_id: 17 });
     const hopNode = matchDebugEventTarget(hopEvent, nodes);
@@ -172,8 +163,6 @@ describe('matchDebugEventTarget — redirect chain follow-ups', () => {
   });
 
   it('uses the Tree number for a final follow-up without a redirect_index', () => {
-    // chain_role 'final' with redirect_index omitted (omitempty drops a 0): the
-    // matched child still supplies the Tree number for the final landing.
     const nodes = chainNodes();
     const finalEvent = event({ chain_id: 'rc-17', chain_role: 'final', request_id: 17 });
     const finalNode = matchDebugEventTarget(finalEvent, nodes);
@@ -335,17 +324,10 @@ describe('variableRowsForRequestNode', () => {
   });
 
   it('shows nothing when the event has no mapped node instead of dumping every variable', () => {
-    // RLP-585 #5: unmapped events used to dump all in-scope variables, leaking
-    // data-source columns (user/pass) onto requests that never touch them.
     expect(variableRowsForRequestNode(null, { user: 'u', pass: 'p', REQUEST1: 'x' })).toEqual([]);
   });
 
   it('shows no variables for a redirect hop that maps to an extractor-less child', () => {
-    // RLP-575: a redirect follow-up event (e.g. the chain rc-17 hop landing on
-    // /user/authCode/response) carries the full accumulated correlation map the
-    // engine stamps on every event. It resolves to a recorded REDIRECTED-DISABLED
-    // hop child that extracts nothing, so the Variables tab must stay empty
-    // instead of dumping javax.faces.ViewState/REQUEST1/RESPONSE1/... onto it.
     const hop: YAMLNode = {
       id: 'h',
       type: 'request',
@@ -550,9 +532,6 @@ describe('variableRowsForRequestNode', () => {
   });
 
   it('also lists variables the request uses via {{placeholders}} in headers/url/body', () => {
-    // RLP-584: a request that references {{tenant_id}} in a header and {{user_id}}
-    // in its url consumes those variables even though it extracts nothing — they
-    // must appear in the Variables tab with their accumulated values.
     const node: YAMLNode = {
       id: 'r',
       type: 'request',
@@ -564,8 +543,6 @@ describe('variableRowsForRequestNode', () => {
         body: 'name={{user_id}}',
       },
     };
-    // Order follows the request config traversal (url before headers), so
-    // user_id (in the url) precedes tenant_id (in a header).
     expect(variableRowsForRequestNode(node, { tenant_id: 't-1', user_id: '42', unrelated: 'x' })).toEqual([
       ['user_id (REQ)', '42'],
       ['tenant_id (REQ)', 't-1'],
@@ -613,10 +590,6 @@ describe('variableRowsForRequestNode', () => {
   });
 
   it('surfaces correlation variables whose names contain dots or hyphens', () => {
-    // RLP-597: JSF/correlation variables are named `javax.faces.ViewState`,
-    // `x-correlation-id`, etc. The placeholder scan used to require an identifier
-    // charset, so a body re-posting `{{javax.faces.ViewState}}` never listed it —
-    // it read as "intermittent" because plain names worked and dotted ones didn't.
     const node: YAMLNode = {
       id: 'r',
       type: 'request',
@@ -673,9 +646,6 @@ describe('variableRowsForRequestNode', () => {
   });
 
   it('lists placeholders stored on the headers child node, not just node.data', () => {
-    // Headers edited through the UI live on the `headers` child and are
-    // serialized from there, so an Authorization header
-    // referencing {{token}} must surface even though node.data has no headers.
     const node: YAMLNode = {
       id: 'r',
       type: 'request',
@@ -689,8 +659,6 @@ describe('variableRowsForRequestNode', () => {
   });
 
   it('lists data-source bound variables for a request that owns the data source', () => {
-    // RLP-584: a request with its own data source should surface the bound
-    // variable names (the bind keys), so values pulled per-iteration show up.
     const node: YAMLNode = {
       id: 'r',
       type: 'request',
@@ -719,8 +687,6 @@ describe('variableRowsForRequestNode', () => {
       data: { method: 'GET', url: '/u/{{user_id}}', headers: { Authorization: 'Bearer {{token}}' } },
       children: [{ id: 'e', type: 'extractor', name: 'e', data: { type: 'regex', var: 'token', pattern: 't=(.*)' } }],
     };
-    // token is both extracted and referenced — it must appear once, extractor-first,
-    // carrying both role tags.
     expect(variableRowsForRequestNode(node, { token: 'abc', user_id: '7' })).toEqual([
       ['token (REQ, RES)', 'abc'],
       ['user_id (REQ)', '7'],
@@ -728,10 +694,6 @@ describe('variableRowsForRequestNode', () => {
   });
 
   it('tags a correlation variable RES where it is extracted and REQ where it is used', () => {
-    // RLP-597: the same variable must surface in two Variables tabs — the request
-    // that captures it (RES) and the request that re-sends it (REQ) — so the user
-    // sees where it lives vs. where it is consumed. Mirrors request 2 (extracts
-    // javax.faces.ViewState) and request 8 (posts it back).
     const extractor: YAMLNode = {
       id: 'r2',
       type: 'request',
@@ -759,10 +721,6 @@ describe('variableRowsForRequestNode', () => {
 });
 
 describe('skippedRedirectHops — recorded chain longer than the live run (RLP-607)', () => {
-  // Mirrors the RLP-607 OAuth flow: an enabled parent, one hop the engine
-  // follows, and further hops/final it does NOT (the callback is cross-site, so
-  // the redirect trust boundary — backend RLP-492 — stops the walk). The
-  // unfollowed children emit no event.
   const chain = (): YAMLNode[] => [
     {
       id: 'p17',
@@ -794,8 +752,8 @@ describe('skippedRedirectHops — recorded chain longer than the live run (RLP-6
     ];
     const skipped = skippedRedirectHops(events, chain());
     expect(skipped.map(hop => hop.node.id)).toEqual(['f19']);
-    expect(skipped[0].position).toBe(2); // #17.2
-    expect(skipped[0].afterEventIndex).toBe(1); // slots in after the last real row
+    expect(skipped[0].position).toBe(2);
+    expect(skipped[0].afterEventIndex).toBe(1);
   });
 
   it('reports nothing when every recorded hop executed', () => {
@@ -808,8 +766,6 @@ describe('skippedRedirectHops — recorded chain longer than the live run (RLP-6
   });
 
   it('reports nothing for a chain that never ran', () => {
-    // No event carries the chain id (e.g. it sits in a disabled controller): do
-    // not invent skipped rows for a chain that did not execute.
     expect(skippedRedirectHops([event({ chain_id: '', request_id: 99 })], chain())).toEqual([]);
   });
 
@@ -842,8 +798,6 @@ describe('skippedRedirectHops — recorded chain longer than the live run (RLP-6
       event({ chain_id: 'rc-17', chain_role: 'parent', redirect_index: 0, request_id: 17, vu: 2 }),
       event({ chain_id: 'rc-17', chain_role: 'hop', redirect_index: 1, request_id: 17, vu: 1 }),
     ];
-    // VU1 followed one hop then stopped (skips f19); VU2 fired only the parent
-    // (skips h18 and f19). Two independent walks → 1 + 2 = 3 placeholders.
     expect(skippedRedirectHops(events, chain())).toHaveLength(3);
   });
 });

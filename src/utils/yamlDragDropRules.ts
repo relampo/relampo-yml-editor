@@ -1,47 +1,7 @@
 import type { YAMLNodeType } from '../types/yaml';
 
-/**
- * ╔═══════════════════════════════════════════════════════════════════════════╗
- * ║                    PULSE YAML EDITOR - DRAG & DROP RULES                  ║
- * ║                         (Inspired by JMeter hierarchy)                    ║
- * ╚═══════════════════════════════════════════════════════════════════════════╝
- *
- * HIERARCHY (similar to JMeter):
- *
- * 📁 ROOT (Test Plan)
- *    ├── 📋 test (Test metadata)
- *    ├── 📦 variables (User Defined Variables)
- *    ├── 🗄️ data_source (CSV Data Set Config)
- *    ├── ⚙️ http_defaults (HTTP Request Defaults)
- *    ├── 📊 metrics (Listeners)
- *    └── 📂 scenarios (Thread Groups)
- *         └── 🧵 scenario
- *              ├── ⚡ load (Thread Properties)
- *              ├── 🍪 cookies (HTTP Cookie Manager)
- *              ├── 💾 cache_manager (HTTP Cache Manager)
- *              ├── ⚠️ error_policy (Error Handler)
- *              └── 📋 steps
- *                   ├── 🌐 request/get/post/... (HTTP Sampler)
- *                   │    ├── ⚡ spark_before (JSR223 PreProcessor)
- *                   │    ├── ⚡ spark_after (JSR223 PostProcessor)
- *                   │    ├── 🔍 extractor (Post-Processor/Extractor)
- *                   │    ├── ✅ assertion (Response Assertion)
- *                   │    └── ⏱️ think_time (Constant Timer)
- *                   ├── ⚖️ balanced (Balanced Controller)
- *                   ├── 📦 group (Transaction Controller)
- *                   ├── 🔄 loop (Loop Controller)
- *                   ├── ⛓️ parallel (Parallel Controller)
- *                   ├── ❓ if (If Controller)
- *                   ├── 🔁 retry (Retry Controller)
- *                   ├── ⚡ one_time (One Time Controller)
- *                   └── ⏱️ think_time (Constant Timer)
- */
 
-// ============================================================================
-// NODE CATEGORIES (like JMeter element types)
-// ============================================================================
 
-/** Root level elements - can only exist at test plan level */
 const ROOT_LEVEL_ELEMENTS: YAMLNodeType[] = [
   'test',
   'variables',
@@ -54,10 +14,8 @@ const ROOT_LEVEL_ELEMENTS: YAMLNodeType[] = [
   'error_policy',
 ];
 
-/** Scenario configuration elements */
 const SCENARIO_CONFIG_ELEMENTS: YAMLNodeType[] = ['load', 'cookies', 'cache_manager', 'error_policy'];
 
-/** Logic Controllers - can contain other controllers and samplers */
 const LOGIC_CONTROLLERS: YAMLNodeType[] = [
   'group',
   'simple',
@@ -70,25 +28,19 @@ const LOGIC_CONTROLLERS: YAMLNodeType[] = [
   'one_time',
 ];
 
-/** HTTP Samplers - the actual requests */
 const HTTP_SAMPLERS: YAMLNodeType[] = ['request', 'get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
 
 const SQL_SAMPLERS: YAMLNodeType[] = ['sql'];
 const GRPC_SAMPLERS: YAMLNodeType[] = ['grpc', 'websocket'];
 
-/** Pre-Processors - execute before sampler */
 const PRE_PROCESSORS: YAMLNodeType[] = ['spark_before'];
 
-/** Post-Processors - execute after sampler */
 const POST_PROCESSORS: YAMLNodeType[] = ['spark_after', 'extractor', 'extract'];
 
-/** Assertions - validate responses */
 const ASSERTIONS: YAMLNodeType[] = ['assertion', 'assert'];
 
-/** Timers */
 const TIMERS: YAMLNodeType[] = ['think_time'];
 
-/** All step-level elements (can be inside steps or controllers) */
 const STEP_ELEMENTS: YAMLNodeType[] = [
   ...HTTP_SAMPLERS,
   ...SQL_SAMPLERS,
@@ -100,7 +52,6 @@ const STEP_ELEMENTS: YAMLNodeType[] = [
   'step',
 ];
 
-/** Elements that can be distributed inside a Balanced Controller */
 const BALANCED_CHILD_ELEMENTS: YAMLNodeType[] = [
   ...HTTP_SAMPLERS,
   ...SQL_SAMPLERS,
@@ -113,7 +64,6 @@ const BALANCED_CHILD_ELEMENTS: YAMLNodeType[] = [
   'retry',
 ];
 
-/** Elements that can be children of a request/sampler */
 const SAMPLER_CHILDREN: YAMLNodeType[] = [
   'file',
   'headers',
@@ -130,24 +80,10 @@ interface TreeNodeLike {
   children?: TreeNodeLike[];
 }
 
-// ============================================================================
-// CONTAINMENT RULES
-// ============================================================================
 
-/**
- * Defines what each container type can hold as children.
- * This is the core of the hierarchy rules.
- */
 const containmentRules: Partial<Record<YAMLNodeType, YAMLNodeType[]>> = {
-  // ROOT - Test Plan level
   root: ROOT_LEVEL_ELEMENTS,
 
-  // The parsed editor root uses `test` as its node type. Keep it aligned with
-  // the legacy `root` alias so root-level data sources can be moved through
-  // the same drag/drop and validation paths as every other scope — minus
-  // `test` itself: the root cannot be nested inside anything, least of all
-  // itself, and `canDrop` sees only node types so it cannot tell the document
-  // root apart from any other `test` node.
   test: ROOT_LEVEL_ELEMENTS.filter(type => type !== 'test'),
   variables: [],
   data_source: [],
@@ -156,22 +92,17 @@ const containmentRules: Partial<Record<YAMLNodeType, YAMLNodeType[]>> = {
   sql_defaults: [],
   metrics: [],
 
-  // Scenarios container
   scenarios: ['scenario'],
 
-  // Single scenario (Thread Group)
   scenario: ['load', 'cookies', 'cache_manager', 'error_policy', 'steps'],
 
-  // Scenario config (leaf nodes)
   load: [],
   cookies: [],
   cache_manager: [],
   error_policy: [],
 
-  // Steps container
   steps: STEP_ELEMENTS,
 
-  // HTTP Samplers - can contain pre/post processors, assertions, timers
   request: SAMPLER_CHILDREN,
   get: SAMPLER_CHILDREN,
   post: SAMPLER_CHILDREN,
@@ -181,12 +112,10 @@ const containmentRules: Partial<Record<YAMLNodeType, YAMLNodeType[]>> = {
   head: SAMPLER_CHILDREN,
   options: SAMPLER_CHILDREN,
 
-  // SQL queries can extract one cell into a variable.
   sql: SAMPLER_CHILDREN.filter(type => !['file', 'headers'].includes(type)),
   grpc: SAMPLER_CHILDREN,
   websocket: SAMPLER_CHILDREN,
 
-  // Logic Controllers - can contain steps and other controllers
   group: STEP_ELEMENTS,
   simple: STEP_ELEMENTS,
   transaction: STEP_ELEMENTS,
@@ -197,7 +126,6 @@ const containmentRules: Partial<Record<YAMLNodeType, YAMLNodeType[]>> = {
   retry: STEP_ELEMENTS,
   one_time: STEP_ELEMENTS,
 
-  // Leaf nodes (no children)
   step: [],
   think_time: [],
   spark: [],
@@ -209,63 +137,38 @@ const containmentRules: Partial<Record<YAMLNodeType, YAMLNodeType[]>> = {
   assertion: [],
 };
 
-// ============================================================================
-// SIBLING RULES (what can be next to what)
-// ============================================================================
 
-/**
- * Defines what types can be siblings (at the same level).
- * Used for before/after drop positioning.
- */
 const siblingGroups: YAMLNodeType[][] = [
-  // Root level siblings
   ROOT_LEVEL_ELEMENTS,
 
-  // Scenarios are siblings of each other
   ['scenario'],
 
-  // Scenario config siblings
   SCENARIO_CONFIG_ELEMENTS,
 
-  // Step-level siblings (can be reordered among themselves)
   STEP_ELEMENTS,
 
-  // Sampler children siblings
   SAMPLER_CHILDREN,
 ];
 
-/**
- * Check if two types can be siblings
- */
 function canBeSiblings(type1: YAMLNodeType, type2: YAMLNodeType): boolean {
   return siblingGroups.some(group => group.includes(type1) && group.includes(type2));
 }
 
-// ============================================================================
-// PUBLIC API
-// ============================================================================
 
-/**
- * Determines if a node can be dropped at a specific position
- */
 export function canDrop(
   draggedType: YAMLNodeType,
   targetType: YAMLNodeType,
   position: 'before' | 'after' | 'inside',
   parentType?: YAMLNodeType,
 ): boolean {
-  // Cannot move root — `root` is the legacy alias, `test` is what the parser
-  // actually produces for the document root.
   if (draggedType === 'root' || draggedType === 'test') {
     return false;
   }
 
-  // Inside: check containment rules
   if (position === 'inside') {
     return canContain(targetType, draggedType);
   }
 
-  // Before/After: check sibling rules
   if (position === 'before' || position === 'after') {
     if (!canBeSiblings(draggedType, targetType)) {
       return false;
@@ -276,17 +179,11 @@ export function canDrop(
   return false;
 }
 
-/**
- * Determines if a container can contain a specific child type
- */
 export function canContain(containerType: YAMLNodeType, childType: YAMLNodeType): boolean {
   const allowedChildren = containmentRules[containerType] || [];
   return allowedChildren.includes(childType);
 }
 
-/**
- * Gets valid drop targets for a given node type
- */
 export function getValidDropTargets(draggedType: YAMLNodeType): {
   containers: YAMLNodeType[];
   siblings: YAMLNodeType[];
@@ -294,14 +191,12 @@ export function getValidDropTargets(draggedType: YAMLNodeType): {
   const containers: YAMLNodeType[] = [];
   const siblings: YAMLNodeType[] = [];
 
-  // Find valid containers
   for (const [container, children] of Object.entries(containmentRules)) {
     if (children.includes(draggedType)) {
       containers.push(container as YAMLNodeType);
     }
   }
 
-  // Find valid siblings
   for (const group of siblingGroups) {
     if (group.includes(draggedType)) {
       siblings.push(...group.filter(t => t !== draggedType));
@@ -311,13 +206,7 @@ export function getValidDropTargets(draggedType: YAMLNodeType): {
   return { containers, siblings: [...new Set(siblings)] };
 }
 
-// ============================================================================
-// VALIDATION
-// ============================================================================
 
-/**
- * Validates the entire tree structure
- */
 export function validateTreeStructure(node: TreeNodeLike): {
   valid: boolean;
   errors: string[];
@@ -353,7 +242,3 @@ export function validateTreeStructure(node: TreeNodeLike): {
     errors,
   };
 }
-
-// ============================================================================
-// EXPORTS FOR DOCUMENTATION
-// ============================================================================

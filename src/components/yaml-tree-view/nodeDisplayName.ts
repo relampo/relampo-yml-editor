@@ -1,8 +1,6 @@
 import type { YAMLNode } from '../../types/yaml';
 import { normalizeLoadType } from '../yaml-node-details/loadUtils';
 
-// The parser and node factory give structural nodes fixed English names that are
-// never written to YAML. Translate them only for display; user-chosen names stay as typed.
 const FIXED_NAMES: Record<string, string> = {
   'variables|Variables': 'variables',
   'error_policy|Error Policy': 'errorPolicy',

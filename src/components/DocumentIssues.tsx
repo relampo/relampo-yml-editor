@@ -18,7 +18,6 @@ const SEVERITY_STYLE: Record<IssueSeverity, { icon: typeof Info; badge: string; 
   },
 };
 
-/** Tree badge for a node's own issues: the icon of the highest severity, plus a count when there is more than one. */
 export function IssueBadge({ marker }: { marker?: IssueMarker }) {
   if (!marker?.severity) return null;
   const { icon: Icon, badge } = SEVERITY_STYLE[marker.severity];
@@ -34,7 +33,6 @@ export function IssueBadge({ marker }: { marker?: IssueMarker }) {
   );
 }
 
-/** Dot on a collapsed node that has issues inside it. */
 export function DescendantIssueDot({ severity }: { severity: IssueSeverity }) {
   const { t } = useLanguage();
   return (
@@ -46,7 +44,6 @@ export function DescendantIssueDot({ severity }: { severity: IssueSeverity }) {
   );
 }
 
-/** Read-only "Issues" section in Element Details. Errors come first. */
 export function NodeIssuesSection({ issues, language }: { issues: DocumentIssue[]; language: string }) {
   if (!issues.length) return null;
   const es = language === 'es';
@@ -99,7 +96,6 @@ export function NodeIssuesSection({ issues, language }: { issues: DocumentIssue[
   );
 }
 
-/** One line in Debug and Run when configuration errors block the session. */
 export function BlockedByIssuesNotice({
   errorCount,
   action,

@@ -36,9 +36,6 @@ describe('detectRedirectFollowUps', () => {
     expect(map.b.matchedLocation).toBe('/new');
   });
 
-  // Regression (RLP-419): a single 302 whose Location is a relative reference
-  // (e.g. `authenticate`) must resolve against the source request URL, not a
-  // fixed base, so the follow-up request still gets the REDIRECTED badge.
   it('resolves a relative Location against the source URL', () => {
     const tree = root([
       req('a', 'https://eidas.example.uy/tuid-authn-login/authenticate', {
@@ -69,8 +66,6 @@ describe('detectRedirectFollowUps', () => {
     expect(detectRedirectFollowUps(tree)).toEqual({});
   });
 
-  // Regression: an ordinary repeated request to the same URL as a redirect
-  // target must NOT inherit the redirect badge (no same-URL propagation).
   it('does not propagate the redirect to an unrelated repeated URL', () => {
     const tree = root([
       req('a', '/old', { status: 302, location: '/login' }),
@@ -83,11 +78,6 @@ describe('detectRedirectFollowUps', () => {
   });
 });
 
-// RLP-604: the tree badge must recognize redirect follow-ups by the recorded
-// chain_id/chain_role, not only by status 3xx + Location↔URL matching. When
-// correlation rewrites the redirect targets' query strings at runtime, the
-// source Location no longer equals the follow-up URL, so the status/URL pass
-// misses them — but chain_role: hop/final is still correct.
 describe('detectRedirectFollowUps — chain metadata (RLP-604)', () => {
   function chainReq(
     id: string,
@@ -113,20 +103,15 @@ describe('detectRedirectFollowUps — chain metadata (RLP-604)', () => {
   }
 
   it('badges a chain_role: final (status 200) even when Location/URL no longer match', () => {
-    // Locations reference the RECORDED query strings; the follow-up URLs carry
-    // correlation-rewritten LIVE values, so the status/URL pass cannot link them.
     const tree = root([
       chainReq('r123', '/login', 'parent', 'rc-123', { status: 302, location: '/step?token=RECORDED' }),
       chainReq('r124', '/step?token=LIVE1', 'hop', 'rc-123', { status: 302, location: '/done?token=RECORDED2' }),
       chainReq('r125', '/done?token=LIVE2', 'final', 'rc-123', { status: 200 }),
     ]);
     const map = detectRedirectFollowUps(tree);
-    // The final (status 200) and the hop are badged via chain metadata...
     expect(map.r124).toBeDefined();
     expect(map.r125).toBeDefined();
-    // ...the parent (chain origin) is not a follow-up.
     expect(map.r123).toBeUndefined();
-    // Each follow-up is attributed to its preceding chain member.
     expect(map.r124.sourceNodeId).toBe('r123');
     expect(map.r125.sourceNodeId).toBe('r124');
   });
@@ -138,13 +123,10 @@ describe('detectRedirectFollowUps — chain metadata (RLP-604)', () => {
     ]);
     const map = detectRedirectFollowUps(tree);
     expect(map.b.sourceNodeId).toBe('a');
-    // matchedLocation comes from the status/URL pass (the resolved Location).
     expect(map.b.matchedLocation).toBe('/new');
   });
 
   it('badges chain members even when a non-chain request breaks document adjacency', () => {
-    // The status/URL pass only links immediate neighbours; chain metadata must
-    // survive an unrelated request landing between the chain members.
     const tree = root([
       chainReq('p', '/login', 'parent', 'rc-9', { status: 302, location: '/a' }),
       req('unrelated', '/health', { status: 200 }),
@@ -157,16 +139,10 @@ describe('detectRedirectFollowUps — chain metadata (RLP-604)', () => {
   });
 
   it('leaves a chain with no parent/no preceding member unbadged rather than guessing', () => {
-    // A lone final with no parent and no preceding chain member has no source to
-    // attribute to; it must not crash or invent one.
     const tree = root([chainReq('only', '/done', 'final', 'rc-x', { status: 200 })]);
     expect(detectRedirectFollowUps(tree)).toEqual({});
   });
 
-  // Root-cause guard: the tree detector and the Debug summary counter must agree
-  // on what a redirect follow-up is. The regression happened because the tree
-  // used status+URL while the counter used chain_role. Assert both recognize a
-  // chain_role: final landing so the two predicates can't silently diverge again.
   it('agrees with the Debug counter predicate on a chain_role: final (parity)', () => {
     expect(
       isRedirectStepEvent({ method: 'GET', name: '[125] GET /done', path: '/done', chain_id: 'rc-1', chain_role: 'final' }),
@@ -209,11 +185,6 @@ describe('nodesStillFormRedirect', () => {
 });
 
 describe('nodesStillFormRedirect — correlated placeholders (RLP-663)', () => {
-  // Tree "Replace all" rewrites request URLs but deliberately leaves the
-  // recorded response untouched, so after correlating a token the target URL
-  // holds `{{var}}` while the source Location keeps the recorded literal. An
-  // exact comparison would drop the redirect badge — and with it the
-  // follow_redirects sync — for every pre-chain_id recording.
   it('still links a redirect whose target URL was correlated to a placeholder', () => {
     const source = req('src', 'https://api.test/login', { status: 302, location: '/home/xyz123' });
     const target = req('tgt', 'https://api.test/home/{{token}}');
@@ -239,7 +210,6 @@ describe('nodesStillFormRedirect — correlated placeholders (RLP-663)', () => {
     };
     const { tree: replaced } = replaceTextInEnabledRequests(tree, 'xyz123', '{{token}}');
     expect(replaced.children?.[1].data!.url).toBe('https://api.test/home/{{token}}');
-    // The recorded response is intact — that is the point of RLP-663.
     expect(replaced.children?.[0].data!.response?.headers?.Location).toBe('/home/xyz123');
     expect(detectRedirectFollowUps(replaced).tgt?.sourceNodeId).toBe('src');
   });
@@ -251,7 +221,6 @@ describe('nodesStillFormRedirect — correlated placeholders (RLP-663)', () => {
   });
 
   it('does not let a placeholder swallow extra path segments', () => {
-    // `{{token}}` stands in for one value, not an arbitrary suffix.
     const source = req('src', 'https://api.test/login', { status: 302, location: '/home/a/b' });
     const target = req('tgt', 'https://api.test/home/{{token}}');
     expect(nodesStillFormRedirect(source, target)).toBe(false);

@@ -82,9 +82,6 @@ scenarios:
 `;
 
   it('refuses to drop the document root into itself', () => {
-    // Allowing root-level containment must not make `test` a legal child of
-    // `test`: the root has no parent, so the move would keep the original and
-    // insert a second copy of the whole document under it, duplicating ids.
     const tree = parseYAMLToTree(SCRIPT);
     if (!tree) throw new Error('Expected the fixture to parse');
     expect(canDrop('test', 'data_source', 'after', 'test')).toBe(false);
@@ -97,8 +94,6 @@ scenarios:
   });
 
   it('refuses a second root-level data source instead of dropping one on save', () => {
-    // treeToObject writes a single `data_source:` key per scope, so the second
-    // node would silently overwrite the first the next time the YAML is saved.
     const tree = parseYAMLToTree(SCRIPT);
     if (!tree) throw new Error('Expected the fixture to parse');
     const scoped = findNode(findNode(tree, 'request')!, 'data_source')!;

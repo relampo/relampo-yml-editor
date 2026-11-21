@@ -5,8 +5,6 @@ interface YAMLEditorBusyOverlayProps {
   language: string;
 }
 
-// Shown while the full YAML is loading or the in-memory tree is (re)parsing.
-// The UI is intentionally paused to prevent duplicate actions on the document.
 export function YAMLEditorBusyOverlay({ isFileLoading, language }: YAMLEditorBusyOverlayProps) {
   return (
     <div

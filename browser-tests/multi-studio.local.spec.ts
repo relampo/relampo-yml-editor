@@ -65,7 +65,6 @@ test('New Studio isolates documents and drafts, and tree copy/paste works in bot
   expect(yaml).toContain('Bearer {{token}}');
   expect(yaml).toContain('eventId: 12');
   expect(yaml).toContain('username: demo');
-  // Wait for the independent IndexedDB draft rather than a fixed autosave delay.
   await expect
     .poll(() =>
       second.evaluate(async () => {

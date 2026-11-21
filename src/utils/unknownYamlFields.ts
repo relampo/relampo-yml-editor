@@ -28,19 +28,13 @@ function currentKnownFields(): Record<string, ReadonlySet<string>> {
 }
 
 const knownFields = currentKnownFields();
-// Adopt the gRPC contract scopes while keeping the current HTTP/component contract.
 for (const [scope, fields] of Object.entries(grpcContract.known_fields)) {
   if ((scope === 'grpc' || scope.startsWith('grpc_')) && !knownFields[scope]) knownFields[scope] = new Set(fields);
 }
 
-// Recorder fields are preserved document data, beyond the runtime contract.
 knownFields.cookies = new Set([...(knownFields.cookies || []), 'mode']);
 knownFields.response = new Set([...(knownFields.response || []), 'body']);
 
-// Recorder output includes provenance metadata at test scope. The runtime
-// contract omits these fields because execution ignores them, but the editor
-// supports them as preserved document data rather than forward-compatibility
-// fields that need a warning.
 const SCENARIO_KNOWN_FIELDS = new Set([...(knownFields.scenario || []), 'x-studio-load-profiles']);
 
 const TEST_KNOWN_FIELDS = new Set([...(knownFields.test || []), 'recorded_at', 'recorded_from']);
@@ -82,7 +76,6 @@ function dataScope(
     case 'sql':
       return { scope: 'sql', prefix: path };
     case 'grpc':
-      // The gRPC step node path points at the step; its fields live under `grpc:`.
       return { scope: node.type, prefix: [...path, 'grpc'] };
     case 'grpc_defaults':
       return { scope: node.type, prefix: path };
@@ -150,8 +143,6 @@ export interface UnrecognizedField {
   value: unknown;
 }
 
-// ponytail: splits on "." and "[n]", so a YAML key that itself contains a dot
-// resolves to undefined (no value preview). Quote-aware paths would fix it.
 export function valueAtPath(document: unknown, path: string): unknown {
   let value = document;
   for (const [, key, index] of path.matchAll(/([^.[\]]+)|\[(\d+)\]/g)) {
@@ -161,7 +152,6 @@ export function valueAtPath(document: unknown, path: string): unknown {
   return value;
 }
 
-/** The deepest tree node whose YAML path contains `path` (the root when none does), and `path` relative to it. */
 export function nearestNode(tree: YAMLNode, path: string): { node: YAMLNode; relativePath: string } {
   let best = { node: tree, nodePath: '' };
   const visit = (node: YAMLNode) => {
@@ -222,7 +212,6 @@ export function collectUnrecognizedFields(tree: YAMLNode | null): UnrecognizedFi
         const value = data[field];
         if (!value || typeof value !== 'object' || Array.isArray(value) || !knownFields[nestedScope]) continue;
         for (const key of Object.keys(value)) {
-          // Earlier editor exports are migrated to sql.validate_connectivity on save.
           if (node.type === 'sql' && field === 'connection' && key === 'validate_connectivity') continue;
           if (!knownFields[nestedScope].has(key)) paths.add(formatPath([...scope.prefix, field, key]));
         }

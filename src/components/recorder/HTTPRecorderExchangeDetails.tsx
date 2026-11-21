@@ -21,9 +21,7 @@ export function HTTPRecorderExchangeDetails({
   let parameters: Record<string, string> = {};
   try {
     parameters = Object.fromEntries(new URL(preview?.url || row?.url || '').searchParams.entries());
-  } catch {
-    /* Await a selected URL. */
-  }
+  } catch {}
   const value = part === 'parameters' ? parameters : exchange?.[part];
   return (
     <section

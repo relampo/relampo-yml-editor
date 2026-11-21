@@ -374,12 +374,6 @@ export function YAMLSQLDetails({ node, onNodeUpdate }: YAMLSQLDetailsProps) {
   const [paramsText, setParamsText] = useState('');
   const [paramsError, setParamsError] = useState('');
 
-  // data.params (and which node we're on) is the source of truth for the
-  // params textarea; re-derived here during render rather than in an effect
-  // (the React-sanctioned "adjust state on prop change" pattern: store the
-  // last-seen params/node.id and conditionally setState when they differ) so
-  // the sync lands before paint. In-progress edits live only in `paramsText`
-  // until blur commits them, so this never clobbers unsaved typing.
   const [syncedParams, setSyncedParams] = useState<{ params: any; nodeId: string } | typeof SQL_PARAMS_SYNC_UNSET>(
     SQL_PARAMS_SYNC_UNSET,
   );

@@ -15,8 +15,6 @@ const NAMED_COMPONENT_TYPES = new Set<YAMLNode['type']>([
   'sql',
 ]);
 
-// Component labels can be renamed independently of data.name. The serializer
-// saves the displayed name, so searching/replacing must use that same value.
 export function replacementNodeData(node: YAMLNode, wholeDocument: boolean): YAMLNodeData | undefined {
   if (!wholeDocument) return node.data;
   const namedRequest =
@@ -29,8 +27,6 @@ export function replacementNodeData(node: YAMLNode, wholeDocument: boolean): YAM
   return data;
 }
 
-// Validation nodes display a label derived from their values rather than data.name.
-// Refresh that projection after replacement, without overwriting a custom label.
 function validationLabels(node: YAMLNode, data: YAMLNodeData | undefined): string[] {
   if (node.type === 'extract' || node.type === 'extractor') {
     return [`Extract: ${data?.var || data?.variable || 'unknown'}`];

@@ -67,7 +67,6 @@ export const esTranslations = {
       'Ejecuta hasta pulsar Detener o Ctrl+C, con el límite de duración de la licencia activa. Se borran la duración y las iteraciones.',
   },
 
-  // Navegación
   nav: {
     howItWorks: 'Cómo funciona',
     roadmap: 'Desarrollo',
@@ -76,7 +75,6 @@ export const esTranslations = {
     contact: 'Contacto',
   },
 
-  // Sección Hero
   hero: {
     tagline: 'Pruebas de rendimiento simplificadas.',
     title: 'Pruebas de carga modernas para equipos de ingeniería que valoran la claridad y la velocidad',
@@ -85,7 +83,6 @@ export const esTranslations = {
     availableNow: 'DISPONIBLE AHORA Y PARA SIEMPRE',
   },
 
-  // Inicio Rápido
   quickStart: {
     title: 'Inicio rápido',
     step1: {
@@ -102,7 +99,6 @@ export const esTranslations = {
     },
   },
 
-  // Cómo Funciona
   howItWorks: {
     title: 'Cómo funciona',
     startTesting: 'Comenzar Pruebas',
@@ -132,7 +128,6 @@ export const esTranslations = {
     inSimpleSteps: 'en 4 pasos simples',
   },
 
-  // Sección de Scripts Legibles
   readableScripts: {
     badge: 'Scripts Legibles',
     title: 'YAML que tu',
@@ -167,7 +162,6 @@ export const esTranslations = {
     invalidYaml: '✗ YAML inválido - trampa común',
   },
 
-  // Sección de Nube Gratuita
   freeCloud: {
     badge: 'Sandbox de Nube Gratuito',
     title: 'Deja de ejecutar pruebas',
@@ -206,13 +200,11 @@ export const esTranslations = {
     ],
   },
 
-  // Sección CTA Final
   finalCta: {
     description:
       'Escribe scripts legibles. Ejecuta pruebas en infraestructura en nube. Obtén resultados más rápido. Todo gratis.',
   },
 
-  // Hoja de Ruta
   roadmap: {
     title: 'Lo que estamos construyendo',
     subtitle: 'Pruebas de rendimiento end-to-end',
@@ -255,7 +247,6 @@ export const esTranslations = {
     },
   },
 
-  // Liga
   league: {
     title: 'Relampo League',
     subtitle: 'Sube de rango. Gana créditos. Ejecuta tests más grandes.',
@@ -322,7 +313,6 @@ export const esTranslations = {
     },
   },
 
-  // CTA
   cta: {
     title: '¿Listo para simplificar las pruebas de rendimiento?',
     subtitle: 'Únete a la lista de espera y sé de los primeros en experimentar Relampo',
@@ -339,7 +329,6 @@ export const esTranslations = {
     questionsEmail: '¿Preguntas? Escríbenos a',
   },
 
-  // Equipo
   team: {
     title: 'Conoce al equipo',
     members: {
@@ -366,7 +355,6 @@ export const esTranslations = {
     },
   },
 
-  // Footer
   footer: {
     copyright: '© 2026 Relampo · Pruebas de rendimiento simplificadas.',
     links: {
@@ -377,7 +365,6 @@ export const esTranslations = {
     },
   },
 
-  // Sidebar
   sidebar: {
     dashboard: 'Tablero',
     workbench: 'Workbench',
@@ -388,21 +375,18 @@ export const esTranslations = {
     designDoc: 'Documento de diseño',
   },
 
-  // CLI Tabs
   cliTabs: {
     recorder: 'Grabador',
     yamlEditor: 'Editor YAML',
     correlation: 'Correlación',
   },
 
-  // TopBar
   topBar: {
     user: 'Usuario',
     team: 'usuario@relampo.io',
     logout: 'Cerrar sesión',
   },
 
-  // Dashboard
   dashboard: {
     title: 'Tablero de rendimiento',
     subtitle: 'Monitorea tus métricas de prueba de carga y actividad reciente',
@@ -423,7 +407,6 @@ export const esTranslations = {
     },
   },
 
-  // Workbench
   workbench: {
     recording: 'Grabación',
     scripting: 'Scripting',
@@ -433,7 +416,6 @@ export const esTranslations = {
     monitoring: 'Monitoreo',
   },
 
-  // Projects
   projects: {
     title: 'Proyectos',
     subtitle: 'Administra tus proyectos de prueba de carga',
@@ -443,7 +425,6 @@ export const esTranslations = {
     archived: 'Archivados',
   },
 
-  // Settings
   settings: {
     title: 'Configuración',
     subtitle: 'Configura tus preferencias de Relampo',
@@ -453,7 +434,6 @@ export const esTranslations = {
     billing: 'Facturación',
   },
 
-  // YAML Editor
   yamlEditor: {
     sqlResults: {
       request: 'Petición SQL',
@@ -553,7 +533,6 @@ export const esTranslations = {
     selectNode: 'Selecciona un nodo del árbol',
     viewDetails: 'para ver sus detalles',
 
-    // Common labels
     common: {
       name: 'Nombre',
       description: 'Descripción',
@@ -574,7 +553,6 @@ export const esTranslations = {
       noProperties: 'Sin propiedades adicionales',
     },
 
-    // Context menu
     contextMenu: {
       addHeader: 'Agregar encabezado',
       addHeaders: 'Agregar encabezados',
@@ -587,7 +565,6 @@ export const esTranslations = {
       addThinkTime: 'Agregar tiempo de reflexión',
     },
 
-    // Spark editor
     spark: {
       quickReference: 'Referencia rápida:',
       readVariable: 'Leer variable',
@@ -1257,7 +1234,6 @@ export const esTranslations = {
         type_intent: 'Objetivo',
         type_segments: 'Segmentos',
       },
-      // nodeDetails-end
     },
 
     shell: {
@@ -1460,7 +1436,6 @@ export const esTranslations = {
         cannotStart_run: 'Esta prueba de carga no puede iniciarse.',
         goToFirstError: 'Ir al primer error',
       },
-      // shell-end
     },
 
     requestDetails: {
@@ -1565,7 +1540,6 @@ export const esTranslations = {
       sparkResponseBody: 'Cuerpo de la respuesta',
       sparkResponseLatency: 'Latencia de la respuesta',
       sparkPrintConsole: 'Imprimir en la consola',
-      // requestDetails-end
     },
 
     runDebug: {
@@ -1796,17 +1770,14 @@ export const esTranslations = {
         segmentsAria: 'Segmentos de carga configurados',
         rpsWithMaxVus: '{rps} RPS (máx. {vus} VUs)',
       },
-      // runDebug-end
     },
 
-    // Estado vacío
     emptyState: {
       description: 'Crea un plan de prueba desde cero o carga un archivo existente.',
       addBtn: 'Agregar un plan de prueba de rendimiento',
     },
   },
 
-  // Aviso de pantalla pequeña / bloqueo móvil
   mobileBlock: {
     eyebrow: 'Necesitas una pantalla mayor',
     title: 'Este editor está pensado para pantallas grandes',

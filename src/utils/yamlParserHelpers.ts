@@ -351,7 +351,6 @@ export function normalizeSQLForYaml(step: PlainRecord | undefined, preservePrese
   delete normalized.max_idle_conns;
   delete normalized.conn_max_lifetime;
   delete normalized.conn_max_idle_time;
-  // Authored error_policy remains distinct from on_error for scoped fallback.
   if (preservePresence) {
     if (!('allow_writes' in sql) && !('allow_write' in sql)) delete normalized.allow_writes;
     if ('on_error' in sql) normalized.on_error = sql.on_error;
@@ -373,10 +372,6 @@ export function normalizeSQLForYaml(step: PlainRecord | undefined, preservePrese
 }
 
 function mergeQueryParamsIntoUrl(url: string, queryParams: PlainRecord): string {
-  // react-doctor's js-combine-iterations flags the filter+map pair here. Left as
-  // is on purpose: a request carries a handful of query params, so fusing the
-  // two passes into a reduce buys nothing measurable and costs the readability
-  // of the idiomatic form.
   const pairs = Object.entries(queryParams)
     .filter(([key]) => key.trim() !== '')
     .map(([key, value]) => `${key}=${value ?? ''}`);
@@ -387,9 +382,6 @@ function mergeQueryParamsIntoUrl(url: string, queryParams: PlainRecord): string 
 
 export function normalizeRequestForEditor(
   request: PlainRecord | undefined,
-  // Effective global default from http_defaults.follow_redirects. A request
-  // that omits the flag inherits this value, so normalization must not
-  // fabricate an explicit false (or true) that the file never stated.
   followRedirectsDefault = false,
 ): NormalizedRequestLike {
   const normalizeOverride = (value: unknown): OverrideState => {
@@ -447,8 +439,6 @@ export function normalizeAuthForEditor(auth: unknown): AuthConfig | undefined {
   const type = typeof auth.type === 'string' ? auth.type.trim().toLowerCase() : '';
   if (type !== 'bearer' && type !== 'api_key' && type !== 'basic') return undefined;
 
-  // Keep fields owned by newer backend contracts. Supported fields are
-  // rewritten below, while unknown fields remain attached to this auth block.
   const normalized: AuthConfig = { ...(auth as AuthConfig) };
   AUTH_FIELDS.forEach(field => delete normalized[field]);
   normalized.type = type;

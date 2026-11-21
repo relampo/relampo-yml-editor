@@ -50,8 +50,6 @@ const ROOT_FIELDS = new Set([
 ]);
 
 const YAML_SCHEMA = jsyaml.DEFAULT_SCHEMA.extend({
-  // DEFAULT_SCHEMA supports !!binary but also converts ISO timestamps to Date.
-  // Keep the previous JSON_SCHEMA timestamp behavior so unknown fields stay lossless.
   implicit: [
     new jsyaml.Type('tag:yaml.org,2002:timestamp', {
       kind: 'scalar',
@@ -74,7 +72,6 @@ function unknownFields(
   return Object.keys(unknown).length > 0 ? unknown : undefined;
 }
 
-// Parser: YAML string → Tree
 export function parseYAMLToTree(yamlString: string, defaultRootName?: string): YAMLNode | null {
   if (!yamlString || yamlString.trim() === '') {
     return null;
@@ -89,7 +86,6 @@ export function parseYAMLToTree(yamlString: string, defaultRootName?: string): Y
   }
 }
 
-// Generator: Tree → YAML string
 export function treeToYAML(tree: YAMLNode): string {
   try {
     const obj = treeToObject(tree);
@@ -99,7 +95,6 @@ export function treeToYAML(tree: YAMLNode): string {
   }
 }
 
-// Convert parsed object to tree structure
 function convertToTree(obj: any, _: string[] = [], defaultRootName?: string): YAMLNode {
   const rootId = 'root';
 
@@ -116,7 +111,6 @@ function convertToTree(obj: any, _: string[] = [], defaultRootName?: string): YA
     unknownData: isPlainRecord(obj) ? unknownFields(obj, ROOT_FIELDS) : undefined,
   };
 
-  // Variables
   if (obj.variables) {
     root.children!.push({
       id: `${rootId}_variables`,
@@ -127,7 +121,6 @@ function convertToTree(obj: any, _: string[] = [], defaultRootName?: string): YA
     });
   }
 
-  // Data Source
   if (obj.data_source) {
     root.children!.push({
       id: `${rootId}_data_source`,
@@ -138,7 +131,6 @@ function convertToTree(obj: any, _: string[] = [], defaultRootName?: string): YA
     });
   }
 
-  // Root Error Policy
   if (obj.error_policy) {
     root.children!.push({
       id: `${rootId}_error_policy`,
@@ -149,7 +141,6 @@ function convertToTree(obj: any, _: string[] = [], defaultRootName?: string): YA
     });
   }
 
-  // HTTP Defaults
   if (obj.http_defaults) {
     root.children!.push({
       id: `${rootId}_http_defaults`,
@@ -185,7 +176,6 @@ function convertToTree(obj: any, _: string[] = [], defaultRootName?: string): YA
     });
   }
 
-  // Scenarios
   if (obj.scenarios && Array.isArray(obj.scenarios)) {
     const scenariosNode: YAMLNode = {
       id: `${rootId}_scenarios`,
@@ -204,7 +194,6 @@ function convertToTree(obj: any, _: string[] = [], defaultRootName?: string): YA
     root.children!.push(scenariosNode);
   }
 
-  // Metrics
   if (obj.metrics) {
     root.children!.push({
       id: `${rootId}_metrics`,
@@ -230,7 +219,6 @@ function convertScenarioToNode(scenario: any, index: number, path: any[]): YAMLN
     path,
   };
 
-  // An absent load keeps the engine fallback and still offers a selection control.
   scenarioNode.children!.push({
     id: `${scenarioId}_load`,
     type: 'load',
@@ -251,7 +239,6 @@ function convertScenarioToNode(scenario: any, index: number, path: any[]): YAMLN
     path: [...path, 'load'],
   });
 
-  // Cookies
   if (scenario.cookies) {
     scenarioNode.children!.push({
       id: `${scenarioId}_cookies`,
@@ -262,7 +249,6 @@ function convertScenarioToNode(scenario: any, index: number, path: any[]): YAMLN
     });
   }
 
-  // Cache Manager
   if (scenario.cache_manager) {
     scenarioNode.children!.push({
       id: `${scenarioId}_cache`,
@@ -273,7 +259,6 @@ function convertScenarioToNode(scenario: any, index: number, path: any[]): YAMLN
     });
   }
 
-  // Error Policy
   if (scenario.error_policy) {
     scenarioNode.children!.push({
       id: `${scenarioId}_error`,
@@ -284,7 +269,6 @@ function convertScenarioToNode(scenario: any, index: number, path: any[]): YAMLN
     });
   }
 
-  // Steps
   if (scenario.steps && Array.isArray(scenario.steps)) {
     const stepsNode: YAMLNode = {
       id: `${scenarioId}_steps`,
@@ -310,12 +294,10 @@ function convertScenarioToNode(scenario: any, index: number, path: any[]): YAMLN
 function convertStepToNode(step: any, parentId: string, index: number, path: any[]): YAMLNode {
   const stepId = `${parentId}_step_${index}`;
 
-  // Parsear enabled ANTES (común para todos los tipos)
   const isEnabled = step.enabled !== undefined ? step.enabled : true;
   const resolveEnabled = (payload: unknown) =>
     isPlainRecord(payload) && payload.enabled !== undefined ? payload.enabled : isEnabled;
 
-  // HTTP methods (short form)
   const httpMethods = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
   for (const method of httpMethods) {
     if (step[method] !== undefined) {
@@ -333,7 +315,6 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
     }
   }
 
-  // Request (long form)
   if (step.request) {
     const node = createRequestNode(stepId, 'request', step.request, path, isEnabled);
     node.unknownData = unknownFields(step, new Set(['request', 'enabled']));
@@ -366,23 +347,20 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
     return { ...node, expanded: type === 'sql' && Boolean(node.children?.length) };
   }
 
-  // Think time (standalone - can be between requests)
   if (step.think_time !== undefined) {
     const data = typeof step.think_time === 'string' ? { duration: step.think_time } : step.think_time;
 
     return {
       id: stepId,
       type: 'think_time',
-      name: 'Think Time', // SOLO el nombre, duración va en el badge
+      name: 'Think Time',
       data,
       path,
       unknownData: unknownFields(step, new Set(['think_time', 'enabled'])),
     };
   }
 
-  // Assertions (standalone - array format from JMX converter)
   if (step.assertions && Array.isArray(step.assertions)) {
-    // Si hay múltiples assertions, crear un grupo
     if (step.assertions.length > 1) {
       const groupNode: YAMLNode = {
         id: stepId,
@@ -410,7 +388,6 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
 
       return groupNode;
     }
-    // Si solo hay una assertion, retornarla directamente
     else if (step.assertions.length === 1) {
       const assertion = normalizeAssertionForEditor(step.assertions[0]);
       const label = assertion.type || assertion.name || 'check';
@@ -427,7 +404,6 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
     }
   }
 
-  // Assertion (standalone - single object)
   if (step.assertion || step.assert) {
     const assertData = normalizeAssertionForEditor(step.assertion || step.assert);
     const label = assertData.type || assertData.name || 'check';
@@ -443,7 +419,6 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
     };
   }
 
-  // Extractor (standalone)
   if (step.extractor || step.extract) {
     const extractData = normalizeExtractorForEditor(step.extractor || step.extract);
     const varName = extractData.var || extractData.variable || extractData.name || 'unknown';
@@ -458,7 +433,6 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
     };
   }
 
-  // Spark (standalone)
   if (step.spark) {
     const when = step.spark.when || 'before';
 
@@ -472,7 +446,6 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
     };
   }
 
-  // Group (Simple controller for organization)
   if (step.group || step.controller) {
     const isController = Boolean(step.controller);
     const originalStep = step;
@@ -594,7 +567,6 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
     return balancedNode;
   }
 
-  // Scalar legacy conditions keep sibling steps; scoped conditions use a payload.
   if (step.if !== undefined) {
     const ifData = isPlainRecord(step.if) ? step.if : { condition: step.if, __scalarIf: true };
     const stepsInController = Array.isArray(ifData.steps);
@@ -639,7 +611,6 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
     return loopNode;
   }
 
-  // Retry
   if (step.retry !== undefined) {
     const rawRetry = step.retry;
     const rawRetryData =
@@ -670,7 +641,6 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
     return retryNode;
   }
 
-  // One Time
   if (step.one_time !== undefined) {
     const rawOneTime = step.one_time;
     const rawOneTimeData = rawOneTime && typeof rawOneTime === 'object' && !Array.isArray(rawOneTime) ? rawOneTime : {};
@@ -697,7 +667,6 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
     return oneTimeNode;
   }
 
-  // On Error (standalone)
   if (step.on_error !== undefined) {
     const onErrorNode: YAMLNode = {
       id: stepId,
@@ -720,7 +689,6 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
     return onErrorNode;
   }
 
-  // Data Source as step
   if (step.data_source) {
     return {
       id: stepId,
@@ -734,7 +702,6 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
     };
   }
 
-  // Preserve the experimental payload while exposing its stable HTTP child flow.
   if (isPlainRecord(step.webrtc) && Array.isArray(step.webrtc.steps)) {
     return {
       id: stepId,
@@ -748,7 +715,6 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
     };
   }
 
-  // Default
   return {
     id: stepId,
     type: 'step',
@@ -758,8 +724,6 @@ function convertStepToNode(step: any, parentId: string, index: number, path: any
   };
 }
 
-// Set per convertToTree() run from http_defaults.follow_redirects, so request
-// normalization knows what an omitted follow_redirects flag inherits.
 let followRedirectsDefault = false;
 
 function createRequestNode(
@@ -783,7 +747,6 @@ function createRequestNode(
     expanded: false,
   };
 
-  // HEADERS (object format: {header_name: value}) - PRIMERO
   if (req.headers && typeof req.headers === 'object' && !Array.isArray(req.headers)) {
     const headerEntries = Object.entries(req.headers);
     if (headerEntries.length > 0) {
@@ -797,7 +760,6 @@ function createRequestNode(
     }
   }
 
-  // 🔥 SPARK SCRIPTS (Pulse format)
   if (req.spark && Array.isArray(req.spark)) {
     req.spark.forEach((sparkItem: any, idx: number) => {
       const when = sparkItem.when || 'before';
@@ -811,7 +773,6 @@ function createRequestNode(
     });
   }
 
-  // EXTRACTORS as array (Pulse format: extractors[])
   if (req.extractors && Array.isArray(req.extractors)) {
     req.extractors.forEach((extractor: any, idx: number) => {
       const normalizedExtractor = normalizeExtractorForEditor(extractor);
@@ -825,7 +786,6 @@ function createRequestNode(
     });
   }
 
-  // EXTRACT as array (JMX converter format: [{name, var, expression}])
   if (req.extract && Array.isArray(req.extract)) {
     req.extract.forEach((extractor: any, idx: number) => {
       const varName = extractor.var || extractor.variable || 'unknown';
@@ -838,7 +798,6 @@ function createRequestNode(
       });
     });
   }
-  // EXTRACT as object (spec format: {var: expression})
   else if (req.extract && typeof req.extract === 'object' && !Array.isArray(req.extract)) {
     Object.entries(req.extract).forEach(([key, value], idx) => {
       requestNode.children!.push({
@@ -851,7 +810,6 @@ function createRequestNode(
     });
   }
 
-  // ASSERTIONS as array (Pulse format: assertions[])
   if (req.assertions && Array.isArray(req.assertions)) {
     req.assertions.forEach((assertion: any, idx: number) => {
       const normalizedAssertion = normalizeAssertionForEditor(assertion);
@@ -867,7 +825,6 @@ function createRequestNode(
     });
   }
 
-  // ASSERT as array (JMX converter format: [{name, type, value}])
   if (req.assert && Array.isArray(req.assert)) {
     req.assert.forEach((assertion: any, idx: number) => {
       const label = assertion.type || assertion.name || 'check';
@@ -881,7 +838,6 @@ function createRequestNode(
       });
     });
   }
-  // ASSERT as object (spec format: {status: 200, ...})
   else if (req.assert && typeof req.assert === 'object' && !Array.isArray(req.assert)) {
     Object.entries(req.assert).forEach(([key, value], idx) => {
       requestNode.children!.push({
@@ -894,18 +850,16 @@ function createRequestNode(
     });
   }
 
-  // THINK_TIME inline (inside the request)
   if (req.think_time) {
     requestNode.children!.push({
       id: `${stepId}_think_time`,
       type: 'think_time',
-      name: 'Think Time', // SOLO el nombre, duración va en el badge
+      name: 'Think Time',
       data: asYAMLNodeData(typeof req.think_time === 'string' ? { duration: req.think_time } : req.think_time),
       path: [...path, 'think_time'],
     });
   }
 
-  // ERROR_POLICY inline (inside the request), keep on_error as legacy fallback
   if (req.error_policy || req.on_error) {
     const policy = req.error_policy || { on_error: req.on_error };
     requestNode.children!.push({
@@ -917,7 +871,6 @@ function createRequestNode(
     });
   }
 
-  // FILES (array format: files[])
   if (req.files && Array.isArray(req.files)) {
     req.files.forEach((file: any, idx: number) => {
       const fieldName = file.field || 'file';
@@ -932,7 +885,6 @@ function createRequestNode(
     });
   }
 
-  // DATA_SOURCE inline (inside the request)
   if (req.data_source) {
     requestNode.children!.push({
       id: `${stepId}_data_source`,

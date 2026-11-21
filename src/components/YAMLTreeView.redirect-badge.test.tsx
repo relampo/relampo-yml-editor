@@ -38,11 +38,6 @@ function reqNode(
   };
 }
 
-// RLP-604 end-to-end guard: real detectRedirectFollowUps feeding the real tree
-// render must show the "Redirected" badge on a chain_role: final (status 200)
-// node whose URL no longer matches the recorded Location (correlation rewrote
-// the query string). This is the exact regression Yoanis reported — the badge
-// must not depend on status 3xx + URL matching.
 describe('YAMLTreeView redirect badge (RLP-604)', () => {
   function renderChainTree() {
     const tree: YAMLNode = {
@@ -60,8 +55,6 @@ describe('YAMLTreeView redirect badge (RLP-604)', () => {
         reqNode('r125', '/done?token=LIVE2', 'final', 'rc-123', { status: 200, enabled: false }),
       ],
     };
-    // The map is built by the real detector, exactly as the app does via
-    // useRedirectMaps -> detectRedirectFollowUps.
     const redirectedRequestMap = detectRedirectFollowUps(tree);
     render(
       <LanguageProvider>
@@ -82,15 +75,12 @@ describe('YAMLTreeView redirect badge (RLP-604)', () => {
   it('badges the chain final (status 200) and hop, not the parent', () => {
     const map = renderChainTree();
 
-    // Detection layer: final + hop resolved, parent is not a follow-up.
     expect(map.r125).toBeDefined();
     expect(map.r124).toBeDefined();
     expect(map.r123).toBeUndefined();
 
-    // Render layer: the "Redirected" badge appears for the hop and the final.
     expect(screen.getAllByText('Redirected')).toHaveLength(2);
 
-    // The final's row (r125) carries the badge even though its status is 200.
     const finalRow = screen.getByRole('treeitem', { name: /r125/i });
     expect(finalRow).toHaveTextContent('Redirected');
   });

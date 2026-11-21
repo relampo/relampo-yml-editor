@@ -52,10 +52,6 @@ function findUniqueTarget(nodes: YAMLNode[], predicate: (node: YAMLNode) => bool
   return matches.length === 1 ? matches[0] : null;
 }
 
-// A redirect follow-up is any event the runtime emits while walking a redirect
-// chain after the parent's first hop: the intermediate hops and the final
-// landing response. The parent's own first request (redirect_index 0,
-// chain_role "parent") is NOT a follow-up — it matches its own node normally.
 function isRedirectFollowUpEvent(event: DebugEventLike): boolean {
   const role = String(event.chain_role ?? '')
     .trim()
@@ -63,11 +59,6 @@ function isRedirectFollowUpEvent(event: DebugEventLike): boolean {
   return role === 'hop' || role === 'final' || (event.redirect_index ?? 0) > 0;
 }
 
-// Whether an event is a redirect follow-up step for counting purposes — the
-// same set the tree badges REDIRECTED. It widens isRedirectFollowUpEvent with
-// the step_path fallback that matchRedirectFinalEventToNode also accepts, so
-// older/partial engine payloads that land a redirect final identified only by
-// its recorded `...redirects[N]` step path stay in sync with the tree (RLP-588).
 export function isRedirectStepEvent(event: DebugEventLike): boolean {
   return isRedirectFollowUpEvent(event) || String(event.step_path ?? '').includes('.redirects[');
 }
@@ -88,16 +79,6 @@ function redirectChainParentDisablesFollow(chainId: string, requestNodes: YAMLNo
   return redirectChainParent(chainId, requestNodes)?.data?.follow_redirects === false;
 }
 
-// Maps a redirect follow-up event to the specific recorded REDIRECTED-DISABLED
-// child node it corresponds to. The runtime walks the recorded redirect
-// children in document order, emitting redirect_index 1 for the first child, 2
-// for the second, and so on (the final landing gets the last index). We match
-// by that position within the chain rather than by URL: correlation rewrites
-// the redirect targets' query strings at runtime, so the live URL no longer
-// equals the recorded one. Position is stable, so every hop — not just the
-// final one — resolves to its own node. Returns null when the chain can't be
-// resolved (e.g. the recording and the live run disagree on hop count) so the
-// Tree shows no selection instead of a wrong one. RLP-570.
 function matchRedirectChainChildToNode(
   event: DebugEventLike,
   chainId: string,
@@ -109,10 +90,6 @@ function matchRedirectChainChildToNode(
   });
   const redirectIndex = event.redirect_index ?? 0;
   if (redirectIndex >= 1) return children[redirectIndex - 1] ?? null;
-  // A 'final' event can arrive without a positional redirect_index (the field is
-  // optional and omitempty drops a 0). Map it to the chain's recorded 'final'
-  // child so the landing still selects its node and keeps its redirect context,
-  // rather than going unmatched. RLP-585.
   if (
     String(event.chain_role ?? '')
       .trim()
@@ -123,10 +100,6 @@ function matchRedirectChainChildToNode(
   return null;
 }
 
-// The 1-based position of a redirect follow-up within its chain: hop 1, hop 2,
-// ..., final last. Derived from the matched child's order among the recorded
-// chain children so it agrees with what the Tree selects; falls back to the
-// event's redirect_index when the chain can't be resolved to a node.
 function redirectChainPosition(
   event: DebugEventLike,
   matchedNode: YAMLNode | null,
@@ -148,10 +121,6 @@ function requestNumberFromNode(node: YAMLNode | null): string {
   return String(node?.data?.request_id ?? '').trim();
 }
 
-// The number shown on a Debug timeline row must match the number shown by the
-// Tree. Redirect follow-up events carry the enabled parent's request_id, so use
-// the matched recorded child label first. This keeps a recorded [16] visible as
-// #16 instead of incorrectly rendering it as the parent's #15.1 (RLP-674).
 export function debugEventRequestNumber(
   event: DebugEventLike,
   matchedNode: YAMLNode | null,
@@ -164,8 +133,6 @@ export function debugEventRequestNumber(
 
     const parent = redirectChainParent(chainId, requestNodes);
     const parentId = parent?.data?.request_id;
-    // The backend stamps the parent's request_id on every chain event. Keep a
-    // positional fallback only when the recorded child has no usable label.
     const base =
       parentId !== undefined && parentId !== null && String(parentId).trim() !== ''
         ? String(parentId).trim()
@@ -179,29 +146,12 @@ export function debugEventRequestNumber(
   return String(event.request_id ?? matchedNode?.data?.request_id ?? '').trim();
 }
 
-// A recorded redirect chain child (hop or final landing) that a live run did
-// NOT execute even though its chain ran. The runtime emits one event per hop it
-// actually follows; when the live chain is shorter than the recording, the
-// unfollowed children produce no event and silently vanish from the timeline
-// (for example, #123 followed by #124). This happens when the engine stops
-// following at a hop it won't cross — e.g. an OAuth callback recorded on a
-// different site than the IdP, which the redirect trust boundary blocks
-// (backend RLP-492). Surfacing them as skipped placeholders keeps the recorded
-// chain visible and honest about what ran vs. what was recorded. RLP-607.
 export type SkippedRedirectHop = {
   node: YAMLNode;
-  // 1-based position within the chain, used to identify the recorded child.
   position: number;
-  // Index, into the same event list passed in, of the chain's last real event —
-  // the row the placeholder slots in after.
   afterEventIndex: number;
 };
 
-// Given the timeline's engine events (in order) and the tree's request nodes,
-// return the recorded chain children that ran-chains left unexecuted. A chain is
-// "run" when it produced at least one event; within each run (keyed per VU so
-// interleaved chains don't cross-contaminate) any hop/final child never matched
-// by an event is reported skipped. RLP-607.
 export function skippedRedirectHops(events: DebugEventLike[], requestNodes: YAMLNode[]): SkippedRedirectHop[] {
   const walks = new Map<string, { chainId: string; matched: Set<string>; lastIndex: number }>();
   events.forEach((event, index) => {
@@ -243,8 +193,6 @@ export function skippedRedirectHops(events: DebugEventLike[], requestNodes: YAML
     });
   });
 
-  // Stable order: group each chain's skipped children after its last real row,
-  // ascending by recorded child position.
   return skipped.sort((a, b) => a.afterEventIndex - b.afterEventIndex || a.position - b.position);
 }
 
@@ -272,9 +220,6 @@ export function collectRequests(tree: YAMLNode | null): YAMLNode[] {
   if (!tree) return [];
   const nodes: YAMLNode[] = [];
   const walk = (node: YAMLNode) => {
-    // The runtime skips disabled samplers and never descends into a disabled
-    // controller (see yamlSemanticValidation), so the debug run must mirror
-    // that — otherwise it shows traffic/failures for steps that won't execute.
     if (node.data?.enabled === false) return;
     if (REQUEST_TYPES.has(node.type)) nodes.push(node);
     node.children?.forEach(walk);
@@ -311,11 +256,6 @@ export function matchDebugEventTarget(
   const base = raw.includes(':') ? raw.slice(raw.lastIndexOf(':') + 1) : raw;
   const requestTargets = requestNodes.filter(node => REQUEST_TYPES.has(node.type));
   const eventPath = normalizePath(event.path || base);
-  // Chained redirect follow-ups resolve deterministically by position within
-  // the chain. Intercept them here so they never fall through to URL/name
-  // matching, which is what made hops latch onto the wrong child node (or only
-  // the final one). When the chain can't be resolved we return null — leaving
-  // the Tree unmarked — rather than guessing. RLP-570.
   const eventChainId = String(event.chain_id ?? '').trim();
   let unresolvedRedirectFollowUp = false;
   if (
@@ -325,10 +265,6 @@ export function matchDebugEventTarget(
   ) {
     const directMatch = matchRedirectChainChildToNode(event, eventChainId, requestTargets);
     if (directMatch) return directMatch;
-    // Runtime-discovered redirects can use a synthetic `legacy:...` chain ID
-    // that differs from the recording's chain ID. The engine still preserves
-    // the enabled parent's request_id and redirect position, which uniquely
-    // recover the recorded child without guessing by its resolved URL.
     const recordedParent = findUniqueTarget(
       requestTargets,
       node => chainRoleOf(node) === 'parent' && String(node.data?.request_id ?? '') === String(event.request_id ?? ''),
@@ -354,9 +290,6 @@ export function matchDebugEventTarget(
       const linkedMatch = linkedChildren[(event.redirect_index ?? 0) - 1];
       if (linkedMatch) return linkedMatch;
     }
-    // A precise step_path match below remains safe even when neither chain ID
-    // agrees. Do not fall through to request_id/name matching afterward: those
-    // identify the parent and can select the wrong redirect hop.
     unresolvedRedirectFollowUp = true;
   }
   const redirectFinalTarget = matchRedirectFinalEventToNode(event, requestTargets, eventPath);
@@ -430,9 +363,6 @@ export function requestExtractorVariableNames(node: YAMLNode | null): string[] {
   return [...names];
 }
 
-// Pull variable references from a request config. Built-in expressions belong
-// in the Built-ins tab, while nested variable references inside them still
-// belong here. An explicit variable name takes priority over a built-in name.
 function collectPlaceholderNames(value: unknown, into: Set<string>, variables: Record<string, string>): void {
   if (typeof value === 'string') {
     let cursor = 0;
@@ -476,12 +406,6 @@ function isBuiltinExpression(expression: string): boolean {
   return /^[_$](?![_$])[A-Za-z][A-Za-z0-9_.]*(?:\s*\(|$)/.test(expression);
 }
 
-// The variable names a request *uses* (vs. extracts): `{{placeholders}}` woven
-// through its url/headers/body/params, plus the names bound by any data source
-// attached to the request. RLP-584. This stays request-scoped on purpose — we
-// never widen back to "every variable in scope", which is what RLP-585 removed
-// to stop unrelated data-source columns leaking onto requests that don't touch
-// them.
 function requestReferencedVariableNames(node: YAMLNode | null, variables: Record<string, string> = {}): string[] {
   if (!node) return [];
   const names = new Set<string>();
@@ -493,11 +417,6 @@ function requestReferencedVariableNames(node: YAMLNode | null, variables: Record
   }
   collectPlaceholderNames(node.data, names, variables);
   node.children?.forEach(child => {
-    // Header/body config edited through the detail UI lives on child config
-    // nodes (e.g. the `headers` child) and is serialized from there, not from
-    // node.data — so a header like `Authorization: Bearer {{token}}` only
-    // surfaces if we scan child data too. Skip nested request children so a
-    // controller's sub-requests never leak their placeholders up here. RLP-584.
     if (REQUEST_TYPES.has(child.type)) return;
     collectPlaceholderNames(child.data, names, variables);
     if (child.type === 'data_source') {
@@ -507,9 +426,6 @@ function requestReferencedVariableNames(node: YAMLNode | null, variables: Record
   return [...names];
 }
 
-// Every variable name relevant to a request's Variables tab: what it extracts
-// followed by what it references. Order is stable (extractors first) and
-// duplicates collapse. RLP-584.
 export function requestVariableNames(node: YAMLNode | null, variables: Record<string, string> = {}): string[] {
   const names = new Set<string>();
   for (const name of [...requestExtractorVariableNames(node), ...requestReferencedVariableNames(node, variables)]) {
@@ -518,10 +434,6 @@ export function requestVariableNames(node: YAMLNode | null, variables: Record<st
   return [...names];
 }
 
-// How a request touches a variable. RES = the request extracts it from its own
-// response (an extractor/regex lives on this request). REQ = the request
-// sends/uses it — a {{placeholder}} in its url/headers/body/params, or a
-// data-source bind. RLP-597.
 export type VariableRole = 'REQ' | 'RES' | 'VAR';
 
 export type VariableValueContext = {
@@ -533,15 +445,9 @@ export type VariableValueContext = {
   responseBody?: string;
   responseHeaders?: Record<string, string>;
   statusLine?: string;
-  // Text shown for a variable with no captured value (defaults to English).
   missingValueLabel?: string;
 };
 
-// Classifies every variable a request touches by role. A correlation variable
-// is RES on the request that captures it and REQ on each request that consumes
-// it, so the same name surfaces in at least two Variables tabs tagged by where
-// it lives vs. where it's used. A variable that a request both extracts and
-// re-uses collapses to a single entry carrying both roles. RLP-597.
 function collectScalarValues(value: unknown, into: Set<string>): void {
   if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
     const scalar = String(value);
@@ -564,9 +470,7 @@ function runtimeRequestValues(context: VariableValueContext): Set<string> {
       const url = new URL(context.requestUrl, 'http://relampo.local');
       url.pathname.split('/').forEach(segment => segment && values.add(decodeURIComponent(segment)));
       url.searchParams.forEach(value => values.add(value));
-    } catch {
-      // A malformed runtime URL cannot safely prove that a variable was used.
-    }
+    } catch {}
   }
   Object.values(context.requestHeaders ?? {}).forEach(value => {
     values.add(value);
@@ -596,11 +500,6 @@ function runtimeRequestVariableNames(variables: Record<string, string>, context:
     if (names) names.push(name);
     else namesByValue.set(value, [name]);
   });
-  // Reverse correlation is only trustworthy when a runtime value identifies a
-  // single variable. Two captures can legitimately share a value (e.g. code1
-  // and code2), so ambiguous matches remain driven by explicit placeholders.
-  // Built-in outputs are excluded because an unrelated variable can match them
-  // by value alone.
   return [...namesByValue].flatMap(([value, names]) =>
     requestValues.has(value) && !builtinValues.has(value) && names.length === 1 ? names : [],
   );
@@ -630,9 +529,7 @@ function resolvedRequestUrlVariables(node: YAMLNode | null, context: VariableVal
         if (name) values.set(name, decodeURIComponent(runtimeSegments[index]));
       });
     }
-  } catch {
-    // Malformed URLs cannot safely prove which runtime value filled a placeholder.
-  }
+  } catch {}
   return values;
 }
 
@@ -656,10 +553,6 @@ function requestVariableRoles(
   return roles;
 }
 
-// The 1st-column label for a Variables-tab row: the variable name followed by
-// its role tag(s), e.g. `javax.faces.ViewState (RES)` on the request that
-// extracts it and `javax.faces.ViewState (REQ)` on one that uses it. A name that
-// is both keeps one row tagged `(REQ, RES)`. RLP-597.
 export function variableRowLabel(name: string, roles: Set<VariableRole> | undefined): string {
   const tags = (['REQ', 'RES', 'VAR'] as VariableRole[]).filter(role => roles?.has(role));
   return tags.length ? `${name} (${tags.join(', ')})` : name;
@@ -683,9 +576,6 @@ function headersToText(headers: Record<string, string> | undefined): string {
     .join('\n');
 }
 
-// Shares the search box's Relampo-to-JavaScript translation so a generated
-// extractor previews here exactly as it highlights there. `s` stays forced:
-// extractor patterns are written against whole response bodies. RLP-670.
 function compileExtractorRegex(pattern: string): RegExp | null {
   return buildRelampoRegex(pattern, 'gs');
 }
@@ -718,8 +608,6 @@ function regexExtractorValue(data: Record<string, unknown>, context: VariableVal
 
 function responseExtractorValues(node: YAMLNode | null, context: VariableValueContext): Map<string, string> {
   const values = new Map<string, string>();
-  // Native events can aggregate multiple messages. Only the runtime knows which
-  // message/row actually produced each capture; never re-extract in the UI.
   if (node && isNativeSampler(node.type)) return values;
   node?.children?.forEach(child => {
     if (child.type !== 'extractor' && child.type !== 'extract') return;
@@ -761,8 +649,6 @@ function capturedRequestVariables(node: YAMLNode, context: VariableValueContext)
   const values = resolvedRequestUrlVariables(node, context);
   const visit = (template: unknown, captured: unknown) => {
     if (typeof template === 'string') {
-      // A complete placeholder can be attributed to its captured value without
-      // re-evaluating time/random functions or guessing mixed-string boundaries.
       const match = template.match(/^\{\{([^{}]+)\}\}$|^\$\{([^{}]+)\}$/);
       if (match && !isBuiltinExpression((match[1] ?? match[2]).trim()) && captured !== undefined)
         values.set((match[1] ?? match[2]).trim(), typeof captured === 'string' ? captured : JSON.stringify(captured));
@@ -841,9 +727,6 @@ function requestBodyFieldRows(
         for (const [name, value] of Object.entries(item)) fields.append(name, String(value ?? ''));
     template = fields.toString();
   }
-  // Use the sent field value and its request name. Never re-evaluate a built-in
-  // or substitute a literal from the currently edited YAML for missing evidence.
-  // Decode JSON and URL-encoded fields; multipart needs a body parser.
   visit(structuredBody(template), structuredBody(context.requestBody), []);
   return rows;
 }
@@ -853,13 +736,6 @@ export function variableRowsForRequestNode(
   variables: Record<string, string>,
   context: VariableValueContext = {},
 ): Array<[string, string]> {
-  // A request's Variables tab lists the variables that request extracts *and*
-  // the ones it uses (header/body/url placeholders, data-source binds), each
-  // tagged RES (extracted here) or REQ (used here). When the event can't be
-  // mapped to a tree node we show nothing rather than dumping every variable in
-  // scope — otherwise unrelated values (e.g. data-source columns like
-  // `user`/`pass`, which this request neither captures nor references) leak onto
-  // it. RLP-584 / RLP-585 / RLP-597.
   if (!node) return [];
   const roles = requestVariableRoles(node, variables, context);
   const extracted = responseExtractorValues(node, context);

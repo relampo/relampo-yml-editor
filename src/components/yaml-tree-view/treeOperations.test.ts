@@ -130,10 +130,6 @@ describe('replaceTextInEnabledRequests', () => {
   });
 
   it('counts each header replacement once on a real parsed tree', () => {
-    // The hand-built fixture above omits `headers` from the request node's own
-    // data, which is not what the parser produces: it hands the very same
-    // headers object to both `node.data!.headers` and the `headers` child, so
-    // both get visited. Building from parseYAMLToTree keeps this honest.
     const tree = parseYAMLToTree(`
 test:
   name: count
@@ -152,14 +148,11 @@ scenarios:
 
     const result = replaceTextInEnabledRequests(tree, 'xyz123', '{{tok}}');
 
-    // Two user-visible values: the URL and the Authorization header.
     expect(result.replacements).toBe(2);
 
     const replaced = findRequest(result.tree)!;
     expect(replaced.name).toBe('GET: /u/%7B%7Btok%7D%7D');
     expect(replaced.data!.url).toBe('/u/{{tok}}');
-    // Both copies are still rewritten — YAMLRequestDetails reads
-    // node.data!.headers for Content-Type, so leaving it stale would be wrong.
     expect(replaced.data!.headers).toEqual({ Authorization: '{{tok}}' });
     expect(replaced.children?.find(child => child.type === 'headers')?.data).toEqual({
       Authorization: '{{tok}}',
@@ -172,8 +165,6 @@ scenarios:
   });
 
   it('still counts request headers that have no headers child node', () => {
-    // The parser only emits the child for a non-empty object, so a request
-    // carrying headers without one must keep owning its own tally.
     const tree: YAMLNode = {
       id: 'steps',
       type: 'steps',
@@ -634,7 +625,6 @@ describe('duplicateNodeInTree redirect metadata', () => {
 });
 
 describe('syncRedirectSourceFollowRedirects', () => {
-  // source (302) -> target follow-up, with the target nested in a group.
   function createRedirectTree(): YAMLNode {
     return {
       id: 'root',
@@ -671,7 +661,6 @@ describe('syncRedirectSourceFollowRedirects', () => {
   });
 
   it('syncs the source when a container holding the follow-up is toggled', () => {
-    // Toggling the group cascades enabled:false onto its descendant target.
     const tree = updateNodeEnabled(createRedirectTree(), 'group-1', false);
     const result = syncRedirectSourceFollowRedirects(tree, 'group-1', false, redirectedRequestMap);
     expect(findNodeById(result, 'target')?.data!.enabled).toBe(false);

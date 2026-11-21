@@ -85,7 +85,6 @@ for (const studio of [false, true]) {
       }
       await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Source (Copy) 2');
       await page.getByLabel('Name', { exact: true }).fill('Renamed');
-      // Export immediately after the debounced name edit to verify the saved revision.
       expect((yaml.load(await downloadYaml(page)) as any).scenarios.map((item: any) => item.name)).toEqual([
         'Source', 'Renamed', 'Source (Copy)', 'New Scenario',
       ]);

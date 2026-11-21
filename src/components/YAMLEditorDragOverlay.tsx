@@ -2,7 +2,6 @@ interface YAMLEditorDragOverlayProps {
   language: string;
 }
 
-// Hint shown while a file is being dragged over the editor.
 export function YAMLEditorDragOverlay({ language }: YAMLEditorDragOverlayProps) {
   return (
     <div className="absolute inset-0 z-50 bg-[#0a0a0a]/88 backdrop-blur-sm flex items-center justify-center pointer-events-none">

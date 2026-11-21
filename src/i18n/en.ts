@@ -67,7 +67,6 @@ export const enTranslations = {
       'Explicitly runs until Stop or Ctrl+C, subject to the active license duration limit. Duration and iterations are cleared.',
   },
 
-  // Navigation
   nav: {
     howItWorks: 'How it works',
     roadmap: 'Roadmap',
@@ -76,7 +75,6 @@ export const enTranslations = {
     contact: 'Contact',
   },
 
-  // Hero Section
   hero: {
     tagline: 'Performance testing made simple.',
     title: 'Modern load testing for engineering teams who value clarity and speed',
@@ -85,7 +83,6 @@ export const enTranslations = {
     availableNow: 'AVAILABLE NOW AND FOREVER',
   },
 
-  // Quick Start
   quickStart: {
     title: 'Quick start',
     step1: {
@@ -102,7 +99,6 @@ export const enTranslations = {
     },
   },
 
-  // How It Works
   howItWorks: {
     title: 'How it works',
     startTesting: 'Start Testing',
@@ -132,7 +128,6 @@ export const enTranslations = {
     inSimpleSteps: 'in 4 simple steps',
   },
 
-  // Readable Scripts Section
   readableScripts: {
     badge: 'Readable Scripts',
     title: 'YAML that your',
@@ -167,7 +162,6 @@ export const enTranslations = {
     invalidYaml: '✗ Invalid YAML - common pitfall',
   },
 
-  // Free Cloud Section
   freeCloud: {
     badge: 'Free Cloud Sandbox',
     title: 'Stop running tests',
@@ -206,12 +200,10 @@ export const enTranslations = {
     ],
   },
 
-  // Final CTA Section
   finalCta: {
     description: 'Write readable scripts. Run tests on cloud infrastructure. Get results faster. All for free.',
   },
 
-  // Roadmap
   roadmap: {
     title: "What we're building",
     subtitle: 'End-to-end performance testing',
@@ -254,7 +246,6 @@ export const enTranslations = {
     },
   },
 
-  // League
   league: {
     title: 'Relampo League',
     subtitle: 'Climb the ranks. Earn credits. Run bigger tests.',
@@ -321,7 +312,6 @@ export const enTranslations = {
     },
   },
 
-  // CTA
   cta: {
     title: 'Ready to make performance testing simple?',
     subtitle: 'Join the waitlist and be among the first to experience Relampo',
@@ -338,7 +328,6 @@ export const enTranslations = {
     questionsEmail: 'Questions? Email us at',
   },
 
-  // Team
   team: {
     title: 'Meet the crew',
     members: {
@@ -365,7 +354,6 @@ export const enTranslations = {
     },
   },
 
-  // Footer
   footer: {
     copyright: '© 2026 Relampo · Performance testing made simple.',
     links: {
@@ -376,7 +364,6 @@ export const enTranslations = {
     },
   },
 
-  // Sidebar
   sidebar: {
     dashboard: 'Dashboard',
     workbench: 'Workbench',
@@ -387,21 +374,18 @@ export const enTranslations = {
     designDoc: 'Design Doc',
   },
 
-  // CLI Tabs
   cliTabs: {
     recorder: 'Recorder',
     yamlEditor: 'YAML Editor',
     correlation: 'Correlation',
   },
 
-  // TopBar
   topBar: {
     user: 'User Name',
     team: 'user@relampo.io',
     logout: 'Logout',
   },
 
-  // Dashboard
   dashboard: {
     title: 'Performance Dashboard',
     subtitle: 'Monitor your load testing metrics and recent activity',
@@ -422,7 +406,6 @@ export const enTranslations = {
     },
   },
 
-  // Workbench
   workbench: {
     recording: 'Recording',
     scripting: 'Scripting',
@@ -432,7 +415,6 @@ export const enTranslations = {
     monitoring: 'Monitoring',
   },
 
-  // Projects
   projects: {
     title: 'Projects',
     subtitle: 'Manage your load testing projects',
@@ -442,7 +424,6 @@ export const enTranslations = {
     archived: 'Archived',
   },
 
-  // Settings
   settings: {
     title: 'Settings',
     subtitle: 'Configure your Relampo preferences',
@@ -452,7 +433,6 @@ export const enTranslations = {
     billing: 'Billing',
   },
 
-  // YAML Editor
   yamlEditor: {
     sqlResults: {
       request: 'SQL request',
@@ -551,7 +531,6 @@ export const enTranslations = {
     selectNode: 'Select a node from the tree',
     viewDetails: 'to view its details',
 
-    // Common labels
     common: {
       name: 'Name',
       description: 'Description',
@@ -572,7 +551,6 @@ export const enTranslations = {
       noProperties: 'No additional properties',
     },
 
-    // Context menu
     contextMenu: {
       addHeader: 'Add Header',
       addHeaders: 'Add Headers',
@@ -585,7 +563,6 @@ export const enTranslations = {
       addThinkTime: 'Add Think Time',
     },
 
-    // Spark editor
     spark: {
       quickReference: 'Quick Reference:',
       readVariable: 'Read variable',
@@ -1252,7 +1229,6 @@ export const enTranslations = {
         type_intent: 'Intent',
         type_segments: 'Segments',
       },
-      // nodeDetails-end
     },
 
     shell: {
@@ -1455,7 +1431,6 @@ export const enTranslations = {
         cannotStart_run: 'This load test cannot start.',
         goToFirstError: 'Go to first error',
       },
-      // shell-end
     },
 
     requestDetails: {
@@ -1559,7 +1534,6 @@ export const enTranslations = {
       sparkResponseBody: 'Response body',
       sparkResponseLatency: 'Response latency',
       sparkPrintConsole: 'Print to console',
-      // requestDetails-end
     },
 
     runDebug: {
@@ -1789,17 +1763,14 @@ export const enTranslations = {
         segmentsAria: 'Configured load segments',
         rpsWithMaxVus: '{rps} RPS (max {vus} VUs)',
       },
-      // runDebug-end
     },
 
-    // Empty state
     emptyState: {
       description: 'Create a performance test plan from scratch or upload an existing file.',
       addBtn: 'Add a performance test plan',
     },
   },
 
-  // Mobile / small-viewport block screen
   mobileBlock: {
     eyebrow: 'Bigger screen required',
     title: 'This editor is built for larger screens',

@@ -12,8 +12,6 @@ async function openSegments(page: Page, segments: Segment[]) {
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   const yaml = dump({ test: { name: 'RLP-768 reorder' }, scenarios: [{ name: 'reorder', load: { type: 'segments', segments }, steps: [{ get: '/health' }] }] });
-  // Load through initialization so its asynchronous empty-document restore
-  // cannot race a file upload. The export test separately exercises reimport.
   await page.route('**/api/studio/info', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ studio: true, initialScript: { name: 'reorder.yaml', yaml }, capabilities: { loadRun: false, dataSourceFiles: false, debug: false } }) }));
   await page.goto('/');
   await page.getByText('Load: Segments', { exact: true }).first().click();
@@ -24,7 +22,6 @@ async function drag(page: Page, from: number, to: number) {
   await page.getByRole('button', { name: `Drag segment ${from}`, exact: true }).dragTo(page.locator('[data-segment-row]').nth(to - 1));
 }
 
-// The validation banner appends (+N) when more than one segment is invalid.
 const issue = (page: Page, text: string) => page.getByText(text, { exact: false }).first();
 
 async function save(page: Page) {
@@ -52,7 +49,6 @@ test('RLP-768 native drag revalidates every neighbor, moves exact RPS interval a
   await expect(target).toHaveAttribute('x1', '82.5');
   await expect(target).toHaveAttribute('x2', '252.5');
   await expect(target).toHaveAttribute('stroke-dasharray', '6 5');
-  // A manually selected invalid transition exposes the new configured RPS predecessor.
   await page.getByLabel('Transition for segment 3').click();
   await page.getByRole('option', { name: 'Ramp up', exact: true }).click();
   await expect(issue(page, 'Segment 3 Transition must be Ramp down from 40 VUs to 20 VUs.')).toBeVisible();

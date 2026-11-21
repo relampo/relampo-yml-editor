@@ -19,8 +19,6 @@ staged_build="$package_tmp_dir/build"
 mkdir -p "$staged_build"
 cp -R "$build_dir/." "$staged_build/"
 
-# A fixed timestamp plus a sorted file list makes the gzip bytes reproducible
-# across reruns of the same build. gzip -n removes its own timestamp and name.
 find "$staged_build" -type f -exec chmod 0644 {} +
 find "$staged_build" -type f -exec env TZ=UTC touch -t 200001010000 {} +
 uncompressed_archive="$package_tmp_dir/dist.tar"

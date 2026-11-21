@@ -38,7 +38,7 @@ describe('RLP-767 segment continuity', () => {
     }
     expect(screen.getByText(/Total:\s*1s/)).toBeInTheDocument();
     const trajectory = container.querySelector('polyline[stroke-width="3"]')!;
-    expect(trajectory.getAttribute('points')).toContain('210,90'); // starts at previous RPS Max 30, on the 60-VU axis
+    expect(trajectory.getAttribute('points')).toContain('210,90');
     expect(trajectory.getAttribute('points')).toContain('380,10');
   });
 

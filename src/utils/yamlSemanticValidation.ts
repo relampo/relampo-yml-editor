@@ -138,8 +138,6 @@ export function validateYAMLSemantics(tree: YAMLNode | null): YAMLSemanticIssue[
       validateSegmentsLoadNode(node, issues);
     }
 
-    // Manual-stop is a non-intent contract; intent loads have no such control,
-    // so keep this validation off them to avoid a message they can't act on.
     if (node.type === 'load' && !['intent', 'segments'].includes(normalizeLoadType(node.data?.type))) {
       const duration = String(node.data?.duration ?? '').trim();
       const rawIterations = String(node.data?.iterations ?? '').trim();
@@ -151,9 +149,6 @@ export function validateYAMLSemantics(tree: YAMLNode | null): YAMLSemanticIssue[
         Object.hasOwn(node.data ?? {}, 'iterations') ||
         Object.hasOwn(node.data ?? {}, 'run_until_stopped');
 
-      // Only a real limit (a duration or a positive iteration count) conflicts;
-      // iterations: 0 is the finite-type default and means "unlimited", not a
-      // configured limit.
       if (runsUntilStopped && hasFiniteLimit) {
         issues.push({
           nodeId: node.id,

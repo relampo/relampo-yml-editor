@@ -94,9 +94,7 @@ export function HeadersDetails({
               try {
                 const parsed: unknown = JSON.parse(value);
                 if (Array.isArray(parsed) && parsed.every(item => typeof item === 'string')) return [key, parsed];
-              } catch {
-                /* A regular metadata value is a string. */
-              }
+              } catch {}
               return [key, value];
             }),
           );

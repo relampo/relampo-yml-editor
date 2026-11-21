@@ -287,7 +287,6 @@ export function YAMLTreeView({
   return (
     <div className="h-full w-full bg-[#0a0a0a] flex flex-col">
       <TreeSearchBar
-        // Remount on an outside reset so the typed draft clears with the applied query.
         key={searchResetSignal}
         scope={searchScope}
         onScopeChange={(scope, query) => {
@@ -326,7 +325,6 @@ export function YAMLTreeView({
         />
       )}
 
-      {/* Tree */}
       <div
         ref={treeContainerRef}
         role="tree"
@@ -362,7 +360,6 @@ export function YAMLTreeView({
         )}
       </div>
 
-      {/* Context Menu */}
       {contextMenu && (
         <YAMLContextMenu
           x={contextMenu.x}

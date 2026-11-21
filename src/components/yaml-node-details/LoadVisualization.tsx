@@ -15,8 +15,6 @@ import {
 interface LoadVisualizationProps {
   data: LoadData;
   loadType: LoadType;
-  // Elapsed seconds into a live run. When set, a vertical playhead glides across
-  // the chart at the matching time position. Undefined hides it (default).
   progressSeconds?: number;
 }
 

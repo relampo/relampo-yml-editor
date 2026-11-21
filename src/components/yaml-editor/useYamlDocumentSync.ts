@@ -49,12 +49,6 @@ interface UseYamlDocumentSyncParams {
   syncSelectionWithTree: (tree: YAMLNode | null) => void;
 }
 
-/**
- * Owns the document's code/tree state and every code<->tree parse/serialize
- * handler (debounced parsing, worker wiring, tree commits, save-time
- * serialization). This is the core orchestration the rest of YAMLEditor's
- * handlers build on. Behavior is identical to the inline logic it replaces.
- */
 export function useYamlDocumentSync({
   language,
   isInitialized,
@@ -210,7 +204,6 @@ export function useYamlDocumentSync({
     }
   };
 
-  // Cleanup debounce timers
   useEffect(() => {
     return () => {
       if (parseDebounceRef.current) window.clearTimeout(parseDebounceRef.current);
@@ -229,9 +222,6 @@ export function useYamlDocumentSync({
     if (parseDebounceRef.current) window.clearTimeout(parseDebounceRef.current);
 
     const isLarge = getDocumentMetrics(newCode).large;
-    // Until the debounced parse completes, the tree still represents the
-    // previous code. Mark every edit as outdated so Debug, Run, and save
-    // cannot use a stale tree during that window.
     setIsTreeOutdated(true);
 
     parseDebounceRef.current = window.setTimeout(() => {
@@ -260,9 +250,6 @@ export function useYamlDocumentSync({
     syncTreeToCode(tree);
   };
 
-  // Debug/Run always serialize the current tree as one immutable snapshot. The
-  // debounce timer is only an optimization for updating the code view; it must
-  // never decide which document version gets executed.
   const flushPendingTreeSerialization = (): string => {
     if (!yamlTree) return yamlCode;
     if (serializeDebounceRef.current) {
@@ -322,9 +309,6 @@ export function useYamlDocumentSync({
     [applySemanticValidation],
   );
 
-  // Resets all document-editing state for a brand-new document. Does
-  // not touch identity fields (filename, draft metadata) or view state —
-  // callers compose those resets alongside this one (see handleNewConfirm).
   const resetDocument = () => {
     if (parseDebounceRef.current) {
       window.clearTimeout(parseDebounceRef.current);

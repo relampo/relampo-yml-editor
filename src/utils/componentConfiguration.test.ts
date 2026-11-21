@@ -66,9 +66,7 @@ function find(tree: YAMLNode, type: string): YAMLNode {
   for (const child of tree.children || []) {
     try {
       return find(child, type);
-    } catch {
-      /* try sibling */
-    }
+    } catch {}
   }
   throw Error(type);
 }

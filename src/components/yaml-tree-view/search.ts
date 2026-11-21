@@ -43,10 +43,6 @@ export type SearchNodeState = {
   responseMatch?: boolean;
 };
 
-/**
- * Builds the search state for every node in one post-order traversal.
- * Reusing this index avoids rescanning the same subtrees for every sibling.
- */
 export function buildSearchIndex(tree: YAMLNode, searchQuery: string): Map<string, SearchNodeState> {
   const query = searchQuery.trim().toLowerCase();
   const index = new Map<string, SearchNodeState>();
@@ -181,7 +177,6 @@ function serializeSearchValue(value: unknown): string {
   return '';
 }
 
-/** Build occurrence locations once, preserving the same order as replacement. */
 export function buildScopedSearch(tree: YAMLNode | null, query: string, scope: SearchScope | null) {
   const matches: SearchOccurrence[] = [];
   const index = new Map<string, SearchNodeState>();

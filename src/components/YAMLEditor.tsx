@@ -213,8 +213,6 @@ export function YAMLEditor() {
   const { redirectedRequestMap, redirectSourceMap } = useRedirectMaps(yamlTree);
   const { httpDefaultsBaseUrl, scenarioHosts, httpDefaultsBaseHost } = useHttpDefaultsInfo(yamlTree);
 
-  // Clears the tree search, opens the node's collapsed ancestors, selects it,
-  // and shows the tree. A search that hides the node would drop the selection.
   const [searchResetSignal, setSearchResetSignal] = useState(0);
   const goToIssue = (nodeId: string) => {
     if (!yamlTree) return;
@@ -235,9 +233,6 @@ export function YAMLEditor() {
     commitTreeChange(updatedTree, undefined, { serialization: 'debounced' });
   };
 
-  // Rename a recorded host everywhere it appears (base_url + every absolute
-  // request URL that targets it), so secondary hosts are editable like the
-  // primary one instead of being locked to the recorded value. See RLP-365.
   const handleRenameHost = (oldHost: string, newHost: string) => {
     if (!yamlTree) return;
     const updatedTree = renameRequestHost(yamlTree, oldHost, newHost);
@@ -281,7 +276,6 @@ export function YAMLEditor() {
     () => ({ yaml: retrieveYamlForSaving(), fileName: currentFileName, revision: editRevisionRef.current }),
     async (yaml, name) => {
       resetExecutionSessions();
-      // The correlated result is now this tab's document, including after reload.
       const address = new URL(window.location.href);
       if (!address.searchParams.has('editor')) {
         address.searchParams.set('editor', crypto.randomUUID());
@@ -303,8 +297,6 @@ export function YAMLEditor() {
     resetIdentityForNewDocument();
     setViewMode('tree');
 
-    // Bumps the save generation, cancels any pending autosave, and clears the
-    // stored draft so an in-flight save can't resurrect the discarded content.
     void resetForNewDocument();
   };
 

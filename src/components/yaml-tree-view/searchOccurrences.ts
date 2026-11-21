@@ -73,14 +73,10 @@ export function nodeSearchOccurrences(node: YAMLNode, query: string, scope: Sear
     for (const [key, value] of Object.entries(replacementNodeData(node, true) ?? {})) {
       if (!excluded.has(key)) visit(value, [key], key === 'url');
     }
-    // Built-in component labels (Load, Cookies, Headers, Steps, etc.) also
-    // belong to Requests. Keep generated labels read-only and avoid counting
-    // the same source value twice through its derived display label.
     if (
       !found.some(match => match.path[0] === 'name' || node.name.includes(match.value)) &&
       node.name.toLowerCase().includes(query.toLowerCase())
     ) visit(node.name, ['name'], false, false);
-    // Searchable field names are read-only results, distinct from editable values.
     if (!found.length)
       for (const [key, value] of Object.entries(node.data ?? {})) {
         if (excluded.has(key) || key.startsWith('__')) continue;

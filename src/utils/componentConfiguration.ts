@@ -144,7 +144,6 @@ export function parseComponentCapabilities(value: unknown): ComponentCapabilitie
     features: COMPONENT_FEATURES.filter(feature => value.features instanceof Array && value.features.includes(feature)),
   };
 }
-// Go duration syntax is used by HTTP timeout and inherited timers.
 function durationMilliseconds(value: unknown): number | null {
   if (typeof value !== 'string') return null;
   const text = value.startsWith('+') ? value.slice(1) : value;
@@ -187,7 +186,6 @@ export function componentFeatureFor(protocol: string, field: string): ComponentF
   return 'http_defaults';
 }
 
-/** Traverse only modeled configuration and child flows, never bodies, headers or variables. */
 export function inspectComponentConfiguration(script: unknown): {
   errors: ConfigurationIssue[];
   warnings: ConfigurationIssue[];
@@ -898,7 +896,6 @@ export function inspectTreeComponentConfiguration(tree: YAMLNode) {
   return inspectComponentConfiguration(treeToObject(tree));
 }
 
-/** Reuse serialization so authored controls and saved child edits agree. */
 export function authoredComponentData(node: YAMLNode): Record<string, unknown> {
   return HTTP_TYPES.has(node.type) ? requestNodeToObject(node).request : authoredNodeData(node);
 }

@@ -26,7 +26,6 @@ interface UseYamlFileUploadParams {
   invalidatePendingDraft?: () => Promise<void> | void;
 }
 
-/** File upload (browse + drag-and-drop) state and handlers for loading a .yaml/.yml file into the document. */
 export function useYamlFileUpload({
   language,
   setError,
@@ -68,9 +67,6 @@ export function useYamlFileUpload({
 
       const displayName = file.name.replace(/\.(ya?ml)$/i, '');
 
-      // Validate before replacing the current document. Import must be
-      // transactional: an unreadable or syntactically invalid file cannot
-      // discard the current tree or its recoverable draft.
       try {
         parseYAMLToTree(content, displayName);
       } catch (error) {

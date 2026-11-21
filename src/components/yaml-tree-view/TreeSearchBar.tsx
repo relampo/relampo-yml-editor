@@ -92,7 +92,6 @@ export function TreeSearchBar({
       className="shrink-0 px-3 pt-3 pb-2"
     >
       <div className="flex flex-wrap items-center gap-2 p-3 bg-[#111111] border border-white/10 rounded-lg">
-        {/* Input container */}
         <div className="min-w-0 basis-28 flex-1 flex items-center gap-2 bg-[#0a0a0a] border border-white/10 rounded px-3 py-1.5">
           <Search className="w-4 h-4 text-zinc-500 shrink-0" />
           <input
@@ -112,7 +111,6 @@ export function TreeSearchBar({
           />
         </div>
 
-        {/* Close button */}
         {(value || searchDraft) && (
           <button
             type="button"

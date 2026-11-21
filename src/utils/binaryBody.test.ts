@@ -14,16 +14,15 @@ const FFFD = String.fromCharCode(0xfffd);
 
 describe('byteIndexedLength', () => {
   it('detects a byte-indexed object (the recorded binary shape) and returns its length', () => {
-    // A DER certificate starts 30 82 06 CE -> {0:48,1:130,2:6,3:206}.
     expect(byteIndexedLength({ '0': 48, '1': 130, '2': 6, '3': 206 })).toBe(4);
   });
 
   it('rejects non-byte-map values', () => {
     expect(byteIndexedLength('hello')).toBeNull();
-    expect(byteIndexedLength([48, 130])).toBeNull(); // arrays are not the recorded shape
-    expect(byteIndexedLength({ name: 'ok', id: 1 })).toBeNull(); // real JSON object
-    expect(byteIndexedLength({ '0': 48, '2': 6 })).toBeNull(); // non-consecutive keys
-    expect(byteIndexedLength({ '0': 48, '1': 999 })).toBeNull(); // value out of byte range
+    expect(byteIndexedLength([48, 130])).toBeNull();
+    expect(byteIndexedLength({ name: 'ok', id: 1 })).toBeNull();
+    expect(byteIndexedLength({ '0': 48, '2': 6 })).toBeNull();
+    expect(byteIndexedLength({ '0': 48, '1': 999 })).toBeNull();
     expect(byteIndexedLength({})).toBeNull();
     expect(byteIndexedLength(null)).toBeNull();
   });

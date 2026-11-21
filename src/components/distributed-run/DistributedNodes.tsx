@@ -1,8 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Check, ChevronDown, Monitor } from 'lucide-react';
 
-// Capacity is a UI plan setting. The CLI independently checks the actual signed
-// execution entitlement during preflight and before dispatching workers.
 export function DistributedNodes({
   selected,
   onChange,

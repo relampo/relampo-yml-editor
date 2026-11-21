@@ -21,9 +21,6 @@ export function DebugSection({
   searchText?: string;
   searchMode?: SearchMode;
   currentMatchIndex?: number;
-  // When true the label column wraps its full text instead of truncating it.
-  // Used for the Variables tab so long names (e.g. javax.faces.ViewState) stay
-  // fully readable rather than being clipped. RLP-585 #6.
   wrapLabels?: boolean;
 }) {
   const { t } = useLanguage();
@@ -124,13 +121,6 @@ function DebugMetadataDetails({
   hasActiveSearch: boolean;
 }) {
   const { t } = useLanguage();
-  // `open` is otherwise fully user-controlled via the native <details>
-  // onToggle below. The only prop-driven adjustment is: when a search
-  // becomes active (false -> true transition), force it open so matches are
-  // visible; a search going inactive, or the user manually collapsing while
-  // a search stays active, does not touch it. Tracked via the
-  // store-previous-prop-and-compare-during-render pattern rather than an
-  // effect so the forced reopen lands in the same render as the transition.
   const [open, setOpen] = useState(() => hasActiveSearch);
   const [prevHasActiveSearch, setPrevHasActiveSearch] = useState(() => hasActiveSearch);
   if (hasActiveSearch !== prevHasActiveSearch) {

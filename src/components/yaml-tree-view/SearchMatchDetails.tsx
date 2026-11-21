@@ -2,7 +2,6 @@ import { textMatcher } from './treeOperations';
 import { useEffect, useRef } from 'react';
 import { useSearchNavigation } from './SearchNavigationContext';
 
-/** Reveals the search occurrence in its original field without adding visible content. */
 export function SearchMatchDetails({ nodeId }: { nodeId: string }) {
   const { match } = useSearchNavigation();
   const previewRef = useRef<HTMLStyleElement>(null);
@@ -80,9 +79,7 @@ export function SearchMatchDetails({ nodeId }: { nodeId: string }) {
           active.path[0] === 'url' || projectedForm ? rangeStart : prefix + rangeStart,
           active.path[0] === 'url' || projectedForm ? rangeEnd : prefix + rangeEnd,
         );
-      } catch {
-        /* Number inputs cannot select a range. */
-      }
+      } catch {}
       if (selected instanceof HTMLTextAreaElement) {
         const line = selected.value.slice(0, prefix + active.start).split('\n').length - 1;
         const height = Number.parseFloat(getComputedStyle(selected).lineHeight) || 20;

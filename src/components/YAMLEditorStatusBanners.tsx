@@ -20,8 +20,6 @@ function countLabel(count: number, es: boolean, kind: 'error' | 'info') {
     : `${count} unrecognized ${count === 1 ? 'field' : 'fields'}`;
 }
 
-// Syntax-error banner, plus a one-line summary of the document issues shown in
-// the tree. The summary can be closed only when nothing blocks Debug or Run.
 export function YAMLEditorStatusBanners({
   error,
   issueIndex,

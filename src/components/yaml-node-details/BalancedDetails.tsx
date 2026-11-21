@@ -547,9 +547,6 @@ export function BalancedDetails({ node, onNodeUpdate }: NodeDetailProps) {
   const balancedType = normalizeBalancedDistributionType(data.type);
   const mode = normalizeBalancedExecutionMode(data.mode);
   const children = node.children || [];
-  // think_time, empty containers and request-less subtrees never participate in
-  // the balance — they are excluded from the included list, the distribution and
-  // the percentage total so they cannot consume load. See RLP-475.
   const loadBearingChildren = children.filter(isBalancedLoadBearingChild);
   const excludedChildren = children.filter(child => !isBalancedLoadBearingChild(child));
   const validation = validateBalancedController(balancedType, children);

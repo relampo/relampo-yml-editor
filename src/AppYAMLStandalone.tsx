@@ -8,9 +8,6 @@ import { YAMLProvider } from './contexts/YAMLContext';
 import { YAMLEditor } from './components/YAMLEditor';
 import { MobileBlockOverlay } from './components/MobileBlockOverlay';
 
-/**
- * 🔥 Relampo YAML Editor - Standalone Version
- */
 export default function AppYAMLStandalone() {
   return (
     <LanguageProvider>
