@@ -1,3 +1,4 @@
+import { embeddedPlanDraftKey } from '../../utils/embeddedPlanDraft';
 import { studioEditorId } from '../../utils/studioEditorSession';
 import type { ComponentCapabilities } from '../../utils/componentConfiguration';
 import { logStatsigEvent } from '../../utils/analytics';
@@ -231,7 +232,9 @@ export function useYamlDocumentLifecycle({
     runViewEnabled,
     multiScenarioRunEnabled,
     distributedRunEnabled,
-    dataSourceFileBrowseEnabled,
+    // Browser-picked files are saved by the Test Plan host, without the agent.
+    dataSourceFileBrowseEnabled:
+      (window.parent !== window && embeddedPlanDraftKey() !== null) || dataSourceFileBrowseEnabled,
     grpcAuthoringEnabled,
     grpcRecorderTabsEnabled,
     httpRecorderEnabled,

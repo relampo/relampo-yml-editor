@@ -960,12 +960,12 @@ export const enTranslations = {
         uploadInfo: '📎 This file will be uploaded as multipart/form-data',
       },
       shared: {
-        browseUnavailable: 'Available only when running Relampo Studio locally',
+        browseUnavailable: 'File selection is unavailable in this session',
         noPathPicker: 'No path-capable file picker is available',
         uploading: 'Uploading...',
         uploadFailed: 'File upload failed',
         dataSourceHint:
-          'Data source file browsing is only available when running Relampo Studio locally. In the web editor, local files are not accessible; enter a relative path or file name that exists where relampo run will execute.',
+          'File selection is unavailable in this session. Open the script from a Test Plan or connect a compatible Relampo agent.',
         token: 'Token',
       },
       http: {
