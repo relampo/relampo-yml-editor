@@ -141,6 +141,7 @@ export function YAMLGRPCDetails({ node, onNodeUpdate }: NodeDetailProps) {
           value={data.metadata}
           onCommit={value => update('metadata', value)}
         />
+        {field('Transport', 'transport', 'grpc or grpc_web')}
       </section>
     );
   }
@@ -165,6 +166,7 @@ export function YAMLGRPCDetails({ node, onNodeUpdate }: NodeDetailProps) {
                 <div className="col-span-8">{field('RPC method', 'method', '/package.Service/Method')}</div>
               </div>
               <p className="text-xs text-zinc-500">gRPC · {data.stream ? 'Streaming' : 'Unary'} · Protobuf</p>
+              {field('Transport', 'transport', 'Inherits grpc_defaults.transport')}
               {field('Protoset', 'protoset', 'Inherits grpc_defaults.protoset or reflection')}
               <div className="grid grid-cols-2 gap-3">
                 {field('Timeout', 'timeout', '30s')}

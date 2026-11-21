@@ -46,6 +46,7 @@ export interface GRPCImported {
   descriptorPath: string;
 }
 export interface GRPCGenerated {
+  privateEvidence?: boolean;
   id: string;
   yaml: string;
   descriptorPath?: string;
@@ -66,7 +67,7 @@ export async function grpcRequest<T>(path: string, body?: unknown, signal?: Abor
   });
   if (!response.ok) {
     const error = await response.json().catch(() => ({ error: 'gRPC operation failed' }));
-    throw new Error(error.error || 'gRPC operation failed');
+    throw Object.assign(new Error(error.error || 'gRPC operation failed'), { status: response.status });
   }
   return response.json();
 }
@@ -75,6 +76,11 @@ export function grpcBundleURL(id: string): string {
 }
 
 export interface GRPCBrowserRecording {
+  captureSupported?: boolean;
+  recordingPayloads?: boolean;
+  capturedCalls?: number;
+  pendingCalls?: number;
+  captureWarning?: string;
   active: boolean;
   applicationUrl?: string;
   proxyAddress?: string;

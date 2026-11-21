@@ -870,28 +870,28 @@ describe('RLP-758 distinct declared variables and built-ins', () => {
    })).toEqual([
      ['token (REQ)', 'synthetic'],
      ['user (REQ)', 'synthetic'],
-     ['_randomInt(1,5) (REQ)', '3'],
-     ['_randomInt(1,5) (REQ)', '2'],
-     ['_randomInt(1,5) (REQ)', 'prefix-4'],
+     ['password (REQ)', '3'],
+     ['repeated (REQ)', '2'],
+     ['repeated (REQ)', 'prefix-4'],
    ]);
  });
 
  it.each([
-   [{ password: '{{_randomInt(1,10)}}' }, 'password=5', [['_randomInt(1,10) (REQ)', '5']]],
-   ['password={{_randomInt(1,10)}}', 'password=5', [['_randomInt(1,10) (REQ)', '5']]],
-   ['{"password":"{{_randomInt(1,10)}}"}', '{"password":5}', [['_randomInt(1,10) (REQ)', '5']]],
-   [{ password: 'prefix-{{_randomInt(1,10)}}' }, 'password=prefix-5', [['_randomInt(1,10) (REQ)', 'prefix-5']]],
-   [{ password: '{{_randomInt(1,10)}}' }, 'password=a%2520b%2Bc', [['_randomInt(1,10) (REQ)', 'a%20b+c']]],
+   [{ password: '{{_randomInt(1,10)}}' }, 'password=5', [['password (REQ)', '5']]],
+   ['password={{_randomInt(1,10)}}', 'password=5', [['password (REQ)', '5']]],
+   ['{"password":"{{_randomInt(1,10)}}"}', '{"password":5}', [['password (REQ)', '5']]],
+   [{ password: 'prefix-{{_randomInt(1,10)}}' }, 'password=prefix-5', [['password (REQ)', 'prefix-5']]],
+   [{ password: '{{_randomInt(1,10)}}' }, 'password=a%2520b%2Bc', [['password (REQ)', 'a%20b+c']]],
    [
      { payload: { items: ['{{_randomInt(0,0)}}', '{{_randomBoolean()}}'] } },
      '{"payload":{"items":[0,false]}}',
      [
-       ['_randomInt(0,0) (REQ)', '0'],
-       ['_randomBoolean() (REQ)', 'false'],
+       ['items (REQ)', '0'],
+       ['items (REQ)', 'false'],
      ],
    ],
-   [{ password: '{{_randomInt(1,10)}}' }, undefined, [['_randomInt(1,10) (REQ)', 'Not captured']]],
-   [{ password: '{{_randomInt(1,10)}}' }, '{"other":5}', [['_randomInt(1,10) (REQ)', 'Not captured']]],
+   [{ password: '{{_randomInt(1,10)}}' }, undefined, [['password (REQ)', 'Not captured']]],
+   [{ password: '{{_randomInt(1,10)}}' }, '{"other":5}', [['password (REQ)', 'Not captured']]],
  ])('shows built-in body fields from the captured request: %j', (body, requestBody, expected) => {
    const node: YAMLNode = { id: 'login', type: 'request', name: 'login', data: { body } };
    expect(variableRowsForRequestNode(node, { unrelated: '5' }, { requestBody, builtinValues: [5] })).toEqual(expected);
@@ -913,7 +913,8 @@ scenarios:
      variableRowsForRequestNode(node, { password: 'original' }, { requestBody: 'password=5&literal=fixed' }),
    ).toEqual([
      ['password (REQ)', 'original'],
-     ['_randomInt(1,10) (REQ)', '5'],
+     ['password (REQ)', '5'],
+     ['literal (REQ)', 'fixed'],
    ]);
  });
 
@@ -929,6 +930,28 @@ it('keeps a later variable assignment distinct from the builtin result (RLP-758)
 });
 
 describe('RLP-819 captured variable names', () => {
+ it.each([
+  ['{{_randomInt(1,10)}}', '5'],
+  ['fixed-input', 'fixed-input'],
+ ])('RLP-819 labels a captured form field by its request name: %s', (value, captured) => {
+  const node: YAMLNode = {id:'form',type:'request',name:'Form',data:{
+   headers:{'Content-Type':'application/x-www-form-urlencoded'},
+   body:[{email_address:'{{user}}'},{password:value}],
+  }};
+  expect(variableRowsForRequestNode(node,{user:'qa@example.test'},{
+   requestBody:`email_address=qa%40example.test&password=${captured}`,
+   builtinValues:[999],
+  })).toEqual([['user (REQ)','qa@example.test'],['password (REQ)',captured]]);
+ });
+
+ it('RLP-819 uses captured direct values, including zero, false and empty strings', () => {
+  const node: YAMLNode = {id:'json',type:'request',name:'JSON',data:{body:{count:3,active:true,label:'old'}}};
+  expect(variableRowsForRequestNode(node,{}, {requestBody:'{"count":0,"active":false,"label":""}'})).toEqual([
+   ['count (REQ)','0'],['active (REQ)','false'],['label (REQ)',''],
+  ]);
+  expect(variableRowsForRequestNode(node,{}, {})).toEqual([]);
+ });
+
 const source = `test: {name: regression}
 data_source: {type: csv, mode: shared, path: users.csv, variable_names: user, name: Credentials}
 scenarios:

@@ -9,11 +9,26 @@ import { createNodeByType } from './nodeFactory';
 import { canAddNodeToTarget } from './treeViewHelpers';
 import { getNodeDisplayName } from './nodeDisplayName';
 import { addNodeToTree } from './treeOperations';
+import { collectUnknownFieldPaths } from '../../utils/unknownYamlFields';
 const t = (key: string) =>
   String(
     key.split('.').reduce<unknown>((value, part) => (value as Record<string, unknown>)?.[part], translations.es) ?? key,
   );
 describe('organized add menu', () => {
+  it('RLP-822 adds Cache Manager without unknown fields and preserves it on reopen', () => {
+    const tree = parseYAMLToTree('test: {name: Cache}\nscenarios:\n- name: Flow\n  steps:\n  - get: /health\n')!;
+    const scenario = tree.children!.find(node => node.type === 'scenarios')!.children![0];
+    expect(getAddableItems('scenario', t).some(item => item.type === 'cache_manager')).toBe(true);
+    const updated = addNodeToTree(tree, scenario.id, createNodeByType('cache_manager'));
+    expect(collectUnknownFieldPaths(updated)).toEqual([]);
+    const yaml = treeToYAML(updated);
+    expect(load(yaml)).toMatchObject({
+      scenarios: [{ cache_manager: { clear_each_iteration: true, max_elements: 1000 } }],
+    });
+    const reopened = parseYAMLToTree(yaml)!;
+    expect(collectUnknownFieldPaths(reopened)).toEqual([]);
+    expect(load(treeToYAML(reopened))).toEqual(load(yaml));
+  });
   it('keeps protocol requests first, controllers next and assertions before the remaining elements', () => {
     const items = getAddableItems('steps', t);
     expect(items.map(item => item.type)).toEqual([

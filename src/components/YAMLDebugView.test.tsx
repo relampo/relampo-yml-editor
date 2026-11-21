@@ -10,6 +10,34 @@ import type { EngineEvent } from '../utils/debugApi';
 const render = (ui: Parameters<typeof rtlRender>[0], options?: Parameters<typeof rtlRender>[1]) =>
   rtlRender(ui, { wrapper: LanguageProvider, ...options });
 
+it('RLP-823 cannot restore a stale Debug start after its document is unmounted', async () => {
+  sessionStorage.clear();
+  let finish!: (id: string) => void;
+  debugApiMock.startDebugRun.mockImplementationOnce(
+    () => new Promise<string>(resolve => {
+      finish = resolve;
+    }),
+  );
+  const view = render(
+    <YAMLDebugSession
+      tree={null}
+      yamlCode={'scenarios:\n- name: Flow\n  steps: [{get: /first}]\n'}
+      documentReady
+      validationErrors={[]}
+      onSelectNode={vi.fn()}
+      onEditNode={vi.fn()}
+    />,
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+  await waitFor(() => expect(debugApiMock.startDebugRun).toHaveBeenCalledTimes(1));
+  view.unmount();
+  await act(async () => {
+    finish('stale-debug');
+  });
+  expect(debugApiMock.streamDebugRun).not.toHaveBeenCalled();
+  expect(sessionStorage.getItem('relampo.studio.debugRun')).toBeNull();
+});
+
 const debugApiMock = vi.hoisted(() => {
   const handlers: Array<{
     onEvent: (event: EngineEvent) => void;

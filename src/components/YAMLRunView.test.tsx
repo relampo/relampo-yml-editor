@@ -97,6 +97,24 @@ const baseProps = {
   validationErrors: [],
 };
 
+it('RLP-823 cannot restore a stale load start after its document is unmounted', async () => {
+  let finish!: (id: string) => void;
+  runApiMock.startLoadRun.mockImplementationOnce(
+    () => new Promise<string>(resolve => {
+      finish = resolve;
+    }),
+  );
+  const view = render(<YAMLLoadRunSession {...baseProps} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Run load test' }));
+  await waitFor(() => expect(runApiMock.startLoadRun).toHaveBeenCalledTimes(1));
+  view.unmount();
+  await act(async () => {
+    finish('stale-run');
+  });
+  expect(runApiMock.streamLoadRun).not.toHaveBeenCalled();
+  expect(sessionStorage.getItem('relampo.studio.loadRun')).toBeNull();
+});
+
 describe('YAMLLoadRunSession', () => {
   it.each([false, true])('keeps summary cards without the duplicate details block (zero=%s)', async zero => {
     render(<YAMLLoadRunSession {...baseProps} />);

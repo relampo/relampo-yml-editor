@@ -792,22 +792,24 @@ function capturedRequestVariables(node: YAMLNode, context: VariableValueContext)
   return values;
 }
 
-function builtinBodyRows(
+function requestBodyFieldRows(
   node: YAMLNode,
   variables: Record<string, string>,
   context: VariableValueContext,
 ): Array<[string, string]> {
   const rows: Array<[string, string]> = [];
   const visit = (template: unknown, captured: unknown, path: string[]) => {
-    if (typeof template === 'string') {
-      const hasBuiltin = [...template.matchAll(/\{\{([^{}]*)/g)].some(
+    if (typeof template === 'string' || typeof template === 'number' || typeof template === 'boolean') {
+      const text = String(template);
+      const hasBuiltin = [...text.matchAll(/\{\{([^{}]*)/g)].some(
         ([, expression]) => isBuiltinExpression(expression.trim()) && !Object.hasOwn(variables, expression.trim()),
       );
-      if (path.length && hasBuiltin) {
+      const isLiteral = !text.includes('{{') && !text.includes('${');
+      const name = [...path].reverse().find(part => !/^\d+$/.test(part));
+      if (name && (hasBuiltin || (isLiteral && captured !== undefined))) {
         const value = typeof captured === 'string' ? captured : JSON.stringify(captured);
-        const expressions = [...template.matchAll(/\{\{([^{}]+)\}\}/g)].map(([, name]) => name.trim());
         rows.push([
-          `${expressions.length ? expressions.join(' + ') : template} (REQ)`,
+          `${name} (REQ)`,
           value ?? context.missingValueLabel ?? MISSING_VARIABLE_VALUE,
         ]);
       }
@@ -839,7 +841,9 @@ function builtinBodyRows(
         for (const [name, value] of Object.entries(item)) fields.append(name, String(value ?? ''));
     template = fields.toString();
   }
-  // ponytail: Decode JSON and URL-encoded fields; multipart needs a body parser.
+  // Use the sent field value and its request name. Never re-evaluate a built-in
+  // or substitute a literal from the currently edited YAML for missing evidence.
+  // Decode JSON and URL-encoded fields; multipart needs a body parser.
   visit(structuredBody(template), structuredBody(context.requestBody), []);
   return rows;
 }
@@ -886,5 +890,5 @@ export function variableRowsForRequestNode(
           : displayVariableValue(resolvedValue),
     ];
   });
-  return [...rows, ...builtinBodyRows(node, variables, context)];
+  return [...rows, ...requestBodyFieldRows(node, variables, context)];
 }
