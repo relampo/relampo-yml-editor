@@ -963,12 +963,12 @@ export const esTranslations = {
         uploadInfo: '📎 Este archivo se subirá como multipart/form-data',
       },
       shared: {
-        browseUnavailable: 'Disponible solo cuando ejecutas Relampo Studio localmente',
+        browseUnavailable: 'La selección de archivos no está disponible en esta sesión',
         noPathPicker: 'No hay un selector de archivos con ruta local disponible',
         uploading: 'Subiendo...',
         uploadFailed: 'No se pudo subir el archivo',
         dataSourceHint:
-          'La selección de archivos de datos solo está disponible cuando ejecutas Relampo Studio localmente. En el editor web no se puede acceder a los archivos locales; escribe una ruta relativa o un nombre de archivo que exista donde se ejecutará relampo run.',
+          'La selección de archivos no está disponible en esta sesión. Abre el script desde un Test Plan o conecta un agente Relampo compatible.',
         token: 'Token',
       },
       http: {

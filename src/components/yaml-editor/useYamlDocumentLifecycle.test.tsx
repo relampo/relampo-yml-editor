@@ -5,11 +5,14 @@ import { probeStudio } from '../../utils/debugApi';
 import { getActiveDraft } from '../../utils/yamlDraftStorage';
 import { useYamlDocumentLifecycle } from './useYamlDocumentLifecycle';
 
+const originalParent = window.parent;
 vi.mock('../../utils/debugApi', () => ({ probeStudio: vi.fn() }));
 vi.mock('../../utils/yamlDraftStorage', () => ({ getActiveDraft: vi.fn() }));
 
 afterEach(() => {
   vi.resetAllMocks();
+  Object.defineProperty(window, 'parent', { configurable: true, value: originalParent });
+  window.history.replaceState({}, '', '/');
 });
 
 describe('useYamlDocumentLifecycle', () => {
@@ -45,6 +48,7 @@ describe('useYamlDocumentLifecycle', () => {
 
     await waitFor(() => expect(result.current.currentFileName).toBe('restored.yaml'));
     expect(result.current.restoredDraftUpdatedAt).toBe('2026-08-18T10:00:00.000Z');
+    expect(result.current.dataSourceFileBrowseEnabled).toBe(false);
     expect(setYamlCode).toHaveBeenCalledWith('test:\n  name: restored\n');
     expect(setYamlContent).toHaveBeenCalledWith('test:\n  name: restored\n');
     expect(syncCodeToTree).toHaveBeenCalledWith('test:\n  name: restored\n', {
@@ -83,3 +87,32 @@ it('starts a new Studio blank even when the backend mounts an existing script', 
   expect(setYamlCode).toHaveBeenCalledWith('');
   window.history.replaceState({}, '', '/');
 });
+
+it.each([null, { studio: true, capabilities: { dataSourceFiles: false } }])(
+  'allows the Test Plan CSV picker without agent file capability: %j',
+  async info => {
+    Object.defineProperty(window, 'parent', { configurable: true, value: { postMessage: vi.fn() } });
+    window.history.replaceState({}, '', '/?embedded=1&account=picker-qa&plan=plan-qa');
+    vi.mocked(getActiveDraft).mockResolvedValue(null);
+    vi.mocked(probeStudio).mockResolvedValue(info);
+    const initialized = vi.fn();
+    const { result } = renderHook(() =>
+      useYamlDocumentLifecycle({
+        language: 'en',
+        initialYamlContent: '',
+        setYamlContent: vi.fn(),
+        setError: vi.fn(),
+        isInitialized: false,
+        setIsInitialized: initialized,
+        fallbackRootNameRef: useRef<string | null>(null),
+        setYamlCode: vi.fn(),
+        syncCodeToTree: vi.fn(),
+        setHasDocumentActivity: vi.fn(),
+        setIsDirty: vi.fn(),
+        setIsFileLoading: vi.fn(),
+      }),
+    );
+    await waitFor(() => expect(initialized).toHaveBeenCalledWith(true));
+    expect(result.current.dataSourceFileBrowseEnabled).toBe(true);
+  },
+);

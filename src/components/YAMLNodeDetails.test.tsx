@@ -96,11 +96,11 @@ describe('YAMLNodeDetails recording file identity', () => {
 });
 
 describe('YAMLNodeDetails data source file browsing', () => {
-  it('disables data source file browsing outside local Studio', () => {
+  it('disables file browsing without Test Plan storage or agent support', () => {
     renderDetails(dataSourceNode);
 
     expect(screen.getByRole('button', { name: 'Browse' })).toBeDisabled();
-    expect(screen.getByText(/Data source file browsing is only available when running Relampo Studio locally/)).toBeInTheDocument();
+    expect(screen.getByText(/File selection is unavailable in this session/)).toBeInTheDocument();
   });
 
   it('enables data source file browsing in local Studio', async () => {
@@ -113,7 +113,7 @@ describe('YAMLNodeDetails data source file browsing', () => {
 
     expect(screen.getByRole('button', { name: 'Browse' })).toBeEnabled();
     expect(
-      screen.queryByText(/Data source file browsing is only available when running Relampo Studio locally/),
+      screen.queryByText(/File selection is unavailable in this session/),
     ).not.toBeInTheDocument();
     expect(screen.queryByText(/Local: in browser mode/)).not.toBeInTheDocument();
     expect(await screen.findByText('No rows found.')).toBeInTheDocument();
