@@ -91,7 +91,7 @@ export function DistributedConnection({
       /* Storage is optional. */
     }
     const previous = next.repositories.find(repo => repo.name === saved && repo.writable);
-    selectRepository(previous?.name ?? next.repositories.find(repo => repo.writable)?.name ?? '', user);
+    selectRepository(previous?.name ?? '', user);
   }
 
   function publish(next: ProviderConnection | null) {
@@ -129,7 +129,7 @@ export function DistributedConnection({
       if (!next) throw new Error(t('Comprobación incompleta.', 'Incomplete connection check.'));
       if (current !== generation.current || signal?.aborted) return;
       publish(next);
-      if (next.authenticated) {
+      if (next.git_installed && next.cli_installed && next.authenticated) {
         const repos = await loadCatalog(signal);
         if (current !== generation.current || signal?.aborted) return;
         setCatalog(repos);
@@ -344,7 +344,7 @@ export function DistributedConnection({
         <select
           aria-label={t('Repositorio', 'Repository')}
           className={field}
-          disabled={locked || !status?.authenticated || !catalog}
+          disabled={locked || !status?.git_installed || !status.cli_installed || !status.authenticated || !catalog}
           value={repository}
           onChange={e => selectRepository(e.target.value)}
         >

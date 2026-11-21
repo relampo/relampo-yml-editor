@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { LanguageProvider } from '../contexts/LanguageContext';
 import { YAMLDistributedRun } from './YAMLDistributedRun';
 import { DistributedRequestError } from '../utils/distributedApi';
@@ -38,6 +38,14 @@ async function selectRepository() {
   const selector = screen.getByRole('combobox', { name: 'Repositorio' });
   await waitFor(() => expect(selector).toBeEnabled());
   fireEvent.change(selector, { target: { value: 'owner/repo' } });
+}
+
+async function applyProject() {
+  const button = screen.getByRole('button', { name: 'Aplicar acción a los archivos' });
+  await waitFor(() => expect(button).toBeEnabled());
+  await act(async () => {
+    fireEvent.click(button);
+  });
 }
 
 const noErrors: string[] = [];
@@ -126,7 +134,7 @@ describe('distributed execution', () => {
     });
     await selectRepository();
     expect(screen.getByRole('button', { name: 'Ejecutar' })).toBeDisabled();
-    fireEvent.click(screen.getByRole('button', { name: 'Aplicar acción a los archivos' }));
+    await applyProject();
     await waitFor(() => expect(screen.getByRole('button', { name: 'Ejecutar' })).toBeEnabled());
     fireEvent.click(screen.getByRole('button', { name: 'Ejecutar' }));
     await screen.findByText('scenarios/data/users.csv');
@@ -160,7 +168,7 @@ describe('distributed execution', () => {
     mount();
     await selectRepository();
     expect(screen.getByRole('button', { name: 'Ejecutar' })).toBeDisabled();
-    fireEvent.click(screen.getByRole('button', { name: 'Aplicar acción a los archivos' }));
+    await applyProject();
     await waitFor(() => expect(screen.getByRole('button', { name: 'Ejecutar' })).toBeEnabled());
     fireEvent.click(screen.getByRole('button', { name: 'Ejecutar' }));
     await screen.findByText('scenarios/test.yaml');
@@ -175,7 +183,7 @@ describe('distributed execution', () => {
     mount();
     await selectRepository();
     expect(screen.getByRole('button', { name: 'Ejecutar' })).toBeDisabled();
-    fireEvent.click(screen.getByRole('button', { name: 'Aplicar acción a los archivos' }));
+    await applyProject();
     await waitFor(() => expect(screen.getByRole('button', { name: 'Ejecutar' })).toBeEnabled());
     fireEvent.click(screen.getByRole('button', { name: 'Ejecutar' }));
     await waitFor(() => expect(mocks.prepare).toHaveBeenCalled());
@@ -231,7 +239,7 @@ describe('distributed execution', () => {
     mount();
     await selectRepository();
     expect(screen.getByRole('button', { name: 'Ejecutar' })).toBeDisabled();
-    fireEvent.click(screen.getByRole('button', { name: 'Aplicar acción a los archivos' }));
+    await applyProject();
     await waitFor(() => expect(screen.getByRole('button', { name: 'Ejecutar' })).toBeEnabled());
     const nodes = screen.getByRole('button', { name: 'Nodos' });
     expect(nodes.closest('fieldset')).toBeNull();
@@ -309,11 +317,11 @@ describe('distributed execution', () => {
     fireEvent.change(screen.getByLabelText('Archivos del equipo'), {
       target: { files: [new File(['id\n1'], 'users.csv')] },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Aplicar acción a los archivos' }));
+    await applyProject();
     await screen.findByText('2 archivos subidos');
     await selectOption('Acción de archivos', 'Eliminar');
     fireEvent.change(screen.getByLabelText('Archivos del repositorio'), { target: { value: 'users.csv' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Aplicar acción a los archivos' }));
+    await applyProject();
     await screen.findByText('2 cambios aplicados');
     fireEvent.click(screen.getByRole('button', { name: 'Ejecutar' }));
     await waitFor(() => expect(mocks.prepare).toHaveBeenCalled());
@@ -322,7 +330,7 @@ describe('distributed execution', () => {
   it('can upload the current YAML without choosing additional files', async () => {
     mount();
     await selectRepository();
-    fireEvent.click(screen.getByRole('button', { name: 'Aplicar acción a los archivos' }));
+    await applyProject();
     await waitFor(() =>
       expect(mocks.request).toHaveBeenCalledWith(
         'files',
@@ -344,7 +352,7 @@ describe('distributed execution', () => {
       target: { files: [new File(['id\n1'], 'users.csv')] },
     });
     mocks.request.mockRejectedValueOnce(new Error('Publication failed'));
-    fireEvent.click(screen.getByRole('button', { name: 'Aplicar acción a los archivos' }));
+    await applyProject();
     await screen.findByText('Publication failed');
     expect(screen.queryByText(/archivos subidos/)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Ejecutar' })).toBeDisabled();
@@ -583,17 +591,17 @@ it('requires Apply again when the script or selected files change', async () => 
   await selectRepository();
   const run = screen.getByRole('button', { name: 'Ejecutar' });
   expect(run).toBeDisabled();
-  fireEvent.click(screen.getByRole('button', { name: 'Aplicar acción a los archivos' }));
+  await applyProject();
   await waitFor(() => expect(run).toBeEnabled());
   rerender(view(yaml.replace('qa', 'changed')));
   expect(run).toBeDisabled();
-  fireEvent.click(screen.getByRole('button', { name: 'Aplicar acción a los archivos' }));
+  await applyProject();
   await waitFor(() => expect(run).toBeEnabled());
   fireEvent.change(screen.getByLabelText('Archivos del equipo'), {
     target: { files: [new File(['a,b'], 'new-data.csv')] },
   });
   expect(run).toBeDisabled();
-  fireEvent.click(screen.getByRole('button', { name: 'Aplicar acción a los archivos' }));
+  await applyProject();
   await waitFor(() => expect(run).toBeEnabled());
   expect(mocks.prepare).not.toHaveBeenCalled();
 });
@@ -696,7 +704,7 @@ it('keeps one-second polling cadence including relay response time without overl
 async function prepareWorkspace() {
   mount();
   await selectRepository();
-  fireEvent.click(screen.getByRole('button', { name: 'Aplicar acción a los archivos' }));
+  await applyProject();
   await waitFor(() => expect(screen.getByRole('button', { name: 'Ejecutar' })).toBeEnabled());
   fireEvent.click(screen.getByRole('button', { name: 'Ejecutar' }));
   await screen.findByText('Revisar publicación');
@@ -716,7 +724,9 @@ it('publishes unchanged workspace files even when the host enumerates them in a 
     .mockResolvedValueOnce(workspace)
     .mockResolvedValueOnce({ ...workspace, files: [...workspace.files].reverse() });
   await prepareWorkspace();
-  fireEvent.click(screen.getByRole('button', { name: 'Publicar y ejecutar' }));
+  await act(async () => {
+    fireEvent.click(screen.getByRole('button', { name: 'Publicar y ejecutar' }));
+  });
   await waitFor(() =>
     expect(mocks.request).toHaveBeenCalledWith(
       'run',
@@ -728,30 +738,111 @@ it('publishes unchanged workspace files even when the host enumerates them in a 
   expect(mocks.prepare).toHaveBeenCalledTimes(1);
   expect(screen.queryByText('The document or settings changed. Check preparation again.')).not.toBeInTheDocument();
 });
-it('prepares changed file content automatically and requires review before any publication', async () => {
-  mocks.project
-    .mockResolvedValueOnce(workspace)
-    .mockResolvedValue({ ...workspace, files: [workspace.files[0], { path: 'Data/users.csv', data: 'bmV3' }] });
-  await prepareWorkspace();
-  fireEvent.click(screen.getByRole('button', { name: 'Publicar y ejecutar' }));
-  await screen.findByText(/Cambiaron los archivos: Data\/users.csv/);
-  expect(mocks.prepare).toHaveBeenCalledTimes(2);
-  expect(mocks.request).not.toHaveBeenCalledWith('run', expect.anything());
-  expect(
-    screen.getByRole('checkbox', { name: 'He revisado el repositorio y los archivos que se publicarán.' }),
-  ).not.toBeChecked();
-  fireEvent.click(
-    screen.getByRole('checkbox', { name: 'He revisado el repositorio y los archivos que se publicarán.' }),
+it('requires Update when the CSV changes after Apply, even if the YAML stays unchanged', async () => {
+  let current = workspace;
+  mocks.project.mockImplementation(async () => current);
+  mount();
+  await selectRepository();
+  await applyProject();
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Ejecutar' })).toBeEnabled());
+  expect(screen.getByText('Sin cambios pendientes.')).toBeInTheDocument();
+  current = { ...workspace, files: [workspace.files[0], { path: 'Data/users.csv', data: 'bmV3' }] };
+  await act(async () => {
+    fireEvent.click(screen.getByRole('button', { name: 'Ejecutar' }));
+  });
+  await screen.findByText('Hay cambios pendientes de actualizar.');
+  expect(screen.getByRole('button', { name: 'Ejecutar' })).toBeDisabled();
+  const row = screen.getByRole('row', { name: /Data\/users.csv/ });
+  expect(row).toHaveTextContent('Modificado');
+  expect(screen.getByRole('button', { name: 'Aplicar acción a los archivos' })).toHaveTextContent('Actualizar');
+  expect(mocks.prepare).not.toHaveBeenCalled();
+  await applyProject();
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Ejecutar' })).toBeEnabled());
+  await act(async () => {
+    fireEvent.click(screen.getByRole('button', { name: 'Ejecutar' }));
+  });
+  await screen.findByText('Revisar publicación');
+  expect(mocks.prepare).toHaveBeenCalledWith(
+    expect.objectContaining({
+      workspace: expect.objectContaining({ files: expect.arrayContaining([{ path: 'Data/users.csv', data: 'bmV3' }]) }),
+    }),
   );
-  fireEvent.click(screen.getByRole('button', { name: 'Publicar y ejecutar' }));
-  await waitFor(() =>
-    expect(mocks.request).toHaveBeenCalledWith(
-      'run',
-      expect.objectContaining({
-        workspace: expect.objectContaining({
-          files: expect.arrayContaining([{ path: 'Data/users.csv', data: 'bmV3' }]),
-        }),
-      }),
-    ),
+  expect(mocks.request.mock.calls.filter(call => call[0] === 'requirements')).toHaveLength(1);
+});
+
+it('enables repository and files only after their preceding step succeeds', async () => {
+  const original = mocks.request.getMockImplementation()!;
+  let finish!: (value: unknown) => void;
+  mocks.request.mockImplementation((path: string, ...args: unknown[]) =>
+    path === 'requirements'
+      ? new Promise(resolve => {
+          finish = resolve;
+        })
+      : original(path, ...args),
   );
+  mount();
+  const repository = screen.getByRole('group', { name: 'Repositorio' });
+  const files = screen.getByRole('group', { name: 'Proyecto y archivos' });
+  expect(repository).toBeDisabled();
+  expect(files).toBeDisabled();
+  await waitFor(() => expect(finish).toBeTypeOf('function'));
+  await act(async () => {
+    finish(await original('requirements'));
+  });
+  await waitFor(() => expect(repository).toBeEnabled());
+  expect(screen.getByRole('combobox', { name: 'Repositorio' })).toHaveValue('');
+  expect(files).toBeDisabled();
+  await selectRepository();
+  expect(files).toBeEnabled();
+});
+
+it('compares reselected CSV bytes even when filename, size and modified date are identical', async () => {
+  mount();
+  await selectRepository();
+  const pick = (value: string) =>
+    fireEvent.change(screen.getByLabelText('Archivos del equipo'), {
+      target: { files: [new File([value], 'users.csv', { lastModified: 100 })] },
+    });
+  pick('id\n1');
+  await applyProject();
+  const run = screen.getByRole('button', { name: 'Ejecutar' });
+  await waitFor(() => expect(run).toBeEnabled());
+  pick('id\n2');
+  expect(run).toBeDisabled();
+  await screen.findByRole('row', { name: /scenarios\/users.csv Modificado/ });
+  expect(screen.getByRole('button', { name: 'Aplicar acción a los archivos' })).toHaveTextContent('Actualizar');
+  await applyProject();
+  await waitFor(() => expect(run).toBeEnabled());
+  expect(mocks.request).toHaveBeenCalledWith('files', expect.objectContaining({ action: 'update' }));
+  pick('id\n2');
+  await waitFor(() => expect(run).toBeEnabled());
+  expect(screen.getByText('Sin cambios pendientes.')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Aplicar acción a los archivos' })).toBeDisabled();
+  expect(mocks.request.mock.calls.filter(call => call[0] === 'requirements')).toHaveLength(1);
+});
+
+it('detects changes made directly in the Test Plan folder on focus without reconnecting', async () => {
+  const parent = window.parent;
+  Object.defineProperty(window, 'parent', { configurable: true, value: { postMessage: vi.fn() } });
+  window.history.replaceState({}, '', '/?lang=es&embedded=1&account=qa&plan=qa');
+  let current = workspace;
+  mocks.project.mockImplementation(async () => current);
+  try {
+    mount();
+    await selectRepository();
+    await applyProject();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Ejecutar' })).toBeEnabled());
+    current = { ...workspace, files: [workspace.files[0], { path: 'Data/users.csv', data: 'bmV3' }] };
+    fireEvent.focus(window);
+    await screen.findByText('Hay cambios pendientes de actualizar.');
+    expect(screen.getByRole('button', { name: 'Ejecutar' })).toBeDisabled();
+    expect(screen.getByRole('combobox', { name: 'Repositorio' })).toHaveValue('owner/repo');
+    expect(mocks.request.mock.calls.filter(call => call[0] === 'requirements')).toHaveLength(1);
+    await applyProject();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Ejecutar' })).toBeEnabled());
+  } finally {
+    cleanup();
+    Object.defineProperty(window, 'parent', { configurable: true, value: parent });
+    window.history.replaceState({}, '', '/?lang=es');
+  }
 });

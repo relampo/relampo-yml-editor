@@ -212,10 +212,10 @@ describe('distributed provider connection', () => {
     await waitFor(() => expect(selector).toBeEnabled());
     expect(selector).toHaveValue('owner/first');
   });
-  it('falls back to a writable repository when the remembered choice is read only', async () => {
+  it('requires selecting a writable repository when the remembered choice is read only', async () => {
     window.localStorage.setItem('relampo.studio.distributed.repository:github:github.com:owner', 'other/read');
     render(<DistributedConnection {...props()} />);
-    await waitFor(() => expect(onRepository).toHaveBeenLastCalledWith('owner/first'));
+    await waitFor(() => expect(onRepository).toHaveBeenLastCalledWith(''));
   });
 });
 
@@ -290,3 +290,15 @@ it('reads no authorization while the view is hidden, and reads at once when it i
     vi.useRealTimers();
   }
 });
+
+it.each(['git_installed', 'cli_installed'] as const)(
+  'blocks repositories when %s is missing despite an authenticated session',
+  async tool => {
+    request.mockResolvedValue(connection({ ...connected, [tool]: false }));
+    render(<DistributedConnection {...props()} />);
+    await screen.findByText(/Instala/);
+    expect(screen.getByRole('combobox', { name: 'Repositorio' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Crear repositorio' })).toBeDisabled();
+    expect(request).toHaveBeenCalledTimes(1);
+  },
+);
