@@ -283,9 +283,7 @@ export function GRPCWorkbench({
               onChange={event => setRecordingSource(event.target.value as 'browser' | 'native')}
             >
               <option value="browser">
-                {language === 'es'
-                  ? 'Navegador: detectar HTTP/HTTPS y gRPC-Web'
-                  : 'Browser: detect HTTP/HTTPS and gRPC-Web'}
+                {language === 'es' ? 'Navegador: grabar gRPC-Web' : 'Browser: record gRPC-Web'}
               </option>
               <option value="native">{language === 'es' ? 'Cliente gRPC nativo' : 'Native gRPC client'}</option>
             </select>
@@ -295,6 +293,7 @@ export function GRPCWorkbench({
           <GRPCBrowserRecorder
             language={language}
             onActiveChange={setBrowserActive}
+            onGenerated={setGenerated}
             onDiscover={() => setMode('discover')}
             onImport={() => setMode('import')}
           />

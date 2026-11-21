@@ -168,12 +168,14 @@ export function GRPCMessageForm({
         onChange={onChange}
       />
     );
+  const fields = schema.fields ?? [];
   const object = isObject(value) ? value : {};
   const update = (key: string, item: YAMLValue) => onChange({ ...object, [key]: item });
-  const groups = [...new Set(schema.fields.map(field => field.oneof).filter((name): name is string => Boolean(name)))];
+  const groups = [...new Set(fields.map(field => field.oneof).filter((name): name is string => Boolean(name)))];
   return (
     <div className="space-y-3">
       {schema.description && <p className="text-xs text-zinc-400">{schema.description}</p>}
+      {fields.length === 0 && <p className="text-xs text-zinc-400">This message has no fields. Nothing to fill in.</p>}
       {groups.map(group => (
         <label
           key={group}
@@ -183,17 +185,17 @@ export function GRPCMessageForm({
           <select
             aria-label={group}
             className={inputClass}
-            value={schema.fields.find(field => field.oneof === group && object[field.name] !== undefined)?.name || ''}
+            value={fields.find(field => field.oneof === group && object[field.name] !== undefined)?.name || ''}
             onChange={event => {
               const next = { ...object };
-              for (const field of schema.fields.filter(field => field.oneof === group)) delete next[field.name];
-              const chosen = schema.fields.find(field => field.name === event.target.value);
+              for (const field of fields.filter(field => field.oneof === group)) delete next[field.name];
+              const chosen = fields.find(field => field.name === event.target.value);
               if (chosen) next[chosen.name] = chosen.message ? {} : primitiveDefault(chosen);
               onChange(next);
             }}
           >
             <option value="">No selection</option>
-            {schema.fields
+            {fields
               .filter(field => field.oneof === group)
               .map(field => (
                 <option
@@ -206,7 +208,7 @@ export function GRPCMessageForm({
           </select>
         </label>
       ))}
-      {schema.fields
+      {fields
         .filter(field => !field.oneof || object[field.name] !== undefined)
         .map(field => (
           <Field
