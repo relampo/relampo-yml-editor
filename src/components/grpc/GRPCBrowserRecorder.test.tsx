@@ -21,6 +21,13 @@ beforeEach(() => {
 afterEach(() => {
   vi.useRealTimers();
 });
+it('explains when the installed CLI does not provide browser recording', async () => {
+  vi.mocked(grpcRequest).mockRejectedValue(Object.assign(new Error('Not found'), { status: 404 }));
+  render(<GRPCBrowserRecorder onDiscover={vi.fn()} onImport={vi.fn()} />);
+  expect(await screen.findByRole('status')).toHaveTextContent('Browser recording requires a newer Relampo CLI.');
+  expect(screen.queryByRole('button', { name: 'Start browser recording' })).not.toBeInTheDocument();
+});
+
 it('shows HTTP observation honestly and provides working Discovery and proto alternatives', async () => {
   const discover = vi.fn(),
     importProto = vi.fn();

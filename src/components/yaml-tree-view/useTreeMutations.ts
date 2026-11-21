@@ -3,6 +3,7 @@ import { useSyncExternalStore } from 'react';
 import { treeClipboard } from '../../utils/treeClipboard';
 import type { RedirectedRequestInfo, YAMLNode } from '../../types/yaml';
 import { canContain } from '../../utils/yamlDragDropRules';
+import { sqlConnectionNames } from '../../utils/sqlConnections';
 import type { YAMLAddableNodeType } from './addableItems';
 import { createNodeByType } from './nodeFactory';
 import {
@@ -112,7 +113,10 @@ export function useTreeMutations({
       if (!target) return currentTree;
       if (!canAddNodeToTarget(target, nodeType)) return currentTree;
 
-      const newNode = createNodeByType(nodeType, { balancedName: t('yamlEditor.balanced.name') });
+      const newNode = createNodeByType(nodeType, {
+        balancedName: t('yamlEditor.balanced.name'),
+        inlineSQL: nodeType === 'sql' && sqlConnectionNames(currentTree).length === 0,
+      });
       if (target.type === 'sql' && nodeType === 'extractor') {
         newNode.data = { type: 'sql', var: 'extracted_value', column: '', row: 1 };
         newNode.name = t('yamlEditor.shell.addable.extractor');
