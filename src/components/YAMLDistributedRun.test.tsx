@@ -720,7 +720,9 @@ it('publishes unchanged workspace files even when the host enumerates them in a 
   await waitFor(() =>
     expect(mocks.request).toHaveBeenCalledWith(
       'run',
-      expect.objectContaining({ workspace: expect.objectContaining({ files: expect.any(Array) }) }),
+      expect.objectContaining({
+        workspace: expect.objectContaining({ files: expect.arrayContaining(workspace.files) }),
+      }),
     ),
   );
   expect(mocks.prepare).toHaveBeenCalledTimes(1);
