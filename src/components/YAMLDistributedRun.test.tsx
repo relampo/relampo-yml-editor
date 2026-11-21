@@ -12,7 +12,9 @@ const mocks = vi.hoisted(() => ({
   prepare: vi.fn(),
   request: vi.fn(),
   upload: vi.fn(),
+  project: vi.fn(),
 }));
+vi.mock('../utils/executionProject', () => ({ requestExecutionProject: mocks.project }));
 vi.mock('../utils/debugApi', () => ({ probeStudio: mocks.probe }));
 vi.mock('../utils/distributedApi', async original => ({
   ...(await original<typeof import('../utils/distributedApi')>()),
@@ -64,6 +66,7 @@ beforeEach(() => {
   });
 
   vi.clearAllMocks();
+  mocks.project.mockResolvedValue(undefined);
   sessionStorage.clear();
   window.history.replaceState({}, '', '/?lang=es');
   mocks.probe.mockResolvedValue({ capabilities: { distributedRun: true } });
@@ -688,4 +691,65 @@ it('keeps one-second polling cadence including relay response time without overl
     now.mockRestore();
     vi.useRealTimers();
   }
+});
+
+async function prepareWorkspace() {
+  mount();
+  await selectRepository();
+  fireEvent.click(screen.getByRole('button', { name: 'Aplicar acción a los archivos' }));
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Ejecutar' })).toBeEnabled());
+  fireEvent.click(screen.getByRole('button', { name: 'Ejecutar' }));
+  await screen.findByText('Revisar publicación');
+  fireEvent.click(
+    screen.getByRole('checkbox', { name: 'He revisado el repositorio y los archivos que se publicarán.' }),
+  );
+}
+const workspace = {
+  scriptPath: 'Scripts/test.yaml',
+  files: [
+    { path: 'Scripts/test.yaml', data: 'dGVzdA==' },
+    { path: 'Data/users.csv', data: 'aWQKMQ==' },
+  ],
+};
+it('publishes unchanged workspace files even when the host enumerates them in a different order', async () => {
+  mocks.project
+    .mockResolvedValueOnce(workspace)
+    .mockResolvedValueOnce({ ...workspace, files: [...workspace.files].reverse() });
+  await prepareWorkspace();
+  fireEvent.click(screen.getByRole('button', { name: 'Publicar y ejecutar' }));
+  await waitFor(() =>
+    expect(mocks.request).toHaveBeenCalledWith(
+      'run',
+      expect.objectContaining({ workspace: expect.objectContaining({ files: expect.any(Array) }) }),
+    ),
+  );
+  expect(mocks.prepare).toHaveBeenCalledTimes(1);
+  expect(screen.queryByText('The document or settings changed. Check preparation again.')).not.toBeInTheDocument();
+});
+it('prepares changed file content automatically and requires review before any publication', async () => {
+  mocks.project
+    .mockResolvedValueOnce(workspace)
+    .mockResolvedValue({ ...workspace, files: [workspace.files[0], { path: 'Data/users.csv', data: 'bmV3' }] });
+  await prepareWorkspace();
+  fireEvent.click(screen.getByRole('button', { name: 'Publicar y ejecutar' }));
+  await screen.findByText(/Cambiaron los archivos: Data\/users.csv/);
+  expect(mocks.prepare).toHaveBeenCalledTimes(2);
+  expect(mocks.request).not.toHaveBeenCalledWith('run', expect.anything());
+  expect(
+    screen.getByRole('checkbox', { name: 'He revisado el repositorio y los archivos que se publicarán.' }),
+  ).not.toBeChecked();
+  fireEvent.click(
+    screen.getByRole('checkbox', { name: 'He revisado el repositorio y los archivos que se publicarán.' }),
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Publicar y ejecutar' }));
+  await waitFor(() =>
+    expect(mocks.request).toHaveBeenCalledWith(
+      'run',
+      expect.objectContaining({
+        workspace: expect.objectContaining({
+          files: expect.arrayContaining([{ path: 'Data/users.csv', data: 'bmV3' }]),
+        }),
+      }),
+    ),
+  );
 });

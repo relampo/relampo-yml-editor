@@ -2,7 +2,7 @@ import { AlertCircle, Loader2, Table2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { StringMap } from '../../../types/shared';
 import type { DataSource } from '../../../types/yaml';
-import { previewStudioDataSourceFile, uploadStudioDataSourceFile } from '../../../utils/debugApi';
+import { previewPlanDataSource, uploadPlanDataSource } from '../../../utils/planDataSource';
 import { EditableList } from '../../EditableList';
 import { useLanguage } from '../../../contexts/LanguageContext';
 import { HighlightedInput } from '../../ui/HighlightedInput';
@@ -107,7 +107,7 @@ export function DataSourceDetails({
             uploadFile={
               fileBrowseEnabled
                 ? async file => {
-                    const uploaded = await uploadStudioDataSourceFile(file);
+                    const uploaded = await uploadPlanDataSource(file);
                     setPreviewRevision(revision => revision + 1);
                     return uploaded.path;
                   }
@@ -149,9 +149,7 @@ export function DataSourceDetails({
             onChange={(field, value) => updateField(field, value)}
             noMargin
           />
-          <p className="text-[10px] text-zinc-400 mt-1 italic">
-            {dataSourceModeDescription(sourceData.mode, t)}
-          </p>
+          <p className="text-[10px] text-zinc-400 mt-1 italic">{dataSourceModeDescription(sourceData.mode, t)}</p>
         </div>
 
         <div className="w-30 shrink-0">
@@ -175,7 +173,9 @@ export function DataSourceDetails({
         <>
           <div className="h-px bg-white/10 my-4" />
           <div className="mb-4">
-            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">{t('yamlEditor.nodeDetails.ds.columnBindings')}</p>
+            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-3">
+              {t('yamlEditor.nodeDetails.ds.columnBindings')}
+            </p>
             <EditableList
               title={t('yamlEditor.nodeDetails.ds.bind')}
               items={bind}
@@ -248,7 +248,7 @@ function DataSourcePreviewPanel({
     const controller = new AbortController();
     const requestedPath = trimmedPath;
     setState({ status: 'loading' });
-    previewStudioDataSourceFile(trimmedPath, controller.signal)
+    previewPlanDataSource(trimmedPath, controller.signal)
       .then(preview => {
         if (controller.signal.aborted || latestPreviewPath.current !== requestedPath) return;
         setState({ status: 'ready', lines: preview.lines, truncated: preview.truncated });
@@ -276,7 +276,9 @@ function DataSourcePreviewPanel({
       <div className="flex min-h-10 items-center justify-between gap-3 border-b border-white/10 px-3 py-2">
         <div className="flex items-center gap-2">
           <Table2 className="h-4 w-4 text-yellow-300" />
-          <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">{t('yamlEditor.nodeDetails.ds.dataPreview')}</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+            {t('yamlEditor.nodeDetails.ds.dataPreview')}
+          </p>
         </div>
         {state.status === 'ready' && (
           <p className="text-[10px] font-medium text-zinc-500">
@@ -332,7 +334,10 @@ function DataSourcePreviewPanel({
             </thead>
             <tbody>
               {rows.map((row, rowIndex) => (
-                <tr key={`${rowIndex}-${row.join('|')}`} className="border-b border-white/5 last:border-b-0">
+                <tr
+                  key={`${rowIndex}-${row.join('|')}`}
+                  className="border-b border-white/5 last:border-b-0"
+                >
                   <td className="px-3 py-2 align-top font-mono text-[10px] text-zinc-600">{rowIndex + 1}</td>
                   {displayColumns.map((_, columnIndex) => (
                     <td
@@ -340,7 +345,9 @@ function DataSourcePreviewPanel({
                       className="truncate px-3 py-2 align-top font-mono text-[11px] text-zinc-300"
                       title={row[columnIndex] || ''}
                     >
-                      {row[columnIndex] || <span className="text-zinc-600">{t('yamlEditor.nodeDetails.ds.empty')}</span>}
+                      {row[columnIndex] || (
+                        <span className="text-zinc-600">{t('yamlEditor.nodeDetails.ds.empty')}</span>
+                      )}
                     </td>
                   ))}
                 </tr>

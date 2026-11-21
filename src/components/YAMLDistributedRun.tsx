@@ -1,3 +1,4 @@
+import { preparationKey, preparationChange } from '../utils/distributedPreparation';
 import { distributedGlobalHistory } from '../utils/distributedApi';
 import { useDistributedReportStorage } from '../hooks/useDistributedReportStorage';
 import { analysisReportFormats } from '../utils/localRunReports';
@@ -339,15 +340,30 @@ export function YAMLDistributedRun({
         );
       if (
         !planRequest.current ||
-        JSON.stringify(planRequest.current) !== JSON.stringify(request) ||
+        preparationKey(planRequest.current) !== preparationKey(request) ||
         reviewedProjectFiles.current !== JSON.stringify(projectFiles)
-      )
-        throw new Error(
-          text(
-            'Cambió el documento o la configuración. Vuelve a comprobar la preparación.',
-            'The document or settings changed. Check preparation again.',
-          ),
+      ) {
+        const reason = planRequest.current
+          ? preparationChange(planRequest.current, request, es)
+          : text('La preparación no está disponible.', 'Preparation is unavailable.');
+        const result = await prepareDistributed(request);
+        planRequest.current = request;
+        reviewedProjectFiles.current = JSON.stringify(projectFiles);
+        setPlan({
+          ...result.plan,
+          files: [
+            ...new Set([
+              ...result.plan.files,
+              ...projectFiles.filter(file => file.action !== 'remove').map(file => file.target),
+            ]),
+          ],
+        });
+        setReviewed(false);
+        setNotice(
+          `${reason} ${text('Preparación actualizada. Revisa la publicación antes de ejecutar.', 'Preparation updated. Review publication before running.')}`,
         );
+        return;
+      }
       const result = await distributedRequest<{ id: string }>('run', { ...request, prepare_only: prepareOnly });
       setTrackingLost(false);
       setRemoteURL(undefined);
@@ -367,7 +383,7 @@ export function YAMLDistributedRun({
   const planCurrent =
     !!plan &&
     !!planRequest.current &&
-    JSON.stringify(config(yamlCode)) === JSON.stringify(planRequest.current) &&
+    preparationKey(config(yamlCode)) === preparationKey(planRequest.current) &&
     reviewedProjectFiles.current === JSON.stringify(projectFiles);
   const disabled = busy || active || available !== true;
   function clearResults() {
