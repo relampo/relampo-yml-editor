@@ -42,6 +42,7 @@ export function GRPCBrowserRecorder({
   language?: string;
 }) {
   const [state, setState] = useState<GRPCBrowserRecording>(empty);
+  const [available, setAvailable] = useState<boolean | null>(null);
   const [contract, setContract] = useState<GRPCImported | null>(null);
   const [contractNames, setContractNames] = useState('');
   const [preview, setPreview] = useState<{ name: string; message?: unknown; response?: unknown; metadata?: unknown }[]>(
@@ -66,12 +67,15 @@ export function GRPCBrowserRecorder({
     grpcRequest<GRPCBrowserRecording>('browser-recordings/current', undefined, controller.signal)
       .then(value => {
         if (mounted.current) {
+          setAvailable(true);
           setState(value);
           if (value.applicationUrl) setApplicationURL(value.applicationUrl);
         }
       })
       .catch(cause => {
-        if (!controller.signal.aborted) setError(String(cause.message));
+        if (controller.signal.aborted) return;
+        if (cause.status === 404) setAvailable(false);
+        else setError(String(cause.message));
       });
     return () => {
       mounted.current = false;
@@ -161,6 +165,15 @@ export function GRPCBrowserRecorder({
       }
     });
   }
+  if (available === false)
+    return (
+      <p role="status" className="text-sm text-zinc-400">
+        {text(
+          'Browser recording requires a newer Relampo CLI.',
+          'La grabación del navegador requiere una versión más reciente de la CLI de Relampo.',
+        )}
+      </p>
+    );
   const observed = state.totalRequests > 0;
   const heading =
     state.detected === 'grpc_web'
@@ -215,7 +228,7 @@ export function GRPCBrowserRecorder({
         {!state.active ? (
           <button
             type="button"
-            disabled={busy || !applicationURL.trim()}
+            disabled={available !== true || busy || !applicationURL.trim()}
             className={button + ' border-yellow-400/30 text-yellow-400'}
             onClick={() =>
               run(async signal => {

@@ -947,6 +947,27 @@ it('adds SQL Defaults from the project menu and reopens the existing configurati
   expect(latest.children?.filter(node => node.type === 'sql_defaults')).toHaveLength(1);
 });
 
+it.each([false, true])('adds SQL with inline connection only when named defaults are absent (%s)', async named => {
+  const steps: YAMLNode = { id: 'sql-steps', type: 'steps', name: 'Steps', expanded: true, children: [] };
+  const root: YAMLNode = {
+    id: 'sql-root',
+    type: 'test',
+    name: 'SQL project',
+    expanded: true,
+    children: named
+      ? [steps, { id: 'defaults', type: 'sql_defaults', name: 'SQL Defaults', data: { connections: { app: {} } } }]
+      : [steps],
+  };
+  let latest = root;
+  renderInteractiveTreeView({ tree: root, onTreeStateChange: tree => { latest = tree; } });
+  fireEvent.contextMenu(screen.getByText('Steps'));
+  fireEvent.click(screen.getByRole('button', { name: /^SQL Request(?: |$)/ }));
+  await waitFor(() => expect(latest.children?.[0].children?.[0].type).toBe('sql'));
+  const sql = latest.children?.[0].children?.[0].data;
+  if (named) expect(sql?.connection).toBeUndefined();
+  else expect(sql).toMatchObject({ dialect: 'postgres', connection: { port: 5432 }, validate_connectivity: true });
+});
+
 it('adds an SQL cell extractor through the SQL request context menu', async () => {
   const root: YAMLNode = {
     id: 'sql-root',

@@ -5,6 +5,7 @@ export function createNodeByType(
   type: string | 'root_plan',
   options?: {
     balancedName?: string;
+    inlineSQL?: boolean;
   },
 ): YAMLNode {
   const id = createNodeId();
@@ -93,6 +94,19 @@ export function createNodeByType(
           params: [],
           allow_writes: false,
           error_policy: { on_error: 'continue', on_timeout: 'continue' },
+          ...(options?.inlineSQL ? {
+            dialect: 'postgres',
+            validate_connectivity: true,
+            connection: {
+              host: '{{db_host}}',
+              port: 5432,
+              database: 'app',
+              user: '{{db_user}}',
+              password: '{{db_password}}',
+              max_open_conns: 5,
+              max_idle_conns: 2,
+            },
+          } : {}),
         },
         children: [],
       };
