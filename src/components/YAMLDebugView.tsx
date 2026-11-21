@@ -1,4 +1,5 @@
 import { SQLResultTable } from './SQLResultTable';
+import { httpMethodAttr, httpStatusClass } from '../utils/httpBadges';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { WebSocketMetrics } from './WebSocketMetrics';
 import { componentCapabilityError, type ComponentCapabilities } from '../utils/componentConfiguration';
@@ -1063,7 +1064,10 @@ function DebugTimelinePanel({
                               #{requestNumber}
                             </span>
                           )}
-                          <span className="rounded border border-blue-400/25 bg-blue-400/10 px-1.5 py-0.5 text-[10px] font-semibold text-blue-300">
+                          <span
+                            data-method={httpMethodAttr(entry.event.method)}
+                            className="rounded border border-blue-400/25 bg-blue-400/10 px-1.5 py-0.5 text-[10px] font-semibold text-blue-300"
+                          >
                             {entry.event.method}
                           </span>
                           <span className="truncate text-sm text-zinc-100">
@@ -1085,7 +1089,12 @@ function DebugTimelinePanel({
                               <span>{formatEventTime(entry.event.ts)}</span>
                               {entry.event.vu ? <span>VU{entry.event.vu}</span> : null}
                               <span>{formatLatency(entry.event.latency_ms)}</span>
-                              <span className={`rounded border px-1.5 py-0.5 ${statusTone(entry.status)}`}>
+                              <span
+                                data-status-class={
+                                  entry.event.protocol === 'grpc' ? undefined : httpStatusClass(entry.event.status)
+                                }
+                                className={`rounded border px-1.5 py-0.5 ${statusTone(entry.status)}`}
+                              >
                                 {entry.event.protocol === 'grpc'
                                   ? (entry.event.protocol_status ?? String(entry.event.status))
                                   : entry.event.status || '—'}
@@ -1132,7 +1141,11 @@ function DebugDetailPanel({
             <div className="flex min-w-0 items-start justify-between gap-4">
               <div className="min-w-0">
                 <div className="flex min-w-0 items-center gap-2">
-                  <span className="rounded border border-blue-400/25 bg-blue-400/10 px-2 py-1 text-xs font-semibold text-blue-300">
+                  <span
+                    data-method={httpMethodAttr(activeEntry.event.method)}
+                    data-size="large"
+                    className="rounded border border-blue-400/25 bg-blue-400/10 px-2 py-1 text-xs font-semibold text-blue-300"
+                  >
                     {activeEntry.event.method}
                   </span>
                   <h3 className="truncate text-base font-semibold text-zinc-100">

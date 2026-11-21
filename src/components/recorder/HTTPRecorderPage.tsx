@@ -171,7 +171,7 @@ export function HTTPRecorderPage({
           disabled={state.active || canRetrySave}
           embedded={embedded}
         />
-        <div className="flex h-9 shrink-0 items-center gap-3 border-b border-white/10 bg-[#111111] px-3 text-xs">
+        <div data-recorder-status="" className="flex h-9 shrink-0 items-center gap-3 border-b border-white/10 bg-[#111111] px-3 text-xs">
           <span className={'flex items-center gap-1.5 ' + (state.active ? 'text-red-300' : 'text-zinc-400')}>
             <CircleDot className={'h-3 w-3 ' + (state.active ? 'animate-pulse' : '')} />
             {busy === 'start'
@@ -196,7 +196,7 @@ export function HTTPRecorderPage({
               :{(seconds % 60).toString().padStart(2, '0')}
             </span>
           )}
-          <span className="text-zinc-500">{state.totalRequests} requests</span>
+          <span data-recorder-count="" className="text-zinc-500">{state.totalRequests} requests</span>
           {state.protocol && <span className="font-mono text-yellow-300">{state.protocol}</span>}
           {state.proxyAddress && <span className="font-mono text-zinc-500">{state.proxyAddress}</span>}
           {state.active && state.certificateReady && (

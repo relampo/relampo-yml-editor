@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import { httpMethodAttr } from '../utils/httpBadges';
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 
 export interface RunRequestRow {
@@ -141,7 +142,10 @@ export function RunRequestTable({
                   title={row.title}
                 >
                   {row.method && (
-                    <span className="mr-2 rounded border border-blue-400/25 bg-blue-400/10 px-1.5 py-0.5 text-[10px] font-semibold text-blue-300">
+                    <span
+                      data-method={httpMethodAttr(row.method)}
+                      className="mr-2 rounded border border-blue-400/25 bg-blue-400/10 px-1.5 py-0.5 text-[10px] font-semibold text-blue-300"
+                    >
                       {row.method}
                     </span>
                   )}

@@ -17,7 +17,7 @@ export function CorrelateResults({
     setTab('candidates');
   }, [props.rows]);
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[#0a0a0a]">
+    <div data-correlate-panel="" className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[#0a0a0a]">
       <div
         role="tablist"
         aria-label="Correlation results"

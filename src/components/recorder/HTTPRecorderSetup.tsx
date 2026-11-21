@@ -25,6 +25,7 @@ export function HTTPRecorderSetup({
     <fieldset
       aria-label={text('Recording configuration', 'Configuración de grabación')}
       disabled={disabled || !!busy}
+      data-recorder-settings=""
       className="shrink-0 space-y-2 border-b border-white/10 bg-[#111111] px-3 py-2"
     >
       <div
@@ -152,7 +153,7 @@ export function HTTPRecorderSetup({
             onChange={e => update({ exclude: e.target.value.split('\n') })}
           />
         </label>
-        <div className="flex min-h-7 flex-wrap items-center gap-x-3 gap-y-2 text-xs text-zinc-400">
+        <div data-recorder-options="" className="flex min-h-7 flex-wrap items-center gap-x-3 gap-y-2 text-xs text-zinc-400">
           <label className="flex items-center gap-1.5">
             <input
               aria-label="Enable prefix"

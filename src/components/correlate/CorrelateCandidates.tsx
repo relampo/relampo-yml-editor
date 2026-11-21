@@ -1,3 +1,4 @@
+import { CorrelateRequestRef } from './CorrelateRequestRef';
 import { correlationRequestLabel as requestLabel, type CorrelateCandidate } from '../../utils/correlateApi';
 import { CorrelateUses } from './CorrelateUses';
 import { recorderCompactInput } from '../recorder/HTTPRecorderSettings';
@@ -102,7 +103,9 @@ export function CorrelateCandidates({
                   />
                 </td>
                 <td className="px-2 py-2 font-mono text-yellow-400">{row.id}</td>
-                <td className="max-w-48 break-words px-2 py-2 font-mono text-zinc-200">{row.variable}</td>
+                <td className="max-w-48 break-words px-2 py-2 font-mono text-zinc-200">
+                  <span data-correlate-variable="">{row.variable}</span>
+                </td>
                 <td className="px-2 py-2 text-zinc-400">
                   <div className="max-h-24 min-w-40 max-w-64 overflow-y-auto whitespace-pre-wrap break-all font-mono text-zinc-300">
                     {row.value ?? '—'}
@@ -120,7 +123,7 @@ export function CorrelateCandidates({
                     className="max-w-full truncate text-left text-emerald-300 hover:text-yellow-300"
                     title={requestLabel(row.source)}
                   >
-                    {requestLabel(row.source)}
+                    <CorrelateRequestRef location={row.source} />
                   </button>
                 </td>
                 <td className="max-w-44 break-words px-2 py-2 font-mono text-zinc-400">
@@ -138,7 +141,7 @@ export function CorrelateCandidates({
           </tbody>
         </table>
         {!visible.length && (
-          <p className="p-8 text-center text-xs text-zinc-500">
+          <p data-correlate-empty="" className="p-8 text-center text-xs text-zinc-500">
             {rows === null
               ? es
                 ? 'Abre un script y pulsa Analizar.'

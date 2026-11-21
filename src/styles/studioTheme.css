@@ -499,3 +499,594 @@
 :root[data-studio-theme='light'] button[class*='border-white']:not(:disabled):hover {
   background-color: #f2f2ef;
 }
+
+/*
+ * Light mode refresh: a cool canvas behind white cards with a soft shadow, matching the SaaS
+ * light palette. Scoped to the light theme, so the dark theme does not change.
+ */
+:root[data-studio-theme='light'] {
+  --background: #f3f5f9;
+  --foreground: #0f172a;
+  --card-foreground: #0f172a;
+  --popover-foreground: #0f172a;
+  --secondary: #f1f4f9;
+  --secondary-foreground: #1e293b;
+  --muted: #f1f4f9;
+  --muted-foreground: #5b6474;
+  --accent-foreground: #0f172a;
+  --border: #e2e7ef;
+  --input: #d5dbe5;
+  --studio-control-border: #d5dbe5;
+  --studio-muted: #5b6474;
+  --studio-text: #0f172a;
+  --studio-caret: #0f172a;
+  --studio-panel: #ffffff;
+  --studio-surface: #f3f5f9;
+  --studio-card-shadow: 0 1px 2px rgba(16, 24, 40, 0.05), 0 2px 8px rgba(16, 24, 40, 0.06);
+}
+:root[data-studio-theme='light'] * {
+  scrollbar-color: #c3cad6 transparent;
+}
+:root[data-studio-theme='light'] [class~='bg-[#111111]'][class~='border'],
+:root[data-studio-theme='light'] [class~='bg-[#111]'][class~='border'],
+:root[data-studio-theme='light'] [class~='bg-[#151515]'][class~='border'],
+:root[data-studio-theme='light'] [class~='bg-[#161616]'][class~='border'],
+:root[data-studio-theme='light'] [class~='bg-[#171717]'][class~='border'] {
+  border-radius: 10px;
+  box-shadow: var(--studio-card-shadow);
+}
+:root[data-studio-theme='light'] [class~='border-white/10'],
+:root[data-studio-theme='light'] [class~='border-white/15'],
+:root[data-studio-theme='light'] [class~='border-white/20'],
+:root[data-studio-theme='light'] [class~='border-white/5'],
+:root[data-studio-theme='light'] [class~='border-white/7'],
+:root[data-studio-theme='light'] [class~='border-white/8'],
+:root[data-studio-theme='light'] [class~='divide-white/5'],
+:root[data-studio-theme='light'] [role='separator'] {
+  border-color: var(--border);
+}
+:root[data-studio-theme='light'] [role='separator'] {
+  background-color: var(--border);
+}
+:root[data-studio-theme='light'] svg [stroke='#3f3f46'],
+:root[data-studio-theme='light'] svg [stroke='#27272a'] {
+  stroke: #e6eaf0;
+}
+:root[data-studio-theme='light'] [data-editor-view-tabs] {
+  background-color: #ffffff;
+}
+:root[data-studio-theme='light'] [data-editor-panel-heading] {
+  background-color: #f8fafc;
+}
+:root[data-studio-theme='light'] [class~='bg-zinc-900'],
+:root[data-studio-theme='light'] [class~='bg-zinc-800'] {
+  background-color: #f6f8fb;
+}
+:root[data-studio-theme='light'] [data-editor-view-tab][aria-pressed='true'] {
+  background-color: #fff8e0;
+  color: #0f172a;
+  border-bottom-color: #e8b320;
+}
+:root[data-studio-theme='light'] [data-editor-view-tab]:hover {
+  background-color: #fffbeb;
+}
+:root[data-studio-theme='light'] button[class*='border-white']:not(:disabled):hover {
+  background-color: #f6f8fb;
+}
+:root[data-studio-theme='light'] [role='treeitem'][aria-selected='true'] {
+  background-color: #fff4cc;
+  border-color: #e8b320;
+}
+:root[data-studio-theme='light'] :is(input, textarea)::placeholder {
+  color: #64748b;
+}
+:root[data-studio-theme='light'] :is(button, input, textarea, select):disabled {
+  color: #64748b;
+  border-color: #dfe4ec;
+}
+
+/* Whiter canvas so gray does not dominate; color carries the structure. */
+:root[data-studio-theme='light'] {
+  --background: #f7f9fc;
+  --studio-surface: #f7f9fc;
+}
+
+/* Run: the six metrics become separate cards with a colored icon chip. */
+:root[data-studio-theme='light'] [class~='lg:grid-cols-6'][class~='bg-[#0a0a0a]'] {
+  gap: 10px;
+  padding: 14px 16px;
+  background-color: transparent;
+  border-bottom-width: 0;
+}
+:root[data-studio-theme='light'] [class~='lg:grid-cols-6'][class~='bg-[#0a0a0a]'] > div {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  column-gap: 10px;
+  align-items: center;
+  padding: 12px;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--studio-card-shadow);
+}
+:root[data-studio-theme='light'] [class~='lg:grid-cols-6'][class~='bg-[#0a0a0a]'] > div > div {
+  display: contents;
+}
+:root[data-studio-theme='light'] [class~='lg:grid-cols-6'][class~='bg-[#0a0a0a]'] > div svg {
+  grid-row: span 2;
+  width: 34px;
+  height: 34px;
+  padding: 8px;
+  border-radius: 10px;
+  background: #f1f4f9;
+  color: #475569;
+}
+:root[data-studio-theme='light'] [class~='lg:grid-cols-6'][class~='bg-[#0a0a0a]'] > div p {
+  grid-column: 2;
+  margin: 0;
+}
+:root[data-studio-theme='light'] [class~='lg:grid-cols-6'][class~='bg-[#0a0a0a]'] > div svg[class~='text-yellow-300'] { background: #fff4cc; color: #b7791f; }
+:root[data-studio-theme='light'] [class~='lg:grid-cols-6'][class~='bg-[#0a0a0a]'] > div svg[class~='text-blue-300'] { background: #efeafe; color: #7c3aed; }
+:root[data-studio-theme='light'] [class~='lg:grid-cols-6'][class~='bg-[#0a0a0a]'] > div svg[class~='text-emerald-300'] { background: #e6f6ee; color: #059669; }
+:root[data-studio-theme='light'] [class~='lg:grid-cols-6'][class~='bg-[#0a0a0a]'] > div svg[class~='text-red-300'] { background: #fde8e8; color: #dc2626; }
+:root[data-studio-theme='light'] [class~='lg:grid-cols-6'][class~='bg-[#0a0a0a]'] > div:nth-child(5) svg { background: #e8f0ff; color: #2563eb; }
+:root[data-studio-theme='light'] [class~='lg:grid-cols-6'][class~='bg-[#0a0a0a]'] > div:nth-child(6) svg { background: #e6f4fa; color: #0284c7; }
+
+/* Run notices read as a contained card instead of a full-width beige band. */
+:root[data-studio-theme='light'] [class~='border-b'][class~='border-amber-400/20'][class~='bg-amber-400/5'][class~='px-4'] {
+  margin: 14px 16px 0;
+  border: 1px solid #f7dfa0;
+  border-radius: 10px;
+  background-color: #fff8e6;
+  color: #9a5b06;
+}
+
+/* HTTP method badges: a clearer blue on white. */
+:root[data-studio-theme='light'] [class~='bg-blue-400/15'][class~='border-blue-400/30'] {
+  background-color: #eaf1ff;
+  border-color: #c7d7fb;
+  color: #1d4ed8;
+}
+
+/* Pure white work surfaces: no gray fills behind panels; cards keep border and shadow. */
+:root[data-studio-theme='light'] {
+  --background: #ffffff;
+  --studio-surface: #ffffff;
+}
+:root[data-studio-theme='light'] [data-editor-panel-heading],
+:root[data-studio-theme='light'] [class~='bg-zinc-900'],
+:root[data-studio-theme='light'] [class~='bg-zinc-800'] {
+  background-color: #ffffff;
+}
+
+/* No brown tones: yellow stays bright for fills, borders and underlines; text uses ink. */
+:root[data-studio-theme='light'] {
+  --studio-tone-yellow: #0f172a;
+  --studio-tone-amber: #c2410c;
+  --studio-tone-orange: #c2410c;
+  --ring: #eab308;
+}
+:root[data-studio-theme='light'] :is(input, textarea, select):focus {
+  border-color: #eab308;
+  outline-color: #fde047;
+}
+:root[data-studio-theme='light'] [class~='bg-yellow-400/5'],
+:root[data-studio-theme='light'] [class~='bg-yellow-400/10'],
+:root[data-studio-theme='light'] [class~='bg-yellow-400/15'],
+:root[data-studio-theme='light'] [class~='bg-yellow-500/10'],
+:root[data-studio-theme='light'] [role='treeitem'][aria-selected='true'] {
+  background-color: #fffbeb;
+  border-color: #facc15;
+}
+:root[data-studio-theme='light'] [data-editor-view-tab][aria-pressed='true'] {
+  background-color: #fffbeb;
+  border-bottom-color: #facc15;
+}
+:root[data-studio-theme='light'] [class~='lg:grid-cols-6'][class~='bg-[#0a0a0a]'] > div svg[class~='text-yellow-300'] {
+  background: #fef9c3;
+  color: #ca8a04;
+}
+:root[data-studio-theme='light'] [class~='border-b'][class~='border-amber-400/20'][class~='bg-amber-400/5'][class~='px-4'] {
+  border-color: #fde68a;
+  background-color: #fffbeb;
+  color: #334155;
+}
+
+/*
+ * Charts in light mode: saturated series colors that read on white, one distinct hue per metric
+ * (RPS amber, VUs blue, AVG green, P95 violet, Errors red). The dark palette does not change.
+ */
+:root[data-studio-theme='light'] svg [stroke='#facc15'] { stroke: #f59e0b; }
+:root[data-studio-theme='light'] svg [fill='#facc15'] { fill: #f59e0b; }
+:root[data-studio-theme='light'] [style*='background-color: rgb(250, 204, 21)'] { background-color: #f59e0b !important; }
+:root[data-studio-theme='light'] [style*='color: rgb(250, 204, 21)']:not([style*='background-color: rgb(250, 204, 21)']) { color: #f59e0b !important; }
+:root[data-studio-theme='light'] svg [stroke='#60a5fa'] { stroke: #2563eb; }
+:root[data-studio-theme='light'] svg [fill='#60a5fa'] { fill: #2563eb; }
+:root[data-studio-theme='light'] [style*='background-color: rgb(96, 165, 250)'] { background-color: #2563eb !important; }
+:root[data-studio-theme='light'] [style*='color: rgb(96, 165, 250)']:not([style*='background-color: rgb(96, 165, 250)']) { color: #2563eb !important; }
+:root[data-studio-theme='light'] svg [stroke='#34d399'] { stroke: #059669; }
+:root[data-studio-theme='light'] svg [fill='#34d399'] { fill: #059669; }
+:root[data-studio-theme='light'] [style*='background-color: rgb(52, 211, 153)'] { background-color: #059669 !important; }
+:root[data-studio-theme='light'] [style*='color: rgb(52, 211, 153)']:not([style*='background-color: rgb(52, 211, 153)']) { color: #059669 !important; }
+:root[data-studio-theme='light'] svg [stroke='#10b981'] { stroke: #059669; }
+:root[data-studio-theme='light'] svg [fill='#10b981'] { fill: #059669; }
+:root[data-studio-theme='light'] [style*='background-color: rgb(16, 185, 129)'] { background-color: #059669 !important; }
+:root[data-studio-theme='light'] [style*='color: rgb(16, 185, 129)']:not([style*='background-color: rgb(16, 185, 129)']) { color: #059669 !important; }
+:root[data-studio-theme='light'] svg [stroke='#f472b6'] { stroke: #7c3aed; }
+:root[data-studio-theme='light'] svg [fill='#f472b6'] { fill: #7c3aed; }
+:root[data-studio-theme='light'] [style*='background-color: rgb(244, 114, 182)'] { background-color: #7c3aed !important; }
+:root[data-studio-theme='light'] [style*='color: rgb(244, 114, 182)']:not([style*='background-color: rgb(244, 114, 182)']) { color: #7c3aed !important; }
+:root[data-studio-theme='light'] svg [stroke='#f87171'] { stroke: #dc2626; }
+:root[data-studio-theme='light'] svg [fill='#f87171'] { fill: #dc2626; }
+:root[data-studio-theme='light'] [style*='background-color: rgb(248, 113, 113)'] { background-color: #dc2626 !important; }
+:root[data-studio-theme='light'] [style*='color: rgb(248, 113, 113)']:not([style*='background-color: rgb(248, 113, 113)']) { color: #dc2626 !important; }
+:root[data-studio-theme='light'] svg [stroke='#f43f5e'] { stroke: #e11d48; }
+:root[data-studio-theme='light'] svg [fill='#f43f5e'] { fill: #e11d48; }
+:root[data-studio-theme='light'] [style*='background-color: rgb(244, 63, 94)'] { background-color: #e11d48 !important; }
+:root[data-studio-theme='light'] [style*='color: rgb(244, 63, 94)']:not([style*='background-color: rgb(244, 63, 94)']) { color: #e11d48 !important; }
+:root[data-studio-theme='light'] svg [stroke='#fb7185'] { stroke: #e11d48; }
+:root[data-studio-theme='light'] svg [fill='#fb7185'] { fill: #e11d48; }
+:root[data-studio-theme='light'] [style*='background-color: rgb(251, 113, 133)'] { background-color: #e11d48 !important; }
+:root[data-studio-theme='light'] [style*='color: rgb(251, 113, 133)']:not([style*='background-color: rgb(251, 113, 133)']) { color: #e11d48 !important; }
+:root[data-studio-theme='light'] svg [stroke='#22d3ee'] { stroke: #0891b2; }
+:root[data-studio-theme='light'] svg [fill='#22d3ee'] { fill: #0891b2; }
+:root[data-studio-theme='light'] [style*='background-color: rgb(34, 211, 238)'] { background-color: #0891b2 !important; }
+:root[data-studio-theme='light'] [style*='color: rgb(34, 211, 238)']:not([style*='background-color: rgb(34, 211, 238)']) { color: #0891b2 !important; }
+:root[data-studio-theme='light'] svg [stroke='#67e8f9'] { stroke: #0891b2; }
+:root[data-studio-theme='light'] svg [fill='#67e8f9'] { fill: #0891b2; }
+:root[data-studio-theme='light'] [style*='background-color: rgb(103, 232, 249)'] { background-color: #0891b2 !important; }
+:root[data-studio-theme='light'] [style*='color: rgb(103, 232, 249)']:not([style*='background-color: rgb(103, 232, 249)']) { color: #0891b2 !important; }
+:root[data-studio-theme='light'] svg [stroke='#38bdf8'] { stroke: #0284c7; }
+:root[data-studio-theme='light'] svg [fill='#38bdf8'] { fill: #0284c7; }
+:root[data-studio-theme='light'] [style*='background-color: rgb(56, 189, 248)'] { background-color: #0284c7 !important; }
+:root[data-studio-theme='light'] [style*='color: rgb(56, 189, 248)']:not([style*='background-color: rgb(56, 189, 248)']) { color: #0284c7 !important; }
+:root[data-studio-theme='light'] svg [stroke='#fde047'] { stroke: #eab308; }
+:root[data-studio-theme='light'] svg [fill='#fde047'] { fill: #eab308; }
+:root[data-studio-theme='light'] [style*='background-color: rgb(253, 224, 71)'] { background-color: #eab308 !important; }
+:root[data-studio-theme='light'] [style*='color: rgb(253, 224, 71)']:not([style*='background-color: rgb(253, 224, 71)']) { color: #eab308 !important; }
+:root[data-studio-theme='light'] svg [stroke='#fbbf24'] { stroke: #f59e0b; }
+:root[data-studio-theme='light'] svg [fill='#fbbf24'] { fill: #f59e0b; }
+:root[data-studio-theme='light'] [style*='background-color: rgb(251, 191, 36)'] { background-color: #f59e0b !important; }
+:root[data-studio-theme='light'] [style*='color: rgb(251, 191, 36)']:not([style*='background-color: rgb(251, 191, 36)']) { color: #f59e0b !important; }
+:root[data-studio-theme='light'] svg [stroke='#a78bfa'] { stroke: #6d28d9; }
+:root[data-studio-theme='light'] svg [fill='#a78bfa'] { fill: #6d28d9; }
+:root[data-studio-theme='light'] [style*='background-color: rgb(167, 139, 250)'] { background-color: #6d28d9 !important; }
+:root[data-studio-theme='light'] [style*='color: rgb(167, 139, 250)']:not([style*='background-color: rgb(167, 139, 250)']) { color: #6d28d9 !important; }
+/* Axis tick numbers stay neutral; only the axis title keeps the metric color. */
+:root[data-studio-theme='light'] svg g[fill] > text:not([font-weight='700']) { fill: #64748b; }
+/* Grid lines drawn in white for the dark theme become faint ink lines. */
+:root[data-studio-theme='light'] svg line[stroke='#ffffff'] { stroke: #0f172a; }
+/* Thicker series lines; the legend swatch is bolder and hidden metrics turn gray. */
+:root[data-studio-theme='light'] svg path[fill='none'][stroke]:not([stroke-dasharray]) { stroke-width: 2.2px; }
+:root[data-studio-theme='light'] button span[aria-hidden='true'][class~='h-0.5'] { height: 3px; border-radius: 2px; }
+:root[data-studio-theme='light'] button[class~='opacity-40'] span[aria-hidden='true'] { filter: grayscale(1); }
+
+/* Area gradients follow the light series colors. */
+:root[data-studio-theme='light'] svg stop[stop-color='#facc15'] { stop-color: #f59e0b; }
+:root[data-studio-theme='light'] svg stop[stop-color='#60a5fa'] { stop-color: #2563eb; }
+:root[data-studio-theme='light'] svg stop[stop-color='#34d399'] { stop-color: #059669; }
+:root[data-studio-theme='light'] svg stop[stop-color='#f472b6'] { stop-color: #7c3aed; }
+:root[data-studio-theme='light'] svg stop[stop-color='#f87171'] { stop-color: #dc2626; }
+
+/*
+ * Recorder in light mode: configuration in a card, a status pill, the two panels as cards and a
+ * traffic table with colored method and status chips. The dark theme does not change.
+ */
+:root[data-studio-theme='light'] [role='tablist'][aria-label='Recorder protocol'] > button {
+  border: 0;
+  border-radius: 7px;
+  color: #475569;
+}
+:root[data-studio-theme='light'] [role='tablist'][aria-label='Recorder protocol'] {
+  display: inline-flex;
+  width: fit-content;
+  gap: 0;
+  margin: 0;
+  padding: 3px;
+  background: #f1f4f9;
+  border-bottom-width: 1px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+:root[data-studio-theme='light'] [role='tablist'][aria-label='Recorder protocol'] > button[aria-selected='true'] {
+  background: #facc15;
+  color: #1a1400;
+  font-weight: 600;
+}
+
+:root[data-studio-theme='light'] [data-recorder-settings] {
+  margin: 12px 16px 0;
+  padding: 14px;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--studio-card-shadow);
+}
+:root[data-studio-theme='light'] [data-recorder-options] {
+  gap: 6px;
+}
+:root[data-studio-theme='light'] [data-recorder-options] > label {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #ffffff;
+  color: #475569;
+  cursor: pointer;
+}
+:root[data-studio-theme='light'] [data-recorder-options] > label:has(input:checked) {
+  background: #fffbeb;
+  border-color: #facc15;
+  color: #0f172a;
+}
+
+:root[data-studio-theme='light'] [data-recorder-status] {
+  height: auto;
+  margin: 12px 16px 0;
+  padding: 6px 8px 6px 14px;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  box-shadow: var(--studio-card-shadow);
+}
+:root[data-studio-theme='light'] [data-recorder-count] {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #e8f0ff;
+  color: #1d4ed8;
+  font-weight: 600;
+  font-size: 11px;
+}
+
+:root[data-studio-theme='light'] [data-recorder-panels] {
+  gap: 12px;
+  padding: 12px 16px 16px;
+  border-top-width: 0;
+}
+:root[data-studio-theme='light'] [data-recorder-panel] {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--studio-card-shadow);
+}
+:root[data-studio-theme='light'] [data-recorder-panels] > [role='separator'] {
+  width: 4px;
+  margin: 0 -8px;
+  background: transparent;
+  border-radius: 2px;
+}
+:root[data-studio-theme='light'] [data-recorder-panels] > [role='separator']:hover {
+  background: #fde68a;
+}
+:root[data-studio-theme='light'] [data-recorder-panel] thead {
+  background: #f6f8fb;
+  color: #64748b;
+}
+:root[data-studio-theme='light'] [data-recorder-panel] thead th {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+:root[data-studio-theme='light'] [data-recorder-panel] tbody tr:hover {
+  background: #f8fafc;
+}
+:root[data-studio-theme='light'] [data-recorder-panel] tbody tr[data-selected] {
+  background: #fffbeb;
+}
+:root[data-studio-theme='light'] [data-recorder-panel] tbody td:first-child {
+  color: #64748b;
+}
+
+:root[data-studio-theme='light'] [data-recorder-empty] {
+  color: #475569;
+}
+:root[data-studio-theme='light'] div[data-recorder-empty] > svg:first-child {
+  box-sizing: content-box;
+  width: 22px;
+  height: 22px;
+  padding: 11px;
+  border-radius: 999px;
+  background: #fff4cc;
+  color: #ca8a04;
+}
+:root[data-studio-theme='light'] div[data-recorder-empty] > p:first-of-type {
+  color: #0f172a;
+  font-weight: 600;
+}
+
+/* Protocol row: tabs on the left, saved-recording actions on the right. */
+:root[data-studio-theme='light'] [data-recorder-toolbar] {
+  padding: 12px 16px 0;
+  border-bottom-width: 0;
+}
+:root[data-studio-theme='light'] [data-recorder-add] {
+  background: #facc15 !important;
+  border-color: #eab308 !important;
+  color: #1a1400 !important;
+  font-weight: 600;
+}
+:root[data-studio-theme='light'] [data-recorder-add]:hover:not(:disabled) {
+  background: #fde047 !important;
+}
+/* Tailwind's important text color sits in a cascade layer and outranks unlayered !important,
+   so the label color is set through text-fill-color and the icon through its stroke. */
+:root[data-studio-theme='light'] [data-recorder-add] {
+  -webkit-text-fill-color: #0f172a;
+}
+:root[data-studio-theme='light'] [data-recorder-add] svg {
+  stroke: #0f172a;
+}
+
+/*
+ * Correlation in light mode, matching the Recorder: controls in a card, a primary Analyze
+ * button, the script and the candidates as cards, and a clean footer. Dark does not change.
+ */
+:root[data-studio-theme='light'] section[aria-label='Correlation controls'] {
+  margin: 12px 16px 0;
+  padding: 10px 12px;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--studio-card-shadow);
+}
+:root[data-studio-theme='light'] [data-correlate-primary]:not(:disabled) {
+  background: #facc15 !important;
+  border-color: #eab308 !important;
+  -webkit-text-fill-color: #0f172a;
+  font-weight: 600;
+}
+:root[data-studio-theme='light'] [data-correlate-primary]:not(:disabled) svg {
+  stroke: #0f172a;
+}
+:root[data-studio-theme='light'] [data-correlate-primary]:hover:not(:disabled) {
+  background: #fde047 !important;
+}
+:root[data-studio-theme='light'] [data-correlate-status] {
+  margin: 12px 16px 0;
+  padding: 6px 14px;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  box-shadow: var(--studio-card-shadow);
+}
+:root[data-studio-theme='light'] [data-correlate-panels] {
+  gap: 12px;
+  padding: 12px 16px;
+}
+:root[data-studio-theme='light'] [data-correlate-panel] {
+  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--studio-card-shadow);
+}
+:root[data-studio-theme='light'] [data-correlate-panels] > [role='separator'] {
+  width: 4px;
+  margin: 0 -8px;
+  border-left-width: 0;
+  background: transparent;
+  border-radius: 2px;
+}
+:root[data-studio-theme='light'] [data-correlate-panels] > [role='separator']:hover {
+  background: #fde68a;
+}
+:root[data-studio-theme='light'] [data-correlate-panel] thead {
+  background: #f6f8fb;
+  color: #64748b;
+}
+:root[data-studio-theme='light'] [data-correlate-panel] thead th {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+:root[data-studio-theme='light'] [data-correlate-panel] tbody tr:hover {
+  background: #f8fafc;
+}
+:root[data-studio-theme='light'] [role='tablist'][aria-label='Correlation results'] {
+  background: #ffffff;
+}
+:root[data-studio-theme='light'] [role='tablist'][aria-label='Correlation results'] > [role='tab'][aria-selected='true'] {
+  background: #fffbeb;
+  border-bottom-color: #facc15;
+  color: #0f172a;
+  font-weight: 600;
+}
+:root[data-studio-theme='light'] [role='tablist'][aria-label='Correlation results'] > [role='tab'] > span {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #f1f4f9;
+  color: #475569;
+}
+:root[data-studio-theme='light'] [data-correlate-empty] {
+  color: #475569;
+  font-size: 12.5px;
+}
+:root[data-studio-theme='light'] [data-correlate-footer] {
+  background: #ffffff;
+  border-top-color: var(--border);
+  padding: 10px 16px;
+}
+
+/* Save as new script is the main save action: solid yellow with black text. */
+:root[data-studio-theme='light'] [data-correlate-save-new]:not(:disabled) {
+  background: #facc15 !important;
+  border-color: #eab308 !important;
+  -webkit-text-fill-color: #0f172a;
+  font-weight: 600;
+}
+:root[data-studio-theme='light'] [data-correlate-save-new]:not(:disabled) svg {
+  stroke: #0f172a;
+}
+:root[data-studio-theme='light'] [data-correlate-save-new]:hover:not(:disabled) {
+  background: #fde047 !important;
+}
+
+/* Correlate turns yellow once the analysis has candidates to apply. */
+:root[data-studio-theme='light'] [data-correlate-apply]:not(:disabled) {
+  background: #facc15 !important;
+  border-color: #eab308 !important;
+  -webkit-text-fill-color: #0f172a;
+  font-weight: 600;
+}
+:root[data-studio-theme='light'] [data-correlate-apply]:not(:disabled) svg {
+  stroke: #0f172a;
+}
+:root[data-studio-theme='light'] [data-correlate-apply]:hover:not(:disabled) {
+  background: #fde047 !important;
+}
+
+/* Candidate variables (for example securitytoken) are highlighted so they draw attention. */
+:root[data-studio-theme='light'] [data-correlate-variable] {
+  display: inline-block;
+  padding: 2px 8px;
+  border: 1px solid #fde047;
+  border-radius: 6px;
+  background: #fef9c3;
+  color: #0f172a;
+  font-weight: 600;
+  word-break: break-word;
+}
+
+/*
+ * HTTP method and status chips, in both themes: solid in light, translucent in dark.
+ * GET green, POST amber, PUT/PATCH blue, DELETE red, others gray;
+ * 1xx gray, 2xx green, 3xx blue, 4xx amber, 5xx red.
+ */
+[data-method],
+[data-status-class] {
+  display: inline-block;
+  padding: 1px 6px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+[data-method][data-size='large'] {
+  padding: 3px 8px;
+  font-size: 12px;
+}
+:root[data-studio-theme='light'] [data-method] { background: #f1f4f9; border-color: #dfe4ec; color: #475569; }
+:root:not([data-studio-theme='light']) [data-method] { background: rgba(161,161,170,.12); border-color: rgba(161,161,170,.25); color: #d4d4d8; }
+:root[data-studio-theme='light'] [data-method='GET'] { background: #e6f6ee; border-color: #bfe8d3; color: #047857; }
+:root:not([data-studio-theme='light']) [data-method='GET'] { background: rgba(52,211,153,.12); border-color: rgba(52,211,153,.3); color: #6ee7b7; }
+:root[data-studio-theme='light'] [data-method='POST'] { background: #fff1dc; border-color: #f8d9a8; color: #b45309; }
+:root:not([data-studio-theme='light']) [data-method='POST'] { background: rgba(251,191,36,.12); border-color: rgba(251,191,36,.3); color: #fcd34d; }
+:root[data-studio-theme='light'] [data-method='PUT'] { background: #e8f0ff; border-color: #c7d7fb; color: #1d4ed8; }
+:root:not([data-studio-theme='light']) [data-method='PUT'] { background: rgba(96,165,250,.12); border-color: rgba(96,165,250,.3); color: #93c5fd; }
+:root[data-studio-theme='light'] [data-method='PATCH'] { background: #e8f0ff; border-color: #c7d7fb; color: #1d4ed8; }
+:root:not([data-studio-theme='light']) [data-method='PATCH'] { background: rgba(96,165,250,.12); border-color: rgba(96,165,250,.3); color: #93c5fd; }
+:root[data-studio-theme='light'] [data-method='DELETE'] { background: #fde8e8; border-color: #f8c9c9; color: #b91c1c; }
+:root:not([data-studio-theme='light']) [data-method='DELETE'] { background: rgba(248,113,113,.12); border-color: rgba(248,113,113,.3); color: #fca5a5; }
+:root[data-studio-theme='light'] [data-status-class='1'] { background: #f1f4f9; border-color: #dfe4ec; color: #475569; }
+:root:not([data-studio-theme='light']) [data-status-class='1'] { background: rgba(161,161,170,.12); border-color: rgba(161,161,170,.3); color: #d4d4d8; }
+:root[data-studio-theme='light'] [data-status-class='2'] { background: #e6f6ee; border-color: #bfe8d3; color: #047857; }
+:root:not([data-studio-theme='light']) [data-status-class='2'] { background: rgba(52,211,153,.12); border-color: rgba(52,211,153,.3); color: #6ee7b7; }
+:root[data-studio-theme='light'] [data-status-class='3'] { background: #e8f0ff; border-color: #c7d7fb; color: #1d4ed8; }
+:root:not([data-studio-theme='light']) [data-status-class='3'] { background: rgba(96,165,250,.12); border-color: rgba(96,165,250,.3); color: #93c5fd; }
+:root[data-studio-theme='light'] [data-status-class='4'] { background: #fff1dc; border-color: #f8d9a8; color: #b45309; }
+:root:not([data-studio-theme='light']) [data-status-class='4'] { background: rgba(251,191,36,.12); border-color: rgba(251,191,36,.3); color: #fcd34d; }
+:root[data-studio-theme='light'] [data-status-class='5'] { background: #fde8e8; border-color: #f8c9c9; color: #b91c1c; }
+:root:not([data-studio-theme='light']) [data-status-class='5'] { background: rgba(248,113,113,.12); border-color: rgba(248,113,113,.3); color: #fca5a5; }

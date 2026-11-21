@@ -1,6 +1,6 @@
 import type { CorrelateDocument } from '../../utils/correlateBridge';
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
-import { Link2, FolderOpen, Eraser, Play, Check, Save, X, ExternalLink } from 'lucide-react';
+import { Link2, FolderOpen, Eraser, Play, Check, Save, ExternalLink } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { RecorderShell } from '../recorder/RecorderShell';
 import { recorderCompactButton as button, recorderCompactInput as input } from '../recorder/HTTPRecorderSettings';
@@ -464,6 +464,7 @@ export function CorrelatePage({
           </button>
           <button
             type="button"
+            data-correlate-primary=""
             className={button + ' border-yellow-400/30 text-yellow-400'}
             onClick={() => void analyze()}
             disabled={!!busy || !yaml.trim()}
@@ -473,6 +474,7 @@ export function CorrelatePage({
           </button>
           <button
             type="button"
+            data-correlate-apply=""
             className={button}
             onClick={() => void apply()}
             disabled={!!busy || !report || !selected.length || applied}
@@ -493,23 +495,72 @@ export function CorrelatePage({
                 : text('Save and open in Studio', 'Guardar y abrir en Studio')}
             </button>
           )}
-          <button
-            type="button"
-            className={button + ' ml-auto'}
-            onClick={() => {
-              if (
-                !changed ||
-                window.confirm(text('Close without saving these changes?', '¿Cerrar sin guardar estos cambios?'))
-              )
-                if (onGoToScripting) {
-                  setChanged(false);
-                  onGoToScripting();
-                } else window.close();
-            }}
-          >
-            <X className="h-3.5 w-3.5" />
-            {embedded ? text('Back to Scripting', 'Volver a Scripting') : text('Close', 'Cerrar')}
-          </button>
+          <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+            {embedded && onSave && (
+              <>
+                {saveMessage && (
+                  <span
+                    role="status"
+                    className="text-xs text-zinc-300"
+                  >
+                    {saveMessage}
+                  </span>
+                )}
+                {showCopyName && (
+                  <label className="flex items-center gap-2 text-xs">
+                    {text('New script', 'Nuevo script')}
+                    <input
+                      aria-label={text('New script filename', 'Nombre del nuevo script')}
+                      className={input}
+                      value={copyName}
+                      disabled={!!busy || !applied}
+                      onChange={event => setCopyName(event.target.value)}
+                    />
+                  </label>
+                )}
+                <button
+                  type="button"
+                  className={button}
+                  disabled={!!busy || !applied || !yaml.trim()}
+                  onClick={() => void saveEmbedded(false)}
+                >
+                  <Save className="h-3.5 w-3.5" />
+                  {text('Overwrite script with correlations', 'Sobrescribir script con las correlaciones')}
+                </button>
+                <button
+                  type="button"
+                  data-correlate-save-new=""
+                  className={button}
+                  disabled={!!busy || !applied || !yaml.trim()}
+                  onClick={() => {
+                    if (!showCopyName) {
+                      setCopyName(correlatedFileName(name));
+                      setShowCopyName(true);
+                    } else void saveEmbedded(true);
+                  }}
+                >
+                  <Save className="h-3.5 w-3.5" />
+                  {text('Save as new script', 'Guardar como nuevo script')}
+                </button>
+              </>
+            )}
+            <button
+              type="button"
+              className={button}
+              onClick={() => {
+                if (
+                  !changed ||
+                  window.confirm(text('Close without saving these changes?', '¿Cerrar sin guardar estos cambios?'))
+                )
+                  if (onGoToScripting) {
+                    setChanged(false);
+                    onGoToScripting();
+                  } else window.close();
+              }}
+            >
+              {embedded ? text('Back to Scripting', 'Volver a Scripting') : text('Close', 'Cerrar')}
+            </button>
+          </div>
         </div>
         {!embedded && (
           <div className="flex items-center gap-2 text-[10px] text-zinc-500">
@@ -547,6 +598,7 @@ export function CorrelatePage({
       {(!embedded || busy || applied || report || savedPath) && (
         <div
           role="status"
+          data-correlate-status=""
           className="flex min-h-8 shrink-0 items-center gap-4 border-b border-white/10 bg-[#111111] px-3 py-1 text-[11px] text-zinc-400"
         >
           <span>
@@ -601,8 +653,12 @@ export function CorrelatePage({
           )}
         </div>
       )}
-      <div className="flex min-h-0 flex-1 overflow-hidden">
+      <div
+        data-correlate-panels=""
+        className="flex min-h-0 flex-1 overflow-hidden"
+      >
         <div
+          data-correlate-panel=""
           className="flex min-h-0 min-w-0 shrink-0 flex-col"
           style={{ width: `${leftPanelWidth}%` }}
         >
@@ -631,53 +687,6 @@ export function CorrelatePage({
           language={language}
         />
       </div>
-      {embedded && onSave && (
-        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-white/10 bg-[#111111] px-3 py-2">
-          {saveMessage && (
-            <span
-              role="status"
-              className="mr-auto text-xs text-zinc-300"
-            >
-              {saveMessage}
-            </span>
-          )}
-          {showCopyName && (
-            <label className="flex items-center gap-2 text-xs">
-              {text('New script', 'Nuevo script')}
-              <input
-                aria-label={text('New script filename', 'Nombre del nuevo script')}
-                className={input}
-                value={copyName}
-                disabled={!!busy || !applied}
-                onChange={event => setCopyName(event.target.value)}
-              />
-            </label>
-          )}
-          <button
-            type="button"
-            className={button}
-            disabled={!!busy || !applied || !yaml.trim()}
-            onClick={() => void saveEmbedded(false)}
-          >
-            <Save className="h-3.5 w-3.5" />
-            {text('Overwrite script with correlations', 'Sobrescribir script con las correlaciones')}
-          </button>
-          <button
-            type="button"
-            className={button}
-            disabled={!!busy || !applied || !yaml.trim()}
-            onClick={() => {
-              if (!showCopyName) {
-                setCopyName(correlatedFileName(name));
-                setShowCopyName(true);
-              } else void saveEmbedded(true);
-            }}
-          >
-            <Save className="h-3.5 w-3.5" />
-            {text('Save as new script', 'Guardar como nuevo script')}
-          </button>
-        </div>
-      )}
     </RecorderShell>
   );
 }

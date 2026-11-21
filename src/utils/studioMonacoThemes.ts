@@ -68,7 +68,8 @@ export const RELAMPO_YAML_THEME = {
 
 const lightColors: Record<string, string> = {
   E4E4E7: '202020',
-  FACC15: '956800',
+  // YAML keys read in blue on white instead of the dark yellow (brown) of the light palette.
+  FACC15: '1E40AF',
   '60A5FA': '1D4ED8',
   '71717A': '575757',
 };
@@ -84,7 +85,7 @@ export const RELAMPO_YAML_LIGHT_THEME: MonacoEditorNS.IStandaloneThemeData = {
     'editor.foreground': '#202020',
     'editorLineNumber.foreground': '#888888',
     'editorLineNumber.activeForeground': '#575757',
-    'editorCursor.foreground': '#956800',
+    'editorCursor.foreground': '#1E40AF',
     'editor.lineHighlightBackground': '#FFFFFF',
     'editor.selectionBackground': '#FDE68A80',
     'editor.inactiveSelectionBackground': '#FEF3C780',
