@@ -110,26 +110,14 @@ export function useYAMLPersistence({
   useEffect(() => {
     latestSaveInputsRef.current = { getPersistableYaml, currentFileName, language };
   }, [currentFileName, getPersistableYaml, language]);
-  // Bumped whenever the document is reset (New document). A save that was
-  // already in flight when the reset happened compares against this and bails
-  // out instead of resurrecting the discarded draft / stale "saved" status.
   const saveGenerationRef = useRef(0);
 
-  // Stabilized (empty deps: only touches the local, always-stable setActionMessage
-  // setter and actionMessageTimeoutRef) so handleSave/handleDownload below can
-  // depend on it without changing identity on every render.
   const showActionMessage = useCallback((message: string) => {
     setActionMessage(message);
     if (actionMessageTimeoutRef.current) window.clearTimeout(actionMessageTimeoutRef.current);
     actionMessageTimeoutRef.current = window.setTimeout(() => setActionMessage(''), 1800);
   }, []);
 
-  // Stabilized via useCallback so effects that call handleSave (autosave,
-  // keyboard shortcuts) can list it as a dependency without it changing
-  // identity — and thus resetting/re-subscribing — on every render. The
-  // fresh save inputs (getPersistableYaml, currentFileName, language) are
-  // read through latestSaveInputsRef rather than closed over directly, so
-  // this stable identity never goes stale.
   const handleSave = useCallback((): Promise<void> => {
     if (saveInFlightRef.current) return saveInFlightRef.current;
 
@@ -169,8 +157,6 @@ export function useYAMLPersistence({
           return;
         }
 
-        // A reset invalidates this write. A normal edit queues no competing
-        // write: this loop snapshots the latest render and persists it next.
         if (saveGenerationRef.current !== saveGeneration) {
           await clearActiveDraft();
           if (editRevisionRef.current !== editRevision) continue;
@@ -201,11 +187,6 @@ export function useYAMLPersistence({
     setLastSavedAt(restoredDate.toLocaleTimeString());
   }, [restoredDraftUpdatedAt]);
 
-  // Stabilized via useCallback (see handleSave above) so the keyboard-shortcuts
-  // effect can list it as a dependency without re-subscribing its listener on
-  // every render. Its identity legitimately changes when currentFileName,
-  // getPersistableYaml, or language change, since (unlike handleSave) it reads
-  // these directly rather than through a ref.
   const handleDownload = useCallback((includeResponses: boolean) => {
     if (serializeDebounceRef.current) {
       window.clearTimeout(serializeDebounceRef.current);
@@ -238,7 +219,6 @@ export function useYAMLPersistence({
     logStatsigEvent('studio_document_exported', { outcome: 'success' });
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    // Export cancels autosave; retain a reloadable snapshot for this Studio tab.
     if (studioEditorId()) void handleSave();
     setHasDocumentActivity(true);
     setIsDirty(false);
@@ -254,7 +234,6 @@ export function useYAMLPersistence({
     );
   }, [currentFileName, getPersistableYaml, handleSave, language, serializeDebounceRef, setError, setHasDocumentActivity, setIsDirty, showActionMessage]);
 
-  // Autosave
   useEffect(() => {
     if (!isDirty || !isInitialized) {
       if (autosaveDebounceRef.current) {
@@ -272,7 +251,6 @@ export function useYAMLPersistence({
     };
   }, [isDirty, yamlCode, isInitialized, handleSave]);
 
-  // Before-unload warning
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
       if (!isDirty || bypassUnloadWarningRef.current) return;
@@ -288,7 +266,6 @@ export function useYAMLPersistence({
     };
   }, [isDirty]);
 
-  // Keyboard shortcuts
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       const isRefreshShortcut = e.key === 'F5' || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'r');
@@ -317,7 +294,6 @@ export function useYAMLPersistence({
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [yamlCode, currentFileName, language, isDirty, handleDownload, handleSave]);
 
-  // Cleanup
   useEffect(() => {
     return () => {
       if (actionMessageTimeoutRef.current) window.clearTimeout(actionMessageTimeoutRef.current);
@@ -325,9 +301,6 @@ export function useYAMLPersistence({
     };
   }, []);
 
-  // Reset persistence state for a brand-new document. Bumping the generation
-  // invalidates any in-flight save, and cancelling the pending autosave timer
-  // stops a queued save from firing against the now-cleared editor.
   const resetForNewDocument = () => {
     saveGenerationRef.current += 1;
     if (autosaveDebounceRef.current) {

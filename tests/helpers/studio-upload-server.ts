@@ -4,8 +4,6 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-// Serve the current editor build and proxy its API to a real Studio process.
-// The CLI session token stays in this process, never in browser test artifacts.
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const buildRoot = join(projectRoot, 'build');
 const sessionDir = await mkdtemp(join(tmpdir(), 'relampo-gdp-e2e-'));

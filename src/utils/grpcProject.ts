@@ -2,8 +2,6 @@ import { load, dump } from 'js-yaml';
 function record(value: unknown): value is Record<string, any> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
-// Authoring appends to the first existing scenario. Existing defaults, steps and
-// unknown fields remain intact; new calls get explicit overrides when needed.
 export function appendGRPCScenario(current: string, generated: string): string {
   const incoming = load(generated);
   if (!record(incoming)) throw new Error('Invalid generated gRPC scenario');

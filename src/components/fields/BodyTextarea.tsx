@@ -1,6 +1,5 @@
 import type { ComponentProps } from 'react';
 
-/** Shared body surface for HTTP requests and WebSocket messages. */
 export function BodyTextarea({ className = '', style, ...props }: ComponentProps<'textarea'>) {
   return (
     <textarea

@@ -101,10 +101,6 @@ function renderInteractiveTreeView({
   return render(<Harness />);
 }
 
-/**
- * Installs a window.matchMedia stub that answers the given media queries.
- * jsdom has no matchMedia, so absent a stub every query resolves false.
- */
 function mockMatchMedia(matches: Record<string, boolean>) {
   Object.defineProperty(window, 'matchMedia', {
     configurable: true,
@@ -202,12 +198,9 @@ describe('YAMLTreeView context menu', () => {
       configurable: true,
       value: originalInnerHeight,
     });
-    // Restore jsdom's default (no matchMedia) between tests.
     Reflect.deleteProperty(window, 'matchMedia');
   });
 
-  // RLP-587: a short viewport must NOT hide the menu — it self-clamps and
-  // scrolls. Windows display scaling routinely drops innerHeight below 700.
   it('opens the context menu on short viewports (menu self-clamps)', () => {
     const onContextMenuOpened = vi.fn();
     Object.defineProperty(window, 'innerHeight', {
@@ -222,8 +215,6 @@ describe('YAMLTreeView context menu', () => {
     expect(onContextMenuOpened).toHaveBeenCalled();
   });
 
-  // RLP-587: genuine touch-only devices (coarse pointer, no fine pointer) keep
-  // the menu suppressed, since a right-click gesture isn't natural there.
   it('does not open the context menu on touch-only devices', () => {
     const onContextMenuOpened = vi.fn();
     mockMatchMedia({ '(pointer: coarse)': true, '(any-pointer: fine)': false });
@@ -235,8 +226,6 @@ describe('YAMLTreeView context menu', () => {
     expect(onContextMenuOpened).not.toHaveBeenCalled();
   });
 
-  // RLP-587: hybrid Windows laptops report a coarse primary pointer while a
-  // mouse (fine pointer) is attached — the menu must still open there.
   it('opens the context menu on hybrid touch + mouse devices', () => {
     const onContextMenuOpened = vi.fn();
     mockMatchMedia({ '(pointer: coarse)': true, '(any-pointer: fine)': true });

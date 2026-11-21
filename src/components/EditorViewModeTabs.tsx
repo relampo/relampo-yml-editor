@@ -7,7 +7,6 @@ interface EditorViewModeTabsProps {
   activeViewMode: EditorViewMode;
   onSelect: (mode: EditorViewMode) => void;
   language: string;
-  // Debug and Run tabs are only shown when unlocked by `relampo studio`.
   debugViewEnabled: boolean;
   runViewEnabled: boolean;
 }

@@ -315,17 +315,12 @@ describe('YAMLNodeDetails HTTP Defaults hosts', () => {
       <LanguageProvider>
         <YAMLNodeDetails
           node={httpDefaultsNode}
-          // collectScenarioHosts yields bare authorities, never scheme-prefixed
-          // values — this is the shape production actually passes down.
           hosts={['primary.example.com', 'secondary.example.com', 'tertiary.example.com']}
           onRemoveHost={onRemoveHost}
         />
       </LanguageProvider>,
     );
 
-    // Each button names the row it deletes; a shared "Remove host" label left a
-    // screen-reader user unable to tell which host an irreversible bulk rewrite
-    // was about to hit.
     const first = screen.getByRole('button', { name: 'Remove base_url1' });
     const second = screen.getByRole('button', { name: 'Remove base_url2' });
 
@@ -337,9 +332,6 @@ describe('YAMLNodeDetails HTTP Defaults hosts', () => {
   });
 
   it('offers no host removal when http_defaults has no base_url to fall back on', () => {
-    // Removal makes the host's requests relative so they inherit the primary
-    // base_url. With no primary stored there is nothing to inherit, and the
-    // requests would be left with no host at all — nothing validates that.
     render(
       <LanguageProvider>
         <YAMLNodeDetails

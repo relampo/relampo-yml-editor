@@ -151,7 +151,6 @@ export function CorrelatePage() {
       active?.close();
       channel.current = null;
     };
-    // Each page owns one transfer; actions explicitly load or analyze later documents.
   }, []);
   useEffect(() => {
     const guard = (event: BeforeUnloadEvent) => {

@@ -141,8 +141,6 @@ export function safeProviderURL(value?: string): string | undefined {
   }
 }
 
-// File inputs expose bytes, not absolute paths. Stage selected files in the
-// Studio session, then pass the returned paths to the existing CLI operation.
 export async function uploadDistributedFile(file: File): Promise<string> {
   const form = new FormData();
   form.append('file', file);

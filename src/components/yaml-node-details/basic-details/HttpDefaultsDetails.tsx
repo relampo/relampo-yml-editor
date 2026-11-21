@@ -9,9 +9,6 @@ import { AuthConfigEditor } from '../SharedFields';
 import { createNodeDataUpdater } from '../nodeDetailHelpers';
 import type { NodeDetailProps } from '../types';
 
-// All base_url hosts are shown scheme-stripped so the primary and the secondary
-// hosts read uniformly — no host outranks the others just because it kept its
-// `https://`. See RLP-365.
 const URL_SCHEME = /^https?:\/\//i;
 const stripScheme = (value: string) => value.replace(URL_SCHEME, '');
 
@@ -37,17 +34,9 @@ export function HttpDefaultsDetails({ node, onNodeUpdate, hosts = [], onRenameHo
   const preservedDefaults = Object.fromEntries(preservedDefaultsEntries) as Partial<HttpDefaults>;
   const storedStringFields = Object.fromEntries(storedStringFieldsEntries) as StringMap;
 
-  // The primary base_url is the only host stored in http_defaults; show it
-  // without its scheme so it matches the secondary hosts, but remember the
-  // scheme to re-attach on save so the serialized YAML stays a valid URL.
   const storedBaseUrl = storedStringFields.base_url ?? '';
   const baseUrlScheme = storedBaseUrl.match(URL_SCHEME)?.[0] ?? '';
 
-  // Derived secondary hosts — they live in the absolute URLs of the requests
-  // that target them, not in http_defaults. Keep them out of allFields so
-  // handleMainFieldsUpdate never serializes base_urlN back into the YAML. They
-  // sit in the same Configuration list as base_url, with the same scheme-less
-  // treatment. Renaming one rewrites every request that targets that authority.
   const secondaryHostEntries: [string, string][] = hosts
     .slice(1)
     .map((host, i) => [`base_url${i + 1}`, stripScheme(host)]);
@@ -64,8 +53,6 @@ export function HttpDefaultsDetails({ node, onNodeUpdate, hosts = [], onRenameHo
 
   const handleMainFieldsUpdate = (fields: StringMap) => {
     const nextFields = { ...fields };
-    // Re-attach the scheme stripped for display so the stored base_url stays an
-    // absolute URL. If the user typed their own scheme, respect it. See RLP-365.
     if (typeof nextFields.base_url === 'string' && nextFields.base_url && !URL_SCHEME.test(nextFields.base_url)) {
       nextFields.base_url = `${baseUrlScheme}${nextFields.base_url}`;
     }
@@ -125,10 +112,6 @@ export function HttpDefaultsDetails({ node, onNodeUpdate, hosts = [], onRenameHo
                       value={value}
                       onCommit={nextValue => onRenameHost?.(originalHost, nextValue)}
                     />
-                    {/* Removing a host retargets its requests at the primary
-                        base_url by making their URLs relative, so it is only
-                        safe when there *is* a stored primary — otherwise the
-                        requests end up with no host anywhere in the document. */}
                     {onRemoveHost && storedBaseUrl && (
                       <button
                         type="button"

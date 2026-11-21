@@ -348,9 +348,6 @@ describe('matchDebugEventTarget', () => {
 });
 
 describe('DebugSection highlighting', () => {
-  // The query "x" appears once per row; with three rows the matches are global
-  // indexes 0, 1, 2. Selecting index 1 must mark exactly the second row's match
-  // as active — not the first match of every fragment.
   it('marks the active match by its global index across fragments', () => {
     const rows: Array<[string, string]> = [
       ['ra', 'x'],
@@ -362,12 +359,10 @@ describe('DebugSection highlighting', () => {
     );
 
     const marks = Array.from(container.querySelectorAll('mark'));
-    // Three value matches (one per row); labels ra/rb/rc contain no "x".
     expect(marks).toHaveLength(3);
 
     const active = marks.filter(m => m.className.includes('ring-amber-500'));
     expect(active).toHaveLength(1);
-    // The active mark is the second occurrence (global index 1).
     expect(marks.indexOf(active[0])).toBe(1);
   });
 
@@ -465,8 +460,6 @@ describe('YAMLDebugSession tree selection sync', () => {
     expect(screen.getByText('Running... waiting for the first engine event.')).toBeInTheDocument();
   });
 
-  // Think time used to inflate the Requests/Passed totals, which is the
-  // regression this filter exists to prevent. RLP-666.
   it('keeps think time out of the timeline rows and the request totals', async () => {
     render(
       <YAMLDebugSession
@@ -494,8 +487,6 @@ describe('YAMLDebugSession tree selection sync', () => {
     expect(screen.getAllByText('/b')).not.toHaveLength(0);
     expect(screen.queryAllByText('THINK_TIME')).toHaveLength(0);
 
-    // Two requests streamed alongside one think time event: the totals count
-    // only the requests.
     const statsBar = screen.getByText('Requests').parentElement!.parentElement!;
     const statFor = (label: string) =>
       within(statsBar).getByText(label).previousElementSibling;
@@ -557,7 +548,6 @@ describe('YAMLDebugSession tree selection sync', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'variables' }));
 
-    // The mapped node extracts request2 from its own response, so it is tagged RES.
     expect(await screen.findByText('request2 (RES)')).toBeInTheDocument();
     expect(screen.getByText('current-request')).toBeInTheDocument();
     expect(screen.queryByText('REQUEST1')).not.toBeInTheDocument();
@@ -621,11 +611,6 @@ describe('YAMLDebugSession tree selection sync', () => {
     expect(screen.queryByText('Not captured')).not.toBeInTheDocument();
   });
 
-  // RLP-576: long variable names (e.g. javax.faces.ViewState) must stay fully
-  // readable and never collapse into the value column. The original report
-  // showed clipped names glued to their value ("JAVAX.FACES.VIE517301297...").
-  // Guard the rendering contract that prevents it: the name wraps instead of
-  // truncating, and name and value live in separate cells.
   it('renders a long variable name fully and separated from its value', async () => {
     const longName = 'javax.faces.ViewState';
     const viewStateValue = '517301297273386199:-4952852429995464386';
@@ -670,10 +655,8 @@ describe('YAMLDebugSession tree selection sync', () => {
     const nameCell = await screen.findByText(`${longName} (RES)`);
     const valueCell = screen.getByText(viewStateValue);
 
-    // Name wraps to a second line instead of being clipped into the value.
     expect(nameCell).toHaveClass('break-words');
     expect(nameCell).not.toHaveClass('truncate');
-    // Name and value are distinct cells, so they can never appear concatenated.
     expect(nameCell).not.toBe(valueCell);
     expect(nameCell).not.toHaveTextContent(viewStateValue);
     expect(valueCell).not.toHaveTextContent(longName);
@@ -770,8 +753,6 @@ describe('YAMLDebugSession tree selection sync', () => {
       );
     });
 
-    // The runtime event carries the parent request_id, but the Tree identifies
-    // this recorded final child as request 11. RLP-674.
     expect(await screen.findByText('#11')).toBeInTheDocument();
     expect(screen.queryByText('#10.1')).not.toBeInTheDocument();
     expect(screen.getAllByText('http://www.testingyes.com/demo/index.php?main_page=checkout_payment')).not.toHaveLength(0);

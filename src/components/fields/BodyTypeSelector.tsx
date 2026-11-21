@@ -492,15 +492,8 @@ export function BodyTypeSelector({
   const rawTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const jsonHighlightRef = useRef<HTMLPreElement | null>(null);
   const rawHighlightRef = useRef<HTMLPreElement | null>(null);
-  // Body we just pushed up from a Form Data edit. Kept as state (not a ref) so
-  // the one-shot clear below happens through setState and render stays pure.
   const [pendingFormBody, setPendingFormBody] = useState<YAMLValue | typeof BODY_SYNC_UNSET>(BODY_SYNC_UNSET);
 
-  // Body/bodyRaw/contentType are the source of truth (e.g. switching between
-  // YAML nodes); the local editing buffers below mirror them. Re-derived here
-  // during render rather than in an effect (the React-sanctioned
-  // "adjust state on prop change" pattern: store the last-seen props and
-  // conditionally setState when they differ) so the sync lands before paint.
   const [syncedProps, setSyncedProps] = useState<
     { body: YAMLValue; bodyRaw: YAMLValue | undefined; contentType: string | undefined } | typeof BODY_SYNC_UNSET
   >(BODY_SYNC_UNSET);

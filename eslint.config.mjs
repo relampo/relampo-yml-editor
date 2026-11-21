@@ -50,6 +50,7 @@ export default tseslint.config(
           skipComments: true,
         },
       ],
+      'no-empty': ['error', { allowEmptyCatch: true }],
       'no-useless-assignment': 'warn',
       'no-useless-escape': 'warn',
       'prefer-const': 'warn',
@@ -105,7 +106,6 @@ export default tseslint.config(
   {
     files: ['src/proofs/**/*.ts'],
     rules: {
-      // gdp-ts uses one named interface per proof to keep proof inference distinct.
       '@typescript-eslint/no-empty-object-type': ['error', { allowInterfaces: 'with-single-extends' }],
     },
   },

@@ -10,15 +10,9 @@ interface UseTreeViewSelectionParams {
   selectedNodeIds: string[];
   onSelectionChange: (primaryNode: YAMLNode | null, nodeIds: string[]) => void;
   onSearchChange?: (query: string, scope?: SearchScope | null) => void;
-  /** Clears the search when it changes, so a node the editor reveals is not hidden by the filter. */
   searchResetSignal?: number;
 }
 
-/**
- * Search filtering + derived selection state for YAMLTreeView: which nodes are
- * currently visible, which of the (parent-owned) selected ids are actionable
- * given the active filter, and the transaction-wrap validation for that set.
- */
 export function useTreeViewSelection({
   tree,
   selectedNode,
@@ -43,21 +37,11 @@ export function useTreeViewSelection({
   );
   const searchIndex = searchQuery.trim() ? scopedSearch.index : null;
 
-  // The parent owns a mirror of this query (it feeds the details panel's
-  // highlighting), but the query itself is local state that dies with this
-  // component. Switching to the Code tab unmounts the tree, so without a
-  // mount-time reset the parent would keep highlighting a query the user can
-  // no longer see or clear.
-  // Deliberately mount-only (empty deps): later changes are pushed from the
-  // handlers below, and re-running this on an `onSearchChange` identity change
-  // would clobber an active query.
   const notifyInitialSearchRef = useRef(onSearchChange);
   useEffect(() => {
     notifyInitialSearchRef.current?.('');
   }, []);
 
-  // Notify the parent from the handler that actually changes searchQuery
-  // (not from an effect watching it).
   const handleSearchChange = (value: string) => {
     setSearchQuery(value);
     onSearchChange?.(value, searchScope);
@@ -116,17 +100,6 @@ export function useTreeViewSelection({
     return activeSelectedIds.filter(id => id !== tree.id && !hasSelectedAncestor(id));
   }, [activeSelectedIds, parentMap, tree]);
 
-  // react-doctor: no-prop-callback-in-effect / no-pass-live-state-to-parent (LEFT, see report).
-  // This corrects the PARENT's controlled selection (selectedNode/selectedNodeIds are props,
-  // not local state) whenever it drifts out of sync with what search filtering currently
-  // shows. That drift has several distinct, non-local origins: this component's own
-  // handleAddNode/handlePasteSelection can select a node whose name doesn't match the active
-  // search query; the parent's syncSelectionWithTree (useYamlEditorDerived.ts) only prunes
-  // ids for nodes removed from the tree entirely, not ids hidden by the search filter; and a
-  // second <YAMLTreeView> instance can share the same selection props. Moving this into a
-  // single event handler (e.g. the search input's onChange) would miss the other trigger
-  // paths and risk leaving stale, invisible ids selected. Left as an effect reacting to
-  // genuinely external/prop-driven drift rather than "my own state, pushed up."
   useEffect(() => {
     if (!isFiltering || visibleSelectedIds.length === selectedNodeIds.length) {
       return;

@@ -62,7 +62,6 @@ describe('useResizePanel', () => {
     act(() => {
       result.current.setIsResizing(true);
     });
-    // window.innerWidth = 1000, so clientX=500 → 50%
     act(() => {
       document.dispatchEvent(new MouseEvent('mousemove', { clientX: 500 }));
     });
@@ -75,7 +74,7 @@ describe('useResizePanel', () => {
       result.current.setIsResizing(true);
     });
     act(() => {
-      document.dispatchEvent(new MouseEvent('mousemove', { clientX: 10 })); // 1%
+      document.dispatchEvent(new MouseEvent('mousemove', { clientX: 10 }));
     });
     expect(result.current.leftPanelWidth).toBe(20);
   });
@@ -86,14 +85,13 @@ describe('useResizePanel', () => {
       result.current.setIsResizing(true);
     });
     act(() => {
-      document.dispatchEvent(new MouseEvent('mousemove', { clientX: 900 })); // 90%
+      document.dispatchEvent(new MouseEvent('mousemove', { clientX: 900 }));
     });
     expect(result.current.leftPanelWidth).toBe(60);
   });
 
   it('does not update width when not resizing', () => {
     const { result } = renderHook(() => useResizePanel(30));
-    // isResizing is false by default — mousemove should be ignored
     act(() => {
       document.dispatchEvent(new MouseEvent('mousemove', { clientX: 500 }));
     });

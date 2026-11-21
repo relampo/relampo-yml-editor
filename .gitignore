@@ -1,25 +1,19 @@
-# Dependencies
 node_modules/
 
-# Build output
 build/
 dist/
 
-# IDE
 .idea/
 .vscode/
 *.swp
 *.swo
 
-# OS
 .DS_Store
 Thumbs.db
 
-# Logs
 *.log
 npm-debug.log*
 
-# Environment
 .env
 .env.local
 .env.*.local
@@ -27,10 +21,8 @@ npm-debug.log*
 output/*
 examples/atenea.correlated.yaml
 
-#AI Agents
 .codex/config.toml
 
-#Playwright artifacts
 .playwright-mcp/*
 .e2e/artifacts/
 .e2e/cache/

@@ -119,9 +119,7 @@ export function YAMLDistributedRun({
         setRunId(saved.id);
         setShowSettings(false);
       }
-    } catch {
-      /* Session persistence is optional. */
-    }
+    } catch {}
   }, [documentReady, yamlCode]);
   useEffect(() => {
     if (!runId) return;
@@ -249,9 +247,7 @@ export function YAMLDistributedRun({
       setShowSettings(false);
       try {
         sessionStorage.setItem(savedRunKey, JSON.stringify({ id: result.id, fp: fingerprint(request.yaml) }));
-      } catch {
-        /* Optional. */
-      }
+      } catch {}
     });
   }
   const planCurrent =
@@ -277,9 +273,7 @@ export function YAMLDistributedRun({
     setShowSettings(true);
     try {
       sessionStorage.removeItem(savedRunKey);
-    } catch {
-      /* Optional. */
-    }
+    } catch {}
   }
   const points = scope === 'global' ? (state?.history ?? []) : (histories.current.get(scope) ?? []);
 
@@ -576,7 +570,6 @@ export function YAMLDistributedRun({
                         const changes = paths.map((path, index) => ({
                           action: fileAction,
                           path,
-                          // Match the CLI repository path: a bare name lives under scenarios/.
                           target:
                             fileAction === 'remove'
                               ? path.replace(/^(\.\/)+/, '').replace(/^[^/]+$/, name => `scenarios/${name}`)

@@ -150,7 +150,6 @@ export function toggleNodeInTree(tree: YAMLNode, nodeId: string): YAMLNode {
   return tree;
 }
 
-/** Expands every ancestor of `nodeId`. Returns the same tree when nothing changes. */
 export function expandAncestorsInTree(tree: YAMLNode, nodeId: string): YAMLNode {
   const visit = (node: YAMLNode): YAMLNode | null => {
     if (node.id === nodeId) return node;
@@ -183,12 +182,6 @@ function percentEncodedSearchPattern(value: string): string {
     const alternatives = new Set([escapeRegExp(character)]);
     const encodedCharacter = encodeURIComponent(character);
 
-    // encodeURIComponent returns unreserved characters (`A-Za-z0-9-_.!~*'()`)
-    // as-is, so its output is only a usable pattern once it is a `%XX` run —
-    // splicing the raw character in would leak regex metacharacters (`.`
-    // matching anything, `*`/`(`/`)` throwing or regrouping). The literal form
-    // is already covered above, and the `< 0x80` branch below adds the encoded
-    // form for those characters.
     if (encodedCharacter !== character) {
       alternatives.add(
         encodedCharacter.replace(/%([0-9a-f]{2})/gi, (_, byte: string) =>
@@ -201,8 +194,6 @@ function percentEncodedSearchPattern(value: string): string {
       alternatives.add('\\+');
     }
 
-    // encodeURIComponent leaves a few ASCII punctuation characters literal,
-    // but recorded URLs can still percent-encode them. Accept both forms.
     if (character.length === 1 && character.charCodeAt(0) < 0x80) {
       alternatives.add(percentEncodedBytePattern(character.charCodeAt(0)));
     }
@@ -333,13 +324,6 @@ function replaceRequestData(
   data: YAMLNodeData | undefined,
   search: string,
   replacement: string,
-  // True when this request also has a `headers` child node. The parser hands
-  // the very same headers object to both places (yamlParser: `data: {...req}`
-  // and the child's `data: req.headers`), so both get visited and every header
-  // match would otherwise be tallied twice in the count shown to the user.
-  // The copy still has to be replaced — YAMLRequestDetails reads
-  // `node.data.headers` to infer Content-Type — only the tally moves to the
-  // child node, which is also what the serializer writes back out.
   headersCountedByChild = false,
   targetMatchIndex?: number,
   matchOffset: { value: number } = { value: 0 },
@@ -374,8 +358,6 @@ function replaceRequestData(
   return [changed ? nextData : data, matches, replacements, changed];
 }
 
-// The serializer owns these values through child nodes. Skip stale parent copies,
-// so replacement counts describe the YAML that will actually be saved.
 export function childOwnedDataKeys(node: YAMLNode): Set<string> {
   const keys = new Set<string>();
   if (node.children?.length) keys.add('steps');
@@ -400,8 +382,6 @@ export function childOwnedDataKeys(node: YAMLNode): Set<string> {
   return keys;
 }
 
-// Reserved request fields have meaning only at the request boundary. A variable,
-// header, or JSON body property with the same name remains an editable value.
 function replacementExcludedKeys(node: YAMLNode, wholeDocument: boolean): Set<string> {
   const keys = wholeDocument ? childOwnedDataKeys(node) : new Set<string>();
   if (REQUEST_TYPES.has(node.type)) {
@@ -410,7 +390,6 @@ function replacementExcludedKeys(node: YAMLNode, wholeDocument: boolean): Set<st
   return keys;
 }
 
-/** Replace literal text in enabled requests and their headers, excluding recorded responses. */
 export function replaceTextInEnabledRequests(
   tree: YAMLNode,
   search: string,
@@ -419,16 +398,10 @@ export function replaceTextInEnabledRequests(
   return replaceTextInEnabledRequestsAtMatch(tree, search, replacement).result;
 }
 
-/** Return the number of replaceable matches in enabled requests and headers. */
 export function countTextInEnabledRequests(tree: YAMLNode, search: string): number {
   return getReplaceableMatchNodeIds(tree, search).length;
 }
 
-/**
- * Return one node ID for each replaceable occurrence, in replacement order.
- * Responses are excluded. Whole-document mode also includes variables, component
- * values, and disabled nodes; the legacy request-only scope stays available.
- */
 export function getReplaceableMatchNodeIds(tree: YAMLNode, search: string, wholeDocument = false): string[] {
   if (!search) return [];
 
@@ -470,7 +443,6 @@ function countRequestData(
   }, 0);
 }
 
-/** Replace one zero-based match, or every match when no index is provided. */
 export function replaceTextInEnabledRequestsAtMatch(
   tree: YAMLNode,
   search: string,
@@ -495,8 +467,6 @@ export function replaceTextInEnabledRequestsAtMatch(
     let changed = false;
 
     if (wholeDocument || (enabled && (REQUEST_TYPES.has(node.type) || node.type === 'headers'))) {
-      // Only a request node duplicates its headers into a child; a `headers`
-      // node has none, so it always owns its own tally.
       const [replacedData, dataMatches, dataReplacements, dataChanged] = replaceRequestData(
         sourceData,
         search,
@@ -577,8 +547,6 @@ function prepareScenarioForInsertion(node: YAMLNode, siblings: YAMLNode[]): YAML
   return { ...node, name, data: { ...node.data, name } };
 }
 
-// A scenario without `load` gets an unselected placeholder Load; a new Load
-// replaces it so the scenario never ends up with two Load nodes.
 function findFallbackLoad(parent: YAMLNode, children: YAMLNode[], newNode: YAMLNode): YAMLNode | undefined {
   if (parent.type !== 'scenario' || newNode.type !== 'load') return undefined;
   return children.find(child => child.type === 'load' && child.data?.__loadSelected === false);
@@ -617,8 +585,6 @@ export function addNodeToTree(
 
     return {
       ...tree,
-      // Standalone assertions evaluate the previous response, so insert them
-      // after existing steps instead of before the first request.
       children:
         newNode.type === 'scenario' || (newNode.type === 'assertion' && canContain(tree.type, 'request'))
           ? [...children, insertedNode]
@@ -811,21 +777,6 @@ function collectSubtreeIds(tree: YAMLNode, rootId: string): Set<string> {
   return ids;
 }
 
-/**
- * Keeps redirect source requests consistent when their recorded follow-up
- * (redirect target) requests are enabled/disabled.
- *
- * When a follow-up is disabled, its source must follow redirects automatically
- * — otherwise the redirect is neither auto-followed nor handled by the now
- * disabled explicit step. Re-enabling the follow-up restores the recorded
- * behavior (the source does not auto-follow; the explicit step does).
- *
- * `updateNodeEnabled` cascades through the whole subtree, so toggling a
- * container (group/transaction/scenario/…) flips every descendant. We therefore
- * sync the source of *any* recorded redirect follow-up found within the toggled
- * subtree, not just the node whose toggle was clicked. No-op when the subtree
- * contains no recorded redirect follow-ups.
- */
 export function syncRedirectSourceFollowRedirects(
   tree: YAMLNode,
   toggledNodeId: string,
@@ -842,7 +793,6 @@ export function syncRedirectSourceFollowRedirects(
   return result;
 }
 
-/** Which node a drop lands under: the target itself for `inside`, else its parent. */
 function destinationParentId(tree: YAMLNode, targetId: string, position: 'before' | 'after' | 'inside'): string | null {
   if (position === 'inside') return targetId;
   const findParent = (node: YAMLNode): string | null => {
@@ -864,10 +814,6 @@ export function moveNodeInTree(
 ): YAMLNode {
   if (nodeId === targetId) return tree;
 
-  // The document root has no parent, so `removeNodeFromTree` cannot take it
-  // out of the tree — moving it would leave the original in place *and* insert
-  // a whole second copy under it, duplicating every node id. The type-level
-  // `canDrop` cannot catch this because the root is just another `test` node.
   if (nodeId === tree.id) return tree;
 
   const nodeToMove = findNodeById(tree, nodeId);
@@ -881,8 +827,6 @@ export function moveNodeInTree(
   if (!canDrop(nodeToMove.type, targetNode.type, position, destinationParent?.type)) return tree;
   if (destinationParent && !acceptsWebSocketHeaders(destinationParent, [nodeToMove], nodeId)) return tree;
 
-  // `treeToObject` writes one `data_source:` key per scope, so a second
-  // root-level data source would silently drop the first one on save.
   if (nodeToMove.type === 'data_source' && destinationParentId(tree, targetId, position) === tree.id) {
     if (tree.children?.some(child => child.type === 'data_source' && child.id !== nodeId)) return tree;
   }

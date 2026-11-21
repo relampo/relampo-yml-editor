@@ -6,9 +6,6 @@ import {
   type ComponentCapabilities,
 } from './componentConfiguration';
 import { trackStudioRunStarted, trackStudioRunCompleted, setAnalyticsVersion, initializeAnalytics } from './analytics';
-// Client for the relampo studio debug-run API (RLP-507 Phase 1).
-// When the editor is served by `relampo studio` the API lives on the same
-// origin; during `vite dev` point VITE_DEBUG_API_URL at a running studio.
 
 import { studioAuthHeaders, withStudioToken } from './studioAuth';
 import { getRuntimeConfig } from './runtimeConfig';
@@ -61,7 +58,6 @@ interface EngineRedirectHop {
   headers?: Record<string, string[]>;
 }
 
-// Mirrors pkg/engine.Event JSON serialization.
 export interface EngineEvent extends WebSocketEventMetrics {
   sql_result?: SQLResult;
   protocol?: string;
@@ -103,8 +99,6 @@ export interface EngineEvent extends WebSocketEventMetrics {
   spark_phase?: 'before' | 'after';
   debug?: boolean;
   embedded?: boolean;
-  // The outer key is lowercase (Event json tag), but the inner AssertionResult
-  // fields are capitalized because pkg/runtime.AssertionResult has no json tags.
   assertions?: EngineAssertionResult[];
   extraction_diagnostics?: EngineAssertionResult[];
   variables?: Record<string, string>;
@@ -130,17 +124,10 @@ function apiBase(): string {
 
 const RECONNECT_GRACE_MS = 10_000;
 
-// When the local agent is not running, fetch rejects with a TypeError (Chrome:
-// "Failed to fetch", Firefox: "NetworkError when attempting to fetch resource")
-// before any HTTP status exists. That browser-internal string tells the user
-// nothing, so we translate connection failures into actionable guidance
-// (RLP-590) and re-throw anything else (HTTP errors, aborts) untouched.
 export const AGENT_UNREACHABLE_MESSAGE =
   'Could not reach the local Relampo agent. Make sure it is running with `relampo debug` or `relampo studio` in your terminal.';
 
 function isConnectionFailure(error: unknown): boolean {
-  // AbortError (timeouts, user-cancelled runs) is a real outcome, not an
-  // unreachable agent — leave it alone.
   if (error instanceof DOMException && error.name === 'AbortError') return false;
   return error instanceof TypeError;
 }
@@ -154,15 +141,11 @@ async function fetchAgent(input: string, init?: RequestInit): Promise<Response> 
   }
 }
 
-// A YAML script the CLI asked the editor to mount on startup, supplied via
-// `relampo studio <script.yaml>`.
 interface StudioInitialScript {
   name: string;
   yaml: string;
 }
 
-// Optional studio features the backend advertises so the editor only shows UI
-// it supports. Absent on older studio builds, so every flag defaults to false.
 interface StudioCapabilities {
   correlate?: boolean;
   httpRecorder?: boolean;
@@ -171,11 +154,9 @@ interface StudioCapabilities {
   grpcBrowserRecording?: boolean;
   grpcStreaming?: boolean;
   componentConfiguration?: ComponentCapabilities;
-  // loadRun unlocks the Run (load test) view backed by POST /api/run.
   loadRun?: boolean;
   distributedRun?: boolean;
   dataSourceFiles?: boolean;
-  // debug unlocks the Debug view backed by POST /api/debug/runs.
   debug?: boolean;
   multiScenarioDebug?: boolean;
   multiScenarioRun?: boolean;
@@ -202,10 +183,6 @@ export interface StudioDataSourcePreview {
   truncated: boolean;
 }
 
-// Detects whether the editor is being served by `relampo studio`. Standalone
-// deployments have no /api and the probe simply fails (returns null), keeping
-// the editor an independent tool with the Debug view hidden. When studio passed
-// a script (`relampo studio file.yaml`) it is returned so the editor mounts it.
 export async function probeStudio(): Promise<StudioInfo | null> {
   try {
     const response = await fetch(`${apiBase()}/api/studio/info`, {
@@ -256,9 +233,6 @@ export async function probeStudio(): Promise<StudioInfo | null> {
   }
 }
 
-// A debug run is one pass through the flow with a small, explicit VU count.
-// The backend ignores the scenario's load, so duration/iterations stay out of
-// this payload.
 export async function startDebugRun(yaml: string, options: StartDebugRunOptions = {}): Promise<string> {
   const compatibilityError = componentCapabilityError(yaml, options.componentCapabilities);
   if (compatibilityError) throw new Error(compatibilityError);
@@ -273,9 +247,7 @@ export async function startDebugRun(yaml: string, options: StartDebugRunOptions 
     try {
       const body = await response.json();
       if (body?.error) message = body.error;
-    } catch {
-      // keep the generic message
-    }
+    } catch {}
     throw new Error(message);
   }
   const body = await response.json();
@@ -309,9 +281,7 @@ export async function uploadSupportedStudioDataSourceFile<F>(
     try {
       const body = await response.json();
       if (body?.error) message = body.error;
-    } catch {
-      // keep the generic message
-    }
+    } catch {}
     throw new Error(message);
   }
   const body = (await response.json()) as StudioDataSourceUpload;
@@ -332,9 +302,7 @@ export async function previewStudioDataSourceFile(
     try {
       const body = await response.json();
       if (body?.error) message = body.error;
-    } catch {
-      // keep the generic message
-    }
+    } catch {}
     throw new Error(message);
   }
   const body = (await response.json()) as StudioDataSourcePreview;
@@ -345,7 +313,6 @@ export async function previewStudioDataSourceFile(
   };
 }
 
-// Streams a run's events over SSE. Returns a function that closes the stream.
 export function streamDebugRun(runId: string, handlers: DebugStreamHandlers): () => void {
   const stream = createValidatedEventStream(
     withStudioToken(`${apiBase()}/api/debug/runs/${runId}/events`),

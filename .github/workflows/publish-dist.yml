@@ -1,21 +1,5 @@
 name: publish-dist
 
-# Build the editor and publish a versioned dist tarball to the Relampo downloads
-# bucket. relampo-backend's release pipelines fetch this artifact
-# (scripts/fetch-editor-dist.sh) and embed it into the `relampo` CLI so
-# `relampo studio` serves the editor offline.
-#
-# The artifact lands at:
-#   s3://<bucket>/editor/<version>/dist.tar.gz
-#   s3://<bucket>/editor/<version>/dist.tar.gz.sha256
-# where <version> is the pushed tag (vX.Y.Z) or the workflow_dispatch input.
-#
-# Required repo configuration:
-#   - vars.AWS_RELEASE_ROLE_ARN: an IAM role whose trust policy allows this repo
-#     to assume it via GitHub OIDC, with s3:GetObject/s3:PutObject on editor/*.
-#   - vars.STUDIO_CATALOG_KMS_KEY_ARN: an existing ECC_NIST_EDWARDS25519 KMS key
-#     with SIGN_VERIFY usage. The release role needs kms:Sign and kms:Verify.
-# The workflow does not create or manage the signing key.
 
 on:
   push:
@@ -49,7 +33,7 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.3.10
@@ -75,8 +59,6 @@ jobs:
             exit 1
           fi
           echo "version=$VER" >> "$GITHUB_OUTPUT"
-          # vite builds to build/; tarball is rooted at index.html so the backend
-          # can extract it straight into internal/studio/assets/dist.
           if [ ! -f build/index.html ]; then
             echo "::error::build/index.html missing — editor build did not produce expected output" >&2
             exit 1

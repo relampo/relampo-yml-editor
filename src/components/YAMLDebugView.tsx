@@ -65,12 +65,8 @@ const REQUEST_DETAIL_TABS: DetailTab[] = [
   'logs',
 ];
 
-// The last debug run is parked in sessionStorage so a page reload can re-attach
-// and let the backend replay the run's history.
 const runStore = createStoredRunStore('relampo.studio.debugRun');
 
-// One timeline entry: a request-level engine event, optionally mapped back to
-// the tree node it came from (matched by report name, best effort).
 export type DebugEntry = {
   id: string;
   index: number;
@@ -96,21 +92,15 @@ function entryStatus(event: EngineEvent): DebugStatus {
 function filterTimelineEntries(entries: DebugEntry[], filter: DebugTimelineFilter): DebugEntry[] {
   if (filter === 'requests') return entries;
   if (filter === 'redirects') {
-    // The Redirects summary counts live redirect follow-ups. Skipped placeholders
-    // stay visible in the unfiltered timeline, but have no live request to filter.
     return entries.filter(entry => entry.status !== 'skipped' && isRedirectStepEvent(entry.event));
   }
   return entries.filter(entry => entry.status === filter);
 }
 
-// INFO, SYSTEM, THINK_TIME and embedded events are not debug timeline data.
-// ERROR_POLICY and SKIPPED pass through so the reducer can attach them to their
-// request instead of creating extra request cards.
 function isTimelineEvent(event: EngineEvent): boolean {
   const method = String(event.method ?? '')
     .trim()
     .toUpperCase();
-  // Think Time affects pacing, not request execution.
   return Boolean(method) && method !== 'INFO' && method !== 'SYSTEM' && method !== 'THINK_TIME' && !event.embedded;
 }
 
@@ -148,8 +138,6 @@ function isErrorPolicyForRequest(request: EngineEvent, policy: EngineEvent): boo
   return Boolean(requestPath) && request.path === requestPath;
 }
 
-// Both Spark phases arrive before the runtime emits the measured request.
-// Consume matching messages once, so repeated steps cannot inherit old logs.
 function isSparkForRequest(request: EngineEvent, spark: EngineEvent): boolean {
   if (!isRequestEvent(request) || request.vu !== spark.vu) return false;
   if (request.iteration !== undefined && spark.iteration !== undefined && request.iteration !== spark.iteration)
@@ -230,9 +218,6 @@ function StatusIcon({ status }: { status: DebugStatus }) {
 interface YAMLDebugSessionProps {
   tree: YAMLNode | null;
   yamlCode: string;
-  // Flushes any pending debounced tree→code serialization and returns the
-  // freshest YAML. Called at run start so a debug snapshot never POSTs stale
-  // YAML while the tree already shows an uncommitted edit.
   flushPendingEdits?: () => string;
   documentReady: boolean;
   multiScenarioDebugEnabled?: boolean;
@@ -256,11 +241,6 @@ function targetsForScenario(tree: YAMLNode | null, scenarioName?: string): YAMLN
 
 const EMPTY_REDIRECTED_REQUEST_MAP: Record<string, RedirectedRequestInfo> = {};
 
-// Run status/results/error genuinely change together (every transition below
-// touches two or more of them at once), so they live in one reducer instead
-// of four separate useState calls. Selection state (activeId, detailTab) and
-// the VU picker are updated independently of a run's lifecycle and stay as
-// plain useState in the component.
 type RunState = {
   entryEvents: StoredDebugEntry[];
   pendingSparkLogs: EngineEvent[];
@@ -459,9 +439,6 @@ export function YAMLDebugSession({
     () => targetsForScenario(tree, isMultiScenario ? scenarioName : undefined),
     [tree, isMultiScenario, scenarioName],
   );
-  // A completed run belongs to the script snapshot that started it. Keep its
-  // request targets stable so later Tree edits cannot remap old timeline rows
-  // to different recorded request numbers after the run. RLP-442.
   const [runDebugEventTargets, setRunDebugEventTargets] = useState<YAMLNode[] | null>(null);
   const debugEventTargets = runDebugEventTargets ?? currentDebugEventTargets;
   const entries = useMemo<DebugEntry[]>(
@@ -472,13 +449,6 @@ export function YAMLDebugSession({
       })),
     [debugEventTargets, entryEvents, redirectedRequestMap],
   );
-  // The timeline shows one row per engine event, but a recorded redirect chain
-  // can be longer than the live run walks: the engine stops following at a hop
-  // it won't cross (e.g. a cross-site OAuth callback blocked by the redirect
-  // trust boundary, backend RLP-492), so recorded-but-unfollowed children emit
-  // no event and would silently vanish (for example, #124 without #125). Weave
-  // them back as read-only "skipped" placeholders right after their chain's last
-  // real row, so the timeline stays faithful to the recorded chain. RLP-607.
   const timelineEntries = useMemo<DebugEntry[]>(
     () => (runCompleted ? buildTimelineEntries(entries, debugEventTargets) : entries),
     [debugEventTargets, entries, runCompleted],
@@ -488,19 +458,12 @@ export function YAMLDebugSession({
     [timelineFilter, timelineEntries],
   );
   const stopStreamRef = useRef<(() => void) | null>(null);
-  // Bumped on every start and on Stop; a slow startDebugRun continuation checks
-  // it and bails if it was superseded or stopped while the POST was in flight.
   const startTokenRef = useRef(0);
   const storedRunRef = useRef<StoredRun | null | undefined>(undefined);
   if (storedRunRef.current === undefined) {
     storedRunRef.current = runStore.read();
   }
 
-  // Wires a run's SSE stream into the timeline. Shared by a fresh Run Debug
-  // and by re-attaching to a stored run after a reload (the backend replays
-  // the full event history on connect). `quiet` suppresses the error banner
-  // for auto re-attach: a stored run that no longer exists (server restarted)
-  // should clear silently rather than alarm the user.
   const subscribe = useCallback(
     (runId: string, quiet: boolean) => {
       stopStreamRef.current?.();
@@ -522,15 +485,10 @@ export function YAMLDebugSession({
   );
 
   useEffect(() => () => {
-    // A late start must not store or subscribe to a run for a discarded document.
     startTokenRef.current += 1;
     stopStreamRef.current?.();
   }, []);
 
-  // Re-attach to a run started before a reload — but only once the editor has
-  // settled the document. A debug run belongs to a document, so if the
-  // document did not come back (no draft restored), the run is orphaned and
-  // its stored id is dropped instead of reviving a timeline with no script.
   const reattachedRef = useRef(false);
   const reattachStoredRun = useCallback(
     (element: HTMLSpanElement | null) => {
@@ -565,10 +523,6 @@ export function YAMLDebugSession({
   const requestEntries = entries.filter(entry => isRequestEvent(entry.event));
   const passed = requestEntries.filter(entry => entry.status === 'passed').length;
   const failed = requestEntries.filter(entry => entry.status === 'failed').length;
-  // Count the same redirect follow-up steps the tree labels REDIRECTED, so the
-  // summary reconciles with the tree (RLP-588). Counting 3xx response statuses
-  // instead diverged: it swept in 304 Not Modified and standalone 302s (e.g. a
-  // sign-off) that never produced a labeled follow-up step.
   const redirects = requestEntries.reduce((count, entry) => count + (isRedirectStepEvent(entry.event) ? 1 : 0), 0);
   const hasValidationErrors = validationErrors.length > 0;
 
@@ -589,7 +543,6 @@ export function YAMLDebugSession({
     try {
       snapshotTree = parseYAMLToTree(scriptAtStart);
     } catch (error) {
-      // Single Debug keeps its existing backend validation and error messages.
       if (isMultiScenario) {
         dispatchRunState({ type: 'run_start_failed', message: error instanceof Error ? error.message : String(error) });
         return;
@@ -635,7 +588,7 @@ export function YAMLDebugSession({
   };
 
   const stopRun = () => {
-    startTokenRef.current += 1; // invalidate any in-flight start
+    startTokenRef.current += 1;
     stopStreamRef.current?.();
     stopStreamRef.current = null;
     dispatchRunState({ type: 'run_stopped' });
@@ -1291,9 +1244,6 @@ function DebugResponseInspector({ event }: { event: EngineEvent }) {
     [t('yamlEditor.runDebug.debug.response.duration'), formatLatency(event.latency_ms)],
     ...Object.entries(event.response_headers ?? {}),
   ];
-  // Collapse a binary response body to the same notice the recorded Response
-  // view shows, so the live Debug body and the recording stay comparable instead
-  // of one dumping mojibake and the other {"0":48,...}. RLP-555.
   const body = event.response_body
     ? (binaryBodyDisplay(event.response_body, event.response_headers) ?? event.response_body)
     : t('yamlEditor.runDebug.debug.request.empty');
@@ -1514,10 +1464,6 @@ function DebugLogsInspector({
         {formatLatency(event.latency_ms)})
       </p>
       {redirectHops.length > 0 && (
-        // These rows are the redirect chain that led to the response above —
-        // not the request's own status. Spell that out so a final 200 that
-        // followed 302s no longer reads as if the request itself were a 302.
-        // RLP-585 #7.
         <p className="text-zinc-400 break-words">
           [{time}]{' '}
           {t(`yamlEditor.runDebug.debug.logs.followed${redirectHops.length === 1 ? 'One' : 'Many'}`)
@@ -1547,9 +1493,6 @@ function DebugLogsInspector({
           </p>
         );
       })}
-      {/* RLP-598 #1: on the final 200 the full hop chain above already names the
-          immediate predecessor, so drop the redundant "launched by" line there.
-          Intermediate 302 children (no hop chain yet) still show it. */}
       {redirectedInfo && redirectHops.length === 0 && (
         <p className="text-zinc-400 break-all">
           [{time}] {t('yamlEditor.runDebug.debug.logs.redirected')}{' '}
@@ -1596,12 +1539,6 @@ function DebugOverviewInspector({ event }: { event: EngineEvent }) {
         <DebugLine
           icon={<Eye className="h-4 w-4 text-yellow-300" />}
           title={t('yamlEditor.runDebug.debug.overview.step')}
-          // Show what the run actually sent, sourced from the event like the
-          // timeline and the header above — not the recorded node name, which
-          // bakes in the capture-time value of any correlated placeholder. When an
-          // extraction fails the node name still reads NROEXP=2026-88-001-0168
-          // while the request went out as NROEXP=Regex+value+not+found, so reading
-          // from the node made Overview contradict the Request tab. RLP-593.
           value={event.path || event.name}
         />
         <DebugLine
@@ -1673,9 +1610,6 @@ function debugVariableSnapshot(activeEntry: DebugEntry, entries: DebugEntry[]): 
   const isSameChain = (candidate: DebugEntry) => {
     if ((candidate.event.vu ?? 0) !== activeVu || (candidate.event.iteration ?? 0) !== activeIteration) return false;
     const candidateEventChainId = String(candidate.event.chain_id ?? '').trim();
-    // Some engine versions omit chain_id from the parent event while still
-    // stamping it on redirect follow-ups. Prefer explicit IDs when both sides
-    // have one, then use the shared runtime request_id for partial payloads.
     if (eventChainId && candidateEventChainId) return candidateEventChainId === eventChainId;
     if (requestId != null) return candidate.event.request_id === requestId;
     return String(candidate.node?.data?.chain_id ?? '').trim() === chainId;
@@ -1684,9 +1618,6 @@ function debugVariableSnapshot(activeEntry: DebugEntry, entries: DebugEntry[]): 
     const role = String(entry.event.chain_role ?? entry.node?.data?.chain_role ?? '').toLowerCase();
     return role === 'parent' || (!role && Number(entry.event.redirect_index ?? 0) === 0);
   };
-  // `preferSource` follows the scan direction: walking forward through a chain the
-  // latest capture wins, walking backwards the nearest one does. Either way a miss
-  // never overwrites a value that was really captured somewhere in the chain.
   const mergeCapturedVariables = (source: Record<string, string> | undefined, preferSource: boolean) => {
     Object.entries(source ?? {}).forEach(([name, value]) => {
       if (isMissingDebugVariableValue(value)) {
@@ -1710,8 +1641,6 @@ function debugVariableSnapshot(activeEntry: DebugEntry, entries: DebugEntry[]): 
     const candidate = entries[index];
     if (!isSameChain(candidate)) continue;
     if (isParent(candidate)) break;
-    // The runtime evaluates redirect extractors at the final response. Bring
-    // their values back to their owner, without changing values sent by REQ.
     const captures = Object.fromEntries(
       Object.entries(candidate.event.variables ?? {}).filter(([name]) => extractedNames.has(name)),
     );

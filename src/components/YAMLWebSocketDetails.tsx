@@ -29,9 +29,7 @@ function Payload({ value, onChange, index }: { value: Data; onChange: (v: Data) 
       Object.values(parsed).every(v => v === null || ['string', 'number', 'boolean'].includes(typeof v))
     )
       fields = parsed;
-  } catch {
-    /* plain text */
-  }
+  } catch {}
   return (
     <div className="space-y-3">
       <Choice
@@ -153,9 +151,7 @@ function Receive({ value, onChange, index }: { value: Data; onChange: (v: Data) 
   let sample: Data = {};
   try {
     sample = obj(JSON.parse(String(evidence.data || '{}')));
-  } catch {
-    /* non JSON */
-  }
+  } catch {}
   const updateMatch = (fields: Data) =>
     onChange({ ...value, match: { [operator]: match[operator] ?? '', ...match, ...fields } });
   const extractors = list(value.extractors);
@@ -403,7 +399,6 @@ export function YAMLWebSocketDetails({ node, onNodeUpdate, onSplit }: NodeDetail
   const [expandedMessages, setExpandedMessages] = useState<Set<number>>(() => new Set());
   const disabled = data.enabled === false;
   const url = String(data.url || '');
-  // Split without URL normalization so templates, IPv6 and query escaping survive edits.
   const address = /^(wss?):\/\/([^/?#]*)(.*)$/i.exec(url);
   const protocol = address?.[1]?.toLowerCase() || 'wss';
   const host = address?.[2] || '';

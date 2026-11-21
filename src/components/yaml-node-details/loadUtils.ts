@@ -12,7 +12,6 @@ export type LoadSegmentData = {
 };
 export type SegmentTargetType = 'rps' | 'vus';
 
-// Only configured values determine continuity; live RPS feedback is independent.
 export function getSegmentStartVUs(segments: LoadSegmentData[], index: number): number | undefined {
   if (index <= 0) return undefined;
   const previous = segments[index - 1];
@@ -69,8 +68,6 @@ export function toLoadData(value: Record<string, unknown> | undefined): LoadData
       if (typeof fieldValue === 'string' || typeof fieldValue === 'number' || typeof fieldValue === 'boolean') {
         return true;
       }
-      // Keep the documented but unsupported load stages visible so semantic
-      // validation can block execution instead of silently dropping them.
       return (
         ((key === 'stages' || key === 'segments') && Array.isArray(fieldValue)) ||
         (['target', 'latency', 'error_rate'].includes(key) && typeof fieldValue === 'object' && fieldValue !== null)
@@ -112,9 +109,6 @@ export function getLoadTypeLabel(loadType: LoadType | string): string {
   return loadTypeLabels[normalized] || normalized;
 }
 
-// The editor uses `linear` internally for the straight ramp load shape, but the
-// Relampo/Pulse YAML schema spells this load type `ramp`. Map the internal type
-// back when serializing so saved YAML stays within the documented format.
 const yamlLoadTypeAliases: Partial<Record<LoadType, string>> = {
   linear: 'ramp',
 };
@@ -287,8 +281,6 @@ export function sumDurationSeconds(seconds: number[]): number {
     return seconds.reduce((total, value) => total + value, 0);
   }
 
-  // Add the decimal representations exactly, then convert back to a number
-  // once. This preserves accepted precision and makes totals order-independent.
   const decimals = seconds.map(value => {
     const [mantissa, exponent = '0'] = String(value).split('e');
     const [integer, fraction = ''] = mantissa.split('.');
@@ -670,9 +662,6 @@ export function normalizeLoadDataForYaml(data: LoadData | Record<string, unknown
 
   delete normalized.vusers;
 
-  // A manual-stop run has no finite limit: drop duration/iterations so the
-  // editor never emits contradictory empty-string keys alongside
-  // run_until_stopped (the checkbox clears them to '' rather than deleting).
   if (normalized.run_until_stopped === true) {
     delete normalized.duration;
     delete normalized.iterations;

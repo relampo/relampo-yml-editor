@@ -45,21 +45,12 @@ import { normalizeBalancedExecutionMode } from '../utils/balancedController';
 import { createStoredRunStore, fingerprint, type StoredRun } from '../utils/studioRunStore';
 import { collectDebugEventTargets, matchDebugEventTarget } from './debugRequests';
 
-// The live sparklines only need a recent window; keeping every snapshot for a
-// long run would bloat state and slow re-render. Cumulative totals live on the
-// latest snapshot, so trimming the head never loses the running totals.
 const MAX_LIVE_POINTS = 600;
 
-// The live log feed keeps the most recent lines; older ones scroll off. The
-// server already caps emission, but a long run still produces many lines.
 const MAX_LIVE_LOGS = 1000;
 
-// The last load run is parked in sessionStorage so a reload can re-attach and
-// let the studio replay it (history + final summary).
 const runStore = createStoredRunStore('relampo.studio.loadRun');
 
-// Collects every `load` node in the tree (one per scenario). The Run panel
-// shows each configured profile and filters it with the selected result scope.
 function collectLoadNodes(node: YAMLNode | null): YAMLNode[] {
   if (!node) return [];
   const found: YAMLNode[] = [];
@@ -82,8 +73,6 @@ function loadScenarioIndex(tree: YAMLNode | null): Map<string, YAMLNode> {
   return index;
 }
 
-// Names the scenarios whose Load is an unselected placeholder: Run executes
-// them with the engine fallback (Constant, 1 user, 1 iteration).
 function collectFallbackScenarioNames(node: YAMLNode | null): string[] {
   if (!node) return [];
   if (node.type === 'scenario') {
@@ -94,11 +83,6 @@ function collectFallbackScenarioNames(node: YAMLNode | null): string[] {
   return node.children?.flatMap(collectFallbackScenarioNames) ?? [];
 }
 
-// A Balanced Controller in Iterations mode ends the run once its iteration
-// budget is consumed, so a configured Duration is only an upper bound: the run
-// (and its live metrics) can stop well before the duration elapses. Detecting
-// it lets the planned-profile preview flag that an early finish is expected, not
-// a bug. Studio supports a single scenario, so a tree-wide walk is sufficient.
 function hasIterationBudgetController(node: YAMLNode | null): boolean {
   if (!node || node.data?.enabled === false) return false;
   if (node.type === 'balanced' && normalizeBalancedExecutionMode(node.data?.mode) === 'iteraciones') {
@@ -122,7 +106,6 @@ function formatErrorRate(totalRequests: number, totalFailures: number): string {
   return `${((totalFailures / totalRequests) * 100).toFixed(2)}%`;
 }
 
-// Go time.Duration serializes as integer nanoseconds.
 function formatDurationNs(nanoseconds: number): string {
   const totalSeconds = nanoseconds / 1e9;
   if (totalSeconds < 1) return `${Math.round(nanoseconds / 1e6)}ms`;
@@ -175,9 +158,6 @@ function statusTone(status: RunStatus): string {
   }
 }
 
-// All these fields transition together off the same run-lifecycle events
-// (start, SSE state/metrics/log/done, connection loss, stop) so they live in
-// one reducer instead of seven independent useState calls.
 interface LoadRunState {
   snapshots: RunMetricsSnapshot[];
   isRunning: boolean;
@@ -248,8 +228,6 @@ function loadRunReducer(state: LoadRunState, action: LoadRunAction): LoadRunStat
     }
     case 'log_received': {
       const knownSequences = new Set(state.logs.map(line => line.seq));
-      // Growing the set while filtering also collapses repeats *within* a
-      // batch, so `seq` stays unique — it is the list's React key.
       const newLines = action.lines.filter(line => {
         if (knownSequences.has(line.seq)) return false;
         knownSequences.add(line.seq);
@@ -288,8 +266,6 @@ function loadRunReducer(state: LoadRunState, action: LoadRunAction): LoadRunStat
 interface YAMLLoadRunSessionProps {
   tree: YAMLNode | null;
   yamlCode: string;
-  // Flushes any pending debounced tree→code serialization and returns the
-  // freshest YAML, so a run never POSTs stale YAML.
   flushPendingEdits?: () => string;
   documentReady: boolean;
   validationErrors: string[];
@@ -348,10 +324,6 @@ export function YAMLLoadRunSession({
   const intentTicks = useMemo(() => collectIntentTicks(snapshots, summary), [snapshots, summary]);
   const hasRunActivity = snapshots.length > 0 || logs.length > 0 || summary != null;
 
-  // Wires a run's SSE stream into the dashboard. Shared by a fresh Run and by
-  // re-attaching to a stored run after a reload. `quiet` suppresses the error
-  // banner for auto re-attach: a stored run that no longer exists (server
-  // restarted) should clear silently rather than alarm the user.
   const subscribe = useCallback(
     (runId: string, quiet: boolean) => {
       stopStreamRef.current?.();
@@ -389,20 +361,15 @@ export function YAMLLoadRunSession({
   );
 
   useEffect(() => () => {
-    // Invalidate pending starts as well as disconnecting the previous document's stream.
     startTokenRef.current += 1;
     stopStreamRef.current?.();
   }, []);
 
-  // Auto-scroll the log panel to the newest line as logs stream in.
   useEffect(() => {
     const element = logScrollRef.current;
     if (element) element.scrollTop = element.scrollHeight;
   }, [logs]);
 
-  // Re-attach to a run started before a reload — but only once the editor has
-  // settled the document, and only if the document still matches. A load run
-  // belongs to a document, so a mismatched/empty document drops the stored id.
   const reattachedRef = useRef(false);
   const reattachStoredRun = useCallback(
     (element: HTMLSpanElement | null) => {
@@ -448,8 +415,6 @@ export function YAMLLoadRunSession({
       if (token !== startTokenRef.current) return;
       runStore.store({ id: runId, fp: fingerprint(scriptAtStart) });
       subscribe(runId, false);
-      // The user hit Stop while the start request was in flight: the run now
-      // exists on the server, so cancel it (the SSE delivers the stopped summary).
       if (stopRequestedRef.current) {
         dispatch({ type: 'stop_requested' });
         void stopLoadRun(runId);
@@ -460,23 +425,17 @@ export function YAMLLoadRunSession({
     }
   };
 
-  // Stop asks the server to cancel the run, then keeps the stream open so the
-  // terminal `done` (status "stopped") delivers the partial summary. The
-  // unmount cleanup never stops a run — Stop is a deliberate user action.
   const stopRun = async () => {
     if (!isRunning || isStopping) return;
     dispatch({ type: 'stop_requested' });
     const runId = activeRunIdRef.current;
     if (!runId) {
-      // The start request is still in flight; cancel as soon as we get the id.
       stopRequestedRef.current = true;
       return;
     }
     try {
       await stopLoadRun(runId);
-    } catch {
-      // The run may already be finishing; the done event still settles the UI.
-    }
+    } catch {}
   };
 
   const errorRate = latest ? formatErrorRate(latest.total_requests, latest.total_failures) : '0%';
@@ -684,7 +643,6 @@ export function YAMLLoadRunSession({
   );
 }
 
-// Header/toolbar: title plus the status badge and Run/Stop controls.
 function RunToolbar({
   runStatus,
   isStopping,
@@ -763,7 +721,6 @@ function RunErrorBanner({ message }: { message: string }) {
   );
 }
 
-// The six live stat cards (req/s, p95, avg, error rate, VUs, requests).
 function StatsRow({
   latest,
   errorRate,
@@ -841,7 +798,6 @@ function StatsRow({
   );
 }
 
-// Throughput / p95 latency / active VUs sparkline row.
 function MetricsCharts({
   snapshots,
 }: {
@@ -1453,8 +1409,6 @@ function StatCell({ icon, label, value, tone }: { icon: ReactNode; label: string
   );
 }
 
-// A minimal inline-SVG sparkline. No charting dependency — the same hand-rolled
-// approach the load profile visualization uses.
 function Sparkline({
   title,
   unit,
@@ -1562,8 +1516,6 @@ function logLineText(line: RunLogLine): string {
   return `${scope}${line.message || ''}`;
 }
 
-// A live-tailing log feed of engine events (one panel, capped client-side and
-// server-side). Auto-scrolls to the newest line via the parent's scroll ref.
 function LiveLogPanel({ logs, scrollRef }: { logs: RunLogLine[]; scrollRef: RefObject<HTMLDivElement | null> }) {
   const { t } = useLanguage();
   const [collapsed, setCollapsed] = useState(false);
@@ -1596,9 +1548,6 @@ function LiveLogPanel({ logs, scrollRef }: { logs: RunLogLine[]; scrollRef: RefO
           )}
         </span>
       </button>
-      {/* The notice sits outside the scrolling body: that body is auto-scrolled
-          to its newest line, so a notice inside it would be ~1000 rows out of
-          view exactly when there is something to say. */}
       {!collapsed && hasOmittedPrefix && lastSequence != null && (
         <p className="border-b border-amber-400/20 px-3 py-2 font-mono text-xs text-amber-200/80">
           {t('yamlEditor.runDebug.run.logs.omitted')
@@ -1771,10 +1720,6 @@ function RunSummaryPanel({
               </tr>
             </thead>
             <tbody>
-              {/* The index is part of the key on purpose: this table is a static,
-                  never-reordered snapshot, and the same request can legitimately
-                  appear twice (reached through two scenarios), which would make a
-                  purely field-derived key collide. */}
               {requests.map((request, index) => (
                 <tr
                   key={`${request.method}-${request.name}-${request.path ?? ''}-${request.step_path ?? ''}-${index}`}
@@ -1845,14 +1790,6 @@ function buildLiveRunSummary(latest: RunMetricsSnapshot | null, requestTargets: 
       });
       return;
     }
-    // An unexpected redirect has no recorded chain child to map onto. Keep the
-    // executed method and URL in the summary instead of replacing them with a
-    // synthetic "Redirect N from ..." label: the method badge already conveys
-    // the method, while the runtime path is the only reliable resolved URL. Its
-    // `...redirects[N]` step_path still keys the row, so each hop stays a
-    // distinct row that sorts directly under the step that spawned it, and two
-    // iterations landing on different URLs still collapse into one row rather
-    // than splitting on the volatile resolved path.
     addLiveRunSummaryRequest(requests, liveRunSummaryFallbackKey(request), request);
   });
   return {

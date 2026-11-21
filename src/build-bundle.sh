@@ -1,36 +1,27 @@
 #!/bin/bash
 
-# 🔥 Relampo Bundle Builder
-# Este script genera un bundle standalone para Mac/Linux
 
 set -e
 
 echo "🚀 Building Relampo Standalone Bundle..."
 
-# 1. Build de producción
 echo "📦 Building production assets..."
 npm run build
 
-# 2. Crear directorio temporal
 BUNDLE_DIR="relampo-bundle"
 rm -rf $BUNDLE_DIR
 mkdir -p $BUNDLE_DIR
 
-# 3. Copiar assets build
 echo "📁 Copying build files..."
 cp -r dist/* $BUNDLE_DIR/
 
-# 4. Crear script ejecutable
 echo "✍️  Creating run script..."
 cat > $BUNDLE_DIR/run.sh << 'RUNSCRIPT'
 #!/bin/bash
 
-# 🔥 Relampo - Performance Testing Platform
-# Standalone Launcher
 
 echo "⚡ Starting Relampo..."
 
-# Detectar puerto disponible
 PORT=3456
 while lsof -Pi :$PORT -sTCP:LISTEN -t >/dev/null 2>&1; do
     PORT=$((PORT + 1))
@@ -38,7 +29,6 @@ done
 
 echo "🌐 Server will run on port $PORT"
 
-# Función para limpiar al salir
 cleanup() {
     echo ""
     echo "🛑 Stopping Relampo..."
@@ -50,10 +40,8 @@ cleanup() {
 
 trap cleanup INT TERM
 
-# Detectar sistema operativo
 OS="$(uname -s)"
 
-# Levantar servidor simple con Python (viene preinstalado en Mac/Linux)
 echo "🔧 Starting local server..."
 
 if command -v python3 &> /dev/null; then
@@ -69,16 +57,13 @@ else
     exit 1
 fi
 
-# Esperar a que el servidor esté listo
 sleep 2
 
-# Verificar que el servidor está corriendo
 if ! ps -p $SERVER_PID > /dev/null 2>&1; then
     echo "❌ Failed to start server"
     exit 1
 fi
 
-# Abrir navegador
 URL="http://localhost:$PORT"
 
 echo "✅ Relampo is running!"
@@ -87,7 +72,7 @@ echo ""
 echo "Press Ctrl+C to stop"
 
 case "$OS" in
-    Darwin)  # macOS
+    Darwin)
         open "$URL"
         ;;
     Linux)
@@ -104,13 +89,11 @@ case "$OS" in
         ;;
 esac
 
-# Mantener el script corriendo
 wait $SERVER_PID
 RUNSCRIPT
 
 chmod +x $BUNDLE_DIR/run.sh
 
-# 5. Crear README
 echo "📝 Creating README..."
 cat > $BUNDLE_DIR/README.txt << 'README'
 ⚡ RELAMPO - Performance Testing Platform
@@ -149,7 +132,6 @@ Visit: https://github.com/yourusername/relampo
 
 README
 
-# 6. Crear archivo de versión
 echo "📌 Creating version file..."
 cat > $BUNDLE_DIR/VERSION << VERSION
 Relampo v1.0.0
@@ -157,14 +139,11 @@ Build date: $(date +"%Y-%m-%d %H:%M:%S")
 Platform: Universal (Mac/Linux)
 VERSION
 
-# 7. Comprimir todo
 echo "🗜️  Compressing bundle..."
 tar -czf relampo-standalone-mac-linux.tar.gz $BUNDLE_DIR
 
-# 8. Limpiar
 rm -rf $BUNDLE_DIR
 
-# 9. Info final
 BUNDLE_SIZE=$(du -h relampo-standalone-mac-linux.tar.gz | cut -f1)
 echo ""
 echo "✅ Bundle created successfully!"

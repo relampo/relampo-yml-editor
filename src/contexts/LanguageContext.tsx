@@ -31,7 +31,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
         if (isTranslationBranch(value)) {
           value = value[k];
         } else {
-          return key; // Return key if translation not found
+          return key;
         }
       }
 

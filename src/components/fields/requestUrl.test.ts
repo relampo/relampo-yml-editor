@@ -60,8 +60,6 @@ describe('requestUrl helpers', () => {
 });
 
 describe('buildRequestUrlWithQuery', () => {
-  // RLP-606: a query-param value set to a variable must reach the runtime as a
-  // literal `{{var}}`/`${var}`, not percent-encoded, so it gets interpolated.
   it('keeps {{ }} variable placeholders unencoded in query values', () => {
     expect(buildRequestUrlWithQuery('/products', [{ key: 'product_id', value: '{{product_id}}' }])).toBe(
       '/products?product_id={{product_id}}',
@@ -88,8 +86,6 @@ describe('buildRequestUrlWithQuery', () => {
     expect(buildRequestUrlWithQuery('/p?page=1', [{ key: 'id', value: '{{id}}' }])).toBe('/p?page=1&id={{id}}');
   });
 
-  // The editor reads params back for display; a placeholder value must survive
-  // the write -> read round trip so it is not double-encoded on the next edit.
   it('round-trips a placeholder value through parseRequestQueryParams', () => {
     const url = buildRequestUrlWithQuery('/products', [{ key: 'product_id', value: '{{product_id}}' }]);
     expect(parseRequestQueryParams(url)).toEqual([{ key: 'product_id', value: '{{product_id}}' }]);

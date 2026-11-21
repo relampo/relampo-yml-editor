@@ -162,7 +162,6 @@ test('RLP-806 switches an imported profile without root duration before editing 
   await page.locator('input[type="file"]').setInputFiles({ name: 'no-root-duration.yaml', mimeType: 'text/yaml', buffer: Buffer.from(segmentYaml) });
   await page.getByText('Load: Segments', { exact: true }).first().click();
   await expect(page.getByLabel('Total Duration', { exact: true })).toHaveValue('200s');
-  // No segment field is edited before switching models.
   await page.getByRole('button', { name: 'Linear', exact: true }).click();
   await page.getByRole('button', { name: 'Segments', exact: true }).click();
   await expect(page.getByLabel('Total Duration', { exact: true })).toHaveValue('200s');

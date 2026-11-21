@@ -57,8 +57,6 @@ interface YAMLEditorMainLayoutProps {
   onToggleEnabled: (nodeId: string, enabled: boolean) => void;
 }
 
-// The resizable two-panel body: the tree/code view-mode panel on the left,
-// the drag handle, and the details/debug/run panel on the right.
 export function YAMLEditorMainLayout({
   executionSessionKey = 0,
   leftPanelWidth,
@@ -134,7 +132,6 @@ export function YAMLEditorMainLayout({
           largeFileMode={largeFileMode}
         />
 
-        {/* Resize Handle */}
         <div
           role="separator"
           aria-orientation="vertical"

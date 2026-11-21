@@ -1,19 +1,16 @@
 #!/bin/bash
 
-# 🔥 Relampo Bundle Builder
-# Este script genera un bundle standalone para Mac/Linux
 
 set -e
 
-# Colores para terminal (todos visibles en fondo oscuro)
-RED='\033[0;91m'      # Rojo brillante
-GREEN='\033[0;92m'    # Verde brillante
-YELLOW='\033[0;93m'   # Amarillo brillante
-BLUE='\033[0;96m'     # Cyan brillante
-CYAN='\033[0;96m'     # Cyan brillante (alias)
-PURPLE='\033[0;95m'   # Magenta brillante
-WHITE='\033[1;97m'    # Blanco brillante
-NC='\033[0m'          # Sin color
+RED='\033[0;91m'
+GREEN='\033[0;92m'
+YELLOW='\033[0;93m'
+BLUE='\033[0;96m'
+CYAN='\033[0;96m'
+PURPLE='\033[0;95m'
+WHITE='\033[1;97m'
+NC='\033[0m'
 
 echo ""
 echo -e "${YELLOW}⚡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━⚡${NC}"
@@ -21,7 +18,6 @@ echo -e "${YELLOW}   RELAMPO YAML EDITOR - STANDALONE BUILDER${NC}"
 echo -e "${YELLOW}⚡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━⚡${NC}"
 echo ""
 
-# 1. Backup del App.tsx original
 echo ""
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${BLUE}📦 Step 1: Backing up original App.tsx...${NC}"
@@ -29,7 +25,6 @@ echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━�
 cp App.tsx App.tsx.backup
 echo -e "${GREEN}✓ Backup created${NC}"
 
-# 2. Reemplazar App.tsx temporalmente con la versión standalone
 echo ""
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${BLUE}🔧 Step 2: Switching to standalone YAML Editor...${NC}"
@@ -37,7 +32,6 @@ echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━�
 cp AppYAMLStandalone.tsx App.tsx
 echo -e "${GREEN}✓ Standalone version activated${NC}"
 
-# 3. Build de producción
 echo ""
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${BLUE}🏗️  Step 3: Building production assets...${NC}"
@@ -45,7 +39,6 @@ echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━�
 npm run build
 echo -e "${GREEN}✓ Build completed${NC}"
 
-# 4. Restaurar App.tsx original
 echo ""
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${BLUE}↩️  Step 4: Restoring original App.tsx...${NC}"
@@ -53,7 +46,6 @@ echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━�
 mv App.tsx.backup App.tsx
 echo -e "${GREEN}✓ Original App.tsx restored${NC}"
 
-# 5. Crear directorio del bundle
 echo ""
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${BLUE}📁 Step 5: Creating bundle directory...${NC}"
@@ -63,7 +55,6 @@ rm -rf $BUNDLE_DIR
 mkdir -p $BUNDLE_DIR
 echo -e "${GREEN}✓ Directory created: $BUNDLE_DIR${NC}"
 
-# 6. Copiar assets build
 echo ""
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${BLUE}📋 Step 6: Copying build files...${NC}"
@@ -71,7 +62,6 @@ echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━�
 cp -r dist/* $BUNDLE_DIR/
 echo -e "${GREEN}✓ Build files copied${NC}"
 
-# 7. Crear script ejecutable run.sh
 echo ""
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${BLUE}✍️  Step 7: Creating launcher script...${NC}"
@@ -79,10 +69,7 @@ echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━�
 cat > $BUNDLE_DIR/run.sh << 'RUNSCRIPT'
 #!/bin/bash
 
-# ⚡ Relampo YAML Editor - Standalone Launcher
-# Performance Testing YAML Configuration Tool
 
-# Colores (todos visibles en fondo oscuro)
 GREEN='\033[0;92m'
 YELLOW='\033[0;93m'
 CYAN='\033[0;96m'
@@ -97,7 +84,6 @@ echo -e "${YELLOW}   Performance Testing Configuration Tool${NC}"
 echo -e "${YELLOW}⚡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━⚡${NC}"
 echo ""
 
-# Detectar puerto disponible (empieza en 8080)
 PORT=8080
 while lsof -Pi :$PORT -sTCP:LISTEN -t >/dev/null 2>&1; do
     PORT=$((PORT + 1))
@@ -105,7 +91,6 @@ done
 
 echo -e "${CYAN}🔧 Starting server on port $PORT...${NC}"
 
-# Función para limpiar al salir
 cleanup() {
     echo ""
     echo -e "${YELLOW}🛑 Stopping Relampo YAML Editor...${NC}"
@@ -117,10 +102,8 @@ cleanup() {
 
 trap cleanup INT TERM
 
-# Detectar sistema operativo
 OS="$(uname -s)"
 
-# Verificar Python
 if ! command -v python3 &> /dev/null && ! command -v python &> /dev/null; then
     echo -e "${RED}❌ Error: Python not found${NC}"
     echo -e "${WHITE}Please install Python 3 from:${NC}"
@@ -129,7 +112,6 @@ if ! command -v python3 &> /dev/null && ! command -v python &> /dev/null; then
     exit 1
 fi
 
-# Levantar servidor HTTP con Python
 cd "$(dirname "$0")"
 
 if command -v python3 &> /dev/null; then
@@ -140,16 +122,13 @@ else
     SERVER_PID=$!
 fi
 
-# Esperar a que el servidor esté listo
 sleep 1.5
 
-# Verificar que el servidor está corriendo
 if ! ps -p $SERVER_PID > /dev/null 2>&1; then
     echo -e "${RED}❌ Failed to start server${NC}"
     exit 1
 fi
 
-# URL del editor
 URL="http://localhost:$PORT"
 
 echo ""
@@ -170,9 +149,8 @@ echo -e "${WHITE}Press Ctrl+C to stop the server${NC}"
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 
-# Abrir navegador según OS
 case "$OS" in
-    Darwin)  # macOS
+    Darwin)
         open "$URL" 2>/dev/null
         ;;
     Linux)
@@ -189,14 +167,12 @@ case "$OS" in
         ;;
 esac
 
-# Mantener el script corriendo
 wait $SERVER_PID
 RUNSCRIPT
 
 chmod +x $BUNDLE_DIR/run.sh
 echo -e "${GREEN}✓ Launcher script created${NC}"
 
-# 8. Crear README específico para YAML Editor
 echo ""
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${BLUE}📝 Step 8: Creating README...${NC}"
@@ -277,7 +253,6 @@ README
 
 echo -e "${GREEN}✓ README created${NC}"
 
-# 9. Crear archivo de versión
 echo ""
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${BLUE}📌 Step 9: Creating version info...${NC}"
@@ -298,7 +273,6 @@ VERSION
 
 echo -e "${GREEN}✓ Version file created${NC}"
 
-# 10. Crear instalador simple
 echo ""
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${BLUE}⚙️  Step 10: Creating installer script...${NC}"
@@ -306,7 +280,6 @@ echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━�
 cat > $BUNDLE_DIR/install.sh << 'INSTALLER'
 #!/bin/bash
 
-# Colores
 GREEN='\033[0;92m'
 YELLOW='\033[0;93m'
 RED='\033[0;91m'
@@ -317,16 +290,13 @@ echo -e "${YELLOW}⚡ Relampo YAML Editor - Quick Setup${NC}"
 echo -e "${YELLOW}====================================${NC}"
 echo ""
 
-# Verificar permisos
 if [ ! -f "run.sh" ]; then
     echo -e "${RED}❌ Error: Please run from relampo-yaml-editor directory${NC}"
     exit 1
 fi
 
-# Dar permisos
 chmod +x run.sh
 
-# Verificar Python
 if command -v python3 &> /dev/null; then
     echo -e "${GREEN}✅ Python 3 found${NC}"
 elif command -v python &> /dev/null; then
@@ -346,7 +316,6 @@ INSTALLER
 chmod +x $BUNDLE_DIR/install.sh
 echo -e "${GREEN}✓ Installer script created${NC}"
 
-# 11. Comprimir bundle
 echo ""
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${BLUE}🗜️  Step 11: Compressing bundle...${NC}"
@@ -354,7 +323,6 @@ echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━�
 tar -czf relampo-yaml-editor-standalone.tar.gz $BUNDLE_DIR
 echo -e "${GREEN}✓ Bundle compressed${NC}"
 
-# 12. Limpiar directorio temporal
 echo ""
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${BLUE}🧹 Step 12: Cleaning up temporary files...${NC}"
@@ -362,7 +330,6 @@ echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━�
 rm -rf $BUNDLE_DIR
 echo -e "${GREEN}✓ Cleanup completed${NC}"
 
-# 13. Info final
 BUNDLE_SIZE=$(du -h relampo-yaml-editor-standalone.tar.gz | cut -f1)
 echo ""
 echo ""

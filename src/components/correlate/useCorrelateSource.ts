@@ -22,7 +22,6 @@ export function useCorrelateSource(
   );
   return () => {
     try {
-      // A closed tab cannot always say goodbye (window.close, X button), so release its session here.
       sessions.current.forEach((source, id) => {
         if (tabs.current.get(id)?.closed) source.close();
       });

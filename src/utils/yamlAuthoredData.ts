@@ -9,7 +9,6 @@ export function rememberAuthoredData(node: YAMLNode, authored: YAMLNodeData): YA
   };
 }
 
-/** Preserve original presence; write only fields actually changed by an editor control. */
 export function authoredNodeData(node: YAMLNode): YAMLNodeData & Record<string, unknown> {
   if (!node.authoredData || !node.initialData) return { ...node.data };
   const data: YAMLNodeData & Record<string, unknown> = { ...node.authoredData };
@@ -22,7 +21,6 @@ export function authoredNodeData(node: YAMLNode): YAMLNodeData & Record<string, 
     if (current[key] === undefined) delete result[key];
     else result[key] = current[key];
   }
-  // The URL control includes query_params. An explicit URL edit replaces that authored map.
   if ('query_params' in node.authoredData && initial.url !== current.url) delete result.query_params;
   return data;
 }

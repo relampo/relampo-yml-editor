@@ -74,14 +74,6 @@ function normalizeUrlForCompare(value: string): string {
   }
 }
 
-// Normalize a redirect Location header for comparison against a follow-up
-// request URL. A Location can be relative (e.g. `authenticate`, `../foo`), and
-// per the HTTP spec it must be resolved against the URL of the request that
-// returned it — not against a fixed base. A single 302 whose Location is the
-// bare `authenticate` (relative to `.../tuid-authn-login/authenticate`) resolves
-// to that same path, so the follow-up request is correctly detected as the
-// redirect target. We fall back to base-less normalization when the source URL
-// is itself relative (no host), preserving the existing behavior.
 function normalizeRedirectLocationForCompare(location: string, sourceUrl: string): string {
   const trimmedLocation = String(location || '').trim();
   if (!trimmedLocation) return '';
@@ -91,9 +83,7 @@ function normalizeRedirectLocationForCompare(location: string, sourceUrl: string
       const resolved = new URL(trimmedLocation, trimmedSource);
       const normalized = `${resolved.pathname || '/'}${resolved.search || ''}`;
       return normalized.replace(/\/+$/, '') || '/';
-    } catch {
-      // Fall through to base-less normalization below.
-    }
+    } catch {}
   }
   return normalizeUrlForCompare(trimmedLocation);
 }
@@ -102,14 +92,6 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-// A correlated follow-up URL can carry `{{var}}` placeholders where the
-// recording held a literal value: Tree "Replace all" rewrites request URLs but
-// deliberately leaves the recorded response untouched (RLP-663), so the source
-// Location keeps the original literal and an exact match would drop the badge.
-// Treat each placeholder as standing in for one URL value — deliberately not
-// crossing `/ ? & #`, so a parametrized URL cannot match an unrelated path.
-// `normalizeUrlForCompare` percent-encodes braces when the URL parses, so both
-// spellings are recognized.
 const URL_PLACEHOLDER = /(?:\{\{|%7B%7B)[\s\S]*?(?:\}\}|%7D%7D)/i;
 
 function urlMatchesAllowingPlaceholders(normalizedTarget: string, normalizedLocation: string): boolean {
@@ -118,12 +100,6 @@ function urlMatchesAllowingPlaceholders(normalizedTarget: string, normalizedLoca
   return new RegExp(`^${literals.map(escapeRegExp).join('[^/?&#]*')}$`).test(normalizedLocation);
 }
 
-// True when `source` still describes a redirect whose Location resolves to
-// `target`'s current URL. Used to decide whether a previously-detected
-// redirect should survive a tree restructure (e.g. the source dragged into a
-// transaction breaks document adjacency) versus a genuine change that should
-// drop the badge (status edited away from 3xx, Location changed, or the
-// target URL edited).
 export function nodesStillFormRedirect(source: YAMLNode, target: YAMLNode): boolean {
   if (!REDIRECT_STATUS_CODES.includes(getResponseStatusCode(source))) return false;
   const location = getRedirectLocationHeader(source);
@@ -162,15 +138,6 @@ export function detectRedirectFollowUps(tree: YAMLNode): Record<string, Redirect
     };
   }
 
-  // Chain-metadata detection (RLP-604): recognize redirect follow-ups by the
-  // recorded chain_id/chain_role instead of status+Location matching. The
-  // adjacency+3xx+URL pass above misses a chain member when correlation has
-  // rewritten the target's query string (so the source Location no longer
-  // equals the target URL) or the chain isn't perfectly adjacent — even though
-  // chain_role: hop/final is present and correct. This mirrors the runtime's
-  // own position-based mapping (debugRequests.matchRedirectChainChildToNode),
-  // so a `chain_role: final` landing keeps its badge regardless of its 2xx
-  // status. Additive: it never overrides an entry the status/URL pass found.
   const chains = new Map<string, YAMLNode[]>();
   for (const node of requestNodes) {
     const chainId = getChainId(node);
@@ -185,8 +152,6 @@ export function detectRedirectFollowUps(tree: YAMLNode): Record<string, Redirect
       const role = getChainRole(node);
       if (role !== 'hop' && role !== 'final') continue;
       if (result[node.id]) continue;
-      // Attribute to the preceding chain member (its actual redirect source);
-      // fall back to the chain's parent when this is the first member seen.
       const source =
         (k > 0 ? members[k - 1] : null) ??
         members.find(member => member !== node && getChainRole(member) === 'parent') ??

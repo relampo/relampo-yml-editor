@@ -94,8 +94,6 @@ describe('findMatchRanges — text mode', () => {
 
 describe('findMatchRanges — regex mode', () => {
   it('highlights only the capture group value, not the whole expression', () => {
-    // RLP-582: searching `jsessionid=(.+?)"` must surface just the session id,
-    // mirroring a regex extractor's $1, instead of marking the literal text.
     const text = 'Set-Cookie: jsessionid=ABC123" path=/';
     const ranges = findMatchRanges(text, 'jsessionid=(.+?)"', 'regex');
     expect(ranges).toEqual([{ start: 23, end: 29 }]);
@@ -117,7 +115,6 @@ describe('findMatchRanges — regex mode', () => {
   it('ignores empty capture groups instead of emitting zero-length highlights', () => {
     const text = 'value: 42';
     const ranges = findMatchRanges(text, 'value:(x?) (\\d+)', 'regex');
-    // group 1 matched empty, group 2 matched "42" — only the non-empty one shows.
     expect(ranges.map(r => text.slice(r.start, r.end))).toEqual(['42']);
   });
 
@@ -128,11 +125,6 @@ describe('findMatchRanges — regex mode', () => {
 });
 
 describe('flags-only patterns', () => {
-  // Stripping the inline-flag group can leave an empty pattern, and
-  // `new RegExp('')` is valid — it matches the empty string everywhere. Every
-  // prefix typed on the way to `(?is)token` passes through this state, so
-  // without an explicit reject the search box reports "1 of 1" on an empty
-  // highlight instead of "invalid regex". RLP-670.
   it.each(['(?i)', '(?s)', '(?m)', '(?is)'])('rejects the flags-only pattern %s', pattern => {
     expect(buildRelampoRegex(pattern)).toBeNull();
     expect(buildSearchRegex(pattern)).toBeNull();
@@ -145,7 +137,6 @@ describe('flags-only patterns', () => {
   });
 
   it('keeps an empty pattern falsy rather than treating it as invalid input', () => {
-    // '' is "no search", handled by the callers' `!query` guards — not a regex error.
     expect(findMatchRanges('abc', '', 'regex')).toEqual([]);
   });
 });

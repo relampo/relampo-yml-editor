@@ -124,7 +124,6 @@ describe('startDebugRun', () => {
   });
 
   it('translates an unreachable local agent into actionable guidance (RLP-590)', async () => {
-    // fetch rejects with a TypeError when the connection is refused.
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
 
     await expect(startDebugRun('test:\n  name: debug\n')).rejects.toThrow(AGENT_UNREACHABLE_MESSAGE);

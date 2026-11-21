@@ -12,12 +12,6 @@ interface UseYamlViewModeParams {
   selectedNodeIdsRef: React.RefObject<string[]>;
 }
 
-/**
- * View-mode + tree search state: which panel (tree/code/debug/run) is active,
- * clamped to the panels Studio has actually unlocked, plus the selection
- * handlers that also steer view mode (selecting a node always surfaces Tree
- * details). Behavior is identical to the inline state it replaces.
- */
 export function useYamlViewMode({
   debugViewEnabled,
   runViewEnabled,

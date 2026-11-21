@@ -50,7 +50,6 @@ export function YAMLEditorHeader({
   return (
     <div className="bg-[#1a1a1a] border-b border-white/10 px-6 py-4 shrink-0">
       <div className="flex items-center justify-between gap-4">
-        {/* Left: Brand */}
         <div className="flex items-center gap-3">
           <div
             className="w-10 h-10 rounded-xl bg-linear-to-br from-[#fde047] via-[#facc15] to-[#eab308] flex items-center justify-center"
@@ -77,10 +76,8 @@ export function YAMLEditorHeader({
           </div>
         </div>
 
-        {/* Right: Buttons + Language Toggle */}
         <div className="flex items-center gap-4">
           <UsageMetricsConsent language={language} />
-          {/* Action Buttons */}
           <div className="flex items-center gap-2">
             {onSelectProtocol && (
               <ProtocolMenu
@@ -181,7 +178,6 @@ export function YAMLEditorHeader({
             </DropdownMenu>
           </div>
 
-          {/* Language Toggle */}
           <div
             className="lang-toggle"
             style={{ display: 'flex', alignItems: 'center', gap: '8px' }}

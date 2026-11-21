@@ -32,7 +32,6 @@ function validNodes(value: unknown): value is YAMLNode[] {
   return true;
 }
 
-/** An ephemeral clipboard for same-origin Studio tabs; no script data is persisted. */
 export function createTreeClipboard(
   factory: () => Channel | null = () =>
     typeof window !== 'undefined' && typeof window.BroadcastChannel === 'function'
@@ -94,9 +93,7 @@ export function createTreeClipboard(
       listeners.forEach(notify => notify());
       try {
         channel?.postMessage(snapshot);
-      } catch {
-        /* Local copy still works. */
-      }
+      } catch {}
     },
   };
 }

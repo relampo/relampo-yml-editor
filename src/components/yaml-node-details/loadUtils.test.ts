@@ -76,8 +76,6 @@ describe('parseTimeToSeconds', () => {
 
 describe('normalizeLoadDataForYaml manual-stop contract', () => {
   it('drops the cleared duration/iterations the manual-stop checkbox produces', () => {
-    // Shape the ManualStopControl checkbox commits: it clears the finite
-    // fields to '' (not delete), so serialization must strip them.
     const normalized = normalizeLoadDataForYaml({
       type: 'constant',
       users: 3,

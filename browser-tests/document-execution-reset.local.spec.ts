@@ -70,12 +70,10 @@ for (const view of ['Debug', 'Run'] as const) {
         : panel.getByRole('cell').filter({ hasText: '/rlp823-first' });
     await expect(previousResult.first()).toBeVisible();
 
-    // A tab change must preserve the current document's result.
     await page.getByRole('button', { name: 'Tree', exact: true }).click();
     await page.getByRole('button', { name: view, exact: true }).click();
     await expect(previousResult.first()).toBeVisible();
 
-    // Failed imports must leave the current document and its results intact.
     await page
       .locator('input[type=file]')
       .first()

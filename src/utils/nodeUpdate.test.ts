@@ -108,7 +108,6 @@ describe('renameRequestHost', () => {
     const updated = renameRequestHost(buildTree(), 'cdn.example.com', 'static.example.com');
 
     expect(updated.children?.[2].data!.url).toBe('https://static.example.com/upload?token=1');
-    // Relative and unrelated requests are untouched.
     expect(updated.children?.[1].data!.url).toBe('/home');
     expect(updated.children?.[3].data!.url).toBe('https://other.example.com/ping');
   });
@@ -116,7 +115,6 @@ describe('renameRequestHost', () => {
   it('normalizes a pasted full URL down to its authority before rewriting', () => {
     const updated = renameRequestHost(buildTree(), 'cdn.example.com', 'https://static.example.com/ignored');
 
-    // No double scheme: only the authority is swapped, path/query preserved.
     expect(updated.children?.[2].data!.url).toBe('https://static.example.com/upload?token=1');
   });
 
@@ -148,9 +146,6 @@ describe('renameRequestHost', () => {
   });
 
   it('leaves http_defaults.base_url untouched', () => {
-    // Unlike renameRequestHost, removal has no http_defaults branch on purpose:
-    // the requests are retargeted at the *existing* primary, so rewriting it
-    // would repoint every base-URL request in the document as a side effect.
     const updated = removeRequestHost(buildTree(), 'cdn.example.com');
 
     expect(updated.children?.[0].data!.base_url).toBe('https://primary.example.com');

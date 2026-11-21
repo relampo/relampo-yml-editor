@@ -50,7 +50,6 @@ export function YAMLContextMenu({
     };
   }, [onClose]);
 
-  // Adjust position to keep the menu on-screen
   useEffect(() => {
     if (menuRef.current) {
       const rect = menuRef.current.getBoundingClientRect();
@@ -60,17 +59,14 @@ export function YAMLContextMenu({
       let newX = x;
       let newY = y;
 
-      // Adjust if it would overflow on the right
       if (x + rect.width > viewportWidth - 10) {
         newX = viewportWidth - rect.width - 10;
       }
 
-      // Adjust if it would overflow at the bottom
       if (y + rect.height > viewportHeight - 10) {
         newY = viewportHeight - rect.height - 10;
       }
 
-      // Ensure the position never becomes negative
       newX = Math.max(10, newX);
       newY = Math.max(10, newY);
 
@@ -147,7 +143,6 @@ export function YAMLContextMenu({
         </>
       )}
 
-      {/* Enable/Disable option */}
       {canToggleEnabled && (
         <button
           type="button"

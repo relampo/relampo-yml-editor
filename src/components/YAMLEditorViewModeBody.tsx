@@ -30,8 +30,6 @@ interface YAMLEditorViewModeBodyProps {
   largeFileMode: boolean;
 }
 
-// The left panel of the main layout: the tree/code/debug/run tab strip plus
-// the content that matches the active tab.
 export function YAMLEditorViewModeBody({
   leftPanelWidth,
   activeViewMode,

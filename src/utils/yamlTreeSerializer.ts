@@ -35,13 +35,6 @@ const REQUEST_CHILD_FIELDS = [
 
 const HTTP_METHODS = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
 
-// A Spark node's before/after timing lives in its node type (spark_before /
-// spark_after) — the detail panel only edits `script`, so node.data usually has
-// no `when`. The runtime defaults a missing `when` to `after`, so a "Spark
-// Before" would silently run *after* the request and any variables it sets
-// would be absent from that request's url/body/query/form (RLP-606). Persist the
-// timing explicitly from the node type so the runtime runs the script when the
-// editor shows it.
 function sparkDataWithWhen(node: YAMLNode): Record<string, unknown> {
   const data = { ...(node.data as Record<string, unknown> | undefined) };
   let when: string;
@@ -67,9 +60,6 @@ function stripControllerSerializationMetadata<T>(data: T, internalKeys: string[]
   return next as T;
 }
 
-// Callers pass one of these module-level sets rather than a literal array: this
-// runs per node during serialization, so building a Set on every call would cost
-// more than the lookup it saves.
 const LOOP_SHORTHAND_KEYS = new Set(['count']);
 const RETRY_SHORTHAND_KEYS = new Set(['attempts']);
 
@@ -107,9 +97,6 @@ function hasOnlyShortHttpData(node: YAMLNode): boolean {
   return Object.keys(data).every(key => key === 'url' || key === 'enabled' || key === 'method');
 }
 
-// Set per treeToObject() run from `http_defaults.follow_redirects`. When the
-// global default is true, a request-level `follow_redirects: false` is the
-// documented per-request override and must survive serialization.
 let followRedirectsEnabledByDefault = false;
 
 function pruneDefaultRequestFields(request: Record<string, any>) {
@@ -117,16 +104,8 @@ function pruneDefaultRequestFields(request: Record<string, any>) {
   if (request.cookie_override === 'inherit') delete request.cookie_override;
   if (request.cache_override === 'inherit') delete request.cache_override;
   if (request.retrieve_embedded_resources === false) delete request.retrieve_embedded_resources;
-  // RLP-522 / JMeter parity: the redirect modes are mutually exclusive and
-  // "Redirect Automatically" wins. Drop any stale "Follow Redirects" flag that
-  // older files or imported fixtures may carry alongside it, so saving always
-  // emits a single redirect mode even when the user never toggled a checkbox.
   if (request.redirect_automatically === true) delete request.follow_redirects;
   if (request.redirect_automatically === false) delete request.redirect_automatically;
-  // follow_redirects can be omitted only when it matches the effective global
-  // default (http_defaults.follow_redirects, off when absent): an omission is
-  // reparsed as that default, so any differing value is an explicit
-  // per-request override that must survive the round trip.
   if (request.follow_redirects === followRedirectsEnabledByDefault) {
     delete request.follow_redirects;
   }
@@ -153,9 +132,6 @@ export function treeToObject(tree: YAMLNode): any {
       obj.variables = child.data;
     } else if (child.type === 'data_source') {
       obj.data_source = { ...child.data };
-      // The parser defaults an unnamed data source to 'Data Source', so writing
-      // the node name back unconditionally invents a `name:` key the spec does
-      // not define. The step and request branches already guard against this.
       if (child.name && child.name !== 'Data Source' && child.name !== child.data?.name) {
         obj.data_source.name = child.name;
       }

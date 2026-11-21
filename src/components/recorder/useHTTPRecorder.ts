@@ -85,9 +85,7 @@ export function useHTTPRecorder() {
       setError(cause instanceof Error ? cause.message : String(cause));
       try {
         return await refresh();
-      } catch {
-        /* Preserve the original operation error. */
-      }
+      } catch {}
     } finally {
       setBusy('');
     }
@@ -122,9 +120,7 @@ export function useHTTPRecorder() {
         setError(cause instanceof Error ? cause.message : String(cause));
         try {
           await refresh();
-        } catch {
-          /* Preserve the clear error. */
-        }
+        } catch {}
       } finally {
         setBusy('');
       }

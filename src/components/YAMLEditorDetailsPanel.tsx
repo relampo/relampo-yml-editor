@@ -97,7 +97,6 @@ export function YAMLEditorDetailsPanel({
         </span>
       </div>
       <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
-        {/* Keep the debug session mounted while enabled so runs survive tab switches. */}
         {debugViewEnabled && (
           <div className={isDebugViewActive ? 'h-full' : 'hidden'}>
             <YAMLDebugSession
@@ -115,7 +114,6 @@ export function YAMLEditorDetailsPanel({
             />
           </div>
         )}
-        {/* Keep the load-run session mounted while enabled so a long run survives tab switches. */}
         {runViewEnabled && (
           <div className={isRunViewActive ? 'flex h-full min-h-0 flex-col' : 'hidden'}>
             <div

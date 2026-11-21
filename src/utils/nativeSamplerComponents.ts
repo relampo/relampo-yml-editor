@@ -1,7 +1,6 @@
 import type { YAMLNodeType } from '../types/yaml';
 import { isHttpRequestNodeType } from './requestNodeDisplay';
 
-/** Admission is independent of the optional global defaults/inheritance format. */
 export function requiresNativeSamplerComponents(
   kind: string,
   payload: Record<string, unknown>,

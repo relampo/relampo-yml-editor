@@ -6,9 +6,7 @@ function focusNamedTab(url: string, name: string, pathname: string): boolean {
   let alreadyOpen = false;
   try {
     alreadyOpen = tab.location.origin === window.location.origin && tab.location.pathname === pathname;
-  } catch {
-    /* Replace only with the trusted local route below. */
-  }
+  } catch {}
   if (!alreadyOpen) tab.location.replace(url);
   tab.focus();
   return true;
@@ -68,9 +66,7 @@ export function openHTTPRecordingControls(language = 'en'): Window | null {
   let existing = false;
   try {
     existing = popup.location.origin === location.origin && popup.location.pathname === '/recorder/http/control';
-  } catch {
-    /* Use the local route below. */
-  }
+  } catch {}
   if (!existing) popup.location.replace(withStudioToken(url.toString()));
   popup.focus();
   return popup;
@@ -83,7 +79,6 @@ export function returnToHTTPRecorderTab(): boolean {
   );
 }
 
-/** Always create a separate document; Recorder navigation retains its named-tab behavior. */
 export function openNewStudioTab(language = 'en'): boolean {
   const url = new URL('/', window.location.origin);
   url.searchParams.set('editor', crypto.randomUUID());

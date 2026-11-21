@@ -2,7 +2,6 @@ import { name } from '@gdp-ts/core';
 import { supportedDataSourceFile } from '../proofs/supportedDataSourceFile';
 import { uploadSupportedStudioDataSourceFile } from './debugApi';
 
-// Type-check only: the app does not import or call this function.
 export function dataSourceUploadTypeChecks(rawFile: File, otherFile: File): void {
   name(rawFile, otherFile, (file, other) => {
     const maybeProof = supportedDataSourceFile(file);

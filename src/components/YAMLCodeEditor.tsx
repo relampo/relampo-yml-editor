@@ -12,8 +12,6 @@ interface YAMLCodeEditorProps {
   largeFileMode?: boolean;
 }
 
-// Pure, static Monaco config — doesn't depend on props/state, so it lives once at module scope
-// instead of being rebuilt (and re-typed) on every editor mount.
 const YAML_MONARCH_LANGUAGE: MonacoLanguagesNS.IMonarchLanguage = {
   tokenizer: {
     root: [
@@ -218,8 +216,6 @@ export function YAMLCodeEditor({
 
   const totalMatches = matches.length;
 
-  // Stabilized on `searchQuery` alone (the only reactive value it reads) so effects that
-  // depend on it only re-run when the search text actually changes, not on every render.
   const recomputeMatches = useCallback(() => {
     const editor = editorRef.current;
     if (!editor || !searchQuery.trim()) {
@@ -248,9 +244,6 @@ export function YAMLCodeEditor({
     recomputeMatches();
   }, [value, active, largeFileMode, searchQuery, recomputeMatches]);
 
-  // Decorations + reveal-on-scroll are both direct consequences of `matches`/`currentMatchIndex`
-  // changing, so they're combined into a single external-system sync instead of two effects
-  // chained off the same state update.
   useEffect(() => {
     const editor = editorRef.current;
     if (!editor) return;
@@ -264,7 +257,6 @@ export function YAMLCodeEditor({
       const decorations: MonacoEditorNS.IModelDeltaDecoration[] = matches.map((m, idx) => ({
         range: m.range,
         options: {
-          // inlineClassName highlights the exact matched text (className decorates line/container)
           inlineClassName: idx === currentMatchIndex ? 'relampo-find-current' : 'relampo-find-match',
         },
       }));
@@ -284,9 +276,7 @@ export function YAMLCodeEditor({
       if (!monaco.languages.getLanguages().some((l: { id: string }) => l.id === 'yaml-relampo')) {
         monaco.languages.register({ id: 'yaml-relampo' });
       }
-    } catch {
-      // ignore duplicate registration races in dev/hot reload
-    }
+    } catch {}
     monaco.languages.setMonarchTokensProvider('yaml-relampo', YAML_MONARCH_LANGUAGE);
     monaco.editor.defineTheme('relampo-yaml-dark', RELAMPO_YAML_THEME);
     monaco.editor.setTheme('relampo-yaml-dark');

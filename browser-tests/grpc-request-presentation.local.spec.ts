@@ -41,7 +41,6 @@ test('HTTP and gRPC share presentation and all requests have ordered numbers', a
   await expect(http).toBeVisible();
   await expect(login).toBeVisible();
   await expect(events).toBeVisible();
-  // Numbers belong to the request label, with the same typography and spacing.
   for (const [row, number] of [
     [http, '[1]'],
     [login, '[2]'],

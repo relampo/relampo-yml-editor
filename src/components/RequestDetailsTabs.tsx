@@ -2,7 +2,6 @@ import { useLanguage } from '../contexts/LanguageContext';
 
 export type RequestDetailsTab = 'request' | 'response';
 
-/** Shared request/response navigation for protocol editors. */
 export function RequestDetailsTabs({
   activeTab,
   onChange,

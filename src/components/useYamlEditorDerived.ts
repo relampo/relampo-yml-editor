@@ -21,12 +21,6 @@ export function useRedirectMaps(yamlTree: YAMLNode | null) {
         const targetNode = findNodeById(yamlTree, id);
         if (!targetNode) continue;
 
-        // Fresh detection missed this entry. Only preserve it when the
-        // redirect relationship is genuinely still intact — either the source
-        // moved/was deleted (so adjacency-based detection can't see it), or it
-        // still exists and continues to redirect to this target. If the source
-        // is present but no longer redirects here (status changed off 3xx,
-        // Location edited, or the target URL changed), let the badge drop.
         const sourceNode = findNodeById(yamlTree, info.sourceNodeId);
         if (!sourceNode || nodesStillFormRedirect(sourceNode, targetNode)) {
           merged[id] = info;
@@ -37,13 +31,6 @@ export function useRedirectMaps(yamlTree: YAMLNode | null) {
     return merged;
   }, [yamlTree]);
 
-  // Sync the "previous merged map" after commit rather than during render:
-  // writing a ref mid-render is impure and can leave a stale value if React
-  // discards the render. The memo above reads the last committed value.
-  //
-  // Skipped while the tree is null (parse error, file load in flight) because
-  // the memo short-circuits to `{}` there — recording that would erase the
-  // preserved entries the memo exists to carry across re-parses.
   useEffect(() => {
     if (!yamlTree) return;
     prevRedirectedMapRef.current = redirectedRequestMap;
@@ -68,24 +55,17 @@ export function useRedirectMaps(yamlTree: YAMLNode | null) {
 }
 
 export function useHttpDefaultsInfo(yamlTree: YAMLNode | null) {
-  // Base URL inherited from http_defaults, used as the placeholder hint for
-  // requests that target the base host (relative URLs).
   const httpDefaultsBaseUrl = useMemo<string>(() => {
     const defaultsNode = yamlTree?.children?.find(child => child.type === 'http_defaults');
     const rawBaseUrl = defaultsNode?.data?.base_url;
     return typeof rawBaseUrl === 'string' ? rawBaseUrl : '';
   }, [yamlTree]);
 
-  // Every distinct host the recording drives (primary first), surfaced in the
-  // HTTP Defaults panel so multi-host recordings show all hosts, not just the
-  // base one. See RLP-365.
   const scenarioHosts = useMemo<string[]>(
     () => collectScenarioHosts(yamlTree, httpDefaultsBaseUrl),
     [yamlTree, httpDefaultsBaseUrl],
   );
 
-  // Host inherited from http_defaults.base_url, used so the tree shows a host badge
-  // on base-host (relative) requests too — uniformly with secondary hosts. RLP-414.
   const httpDefaultsBaseHost = useMemo<string>(
     () => getRequestNodeHost(httpDefaultsBaseUrl) || httpDefaultsBaseUrl.trim(),
     [httpDefaultsBaseUrl],
@@ -110,8 +90,6 @@ type ParseWorkerDeps = {
   normalizeParsedTree: (tree: YAMLNode | null) => YAMLNode | null;
 };
 
-// Owns the YAML parse worker lifecycle: creation, message/error handling and
-// teardown. Behavior is identical to the inline effect it replaces.
 export function useParseWorker({
   language,
   activeParseRequestIdRef,
@@ -127,12 +105,6 @@ export function useParseWorker({
   applySemanticValidation,
   normalizeParsedTree,
 }: ParseWorkerDeps) {
-  // Several of the callbacks above (syncSelectionWithTree, applySemanticValidation,
-  // normalizeParsedTree) are recreated by the caller on every render and aren't
-  // memoized there. Keeping the worker effect scoped to [language] (so the worker
-  // itself isn't torn down/recreated on every unrelated render) while still calling
-  // the *latest* versions of these callbacks requires reading them through a ref
-  // instead of closing over them directly.
   const latestRef = useRef({
     setIsParsing,
     setIsFileLoading,

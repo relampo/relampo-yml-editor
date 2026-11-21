@@ -33,10 +33,6 @@ export function MobileBlockOverlay() {
     };
   }, []);
 
-  // Opens the native dialog modally whenever it (re)mounts, i.e. whenever
-  // tooSmall flips to true; unmounting (tooSmall -> false) removes the node,
-  // which implicitly closes it. Guarded/cleaned up defensively in case an
-  // effect re-run ever races the same dialog node.
   useLayoutEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog || dialog.open) return;
@@ -55,8 +51,6 @@ export function MobileBlockOverlay() {
       ref={dialogRef}
       role="alertdialog"
       aria-labelledby="mobile-block-title"
-      // No dismiss action is offered on purpose: the block must stay up until
-      // the viewport is actually wide enough, so Escape-to-close is disabled.
       onCancel={event => event.preventDefault()}
       className="fixed inset-0 z-2147483647 m-0 flex max-w-none max-h-none items-center justify-center overflow-hidden border-0 bg-[#0a0a0a] px-6 py-10 text-inherit"
     >

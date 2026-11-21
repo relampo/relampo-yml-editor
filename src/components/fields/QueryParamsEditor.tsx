@@ -11,12 +11,6 @@ interface QueryParam {
   value: string;
 }
 
-// Row identity for React keys only — never persisted, never compared across
-// instances. A counter rather than `crypto.randomUUID()` because these are
-// minted during render (see the prop-sync block below): a counter is cheap and
-// works everywhere, while `randomUUID` is non-deterministic mid-render and
-// needs a secure context (absent when `relampo studio` is reached over plain
-// HTTP from another machine on the LAN).
 let queryParamIdCounter = 0;
 
 function createQueryParam(overrides: Partial<Omit<QueryParam, 'id'>> = {}): QueryParam {
@@ -47,12 +41,6 @@ export function QueryParamsEditor({
   }>({ type: null, message: '' });
   const [trackedUrl, setTrackedUrl] = useState<string | undefined>(undefined);
 
-  // The last URL this editor sent upward. The parent stores it verbatim and
-  // hands it straight back, so an incoming `url` equal to this one is our own
-  // echo — `params` already holds the newer state and must not be rebuilt from
-  // the string. Re-parsing an echo mints new row ids, which remounts the input
-  // the user is typing in, and drops rows the URL cannot represent (a row whose
-  // key is still blank is never serialized). RLP-671.
   const emittedUrlRef = useRef<string | null>(null);
 
   const emitUrl = (nextUrl: string) => {
@@ -60,11 +48,6 @@ export function QueryParamsEditor({
     onUrlChange(nextUrl);
   };
 
-  // Re-derives baseUrl/params whenever `url` changes identity: switching to
-  // a different request, or an edit arriving from outside this editor (the
-  // YAML pane). Uses the store-previous-prop-and-compare-during-render pattern
-  // instead of an effect so the parse lands in the same render as the prop
-  // change (including the first render) rather than one render later.
   if (url !== trackedUrl) {
     setTrackedUrl(url);
     const isEcho = url === emittedUrlRef.current;

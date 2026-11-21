@@ -24,7 +24,6 @@ export function GRPCSaveProject({ projectId, language }: { projectId: string; la
   }, []);
   async function saveAndOpen() {
     if (busy) return;
-    // Open synchronously on the user gesture; navigate only after persistence.
     const editor = window.open('about:blank', '_blank');
     if (!editor) {
       setError(

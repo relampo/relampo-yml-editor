@@ -47,9 +47,6 @@ function shouldUseMonaco(text: string) {
   return lines > MONACO_SWITCH_LINE_THRESHOLD || bytes > MONACO_SWITCH_SIZE_THRESHOLD;
 }
 
-// A binary body — a recorded byte-indexed object ({"0":48,...}) or a mojibake
-// string — collapses to a compact, tool-consistent notice instead of dumping
-// the raw bytes. RLP-555.
 function computeBodyText(response: YAMLValue, body: YAMLValue, headers: YAMLValue): string {
   if (!response || !body) return '';
   const binary = binaryBodyDisplay(body, headers);
@@ -173,9 +170,6 @@ interface SearchBarProps {
   containerClassName: string;
 }
 
-// Shared search bar for the header panel and the response body panel — same
-// text/regex toggle, match counter, and prev/next controls, only the wiring
-// (controlled input vs. debounced prop, local vs. lifted match index) differs.
 function SearchBar({
   inputValue,
   onInputChange,
@@ -328,8 +322,6 @@ interface ResponseHeadersPanelProps {
   httpVersion: YAMLValue;
   status: YAMLValue;
   statusText: YAMLValue;
-  // Header search falls back to the body's search text when the user hasn't
-  // typed anything into the header-specific search box.
   fallbackSearchText: string;
 }
 
@@ -366,8 +358,6 @@ function ResponseHeadersPanel({ headers, httpVersion, status, statusText, fallba
     () => headerLineMatches.reduce((acc, ranges) => acc + ranges.length, 0),
     [headerLineMatches],
   );
-  // Derived (not stored-then-synced): clamp during render instead of adjusting
-  // state from an effect whenever the match count shrinks.
   let treeHeaderIndex = -1;
   if (treeMatch?.scope === 'responses' && treeMatch.path[0] === 'response') {
     let lineIndex = -1;
@@ -516,9 +506,7 @@ function ResponseBodyPanel({
     const raf = requestAnimationFrame(() => {
       try {
         textarea.setSelectionRange(current.start, current.end);
-      } catch {
-        // ignore readonly selection issues
-      }
+      } catch {}
     });
 
     return () => cancelAnimationFrame(raf);

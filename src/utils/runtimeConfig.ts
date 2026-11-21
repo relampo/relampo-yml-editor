@@ -51,9 +51,7 @@ export async function loadRuntimeConfig(): Promise<void> {
       statsigClientKey: publicString(raw.statsigClientKey),
       statsigEnvironment: publicString(raw.statsigEnvironment, 64) || runtimeConfig.statsigEnvironment,
     };
-  } catch {
-    // Web deployments do not need this endpoint. Build defaults stay active.
-  }
+  } catch {}
 }
 
 export function getRuntimeConfig(): Readonly<RuntimeConfig> {

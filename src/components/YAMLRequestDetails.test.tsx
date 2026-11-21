@@ -59,8 +59,6 @@ describe('YAMLRequestDetails', () => {
 
     render(<YAMLRequestDetails node={node} baseUrl="https://video-cdn.example.net" />);
 
-    // Uniform with secondary (absolute) hosts: the field surfaces the inherited
-    // host as a value rather than leaving it blank. See RLP-414.
     expect(screen.getByLabelText('Base URL')).toHaveValue('video-cdn.example.net');
   });
 
@@ -76,8 +74,6 @@ describe('YAMLRequestDetails', () => {
 
     render(<YAMLRequestDetails node={node} baseUrl="https://relax.beaire.com" onNodeUpdate={onNodeUpdate} />);
 
-    // Pointing a secondary-host request back at the inherited host drops the
-    // absolute URL so it inherits from http_defaults again.
     fireEvent.change(screen.getByLabelText('Base URL'), { target: { value: 'relax.beaire.com' } });
 
     expect(onNodeUpdate).toHaveBeenLastCalledWith('get-base-keep', expect.objectContaining({ url: '/login?x=1' }));
@@ -292,9 +288,6 @@ describe('YAMLRequestDetails', () => {
     expect(document.activeElement).toBe(screen.getByLabelText('Path'));
   });
 
-  // A row whose key is blank is not serialized into the URL, so re-parsing the
-  // echoed URL used to delete it and shuffle the remaining rows up into the
-  // focused input. RLP-671.
   it('keeps sibling Query Parameter rows when a key is cleared', () => {
     const node: YAMLNode = {
       id: 'get-query-clear-key',
@@ -317,8 +310,6 @@ describe('YAMLRequestDetails', () => {
     expect(document.activeElement).toBe(keyInputs[0]);
   });
 
-  // buildRequestUrlWithQuery drops a key that trims to empty, so a lone space
-  // takes the same unserializable path as a blank key.
   it('keeps a whitespace-only Query Parameter key while it is being typed', () => {
     const node: YAMLNode = {
       id: 'get-query-space-key',
@@ -361,11 +352,6 @@ describe('YAMLRequestDetails', () => {
   });
 
   it('re-derives the panel from a newly selected node instead of preserving stale Form Data', async () => {
-    // The preserve branch is one-shot: it must release as soon as the echo it
-    // was waiting for arrives. If the clear ever moves inside the branch, a
-    // stale pending body makes a genuinely external change look like our own
-    // echo — here node B has the same body but is JSON, so the panel would
-    // wrongly keep showing node A's Form Data rows.
     const formNode: YAMLNode = {
       id: 'post-form-a',
       type: 'post',
@@ -416,7 +402,6 @@ describe('YAMLRequestDetails', () => {
     fireEvent.click(screen.getByRole('button', { name: 'select other node' }));
 
     expect(await screen.findByText('JSON Body')).toBeInTheDocument();
-    // The Form Data *rows* are gone (the type toggle button keeps its label).
     expect(screen.queryByPlaceholderText('field_name')).not.toBeInTheDocument();
     expect(screen.queryByDisplayValue('token')).not.toBeInTheDocument();
   });

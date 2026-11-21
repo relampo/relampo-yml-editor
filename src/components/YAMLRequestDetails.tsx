@@ -90,12 +90,7 @@ export function YAMLRequestDetails({
     if (searchScope && searchQuery.trim()) setActiveTab(scopeTab);
   }
   const contentRef = useRef<HTMLDivElement>(null);
-  // When the recorded follow-up (redirect target) is disabled, the redirect
-  // linkage no longer applies, so the source request's redirect options behave
-  // like normal editable checkboxes again.
   const hasRecordedRedirectFollowUp = Boolean(redirectSourceInfo) && redirectSourceInfo?.targetDisabled !== true;
-  // The selected request itself is disabled: keep all fields visible but
-  // non-editable so users can inspect without accidentally editing dead data.
   const isRequestDisabled = node.data?.enabled === false;
   const requestMethod = getStringValue(formData.method, getNodeMethodFallback(node));
   const effectiveRedirectAutomatically = formData.redirect_automatically === true;
@@ -114,8 +109,6 @@ export function YAMLRequestDetails({
 
   const handleFieldChange = (field: string, value: unknown) => {
     const newData = { ...formData, [field]: value };
-    // The two redirect modes are mutually exclusive.
-    // Toggling one always clears the other so the YAML never carries both flags.
     if (field === 'redirect_automatically') {
       delete newData.follow_redirects;
     } else if (field === 'follow_redirects') {
@@ -154,20 +147,9 @@ export function YAMLRequestDetails({
   };
 
   const manualSearch = activeTab === 'request' ? requestSearch : responseSearch;
-  // A search typed directly in the details panel always wins over the tree
-  // search, so users can still search the selected body while a tree filter
-  // is active.
   const treeSearchText = searchScope && activeTab !== scopeTab ? '' : searchQuery.trim();
   const searchText = manualSearch.trim() ? manualSearch : treeSearchText;
 
-  // The tree search can change searchText without going through
-  // handleSearchChange; keep the match cursor in range when that happens.
-  // Derived here during render (React-sanctioned "adjust state on prop
-  // change" pattern: store the last-seen searchText and conditionally
-  // setState when it differs) rather than in an effect, so the reset lands
-  // before paint. handleSearchChange/handleSearchModeChange/handleTabChange
-  // already reset the cursor for their own triggers; this catches the
-  // remaining case where searchText changes without going through them.
   const [prevSearchText, setPrevSearchText] = useState(searchText);
   if (searchText !== prevSearchText) {
     setPrevSearchText(searchText);
@@ -600,10 +582,6 @@ function RequestContent({
   const targetRps = getNumberValue(throughput?.target_rps);
   const contentType = getHeaderValue(getRecordValue(formData.headers), 'Content-Type');
   const urlParts = parseRequestUrl(requestUrl);
-  // Host inherited from http_defaults.base_url. Base-host (relative) requests now
-  // surface it as the field value too — not just as a placeholder — so every
-  // request shows its host uniformly and editably, matching the secondary-host
-  // (absolute) requests instead of looking empty/non-editable. See RLP-414.
   const inheritedHost = getRequestNodeHost(baseUrl) || baseUrl.trim();
   const baseUrlPlaceholder = inheritedHost || FALLBACK_BASE_URL_PLACEHOLDER;
   const displayBaseUrl = urlParts.baseUrl || inheritedHost;
@@ -640,9 +618,6 @@ function RequestContent({
 
   const handleBaseUrlChange = (value: string) => {
     const trimmed = value.trim();
-    // Leaving the field at the inherited host keeps the URL relative so a base-host
-    // request inherits from http_defaults instead of being pinned to an absolute
-    // URL. A different (or empty) host writes it explicitly.
     const nextBaseUrl = trimmed === inheritedHost ? '' : trimmed;
     setPathDraft(null);
     onFieldChange('url', buildRequestUrl(requestUrl, { baseUrl: nextBaseUrl }));
@@ -706,7 +681,6 @@ function RequestContent({
 
   return (
     <div className="space-y-4">
-      {/* Method / Protocol / Base URL / Path */}
       <div data-search-field="url">
         <RequestUrlRow
           requestMethod={requestMethod}

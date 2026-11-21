@@ -81,7 +81,6 @@ const REQUEST_NODE_TYPES = [
   'head',
   'options',
 ];
-// Node types that cannot be toggled on/off (mirrors the tree context menu).
 const NON_TOGGLEABLE_NODE_TYPES = [
   'root', 'test', 'scenarios', 'steps', 'grpc_defaults', 'sql_defaults', 'cache_manager',
 ];
@@ -105,12 +104,6 @@ export function YAMLNodeDetails({
   fileName = '',
 }: YAMLNodeDetailsProps) {
   const { t, language } = useLanguage();
-  // nodeName is a local edit buffer (not purely derived from node.name)
-  // because onNodeUpdate is optional: without it, node.name never changes,
-  // and the field must still be typeable. It re-syncs to the prop below
-  // whenever the selected node or its upstream name changes, using the
-  // store-previous-prop-and-compare-during-render pattern instead of an
-  // effect so the reset lands in the same render as the prop change.
   const [nodeName, setNodeName] = useState(node?.name || '');
   const [trackedNode, setTrackedNode] = useState({ id: node?.id, name: node?.name });
   if (node?.id !== trackedNode.id || node?.name !== trackedNode.name) {

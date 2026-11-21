@@ -27,13 +27,6 @@ export function EditableField({
   commitMode = 'blur',
   noMargin = false,
 }: EditableFieldProps) {
-  // localValue is a buffered copy of `value` (committed on blur, or on every
-  // keystroke for commitMode 'change'). It must re-sync whenever `value`
-  // itself changes identity — e.g. this field instance gets reused for a
-  // different underlying node/field — even mid-edit, matching the previous
-  // effect-based behavior. Uses the store-previous-prop-and-compare-during
-  // -render pattern instead of an effect so the reset lands in the same
-  // render as the prop change instead of one render later.
   const [localValue, setLocalValue] = useState(String(value || ''));
   const [trackedValue, setTrackedValue] = useState(value);
   if (value !== trackedValue) {

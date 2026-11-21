@@ -52,7 +52,6 @@ import {
   type SearchNodeState,
 } from './yaml-tree-view/search';
 
-// Track the dragged node outside React so dragOver can resolve it.
 let currentDraggedNode: { id: string; type: YAMLNodeType } | null = null;
 const DND_CLEAR_EVENT = 'yaml-tree-dnd-clear-indicators';
 
@@ -302,7 +301,6 @@ export function YAMLTreeNode({
         scopedHit={indexedState}
       />
 
-      {/* Children */}
       {showChildren && (
         <div className="ml-2 border-l border-white/5">
           {visibleChildren.map(child => (
@@ -452,8 +450,6 @@ function YAMLTreeNodeRow({
       }
       style={{ paddingLeft: `${depth * 16 + 8}px` }}
     >
-      {/* Left indicator removed to avoid visible corner artifact */}
-      {/* Expand/Collapse */}
       {hasChildren && (
         <button
           type="button"
@@ -470,12 +466,10 @@ function YAMLTreeNodeRow({
 
       {!hasChildren && <div className="w-4" />}
 
-      {/* Icon */}
       <div className={`shrink-0 ${color}`}>
         <IconComponent className="w-4 h-4" />
       </div>
 
-      {/* Name */}
       <span
         className={`text-sm truncate flex-1 ${
           node.data?.enabled === false ? 'text-zinc-400' : isRedirectedFollowUp ? 'text-zinc-100' : 'text-zinc-300'
@@ -497,7 +491,6 @@ function YAMLTreeNodeRow({
         />
       </span>
 
-      {/* Badge with extra info */}
       {isRedirectedFollowUp && (
         <span className="inline-flex h-5 items-center shrink-0 text-xs leading-none px-1.5 py-0.5 rounded bg-zinc-400/15 text-zinc-300 font-mono font-medium border border-zinc-400/30 uppercase">
           {redirectedLabel}
@@ -588,7 +581,6 @@ function getNodeColor(type: YAMLNodeType, node?: YAMLNode): string {
     return 'text-zinc-400';
   }
 
-  // Use explicit switch to ensure Tailwind detects all classes
   switch (type) {
     case 'root':
     case 'test':

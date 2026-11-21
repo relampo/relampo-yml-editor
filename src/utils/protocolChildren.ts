@@ -13,7 +13,6 @@ type Path = Array<string | number>;
 const record = (v: unknown): Data => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Data) : {});
 export const isNativeSampler = (type: string) => ['sql', 'grpc', 'websocket'].includes(type);
 
-/** Native response processors belong to a particular receive, never to the handshake. */
 export function receivePaths(data: Data): Path[] {
   if (data.action) return data.action === 'receive' && record(data.receive).type !== 'binary' ? [['receive']] : [];
   return Array.isArray(data.actions)
@@ -27,8 +26,6 @@ function at(data: Data, path: Path): Data {
   return (path.reduce<unknown>((value, key) => (value as Data | undefined)?.[key], data) as Data) || {};
 }
 function ownerPaths(node: YAMLNode, data: Data): Path[] {
-  // Retain binary receive processors already authored, even though new extractors
-  // are only offered for text messages.
   if (node.type !== 'websocket') return [[]];
   if (data.action) return data.action === 'receive' ? [['receive']] : [];
   return Array.isArray(data.actions)
@@ -57,7 +54,6 @@ function fields(node: YAMLNode): Array<[string, YAMLNode['type']]> {
       ];
 }
 
-/** Rebuild children when a native form changes its arrays; tree edits remain authoritative otherwise. */
 export function withProtocolChildren(node: YAMLNode): YAMLNode {
   if (!isNativeSampler(node.type)) return node;
   const data = record(node.data);
@@ -135,7 +131,6 @@ export function withProtocolChildren(node: YAMLNode): YAMLNode {
   return { ...node, protocolChildrenManaged: true, authoredChildTypes: children.map(child => child.type), children };
 }
 
-/** Serialize children into the exact native fields consumed by the runtime. */
 export function protocolData(node: YAMLNode, input: Data = authoredNodeData(node)): Data {
   if (!isNativeSampler(node.type)) return input;
   const data = structuredClone(input);
@@ -198,7 +193,6 @@ export function protocolData(node: YAMLNode, input: Data = authoredNodeData(node
   return data;
 }
 
-/** Menu and mutation guards use the same rules, including keyboard paste. */
 export function nativeChildUnavailable(
   node: Pick<YAMLNode, 'type' | 'data' | 'children'>,
   type: string,
@@ -221,12 +215,10 @@ export function nativeChildUnavailable(
   }
 }
 
-// The same runtime rules apply to every insertion path, including clipboard and drag/drop.
 export function acceptsNativeChildren(parent: YAMLNode, incoming: YAMLNode[], movingId?: string): boolean {
   if (!isNativeSampler(parent.type)) return true;
   let target = { ...parent, children: parent.children?.filter(child => child.id !== movingId) || [] };
   for (const child of incoming) {
-    // Already authored SQL component children can still be reordered.
     const existingSQLComponent =
       parent.type === 'sql' && ['assertion', 'think_time'].includes(child.type) && child.protocolTarget;
     if (child.type === 'extractor' && child.data?.type === 'sql' && parent.type !== 'sql') return false;

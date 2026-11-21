@@ -34,7 +34,6 @@ const splitList = (text: string) =>
     .split(',')
     .map(item => item.trim())
     .filter(Boolean);
-/** Comma-separated list input: keeps the typed text (for example a trailing comma) while it matches the stored list. */
 export function ListField({
   label,
   value,

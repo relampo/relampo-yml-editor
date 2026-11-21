@@ -98,9 +98,6 @@
   }
 }
 
-/**
- * Base typography. This is not applied to elements which have an ancestor with a Tailwind text class.
- */
 @layer base {
   :where(:not(:has([class*=' text-']), :not(:has([class^='text-'])))) {
     h1 {
@@ -151,7 +148,6 @@ html {
   font-size: var(--font-size);
 }
 
-/* Global checkbox styling: use site yellow for checked/hover instead of system blue */
 input[type="checkbox"] {
   accent-color: var(--color-amber-500) !important;
   border-color: var(--border) !important;
@@ -168,7 +164,6 @@ input[type="checkbox"]:active {
 }
 
 
-/* Global checkbox styling: use site yellow for checked/hover instead of system blue */
 input[type="checkbox"] {
   accent-color: var(--color-amber-500) !important;
   border-color: var(--border) !important;
@@ -185,13 +180,11 @@ input[type="checkbox"]:active {
 }
 
 
-/* Use yellow for selected/hover items when requested via class */
 .use-accent-yellow [data-slot="select-item"][data-state="checked"],
 .use-accent-yellow [data-slot="select-item"][aria-selected="true"],
 .use-accent-yellow [data-slot="select-item"][data-highlighted],
 .use-accent-yellow [data-slot="select-item"]:hover,
 .use-accent-yellow [data-slot="select-item"]:focus {
-  /* Keep dark background, but make text the site yellow */
   background-color: var(--popover) !important;
   color: var(--color-amber-500) !important;
 }
@@ -204,7 +197,6 @@ input[type="checkbox"]:active {
   color: var(--color-amber-500) !important;
 }
 
-/* Also target option role elements that Radix or browsers might use */
 .use-accent-yellow [role="option"][aria-selected="true"],
 .use-accent-yellow [role="option"][data-highlighted],
 .use-accent-yellow [role="option"]:hover {
@@ -216,7 +208,6 @@ input[type="checkbox"]:active {
   color: var(--color-amber-500) !important;
 }
 
-/* Alert utilities */
 @utility alert-info {
   background-color: #1A1405;
   border: 1px solid #D4A300;

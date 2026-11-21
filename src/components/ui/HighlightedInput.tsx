@@ -34,8 +34,6 @@ export function HighlightText({ text, query, activeIndex }: { text: string; quer
 interface HighlightedInputProps extends ComponentProps<typeof BaseInput> {
   searchText?: string;
   overlayClass?: string;
-  /** Layout classes for the wrapper that replaces the input in the parent
-   *  layout when a match is highlighted (e.g. `flex-1`). */
   containerClass?: string;
   containerStyle?: CSSProperties;
 }

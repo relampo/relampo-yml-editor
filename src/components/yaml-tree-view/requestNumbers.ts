@@ -1,7 +1,6 @@
 import type { YAMLNode } from '../../types/yaml';
 import { isHttpRequestNodeType } from '../../utils/requestNodeDisplay';
 
-/** Display order, independent of recorded request IDs, visibility and enabled state. */
 export function buildRequestNumbers(root: YAMLNode | null): Map<string, number> {
   const numbers = new Map<string, number>();
   const walk = (node: YAMLNode, counter: { value: number }) => {

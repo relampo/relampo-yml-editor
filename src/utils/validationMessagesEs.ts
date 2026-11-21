@@ -1,5 +1,3 @@
-// EN -> ES table for validation messages made by yamlSemanticValidation and componentConfiguration.
-// The validators keep English text. Spanish is applied only when the message is shown.
 
 const TRANSITION_ES: Record<string, string> = {
   Constant: 'Constante',
@@ -18,11 +16,9 @@ const EXACT: Record<string, string> = {
   'This backend does not support SQL connection defaults. Update Relampo before running.':
     'Esta versión del motor no admite Valores SQL por defecto. Actualiza Relampo antes de ejecutar.',
 
-  // Scenario scheduling
   'Choose sequential or parallel scenario scheduling for multiple scenarios.':
     'Elige la programación secuencial o paralela para varios escenarios.',
   'Multiple scenarios require unique, non-empty names.': 'Varios escenarios requieren nombres únicos y no vacíos.',
-  // Load phases and stop rules
   'Ramp Up + Ramp Down cannot exceed Duration.': 'Incremento gradual + Reducción gradual no puede superar la Duración.',
   'Intent Warm-up + Ramp Up + Ramp Down cannot exceed Duration.': `Calentamiento + Incremento gradual + Reducción gradual no puede superar la Duración de ${LOAD_INTENT}.`,
   'Run until manually stopped cannot be combined with Duration or Iterations.':
@@ -31,7 +27,6 @@ const EXACT: Record<string, string> = {
     'Define Duración o Iteraciones, o activa explícitamente Ejecutar hasta detener manualmente.',
   'Load stages are documented but unsupported by the editor and Pulse runtime. Remove stages before running.':
     'Las etapas de carga están documentadas, pero el editor y el runtime de Pulse no las admiten. Elimina stages antes de ejecutar.',
-  // Throughput
   'Throughput load does not support segments. Remove segments before running.': `${cap(LOAD_THROUGHPUT)} no admite segmentos. Elimina segments antes de ejecutar.`,
   'Throughput load Duration must be a positive duration when provided.': `La Duración de ${LOAD_THROUGHPUT} debe ser una duración positiva cuando se indica.`,
   'Throughput load requires Target RPS greater than 0.': `${cap(LOAD_THROUGHPUT)} requiere RPS objetivo mayor que 0.`,
@@ -39,7 +34,6 @@ const EXACT: Record<string, string> = {
   'Throughput Min VUs must be a positive integer.': `VUs mínimos de ${LOAD_THROUGHPUT} debe ser un entero positivo.`,
   'Throughput Max VUs must be a positive integer.': `VUs máximos de ${LOAD_THROUGHPUT} debe ser un entero positivo.`,
   'Throughput Min VUs cannot be greater than Max VUs.': `VUs mínimos de ${LOAD_THROUGHPUT} no puede ser mayor que VUs máximos.`,
-  // Intent
   'Intent target unit must be either RPS or VUs.': `La unidad objetivo de ${LOAD_INTENT} debe ser RPS o VUs.`,
   'Intent target value must be greater than 0.': `El valor objetivo de ${LOAD_INTENT} debe ser mayor que 0.`,
   'Intent Min VUs must be greater than 0.': `VUs mínimos de ${LOAD_INTENT} debe ser mayor que 0.`,
@@ -52,13 +46,11 @@ const EXACT: Record<string, string> = {
   'Intent Window must be greater than 0.': `Ventana de ${LOAD_INTENT} debe ser mayor que 0.`,
   'Intent aggressiveness must be low, medium, or high.': `La agresividad de ${LOAD_INTENT} debe ser low, medium o high.`,
   'Intent Max VUs must be greater than or equal to the target VUs.': `VUs máximos de ${LOAD_INTENT} debe ser mayor o igual que los VUs objetivo.`,
-  // Segments
   'Segments load requires at least one segment.': 'La carga por segmentos requiere al menos un segmento.',
   'Segments load Duration must be a positive duration when provided.':
     'La Duración de la carga por segmentos debe ser una duración positiva cuando se indica.',
   'Segment 1 cannot use Ramp down as the first segment.':
     'Segmento 1 no puede usar Reducción gradual como primer segmento.',
-  // Component configuration (the path prefix is kept outside this table)
   'Only integer version 1 is supported.': 'Solo se admite la versión entera 1.',
   'Known configuration is unsupported at this scope.': 'La configuración conocida no se admite en este ámbito.',
   'Expected an explicit boolean.': 'Se esperaba un booleano explícito.',
@@ -133,7 +125,6 @@ const EXACT: Record<string, string> = {
     'cookies.jar_scope solo admite vu; cada usuario virtual tiene su propio almacén de cookies.',
   'This backend cannot disable extractors. Update Relampo before running this script.':
     'Este backend no permite desactivar extractores. Actualiza Relampo antes de ejecutar este script.',
-  // Run and Debug capability errors
   'This backend does not support component configuration version 1. Update Relampo before running.':
     'Este backend no admite la configuración de componentes versión 1. Actualiza Relampo antes de ejecutar.',
 };
@@ -142,7 +133,6 @@ function cap(text: string) {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
-// "Segment N <suffix>" messages. {n} is the segment number.
 const SEGMENT_SUFFIX: Record<string, string> = {
   'must be a mapping.': 'Segmento {n} debe ser un mapeo.',
   'must define a positive Duration.': 'Segmento {n} debe definir una Duración positiva.',
@@ -218,11 +208,9 @@ function translateBody(message: string): string | null {
   return null;
 }
 
-/** Spanish text for a validation message, or the message unchanged when it has no translation. */
 export function translateValidationMessageEs(message: string): string {
   const direct = translateBody(message);
   if (direct) return direct;
-  // Component configuration errors look like "<yaml.path>: <message>".
   const prefixed = /^(\S+): ([\s\S]+)$/.exec(message);
   const body = prefixed && translateBody(prefixed[2]);
   return prefixed && body ? `${prefixed[1]}: ${body}` : message;
