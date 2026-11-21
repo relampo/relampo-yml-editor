@@ -1,3 +1,5 @@
+import { useDistributedSelectedFiles } from '../hooks/useDistributedSelectedFiles';
+import { projectInputsKey, projectFileChanges, projectFileContents } from '../utils/distributedProjectState';
 import { preparationKey, preparationChange } from '../utils/distributedPreparation';
 import { distributedGlobalHistory } from '../utils/distributedApi';
 import { useDistributedReportStorage } from '../hooks/useDistributedReportStorage';
@@ -9,7 +11,7 @@ import { DistributedNodes } from './distributed-run/DistributedNodes';
 import { DistributedConnection, type ProviderConnection } from './distributed-run/DistributedConnection';
 import { DistributedResults } from './distributed-run/DistributedResults';
 import { DistributedNotice as Notice } from './distributed-run/DistributedFeedback';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { FolderOpen, Loader2, Play } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { fingerprint } from '../utils/studioRunStore';
@@ -66,7 +68,6 @@ export function YAMLDistributedRun({
         if (!live) return;
         setProject(value);
         if (value?.provider) setProvider(value.provider);
-        if (value?.repository) setRepository(value.repository);
         setProjectReady(true);
       },
       cause => {
@@ -94,8 +95,12 @@ export function YAMLDistributedRun({
   const nodes = selectedNodes.length;
   const [formats, setFormats] = useState<string[]>(['html']);
   const [connection, setConnection] = useState<{ key: string; status: ProviderConnection | null } | null>(null);
-  const connectionKey = `${provider}:${host}`;
-  const connected = connection?.key === connectionKey && connection.status?.authenticated === true;
+  const connectionKey = `${provider}:${host}:${agentContext ?? ''}`;
+  const connected =
+    connection?.key === connectionKey &&
+    connection.status?.git_installed === true &&
+    connection.status.cli_installed === true &&
+    connection.status.authenticated === true;
   const [plan, setPlan] = useState<DistributedPlan | null>(null);
   const planRequest = useRef<DistributedConfig | null>(null);
   const [busy, setBusy] = useState(false);
@@ -111,18 +116,75 @@ export function YAMLDistributedRun({
   const [files, setFiles] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [fileAction, setFileAction] = useState('upload');
-  const projectKey = `${provider}:${host}:${repository}`;
+  const selected = useDistributedSelectedFiles(selectedFiles);
+  const [appliedUploads, setAppliedUploads] = useState<{ target: string; contents: Map<string, string> }>();
+  const projectKey = `${agentContext ?? 'local'}:${provider}:${host}:${repository}`;
   const [appliedProject, setAppliedProject] = useState<string | null>(null);
-  const projectApplyKey = (script: string) =>
-    JSON.stringify([projectKey, fileName || 'studio.yaml', fingerprint(script)]);
-  const filesApplied =
-    appliedProject === projectApplyKey(yamlCode) &&
-    selectedFiles.length === 0 &&
-    !(fileAction === 'remove' && files.trim());
+  const [appliedConfig, setAppliedConfig] = useState<{ target: string; config: DistributedConfig } | null>(null);
+  const projectApplyKey = (script: string, snapshot = project) =>
+    JSON.stringify([agentContext ?? 'local', projectInputsKey(config(script, snapshot))]);
   const [publishedFiles, setPublishedFiles] = useState<
     { action: string; path: string; target: string; repositoryKey: string }[]
   >([]);
   const projectFiles = publishedFiles.filter(file => file.repositoryKey === projectKey);
+  const currentFileConfig = useMemo<DistributedConfig>(
+    () => ({
+      provider,
+      host,
+      repository,
+      yaml: yamlCode,
+      file_name: fileName,
+      nodes: 0,
+      language,
+      ...(project ? { workspace: { scriptPath: project.scriptPath, files: project.files } } : {}),
+    }),
+    [provider, host, repository, yamlCode, fileName, language, project],
+  );
+  const currentFilesKey = useMemo(
+    () => JSON.stringify([agentContext ?? 'local', projectInputsKey(currentFileConfig)]),
+    [agentContext, currentFileConfig],
+  );
+  const sourceChanges = useMemo(
+    () =>
+      projectFileChanges(appliedConfig?.target === projectKey ? appliedConfig.config : undefined, currentFileConfig),
+    [appliedConfig, projectKey, currentFileConfig],
+  );
+
+  const pendingUploads = [...selected.contents].filter(([name, data]) => {
+    if (name === (fileName || 'studio.yaml')) return false;
+    const existing = appliedUploads?.target === projectKey ? appliedUploads.contents.get(name) : undefined;
+    const saved =
+      appliedConfig?.target === projectKey ? projectFileContents(appliedConfig.config).get(`Data/${name}`) : undefined;
+    return data !== (saved ?? existing);
+  });
+  const filesApplied =
+    appliedProject === currentFilesKey &&
+    selected.ready &&
+    !selected.error &&
+    pendingUploads.length === 0 &&
+    !(fileAction === 'remove' && files.trim());
+
+  const hasAppliedProject = appliedConfig?.target === projectKey;
+  const fileChanges = [...sourceChanges];
+  for (const [name] of pendingUploads) {
+    const path = project?.files.some(file => file.path === `Data/${name}`) ? `Data/${name}` : `scenarios/${name}`;
+    if (!fileChanges.some(change => change.path === path))
+      fileChanges.push({
+        path,
+        kind:
+          (appliedUploads?.target === projectKey && appliedUploads.contents.has(name)) ||
+          (hasAppliedProject && projectFileContents(appliedConfig.config).has(path))
+            ? 'modified'
+            : 'new',
+      });
+  }
+  if (fileAction === 'remove')
+    for (const path of files
+      .split(',')
+      .map(path => path.trim())
+      .filter(Boolean)) {
+      fileChanges.push({ path, kind: 'removed' });
+    }
   const reviewedProjectFiles = useRef('');
   const filePicker = useRef<HTMLInputElement>(null);
   const reportsMenu = useRef<HTMLDetailsElement>(null);
@@ -310,7 +372,7 @@ export function YAMLDistributedRun({
       const snapshot = await requestExecutionProject(fileName);
       setProject(snapshot);
       const request = config(flushPendingEdits(), snapshot);
-      if (!filesApplied || appliedProject !== projectApplyKey(request.yaml))
+      if (!filesApplied || appliedProject !== projectApplyKey(request.yaml, snapshot))
         throw new Error(
           text('Aplica el proyecto y los archivos antes de ejecutar.', 'Apply the project and files before running.'),
         );
@@ -334,7 +396,7 @@ export function YAMLDistributedRun({
       const snapshot = await requestExecutionProject(fileName);
       setProject(snapshot);
       const request = config(flushPendingEdits(), snapshot);
-      if (!filesApplied || appliedProject !== projectApplyKey(request.yaml))
+      if (!filesApplied || appliedProject !== projectApplyKey(request.yaml, snapshot))
         throw new Error(
           text('Aplica el proyecto y los archivos antes de ejecutar.', 'Apply the project and files before running.'),
         );
@@ -386,6 +448,35 @@ export function YAMLDistributedRun({
     preparationKey(config(yamlCode)) === preparationKey(planRequest.current) &&
     reviewedProjectFiles.current === JSON.stringify(projectFiles);
   const disabled = busy || active || available !== true;
+  const snapshotRead = useRef(false);
+  useEffect(() => {
+    if (!embeddedScriptDraftKey() || !inFront || !showSettings || !projectReady || !connected || disabled) return;
+    let live = true;
+    const refresh = async () => {
+      if (snapshotRead.current) return;
+      snapshotRead.current = true;
+      try {
+        const snapshot = await requestExecutionProject(fileName);
+        if (live) setProject(previous => (JSON.stringify(previous) === JSON.stringify(snapshot) ? previous : snapshot));
+      } catch (cause) {
+        if (live) {
+          setAppliedProject(null);
+          setError(cause instanceof Error ? cause.message : String(cause));
+        }
+      } finally {
+        snapshotRead.current = false;
+      }
+    };
+    void refresh();
+    const timer = window.setInterval(() => void refresh(), 5000);
+    window.addEventListener('focus', refresh);
+    return () => {
+      live = false;
+      window.clearInterval(timer);
+      window.removeEventListener('focus', refresh);
+    };
+  }, [fileName, agentContext, inFront, showSettings, projectReady, connected, disabled]);
+
   function clearResults() {
     if (active || (!trackingLost && (!state || !['completed', 'errored', 'stopped'].includes(state.status)))) return;
     setRunId('');
@@ -565,13 +656,14 @@ export function YAMLDistributedRun({
         <div className={showSettings ? 'space-y-5' : 'hidden'}>
           <div className="grid items-stretch gap-3 @[56rem]:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1.25fr)]">
             <DistributedConnection
+              key={agentContext}
               provider={provider}
               host={host}
               enabled={available}
               disabled={disabled}
               repository={repository}
               onRepository={setRepository}
-              onStatus={(key, status) => setConnection({ key, status })}
+              onStatus={(key, status) => setConnection({ key: `${key}:${agentContext ?? ''}`, status })}
               es={es}
             >
               {({ connection: connectionPanel, repository: repositoryPanel }) => (
@@ -622,7 +714,7 @@ export function YAMLDistributedRun({
                     {connectionPanel}
                   </fieldset>
                   <fieldset
-                    disabled={disabled}
+                    disabled={disabled || !connected}
                     className="min-w-0 space-y-3 rounded-lg border border-white/10 bg-[#111] p-3 disabled:opacity-70"
                   >
                     <legend className="px-1 text-sm font-medium">{text('Repositorio', 'Repository')}</legend>
@@ -632,7 +724,7 @@ export function YAMLDistributedRun({
               )}
             </DistributedConnection>
             <fieldset
-              disabled={disabled}
+              disabled={disabled || !connected || !repository.trim()}
               className="min-w-0 space-y-3 rounded-lg border border-white/10 bg-[#111] p-3 disabled:opacity-70"
             >
               <legend className="px-1 text-sm font-medium">{text('Proyecto y archivos', 'Project and files')}</legend>
@@ -708,6 +800,9 @@ export function YAMLDistributedRun({
                     aria-label={text('Aplicar acción a los archivos', 'Apply file action')}
                     disabled={
                       disabled ||
+                      !selected.ready ||
+                      !!selected.error ||
+                      filesApplied ||
                       !connected ||
                       !repository.trim() ||
                       (fileAction === 'remove'
@@ -716,7 +811,9 @@ export function YAMLDistributedRun({
                     }
                     onClick={() =>
                       void perform(async () => {
-                        const request = config(flushPendingEdits());
+                        const snapshot = await requestExecutionProject(fileName);
+                        setProject(snapshot);
+                        const request = config(flushPendingEdits(), snapshot);
                         const documentName = request.file_name ?? 'studio.yaml';
                         const uploads =
                           fileAction === 'remove'
@@ -745,7 +842,31 @@ export function YAMLDistributedRun({
                               .filter(Boolean),
                           );
                         else for (const file of uploads) paths.push(await uploadDistributedFile(file));
-                        await distributedRequest('files', { ...request, files: paths, action: fileAction });
+                        await distributedRequest('files', {
+                          ...request,
+                          files: paths,
+                          action: fileAction === 'upload' && hasAppliedProject ? 'update' : fileAction,
+                        });
+                        const appliedSnapshot = selectedFiles.length
+                          ? await requestExecutionProject(fileName)
+                          : snapshot;
+                        setProject(appliedSnapshot);
+                        const appliedRequest = config(request.yaml, appliedSnapshot);
+                        if (fileAction === 'remove')
+                          setAppliedUploads(current => {
+                            if (current?.target !== projectKey) return current;
+                            const contents = new Map(current.contents);
+                            for (const path of paths) contents.delete(path.split('/').at(-1)!);
+                            return { target: projectKey, contents };
+                          });
+                        if (fileAction !== 'remove')
+                          setAppliedUploads(current => ({
+                            target: projectKey,
+                            contents: new Map([
+                              ...(current?.target === projectKey ? current.contents : []),
+                              ...selected.contents,
+                            ]),
+                          }));
                         const changes = paths.map((path, index) => ({
                           action: fileAction,
                           path,
@@ -761,16 +882,61 @@ export function YAMLDistributedRun({
                           ...current.filter(file => file.repositoryKey !== projectKey || !targets.has(file.target)),
                           ...changes,
                         ]);
-                        if (fileAction !== 'remove') setAppliedProject(projectApplyKey(request.yaml));
+                        if (fileAction !== 'remove' || appliedProject !== null) {
+                          setAppliedProject(projectApplyKey(request.yaml, appliedSnapshot));
+                          setAppliedConfig({ target: projectKey, config: appliedRequest });
+                        }
                         setPlan(null);
                         setSelectedFiles([]);
                         setFiles('');
                       })
                     }
                   >
-                    {text('Aplicar', 'Apply')}
+                    {hasAppliedProject ? text('Actualizar', 'Update') : text('Aplicar', 'Apply')}
                   </button>
                 </div>
+                <p
+                  className="text-xs text-zinc-300"
+                  role="status"
+                >
+                  {filesApplied
+                    ? text('Sin cambios pendientes.', 'No pending changes.')
+                    : hasAppliedProject
+                      ? text('Hay cambios pendientes de actualizar.', 'Changes need to be updated.')
+                      : text('Proyecto pendiente de aplicar.', 'Project has not been applied yet.')}
+                </p>
+                {selected.error && (
+                  <p
+                    role="alert"
+                    className="text-xs text-red-400"
+                  >
+                    {text('No se pudo leer el archivo seleccionado. Vuelve a seleccionarlo.', selected.error)}
+                  </p>
+                )}
+                {fileChanges.length > 0 && (
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr>
+                        <th>{text('Archivo', 'File')}</th>
+                        <th>{text('Cambio', 'Change')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {fileChanges.map(change => (
+                        <tr key={change.path}>
+                          <td className="break-all py-1">{change.path}</td>
+                          <td>
+                            {change.kind === 'new'
+                              ? text('Nuevo', 'New')
+                              : change.kind === 'modified'
+                                ? text('Modificado', 'Modified')
+                                : text('Eliminación pendiente', 'Removal pending')}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
                 {!filesApplied && (
                   <p className="text-xs text-zinc-400">
                     {text(
