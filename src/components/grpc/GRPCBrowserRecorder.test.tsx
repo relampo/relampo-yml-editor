@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { GRPCBrowserRecorder } from './GRPCBrowserRecorder';
 import { grpcRequest } from '../../utils/grpcApi';
@@ -24,6 +24,27 @@ it('explains when the installed CLI does not provide browser recording', async (
   render(<GRPCBrowserRecorder onDiscover={vi.fn()} onImport={vi.fn()} />);
   expect(await screen.findByRole('status')).toHaveTextContent('Browser recording requires a newer Relampo CLI.');
   expect(screen.queryByRole('button', { name: 'Start browser recording' })).not.toBeInTheDocument();
+});
+
+it('retries a failed capability check before starting browser recording', async () => {
+  vi.mocked(grpcRequest)
+    .mockRejectedValueOnce(new Error('Connection interrupted'))
+    .mockResolvedValueOnce(initial)
+    .mockResolvedValueOnce({ ...initial, active: true });
+  render(<GRPCBrowserRecorder onDiscover={vi.fn()} onImport={vi.fn()} />);
+  const start = screen.getByRole('button', { name: 'Start browser recording' });
+  fireEvent.change(screen.getByLabelText('Application URL'), { target: { value: 'https://example.test' } });
+  expect(await screen.findByRole('alert')).toHaveTextContent('Connection interrupted');
+  expect(start).toBeDisabled();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+  await waitFor(() => expect(start).toBeEnabled());
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  fireEvent.click(start);
+  expect(await screen.findByRole('button', { name: 'Stop browser recording' })).toBeVisible();
+  expect(grpcRequest).toHaveBeenLastCalledWith(
+    'browser-recordings', expect.objectContaining({ applicationUrl: 'https://example.test' }), expect.anything(),
+  );
 });
 
 it('shows HTTP observation honestly and provides working Discovery and proto alternatives', async () => {
