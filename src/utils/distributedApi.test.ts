@@ -1,8 +1,15 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { distributedRequest, DistributedRequestError, safeProviderURL, uploadDistributedFile } from './distributedApi';
 import { resetStudioSessionForTests } from './studioAuth';
+import * as agentTransport from './agentTransport';
+const planUpload = vi.hoisted(() => vi.fn());
+vi.mock('./planDataSource', () => ({ uploadPlanDataSource: planUpload }));
+const originalParent = window.parent;
 afterEach(() => {
+  vi.restoreAllMocks();
   vi.unstubAllGlobals();
+  Object.defineProperty(window, 'parent', { configurable: true, value: originalParent });
+  planUpload.mockReset();
   resetStudioSessionForTests();
   window.history.replaceState({}, '', '/');
 });
@@ -48,4 +55,26 @@ describe('distributed API', () => {
     expect(new Headers(options.headers).get('X-Relampo-Studio-Token')).toBe('upload-session');
     expect(new Headers(options.headers).has('Content-Type')).toBe(false);
   });
+});
+
+it('persists a distributed CSV in the plan before staging it for CI', async () => {
+  Object.defineProperty(window, 'parent', { configurable: true, value: {} });
+  window.history.replaceState({}, '', '/?embedded=1&account=qa&plan=one');
+  planUpload.mockResolvedValue({ path: 'Data/users.csv', name: 'users.csv' });
+  const request = vi
+    .spyOn(agentTransport, 'agentRequest')
+    .mockResolvedValue(Response.json({ path: '.relampo/datasources/users.csv' }, { status: 201 }));
+  const file = new File(['id\n1'], 'users.csv');
+  await expect(uploadDistributedFile(file)).resolves.toBe('.relampo/datasources/users.csv');
+  expect(planUpload).toHaveBeenCalledWith(file);
+  expect(planUpload.mock.invocationCallOrder[0]).toBeLessThan(request.mock.invocationCallOrder[0]);
+});
+it('does not stage the CSV when its Test Plan cannot save it', async () => {
+  Object.defineProperty(window, 'parent', { configurable: true, value: {} });
+  window.history.replaceState({}, '', '/?embedded=1&account=qa&plan=one');
+  planUpload.mockRejectedValue(Error('Folder access required'));
+  const fetch = vi.fn();
+  vi.stubGlobal('fetch', fetch);
+  await expect(uploadDistributedFile(new File(['id'], 'users.csv'))).rejects.toThrow('Folder access required');
+  expect(fetch).not.toHaveBeenCalled();
 });
