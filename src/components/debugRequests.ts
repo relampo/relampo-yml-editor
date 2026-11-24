@@ -148,22 +148,29 @@ function requestNumberFromNode(node: YAMLNode | null): string {
   return String(node?.data?.request_id ?? '').trim();
 }
 
-// The number shown on a Debug timeline row must match the number shown by the
-// Tree. Redirect follow-up events carry the enabled parent's request_id, so use
-// the matched recorded child label first. This keeps a recorded [16] visible as
-// #16 instead of incorrectly rendering it as the parent's #15.1 (RLP-674).
 export function debugEventRequestNumber(
   event: DebugEventLike,
   matchedNode: YAMLNode | null,
   requestNodes: YAMLNode[],
+  requestNumbers?: ReadonlyMap<string, number>,
 ): string {
+  const number = matchedNode ? requestNumbers?.get(matchedNode.id) : undefined;
+  if (number !== undefined) return String(number);
+
   const chainId = String(event.chain_id ?? '').trim();
   if (chainId && isRedirectFollowUpEvent(event) && !redirectChainParentDisablesFollow(chainId, requestNodes)) {
     const treeNumber = requestNumberFromNode(matchedNode);
     if (treeNumber) return treeNumber;
 
-    const parent = redirectChainParent(chainId, requestNodes);
-    const parentId = parent?.data?.request_id;
+    const parent = redirectChainParent(chainId, requestNodes) ?? (
+      event.request_id === undefined
+        ? null
+        : findUniqueTarget(requestNodes, node =>
+            REQUEST_TYPES.has(node.type) && String(node.data?.request_id) === String(event.request_id),
+          )
+    );
+    const parentNumber = parent ? requestNumbers?.get(parent.id) : undefined;
+    const parentId = parentNumber ?? parent?.data?.request_id;
     // The backend stamps the parent's request_id on every chain event. Keep a
     // positional fallback only when the recorded child has no usable label.
     const base =

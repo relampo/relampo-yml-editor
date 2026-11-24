@@ -33,6 +33,10 @@ import {
   XCircle,
 } from 'lucide-react';
 import { parseYAMLToTree } from '../utils/yamlParser';
+import { normalizeRequestForEditor } from '../utils/yamlParserHelpers';
+import { authoredNodeData } from '../utils/yamlAuthoredData';
+import { isHttpRequestNodeType } from '../utils/requestNodeDisplay';
+import { buildRequestNumbers } from './yaml-tree-view/requestNumbers';
 import type { RedirectedRequestInfo, YAMLNode } from '../types/yaml';
 import {
   collectDebugEventTargets,
@@ -250,13 +254,38 @@ function scenarioNodes(tree: YAMLNode | null): YAMLNode[] {
   return tree?.children?.find(node => node.type === 'scenarios')?.children ?? [];
 }
 
-function targetsForScenario(tree: YAMLNode | null, scenarioName?: string): YAMLNode[] {
-  return collectDebugEventTargets(
-    scenarioName ? (scenarioNodes(tree).find(node => node.data?.name === scenarioName) ?? null) : tree,
-  );
+type DebugDocument = {
+  targets: YAMLNode[];
+  requestNumbers: ReadonlyMap<string, number>;
+  redirectedRequestMap: Record<string, RedirectedRequestInfo>;
+};
+
+function debugDocumentForScenario(
+  tree: YAMLNode | null,
+  redirectedRequestMap: Record<string, RedirectedRequestInfo>,
+  scenarioName?: string,
+  submittedTree = tree,
+): DebugDocument {
+  const scope = scenarioName ? (scenarioNodes(tree).find(node => node.data?.name === scenarioName) ?? null) : tree;
+  let targets = collectDebugEventTargets(scope);
+  if (submittedTree !== tree) {
+    const defaults = submittedTree?.children?.find(node => node.type === 'http_defaults');
+    // A removed HTTP default can leave the old inherited flag on a Tree node.
+    targets = targets.map(node => {
+      if (!node.authoredData || !isHttpRequestNodeType(node.type)) return node;
+      const { follow_redirects: followRedirects } = normalizeRequestForEditor(
+        authoredNodeData(node), defaults?.data?.follow_redirects === true,
+      );
+      return followRedirects === node.data?.follow_redirects
+        ? node
+        : { ...node, data: { ...node.data, follow_redirects: followRedirects } };
+    });
+  }
+  return { targets, requestNumbers: buildRequestNumbers(scope), redirectedRequestMap };
 }
 
 const EMPTY_REDIRECTED_REQUEST_MAP: Record<string, RedirectedRequestInfo> = {};
+const EMPTY_DEBUG_DOCUMENT = debugDocumentForScenario(null, EMPTY_REDIRECTED_REQUEST_MAP);
 
 // Run status/results/error genuinely change together (every transition below
 // touches two or more of them at once), so they live in one reducer instead
@@ -460,22 +489,16 @@ export function YAMLDebugSession({
   const [timelineFilter, setTimelineFilter] = useState<DebugTimelineFilter>('requests');
   const timelineButtonRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
 
-  const currentDebugEventTargets = useMemo(
-    () => targetsForScenario(tree, isMultiScenario ? scenarioName : undefined),
-    [tree, isMultiScenario, scenarioName],
-  );
-  // A completed run belongs to the script snapshot that started it. Keep its
-  // request targets stable so later Tree edits cannot remap old timeline rows
-  // to different recorded request numbers after the run. RLP-442.
-  const [runDebugEventTargets, setRunDebugEventTargets] = useState<YAMLNode[] | null>(null);
-  const debugEventTargets = runDebugEventTargets ?? currentDebugEventTargets;
+  // Keep results tied to the script snapshot that started the run (RLP-442).
+  const [debugDocument, setDebugDocument] = useState(EMPTY_DEBUG_DOCUMENT);
+  const { targets: debugEventTargets, redirectedRequestMap: runRedirectedRequestMap } = debugDocument;
   const entries = useMemo<DebugEntry[]>(
     () =>
       entryEvents.map(entry => ({
         ...entry,
-        node: matchDebugEventTarget(entry.event, debugEventTargets, redirectedRequestMap),
+        node: matchDebugEventTarget(entry.event, debugEventTargets, runRedirectedRequestMap),
       })),
-    [debugEventTargets, entryEvents, redirectedRequestMap],
+    [debugEventTargets, entryEvents, runRedirectedRequestMap],
   );
   // The timeline shows one row per engine event, but a recorded redirect chain
   // can be longer than the live run walks: the engine stops following at a hop
@@ -560,11 +583,11 @@ export function YAMLDebugSession({
         return;
       }
       setScenarioName(storedRun.scenarioName ?? '');
-      setRunDebugEventTargets(targetsForScenario(tree, storedRun.scenarioName));
+      setDebugDocument(debugDocumentForScenario(tree, redirectedRequestMap, storedRun.scenarioName));
       dispatchRunState({ type: 'reattach_started' });
       subscribe(storedRun.id, true);
     },
-    [documentReady, isMultiScenario, multiScenarioDebugEnabled, scenarios, subscribe, tree, yamlCode],
+    [documentReady, isMultiScenario, multiScenarioDebugEnabled, redirectedRequestMap, scenarios, subscribe, tree, yamlCode],
   );
 
   const activeEntry =
@@ -612,7 +635,7 @@ export function YAMLDebugSession({
       dispatchRunState({ type: 'run_start_failed', message: t('yamlEditor.runDebug.debug.selectScenarioError') });
       return;
     }
-    setRunDebugEventTargets(selectedName ? targetsForScenario(snapshotTree, selectedName) : currentDebugEventTargets);
+    setDebugDocument(debugDocumentForScenario(tree, redirectedRequestMap, selectedName, snapshotTree));
     const token = (startTokenRef.current += 1);
     stopStreamRef.current?.();
     setActiveId(null);
@@ -659,7 +682,7 @@ export function YAMLDebugSession({
     setActiveId(null);
     setDetailTab('overview');
     setTimelineFilter('requests');
-    setRunDebugEventTargets(null);
+    setDebugDocument(EMPTY_DEBUG_DOCUMENT);
     dispatchRunState({ type: 'cleared' });
   };
 
@@ -772,7 +795,7 @@ export function YAMLDebugSession({
           activeEntry={activeEntry}
           isRunning={isRunning}
           isFiltered={timelineFilter !== 'requests'}
-          debugEventTargets={debugEventTargets}
+          debugDocument={debugDocument}
           onSelect={selectEntry}
           onEntryKeyDown={handleTimelineEntryKeyDown}
           timelineButtonRefs={timelineButtonRefs}
@@ -783,8 +806,7 @@ export function YAMLDebugSession({
           detailTab={detailTab}
           onTabChange={setDetailTab}
           onEditNode={onEditNode}
-          redirectedRequestMap={redirectedRequestMap}
-          debugEventTargets={debugEventTargets}
+          debugDocument={debugDocument}
           timelineEntries={timelineEntries}
         />
       </div>
@@ -991,7 +1013,7 @@ function DebugTimelinePanel({
   activeEntry,
   isRunning,
   isFiltered,
-  debugEventTargets,
+  debugDocument,
   onSelect,
   onEntryKeyDown,
   timelineButtonRefs,
@@ -1000,7 +1022,7 @@ function DebugTimelinePanel({
   activeEntry: DebugEntry | undefined;
   isRunning: boolean;
   isFiltered: boolean;
-  debugEventTargets: YAMLNode[];
+  debugDocument: DebugDocument;
   onSelect: (entry: DebugEntry) => void;
   onEntryKeyDown: (event: KeyboardEvent<HTMLButtonElement>, entry: DebugEntry) => void;
   timelineButtonRefs: MutableRefObject<Map<string, HTMLButtonElement>>;
@@ -1031,7 +1053,9 @@ function DebugTimelinePanel({
             <div className="space-y-2">
               {timelineEntries.map(entry => {
                 const active = activeEntry?.id === entry.id;
-                const requestNumber = debugEventRequestNumber(entry.event, entry.node, debugEventTargets);
+                const requestNumber = debugEventRequestNumber(
+                  entry.event, entry.node, debugDocument.targets, debugDocument.requestNumbers,
+                );
                 return (
                   <button
                     key={entry.id}
@@ -1059,7 +1083,7 @@ function DebugTimelinePanel({
                           {requestNumber && (
                             <span
                               className="shrink-0 rounded border border-zinc-500/25 bg-white/4 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-zinc-300"
-                              title={t('yamlEditor.runDebug.debug.timeline.requestId')}
+                              title={t('yamlEditor.runDebug.debug.timeline.requestNumber')}
                             >
                               #{requestNumber}
                             </span>
@@ -1120,16 +1144,14 @@ function DebugDetailPanel({
   detailTab,
   onTabChange,
   onEditNode,
-  redirectedRequestMap,
-  debugEventTargets,
+  debugDocument,
   timelineEntries,
 }: {
   activeEntry: DebugEntry | undefined;
   detailTab: DetailTab;
   onTabChange: (tab: DetailTab) => void;
   onEditNode: (node: YAMLNode) => void;
-  redirectedRequestMap: Record<string, RedirectedRequestInfo>;
-  debugEventTargets: YAMLNode[];
+  debugDocument: DebugDocument;
   timelineEntries: DebugEntry[];
 }) {
   const { t } = useLanguage();
@@ -1209,8 +1231,8 @@ function DebugDetailPanel({
               key={activeEntry.id}
               entry={activeEntry}
               tab={detailTab}
-              redirectedInfo={activeEntry.node ? (redirectedRequestMap[activeEntry.node.id] ?? null) : null}
-              requestTargets={debugEventTargets}
+              redirectedInfo={activeEntry.node ? (debugDocument.redirectedRequestMap[activeEntry.node.id] ?? null) : null}
+              debugDocument={debugDocument}
               variableSnapshot={debugVariableSnapshot(activeEntry, timelineEntries)}
             />
           </div>
@@ -1231,7 +1253,7 @@ type DebugInspectorContentProps = {
   entry: DebugEntry;
   tab: DetailTab;
   redirectedInfo?: RedirectedRequestInfo | null;
-  requestTargets: YAMLNode[];
+  debugDocument: DebugDocument;
   variableSnapshot: Record<string, string>;
 };
 
@@ -1239,7 +1261,7 @@ function DebugInspectorContent({
   entry,
   tab,
   redirectedInfo,
-  requestTargets,
+  debugDocument,
   variableSnapshot,
 }: DebugInspectorContentProps) {
   switch (tab) {
@@ -1265,7 +1287,7 @@ function DebugInspectorContent({
         <DebugLogsInspector
           event={entry.event}
           redirectedInfo={redirectedInfo}
-          requestTargets={requestTargets}
+          debugDocument={debugDocument}
         />
       );
     default:
@@ -1545,16 +1567,16 @@ function formatBuiltinValue(value: unknown): string {
 function DebugLogsInspector({
   event,
   redirectedInfo,
-  requestTargets,
+  debugDocument,
 }: {
   event: EngineEvent;
   redirectedInfo?: RedirectedRequestInfo | null;
-  requestTargets: YAMLNode[];
+  debugDocument: DebugDocument;
 }) {
   const { t } = useLanguage();
   const time = formatEventTime(event.ts);
   const redirectHops = event.redirects ?? [];
-  const sourceLogLabel = redirectedInfo ? redirectSourceLogLabel(redirectedInfo, requestTargets, event.path) : '';
+  const sourceLogLabel = redirectedInfo ? redirectSourceLogLabel(redirectedInfo, debugDocument, event.path) : '';
   return (
     <div className="max-w-full overflow-hidden border border-white/10 bg-[#050505] p-4 font-mono text-xs leading-6 text-zinc-300 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
       <p className="text-emerald-300 break-words">
@@ -1794,10 +1816,10 @@ function absoluteDebugUrl(value: unknown, baseUrl: string): string {
 
 function redirectSourceLogLabel(
   redirectedInfo: RedirectedRequestInfo,
-  requestTargets: YAMLNode[],
+  { targets, requestNumbers }: DebugDocument,
   targetUrl: string,
 ): string {
-  const source = requestTargets.find(node => node.id === redirectedInfo.sourceNodeId);
+  const source = targets.find(node => node.id === redirectedInfo.sourceNodeId);
   if (!source) return '';
   const sourceEvent = {
     method: String(source.data?.method ?? source.type ?? 'GET').toUpperCase(),
@@ -1807,7 +1829,7 @@ function redirectSourceLogLabel(
     chain_id: String(source.data?.chain_id ?? ''),
     chain_role: String(source.data?.chain_role ?? ''),
   };
-  const requestNumber = debugEventRequestNumber(sourceEvent, source, requestTargets);
+  const requestNumber = debugEventRequestNumber(sourceEvent, source, targets, requestNumbers);
   const prefix = requestNumber ? `[${requestNumber}] ` : '';
   const method = sourceEvent.method ? `${sourceEvent.method} ` : '';
   return `${prefix}${method}${absoluteDebugUrl(sourceEvent.path, targetUrl)}`.trim();
