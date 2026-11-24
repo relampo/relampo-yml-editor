@@ -148,15 +148,15 @@ function requestNumberFromNode(node: YAMLNode | null): string {
   return String(node?.data?.request_id ?? '').trim();
 }
 
-// The number shown on a Debug timeline row must match the number shown by the
-// Tree. Redirect follow-up events carry the enabled parent's request_id, so use
-// the matched recorded child label first. This keeps a recorded [16] visible as
-// #16 instead of incorrectly rendering it as the parent's #15.1 (RLP-674).
 export function debugEventRequestNumber(
   event: DebugEventLike,
   matchedNode: YAMLNode | null,
   requestNodes: YAMLNode[],
+  requestNumbers?: ReadonlyMap<string, number>,
 ): string {
+  const number = matchedNode ? requestNumbers?.get(matchedNode.id) : undefined;
+  if (number !== undefined) return String(number);
+
   const chainId = String(event.chain_id ?? '').trim();
   if (chainId && isRedirectFollowUpEvent(event) && !redirectChainParentDisablesFollow(chainId, requestNodes)) {
     const treeNumber = requestNumberFromNode(matchedNode);

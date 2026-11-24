@@ -6,6 +6,8 @@ import { DebugSection } from './debugSection';
 import { YAMLDebugSession } from './YAMLDebugView';
 import type { YAMLNode } from '../types/yaml';
 import type { EngineEvent } from '../utils/debugApi';
+import { parseYAMLToTree, treeToYAML } from '../utils/yamlParser';
+import { removeNodeFromTree } from './yaml-tree-view/treeOperations';
 
 const render = (ui: Parameters<typeof rtlRender>[0], options?: Parameters<typeof rtlRender>[1]) =>
   rtlRender(ui, { wrapper: LanguageProvider, ...options });
@@ -706,7 +708,42 @@ describe('YAMLDebugSession tree selection sync', () => {
     );
   });
 
-  it('shows the recorded Tree request number for redirected debug events', async () => {
+  it('uses tree numbering after deleting a request with a recorded ID', async () => {
+    const originalTree = parseYAMLToTree(`test: {name: RLP-866}
+scenarios:
+  - name: Login
+    steps:
+      - request: {method: GET, url: /open, request_id: 1}
+      - request: {method: GET, url: /removed, request_id: 2}
+      - request: {method: POST, url: /submit, request_id: 3}
+`)!;
+    const [, removed, submit] = collectRequests(originalTree);
+    const tree = removeNodeFromTree(originalTree, removed.id);
+    const onSelectNode = vi.fn();
+    render(
+      <YAMLDebugSession
+        tree={tree}
+        yamlCode={treeToYAML(tree)}
+        documentReady
+        validationErrors={[]}
+        onSelectNode={onSelectNode}
+        onEditNode={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Run Debug' }));
+    await waitFor(() => expect(debugApiMock.handlers).toHaveLength(1));
+
+    act(() => {
+      debugApiMock.handlers[0].onEvent(event({ name: 'Submit', method: 'POST', path: '/submit', request_id: 3 }));
+    });
+
+    const row = screen.getByRole('button', { name: /\/submit/ });
+    expect(within(row).getByText('#2')).toBeInTheDocument();
+    fireEvent.click(row);
+    expect(onSelectNode).toHaveBeenCalledWith(expect.objectContaining({ id: submit.id }));
+  });
+
+  it('shows the current Tree request number for redirected debug events', async () => {
     const parentRequest: YAMLNode = {
       id: 'parent',
       type: 'request',
@@ -770,9 +807,8 @@ describe('YAMLDebugSession tree selection sync', () => {
       );
     });
 
-    // The runtime event carries the parent request_id, but the Tree identifies
-    // this recorded final child as request 11. RLP-674.
-    expect(await screen.findByText('#11')).toBeInTheDocument();
+    // The runtime event carries the parent request_id. The final child is second in the tree.
+    expect(await screen.findByText('#2')).toBeInTheDocument();
     expect(screen.queryByText('#10.1')).not.toBeInTheDocument();
     expect(screen.getAllByText('http://www.testingyes.com/demo/index.php?main_page=checkout_payment')).not.toHaveLength(0);
   });
