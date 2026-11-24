@@ -85,7 +85,10 @@ function childPathFor(
 
   if (isNativeSampler(parent.type)) return protocolChildPath(parent, child, index, siblings, parentPath);
 
-  if (STEP_CONTAINER_TYPES.has(parent.type)) return [...parentPath, 'steps', index];
+  if (STEP_CONTAINER_TYPES.has(parent.type)) {
+    const containerPath = parent.data?.__stepsInController === true ? [...parentPath, parent.type] : parentPath;
+    return [...containerPath, 'steps', index];
+  }
 
   if (REQUEST_TYPES.has(parent.type)) {
     if (child.type === 'headers') return [...parentPath, 'request', 'headers'];

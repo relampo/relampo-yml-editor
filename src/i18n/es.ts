@@ -1688,7 +1688,7 @@ export const esTranslations = {
           running: 'Ejecutando... esperando el primer evento del motor.',
           filtered: 'Ninguna petición coincide con este filtro.',
           idle: 'Pulsa Ejecutar depuración para ejecutar este YAML en el motor.',
-          requestId: 'ID de la petición',
+          requestNumber: 'Número de petición',
           skipped: 'Omitido · redirección no seguida',
         },
         detail: {

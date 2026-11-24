@@ -615,19 +615,19 @@ describe('YAMLDebugSession RLP debug fixes', () => {
     expect(debugApiMock.startDebugRun).toHaveBeenCalledTimes(2);
   });
 
-  it('shows redirected follow-up context in logs with the execution timeline number', async () => {
+  it('keeps legacy redirect rows and source labels tied to the completed run', async () => {
     const parentRequest: YAMLNode = {
       id: 'parent',
       type: 'request',
       name: '[10] POST /login',
-      data: { request_id: 10, method: 'POST', url: '/login', chain_id: 'rc-10', chain_role: 'parent' },
+      data: { request_id: 10, method: 'POST', url: '/login' },
       path: ['scenarios', 0, 'steps', 10],
     };
     const finalRequest: YAMLNode = {
       id: 'final',
       type: 'request',
       name: '[11] GET /dashboard',
-      data: { request_id: 11, method: 'GET', url: '/dashboard', chain_id: 'rc-10', chain_role: 'final' },
+      data: { request_id: 11, method: 'GET', url: '/dashboard' },
       path: ['scenarios', 0, 'steps', 11],
     };
     const tree: YAMLNode = {
@@ -637,7 +637,7 @@ describe('YAMLDebugSession RLP debug fixes', () => {
       children: [parentRequest, finalRequest],
     };
 
-    render(
+    const { rerender } = render(
       <YAMLDebugSession
         tree={tree}
         yamlCode={'test:\n  name: redirect-log\n'}
@@ -664,23 +664,35 @@ describe('YAMLDebugSession RLP debug fixes', () => {
           name: '[10] GET /dashboard',
           path: 'http://example.test/dashboard',
           step_path: 'scenarios[0].steps[10].redirects[1]',
-          chain_id: 'rc-10',
+          request_id: 10,
+          chain_id: 'legacy:scenarios[0].steps[10]',
           chain_role: 'final',
           redirect_index: 1,
         }),
       );
+      debugApiMock.handlers[0].onDone(null);
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'logs' }));
 
-    expect(
-      await screen.findByText(
-        /redirected request: \[10\] POST http:\/\/example\.test\/login → 200 GET http:\/\/example\.test\/dashboard/,
-      ),
-    ).toBeInTheDocument();
+    const sourceLog = /redirected request: \[1\] POST http:\/\/example\.test\/login → 200 GET http:\/\/example\.test\/dashboard/;
+    expect(await screen.findByText(sourceLog)).toBeInTheDocument();
+
+    rerender(
+      <YAMLDebugSession
+        tree={{ ...tree, children: [parentRequest] }}
+        yamlCode={'test:\n  name: redirect-deleted\n'}
+        documentReady
+        validationErrors={[]}
+        onSelectNode={vi.fn()}
+        onEditNode={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('#2')).toBeInTheDocument();
+    expect(screen.getByText(sourceLog)).toBeInTheDocument();
   });
 
-  it('uses the recorded source hop number for redirected follow-up logs (RLP-674)', async () => {
+  it('uses the Tree number of the source hop for redirected follow-up logs (RLP-674)', async () => {
     const parentRequest: YAMLNode = {
       id: 'parent',
       type: 'request',
@@ -748,7 +760,7 @@ describe('YAMLDebugSession RLP debug fixes', () => {
 
     expect(
       await screen.findByText(
-        /redirected request: \[11\] GET http:\/\/example\.test\/oauth\/as-gestion → 200 GET http:\/\/example\.test\/flowSelector\.xhtml/,
+        /redirected request: \[2\] GET http:\/\/example\.test\/oauth\/as-gestion → 200 GET http:\/\/example\.test\/flowSelector\.xhtml/,
       ),
     ).toBeInTheDocument();
   });
@@ -952,8 +964,7 @@ describe('YAMLDebugSession RLP debug fixes', () => {
       );
     });
 
-    const parentNumber = await screen.findByText('#2');
-    fireEvent.click(parentNumber.closest('button')!);
+    fireEvent.click(await screen.findByRole('button', { name: /example\.test\/login/ }));
     fireEvent.click(screen.getByRole('button', { name: 'variables' }));
 
     expect(await screen.findByText('javax.faces.ViewState (RES)')).toBeInTheDocument();
@@ -986,7 +997,7 @@ describe('YAMLDebugSession RLP debug fixes', () => {
       emit({ path: '/start', iteration: 2, chain_role: 'parent' });
       emit({ path: '/final', iteration: 2, chain_role: 'final', redirect_index: 2, variables: { code: 'next-iteration' } });
     });
-    fireEvent.click(screen.getByText('#3').closest('button')!);
+    fireEvent.click(screen.getByRole('button', { name: /\/hop/ }));
     fireEvent.click(screen.getByRole('button', { name: 'variables' }));
     expect(await screen.findByText('code (RES)')).toBeInTheDocument();
     expect(screen.getByText('right-chain-value')).toBeInTheDocument();
@@ -1269,7 +1280,7 @@ scenarios:
       );
     });
 
-    fireEvent.click((await screen.findByText('#3')).closest('button')!);
+    fireEvent.click(await screen.findByRole('button', { name: /\/oauth\?/ }));
     fireEvent.click(screen.getByRole('button', { name: 'variables' }));
 
     expect(await screen.findByText('state1 (REQ)')).toBeInTheDocument();
@@ -1362,13 +1373,13 @@ scenarios:
       );
     });
 
-    fireEvent.click(screen.getByText('#17').closest('button')!);
+    fireEvent.click(screen.getByRole('button', { name: /\/login/ }));
     fireEvent.click(screen.getByRole('button', { name: 'variables' }));
     expect(await screen.findByText('code1 (RES)')).toBeInTheDocument();
     expect(screen.getByText('real-code')).toBeInTheDocument();
     expect(screen.queryByText('Regex value not found: code1')).toBeNull();
 
-    fireEvent.click(screen.getByText('#17.2').closest('button')!);
+    fireEvent.click(screen.getByRole('button', { name: /\/done/ }));
     expect(screen.getByText('real-code')).toBeInTheDocument();
     expect(screen.queryByText('Regex value not found: code1')).toBeNull();
   });
@@ -1432,7 +1443,7 @@ scenarios:
       );
     });
 
-    fireEvent.click(screen.getByText('#18').closest('button')!);
+    fireEvent.click(screen.getByRole('button', { name: /\/login/ }));
     fireEvent.click(screen.getByRole('button', { name: 'variables' }));
     expect(await screen.findByText('fresh-token')).toBeInTheDocument();
     expect(screen.queryByText('stale-token')).toBeNull();
@@ -1562,18 +1573,16 @@ scenarios:
       );
     });
 
-    expect(screen.queryByText('#125')).not.toBeInTheDocument();
+    expect(screen.queryByText('#3')).not.toBeInTheDocument();
 
     act(() => {
       debugApiMock.handlers[0].onDone(null);
     });
 
-    // The recorded-but-unfollowed final is woven back in as a skipped #125 row.
-    expect(await screen.findByText('#125')).toBeInTheDocument();
-    expect(screen.getByText('Skipped · redirect not followed')).toBeInTheDocument();
-    // The two real rows are still there.
-    expect(screen.getByText('#123')).toBeInTheDocument();
-    expect(screen.getByText('#124')).toBeInTheDocument();
+    const skippedRow = await screen.findByRole('button', { name: /Skipped · redirect not followed/ });
+    expect(within(skippedRow).getByText('#3')).toBeInTheDocument();
+    expect(screen.getByText('#1')).toBeInTheDocument();
+    expect(screen.getByText('#2')).toBeInTheDocument();
   });
 
   it('keeps no-follow redirect children standalone in rows and variable snapshots (RLP-597)', async () => {
@@ -1709,16 +1718,16 @@ scenarios:
       debugApiMock.handlers[0].onDone(null);
     });
 
-    expect(await screen.findByText('#2')).toBeInTheDocument();
+    expect(await screen.findByText('#1')).toBeInTheDocument();
+    expect(screen.getByText('#2')).toBeInTheDocument();
     expect(screen.getByText('#3')).toBeInTheDocument();
     expect(screen.getByText('#4')).toBeInTheDocument();
-    expect(screen.getByText('#5')).toBeInTheDocument();
     expect(screen.queryByText('#2.1')).not.toBeInTheDocument();
     expect(screen.queryByText('#2.2')).not.toBeInTheDocument();
     expect(screen.queryByText('#2.3')).not.toBeInTheDocument();
     expect(screen.queryByText('Skipped · redirect not followed')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByText('#2').closest('button')!);
+    fireEvent.click(screen.getByRole('button', { name: /\/user\/auth\/login/ }));
     fireEvent.click(screen.getByRole('button', { name: 'variables' }));
     expect(await screen.findByText('token (RES)')).toBeInTheDocument();
     expect(screen.getByText('parent-value')).toBeInTheDocument();
@@ -1786,22 +1795,19 @@ scenarios:
       debugApiMock.handlers[0].onDone(null);
     });
 
-    expect(await screen.findByText('#3')).toBeInTheDocument();
-    expect(screen.getByText('#4')).toBeInTheDocument();
-    expect(screen.getByText('#5')).toBeInTheDocument();
+    const finalRow = await screen.findByRole('button', { name: /\/redirect-5/ });
+    expect(within(finalRow).getByText('#4')).toBeInTheDocument();
 
     const standaloneTree: YAMLNode = {
       ...followedTree,
       children: [
         { ...parent, data: { ...parent.data, follow_redirects: false } },
-        ...children.map(request => ({ ...request, data: { ...request.data, enabled: true, follow_redirects: false } })),
+        ...children.slice(1).map(request => ({ ...request, data: { ...request.data, enabled: true, follow_redirects: false } })),
       ],
     };
     rerender(<YAMLDebugSession tree={standaloneTree} yamlCode={'test:\n  name: edited-after-run\n'} {...props} />);
 
-    expect(screen.getByText('#3')).toBeInTheDocument();
-    expect(screen.getByText('#4')).toBeInTheDocument();
-    expect(screen.getByText('#5')).toBeInTheDocument();
+    expect(within(screen.getByRole('button', { name: /\/redirect-5/ })).getByText('#4')).toBeInTheDocument();
   });
 
   it('shows a binary response body as a compact notice, not mojibake (RLP-555)', async () => {

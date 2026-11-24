@@ -142,20 +142,19 @@ describe('matchDebugEventTarget — redirect chain follow-ups', () => {
     expect(match?.id).toBe('f21');
   });
 
-  it('leaves the Tree unmarked when the chain has fewer children than the live run', () => {
+  it.each(['rc-17', 'legacy:scenarios[0].steps[16]'])('uses the parent display number for extra hops in %s', chainId => {
     const nodes = chainNodes();
-    const match = matchDebugEventTarget(
-      event({
-        name: '[17] Home -> redirect',
-        path: 'https://live.test/extra',
-        chain_id: 'rc-17',
-        chain_role: 'hop',
-        redirect_index: 9,
-        request_id: 17,
-      }),
-      nodes,
-    );
+    const hop = event({
+      name: '[17] Home -> redirect',
+      path: 'https://live.test/extra',
+      chain_id: chainId,
+      chain_role: 'hop',
+      redirect_index: 9,
+      request_id: 17,
+    });
+    const match = matchDebugEventTarget(hop, nodes);
     expect(match).toBeNull();
+    expect(debugEventRequestNumber(hop, match, nodes, new Map([['p17', 1]]))).toBe('1.9');
   });
 
   it('uses the matched Tree number for each redirect follow-up', () => {

@@ -1681,7 +1681,7 @@ export const enTranslations = {
           running: 'Running... waiting for the first engine event.',
           filtered: 'No requests match this filter.',
           idle: 'Press Run Debug to execute this YAML against the engine.',
-          requestId: 'Request ID',
+          requestNumber: 'Request number',
           skipped: 'Skipped · redirect not followed',
         },
         detail: {
