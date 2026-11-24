@@ -6,12 +6,41 @@ export interface ExecutionProject {
   repository?: string;
   identity?: string;
 }
+export class ExecutionProjectError extends Error {
+  constructor(message: string, readonly reconnect: boolean) {
+    super(message);
+  }
+}
+
+const scriptId = () => new URLSearchParams(location.search).get("script") || "default";
+
+export function reconnectRunRepository(): void {
+  window.parent.postMessage(
+    { type: "relampo:reconnect-run-repository", planKey: embeddedPlanDraftKey(), scriptId: scriptId() },
+    location.origin,
+  );
+}
+
+export function onRunRepositoryReconnected(onConnected: () => void): () => void {
+  const receive = (event: MessageEvent) => {
+    if (
+      event.origin === location.origin &&
+      event.source === window.parent &&
+      event.data?.type === "relampo:run-repository-reconnected" &&
+      event.data.planKey === embeddedPlanDraftKey() &&
+      event.data.scriptId === scriptId()
+    ) onConnected();
+  };
+  window.addEventListener("message", receive);
+  return () => window.removeEventListener("message", receive);
+}
+
 /** Obtain an immutable project from its owner, without passing repository credentials. */
 export function requestExecutionProject(fileName = 'script.yaml'): Promise<ExecutionProject | undefined> {
   const planKey = embeddedPlanDraftKey();
   if (!planKey || window.parent === window) return Promise.resolve(undefined);
   const requestId = crypto.randomUUID();
-  const scriptId = new URLSearchParams(location.search).get('script') || 'default';
+  const activeScriptId = scriptId();
   return new Promise((resolve, reject) => {
     const cleanup = () => {
       clearTimeout(timer);
@@ -27,7 +56,7 @@ export function requestExecutionProject(fileName = 'script.yaml'): Promise<Execu
         return;
       cleanup();
       const project = event.data.project;
-      if (event.data.ok !== true) return reject(Error(event.data.error || 'Could not prepare the Test Plan files.'));
+      if (event.data.ok !== true) return reject(new ExecutionProjectError(typeof event.data.error === 'string' ? event.data.error : 'Could not prepare the Test Plan files.', event.data.reconnect === true));
       if (!project || typeof project.scriptPath !== 'string' || !Array.isArray(project.files))
         return reject(Error('Invalid execution project.'));
       resolve(project);
@@ -38,7 +67,7 @@ export function requestExecutionProject(fileName = 'script.yaml'): Promise<Execu
     }, 150000);
     window.addEventListener('message', receive);
     window.parent.postMessage(
-      { type: 'relampo:execution-project', requestId, planKey, scriptId, fileName },
+      { type: 'relampo:execution-project', requestId, planKey, scriptId: activeScriptId, fileName },
       location.origin,
     );
   });

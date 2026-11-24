@@ -14,7 +14,10 @@ const mocks = vi.hoisted(() => ({
   upload: vi.fn(),
   project: vi.fn(),
 }));
-vi.mock('../utils/executionProject', () => ({ requestExecutionProject: mocks.project }));
+vi.mock('../utils/executionProject', async original => ({
+  ...(await original<typeof import('../utils/executionProject')>()),
+  requestExecutionProject: mocks.project,
+}));
 vi.mock('../utils/debugApi', () => ({ probeStudio: mocks.probe }));
 vi.mock('../utils/distributedApi', async original => ({
   ...(await original<typeof import('../utils/distributedApi')>()),
