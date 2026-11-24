@@ -1,3 +1,4 @@
+import { ExecutionProjectError, onRunRepositoryReconnected, reconnectRunRepository } from '../utils/executionProject';
 import { IntentRuntimeTimeline } from './IntentRuntimeTimeline';
 import { RunRequestTable } from './RunRequestTable';
 import { runRequestPresentation } from '../utils/runRequestPresentation';
@@ -196,6 +197,7 @@ interface LoadRunState {
   isRunning: boolean;
   isStopping: boolean;
   runError: string | null;
+  reconnect?: boolean;
   runStatus: RunStatus | null;
   summary: RunSummary | null;
   logs: RunLogLine[];
@@ -216,7 +218,8 @@ const initialLoadRunState: LoadRunState = {
 type LoadRunAction =
   | { type: 'cleared' }
   | { type: 'run_started' }
-  | { type: 'run_start_failed'; error: string }
+  | { type: 'run_start_failed'; error: string; reconnect: boolean }
+  | { type: 'repository_reconnected' }
   | { type: 'flush_failed'; error: string }
   | { type: 'reattach_started' }
   | { type: 'state_changed'; status: RunStatus }
@@ -239,14 +242,17 @@ function loadRunReducer(state: LoadRunState, action: LoadRunAction): LoadRunStat
         sqlResults: [],
         summary: null,
         runError: null,
+        reconnect: false,
         runStatus: 'running',
         isStopping: false,
         isRunning: true,
       };
     case 'run_start_failed':
-      return { ...state, isRunning: false, isStopping: false, runStatus: 'errored', runError: action.error };
+      return { ...state, isRunning: false, isStopping: false, runStatus: 'errored', runError: action.error, reconnect: action.reconnect };
+    case 'repository_reconnected':
+      return state.reconnect ? { ...state, reconnect: false, runError: null, runStatus: null } : state;
     case 'flush_failed':
-      return { ...state, runStatus: 'errored', runError: action.error };
+      return { ...state, runStatus: 'errored', runError: action.error, reconnect: false };
     case 'reattach_started':
       return { ...state, isRunning: true };
     case 'state_changed':
@@ -328,6 +334,10 @@ export function YAMLLoadRunSession({
   const { t, language } = useLanguage();
   const [runState, dispatch] = useReducer(loadRunReducer, initialLoadRunState);
   const { snapshots, isRunning, isStopping, runError, runStatus, summary, logs, sqlResults } = runState;
+
+  useEffect(() => onRunRepositoryReconnected(reconnectId => {
+    if (!reconnectId) dispatch({ type: 'repository_reconnected' });
+  }), []);
 
   const [reportFormats, setReportFormats] = useState<LocalReportFormat[]>(['html']);
   const selectedFormats = useRef<LocalReportFormat[]>(['html']);
@@ -569,7 +579,7 @@ export function YAMLLoadRunSession({
       }
     } catch (error) {
       if (token !== startTokenRef.current) return;
-      dispatch({ type: 'run_start_failed', error: error instanceof Error ? error.message : String(error) });
+      dispatch({ type: 'run_start_failed', error: error instanceof Error ? error.message : String(error), reconnect: error instanceof ExecutionProjectError && error.reconnect });
     }
   };
 
@@ -757,7 +767,7 @@ export function YAMLLoadRunSession({
         />
       )}
 
-      {runError && <RunErrorBanner message={runError} />}
+      {runError && <RunErrorBanner message={runError} reconnect={runState.reconnect} />}
 
       {!summary && (
         <StatsRow
@@ -973,8 +983,8 @@ function RunToolbar({
   );
 }
 
-function RunErrorBanner({ message }: { message: string }) {
-  const { t } = useLanguage();
+function RunErrorBanner({ message, reconnect }: { message: string; reconnect?: boolean }) {
+  const { t, language } = useLanguage();
   return (
     <div className="border-b border-red-400/20 bg-red-500/10 px-5 py-3">
       <div className="flex items-start gap-3">
@@ -982,6 +992,11 @@ function RunErrorBanner({ message }: { message: string }) {
         <div className="min-w-0">
           <p className="text-sm font-semibold text-red-200">{t('yamlEditor.runDebug.run.errorTitle')}</p>
           <p className="mt-1 wrap-break-word font-mono text-xs text-red-100/90">{message}</p>
+        {reconnect && (
+          <button type="button" className="mt-2 text-sm underline" onClick={() => reconnectRunRepository()}>
+            {language === 'es' ? 'Reconectar repositorio' : 'Reconnect repository'}
+          </button>
+        )}
         </div>
       </div>
     </div>

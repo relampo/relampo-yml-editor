@@ -1,3 +1,4 @@
+import { ExecutionProjectError } from '../utils/executionProject';
 import { persistLocalRunReports } from '../utils/localRunReports';
 vi.mock('../utils/localRunReports', async original => ({ ...(await original<typeof import('../utils/localRunReports')>()), persistLocalRunReports: vi.fn(async () => {}) }));
 import { parseYAMLToTree, treeToYAML } from '../utils/yamlParser';
@@ -1328,4 +1329,34 @@ it('announces Downloads before Run and generates selected reports when Stop retu
   act(() => runApiMock.handlers[0].onDone({ status: 'stopped', error: null, summary: summary({ total_requests: 3, duration: 1000000000 }) }));
   await waitFor(() => expect(persistLocalRunReports).toHaveBeenCalledWith('lrun-1', ['html', 'json', 'csv', 'txt'], expect.any(String), 'en', undefined, 'downloads'));
   expect(screen.getByText('View reports', { exact: true })).toBeInTheDocument();
+});
+
+
+it('reconnects the active repository without starting or saving a run again', async () => {
+  const originalURL = window.location.href;
+  window.history.replaceState(null, '', '?embedded=1&account=ana&plan=plan-a&script=script-b');
+  const parentMessage = vi.spyOn(window.parent, 'postMessage');
+  try {
+    runApiMock.startLoadRun.mockRejectedValueOnce(new ExecutionProjectError('Authorization expired', true));
+    render(<YAMLLoadRunSession {...baseProps} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Run load test' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Reconnect repository' }));
+    expect(parentMessage).toHaveBeenCalledWith(
+      { type: 'relampo:reconnect-run-repository', planKey: 'saas-plan:ana:plan-a', scriptId: 'script-b' },
+      location.origin,
+    );
+    const answer = (scriptId: string) => window.dispatchEvent(new MessageEvent('message', {
+      origin: location.origin,
+      source: window.parent,
+      data: { type: 'relampo:run-repository-reconnected', planKey: 'saas-plan:ana:plan-a', scriptId },
+    }));
+    act(() => { answer('other-script'); });
+    expect(screen.getByRole('button', { name: 'Reconnect repository' })).toBeInTheDocument();
+    act(() => { answer('script-b'); });
+    expect(screen.queryByRole('button', { name: 'Reconnect repository' })).not.toBeInTheDocument();
+    expect(runApiMock.startLoadRun).toHaveBeenCalledTimes(1);
+  } finally {
+    parentMessage.mockRestore();
+    window.history.replaceState(null, '', originalURL);
+  }
 });

@@ -5,7 +5,7 @@ import { distributedGlobalHistory } from '../utils/distributedApi';
 import { useDistributedReportStorage } from '../hooks/useDistributedReportStorage';
 import { analysisReportFormats } from '../utils/localRunReports';
 import { useAgentState } from '../hooks/useAgentState';
-import { requestExecutionProject, type ExecutionProject } from '../utils/executionProject';
+import { ExecutionProjectError, onRunRepositoryReconnected, reconnectRunRepository, requestExecutionProject, type ExecutionProject } from '../utils/executionProject';
 import { embeddedScriptDraftKey } from '../utils/embeddedPlanDraft';
 import { DistributedNodes } from './distributed-run/DistributedNodes';
 import { DistributedConnection, type ProviderConnection } from './distributed-run/DistributedConnection';
@@ -56,6 +56,16 @@ export function YAMLDistributedRun({
   const text = (spanish: string, english: string) => (es ? spanish : english);
   const available = enabled;
   const agentContext = useAgentState()?.contextId;
+  const [reconnect, setReconnect] = useState(false);
+  const [projectReload, setProjectReload] = useState(0);
+  const pendingReconnect = useRef<string | undefined>(undefined);
+  useEffect(() => onRunRepositoryReconnected(reconnectId => {
+    if (!reconnectId || reconnectId !== pendingReconnect.current) return;
+    pendingReconnect.current = undefined;
+    setReconnect(false);
+    setError('');
+    setProjectReload(value => value + 1);
+  }), []);
   const [project, setProject] = useState<ExecutionProject>();
   const [projectReady, setProjectReady] = useState(!embeddedScriptDraftKey());
   useEffect(() => {
@@ -72,7 +82,8 @@ export function YAMLDistributedRun({
       },
       cause => {
         if (live) {
-          setError(String(cause.message || cause));
+          setReconnect(cause instanceof ExecutionProjectError && cause.reconnect);
+          setError(cause instanceof Error ? cause.message : String(cause));
           setProjectReady(true);
         }
       },
@@ -80,7 +91,7 @@ export function YAMLDistributedRun({
     return () => {
       live = false;
     };
-  }, [fileName, agentContext]);
+  }, [fileName, agentContext, projectReload]);
   const storageKey = () => {
     const script = embeddedScriptDraftKey();
     return script
@@ -358,10 +369,12 @@ export function YAMLDistributedRun({
   async function perform(action: () => Promise<void>) {
     setBusy(true);
     setError('');
+    setReconnect(false);
     setNotice('');
     try {
       await action();
     } catch (e) {
+      setReconnect(e instanceof ExecutionProjectError && e.reconnect);
       setError(e instanceof Error ? e.message : 'Distributed operation failed');
     } finally {
       if (mounted.current) setBusy(false);
@@ -461,6 +474,7 @@ export function YAMLDistributedRun({
       } catch (cause) {
         if (live) {
           setAppliedProject(null);
+          setReconnect(cause instanceof ExecutionProjectError && cause.reconnect);
           setError(cause instanceof Error ? cause.message : String(cause));
         }
       } finally {
@@ -597,7 +611,15 @@ export function YAMLDistributedRun({
             )}
           </Notice>
         )}
-        {error && <Notice alert>{error}</Notice>}
+        {error && <Notice alert>{error}{reconnect && (
+          <button type="button" className="ml-2 underline" onClick={() => {
+            const reconnectId = crypto.randomUUID();
+            pendingReconnect.current = reconnectId;
+            reconnectRunRepository(reconnectId);
+          }}>
+            {text("Reconectar repositorio", "Reconnect repository")}
+          </button>
+        )}</Notice>}
         {notice && <Notice>{notice}</Notice>}
         {reportStorage.saving && (
           <Notice>{text('Guardando reportes en el Test Plan…', 'Saving reports to the Test Plan…')}</Notice>
