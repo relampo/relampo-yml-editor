@@ -58,11 +58,14 @@ export function YAMLDistributedRun({
   const agentContext = useAgentState()?.contextId;
   const [reconnect, setReconnect] = useState(false);
   const [projectReload, setProjectReload] = useState(0);
-  useEffect(() => onRunRepositoryReconnected(() => {
-    setReconnect(false);
-    setError('');
-    setProjectReload(value => value + 1);
-  }), []);
+  useEffect(() => {
+    if (!reconnect) return;
+    return onRunRepositoryReconnected(() => {
+      setReconnect(false);
+      setError('');
+      setProjectReload(value => value + 1);
+    });
+  }, [reconnect]);
   const [project, setProject] = useState<ExecutionProject>();
   const [projectReady, setProjectReady] = useState(!embeddedScriptDraftKey());
   useEffect(() => {

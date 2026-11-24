@@ -3,6 +3,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import { LanguageProvider } from '../contexts/LanguageContext';
 import { YAMLDistributedRun } from './YAMLDistributedRun';
 import { DistributedRequestError } from '../utils/distributedApi';
+import { ExecutionProjectError } from '../utils/executionProject';
 import { selectOption } from '../test/selectOption';
 import { advance, lostAnswer } from '../test/lostFrames';
 import { InFrontWhen } from '../contexts/InFrontContext';
@@ -822,6 +823,38 @@ it('compares reselected CSV bytes even when filename, size and modified date are
   expect(screen.getByText('Sin cambios pendientes.')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Aplicar acción a los archivos' })).toBeDisabled();
   expect(mocks.request.mock.calls.filter(call => call[0] === 'requirements')).toHaveLength(1);
+});
+
+it('reloads a blocked distributed repository only for the active script', async () => {
+  window.history.replaceState({}, '', '/?lang=es&embedded=1&account=qa&plan=qa&script=script-a');
+  const send = vi.spyOn(window.parent, 'postMessage');
+  mocks.project.mockRejectedValueOnce(new ExecutionProjectError('Authorization expired', true)).mockResolvedValue(workspace);
+  const reply = (scriptId: string) => act(() => {
+    window.dispatchEvent(new MessageEvent('message', {
+      origin: location.origin,
+      source: window.parent,
+      data: { type: 'relampo:run-repository-reconnected', planKey: 'saas-plan:qa:qa', scriptId },
+    }));
+  });
+  try {
+    mount();
+    fireEvent.click(await screen.findByRole('button', { name: 'Reconectar repositorio' }));
+    expect(send).toHaveBeenCalledWith({
+      type: 'relampo:reconnect-run-repository', planKey: 'saas-plan:qa:qa', scriptId: 'script-a',
+    }, location.origin);
+    reply('other-script');
+    expect(mocks.project).toHaveBeenCalledTimes(1);
+    reply('script-a');
+    await waitFor(() => expect(mocks.project).toHaveBeenCalledTimes(2));
+    reply('script-a');
+    expect(mocks.project).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole('button', { name: 'Reconectar repositorio' })).not.toBeInTheDocument();
+    expect(flush).not.toHaveBeenCalled();
+    expect(mocks.prepare).not.toHaveBeenCalled();
+    expect(mocks.request.mock.calls.map(([path]) => path)).not.toContain('run');
+  } finally {
+    send.mockRestore();
+  }
 });
 
 it('detects changes made directly in the Test Plan folder on focus without reconnecting', async () => {
