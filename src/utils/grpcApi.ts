@@ -85,7 +85,14 @@ export async function grpcRequest<T>(path: string, body?: unknown, signal?: Abor
       ? AbortSignal.any([AbortSignal.timeout(150_000), ...(signal ? [signal] : [])])
       : (signal ?? AbortSignal.timeout(30000)),
   });
-  if (!response.ok) throw new Error(agentErrorText(await response.json().catch(() => null)) || 'gRPC operation failed');
+  if (!response.ok) {
+    const message = agentErrorText(await response.json().catch(() => null)) || 'gRPC operation failed';
+    const error = new Error(message);
+    if (path === 'browser-recordings/current' && response.status === 404) {
+      Object.assign(error, { status: 404 });
+    }
+    throw error;
+  }
   return response.json();
 }
 export function grpcBundlePath(id: string): string {
