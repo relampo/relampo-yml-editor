@@ -14,14 +14,14 @@ export class ExecutionProjectError extends Error {
 
 const scriptId = () => new URLSearchParams(location.search).get("script") || "default";
 
-export function reconnectRunRepository(): void {
+export function reconnectRunRepository(reconnectId?: string): void {
   window.parent.postMessage(
-    { type: "relampo:reconnect-run-repository", planKey: embeddedPlanDraftKey(), scriptId: scriptId() },
+    { type: "relampo:reconnect-run-repository", planKey: embeddedPlanDraftKey(), scriptId: scriptId(), ...(reconnectId && { reconnectId }) },
     location.origin,
   );
 }
 
-export function onRunRepositoryReconnected(onConnected: () => void): () => void {
+export function onRunRepositoryReconnected(onConnected: (reconnectId?: string) => void): () => void {
   const receive = (event: MessageEvent) => {
     if (
       event.origin === location.origin &&
@@ -29,7 +29,7 @@ export function onRunRepositoryReconnected(onConnected: () => void): () => void 
       event.data?.type === "relampo:run-repository-reconnected" &&
       event.data.planKey === embeddedPlanDraftKey() &&
       event.data.scriptId === scriptId()
-    ) onConnected();
+    ) onConnected(event.data.reconnectId);
   };
   window.addEventListener("message", receive);
   return () => window.removeEventListener("message", receive);

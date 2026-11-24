@@ -58,14 +58,14 @@ export function YAMLDistributedRun({
   const agentContext = useAgentState()?.contextId;
   const [reconnect, setReconnect] = useState(false);
   const [projectReload, setProjectReload] = useState(0);
-  useEffect(() => {
-    if (!reconnect) return;
-    return onRunRepositoryReconnected(() => {
-      setReconnect(false);
-      setError('');
-      setProjectReload(value => value + 1);
-    });
-  }, [reconnect]);
+  const pendingReconnect = useRef<string | undefined>(undefined);
+  useEffect(() => onRunRepositoryReconnected(reconnectId => {
+    if (!reconnectId || reconnectId !== pendingReconnect.current) return;
+    pendingReconnect.current = undefined;
+    setReconnect(false);
+    setError('');
+    setProjectReload(value => value + 1);
+  }), []);
   const [project, setProject] = useState<ExecutionProject>();
   const [projectReady, setProjectReady] = useState(!embeddedScriptDraftKey());
   useEffect(() => {
@@ -612,7 +612,11 @@ export function YAMLDistributedRun({
           </Notice>
         )}
         {error && <Notice alert>{error}{reconnect && (
-          <button type="button" className="ml-2 underline" onClick={reconnectRunRepository}>
+          <button type="button" className="ml-2 underline" onClick={() => {
+            const reconnectId = crypto.randomUUID();
+            pendingReconnect.current = reconnectId;
+            reconnectRunRepository(reconnectId);
+          }}>
             {text("Reconectar repositorio", "Reconnect repository")}
           </button>
         )}</Notice>}

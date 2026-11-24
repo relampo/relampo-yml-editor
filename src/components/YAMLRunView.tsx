@@ -335,7 +335,9 @@ export function YAMLLoadRunSession({
   const [runState, dispatch] = useReducer(loadRunReducer, initialLoadRunState);
   const { snapshots, isRunning, isStopping, runError, runStatus, summary, logs, sqlResults } = runState;
 
-  useEffect(() => onRunRepositoryReconnected(() => dispatch({ type: 'repository_reconnected' })), []);
+  useEffect(() => onRunRepositoryReconnected(reconnectId => {
+    if (!reconnectId) dispatch({ type: 'repository_reconnected' });
+  }), []);
 
   const [reportFormats, setReportFormats] = useState<LocalReportFormat[]>(['html']);
   const selectedFormats = useRef<LocalReportFormat[]>(['html']);
@@ -991,7 +993,7 @@ function RunErrorBanner({ message, reconnect }: { message: string; reconnect?: b
           <p className="text-sm font-semibold text-red-200">{t('yamlEditor.runDebug.run.errorTitle')}</p>
           <p className="mt-1 wrap-break-word font-mono text-xs text-red-100/90">{message}</p>
         {reconnect && (
-          <button type="button" className="mt-2 text-sm underline" onClick={reconnectRunRepository}>
+          <button type="button" className="mt-2 text-sm underline" onClick={() => reconnectRunRepository()}>
             {language === 'es' ? 'Reconectar repositorio' : 'Reconnect repository'}
           </button>
         )}

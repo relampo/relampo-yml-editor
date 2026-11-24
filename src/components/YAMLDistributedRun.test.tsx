@@ -829,25 +829,34 @@ it('reloads a blocked distributed repository only for the active script', async 
   window.history.replaceState({}, '', '/?lang=es&embedded=1&account=qa&plan=qa&script=script-a');
   const send = vi.spyOn(window.parent, 'postMessage');
   mocks.project.mockRejectedValueOnce(new ExecutionProjectError('Authorization expired', true)).mockResolvedValue(workspace);
-  const reply = (scriptId: string) => act(() => {
+  const reply = (scriptId: string, reconnectId?: string) => act(() => {
     window.dispatchEvent(new MessageEvent('message', {
       origin: location.origin,
       source: window.parent,
-      data: { type: 'relampo:run-repository-reconnected', planKey: 'saas-plan:qa:qa', scriptId },
+      data: { type: 'relampo:run-repository-reconnected', planKey: 'saas-plan:qa:qa', scriptId, reconnectId },
     }));
   });
   try {
     mount();
     fireEvent.click(await screen.findByRole('button', { name: 'Reconectar repositorio' }));
-    expect(send).toHaveBeenCalledWith({
-      type: 'relampo:reconnect-run-repository', planKey: 'saas-plan:qa:qa', scriptId: 'script-a',
-    }, location.origin);
-    reply('other-script');
-    expect(mocks.project).toHaveBeenCalledTimes(1);
+    const message = send.mock.calls.find(([data]) => data.type === 'relampo:reconnect-run-repository')?.[0];
+    expect(message).toEqual({
+      type: 'relampo:reconnect-run-repository', planKey: 'saas-plan:qa:qa', scriptId: 'script-a', reconnectId: expect.any(String),
+    });
+    await selectRepository();
+    mocks.project.mockRejectedValueOnce(new Error('Temporary repository read failure'));
+    fireEvent.focus(window);
+    await screen.findByText('Temporary repository read failure');
+    const before = mocks.project.mock.calls.length;
+    reply('other-script', message.reconnectId);
     reply('script-a');
-    await waitFor(() => expect(mocks.project).toHaveBeenCalledTimes(2));
-    reply('script-a');
-    expect(mocks.project).toHaveBeenCalledTimes(2);
+    expect(mocks.project).toHaveBeenCalledTimes(before);
+    reply('script-a', message.reconnectId);
+    await waitFor(() => expect(mocks.project.mock.calls.length).toBeGreaterThan(before));
+    const reloaded = mocks.project.mock.calls.length;
+    reply('script-a', message.reconnectId);
+    expect(mocks.project).toHaveBeenCalledTimes(reloaded);
+    expect(screen.queryByText('Temporary repository read failure')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Reconectar repositorio' })).not.toBeInTheDocument();
     expect(flush).not.toHaveBeenCalled();
     expect(mocks.prepare).not.toHaveBeenCalled();
