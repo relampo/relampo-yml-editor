@@ -94,7 +94,11 @@ export function CorrelatePage({
     setLocate(null);
     try {
       const result = await correlateRequest<CorrelateReport>('analyze', { yaml: value });
-      if (version.current === revision) setReport(result);
+      if (version.current === revision) {
+        const candidate = result.candidates.find(candidate => candidate.applicable);
+        setSelected(candidate ? [candidate.id] : []);
+        setReport(result);
+      }
     } catch (cause) {
       if (version.current === revision) setError(cause instanceof Error ? cause.message : String(cause));
     } finally {

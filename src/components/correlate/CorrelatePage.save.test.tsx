@@ -27,6 +27,40 @@ async function completeCorrelation() {
   await waitFor(() => expect(screen.getByRole('button', { name: 'Overwrite script with correlations' })).toBeEnabled());
 }
 
+it('preselects one applicable source when candidates compete for a target', async () => {
+  const target = { StepIndex: 2, Location: 'request.body', Path: 'token' };
+  vi.mocked(correlateRequest).mockResolvedValueOnce({
+    digest: 'analysis',
+    requests: 3,
+    responses: 2,
+    candidates: [
+      { id: 'manual', applicable: false, targets: [target] },
+      { id: 'first', applicable: true, targets: [target] },
+      { id: 'alternate', applicable: true, targets: [target] },
+    ],
+  });
+  const yaml = 'test: original';
+  render(
+    <LanguageProvider>
+      <CorrelatePage
+        source={{ yaml, fileName: 'login.yml', revision: 1 }}
+        onCommit={vi.fn()}
+      />
+    </LanguageProvider>,
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Analyze' }));
+  const correlate = screen.getByRole('button', { name: 'Correlate' });
+  await waitFor(() => expect(correlate).toBeEnabled());
+  fireEvent.click(correlate);
+  await waitFor(() =>
+    expect(correlateRequest).toHaveBeenLastCalledWith('apply', {
+      yaml,
+      digest: 'analysis',
+      selectedIds: ['first'],
+    }),
+  );
+});
+
 it('shows bottom save choices and always appends correlated once to a new filename', async () => {
   const onSave = vi.fn(async () => {});
   render(
