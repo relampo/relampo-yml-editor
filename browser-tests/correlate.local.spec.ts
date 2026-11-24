@@ -134,7 +134,11 @@ test('Correlate analyzes the current script, applies selected rows, saves and up
   const tab = await openCorrelate(page);
   expect(state.analyzed()).toContain('Current working script');
   expect(state.analyzed()).toContain('captured-session-value-123456');
-  await expect(tab.getByRole('button', { name: 'Correlate', exact: true })).toBeDisabled();
+  const correlate = tab.getByRole('button', { name: 'Correlate', exact: true });
+  await expect(correlate).toBeEnabled();
+  await expect(tab.getByLabel('Select candidate 1')).toBeChecked();
+  await expect(tab.getByLabel('Select candidate 2')).not.toBeChecked();
+  expect(state.applied()).toBeUndefined();
   await expect(tab.getByRole('columnheader', { name: /confidence|explanation/i })).toHaveCount(0);
   await expect(tab.getByLabel('Select candidate 2')).toBeDisabled();
   const controls = await tab.getByRole('region', { name: 'Correlation controls' }).boundingBox();
@@ -147,8 +151,7 @@ test('Correlate analyzes the current script, applies selected rows, saves and up
   await tab.getByRole('button', { name: 'Code', exact: true }).click();
   await expect(tab.locator('.monaco-editor')).toBeVisible();
   await tab.getByRole('button', { name: 'Tree', exact: true }).click();
-  await tab.getByLabel('Select candidate 1').check();
-  await tab.getByRole('button', { name: 'Correlate', exact: true }).click();
+  await correlate.click();
   await expect(tab.getByRole('status')).toContainText('Selected correlations applied');
   expect(state.applied().selectedIds).toEqual(['1']);
   await expect(tab.getByRole('tab', { name: /Correlated/ })).toHaveAttribute('aria-selected', 'true');
@@ -165,6 +168,7 @@ test('Correlate analyzes the current script, applies selected rows, saves and up
   await tab.getByRole('button', { name: 'Analyze', exact: true }).click();
   await expect(tab.getByRole('status')).toContainText('Analysis complete');
   await expect(tab.getByLabel('Select candidate 1')).toHaveCount(0);
+  await expect(correlate).toBeDisabled();
   await expect(tab.getByRole('tab', { name: /Correlated/ })).toBeVisible();
   await expect(tab.getByRole('button', { name: 'Save and return to Studio', exact: true })).toBeEnabled();
   const closed = tab.waitForEvent('close');
