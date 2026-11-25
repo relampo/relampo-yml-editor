@@ -1,14 +1,17 @@
 import { AlertCircle, Info, Plus, Trash2 } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { HighlightedInput } from '../ui/HighlightedInput';
 import { Input } from '../ui/input';
-import { buildRequestUrlWithQuery, parseRequestQueryParams, parseRequestUrl } from './requestUrl';
+import { parseRequestUrl } from './requestUrl';
+import {
+  buildEditedRequestQuery,
+  parseEditableRequestQuery,
+  type EditableRequestQueryParam,
+} from './requestQueryEditing';
 
-interface QueryParam {
+interface QueryParam extends EditableRequestQueryParam {
   id: string;
-  key: string;
-  value: string;
 }
 
 let queryParamIdCounter = 0;
@@ -41,27 +44,32 @@ export function QueryParamsEditor({
   }>({ type: null, message: '' });
   const [trackedUrl, setTrackedUrl] = useState<string | undefined>(undefined);
 
-  const emittedUrlRef = useRef<string | null>(null);
+  const [emittedUrl, setEmittedUrl] = useState<string | null>(null);
+  const [sourceUrl, setSourceUrl] = useState(url);
 
   const emitUrl = (nextUrl: string) => {
-    emittedUrlRef.current = nextUrl;
+    setEmittedUrl(nextUrl);
     onUrlChange(nextUrl);
   };
 
   if (url !== trackedUrl) {
     setTrackedUrl(url);
-    const isEcho = url === emittedUrlRef.current;
+    const isEcho = url === emittedUrl;
+    if (!isEcho) {
+      setEmittedUrl(null);
+      setSourceUrl(url);
+    }
     if (!url) {
       setBaseUrl('');
       if (!isEcho) setParams([]);
     } else {
-      const parts = parseRequestUrl(url);
+      const parts = parseRequestUrl(url.split('#', 1)[0]);
       const base = parts.isAbsolute ? `${parts.protocol}://${parts.baseUrl}${parts.path}` : parts.path;
 
       setBaseUrl(base);
 
       if (!isEcho) {
-        const parsedParams = parseRequestQueryParams(url).map(p => createQueryParam(p));
+        const parsedParams = parseEditableRequestQuery(url).map(p => createQueryParam(p));
         setParams(parsedParams.length > 0 ? parsedParams : [createQueryParam()]);
       }
     }
@@ -69,7 +77,7 @@ export function QueryParamsEditor({
 
   const handleBaseUrlChange = (newBase: string) => {
     setBaseUrl(newBase);
-    emitUrl(buildRequestUrlWithQuery(newBase, params));
+    emitUrl(buildEditedRequestQuery(sourceUrl, newBase, params));
     validateUrl(newBase);
   };
 
@@ -114,7 +122,7 @@ export function QueryParamsEditor({
     const newParams = [...params];
     newParams[index] = { ...newParams[index], [field]: value };
     setParams(newParams);
-    emitUrl(buildRequestUrlWithQuery(baseUrl, newParams));
+    emitUrl(buildEditedRequestQuery(sourceUrl, baseUrl, newParams));
   };
 
   const handleAddParam = () => {
@@ -124,7 +132,7 @@ export function QueryParamsEditor({
   const handleRemoveParam = (index: number) => {
     const newParams = params.filter((_, i) => i !== index);
     setParams(newParams.length > 0 ? newParams : [createQueryParam()]);
-    emitUrl(buildRequestUrlWithQuery(baseUrl, newParams.length > 0 ? newParams : []));
+    emitUrl(buildEditedRequestQuery(sourceUrl, baseUrl, newParams));
   };
 
   return (

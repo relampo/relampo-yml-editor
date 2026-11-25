@@ -104,7 +104,7 @@ export function buildRequestUrl(
 
 const VARIABLE_PLACEHOLDER = /\{\{.*?\}\}|\$\{.*?\}/g;
 
-function encodeQueryComponentPreservingVars(component: string): string {
+export function encodeQueryComponentPreservingVars(component: string): string {
   let encoded = '';
   let lastIndex = 0;
   for (const match of component.matchAll(VARIABLE_PLACEHOLDER)) {
