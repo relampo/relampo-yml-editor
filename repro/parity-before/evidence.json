@@ -1,0 +1,95 @@
+{
+  "expected": "broken",
+  "platform": "darwin",
+  "runs": [
+    {
+      "stage": "original",
+      "mode": "Debug",
+      "yaml": "test:\n  name: Query parity\nvariables:\n  gx_evt_token: 0123456789abcdef0123456789abcdeffedcba9876543210fedcba9876543210\nhttp_defaults:\n  base_url: http://127.0.0.1:64719\nscenarios:\n  - name: GeneXus query\n    load:\n      type: constant\n      users: 1\n      iterations: 1\n    steps:\n      - request:\n          name: Login\n          method: POST\n          url: /bantotal/servlet/com.dlya.bantotal.hlogin?{{gx_evt_token}},gx-no-cache={{_timestamp()}}\n          assertions:\n            - type: status\n              value: 200\n      - request:\n          name: Alerts\n          method: GET\n          url: /apfrgetalert?1,,0\n          assertions:\n            - type: status\n              value: 200\n      - request:\n          name: Reset\n          method: GET\n          url: /hfrcallandreset?encrypted-value,0,01\n          assertions:\n            - type: status\n              value: 200\n",
+      "requests": [
+        {
+          "method": "POST",
+          "uri": "/bantotal/servlet/com.dlya.bantotal.hlogin?0123456789abcdef0123456789abcdeffedcba9876543210fedcba9876543210,gx-no-cache=1795615614149",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "uri": "/apfrgetalert?1,,0",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "uri": "/hfrcallandreset?encrypted-value,0,01",
+          "status": 200
+        }
+      ]
+    },
+    {
+      "stage": "original",
+      "mode": "Run",
+      "yaml": "test:\n  name: Query parity\nvariables:\n  gx_evt_token: 0123456789abcdef0123456789abcdeffedcba9876543210fedcba9876543210\nhttp_defaults:\n  base_url: http://127.0.0.1:64719\nscenarios:\n  - name: GeneXus query\n    load:\n      type: constant\n      users: 1\n      iterations: 1\n    steps:\n      - request:\n          name: Login\n          method: POST\n          url: /bantotal/servlet/com.dlya.bantotal.hlogin?{{gx_evt_token}},gx-no-cache={{_timestamp()}}\n          assertions:\n            - type: status\n              value: 200\n      - request:\n          name: Alerts\n          method: GET\n          url: /apfrgetalert?1,,0\n          assertions:\n            - type: status\n              value: 200\n      - request:\n          name: Reset\n          method: GET\n          url: /hfrcallandreset?encrypted-value,0,01\n          assertions:\n            - type: status\n              value: 200\n",
+      "requests": [
+        {
+          "method": "POST",
+          "uri": "/bantotal/servlet/com.dlya.bantotal.hlogin?0123456789abcdef0123456789abcdeffedcba9876543210fedcba9876543210,gx-no-cache=1795615614395",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "uri": "/apfrgetalert?1,,0",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "uri": "/hfrcallandreset?encrypted-value,0,01",
+          "status": 200
+        }
+      ]
+    },
+    {
+      "stage": "edited",
+      "mode": "Debug",
+      "yaml": "test:\n  name: Query parity\nvariables:\n  gx_evt_token: 0123456789abcdef0123456789abcdeffedcba9876543210fedcba9876543210\nhttp_defaults:\n  base_url: http://127.0.0.1:64719\nscenarios:\n  - name: GeneXus query\n    load:\n      type: constant\n      users: 1\n      iterations: 1\n    steps:\n      - request:\n          name: Login\n          method: POST\n          url: /bantotal/servlet/com.dlya.bantotal.hlogin?{{gx_evt_token}}%2Cgx-no-cache={{_timestamp()}}\n          assertions:\n            - type: status\n              value: 200\n      - request:\n          name: Alerts\n          method: GET\n          url: /apfrgetalert?1%2C%2C0=\n          assertions:\n            - type: status\n              value: 200\n      - request:\n          name: Reset\n          method: GET\n          url: /hfrcallandreset?encrypted-value%2C0%2C01=\n          assertions:\n            - type: status\n              value: 200\n",
+      "requests": [
+        {
+          "method": "POST",
+          "uri": "/bantotal/servlet/com.dlya.bantotal.hlogin?0123456789abcdef0123456789abcdeffedcba9876543210fedcba9876543210%2Cgx-no-cache=1795615614917",
+          "status": 403
+        },
+        {
+          "method": "GET",
+          "uri": "/apfrgetalert?1%2C%2C0=",
+          "status": 403
+        },
+        {
+          "method": "GET",
+          "uri": "/hfrcallandreset?encrypted-value%2C0%2C01=",
+          "status": 403
+        }
+      ]
+    },
+    {
+      "stage": "edited",
+      "mode": "Run",
+      "yaml": "test:\n  name: Query parity\nvariables:\n  gx_evt_token: 0123456789abcdef0123456789abcdeffedcba9876543210fedcba9876543210\nhttp_defaults:\n  base_url: http://127.0.0.1:64719\nscenarios:\n  - name: GeneXus query\n    load:\n      type: constant\n      users: 1\n      iterations: 1\n    steps:\n      - request:\n          name: Login\n          method: POST\n          url: /bantotal/servlet/com.dlya.bantotal.hlogin?{{gx_evt_token}}%2Cgx-no-cache={{_timestamp()}}\n          assertions:\n            - type: status\n              value: 200\n      - request:\n          name: Alerts\n          method: GET\n          url: /apfrgetalert?1%2C%2C0=\n          assertions:\n            - type: status\n              value: 200\n      - request:\n          name: Reset\n          method: GET\n          url: /hfrcallandreset?encrypted-value%2C0%2C01=\n          assertions:\n            - type: status\n              value: 200\n",
+      "requests": [
+        {
+          "method": "POST",
+          "uri": "/bantotal/servlet/com.dlya.bantotal.hlogin?0123456789abcdef0123456789abcdeffedcba9876543210fedcba9876543210%2Cgx-no-cache=1795615615166",
+          "status": 403
+        },
+        {
+          "method": "GET",
+          "uri": "/apfrgetalert?1%2C%2C0=",
+          "status": 403
+        },
+        {
+          "method": "GET",
+          "uri": "/hfrcallandreset?encrypted-value%2C0%2C01=",
+          "status": 403
+        }
+      ]
+    }
+  ],
+  "note": "Local synthetic target; test entitlements; real engine and Debug/Run APIs."
+}
